@@ -1,11 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 
 export default function Home() {
   const [foodText, setFoodText] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [todayTotals, setTodayTotals] = useState({ kcal: 0, protein_g: 0 });
+
+  async function fetchTodayTotals() {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const { data } = await supabase
+      .from('food_logs')
+      .select('kcal, protein_g')
+      .gte('happened_at', startOfDay.toISOString());
+
+    if (data) {
+      const totals = data.reduce(
+        (acc, row) => ({
+          kcal: acc.kcal + (row.kcal || 0),
+          protein_g: acc.protein_g + (row.protein_g || 0),
+        }),
+        { kcal: 0, protein_g: 0 }
+      );
+      setTodayTotals(totals);
+    }
+  }
+
+  useEffect(() => {
+    fetchTodayTotals();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,11 +46,17 @@ export default function Home() {
     setResult(data);
     setFoodText('');
     setLoading(false);
+    fetchTodayTotals();
   }
 
   return (
     <main style={{ padding: '2rem', maxWidth: '500px' }}>
       <h1>Unflump</h1>
+
+      <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f0f0' }}>
+        <strong>Today so far:</strong> {todayTotals.kcal} kcal | {todayTotals.protein_g}g protein
+      </div>
+
       <form onSubmit={handleSubmit}>
         <textarea
           value={foodText}
