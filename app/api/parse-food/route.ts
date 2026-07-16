@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
         role: 'user',
         content: `Estimate the macros for this food entry. Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "meal_label": string}
 
+For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short — 1-3 words, not a repeat of the food entry itself.
+
 Food entry: "${foodText}"`,
       },
     ],
