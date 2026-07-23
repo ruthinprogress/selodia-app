@@ -7,7 +7,7 @@ const anthropic = new Anthropic({
 });
 
 export async function POST(request: NextRequest) {
-  const { foodText } = await request.json();
+  const { foodText, happenedAt } = await request.json();
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -16,9 +16,7 @@ export async function POST(request: NextRequest) {
       {
         role: 'user',
         content: `Estimate the macros for this food entry. Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "meal_label": string}
-
 For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short — 1-3 words, not a repeat of the food entry itself.
-
 Food entry: "${foodText}"`,
       },
     ],
@@ -31,7 +29,7 @@ Food entry: "${foodText}"`,
   const { data, error } = await supabase
     .from('food_logs')
     .insert({
-      happened_at: new Date().toISOString(),
+      happened_at: happenedAt || new Date().toISOString(),
       raw_text: foodText,
       meal_label: macros.meal_label,
       kcal: macros.kcal,
