@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 
 export default function Home() {
   const [foodText, setFoodText] = useState('');
+  const [foodImages, setFoodImages] = useState<File[]>([]);
   const [loggedAt, setLoggedAt] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,18 @@ export default function Home() {
     if (n === null) return '—';
     const sign = n > 0 ? '+' : '';
     return sign + n + unit;
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   useEffect(() => {
@@ -97,17 +110,26 @@ export default function Home() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+
+    const images = [];
+    for (const file of foodImages) {
+      const imageBase64 = await fileToBase64(file);
+      images.push({ imageBase64, mediaType: file.type });
+    }
+
     const res = await fetch('/api/parse-food', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         foodText,
         happenedAt: new Date(loggedAt).toISOString(),
+        images,
       }),
     });
     const data = await res.json();
     setResult(data);
     setFoodText('');
+    setFoodImages([]);
     setLoggedAt(nowForInput());
     setLoading(false);
     fetchTodayData();
@@ -143,18 +165,6 @@ export default function Home() {
     fetchTodayData();
   }
 
-  function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function handleMeasurementSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (measurementFiles.length === 0) return;
@@ -164,12 +174,14 @@ export default function Home() {
 
     let successCount = 0;
     let failCount = 0;
+    let skippedCount = 0;
+    let replacedCount = 0;
     let lastResult = null;
 
     for (const file of measurementFiles) {
       try {
         const imageBase64 = await fileToBase64(file);
-        const res = await fetch('/api/parse-body-measurement', {
+        let res = await fetch('/api/parse-body-measurement', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -178,7 +190,37 @@ export default function Home() {
             measuredAt: new Date(measuredAt).toISOString(),
           }),
         });
-        const data = await res.json();
+        let data = await res.json();
+
+        if (data.duplicate) {
+          const existingDate = new Date(data.existingEntry.measured_at).toLocaleDateString();
+          const confirmed = window.confirm(
+            `A reading already exists for ${existingDate} (${data.existingEntry.weight_kg}kg). Overwrite it with the new reading?`
+          );
+          if (confirmed) {
+            res = await fetch('/api/parse-body-measurement', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-force-replace': 'true' },
+              body: JSON.stringify({
+                imageBase64,
+                mediaType: file.type,
+                measuredAt: new Date(measuredAt).toISOString(),
+              }),
+            });
+            data = await res.json();
+            if (!data.error) {
+              successCount++;
+              replacedCount++;
+              lastResult = data;
+            } else {
+              failCount++;
+            }
+          } else {
+            skippedCount++;
+          }
+          continue;
+        }
+
         if (data.error) {
           failCount++;
         } else {
@@ -191,8 +233,12 @@ export default function Home() {
     }
 
     setMeasurementResult(lastResult);
-    if (failCount > 0) {
-      setMeasurementError(`${successCount} uploaded successfully, ${failCount} failed.`);
+    const messages = [];
+    if (failCount > 0) messages.push(`${failCount} failed`);
+    if (skippedCount > 0) messages.push(`${skippedCount} skipped (duplicate, kept existing)`);
+    if (replacedCount > 0) messages.push(`${replacedCount} replaced existing reading`);
+    if (messages.length > 0) {
+      setMeasurementError(`${successCount} uploaded successfully. ${messages.join(', ')}.`);
     }
     setMeasurementFiles([]);
     setMeasuredAt(nowForInput());
@@ -229,10 +275,21 @@ export default function Home() {
         <textarea
           value={foodText}
           onChange={(e) => setFoodText(e.target.value)}
-          placeholder="What did you eat?"
+          placeholder="What did you eat? (optional if uploading a photo)"
           rows={3}
           style={{ width: '100%', padding: '0.5rem' }}
         />
+        <div style={{ marginTop: '0.5rem' }}>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => setFoodImages(e.target.files ? Array.from(e.target.files) : [])}
+          />
+          {foodImages.length > 0 && (
+            <p style={{ fontSize: '0.85rem', color: '#666' }}>{foodImages.length} photo(s) selected</p>
+          )}
+        </div>
         <div style={{ marginTop: '0.5rem' }}>
           <label style={{ marginRight: '0.5rem' }}>When:</label>
           <input
@@ -289,8 +346,11 @@ export default function Home() {
             ) : (
               <div>
                 <strong>{entry.meal_label}</strong> — {entry.raw_text}
+                {entry.confidence === 'uncertain' && (
+                  <span style={{ color: '#c0392b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>⚠ check this</span>
+                )}
                 <br />
-                {new Date(entry.happened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {entry.kcal} kcal | {entry.protein_g}g protein
+                {new Date(entry.happened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {entry.kcal} kcal | {entry.protein_g}g protein | {entry.carbs_g}g carbs | {entry.fat_g}g fat
                 <button onClick={() => startEdit(entry)} style={{ marginLeft: '1rem' }}>
                   Edit
                 </button>
