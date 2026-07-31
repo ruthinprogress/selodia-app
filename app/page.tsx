@@ -20,6 +20,17 @@ export default function Home() {
   const [measurementError, setMeasurementError] = useState('');
   const [measurementHistory, setMeasurementHistory] = useState<any[]>([]);
 
+  const [activityText, setActivityText] = useState('');
+  const [activityImages, setActivityImages] = useState<File[]>([]);
+  const [activityAt, setActivityAt] = useState('');
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityResult, setActivityResult] = useState<any>(null);
+  const [activityError, setActivityError] = useState('');
+  const [todayActivities, setTodayActivities] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [activityEditForm, setActivityEditForm] = useState({ activity_type: '', duration_min: '', kcal_burned: '', happened_at: '' });
+
   function nowForInput() {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -58,6 +69,7 @@ export default function Home() {
   useEffect(() => {
     setLoggedAt(nowForInput());
     setMeasuredAt(nowForInput());
+    setActivityAt(nowForInput());
   }, []);
 
   async function fetchTodayData() {
@@ -91,6 +103,33 @@ export default function Home() {
     }
   }
 
+  async function fetchTodayActivities() {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .gte('happened_at', startOfDay.toISOString())
+      .order('happened_at', { ascending: true });
+    if (data) {
+      setTodayActivities(data);
+    }
+  }
+
+  async function fetchRecentActivities() {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .gte('happened_at', sevenDaysAgo.toISOString())
+      .order('happened_at', { ascending: false });
+    if (data) {
+      setRecentActivities(data);
+    }
+  }
+
   async function handleDelete(id: string) {
     const confirmed = window.confirm('Delete this entry?');
     if (!confirmed) return;
@@ -105,6 +144,8 @@ export default function Home() {
   useEffect(() => {
     fetchTodayData();
     fetchMeasurementHistory();
+    fetchTodayActivities();
+    fetchRecentActivities();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -246,6 +287,86 @@ export default function Home() {
     setMeasurementLoading(false);
   }
 
+  async function handleDeleteActivity(id: string) {
+    const confirmed = window.confirm('Delete this activity?');
+    if (!confirmed) return;
+    await fetch('/api/delete-activity', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    fetchTodayActivities();
+    fetchRecentActivities();
+  }
+
+  function startEditActivity(activity: any) {
+    setEditingActivityId(activity.id);
+    const dt = new Date(activity.happened_at);
+    dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+    setActivityEditForm({
+      activity_type: activity.activity_type || '',
+      duration_min: String(activity.duration_min ?? ''),
+      kcal_burned: String(activity.kcal_burned ?? ''),
+      happened_at: dt.toISOString().slice(0, 16),
+    });
+  }
+
+  async function saveActivityEdit(id: string) {
+    await fetch('/api/edit-activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        activity_type: activityEditForm.activity_type,
+        duration_min: Number(activityEditForm.duration_min),
+        kcal_burned: Number(activityEditForm.kcal_burned),
+        happened_at: new Date(activityEditForm.happened_at).toISOString(),
+      }),
+    });
+    setEditingActivityId(null);
+    fetchTodayActivities();
+    fetchRecentActivities();
+  }
+
+  async function handleActivitySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setActivityLoading(true);
+    setActivityError('');
+    setActivityResult(null);
+
+    const images = [];
+    for (const file of activityImages) {
+      const imageBase64 = await fileToBase64(file);
+      images.push({ imageBase64, mediaType: file.type });
+    }
+
+    try {
+      const res = await fetch('/api/parse-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activityText,
+          happenedAt: new Date(activityAt).toISOString(),
+          images,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setActivityError(data.error);
+      } else {
+        setActivityResult(data.entries);
+        setActivityText('');
+        setActivityImages([]);
+        setActivityAt(nowForInput());
+        fetchTodayActivities();
+        fetchRecentActivities();
+      }
+    } catch (err) {
+      setActivityError('Something went wrong logging the activity.');
+    }
+    setActivityLoading(false);
+  }
+
   const hasHistory = measurementHistory.length >= 2;
   const windowSize = Math.min(3, Math.floor(measurementHistory.length / 2) || 1);
 
@@ -264,6 +385,8 @@ export default function Home() {
   const latestDateLabel = hasHistory ? fmtDate(measurementHistory[0].measured_at) : '';
   const earliestDateLabel = hasHistory ? fmtDate(measurementHistory[measurementHistory.length - 1].measured_at) : '';
   const weekDateLabel = weekWindow.length > 0 ? fmtDate(weekWindow[0].measured_at) : '';
+
+  const todayActivityKcal = todayActivities.reduce((sum, a) => sum + (a.kcal_burned || 0), 0);
 
   return (
     <main style={{ padding: '2rem', maxWidth: '500px' }}>
@@ -478,6 +601,115 @@ export default function Home() {
             {m.weight_kg !== null ? `${m.weight_kg} kg` : ''}
             {m.body_fat_pct !== null ? ` | ${m.body_fat_pct}% BF` : ''}
             {m.muscle_kg !== null ? ` | ${m.muscle_kg}kg muscle` : ''}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: '3rem', borderTop: '2px solid #ccc', paddingTop: '1.5rem' }}>
+        <h3>Activity logging</h3>
+        <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f0f0f0' }}>
+          <strong>Today's activity burn:</strong> {todayActivityKcal} kcal
+        </div>
+        <form onSubmit={handleActivitySubmit}>
+          <textarea
+            value={activityText}
+            onChange={(e) => setActivityText(e.target.value)}
+            placeholder="Describe an activity (e.g. '1.5hrs ballet, intermediate' or 'yesterday I did 4 pullups') or upload a Samsung Health screenshot"
+            rows={2}
+            style={{ width: '100%', padding: '0.5rem' }}
+          />
+          <div style={{ marginTop: '0.5rem' }}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => setActivityImages(e.target.files ? Array.from(e.target.files) : [])}
+            />
+            {activityImages.length > 0 && (
+              <p style={{ fontSize: '0.85rem', color: '#666' }}>{activityImages.length} photo(s) selected</p>
+            )}
+          </div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <label style={{ marginRight: '0.5rem' }}>When:</label>
+            <input
+              type="datetime-local"
+              value={activityAt}
+              onChange={(e) => setActivityAt(e.target.value)}
+            />
+          </div>
+          <button type="submit" disabled={activityLoading} style={{ marginTop: '0.5rem' }}>
+            {activityLoading ? 'Logging...' : 'Log activity'}
+          </button>
+        </form>
+        {activityError && (
+          <p style={{ color: 'red', marginTop: '1rem' }}>{activityError}</p>
+        )}
+        {activityResult && activityResult.length > 0 && (
+          <div style={{ marginTop: '1rem', padding: '1rem', background: '#f0f0f0' }}>
+            <strong>{activityResult.length > 1 ? `${activityResult.length} activities logged:` : 'Logged:'}</strong>
+            {activityResult.map((a: any) => (
+              <div key={a.id} style={{ marginTop: '0.5rem' }}>
+                <p>{a.activity_type} — {a.duration_min} min — {a.kcal_burned} kcal</p>
+                {a.notes && <p style={{ fontSize: '0.85rem', color: '#666' }}>{a.notes}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h3 style={{ marginTop: '2rem' }}>Today's activities</h3>
+        {todayActivities.length === 0 && <p>Nothing logged yet today.</p>}
+        {todayActivities.map((a) => (
+          <div key={a.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
+            {editingActivityId === a.id ? (
+              <div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#666' }}>activity</label>
+                  <input type="text" value={activityEditForm.activity_type} onChange={(e) => setActivityEditForm({ ...activityEditForm, activity_type: e.target.value })} style={{ width: '150px' }} />
+                </div>
+                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#666' }}>duration (min)</label>
+                    <input type="number" value={activityEditForm.duration_min} onChange={(e) => setActivityEditForm({ ...activityEditForm, duration_min: e.target.value })} style={{ width: '70px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#666' }}>kcal</label>
+                    <input type="number" value={activityEditForm.kcal_burned} onChange={(e) => setActivityEditForm({ ...activityEditForm, kcal_burned: e.target.value })} style={{ width: '70px' }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <input type="datetime-local" value={activityEditForm.happened_at} onChange={(e) => setActivityEditForm({ ...activityEditForm, happened_at: e.target.value })} />
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <button onClick={() => saveActivityEdit(a.id)}>Save</button>
+                  <button onClick={() => setEditingActivityId(null)} style={{ marginLeft: '0.5rem' }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <strong>{a.activity_type}</strong> — {a.duration_min} min — {a.kcal_burned} kcal
+                <span style={{ fontSize: '0.75rem', color: '#999', marginLeft: '0.5rem' }}>({a.source})</span>
+                {a.notes && <div style={{ fontSize: '0.85rem', color: '#666' }}>{a.notes}</div>}
+                <button onClick={() => startEditActivity(a)} style={{ marginLeft: '0', marginTop: '0.25rem' }}>
+                  Edit
+                </button>
+                <button onClick={() => handleDeleteActivity(a.id)} style={{ marginLeft: '0.5rem' }}>
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+<h3 style={{ marginTop: '2rem' }}>Recent activities (last 7 days)</h3>
+        {recentActivities.length === 0 && <p>No activities logged in the last 7 days.</p>}
+        {recentActivities.map((a) => (
+          <div key={a.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
+            <strong>{fmtDate(a.happened_at)}</strong> — {a.activity_type} — {a.duration_min} min — {a.kcal_burned} kcal
+            <span style={{ fontSize: '0.75rem', color: '#999', marginLeft: '0.5rem' }}>({a.source})</span>
+            {a.notes && <div style={{ fontSize: '0.85rem', color: '#666' }}>{a.notes}</div>}
+            <button onClick={() => handleDeleteActivity(a.id)} style={{ marginLeft: '0.5rem' }}>
+              Delete
+            </button>
           </div>
         ))}
       </div>
