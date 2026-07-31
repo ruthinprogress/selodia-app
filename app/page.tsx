@@ -31,6 +31,11 @@ export default function Home() {
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [activityEditForm, setActivityEditForm] = useState({ activity_type: '', duration_min: '', kcal_burned: '', happened_at: '' });
 
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<any>(null);
+
   function nowForInput() {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -367,6 +372,48 @@ export default function Home() {
     setActivityLoading(false);
   }
 
+  async function handleSendChat(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const userMessage = chatInput;
+    setChatInput('');
+    setChatLoading(true);
+
+    const newMessages = [...chatMessages, { role: 'user', content: userMessage }];
+    setChatMessages(newMessages);
+
+    try {
+      const conversationHistory = chatMessages.map((m) => ({ role: m.role, content: m.content }));
+      const res = await fetch('/api/ask-unflump', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage,
+          conversationHistory,
+        }),
+      });
+      const data = await res.json();
+      setChatMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+
+      if (data.savedContext && !data.savedContext.autoSaved) {
+        setPendingConfirm(data.savedContext);
+      }
+    } catch (err) {
+      setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, something went wrong. Try again?' }]);
+    }
+    setChatLoading(false);
+  }
+
+  async function confirmSaveContext(save: boolean) {
+    if (save && pendingConfirm) {
+      await supabase.from('user_context').insert({
+        category: pendingConfirm.category,
+        content: pendingConfirm.content,
+      });
+    }
+    setPendingConfirm(null);
+  }
+
   const hasHistory = measurementHistory.length >= 2;
   const windowSize = Math.min(3, Math.floor(measurementHistory.length / 2) || 1);
 
@@ -700,7 +747,7 @@ export default function Home() {
           </div>
         ))}
 
-<h3 style={{ marginTop: '2rem' }}>Recent activities (last 7 days)</h3>
+        <h3 style={{ marginTop: '2rem' }}>Recent activities (last 7 days)</h3>
         {recentActivities.length === 0 && <p>No activities logged in the last 7 days.</p>}
         {recentActivities.map((a) => (
           <div key={a.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
@@ -712,6 +759,51 @@ export default function Home() {
             </button>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: '3rem', borderTop: '2px solid #ccc', paddingTop: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>U</div>
+          <strong>Unflump</strong>
+        </div>
+
+        <div style={{ minHeight: '150px', maxHeight: '400px', overflowY: 'auto', border: '1px solid #ddd', padding: '0.75rem', marginBottom: '0.5rem' }}>
+          {chatMessages.length === 0 && <p style={{ color: '#999' }}>Say hi, ask a question, or just tell me what's going on.</p>}
+          {chatMessages.map((m, i) => (
+            <div key={i} style={{ textAlign: m.role === 'user' ? 'right' : 'left', marginBottom: '0.5rem' }}>
+              <span style={{
+                display: 'inline-block',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '12px',
+                background: m.role === 'user' ? '#dcf0ff' : '#f0f0f0',
+                maxWidth: '80%',
+                textAlign: 'left',
+              }}>
+                {m.content}
+              </span>
+            </div>
+          ))}
+          {chatLoading && <p style={{ color: '#999' }}>Unflump is typing...</p>}
+        </div>
+
+        {pendingConfirm && (
+          <div style={{ padding: '0.75rem', background: '#fff8e1', marginBottom: '0.5rem' }}>
+            <p style={{ margin: 0 }}>Want me to remember this about you going forward? <em>({pendingConfirm.category}: {pendingConfirm.content})</em></p>
+            <button onClick={() => confirmSaveContext(true)} style={{ marginTop: '0.5rem' }}>Yes, remember this</button>
+            <button onClick={() => confirmSaveContext(false)} style={{ marginTop: '0.5rem', marginLeft: '0.5rem' }}>No</button>
+          </div>
+        )}
+
+        <form onSubmit={handleSendChat} style={{ display: 'flex', gap: '0.5rem' }}>
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Type a message..."
+            style={{ flex: 1, padding: '0.5rem' }}
+          />
+          <button type="submit" disabled={chatLoading}>Send</button>
+        </form>
       </div>
     </main>
   );
