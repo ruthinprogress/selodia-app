@@ -39,20 +39,57 @@ export async function POST(request: NextRequest) {
 
   const finalMeasuredAt = parsed.measured_at || measuredAt || new Date().toISOString();
 
+  const measuredDate = new Date(finalMeasuredAt);
+  const dayStart = new Date(Date.UTC(measuredDate.getUTCFullYear(), measuredDate.getUTCMonth(), measuredDate.getUTCDate()));
+  const dayEnd = new Date(dayStart);
+  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+  const { data: existing } = await supabase
+    .from('body_measurements')
+    .select('*')
+    .gte('measured_at', dayStart.toISOString())
+    .lt('measured_at', dayEnd.toISOString());
+
+  const measurementData = {
+    measured_at: finalMeasuredAt,
+    weight_kg: parsed.weight_kg,
+    body_fat_pct: parsed.body_fat_pct,
+    muscle_kg: parsed.muscle_kg,
+    bone_mass_kg: parsed.bone_mass_kg,
+    water_pct: parsed.water_pct,
+    visceral_fat: parsed.visceral_fat,
+    bmr: parsed.bmr,
+    source_app: parsed.source_app,
+    raw_input: 'screenshot upload',
+  };
+
+  const forceReplace = request.headers.get('x-force-replace') === 'true';
+
+  if (existing && existing.length > 0 && !forceReplace) {
+    return NextResponse.json({
+      duplicate: true,
+      existingEntry: existing[0],
+      newData: measurementData,
+    });
+  }
+
+  if (existing && existing.length > 0) {
+    const { data, error } = await supabase
+      .from('body_measurements')
+      .update(measurementData)
+      .eq('id', existing[0].id)
+      .select();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ...data[0], replaced: true });
+  }
+
   const { data, error } = await supabase
     .from('body_measurements')
-    .insert({
-      measured_at: finalMeasuredAt,
-      weight_kg: parsed.weight_kg,
-      body_fat_pct: parsed.body_fat_pct,
-      muscle_kg: parsed.muscle_kg,
-      bone_mass_kg: parsed.bone_mass_kg,
-      water_pct: parsed.water_pct,
-      visceral_fat: parsed.visceral_fat,
-      bmr: parsed.bmr,
-      source_app: parsed.source_app,
-      raw_input: 'screenshot upload',
-    })
+    .insert(measurementData)
     .select();
 
   if (error) {
