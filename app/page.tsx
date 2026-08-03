@@ -34,8 +34,16 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [pendingConfirm, setPendingConfirm] = useState<any>(null);
+const [pendingConfirm, setPendingConfirm] = useState<any>(null);
 
+  const [bmrExplainerOpen, setBmrExplainerOpen] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('bmrExplainerOpen');
+    if (saved !== null) {
+      setBmrExplainerOpen(saved === 'true');
+    }
+  }, []);
   function nowForInput() {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -434,12 +442,16 @@ export default function Home() {
   const weekDateLabel = weekWindow.length > 0 ? fmtDate(weekWindow[0].measured_at) : '';
 
   const todayActivityKcal = todayActivities.reduce((sum, a) => sum + (a.kcal_burned || 0), 0);
+  const proteinTarget = measurementHistory.length > 0 && measurementHistory[0].muscle_kg
+    ? Math.round(measurementHistory[0].muscle_kg * 2.2)
+    : null;
 
   return (
     <main style={{ padding: '2rem', maxWidth: '500px' }}>
       <h1>Unflump</h1>
       <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f0f0' }}>
-        <strong>Today so far:</strong> {todayTotals.kcal} kcal | {todayTotals.protein_g}g protein
+         <strong>Today so far:</strong> {todayTotals.kcal} kcal | {todayTotals.protein_g}g
+        {proteinTarget !== null ? ` / ${proteinTarget}g` : ''} protein
       </div>
       <form onSubmit={handleSubmit}>
         <textarea
@@ -639,7 +651,7 @@ export default function Home() {
           </div>
         )}
 
-        <h3 style={{ marginTop: '2rem' }}>Running progress</h3>
+    <h3 style={{ marginTop: '2rem' }}>Running progress</h3>
         {measurementHistory.length === 0 && <p>No readings logged yet.</p>}
         {measurementHistory.map((m) => (
           <div key={m.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
@@ -648,6 +660,40 @@ export default function Home() {
             {m.weight_kg !== null ? `${m.weight_kg} kg` : ''}
             {m.body_fat_pct !== null ? ` | ${m.body_fat_pct}% BF` : ''}
             {m.muscle_kg !== null ? ` | ${m.muscle_kg}kg muscle` : ''}
+          </div>
+        ))}
+
+<h3 style={{ marginTop: '2rem' }}>Basal metabolism & muscle trend</h3>
+        <p style={{ fontSize: '0.85rem', color: '#666' }}>Your engine getting bigger — BMR and muscle mass tend to rise together over time.</p>
+
+        <button onClick={() => {
+          const newValue = !bmrExplainerOpen;
+          setBmrExplainerOpen(newValue);
+          localStorage.setItem('bmrExplainerOpen', String(newValue));
+        }} style={{ marginBottom: '0.5rem' }}>
+          {bmrExplainerOpen ? 'Hide explanation' : 'What do BMR and TDEE mean?'}
+        </button>
+
+        {bmrExplainerOpen && (
+          <div style={{ padding: '1rem', background: '#f7f7f7', marginBottom: '1rem' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>What's basal metabolic rate (BMR)?</p>
+            <p style={{ marginTop: 0 }}>What your body burns just staying alive at complete rest — breathing, heartbeat, organ function, cell repair. The energy cost of simply existing, before you've moved a muscle.</p>
+
+            <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>What's total daily energy expenditure (TDEE)?</p>
+            <p style={{ marginTop: 0 }}>Your basal metabolic rate (BMR) plus everything else — walking, training, digesting food, even fidgeting. Total daily energy expenditure (TDEE) is always higher than basal metabolic rate (BMR); it's basal metabolic rate (BMR) with your whole day layered on top.</p>
+
+            <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>Does building muscle raise your basal metabolic rate (BMR)?</p>
+            <p style={{ marginTop: 0, marginBottom: 0 }}>Yes — but modestly. Research puts it at roughly 10-13 kcal a day for every kilogram of muscle gained. Gaining 2kg of muscle (a solid few months of real training) raises basal metabolic rate (BMR) by around 20-26 kcal a day. The bigger effects of building muscle show up elsewhere: mobility and independence as you get older, lower risk of chronic illness, better hormonal regulation, more energy for the things you actually want to do, and simply feeling good in your body.</p>
+          </div>
+        )}
+
+        {measurementHistory.filter((m) => m.bmr !== null).length === 0 && <p>No BMR readings logged yet.</p>}
+        {measurementHistory.filter((m) => m.bmr !== null).map((m) => (
+          <div key={m.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
+            <strong>{fmtDate(m.measured_at)}</strong>
+            {' — '}
+            BMR: {m.bmr} kcal
+            {m.muscle_kg !== null ? ` | Muscle: ${m.muscle_kg}kg` : ''}
           </div>
         ))}
       </div>
