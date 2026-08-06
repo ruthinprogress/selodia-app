@@ -10,6 +10,8 @@ export async function POST(request: NextRequest) {
   const { message, conversationHistory } = await request.json();
   console.log('CHAT REQUEST RECEIVED:', message);
 
+  await supabase.from('chat_messages').insert({ role: 'user', content: message });
+
   const { data: contextRows } = await supabase
     .from('user_context')
     .select('*')
@@ -96,6 +98,8 @@ export async function POST(request: NextRequest) {
       savedContext = { category, content, autoSaved: false };
     }
   }
+
+  await supabase.from('chat_messages').insert({ role: 'assistant', content: cleanReply });
 
   return NextResponse.json({
     reply: cleanReply,
