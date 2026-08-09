@@ -129,6 +129,16 @@ const [pendingConfirm, setPendingConfirm] = useState<any>(null);
     }
   }
 
+  async function fetchChatHistory() {
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (data) {
+      setChatMessages(data.map((m) => ({ role: m.role, content: m.content })));
+    }
+  }
+
   async function fetchRecentActivities() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -159,6 +169,7 @@ const [pendingConfirm, setPendingConfirm] = useState<any>(null);
     fetchMeasurementHistory();
     fetchTodayActivities();
     fetchRecentActivities();
+    fetchChatHistory();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
