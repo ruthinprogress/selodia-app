@@ -101,6 +101,12 @@ export default function AccountScreen() {
         email: email.trim(),
         password,
         options: {
+          // Resolves to wherever this is actually running (web origin vs.
+          // native scheme) rather than relying on the project's single
+          // global Site URL matching whatever context we're testing in.
+          // Still requires the resolved URL to be in Supabase's Redirect
+          // URLs allow-list (dashboard-only, no tool access to set it).
+          emailRedirectTo: makeRedirectUri(),
           data: {
             date_of_birth: dateOfBirth ? dateOfBirth.toISOString().slice(0, 10) : null,
             biological_sex: biologicalSex,
