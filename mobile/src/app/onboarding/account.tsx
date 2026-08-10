@@ -1,19 +1,12 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { makeRedirectUri } from 'expo-auth-session';
 import { getQueryParams } from 'expo-auth-session/build/QueryParams';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  type TextInputProps,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateOfBirthField } from '@/components/date-of-birth-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -46,7 +39,6 @@ export default function AccountScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [biologicalSex, setBiologicalSex] = useState<BiologicalSex | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -165,29 +157,7 @@ export default function AccountScreen() {
             secureTextEntry
           />
 
-          <ThemedView style={styles.fieldGroup}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Date of birth
-            </ThemedText>
-            <Pressable onPress={() => setShowDatePicker(true)}>
-              <ThemedView type="backgroundElement" style={styles.input}>
-                <ThemedText themeColor={dateOfBirth ? 'text' : 'textSecondary'}>
-                  {dateOfBirth ? dateOfBirth.toLocaleDateString() : 'Select date of birth'}
-                </ThemedText>
-              </ThemedView>
-            </Pressable>
-            {showDatePicker && (
-              <DateTimePicker
-                value={dateOfBirth ?? new Date(2000, 0, 1)}
-                mode="date"
-                maximumDate={new Date()}
-                onChange={(_event, selectedDate) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (selectedDate) setDateOfBirth(selectedDate);
-                }}
-              />
-            )}
-          </ThemedView>
+          <DateOfBirthField value={dateOfBirth} onChange={setDateOfBirth} />
 
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="small" themeColor="textSecondary">
