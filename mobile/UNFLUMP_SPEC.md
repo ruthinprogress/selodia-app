@@ -114,10 +114,16 @@ unflump.app (primary), unflump.com, unflump.online (defensive), registered via N
 
 **Native frontend — in progress:**
 - React Native/Expo project scaffolded, verified connecting to a real device via an EAS development build.
-- Navigation structure: three icon-only destinations (Chat, Almanac, Dashboard) replacing the default template tabs — in progress.
-- No real feature screens built yet. Everything from Part Five onward in this document describes what still needs to be built, not what already exists.
+- Navigation: three icon-only tabs (Chat, Almanac, Dashboard) under a `(tabs)` route group, plus a sibling `onboarding` route group (consent, account creation) hosted by a root `Stack` layout — done. No auto-redirect into onboarding is wired yet, since that needs step 5's real sessions to gate on.
+- Core schema foundations (Phase 1 step 1): `user_profile`, `cycle_events`, `body_measurement_custom_metrics` tables — done.
+- Muscle-mass-based protein calculation and basal metabolism trend view (Phase 1 steps 2–3): standalone calculation utilities (`protein.ts`, `basal-metabolism.ts`) — done, not yet wired into any screen since Dashboard has no real content yet.
+- Onboarding consent and account-creation screens (Phase 1 step 4a): built as UI shells matching the spec copy/fields — done.
+- Onboarding intro and equipment segue (Phase 1 step 4b): scripted chat-bubble UI shells (no live AI call — that's step 6), covering the freeform opener, scales/tape-measure questions, and the disconnected-watch fallback script — done. Answers stay in local state only, not yet persisted to `user_profile`. The native step-permission request itself (HealthKit/Health Connect via `react-native-health` / `react-native-health-connect`) is wired for real, not stubbed, though untested on-device pending the next EAS rebuild.
+- Onboarding's scripted-shell portion ends at the equipment segue. Part Seven steps 6–11 (food-logging tour, first-log acknowledgment, goals, technical target-setting, nutrition target setup, activity/TDEE) are deliberately not built as shells and not yet started — each fundamentally requires real language understanding (paraphrasing freeform answers, the distress-vs-discouragement safety branch, reasoning-dependent target adjustments), so a scripted stand-in would either be dead UI or, for the safety branch specifically, actively unsafe. All deferred as one block to step 6.
+- Real authentication, first pass (Phase 1 step 5, partial): Supabase Auth wired for real in `account.tsx` — email/password `signUp` and Google OAuth (via `expo-auth-session` + `expo-web-browser`) both create genuine sessions, handling the email-confirmation-pending case explicitly rather than assuming a session always comes back. Date of birth and biological sex are captured for real into the auth user's own metadata (`auth.users.raw_user_meta_data`), since `user_profile` has no `user_id` to attach them to yet — **this is explicitly a temporary home, not their permanent one; migrating this data into `user_profile` is in scope for the RLS/backfill follow-up below, not optional cleanup.** That follow-up itself — `user_id` + RLS across the other 7 tables, backfilling existing single-tenant data to the first real account, and updating the four backend API routes to respect the new auth boundary — has not started.
+- No real feature screens (Chat, Almanac, Dashboard content) built yet. Everything from Part Five onward describes what still needs to be built, not what already exists.
 
-**Not yet built at all:** muscle-mass-based protein calculation (a fixed 95g placeholder is used currently), basal metabolism trend view, the itemized food breakdown, the Almanac, the Daily and Weekly Roundups, push notifications, cycle tracking, Health Context, the Fat Focus/Muscle Focus category model, and everything else described in Parts Five through Nine below.
+**Not yet built at all:** real authentication (step 5), Health Context capture, cycle tracking, the itemized food breakdown, the Almanac, the Daily and Weekly Roundups, push notifications, the Fat Focus/Muscle Focus category model beyond its schema, and everything else described in Parts Five through Nine below.
 
 ---
 
@@ -198,7 +204,14 @@ Onboarding happens conversationally, inside the same chat interface as the rest 
 
 3. **Unflump opens the conversation** — a soft, warm intro ("Hi, I'm Unflump. What brings you here today?"), and the user answers freeform.
 
-4. **Soft segue to equipment** — Unflump acknowledges the goal, briefly explains visibility/logging as the first step, and asks about equipment (bioimpedance scales, tape measure, steps tracker) conversationally.
+4. **Soft segue to equipment** — Unflump acknowledges the goal, briefly explains visibility/logging as the first step, and asks about equipment (bioimpedance scales, tape measure) conversationally.
+
+   **Native step permission, requested here, not asked as a question:** step tracking is available directly from the phone's own health platform (HealthKit on iOS, Health Connect on Android) — a system permission prompt, not equipment the user needs to own, and one of the reasons the app is built natively rather than as a web app. Requested as part of this same segue.
+
+   **Additive, never a gate:** whether this permission is granted, declined, or unsupported on the device, manual activity logging (free-text, screenshot, and any future quick-tap shortcuts) remains fully available regardless. If declined, this is stored (see data model, Part Eight) so the app does not repeatedly re-prompt — a single mention that it can be enabled later in device settings is sufficient, never repeated unprompted.
+
+   The fallback response names a specific, real scenario rather than a generic manual-logging offer, consistent with the quantity-confidence fallback pattern (Part Five) — someone whose device doesn't sync should recognise themselves in it:
+   > "No worries — maybe you have a tracker that doesn't sync to your phone's health app, like some cheaper fitness watches. You can just tell me your step count from its own app directly, or send a screenshot."
 
 5. **Equipment gap handling** — if the user does not have the equipment, do not block progress: pivot to starting with food logging only, and explain cheaply-available options (roughly £20-30 for scales, a tape measure from any pharmacy). Store equipment status (see data model, Part Eight) so the app never nags for data the user has said they cannot provide, and so a later, gentle re-check can happen once they have plausibly had time to acquire it.
 
@@ -280,9 +293,10 @@ Automatic noise flagging covers water retention, pump/DOMS, hormonal cycle phase
 | Tool | Required? | Notes |
 |---|---|---|
 | Bioimpedance smart scales | Required for the core insight feature | Must output body fat %, muscle kg, and basal metabolism |
-| Steps/activity tracker | Useful, not required | App-agnostic — works with any tool or manual entry |
 
-Minimum viable setup for full feature access is smart scales plus food logging; everything else is additive. Equipment status is stored per user (e.g. `has_scales`, `has_steps_tracker`) to suppress dashboard nagging for data types the user cannot yet provide, and to power a later, gentle re-check.
+Step tracking is not listed here since it is not external equipment — it is requested as a native phone permission (HealthKit on iOS, Health Connect on Android) during onboarding, additive to (never a gate on) manual activity logging. See Part Seven, step 4.
+
+Minimum viable setup for full feature access is smart scales plus food logging; everything else is additive. Equipment status is stored per user (e.g. `has_scales`) to suppress dashboard nagging for data types the user cannot yet provide, and to power a later, gentle re-check. Native step-permission decline is tracked separately (e.g. `steps_permission_declined`) for the same reason — so the app does not repeatedly re-prompt once declined.
 
 ---
 
@@ -503,27 +517,41 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 2. Muscle-mass-based protein calculation — reads existing `body_measurements.muscle_kg`.
 3. Basal metabolism trend view — reads existing `body_measurements.bmr`.
 4. Onboarding conversational flow, as fully scripted in Part Seven.
-5. Health Context capture flow, woven into onboarding.
-6. Cycle tracking discovery logic — needs the `cycle_events` table from step 1.
-7. Itemized food breakdown and its rules.
-8. Protein quality flagging UI — needs itemized breakdown (step 7).
-9. The "What's In Here" discuss-card.
-10. Data confidence bars (9-week habit bars) and the catch-up mechanism.
-11. The Almanac.
-12. The "Then & Now" table and the minimized 7-day dashboard table.
-13. Daily nudge and weekly close-out nudge notifications.
-14. The Daily Roundup and its theme-extraction mechanism.
-15. The Body Measurement Interpretation Layer — needs cycle tracking (step 6).
-16. The Weekly Roundup — needs theme-extraction (step 14).
-17. Nutrient depth flagging — needs Health Context (step 5).
-18. The Meal/Order Advisor — a standalone, reactive feature suggesting choices given remaining daily targets and a stated context; can be built whenever convenient once core logging is mature.
-19. In-app navigation Layer 1.
-20. The Graduation moment and pause-mechanism trigger logic.
-21. In-app navigation Layer 2 — a fast-follow, not part of the initial build pass.
-22. Zero-calorie drinks quick-tap shortcut.
+5. Wire real authentication — Supabase Auth, Google OAuth and email/password, enabling Row Level Security with proper per-user policies now that real accounts exist. Required before beta distribution; the account-creation screen built as a UI shell in step 4 gets its real Google/email sign-in wired here. The onboarding conversation itself (equipment segue, goal-setting, and the rest) stays a scripted UI shell until step 6.
+6. Wire onboarding to real AI-driven conversation, replacing the scripted UI shells built in step 4 — required before onboarding can actually adapt to freeform answers, branch on distress signals, or reflect goals back per Part Seven's actual design. Named explicitly so the scripted shells are a tracked commitment, not a deferral that quietly becomes permanent.
+7. Health Context capture flow, woven into onboarding.
+8. Cycle tracking discovery logic — needs the `cycle_events` table from step 1.
+9. Itemized food breakdown and its rules.
+10. Protein quality flagging UI — needs itemized breakdown (step 9).
+11. The "What's In Here" discuss-card.
+12. Data confidence bars (9-week habit bars) and the catch-up mechanism.
+13. The Almanac.
+14. The "Then & Now" table and the minimized 7-day dashboard table.
+15. Daily nudge and weekly close-out nudge notifications.
+16. The Daily Roundup and its theme-extraction mechanism.
+17. The Body Measurement Interpretation Layer — needs cycle tracking (step 8).
+18. The Weekly Roundup — needs theme-extraction (step 16).
+19. Nutrient depth flagging — needs Health Context (step 7).
+20. The Meal/Order Advisor — a standalone, reactive feature suggesting choices given remaining daily targets and a stated context; can be built whenever convenient once core logging is mature.
+21. In-app navigation Layer 1.
+22. The Graduation moment and pause-mechanism trigger logic.
+23. In-app navigation Layer 2 — a fast-follow, not part of the initial build pass.
+24. Zero-calorie drinks quick-tap shortcut.
 
 ## Distribution
-Beta testing does not need to wait for the full build. Once onboarding and itemized food breakdown are working natively (roughly through Phase 1, step 7), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
+Beta testing does not need to wait for the full build. Once real authentication (step 5) and real onboarding conversation (step 6) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 9), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
+
+---
+
+# DEVELOPMENT WORKFLOW PRINCIPLES (reusable beyond this project)
+
+These principles govern how building actually proceeds, distinct from the product-design principles in Part Two — worth keeping separate since they're reusable for any future project, not specific to Unflump.
+
+1. Trust logic and spec review over visual verification for ordinary work. Today's real catches (an auth-timing gap, a steps-tracker equipment mismatch, a missing onboarding screen) all came from careful spec review and reasoning through consequences — none came from visually checking a rendered screen. Rebuilding and installing an app specifically to look at an ordinary screen is usually not worth the time and token cost it takes.
+
+2. One real exception: verify visually the first time a genuinely new native capability is introduced. Native module integration (a new library requiring its own build, like a date picker or a health-data permission) is a different risk category from ordinary UI or logic work — failures here are harder to diagnose after the fact, and if several native additions stack up unverified, a later failure can't be traced to which one caused it without re-testing all of them anyway. Verify each new native capability once, in isolation, right when it's introduced.
+
+3. Batch verification around natural milestones, not artificial checkpoints. Don't force an early visual check just because a step is "done" — wait for the point where a real, complete user journey becomes naturally reachable end to end (e.g. once auth and routing make onboarding actually navigable), and do one thorough pass there rather than many small ones along the way.
 
 ---
 
