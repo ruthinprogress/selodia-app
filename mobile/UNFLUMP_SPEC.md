@@ -106,21 +106,23 @@ unflump.app (primary), unflump.com, unflump.online (defensive), registered via N
 
 *This section must be kept accurate and current — update it as work progresses, rather than letting it go stale.*
 
-**Backend — complete, built as web-first API routes, unaffected by the native pivot:**
+**Backend — built as web-first API routes, now updated for real per-user auth:**
 - `food_logs` — free-text and photo/multi-photo logging, AI macro estimation, confidence flagging for uncertain reads, UUID primary keys (chosen deliberately to support future offline logging).
 - `body_measurements` — screenshot upload (single and bulk) from Zepp Life, duplicate detection with overwrite/skip confirmation, 3-reading smoothing for trend views.
 - `activity_logs` — free-text and two screenshot types (Samsung Health daily summary, workout-specific), multi-activity splitting from one description, natural language date parsing.
 - `chat_messages` — every chat turn (user and assistant) is persisted; chat history hydrates on load. A `[REMEMBER: category | content]` mechanism lets the assistant write durable facts to `user_context` mid-conversation.
+- `parse-food`, `parse-activity`, `parse-body-measurement`, `ask-unflump` all require a real session now (401 without one) and forward it via a per-request Supabase client so RLS applies naturally — no manual `user_id` filtering needed on reads, only added explicitly to each route's INSERT calls. `edit-food`/`delete-food`/`edit-activity`/`delete-activity` were not touched (out of scope) and are now unreachable dead code following the web frontend's retirement below; harmless since RLS makes their old sessionless client fail closed, not a security gap.
+- The old web frontend (`app/page.tsx`) is retired — deleted, not replaced; the root route now 404s, which is expected for a backend that's API-only going forward.
 
 **Native frontend — in progress:**
 - React Native/Expo project scaffolded, verified connecting to a real device via an EAS development build.
-- Navigation: three icon-only tabs (Chat, Almanac, Dashboard) under a `(tabs)` route group, plus a sibling `onboarding` route group (consent, account creation) hosted by a root `Stack` layout — done. No auto-redirect into onboarding is wired yet, since that needs step 5's real sessions to gate on.
+- Navigation: three icon-only tabs (Chat, Almanac, Dashboard) under a `(tabs)` route group, plus a sibling `onboarding` route group (consent, account creation) hosted by a root `Stack` layout — done. No auto-redirect into onboarding is wired yet, since that needs a real session-restoration/auth-state listener (step 6) to gate on.
 - Core schema foundations (Phase 1 step 1): `user_profile`, `cycle_events`, `body_measurement_custom_metrics` tables — done.
 - Muscle-mass-based protein calculation and basal metabolism trend view (Phase 1 steps 2–3): standalone calculation utilities (`protein.ts`, `basal-metabolism.ts`) — done, not yet wired into any screen since Dashboard has no real content yet.
 - Onboarding consent and account-creation screens (Phase 1 step 4a): built as UI shells matching the spec copy/fields — done.
-- Onboarding intro and equipment segue (Phase 1 step 4b): scripted chat-bubble UI shells (no live AI call — that's step 6), covering the freeform opener, scales/tape-measure questions, and the disconnected-watch fallback script — done. Answers stay in local state only, not yet persisted to `user_profile`. The native step-permission request itself (HealthKit/Health Connect via `react-native-health` / `react-native-health-connect`) is wired for real, not stubbed, though untested on-device pending the next EAS rebuild.
-- Onboarding's scripted-shell portion ends at the equipment segue. Part Seven steps 6–11 (food-logging tour, first-log acknowledgment, goals, technical target-setting, nutrition target setup, activity/TDEE) are deliberately not built as shells and not yet started — each fundamentally requires real language understanding (paraphrasing freeform answers, the distress-vs-discouragement safety branch, reasoning-dependent target adjustments), so a scripted stand-in would either be dead UI or, for the safety branch specifically, actively unsafe. All deferred as one block to step 6.
-- Real authentication, first pass (Phase 1 step 5, partial): Supabase Auth wired for real in `account.tsx` — email/password `signUp` and Google OAuth (via `expo-auth-session` + `expo-web-browser`) both create genuine sessions, handling the email-confirmation-pending case explicitly rather than assuming a session always comes back. Date of birth and biological sex are captured for real into the auth user's own metadata (`auth.users.raw_user_meta_data`), since `user_profile` has no `user_id` to attach them to yet — **this is explicitly a temporary home, not their permanent one; migrating this data into `user_profile` is in scope for the RLS/backfill follow-up below, not optional cleanup.** That follow-up itself — `user_id` + RLS across the other 7 tables, backfilling existing single-tenant data to the first real account, and updating the four backend API routes to respect the new auth boundary — has not started.
+- Onboarding intro and equipment segue (Phase 1 step 4b): scripted chat-bubble UI shells (no live AI call — that's step 7), covering the freeform opener, scales/tape-measure questions, and the disconnected-watch fallback script — done. Answers stay in local state only, not yet persisted anywhere. The native step-permission request itself (HealthKit/Health Connect via `react-native-health` / `react-native-health-connect`) is wired for real, not stubbed, though untested on-device pending the next EAS rebuild.
+- Onboarding's scripted-shell portion ends at the equipment segue. Part Seven steps 6–11 (food-logging tour, first-log acknowledgment, goals, technical target-setting, nutrition target setup, activity/TDEE) are deliberately not built as shells and not yet started — each fundamentally requires real language understanding (paraphrasing freeform answers, the distress-vs-discouragement safety branch, reasoning-dependent target adjustments), so a scripted stand-in would either be dead UI or, for the safety branch specifically, actively unsafe. All deferred as one block to step 7.
+- Real authentication (Phase 1 step 5) — done: Supabase Auth wired for real in `account.tsx` (email/password `signUp` and Google OAuth via `expo-auth-session` + `expo-web-browser`), `emailRedirectTo` resolved per-platform rather than relying on a single dashboard Site URL, RLS enabled with per-user policies across all 8 tables, the 26 pre-existing single-tenant rows backfilled to the first real account, and date of birth/biological sex migrated from `auth.users` metadata into `user_profile` (their permanent home) whenever a session is available immediately at signup. The one remaining gap — a user who signs up without an immediate session, confirms later, and reopens the app with nothing to sync their data at that point — is step 6, not yet built.
 - No real feature screens (Chat, Almanac, Dashboard content) built yet. Everything from Part Five onward describes what still needs to be built, not what already exists.
 
 **Not yet built at all:** real authentication (step 5), Health Context capture, cycle tracking, the itemized food breakdown, the Almanac, the Daily and Weekly Roundups, push notifications, the Fat Focus/Muscle Focus category model beyond its schema, and everything else described in Parts Five through Nine below.
@@ -517,29 +519,30 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 2. Muscle-mass-based protein calculation — reads existing `body_measurements.muscle_kg`.
 3. Basal metabolism trend view — reads existing `body_measurements.bmr`.
 4. Onboarding conversational flow, as fully scripted in Part Seven.
-5. Wire real authentication — Supabase Auth, Google OAuth and email/password, enabling Row Level Security with proper per-user policies now that real accounts exist. Required before beta distribution; the account-creation screen built as a UI shell in step 4 gets its real Google/email sign-in wired here. The onboarding conversation itself (equipment segue, goal-setting, and the rest) stays a scripted UI shell until step 6.
-6. Wire onboarding to real AI-driven conversation, replacing the scripted UI shells built in step 4 — required before onboarding can actually adapt to freeform answers, branch on distress signals, or reflect goals back per Part Seven's actual design. Named explicitly so the scripted shells are a tracked commitment, not a deferral that quietly becomes permanent.
-7. Health Context capture flow, woven into onboarding.
-8. Cycle tracking discovery logic — needs the `cycle_events` table from step 1.
-9. Itemized food breakdown and its rules.
-10. Protein quality flagging UI — needs itemized breakdown (step 9).
-11. The "What's In Here" discuss-card.
-12. Data confidence bars (9-week habit bars) and the catch-up mechanism.
-13. The Almanac.
-14. The "Then & Now" table and the minimized 7-day dashboard table.
-15. Daily nudge and weekly close-out nudge notifications.
-16. The Daily Roundup and its theme-extraction mechanism.
-17. The Body Measurement Interpretation Layer — needs cycle tracking (step 8).
-18. The Weekly Roundup — needs theme-extraction (step 16).
-19. Nutrient depth flagging — needs Health Context (step 7).
-20. The Meal/Order Advisor — a standalone, reactive feature suggesting choices given remaining daily targets and a stated context; can be built whenever convenient once core logging is mature.
-21. In-app navigation Layer 1.
-22. The Graduation moment and pause-mechanism trigger logic.
-23. In-app navigation Layer 2 — a fast-follow, not part of the initial build pass.
-24. Zero-calorie drinks quick-tap shortcut.
+5. Wire real authentication — Supabase Auth, Google OAuth and email/password, enabling Row Level Security with proper per-user policies now that real accounts exist. Required before beta distribution; the account-creation screen built as a UI shell in step 4 gets its real Google/email sign-in wired here. The onboarding conversation itself (equipment segue, goal-setting, and the rest) stays a scripted UI shell until step 7.
+6. Auth-state listener to sync `auth.users` metadata into `user_profile` on reauth — needed for the case where a user signs up, doesn't get an immediate session (email confirmation pending), later confirms via email, and reopens the app with no existing mechanism to sync their data at that point. Genuinely part of finishing auth properly, not deferred indefinitely; sequenced immediately after step 5 for that reason.
+7. Wire onboarding to real AI-driven conversation, replacing the scripted UI shells built in step 4 — required before onboarding can actually adapt to freeform answers, branch on distress signals, or reflect goals back per Part Seven's actual design. Named explicitly so the scripted shells are a tracked commitment, not a deferral that quietly becomes permanent.
+8. Health Context capture flow, woven into onboarding.
+9. Cycle tracking discovery logic — needs the `cycle_events` table from step 1.
+10. Itemized food breakdown and its rules.
+11. Protein quality flagging UI — needs itemized breakdown (step 10).
+12. The "What's In Here" discuss-card.
+13. Data confidence bars (9-week habit bars) and the catch-up mechanism.
+14. The Almanac.
+15. The "Then & Now" table and the minimized 7-day dashboard table.
+16. Daily nudge and weekly close-out nudge notifications.
+17. The Daily Roundup and its theme-extraction mechanism.
+18. The Body Measurement Interpretation Layer — needs cycle tracking (step 9).
+19. The Weekly Roundup — needs theme-extraction (step 17).
+20. Nutrient depth flagging — needs Health Context (step 8).
+21. The Meal/Order Advisor — a standalone, reactive feature suggesting choices given remaining daily targets and a stated context; can be built whenever convenient once core logging is mature.
+22. In-app navigation Layer 1.
+23. The Graduation moment and pause-mechanism trigger logic.
+24. In-app navigation Layer 2 — a fast-follow, not part of the initial build pass.
+25. Zero-calorie drinks quick-tap shortcut.
 
 ## Distribution
-Beta testing does not need to wait for the full build. Once real authentication (step 5) and real onboarding conversation (step 6) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 9), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
+Beta testing does not need to wait for the full build. Once real authentication (step 5), the auth-state sync listener (step 6), and real onboarding conversation (step 7) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 10), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
 
 ---
 

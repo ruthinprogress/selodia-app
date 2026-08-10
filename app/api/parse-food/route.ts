@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseForRequest } from '../../lib/supabase';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseForRequest(request);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { foodText, happenedAt, images } = await request.json();
 
   const content: any[] = [];
@@ -53,6 +62,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from('food_logs')
     .insert({
+      user_id: user.id,
       happened_at: happenedAt || new Date().toISOString(),
       raw_text: foodText || (hasImages ? '(photo upload)' : ''),
       meal_label: macros.meal_label,

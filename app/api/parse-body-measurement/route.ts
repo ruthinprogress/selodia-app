@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseForRequest } from '../../lib/supabase';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseForRequest(request);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { imageBase64, mediaType, measuredAt } = await request.json();
 
   const message = await anthropic.messages.create({
@@ -51,6 +60,7 @@ export async function POST(request: NextRequest) {
     .lt('measured_at', dayEnd.toISOString());
 
   const measurementData = {
+    user_id: user.id,
     measured_at: finalMeasuredAt,
     weight_kg: parsed.weight_kg,
     body_fat_pct: parsed.body_fat_pct,

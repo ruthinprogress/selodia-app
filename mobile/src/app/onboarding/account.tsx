@@ -33,6 +33,20 @@ async function createSessionFromUrl(url: string) {
   return data.session;
 }
 
+// user_profile is the permanent home for this data, but RLS requires a real
+// session to write it - only reachable here when one exists immediately
+// (email confirmation off, or the Google path). When confirmation is
+// pending, signUp's metadata is the only viable carrier until a session
+// exists later (no auth-state listener yet to sync it on reauth).
+async function upsertProfile(userId: string, dob: Date | null, sex: BiologicalSex | null) {
+  if (!dob && !sex) return;
+  await supabase.from('user_profile').upsert({
+    user_id: userId,
+    date_of_birth: dob ? dob.toISOString().slice(0, 10) : null,
+    biological_sex: sex,
+  });
+}
+
 export default function AccountScreen() {
   const theme = useTheme();
   const [email, setEmail] = useState('');
@@ -63,6 +77,7 @@ export default function AccountScreen() {
 
       const session = await createSessionFromUrl(result.url);
       if (session) {
+        await upsertProfile(session.user.id, dateOfBirth, biologicalSex);
         router.push('/onboarding/intro');
       } else {
         setError('Sign-in did not complete. Please try again.');
@@ -93,10 +108,9 @@ export default function AccountScreen() {
 
     setSubmitting(true);
     try {
-      // Temporary home for date of birth/biological sex: stored on the auth
-      // user's own metadata since user_profile has no user_id to attach them
-      // to yet. Must migrate into user_profile once the RLS/backfill follow-up
-      // lands - this is not their permanent home.
+      // user_profile (upsertProfile below) is the real destination once a
+      // session exists. This metadata copy only matters while email
+      // confirmation is pending and no session exists yet to write with.
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -116,6 +130,7 @@ export default function AccountScreen() {
       if (signUpError) throw signUpError;
 
       if (data.session) {
+        await upsertProfile(data.session.user.id, dateOfBirth, biologicalSex);
         router.push('/onboarding/intro');
       } else {
         setInfo('Check your email to confirm your account, then come back to continue.');

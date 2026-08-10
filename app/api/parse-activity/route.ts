@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseForRequest } from '../../lib/supabase';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseForRequest(request);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { activityText, happenedAt, images } = await request.json();
 
   const content: any[] = [];
@@ -58,6 +67,7 @@ let finalHappenedAt = happenedAt || new Date().toISOString();
   }
 
   const rowsToInsert = parsed.activities.map((activity: any) => ({
+    user_id: user.id,
     happened_at: finalHappenedAt,
     activity_type: activity.activity_type,
     duration_min: activity.duration_min,

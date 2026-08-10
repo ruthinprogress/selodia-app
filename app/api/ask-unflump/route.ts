@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseForRequest } from '../../lib/supabase';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseForRequest(request);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { message, conversationHistory } = await request.json();
   console.log('CHAT REQUEST RECEIVED:', message);
 
-  await supabase.from('chat_messages').insert({ role: 'user', content: message });
+  await supabase.from('chat_messages').insert({ user_id: user.id, role: 'user', content: message });
 
   const { data: contextRows } = await supabase
     .from('user_context')
@@ -92,14 +101,16 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existingCategory && existingCategory.length > 0) {
-      await supabase.from('user_context').insert({ category, content });
+      await supabase.from('user_context').insert({ user_id: user.id, category, content });
       savedContext = { category, content, autoSaved: true };
     } else {
       savedContext = { category, content, autoSaved: false };
     }
   }
 
-  await supabase.from('chat_messages').insert({ role: 'assistant', content: cleanReply });
+  await supabase
+    .from('chat_messages')
+    .insert({ user_id: user.id, role: 'assistant', content: cleanReply });
 
   return NextResponse.json({
     reply: cleanReply,
