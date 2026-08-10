@@ -66,6 +66,9 @@ Nudges, reminders, and check-ins fire because something genuinely needs attentio
 ### 10. Cosmetic polish can wait; structural decisions cannot
 What is a table versus a card versus a chat message, what triggers what, how data is modelled — these are structural and change the schema, so they need deciding properly before build. Colours, fonts, exact icon styling, animation timing — these are cosmetic and can genuinely be refined later. When deciding how much time a decision deserves, check which category it falls into first.
 
+### 11. Not all speculative choices cost the same — weigh cost against value, not "speculation good or bad" as a blanket rule
+When a schema or design choice could go either way, the right question is not "should we build for what-ifs" in the abstract — it is whether *this specific* what-if is nearly free to include now, or whether it depends on something that does not exist yet and could genuinely turn out differently later. A field that costs nothing extra and can always be used in the simpler way if the "what if" never materialises (e.g. a timestamp instead of a boolean, since a timestamp can always be read as present/absent) is cheap optionality — worth including. A field that depends on a system not yet built (e.g. a `user_id` column before authentication exists) is risky speculation — worth deferring until the thing it depends on is real, since guessing at its shape now risks building the wrong structure. Apply this case by case, not as a rule that speculative additions are always right or always wrong.
+
 ---
 
 # PART THREE: TECHNICAL ARCHITECTURE
