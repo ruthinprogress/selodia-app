@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,15 +8,34 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { advanceOnboardingStep } from '@/lib/onboarding-step';
+import { supabase } from '@/lib/supabase';
+
+const ACKNOWLEDGMENT =
+  "Thanks for sharing that. Let's talk about what you'll need to get started.";
 
 export default function IntroScreen() {
   const theme = useTheme();
   const [answer, setAnswer] = useState('');
   const [submitted, setSubmitted] = useState<string | null>(null);
 
-  function handleSend() {
-    if (!answer.trim()) return;
-    setSubmitted(answer.trim());
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) advanceOnboardingStep(supabase, user.id, 'intro');
+    });
+  }, []);
+
+  async function handleSend() {
+    const trimmed = answer.trim();
+    if (!trimmed) return;
+    setSubmitted(trimmed);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('chat_messages').insert([
+      { user_id: user.id, role: 'user', content: trimmed, source: 'onboarding' },
+      { user_id: user.id, role: 'assistant', content: ACKNOWLEDGMENT, source: 'onboarding' },
+    ]);
   }
 
   return (
@@ -28,10 +47,7 @@ export default function IntroScreen() {
           {submitted && (
             <>
               <ChatBubble role="user">{submitted}</ChatBubble>
-              <ChatBubble role="assistant">
-                Thanks for sharing that. Let&apos;s talk about what you&apos;ll need to get
-                started.
-              </ChatBubble>
+              <ChatBubble role="assistant">{ACKNOWLEDGMENT}</ChatBubble>
             </>
           )}
         </ScrollView>
@@ -54,7 +70,11 @@ export default function IntroScreen() {
           </ThemedView>
         ) : (
           <Pressable
-            onPress={() => router.push('/onboarding/equipment')}
+            onPress={async () => {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) await advanceOnboardingStep(supabase, user.id, 'equipment');
+              router.push('/onboarding/equipment');
+            }}
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView type="backgroundElement" style={styles.continueButton}>
               <ThemedText type="smallBold">Continue</ThemedText>

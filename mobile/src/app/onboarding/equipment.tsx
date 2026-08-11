@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,7 +6,9 @@ import { ChatBubble } from '@/components/chat-bubble';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { requestStepPermission, type StepPermissionResult } from '@/lib/step-permission';
+import { supabase } from '@/lib/supabase';
 
 type Step = 'scales' | 'tapeMeasure' | 'permission' | 'done';
 
@@ -17,13 +19,32 @@ export default function EquipmentScreen() {
   const [permissionResult, setPermissionResult] = useState<StepPermissionResult | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
 
-  async function requestPermissionStep() {
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) advanceOnboardingStep(supabase, user.id, 'equipment');
+    });
+  }, []);
+
+  async function persistAnswers(tapeMeasure: boolean, permission: StepPermissionResult) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('user_profile').upsert({
+      user_id: user.id,
+      has_scales: hasScales,
+      has_tape_measure: tapeMeasure,
+      steps_permission_declined: permission !== 'granted',
+    });
+    await advanceOnboardingStep(supabase, user.id, 'goals');
+  }
+
+  async function requestPermissionStep(tapeMeasure: boolean) {
     setStep('permission');
     setRequestingPermission(true);
     const result = await requestStepPermission();
     setPermissionResult(result);
     setRequestingPermission(false);
     setStep('done');
+    await persistAnswers(tapeMeasure, result);
   }
 
   function handleScalesAnswer(value: boolean) {
@@ -33,7 +54,7 @@ export default function EquipmentScreen() {
 
   function handleTapeMeasureAnswer(value: boolean) {
     setHasTapeMeasure(value);
-    requestPermissionStep();
+    requestPermissionStep(value);
   }
 
   return (
@@ -87,13 +108,10 @@ export default function EquipmentScreen() {
           />
         )}
         {step === 'done' && (
-          // Onboarding's scripted-shell portion ends here (Part Seven steps 1-5).
-          // Steps 6-11 (food-logging tour, first-log ack, goals, target-setting,
-          // activity/TDEE) all fundamentally require real language understanding
-          // (paraphrasing freeform answers, the distress-vs-discouragement safety
-          // branch, reasoning-dependent target adjustments) - none are honestly
-          // scriptable. Deferred as one block to Build Order step 6 (real
-          // AI-driven conversation); Continue intentionally no-ops until then.
+          // Answers are already persisted (persistAnswers) and onboarding_step
+          // advanced to 'goals' by this point. Continue still no-ops because
+          // goals.tsx (Build Order step 7, Phase B) doesn't exist yet - wired
+          // once that screen lands, not deferred indefinitely.
           <Pressable onPress={() => {}} style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView type="backgroundElement" style={styles.continueButton}>
               <ThemedText type="smallBold">Continue</ThemedText>
