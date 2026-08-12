@@ -44,20 +44,33 @@ export async function POST(request: NextRequest) {
     text: textInstruction,
   });
 
-  const message = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 500,
-    messages: [
-      {
-        role: 'user',
-        content: content,
-      },
-    ],
-  });
+  let message;
+  try {
+    message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [
+        {
+          role: 'user',
+          content: content,
+        },
+      ],
+    });
+  } catch (err) {
+    console.log('PARSE-FOOD ANTHROPIC ERROR:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
+  }
 
   const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
   const cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  const macros = JSON.parse(cleanedText);
+
+  let macros;
+  try {
+    macros = JSON.parse(cleanedText);
+  } catch (err) {
+    console.log('PARSE-FOOD JSON PARSE ERROR:', cleanedText);
+    return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
+  }
 
   const { data, error } = await supabase
     .from('food_logs')
