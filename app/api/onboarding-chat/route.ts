@@ -47,9 +47,12 @@ export async function POST(request: NextRequest) {
 
   const { message } = await request.json();
 
-  await supabase
+  const { error: userInsertError } = await supabase
     .from('chat_messages')
     .insert({ user_id: user.id, role: 'user', content: message, source: 'onboarding' });
+  if (userInsertError) {
+    console.log('ONBOARDING-CHAT USER TURN INSERT FAILED:', userInsertError.message);
+  }
 
   const { data: lastAssistantTurn } = await supabase
     .from('chat_messages')
@@ -67,18 +70,26 @@ export async function POST(request: NextRequest) {
     (lastAssistantTurn?.classification as Classification) ?? null;
   const previousRevisitCount: number = lastAssistantTurn?.distress_revisit_count ?? 0;
 
-  const { data: history } = await supabase
+  // Descending + limit to get the most recent 40, then reverse to
+  // chronological order - ascending + limit would take the OLDEST 40
+  // instead, silently dropping the just-inserted current turn once the
+  // conversation passes 40 messages and leaving the array ending on an
+  // assistant turn, which the model rejects outright.
+  const { data: recentHistory } = await supabase
     .from('chat_messages')
     .select('role, content')
     .eq('user_id', user.id)
     .eq('source', 'onboarding')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(40);
 
-  const messages = (history ?? []).map((m) => ({
-    role: m.role as 'user' | 'assistant',
-    content: m.content as string,
-  }));
+  const messages = (recentHistory ?? [])
+    .slice()
+    .reverse()
+    .map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content as string,
+    }));
 
   const contextualSystemPrompt =
     SYSTEM_PROMPT + buildContextualAdditions(previousEscalationStep, previousRevisitCount);
