@@ -64,7 +64,8 @@ export default function GoalsScreen() {
         ...prev,
         { role: 'assistant', content: data.reply, resourceCard: data.resourceCard },
       ]);
-    } catch {
+    } catch (err) {
+      console.error('Goals chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
