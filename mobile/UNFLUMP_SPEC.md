@@ -545,6 +545,8 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 ## Distribution
 Beta testing does not need to wait for the full build. Once real authentication (step 5), the auth-state sync listener (step 6), and real onboarding conversation (step 7) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 11), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
 
+**Milestone — ready to share with Beta Tester 1 (Matty).** Not feature-based, distribution-based: not ready until every remaining native-module addition is complete — basic chat-logging's `expo-image-picker`, the Almanac's licensed animation library, and notifications' `expo-notifications`. EAS Update can only push ordinary JS/TSX changes over the air, not new native libraries, so sharing before all three land would mean Matty needing a manual reinstall each time one does. Once all three are done, everything remaining ships via EAS Update with zero reinstalls required. Not a reason to reprioritize the build order — a checkpoint to notice once naturally reached, not chased.
+
 ---
 
 # DEVELOPMENT WORKFLOW PRINCIPLES (reusable beyond this project)
