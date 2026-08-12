@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -108,11 +109,9 @@ export default function EquipmentScreen() {
           />
         )}
         {step === 'done' && (
-          // Answers are already persisted (persistAnswers) and onboarding_step
-          // advanced to 'goals' by this point. Continue still no-ops because
-          // goals.tsx (Build Order step 7, Phase B) doesn't exist yet - wired
-          // once that screen lands, not deferred indefinitely.
-          <Pressable onPress={() => {}} style={({ pressed }) => pressed && styles.pressed}>
+          <Pressable
+            onPress={() => router.push('/onboarding/goals')}
+            style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView type="backgroundElement" style={styles.continueButton}>
               <ThemedText type="smallBold">Continue</ThemedText>
             </ThemedView>

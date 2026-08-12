@@ -32,6 +32,12 @@ Not all emotionally open moments are the same, and treating them identically was
 
 **Resource accuracy — both automated monitoring and periodic manual review, not one or the other, though the scope of what needs checking is now much smaller.** Since the card only ever shows a name, a description, and a link — not phone numbers or text codes — the only fact that genuinely needs staying correct is whether the website link still resolves to the right organization. A scheduled background check (buildable via Vercel's cron job support) can periodically verify Beat's and Shout's links are still live and pointing correctly, emailing an alert if something looks different. This should still be paired with an occasional manual glance (suggested cadence: quarterly, matching other standing review habits already in place for this project), not treated as fully sufficient alone — but the actual burden of that review is now light, not a growing list of granular details to verify.
 
+**The general principle behind both of the above, stated explicitly: fix what needs exact wording to preserve validated effectiveness, keep AI-generated what benefits from genuine responsiveness.** Two concrete places this applies, not one:
+1. **Which real organization a resource card links to** is always deterministic, never an AI judgment call — the risk of ever showing the wrong crisis contact is severe, and there is no responsiveness benefit that could outweigh that risk.
+2. **The direct, C-SSRS-grounded question in the two-step escalation** ("have you been wishing you weren't here, or wishing you could just not wake up?") is used verbatim, not AI-paraphrased — its exact wording is what makes it validated and unambiguous in the first place, and paraphrasing it away from that wording would trade away the one property that makes it trustworthy.
+
+Everywhere else — the gentle first clarifying question, every reflection, the warmth of every reply — stays genuinely AI-generated and responsive to what the person actually said, because that responsiveness is exactly what MI's approach requires and a fixed script cannot provide. Apply this case by case, the same way Principle 11 in the main spec treats speculative schema choices: the question is never "should this be fixed or AI-generated" as a blanket rule, it is "does fixing this specific piece trade away something that matters more than responsiveness would gain, here."
+
 ---
 
 ## Core Language Rules
@@ -95,6 +101,6 @@ Every response in this space exists to act in the person's actual best interest 
 ---
 
 ## Open Items Before This Is Final
-1. **Confirm Beat's and Shout's exact website URLs to link to** — the card only needs a working, correct link, not any further contact detail, which meaningfully simplifies what needs verifying before this ships.
-2. **Confirm the exact classification schema names with Claude Code** — this document uses `ordinary_discouragement`, `ambiguous_distress`, `eating_related_distress`, `acute_crisis` as working labels; the actual implementation may name them differently.
+1. ~~**Confirm Beat's and Shout's exact website URLs to link to**~~ — **Done, 2026-08-11.** Verified live via direct fetch: Beat is `https://www.beateatingdisorders.org.uk/`, Shout is `https://giveusashout.org/`. Both wired into the resource lookup table in `app/api/onboarding-chat/route.ts`. Re-verify periodically per the accuracy note above.
+2. ~~**Confirm the exact classification schema names with Claude Code**~~ — **Done, 2026-08-11.** All six names (`clear_goal`, `ambiguous_goal`, `ordinary_discouragement`, `ambiguous_distress`, `eating_related_distress`, `acute_crisis`) matched exactly during Phase B implementation — no renaming needed.
 3. **This document should be periodically reviewed**, not treated as permanent — both because organizations can change their web presence, and because language that reads as genuinely caring can date or drift in ways worth checking against real user feedback once beta testing begins.
