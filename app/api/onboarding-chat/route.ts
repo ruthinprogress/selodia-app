@@ -75,6 +75,11 @@ function buildClassifyTool(excludeAmbiguous: boolean): Tool {
           type: 'string',
           description: 'Only when classification is eating_related_distress or acute_crisis',
         },
+        revisitingPriorDisclosure: {
+          type: 'boolean',
+          description:
+            'True only when this reply is actively choosing to gently return to an earlier distress disclosure the person just deflected from - see the deflection handling rule',
+        },
       },
       required: ['classification', 'reply'],
     },
@@ -89,11 +94,15 @@ const SYSTEM_PROMPT = `You are Unflump, guiding someone through the "goals" step
 - Say "reduce body fat," never "lose weight."
 - Never use bullet points, headers, or clinical framing. One or two short, warm paragraphs.
 
+SCOPE BOUNDARY - this conversation covers ONLY the goals step. Nothing beyond it (routine, activity, technical or nutrition targets, TDEE, or any other later onboarding step) is built in the app yet. Once the person's goal feels clear and settled to them, do not announce, promise, or name a specific next topic ("next we'll talk about your routine," "let's move to the next step," or anything similar) - there is nothing on the other side of that promise yet, and repeating it turn after turn instead of actually moving anywhere is confusing, not reassuring. Instead, warmly acknowledge that you have a clear, real picture of their goal, and continue the conversation naturally on whatever they bring up, without inventing forward momentum the app can't yet deliver.
+
 SAFETY BOUNDARY - this is the most important part of your job here, grounded in UNFLUMP_LANGUAGE_RULES.md (Motivational Interviewing, plus the C-SSRS for the ambiguous/acute tiers):
 - Ordinary discouragement (tiredness, a hard day, mild self-criticism) gets a warm, physiologically-grounded reframe that keeps things moving forward.
 - Genuinely ambiguous statements (could be burnout with the process, could be something more serious - not enough to tell from the words alone) get ONE gentle, open clarifying question. Never guess either way, never jump to a resource.
 - Eating-related distress (disordered relationship with food, restriction, guilt-driven patterns) gets a care-first response. Do not pivot back to goals or onboarding tasks. Stay warmly present for as long as they want to keep talking.
 - Acute crisis (explicit self-harm/suicidal ideation, acute risk) gets an immediate care-first response.
+
+DEFLECTION HANDLING - if the person deflects or redirects away from a genuine eating-related-distress or acute-crisis disclosure, it is correct to gently return to it ONCE rather than accepting the first redirect at face value. But if they then explicitly decline a second time (a clear "I'm fine," another redirect), respect that: follow their new topic, leave the door open with a single light touch ("I'm here if that changes"), and do not raise the original disclosure again in the same way. Set revisitingPriorDisclosure to true only on the turn where you are actively choosing to return to an earlier disclosure the person just deflected from - not on an ordinary continuation of a topic they're already engaged with.
 
 Rules that apply to every distress-adjacent reply, no exceptions:
 - Never diagnose or label - reflect what they said, don't interpret it clinically.
@@ -124,7 +133,7 @@ export async function POST(request: NextRequest) {
 
   const { data: lastAssistantTurn } = await supabase
     .from('chat_messages')
-    .select('classification, escalation_step')
+    .select('classification, escalation_step, distress_revisit_count')
     .eq('user_id', user.id)
     .eq('source', 'onboarding')
     .eq('role', 'assistant')
@@ -134,6 +143,9 @@ export async function POST(request: NextRequest) {
 
   const previousEscalationStep: EscalationStep =
     (lastAssistantTurn?.escalation_step as EscalationStep) ?? null;
+  const previousClassification: Classification | null =
+    (lastAssistantTurn?.classification as Classification) ?? null;
+  const previousRevisitCount: number = lastAssistantTurn?.distress_revisit_count ?? 0;
 
   const { data: history } = await supabase
     .from('chat_messages')
@@ -155,6 +167,11 @@ export async function POST(request: NextRequest) {
   } else if (previousEscalationStep === 'gentle_asked') {
     contextualSystemPrompt +=
       "\n\nYou just gently asked whether their last ambiguous statement was about the tracking/effort specifically, or something bigger. If their answer resolves that clearly, classify accordingly. If it's still unclear or points to something bigger, classify as ambiguous_distress again.";
+  }
+
+  if (previousRevisitCount >= 1) {
+    contextualSystemPrompt +=
+      '\n\nYou have already gently returned to an earlier distress disclosure once, and the person redirected away from it again. Per the deflection handling rule, do not raise it again this turn - follow their new topic instead, and do not set revisitingPriorDisclosure. The resource card already shown earlier remains a standing, available offer; you do not need to re-mention it unless they bring it up themselves.';
   }
 
   const tool = buildClassifyTool(previousEscalationStep === 'direct_asked');
@@ -185,12 +202,17 @@ export async function POST(request: NextRequest) {
     extractedGoal?: string;
     resourceCardTitle?: string;
     resourceCardDescription?: string;
+    revisitingPriorDisclosure?: boolean;
   };
 
   // Deterministic branching - not the model's decision
   let nextEscalationStep: EscalationStep = null;
   let replyText = result.reply;
   let resourceCard: { title: string; description: string; org: string; url: string } | null = null;
+  // Newly-triggered only: a repeated classification from the immediately
+  // preceding turn is the same ongoing moment, not a new one - see
+  // UNFLUMP_LANGUAGE_RULES.md's card-repetition rule.
+  const isNewlyTriggered = result.classification !== previousClassification;
 
   if (result.classification === 'ambiguous_distress') {
     if (previousEscalationStep === 'gentle_asked') {
@@ -199,14 +221,14 @@ export async function POST(request: NextRequest) {
     } else {
       nextEscalationStep = 'gentle_asked';
     }
-  } else if (result.classification === 'eating_related_distress') {
+  } else if (result.classification === 'eating_related_distress' && isNewlyTriggered) {
     resourceCard = {
       title: result.resourceCardTitle ?? RESOURCES.Beat.name,
       description: result.resourceCardDescription ?? '',
       org: RESOURCES.Beat.name,
       url: RESOURCES.Beat.url,
     };
-  } else if (result.classification === 'acute_crisis') {
+  } else if (result.classification === 'acute_crisis' && isNewlyTriggered) {
     resourceCard = {
       title: result.resourceCardTitle ?? RESOURCES.Shout.name,
       description: result.resourceCardDescription ?? '',
@@ -215,10 +237,28 @@ export async function POST(request: NextRequest) {
     };
   }
 
+  const nextRevisitCount =
+    previousRevisitCount < 1 && result.revisitingPriorDisclosure ? previousRevisitCount + 1 : 0;
+
   if (result.classification === 'clear_goal' && result.extractedGoal) {
-    await supabase
+    const { data: existingGoal } = await supabase
       .from('user_context')
-      .insert({ user_id: user.id, category: 'goal', content: result.extractedGoal });
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('category', 'goal')
+      .limit(1)
+      .maybeSingle();
+
+    if (existingGoal) {
+      await supabase
+        .from('user_context')
+        .update({ content: result.extractedGoal })
+        .eq('id', existingGoal.id);
+    } else {
+      await supabase
+        .from('user_context')
+        .insert({ user_id: user.id, category: 'goal', content: result.extractedGoal });
+    }
   }
 
   await supabase.from('chat_messages').insert({
@@ -228,6 +268,7 @@ export async function POST(request: NextRequest) {
     source: 'onboarding',
     classification: result.classification,
     escalation_step: nextEscalationStep,
+    distress_revisit_count: nextRevisitCount,
   });
 
   return NextResponse.json({
