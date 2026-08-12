@@ -198,7 +198,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     }
   }
 
-  await supabase.from('chat_messages').insert({
+  const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
     content: replyText,
@@ -207,6 +207,9 @@ ${SAFETY_PROMPT_BLOCK}`;
     escalation_step: nextEscalationStep,
     distress_revisit_count: nextRevisitCount,
   });
+  if (insertError) {
+    console.log('ASK-UNFLUMP ASSISTANT TURN INSERT FAILED:', insertError.message);
+  }
 
   return NextResponse.json({
     reply: replyText,

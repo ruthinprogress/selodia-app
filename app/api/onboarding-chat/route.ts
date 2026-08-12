@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  await supabase.from('chat_messages').insert({
+  const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
     content: replyText,
@@ -154,6 +154,9 @@ export async function POST(request: NextRequest) {
     escalation_step: nextEscalationStep,
     distress_revisit_count: nextRevisitCount,
   });
+  if (insertError) {
+    console.log('ONBOARDING-CHAT ASSISTANT TURN INSERT FAILED:', insertError.message);
+  }
 
   return NextResponse.json({
     reply: replyText,

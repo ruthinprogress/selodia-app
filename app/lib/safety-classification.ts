@@ -1,6 +1,6 @@
 import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 
-// The four distress tiers are the shared core of the safety-boundary
+// The five distress tiers are the shared core of the safety-boundary
 // system, used by every emotionally-open touchpoint (onboarding-chat,
 // ask-unflump, and any future one) - grounded in UNFLUMP_LANGUAGE_RULES.md.
 // Each route adds its own non-distress classification(s) on top (e.g.
@@ -9,6 +9,7 @@ export const DISTRESS_TIERS = [
   'ordinary_discouragement',
   'ambiguous_distress',
   'eating_related_distress',
+  'grief_related_distress',
   'acute_crisis',
 ] as const;
 export type DistressTier = (typeof DISTRESS_TIERS)[number];
@@ -22,11 +23,13 @@ export const DIRECT_ESCALATION_QUESTION =
   "Thank you for telling me that — that took something to say. Can I ask you directly: have you been wishing you weren't here, or wishing you could just not wake up?";
 
 // Resource-org selection is deterministic, never an AI judgment call - see
-// UNFLUMP_LANGUAGE_RULES.md. URLs verified live 2026-08-11, re-verify
-// periodically per the doc's own accuracy note.
-export const RESOURCES: Record<'Beat' | 'Shout', { name: string; url: string }> = {
+// UNFLUMP_LANGUAGE_RULES.md. URLs verified live 2026-08-11 (Beat, Shout)
+// and 2026-08-12 (Cruse), re-verify periodically per the doc's own
+// accuracy note.
+export const RESOURCES: Record<'Beat' | 'Shout' | 'Cruse', { name: string; url: string }> = {
   Beat: { name: 'Beat', url: 'https://www.beateatingdisorders.org.uk/' },
   Shout: { name: 'Shout', url: 'https://giveusashout.org/' },
+  Cruse: { name: 'Cruse Bereavement Support', url: 'https://www.cruse.org.uk/' },
 };
 
 export const CLASSIFY_TOOL_NAME = 'classify_and_reply';
@@ -61,11 +64,13 @@ export function buildClassifyTool<T extends string>(
         },
         resourceCardTitle: {
           type: 'string',
-          description: 'Only when classification is eating_related_distress or acute_crisis',
+          description:
+            'Only when classification is eating_related_distress, grief_related_distress, or acute_crisis',
         },
         resourceCardDescription: {
           type: 'string',
-          description: 'Only when classification is eating_related_distress or acute_crisis',
+          description:
+            'Only when classification is eating_related_distress, grief_related_distress, or acute_crisis',
         },
         revisitingPriorDisclosure: {
           type: 'boolean',
@@ -88,11 +93,14 @@ export const SAFETY_PROMPT_BLOCK = `SAFETY BOUNDARY - this is the most important
 - Ordinary discouragement (tiredness, a hard day, mild self-criticism) gets a warm, physiologically-grounded reframe that keeps things moving forward.
 - Genuinely ambiguous statements (could be burnout with the process, could be something more serious - not enough to tell from the words alone) get ONE gentle, open clarifying question. Never guess either way, never jump to a resource.
 - Eating-related distress (disordered relationship with food, restriction, guilt-driven patterns, going extended periods without eating out of fear rather than choice) gets a care-first response. Do not pivot back to goals or ordinary tasks. Stay warmly present for as long as they want to keep talking.
+- Grief-related distress (bereavement, the loss of a person or relationship, grief that's surfacing through how someone talks about their body, eating, or activity) gets the same care-first response as eating-related distress - presence over problem-solving, no pivot back to ordinary tasks.
 - Acute crisis (explicit self-harm/suicidal ideation, acute risk) gets an immediate care-first response.
 
-DEFLECTION HANDLING - if the person deflects or redirects away from a genuine eating-related-distress or acute-crisis disclosure, it is correct to gently return to it ONCE rather than accepting the first redirect at face value. But if they then explicitly decline a second time (a clear "I'm fine," another redirect), respect that: follow their new topic, leave the door open with a single light touch ("I'm here if that changes"), and do not raise the original disclosure again in the same way. Set revisitingPriorDisclosure to true only on the turn where you are actively choosing to return to an earlier disclosure the person just deflected from - not on an ordinary continuation of a topic they're already engaged with.
+DEFLECTION HANDLING - if the person deflects or redirects away from a genuine eating-related-distress, grief-related-distress, or acute-crisis disclosure, it is correct to gently return to it ONCE rather than accepting the first redirect at face value. But if they then explicitly decline a second time (a clear "I'm fine," another redirect), respect that: follow their new topic, leave the door open with a single light touch ("I'm here if that changes"), and do not raise the original disclosure again in the same way. Set revisitingPriorDisclosure to true only on the turn where you are actively choosing to return to an earlier disclosure the person just deflected from - not on an ordinary continuation of a topic they're already engaged with.
 
 RESOURCE CONTENT CONSTRAINT - hard rule, no exceptions: the reply field must NEVER include any specific resource name, phone number, text code, website, or other contact method - not a well-known one, not even if it feels helpful or urgent in the moment. All resource information is delivered exclusively through the resourceCard field, resolved deterministically outside of what you generate - you never choose or name the organization. If your reply references that support exists, stay at the vaguest possible level ("there's support available," "there are people who can help with exactly this") with zero specifics. Naming anything specific - an organization, a number, a text code, a website - is the card's job only, never the reply's, under any circumstance.
+
+RESOURCE REFERENCE CONSTRAINT - a second, related hard rule: your reply must NEVER reference sharing, giving, offering, or leaving a resource ("that's there for you," "the resource I gave you," "don't forget that's available") unless a resourceCard is genuinely being included in this exact same response (i.e. classification is eating_related_distress, grief_related_distress, or acute_crisis AND this is the turn it was newly triggered). On any other turn - including a continuing conversation about the same distress, a deflection, or a revisit - say nothing at all about a resource existing, having been offered, or remaining available. Referencing something not actually present in this response is confusing and reads as broken, not caring. Staying warmly present needs no resource-reference at all; only mention one on the turn it is actually attached.
 
 Rules that apply to every distress-adjacent reply, no exceptions:
 - Never diagnose or label - reflect what they said, don't interpret it clinically.
@@ -104,7 +112,7 @@ Rules that apply to every distress-adjacent reply, no exceptions:
 - Never persuade or lecture toward seeking help. If the person is willing to talk about how they're feeling but not about seeking help, follow that - stay present, let them keep talking about what they're actually feeling, offer the card once without lecturing, and do not repeatedly circle back to convincing them to get help. Persuasion is not the job here; presence is.
 - No external-verdict praise ("well done", "good job") and no comparison to other people, ever.
 
-When classification is eating_related_distress or acute_crisis, also generate resourceCardTitle and resourceCardDescription - genuinely responsive to the moment, calm in tone. Do not name a specific organization yourself; that mapping is handled deterministically outside your response.`;
+When classification is eating_related_distress, grief_related_distress, or acute_crisis, also generate resourceCardTitle and resourceCardDescription - genuinely responsive to the moment, calm in tone. Do not name a specific organization yourself; that mapping is handled deterministically outside your response.`;
 
 export function buildContextualAdditions(
   previousEscalationStep: EscalationStep,
@@ -121,7 +129,7 @@ export function buildContextualAdditions(
 
   if (previousRevisitCount >= 1) {
     additions +=
-      '\n\nYou have already gently returned to an earlier distress disclosure once, and the person redirected away from it again. Per the deflection handling rule, do not raise it again this turn - follow their new topic instead, and do not set revisitingPriorDisclosure. The resource card already shown earlier remains a standing, available offer; you do not need to re-mention it unless they bring it up themselves.';
+      '\n\nYou have already gently returned to an earlier distress disclosure once, and the person redirected away from it again. Per the deflection handling rule, do not raise it again this turn - follow their new topic instead, and do not set revisitingPriorDisclosure. Per the resource reference constraint, do not mention the earlier resource card at all this turn - no resourceCard is included in this response, so nothing about it belongs in your reply either.';
   }
 
   return additions;
@@ -174,6 +182,13 @@ export function applySafetyStateMachine(result: ClassifyResult, state: SafetySta
       description: result.resourceCardDescription ?? '',
       org: RESOURCES.Beat.name,
       url: RESOURCES.Beat.url,
+    };
+  } else if (result.classification === 'grief_related_distress' && isNewlyTriggered) {
+    resourceCard = {
+      title: result.resourceCardTitle ?? RESOURCES.Cruse.name,
+      description: result.resourceCardDescription ?? '',
+      org: RESOURCES.Cruse.name,
+      url: RESOURCES.Cruse.url,
     };
   } else if (result.classification === 'acute_crisis' && isNewlyTriggered) {
     resourceCard = {
