@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
+import {
+  CLASSIFY_TOOL_NAME,
+  SAFETY_PROMPT_BLOCK,
+  applySafetyStateMachine,
+  buildClassifyTool,
+  buildContextualAdditions,
+  type EscalationStep,
+} from '../../lib/safety-classification';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Upgraded from Haiku to the same stronger model onboarding-chat uses -
+// this route now runs the same distress classification, which decides
+// whether the safety boundary fires, so it warrants the same reasoning
+// capability rather than the routine-task tier (see UNFLUMP_SPEC.md, Part
+// Three, and onboarding-chat/route.ts for the same rationale).
+const MODEL = 'claude-sonnet-5';
+
+const NON_DISTRESS_CLASSIFICATIONS = ['neutral'] as const;
+type Classification = (typeof NON_DISTRESS_CLASSIFICATIONS)[number] | import('../../lib/safety-classification').DistressTier;
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseForRequest(request);
@@ -16,10 +34,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { message, conversationHistory } = await request.json();
+  const { message } = await request.json();
   console.log('CHAT REQUEST RECEIVED:', message);
 
-  await supabase.from('chat_messages').insert({ user_id: user.id, role: 'user', content: message });
+  await supabase
+    .from('chat_messages')
+    .insert({ user_id: user.id, role: 'user', content: message, source: 'chat' });
+
+  const { data: lastAssistantTurn } = await supabase
+    .from('chat_messages')
+    .select('classification, escalation_step, distress_revisit_count')
+    .eq('user_id', user.id)
+    .eq('source', 'chat')
+    .eq('role', 'assistant')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const previousEscalationStep: EscalationStep =
+    (lastAssistantTurn?.escalation_step as EscalationStep) ?? null;
+  const previousClassification: Classification | null =
+    (lastAssistantTurn?.classification as Classification) ?? null;
+  const previousRevisitCount: number = lastAssistantTurn?.distress_revisit_count ?? 0;
+
+  const { data: history } = await supabase
+    .from('chat_messages')
+    .select('role, content')
+    .eq('user_id', user.id)
+    .eq('source', 'chat')
+    .order('created_at', { ascending: true })
+    .limit(40);
+
+  const messages = (history ?? []).map((m) => ({
+    role: m.role as 'user' | 'assistant',
+    content: m.content as string,
+  }));
 
   const { data: contextRows } = await supabase
     .from('user_context')
@@ -63,36 +112,77 @@ export async function POST(request: NextRequest) {
     ? recentMeasurements.map((m) => m.measured_at.slice(0, 10) + ': weight ' + m.weight_kg + 'kg, body fat ' + m.body_fat_pct + '%').join('\n')
     : 'No body measurements in the last 7 days.';
 
-  const systemContext = 'You are a calm, grounded companion inside a food/fitness tracking app called Unflump. You are NOT a coach, a cheerleader, or a report generator. Your tone is steady and validating, not peppy or upbeat - closer to a thoughtful friend who listens carefully than someone hyping the person up. Avoid exclamation marks, emojis, and enthusiastic language ("Ouch!", "amazing!", "love that"). Speak plainly and warmly instead. Never use bullet points, headers, or long structured breakdowns unless specifically asked for a list. One or two short paragraphs is usually enough. When relevant, naturally reference their recent logged activity or data and ask if anything needs adjusting - that instinct is good, just deliver it calmly rather than energetically.\n\nHere is what you know about this person (their stored context, facts, goals, diagnoses, preferences):\n' + contextText + '\n\nHere is their food log from the last 7 days:\n' + foodSummary + '\n\nHere is their activity log from the last 7 days:\n' + activitySummary + '\n\nHere are their body measurements from the last 7 days:\n' + measurementSummary + '\n\nUse this information naturally in your replies, the way a friend who already knows your situation would - dont just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), mention at the END of your reply, on its own new line, exactly in this format: [REMEMBER: category | content] - for example [REMEMBER: diagnosis | PCOS diagnosed July 2026] - only do this for genuinely durable facts, not passing comments, and only once per new fact.';
+  const SYSTEM_PROMPT = `You are Unflump, a calm, grounded companion inside a food/fitness tracking app. You are NOT a coach, a cheerleader, or a report generator. Your tone is steady and validating, not peppy or upbeat - closer to a thoughtful friend who listens carefully than someone hyping the person up. Avoid exclamation marks, emojis, and enthusiastic language ("Ouch!", "amazing!", "love that"). Speak plainly and warmly instead. Never use bullet points, headers, or long structured breakdowns unless specifically asked for a list. One or two short paragraphs is usually enough. When relevant, naturally reference their recent logged activity or data and ask if anything needs adjusting - that instinct is good, just deliver it calmly rather than energetically. Classify most ordinary conversation (food, activity, logistics, general chat) as neutral.
 
-  const messages = [
-    ...(conversationHistory || []),
-    { role: 'user', content: message },
-  ];
+Here is what you know about this person (their stored context, facts, goals, diagnoses, preferences):
+${contextText}
+
+Here is their food log from the last 7 days:
+${foodSummary}
+
+Here is their activity log from the last 7 days:
+${activitySummary}
+
+Here are their body measurements from the last 7 days:
+${measurementSummary}
+
+Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact.
+
+${SAFETY_PROMPT_BLOCK}`;
+
+  const contextualSystemPrompt =
+    SYSTEM_PROMPT + buildContextualAdditions(previousEscalationStep, previousRevisitCount);
+
+  const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
+    rememberCategory: {
+      type: 'string',
+      description: 'Only when the person shares a genuinely durable fact worth remembering long-term',
+    },
+    rememberContent: {
+      type: 'string',
+      description: 'Only alongside rememberCategory: the fact itself, concise',
+    },
+  });
 
   let response;
   try {
     response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL,
       max_tokens: 500,
-      system: systemContext,
-      messages: messages,
+      system: contextualSystemPrompt,
+      messages,
+      tools: [tool],
+      tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
     });
-  } catch (err: any) {
-    console.log('ANTHROPIC API ERROR:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    console.log('ANTHROPIC API ERROR:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 
-  const replyText = response.content[0].type === 'text' ? response.content[0].text : '';
+  const toolUse = response.content.find((block) => block.type === 'tool_use');
+  if (!toolUse || toolUse.type !== 'tool_use') {
+    return NextResponse.json({ error: 'Model did not return a classification' }, { status: 500 });
+  }
 
-  const rememberMatch = replyText.match(/\[REMEMBER: (.+?) \| (.+?)\]/);
-  let cleanReply = replyText;
-  let savedContext = null;
+  const result = toolUse.input as {
+    classification: Classification;
+    reply: string;
+    resourceCardTitle?: string;
+    resourceCardDescription?: string;
+    revisitingPriorDisclosure?: boolean;
+    rememberCategory?: string;
+    rememberContent?: string;
+  };
 
-  if (rememberMatch) {
-    const category = rememberMatch[1].trim();
-    const content = rememberMatch[2].trim();
-    cleanReply = replyText.replace(rememberMatch[0], '').trim();
+  const { replyText, nextEscalationStep, resourceCard, nextRevisitCount } = applySafetyStateMachine(
+    result,
+    { previousEscalationStep, previousClassification, previousRevisitCount }
+  );
+
+  let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
+  if (result.rememberCategory && result.rememberContent) {
+    const category = result.rememberCategory;
+    const content = result.rememberContent;
 
     const { data: existingCategory } = await supabase
       .from('user_context')
@@ -108,12 +198,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  await supabase
-    .from('chat_messages')
-    .insert({ user_id: user.id, role: 'assistant', content: cleanReply });
+  await supabase.from('chat_messages').insert({
+    user_id: user.id,
+    role: 'assistant',
+    content: replyText,
+    source: 'chat',
+    classification: result.classification,
+    escalation_step: nextEscalationStep,
+    distress_revisit_count: nextRevisitCount,
+  });
 
   return NextResponse.json({
-    reply: cleanReply,
-    savedContext: savedContext,
+    reply: replyText,
+    savedContext,
+    resourceCard,
   });
 }

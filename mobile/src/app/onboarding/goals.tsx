@@ -57,7 +57,10 @@ export default function GoalsScreen() {
         },
         body: JSON.stringify({ message: trimmed }),
       });
-      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Request failed (${response.status}): ${body}`);
+      }
 
       const data = await response.json();
       setMessages((prev) => [

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { ResourceCard } from '@/components/resource-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -12,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 type Message = {
   role: 'user' | 'assistant';
   content: string;
+  resourceCard?: { title: string; description: string; url: string } | null;
 };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -77,7 +79,6 @@ export default function ChatScreen() {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
     setInput('');
-    const priorMessages = messages;
     setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setSending(true);
 
@@ -104,9 +105,8 @@ export default function ChatScreen() {
         ]);
         setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
       } else {
-        const conversationHistory = priorMessages.map((m) => ({ role: m.role, content: m.content }));
-        const { reply } = await authedFetch('/api/ask-unflump', { message: trimmed, conversationHistory });
-        setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+        const { reply, resourceCard } = await authedFetch('/api/ask-unflump', { message: trimmed });
+        setMessages((prev) => [...prev, { role: 'assistant', content: reply, resourceCard }]);
       }
     } catch (err) {
       console.error('Chat send failed:', err instanceof Error ? err.message : err);
@@ -128,9 +128,16 @@ export default function ChatScreen() {
           )}
 
           {messages.map((m, i) => (
-            <ChatBubble key={i} role={m.role}>
-              {m.content}
-            </ChatBubble>
+            <ThemedView key={i} style={styles.messageGroup}>
+              <ChatBubble role={m.role}>{m.content}</ChatBubble>
+              {m.resourceCard && (
+                <ResourceCard
+                  title={m.resourceCard.title}
+                  description={m.resourceCard.description}
+                  url={m.resourceCard.url}
+                />
+              )}
+            </ThemedView>
           ))}
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
@@ -171,6 +178,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.six,
     gap: Spacing.three,
+  },
+  messageGroup: {
+    gap: Spacing.two,
   },
   inputRow: {
     flexDirection: 'row',
