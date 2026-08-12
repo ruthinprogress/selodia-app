@@ -37,7 +37,15 @@
       ],
       "@react-native-community/datetimepicker",
       "react-native-health",
-      "react-native-health-connect"
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
