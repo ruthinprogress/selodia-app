@@ -16,6 +16,7 @@ type Message = {
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const FALLBACK_ERROR = "Something went wrong on my end — mind trying that again?";
+const NOT_SIGNED_IN_ERROR = "You're not signed in — please sign in and try again.";
 
 export default function ChatScreen() {
   const theme = useTheme();
@@ -55,7 +56,10 @@ export default function ChatScreen() {
       },
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`Request failed (${response.status})`);
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`${path} failed (${response.status}): ${body}`);
+    }
     return response.json();
   }
 
@@ -104,8 +108,10 @@ export default function ChatScreen() {
         const { reply } = await authedFetch('/api/ask-unflump', { message: trimmed, conversationHistory });
         setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
       }
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', content: FALLBACK_ERROR }]);
+    } catch (err) {
+      console.error('Chat send failed:', err instanceof Error ? err.message : err);
+      const content = err instanceof Error && err.message === 'Not signed in' ? NOT_SIGNED_IN_ERROR : FALLBACK_ERROR;
+      setMessages((prev) => [...prev, { role: 'assistant', content }]);
     } finally {
       setSending(false);
     }

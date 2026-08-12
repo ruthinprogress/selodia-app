@@ -49,6 +49,7 @@ async function upsertProfile(userId: string, dob: Date | null, sex: BiologicalSe
 
 export default function AccountScreen() {
   const theme = useTheme();
+  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -58,6 +59,16 @@ export default function AccountScreen() {
   const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+
+  function toggleMode() {
+    setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
+    setError(null);
+    setInfo(null);
+    setPassword('');
+    setConfirmPassword('');
+    setDateOfBirth(null);
+    setBiologicalSex(null);
+  }
 
   async function handleGoogleSignIn() {
     setError(null);
@@ -89,7 +100,33 @@ export default function AccountScreen() {
     }
   }
 
+  async function handleSignIn() {
+    setError(null);
+    setInfo(null);
+
+    if (!email.trim() || !password) {
+      setError('Enter your email and password to sign in.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) throw signInError;
+      router.push('/onboarding/intro');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong signing in.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleContinue() {
+    if (mode === 'signin') return handleSignIn();
+
     setError(null);
     setInfo(null);
 
@@ -146,7 +183,9 @@ export default function AccountScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedText type="subtitle">Create your account</ThemedText>
+          <ThemedText type="subtitle">
+            {mode === 'signup' ? 'Create your account' : 'Sign in'}
+          </ThemedText>
 
           <Pressable
             onPress={handleGoogleSignIn}
@@ -171,41 +210,46 @@ export default function AccountScreen() {
             autoCapitalize="none"
           />
           <LabeledInput label="Password" value={password} onChangeText={setPassword} secureTextEntry />
-          <LabeledInput
-            label="Confirm password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
 
-          <DateOfBirthField value={dateOfBirth} onChange={setDateOfBirth} />
+          {mode === 'signup' && (
+            <>
+              <LabeledInput
+                label="Confirm password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
 
-          <ThemedView style={styles.fieldGroup}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Biological sex (used to calculate your calorie needs)
-            </ThemedText>
-            <ThemedView style={styles.sexOptionsRow}>
-              {SEX_OPTIONS.map((opt) => (
-                <Pressable key={opt.value} onPress={() => setBiologicalSex(opt.value)}>
-                  <ThemedView
-                    type={biologicalSex === opt.value ? 'backgroundSelected' : 'backgroundElement'}
-                    style={styles.sexOption}>
-                    <ThemedText
-                      type="small"
-                      themeColor={biologicalSex === opt.value ? 'text' : 'textSecondary'}>
-                      {opt.label}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
-              ))}
-            </ThemedView>
-            {biologicalSex === 'prefer_not_to_say' && (
-              <ThemedText type="small" themeColor="textSecondary">
-                We&apos;ll use a general estimate for your calorie needs — it&apos;ll be a bit less
-                precise without this.
-              </ThemedText>
-            )}
-          </ThemedView>
+              <DateOfBirthField value={dateOfBirth} onChange={setDateOfBirth} />
+
+              <ThemedView style={styles.fieldGroup}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Biological sex (used to calculate your calorie needs)
+                </ThemedText>
+                <ThemedView style={styles.sexOptionsRow}>
+                  {SEX_OPTIONS.map((opt) => (
+                    <Pressable key={opt.value} onPress={() => setBiologicalSex(opt.value)}>
+                      <ThemedView
+                        type={biologicalSex === opt.value ? 'backgroundSelected' : 'backgroundElement'}
+                        style={styles.sexOption}>
+                        <ThemedText
+                          type="small"
+                          themeColor={biologicalSex === opt.value ? 'text' : 'textSecondary'}>
+                          {opt.label}
+                        </ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                  ))}
+                </ThemedView>
+                {biologicalSex === 'prefer_not_to_say' && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    We&apos;ll use a general estimate for your calorie needs — it&apos;ll be a bit
+                    less precise without this.
+                  </ThemedText>
+                )}
+              </ThemedView>
+            </>
+          )}
 
           {error && (
             <ThemedText type="small" themeColor="danger">
@@ -223,8 +267,22 @@ export default function AccountScreen() {
             disabled={submitting}
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView type="backgroundElement" style={styles.continueButton}>
-              <ThemedText type="smallBold">{submitting ? 'Creating account…' : 'Continue'}</ThemedText>
+              <ThemedText type="smallBold">
+                {mode === 'signup'
+                  ? submitting
+                    ? 'Creating account…'
+                    : 'Continue'
+                  : submitting
+                    ? 'Signing in…'
+                    : 'Sign in'}
+              </ThemedText>
             </ThemedView>
+          </Pressable>
+
+          <Pressable onPress={toggleMode} style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.dividerText}>
+              {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account'}
+            </ThemedText>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
