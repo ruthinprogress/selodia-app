@@ -524,25 +524,26 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 7. Wire onboarding to real AI-driven conversation, replacing the scripted UI shells built in step 4 — required before onboarding can actually adapt to freeform answers, branch on distress signals, or reflect goals back per Part Seven's actual design. Named explicitly so the scripted shells are a tracked commitment, not a deferral that quietly becomes permanent. The safety-boundary classification and response language for emotionally open moments is grounded in `UNFLUMP_LANGUAGE_RULES.md` (MI-based, alongside the C-SSRS for the ambiguous/acute tiers) — not restated here; that document is the actual working reference the onboarding-chat system prompt is built from.
 8. Health Context capture flow, woven into onboarding.
 9. Cycle tracking discovery logic — needs the `cycle_events` table from step 1.
-10. Itemized food breakdown and its rules.
-11. Protein quality flagging UI — needs itemized breakdown (step 10).
-12. The "What's In Here" discuss-card.
-13. Data confidence bars (9-week habit bars) and the catch-up mechanism.
-14. The Almanac.
-15. The "Then & Now" table and the minimized 7-day dashboard table.
-16. Daily nudge and weekly close-out nudge notifications.
-17. The Daily Roundup and its theme-extraction mechanism.
-18. The Body Measurement Interpretation Layer — needs cycle tracking (step 9).
-19. The Weekly Roundup — needs theme-extraction (step 17).
-20. Nutrient depth flagging — needs Health Context (step 8).
-21. The Meal/Order Advisor — a standalone, reactive feature suggesting choices given remaining daily targets and a stated context; can be built whenever convenient once core logging is mature.
-22. In-app navigation Layer 1.
-23. The Graduation moment and pause-mechanism trigger logic.
-24. In-app navigation Layer 2 — a fast-follow, not part of the initial build pass.
-25. Zero-calorie drinks quick-tap shortcut.
+10. Wire basic chat-based logging in the native app — free-text and photo input in the Chat tab calling the existing `parse-food`/`parse-activity`/`parse-body-measurement` routes, with results shown back in the conversation. Every food/activity/measurement-related step from here on assumes this baseline exists; nothing before this point in the build order actually builds it. Identified as a real gap during step 7, not assumed away — inserted here rather than discovered partway through step 11 later.
+11. Itemized food breakdown and its rules.
+12. Protein quality flagging UI — needs itemized breakdown (step 11).
+13. The "What's In Here" discuss-card.
+14. Data confidence bars (9-week habit bars) and the catch-up mechanism.
+15. The Almanac.
+16. The "Then & Now" table and the minimized 7-day dashboard table.
+17. Daily nudge and weekly close-out nudge notifications.
+18. The Daily Roundup and its theme-extraction mechanism.
+19. The Body Measurement Interpretation Layer — needs cycle tracking (step 9).
+20. The Weekly Roundup — needs theme-extraction (step 18).
+21. Nutrient depth flagging — needs Health Context (step 8).
+22. The Meal/Order Advisor — a standalone, reactive feature suggesting choices given remaining daily targets and a stated context; can be built whenever convenient once core logging is mature.
+23. In-app navigation Layer 1.
+24. The Graduation moment and pause-mechanism trigger logic.
+25. In-app navigation Layer 2 — a fast-follow, not part of the initial build pass.
+26. Zero-calorie drinks quick-tap shortcut.
 
 ## Distribution
-Beta testing does not need to wait for the full build. Once real authentication (step 5), the auth-state sync listener (step 6), and real onboarding conversation (step 7) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 10), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
+Beta testing does not need to wait for the full build. Once real authentication (step 5), the auth-state sync listener (step 6), and real onboarding conversation (step 7) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 11), a build can be shared directly with a small number of testers via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
 
 ---
 
