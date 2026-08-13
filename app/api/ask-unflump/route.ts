@@ -51,6 +51,11 @@ export async function POST(request: NextRequest) {
     .eq('user_id', user.id)
     .eq('source', 'chat')
     .eq('role', 'assistant')
+    // Read-hardening: only safety-classified turns carry escalation state. Skip
+    // pure logging turns (classification null, e.g. the photo/direct food-log
+    // path) so a food log dropped mid-escalation cannot null out an active
+    // C-SSRS ladder by simply being the most recent assistant row.
+    .not('classification', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

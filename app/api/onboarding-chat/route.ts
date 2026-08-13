@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
     .eq('user_id', user.id)
     .eq('source', 'onboarding')
     .eq('role', 'assistant')
+    // Read-hardening: only safety-classified turns carry escalation state, so an
+    // unclassified logging turn can never null out an active C-SSRS ladder by
+    // being the most recent assistant row. See ask-unflump for the rationale.
+    .not('classification', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

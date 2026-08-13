@@ -263,6 +263,25 @@ export function applySafetyStateMachine(result: ClassifyResult, state: SafetySta
     };
   }
 
+  // PRESERVE - an active C-SSRS escalation must never be silently aborted by an
+  // off-topic interruption. A non-distress classification mid-escalation (a
+  // neutral chat turn, a food/activity log that classifies as neutral, or an
+  // onboarding goal turn) is neither an answer to the escalation question nor a
+  // new distress signal, so carry the escalation step forward untouched instead
+  // of letting it fall through to null and reset the ladder. Genuine engagement
+  // still moves the ladder: ambiguous_distress escalates and distress tiers card
+  // (above), and ordinary_discouragement - an engaged "I'm fine, just tired" -
+  // is a DISTRESS tier, so it is NOT preserved here and correctly resolves the
+  // ladder to null. Per the agreed design there is no cap: the escalation stays
+  // pending across any number of off-topic turns until the person engages.
+  if (
+    nextEscalationStep === null &&
+    previousEscalationStep !== null &&
+    !(DISTRESS_TIERS as readonly string[]).includes(result.classification)
+  ) {
+    nextEscalationStep = previousEscalationStep;
+  }
+
   const nextRevisitCount =
     previousRevisitCount < 1 && result.revisitingPriorDisclosure ? previousRevisitCount + 1 : 0;
 
