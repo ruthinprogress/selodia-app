@@ -9,6 +9,7 @@ import {
   buildContextualAdditions,
   type EscalationStep,
 } from '../../lib/safety-classification';
+import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -113,6 +114,12 @@ export async function POST(request: NextRequest) {
     .gte('measured_at', sevenDaysAgo.toISOString())
     .order('measured_at', { ascending: false });
 
+  // Health Context (Part Twelve): RLS scopes this to the current user, so no
+  // explicit user_id filter is needed. Injected alongside macro/context below.
+  const { data: healthContextRow } = await supabase.from('health_context').select('*').maybeSingle();
+  const healthContext = (healthContextRow as HealthContext | null) ?? null;
+  const healthContextBlock = buildHealthContextPrompt(healthContext);
+
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => f.happened_at.slice(0, 10) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
@@ -138,7 +145,7 @@ ${activitySummary}
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
-
+${healthContextBlock ? `\n${healthContextBlock}\n` : ''}
 Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact.
 
 ${SAFETY_PROMPT_BLOCK}`;
@@ -154,6 +161,11 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberContent: {
       type: 'string',
       description: 'Only alongside rememberCategory: the fact itself, concise',
+    },
+    healthGuidanceApplied: {
+      type: 'boolean',
+      description:
+        "Set true only when this reply's food guidance actually drew on the person's stored health context (the HEALTH CONTEXT block, if present). Leave false otherwise.",
     },
   });
 
@@ -185,6 +197,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     revisitingPriorDisclosure?: boolean;
     rememberCategory?: string;
     rememberContent?: string;
+    healthGuidanceApplied?: boolean;
   };
 
   const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
@@ -226,9 +239,15 @@ ${SAFETY_PROMPT_BLOCK}`;
     console.log('ASK-UNFLUMP ASSISTANT TURN INSERT FAILED:', insertError.message);
   }
 
+  // Only surface the disclaimer when the model flagged health-informed guidance
+  // AND the person actually has stored health context - never a phantom.
+  const healthGuidanceApplied =
+    hasHealthContext(healthContext) && result.healthGuidanceApplied === true;
+
   return NextResponse.json({
     reply: replyText,
     savedContext,
     resourceCard,
+    healthGuidanceApplied,
   });
 }

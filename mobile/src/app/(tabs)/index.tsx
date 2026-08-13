@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ResourceCard } from '@/components/resource-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -14,6 +15,7 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   resourceCard?: { title: string; description: string; url: string } | null;
+  healthGuidanceApplied?: boolean;
 };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -105,8 +107,13 @@ export default function ChatScreen() {
         ]);
         setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
       } else {
-        const { reply, resourceCard } = await authedFetch('/api/ask-unflump', { message: trimmed });
-        setMessages((prev) => [...prev, { role: 'assistant', content: reply, resourceCard }]);
+        const { reply, resourceCard, healthGuidanceApplied } = await authedFetch('/api/ask-unflump', {
+          message: trimmed,
+        });
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied },
+        ]);
       }
     } catch (err) {
       console.error('Chat send failed:', err instanceof Error ? err.message : err);
@@ -137,6 +144,7 @@ export default function ChatScreen() {
                   url={m.resourceCard.url}
                 />
               )}
+              {m.healthGuidanceApplied && <HealthDisclaimer />}
             </ThemedView>
           ))}
 

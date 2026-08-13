@@ -5,6 +5,7 @@ export const ONBOARDING_STEPS = [
   'intro',
   'equipment',
   'goals',
+  'health_context',
   'technical_targets',
   'nutrition_targets',
   'activity_tdee',

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -100,6 +101,16 @@ export default function GoalsScreen() {
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
         </ScrollView>
 
+        {messages.length > 0 && (
+          <Pressable
+            onPress={() => router.push('/onboarding/health-context')}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedView type="backgroundElement" style={styles.continueButton}>
+              <ThemedText type="smallBold">Continue</ThemedText>
+            </ThemedView>
+          </Pressable>
+        )}
+
         <ThemedView style={styles.inputRow}>
           <TextInput
             value={input}
@@ -160,6 +171,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Spacing.three,
+  },
+  continueButton: {
+    marginHorizontal: Spacing.four,
+    marginBottom: Spacing.two,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+    alignItems: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: MaxContentWidth,
   },
   pressed: {
     opacity: 0.7,
