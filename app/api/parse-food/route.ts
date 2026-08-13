@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
+import { logFoodFromText } from '../../lib/food-logging';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -34,6 +35,18 @@ export async function POST(request: NextRequest) {
   }
 
   const hasImages = images && images.length > 0;
+
+  // Text-only entries go through the shared logger (also used by the chat
+  // handler). Image entries keep the multi-photo/label handling below.
+  if (!hasImages) {
+    try {
+      const entry = await logFoodFromText(supabase, user.id, foodText, happenedAt);
+      return NextResponse.json(entry);
+    } catch (err) {
+      console.log('PARSE-FOOD (text) ERROR:', err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
+    }
+  }
 
   const textInstruction = hasImages
     ? 'These image(s) show food or food packaging (e.g. a nutrition label, a plate of food, a product). If multiple images are provided, they may show different angles or sides of the same item (e.g. a curved pot label split across two photos) - combine information across all images to get the most complete and accurate reading. When a label shows both "per 100g" and "per pot" or "per serving" values, always use the "per pot" or "per serving" total, not the per-100g figure, unless the person specifies they only ate part of it. UK nutrition labels typically show energy as both kJ and kcal together (e.g. "1049kJ/249kcal") - always use the kcal number, never the kJ number, for the kcal field. ' + (foodText ? 'The person also added this note: "' + foodText + '". Use the note to clarify or adjust what was actually eaten (e.g. "only ate half", "no dressing"). ' : '') + 'Estimate the macros for what was actually consumed. Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "meal_label": string, "confidence": "clear" or "uncertain"} Set confidence to "uncertain" if any image was blurry, glare made text hard to read, or you had to guess at any number. For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack"). Keep it short - 1-3 words.'

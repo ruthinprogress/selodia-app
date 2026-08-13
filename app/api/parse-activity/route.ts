@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
+import { logActivityFromText } from '../../lib/activity-logging';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -34,6 +35,18 @@ export async function POST(request: NextRequest) {
   }
 
   const hasImages = images && images.length > 0;
+
+  // Text-only entries go through the shared logger (also used by the chat
+  // handler). Screenshot entries keep the summary/workout handling below.
+  if (!hasImages) {
+    try {
+      const entries = await logActivityFromText(supabase, user.id, activityText, happenedAt);
+      return NextResponse.json({ entries });
+    } catch (err) {
+      console.log('PARSE-ACTIVITY (text) ERROR:', err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
+    }
+  }
 
   const textInstruction = hasImages
     ? 'This image is a screenshot from a fitness tracking app (e.g. Samsung Health). It could be either: (a) a DAILY SUMMARY screen showing total steps, active time, activity calories, total burnt calories, and distance for a whole day, or (b) a SPECIFIC WORKOUT screen showing one activity (e.g. a run) with details like distance, pace, duration, cadence. Identify which type this is. If it is a daily summary, respond with ONE activity object: activity_type "Daily Summary", duration_min = active time shown, kcal_burned = total burnt calories figure, and notes should include steps and distance if shown (e.g. "10,228 steps, 7.33km"). If it is a specific workout, respond with ONE activity object: activity_type = the activity name (e.g. "Running"), duration_min = its duration, kcal_burned = its calorie figure, notes = distance/pace/cadence/incline as a short readable summary. ' + (activityText ? 'The person also added this note: "' + activityText + '". ' : '') + 'Respond ONLY with valid JSON, no other text, in this exact format: {"activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null}], "source": "Samsung daily summary" or "Samsung workout screenshot"}'
