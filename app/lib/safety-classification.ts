@@ -154,6 +154,12 @@ export type SafetyOutcome = {
   nextEscalationStep: EscalationStep;
   resourceCard: { title: string; description: string; org: string; url: string } | null;
   nextRevisitCount: number;
+  // The classification to PERSIST for this turn, which is not always the
+  // model's raw classification: when we force the direct question mid-
+  // escalation (see applySafetyStateMachine), we record the turn as
+  // still-clarifying so the genuine resolution on the next turn is seen as
+  // newly-triggered rather than a repeat.
+  nextClassification: string;
 };
 
 // Deterministic branching - not the model's decision. Identical logic for
@@ -165,17 +171,39 @@ export function applySafetyStateMachine(result: ClassifyResult, state: SafetySta
   let nextEscalationStep: EscalationStep = null;
   let replyText = result.reply;
   let resourceCard: SafetyOutcome['resourceCard'] = null;
+  let nextClassification: string = result.classification;
   // Newly-triggered only: a repeated classification from the immediately
   // preceding turn is the same ongoing moment, not a new one.
   const isNewlyTriggered = result.classification !== previousClassification;
 
-  if (result.classification === 'ambiguous_distress') {
-    if (previousEscalationStep === 'gentle_asked') {
-      nextEscalationStep = 'direct_asked';
-      replyText = DIRECT_ESCALATION_QUESTION;
-    } else {
-      nextEscalationStep = 'gentle_asked';
-    }
+  // The deterministic direct question (C-SSRS Q1) is the single gate before
+  // any acute_crisis card. On the turn immediately after the gentle
+  // clarifying question, we are still in the clarifying stage - not at
+  // genuine resolution - so no card may attach yet. If the model tries to
+  // jump straight to acute_crisis here (often while phrasing its own reply
+  // as a probing question), that is premature: force the deterministic
+  // direct question with no card, and override the reply so the prose (a
+  // question) and the classification can never contradict each other.
+  // Resolution and any card happen on the FOLLOWING turn, once the direct
+  // question is actually answered. This routes ONLY through the suicide
+  // screen: eating- and grief-related distress are deliberately excluded,
+  // since a clear disclosure of either after the gentle question is a
+  // genuine resolution that keeps its own (Beat/Cruse) card.
+  const forceDirectQuestion =
+    previousEscalationStep === 'gentle_asked' &&
+    (result.classification === 'ambiguous_distress' || result.classification === 'acute_crisis');
+
+  if (forceDirectQuestion) {
+    nextEscalationStep = 'direct_asked';
+    replyText = DIRECT_ESCALATION_QUESTION;
+    // Persist as still-clarifying, not resolved. Recording the model's
+    // acute_crisis here would make the genuine resolution on the next turn
+    // look like a repeat (isNewlyTriggered false) and suppress its card.
+    // Treating it as ambiguous_distress mirrors the normal gentle->direct
+    // rung and keeps the ladder consistent.
+    nextClassification = 'ambiguous_distress';
+  } else if (result.classification === 'ambiguous_distress') {
+    nextEscalationStep = 'gentle_asked';
   } else if (result.classification === 'eating_related_distress' && isNewlyTriggered) {
     resourceCard = {
       title: result.resourceCardTitle ?? RESOURCES.Beat.name,
@@ -202,5 +230,5 @@ export function applySafetyStateMachine(result: ClassifyResult, state: SafetySta
   const nextRevisitCount =
     previousRevisitCount < 1 && result.revisitingPriorDisclosure ? previousRevisitCount + 1 : 0;
 
-  return { replyText, nextEscalationStep, resourceCard, nextRevisitCount };
+  return { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification };
 }

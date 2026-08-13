@@ -187,10 +187,12 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberContent?: string;
   };
 
-  const { replyText, nextEscalationStep, resourceCard, nextRevisitCount } = applySafetyStateMachine(
-    result,
-    { previousEscalationStep, previousClassification, previousRevisitCount }
-  );
+  const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
+    applySafetyStateMachine(result, {
+      previousEscalationStep,
+      previousClassification,
+      previousRevisitCount,
+    });
 
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
   if (result.rememberCategory && result.rememberContent) {
@@ -216,7 +218,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     role: 'assistant',
     content: replyText,
     source: 'chat',
-    classification: result.classification,
+    classification: nextClassification,
     escalation_step: nextEscalationStep,
     distress_revisit_count: nextRevisitCount,
   });

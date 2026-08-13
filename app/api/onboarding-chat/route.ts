@@ -130,10 +130,12 @@ export async function POST(request: NextRequest) {
     revisitingPriorDisclosure?: boolean;
   };
 
-  const { replyText, nextEscalationStep, resourceCard, nextRevisitCount } = applySafetyStateMachine(
-    result,
-    { previousEscalationStep, previousClassification, previousRevisitCount }
-  );
+  const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
+    applySafetyStateMachine(result, {
+      previousEscalationStep,
+      previousClassification,
+      previousRevisitCount,
+    });
 
   if (result.classification === 'clear_goal' && result.extractedGoal) {
     const { data: existingGoal } = await supabase
@@ -161,7 +163,7 @@ export async function POST(request: NextRequest) {
     role: 'assistant',
     content: replyText,
     source: 'onboarding',
-    classification: result.classification,
+    classification: nextClassification,
     escalation_step: nextEscalationStep,
     distress_revisit_count: nextRevisitCount,
   });
@@ -171,7 +173,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     reply: replyText,
-    classification: result.classification,
+    classification: nextClassification,
     resourceCard,
   });
 }
