@@ -11,7 +11,7 @@ import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { requestStepPermission, type StepPermissionResult } from '@/lib/step-permission';
 import { supabase } from '@/lib/supabase';
 
-type Step = 'scales' | 'tapeMeasure' | 'permission' | 'done';
+type Step = 'scales' | 'tapeMeasure' | 'permissionIntro' | 'permission' | 'done';
 
 export default function EquipmentScreen() {
   const [step, setStep] = useState<Step>('scales');
@@ -55,7 +55,10 @@ export default function EquipmentScreen() {
 
   function handleTapeMeasureAnswer(value: boolean) {
     setHasTapeMeasure(value);
-    requestPermissionStep(value);
+    // Acknowledge the answer first: show the "I'll ask for permission now"
+    // bubble and wait for the user to proceed, so the native OS dialog never
+    // fires before they have seen their previous answer acknowledged.
+    setStep('permissionIntro');
   }
 
   return (
@@ -107,6 +110,15 @@ export default function EquipmentScreen() {
             onYes={() => handleTapeMeasureAnswer(true)}
             onNo={() => handleTapeMeasureAnswer(false)}
           />
+        )}
+        {step === 'permissionIntro' && (
+          <Pressable
+            onPress={() => requestPermissionStep(hasTapeMeasure!)}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedView type="backgroundElement" style={styles.continueButton}>
+              <ThemedText type="smallBold">Continue to permission request</ThemedText>
+            </ThemedView>
+          </Pressable>
         )}
         {step === 'done' && (
           <Pressable
