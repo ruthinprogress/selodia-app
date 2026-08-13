@@ -1,6 +1,8 @@
 # Unflump Language Rules: Emotionally Open Moments
 *Drafted Session 15, 11 August 2026; approved and now the actual working reference this app is built from. Grounded in Motivational Interviewing (MI), a well-established clinical communication framework. As of 2026-08-12, this governs every emotionally-open touchpoint in the app — onboarding-chat and ask-unflump both run the same shared classification and safety-boundary logic (`app/lib/safety-classification.ts`), not two independently-drifting copies of it. Any future touchpoint should use the same shared module rather than reimplementing this from scratch.*
 
+> **Engineering companion:** this document is the clinical *what and why*. For the *how* — the deterministic state machine that implements it (the escalation gate, the tier-specific card debounce, the `acuteExplicitIntent` flag and its failure-mode analysis, and the 23-scenario regression table) — see [`SAFETY_ARCHITECTURE.md`](./SAFETY_ARCHITECTURE.md).
+
 ## Why MI, and how it grounds what's already in the spec
 MI is a person-centered communication approach, often summarized as PACE — Partnership, Acceptance, Compassion, Evocation — developed for exactly this register: helping someone explore where they are, without judgment, in a way that lets their own motivation surface rather than imposing direction from outside. It is not new to this document; it's the clinical foundation that several already-locked spec principles were independently, correctly reaching toward:
 
