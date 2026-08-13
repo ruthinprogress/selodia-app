@@ -72,3 +72,35 @@ export function proteinTargetGrams(
   if (weightKg != null && weightKg > 0) return Math.round(weightKg * 2.2);
   return null;
 }
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+// Deterministic unit normalization (decision A): the model extracts raw
+// components exactly as expressed; these convert to cm/kg in code, never the
+// model. Result rounded to 0.1 (ample for a BMR/protein estimate) so it's stable
+// and echo-friendly. Null when nothing usable was given.
+export function normalizeHeight(input: {
+  cm?: number | null;
+  feet?: number | null;
+  inches?: number | null;
+}): number | null {
+  if (input.cm != null && input.cm > 0) return round1(input.cm);
+  const feet = input.feet ?? 0;
+  const inches = input.inches ?? 0;
+  if (feet > 0 || inches > 0) return round1(feet * 30.48 + inches * 2.54);
+  return null;
+}
+
+export function normalizeWeight(input: {
+  kg?: number | null;
+  lb?: number | null;
+  stone?: number | null;
+  stoneLb?: number | null;
+}): number | null {
+  if (input.kg != null && input.kg > 0) return round1(input.kg);
+  if (input.lb != null && input.lb > 0) return round1(input.lb * 0.453592);
+  const stone = input.stone ?? 0;
+  const stoneLb = input.stoneLb ?? 0;
+  if (stone > 0 || stoneLb > 0) return round1(stone * 6.35029 + stoneLb * 0.453592);
+  return null;
+}
