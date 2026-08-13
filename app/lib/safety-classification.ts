@@ -77,6 +77,11 @@ export function buildClassifyTool<T extends string>(
           description:
             'True only when this reply is actively choosing to gently return to an earlier distress disclosure the person just deflected from - see the deflection handling rule',
         },
+        acuteExplicitIntent: {
+          type: 'boolean',
+          description:
+            "Set true ONLY when classification is acute_crisis AND the person's CURRENT message states self-harm or suicidal intent explicitly and unambiguously - a stated plan, a direct 'I want to die', 'I'm going to end it tonight' - such that asking a milder clarifying question would under-respond to what was plainly said. Leave false for passive, hedged, or ambiguous expressions ('I feel like giving up', 'I don't want to go on', 'what's the point'), where a gentle direct screening question is the right next step.",
+        },
         ...extraProperties,
       },
       required: ['classification', 'reply', ...extraRequired],
@@ -95,6 +100,10 @@ export const SAFETY_PROMPT_BLOCK = `SAFETY BOUNDARY - this is the most important
 - Eating-related distress (disordered relationship with food, restriction, guilt-driven patterns, going extended periods without eating out of fear rather than choice) gets a care-first response. Do not pivot back to goals or ordinary tasks. Stay warmly present for as long as they want to keep talking.
 - Grief-related distress (bereavement, the loss of a person or relationship, grief that's surfacing through how someone talks about their body, eating, or activity) gets the same care-first response as eating-related distress - presence over problem-solving, no pivot back to ordinary tasks.
 - Acute crisis (explicit self-harm/suicidal ideation, acute risk) gets an immediate care-first response.
+
+PASSIVE VS EXPLICIT INTENT - distinguish carefully within the crisis range. Passive, hedged, or ambiguous phrasing ("I feel like giving up," "I don't want to go on," "what's the point," "I can't do this anymore") does not, on its own, establish suicidal intent - it may be exhaustion, defeat, or grief, and it needs the ONE gentle clarifying question first (classify ambiguous_distress), not a resource. Reserve acute_crisis for genuine self-harm or suicidal ideation. Whenever you classify acute_crisis, also judge whether the CURRENT message states that intent explicitly and unambiguously (a plan, a stated intention, a plain "I want to die"): if so, set acuteExplicitIntent true - the person has already said it plainly and a milder screening question would under-respond, so respond with immediate care. If the acute_crisis read rests on passive or hedged wording, leave acuteExplicitIntent false - a gentle direct check is the right next step, not a resource.
+
+CLASSIFY THE CURRENT MESSAGE, NOT THE CONVERSATION'S MOOD - your classification, and therefore any resource card, must reflect what the person's MOST RECENT message actually expresses. The earlier conversation is context for your tone and continuity - use it to stay warm, to remember what they've shared, and to interpret a short reply that answers your own previous question - but it must NEVER, on its own, drive a distress-tier classification or a resource card. When the current message is neutral, logistical, a topic change, or a step-back or decline ("no I'm fine," "lol I just meant logging," "can we move on"), classify it as what it plainly is (ordinary_discouragement, or the route's own non-distress category), even if earlier turns were heavy. Let the history shape HOW gently you respond; never let it, by itself, decide WHICH tier you assign or whether a card appears.
 
 DEFLECTION HANDLING - if the person deflects or redirects away from a genuine eating-related-distress, grief-related-distress, or acute-crisis disclosure, it is correct to gently return to it ONCE rather than accepting the first redirect at face value. But if they then explicitly decline a second time (a clear "I'm fine," another redirect), respect that: follow their new topic, leave the door open with a single light touch ("I'm here if that changes"), and do not raise the original disclosure again in the same way. Set revisitingPriorDisclosure to true only on the turn where you are actively choosing to return to an earlier disclosure the person just deflected from - not on an ordinary continuation of a topic they're already engaged with.
 
@@ -141,6 +150,7 @@ export type ClassifyResult = {
   resourceCardTitle?: string;
   resourceCardDescription?: string;
   revisitingPriorDisclosure?: boolean;
+  acuteExplicitIntent?: boolean;
 };
 
 export type SafetyState = {
@@ -172,53 +182,79 @@ export function applySafetyStateMachine(result: ClassifyResult, state: SafetySta
   let replyText = result.reply;
   let resourceCard: SafetyOutcome['resourceCard'] = null;
   let nextClassification: string = result.classification;
-  // Newly-triggered only: a repeated classification from the immediately
-  // preceding turn is the same ongoing moment, not a new one.
-  const isNewlyTriggered = result.classification !== previousClassification;
+
+  // DEBOUNCE - a resource card is "newly triggered" only when we ENTER
+  // distress-support, never when the tier merely re-labels within an ongoing
+  // distress thread. Judging a card-bearing tier "new" purely because it
+  // differs from the immediately preceding tier (the old rule) let a mid-
+  // conversation switch - e.g. acute_crisis -> grief while the person is
+  // actively declining - spawn a spurious card. Two forms:
+  //  - eating/grief: card only when the previous turn was NOT already in
+  //    distress-support (a mere tier-switch does not re-card). ambiguous_distress
+  //    is deliberately NOT a card-bearing tier, so a genuine resolution out of
+  //    the clarifying ladder (ambiguous -> eating/grief) still counts as new.
+  //  - acute_crisis: safety overrides the tier-switch debounce. An explicit
+  //    crisis must surface its card even if an earlier eating/grief card already
+  //    showed, so it is suppressed ONLY when the previous turn was itself already
+  //    acute_crisis (an ongoing acute conversation), never merely because some
+  //    other card tier preceded it. This is why acute has its own rule rather
+  //    than sharing enteringDistressSupport.
+  const CARD_TIERS = ['eating_related_distress', 'grief_related_distress', 'acute_crisis'];
+  const previousWasInDistressSupport =
+    previousClassification !== null && CARD_TIERS.includes(previousClassification);
+  const enteringDistressSupport = !previousWasInDistressSupport;
+  const acuteNewlyTriggered = previousClassification !== 'acute_crisis';
 
   // The deterministic direct question (C-SSRS Q1) is the single gate before
-  // any acute_crisis card. On the turn immediately after the gentle
-  // clarifying question, we are still in the clarifying stage - not at
-  // genuine resolution - so no card may attach yet. If the model tries to
-  // jump straight to acute_crisis here (often while phrasing its own reply
-  // as a probing question), that is premature: force the deterministic
-  // direct question with no card, and override the reply so the prose (a
-  // question) and the classification can never contradict each other.
-  // Resolution and any card happen on the FOLLOWING turn, once the direct
-  // question is actually answered. This routes ONLY through the suicide
-  // screen: eating- and grief-related distress are deliberately excluded,
-  // since a clear disclosure of either after the gentle question is a
-  // genuine resolution that keeps its own (Beat/Cruse) card.
+  // any acute_crisis card, regardless of prior escalation_step - EXCEPT when
+  // the current message is already an explicit, unambiguous statement of
+  // intent. The screen's job is resolving genuine ambiguity, not re-confirming
+  // something stated plainly; explicit intent (acuteExplicitIntent) therefore
+  // skips the screen and resolves straight to acute_crisis with its card. For
+  // passive/ambiguous acute language, and for the gentle->direct rung of the
+  // ambiguous ladder, we are still screening: force the deterministic question,
+  // attach no card, and override the reply so a probing question can never
+  // co-occur with a card. Resolution and any card then happen on the FOLLOWING
+  // turn, once the question is answered. The previousClassification !==
+  // 'acute_crisis' guard stops an already-resolved, ongoing acute conversation
+  // from bouncing back into the screening question turn after turn. Eating- and
+  // grief-related distress are never gated - a clear disclosure of either is a
+  // genuine resolution that keeps its own (Beat/Cruse) card and must never be
+  // routed through a suicidal-ideation screen.
+  const acuteExplicit =
+    result.classification === 'acute_crisis' && result.acuteExplicitIntent === true;
   const forceDirectQuestion =
-    previousEscalationStep === 'gentle_asked' &&
-    (result.classification === 'ambiguous_distress' || result.classification === 'acute_crisis');
+    previousEscalationStep !== 'direct_asked' &&
+    previousClassification !== 'acute_crisis' &&
+    ((result.classification === 'acute_crisis' && !acuteExplicit) ||
+      (result.classification === 'ambiguous_distress' && previousEscalationStep === 'gentle_asked'));
 
   if (forceDirectQuestion) {
     nextEscalationStep = 'direct_asked';
     replyText = DIRECT_ESCALATION_QUESTION;
     // Persist as still-clarifying, not resolved. Recording the model's
     // acute_crisis here would make the genuine resolution on the next turn
-    // look like a repeat (isNewlyTriggered false) and suppress its card.
-    // Treating it as ambiguous_distress mirrors the normal gentle->direct
-    // rung and keeps the ladder consistent.
+    // look like an ongoing acute conversation (acuteNewlyTriggered false) and
+    // suppress its card. Treating it as ambiguous_distress mirrors the normal
+    // gentle->direct rung and keeps the ladder consistent.
     nextClassification = 'ambiguous_distress';
   } else if (result.classification === 'ambiguous_distress') {
     nextEscalationStep = 'gentle_asked';
-  } else if (result.classification === 'eating_related_distress' && isNewlyTriggered) {
+  } else if (result.classification === 'eating_related_distress' && enteringDistressSupport) {
     resourceCard = {
       title: result.resourceCardTitle ?? RESOURCES.Beat.name,
       description: result.resourceCardDescription ?? '',
       org: RESOURCES.Beat.name,
       url: RESOURCES.Beat.url,
     };
-  } else if (result.classification === 'grief_related_distress' && isNewlyTriggered) {
+  } else if (result.classification === 'grief_related_distress' && enteringDistressSupport) {
     resourceCard = {
       title: result.resourceCardTitle ?? RESOURCES.Cruse.name,
       description: result.resourceCardDescription ?? '',
       org: RESOURCES.Cruse.name,
       url: RESOURCES.Cruse.url,
     };
-  } else if (result.classification === 'acute_crisis' && isNewlyTriggered) {
+  } else if (result.classification === 'acute_crisis' && acuteNewlyTriggered) {
     resourceCard = {
       title: result.resourceCardTitle ?? RESOURCES.Shout.name,
       description: result.resourceCardDescription ?? '',
