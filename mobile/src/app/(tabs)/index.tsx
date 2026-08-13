@@ -67,16 +67,6 @@ export default function ChatScreen() {
     return response.json();
   }
 
-  async function logChatTurns(turns: { role: 'user' | 'assistant'; content: string }[]) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase
-      .from('chat_messages')
-      .insert(turns.map((t) => ({ user_id: user.id, role: t.role, content: t.content, source: 'chat' })));
-  }
-
   async function handleSend() {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
@@ -85,36 +75,20 @@ export default function ChatScreen() {
     setSending(true);
 
     try {
-      const { intent } = await authedFetch('/api/classify-message', { message: trimmed });
-
-      if (intent === 'food') {
-        const entry = await authedFetch('/api/parse-food', { foodText: trimmed });
-        const reply = `Logged: ${entry.meal_label} — ${entry.kcal} kcal, ${entry.protein_g}g protein, ${entry.carbs_g}g carbs, ${entry.fat_g}g fat.`;
-        await logChatTurns([
-          { role: 'user', content: trimmed },
-          { role: 'assistant', content: reply },
-        ]);
-        setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-      } else if (intent === 'activity') {
-        const { entries } = await authedFetch('/api/parse-activity', { activityText: trimmed });
-        const summary = (entries || [])
-          .map((e: any) => `${e.activity_type} — ${e.duration_min} min, ${e.kcal_burned} kcal burned`)
-          .join('; ');
-        const reply = `Logged: ${summary}.`;
-        await logChatTurns([
-          { role: 'user', content: trimmed },
-          { role: 'assistant', content: reply },
-        ]);
-        setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-      } else {
-        const { reply, resourceCard, healthGuidanceApplied } = await authedFetch('/api/ask-unflump', {
-          message: trimmed,
-        });
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied },
-        ]);
-      }
+      // Every chat message goes through the single safety-first handler
+      // (ask-unflump / B-merged-single). It classifies safety AND log intent,
+      // stores any food/activity silently, and returns the safety-governed
+      // reply - so a message can never be routed straight to a bare "Logged:"
+      // and bypass the safety classifier the way the old classify-message
+      // router allowed. Photo/screenshot logging still uses parse-food /
+      // parse-activity directly, outside this text path.
+      const { reply, resourceCard, healthGuidanceApplied } = await authedFetch('/api/ask-unflump', {
+        message: trimmed,
+      });
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied },
+      ]);
     } catch (err) {
       console.error('Chat send failed:', err instanceof Error ? err.message : err);
       const content = err instanceof Error && err.message === 'Not signed in' ? NOT_SIGNED_IN_ERROR : FALLBACK_ERROR;
