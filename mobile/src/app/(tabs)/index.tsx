@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChatBubble } from '@/components/chat-bubble';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ResourceCard } from '@/components/resource-card';
+import { SaveConfirmation } from '@/components/save-confirmation';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -28,6 +29,7 @@ export default function ChatScreen() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -82,13 +84,16 @@ export default function ChatScreen() {
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied } = await authedFetch('/api/ask-unflump', {
+      const { reply, resourceCard, healthGuidanceApplied, saved } = await authedFetch('/api/ask-unflump', {
         message: trimmed,
       });
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied },
       ]);
+      if (saved?.summary) {
+        setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
+      }
     } catch (err) {
       console.error('Chat send failed:', err instanceof Error ? err.message : err);
       const content = err instanceof Error && err.message === 'Not signed in' ? NOT_SIGNED_IN_ERROR : FALLBACK_ERROR;
@@ -141,6 +146,8 @@ export default function ChatScreen() {
             </ThemedView>
           </Pressable>
         </ThemedView>
+
+        <SaveConfirmation summary={saveToast?.summary ?? null} nonce={saveToast?.nonce ?? 0} />
       </SafeAreaView>
     </ThemedView>
   );

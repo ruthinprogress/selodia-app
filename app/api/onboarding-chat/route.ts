@@ -11,7 +11,7 @@ import {
 } from '../../lib/safety-classification';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
-import { buildLoggedReply } from '../../lib/chat-reply';
+import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -38,7 +38,7 @@ CONVERSATION SCOPE - this conversation is the goals step: helping the person arr
 
 STAY IN-WORLD - hard rule, no exceptions: you are Unflump, a finished companion in this person's world, never a product under construction. NEVER reference your own development, build status, roadmap, versions, or that anything is "built," "ready," "yet," "coming," "not available," or otherwise incomplete - not to explain why you won't do something, not in passing, not in any wording. When someone asks what happens next, or asks for specifics this conversation isn't the place for (daily targets, exact numbers, a training plan, TDEE), never say or imply that anything isn't built or available yet. Answer in-world and honestly, from the product's real philosophy: the specifics grow out of the goal, in their own order, and you don't rush to numbers before you understand where someone is starting from. For example: "The targets and the numbers come out of this - I wouldn't want to hand you a figure before I really understand your starting point. For now I've got a clear picture of where you want to go." Warmly let them know you'll pick things up with them from here as they're ready, as part of their journey - without naming a specific next step as a promise or a timeline.
 
-LOGGING - if the person mentions something they ate or drank, or physical activity they did, set logIntent to 'food' or 'activity' (else 'none'). The app quietly saves it, separately from your reply, so nothing they share is lost - even mid goal-setting. Do not produce a "Logged: ..." line yourself and do not derail the goals conversation to talk about the log; just continue naturally. When you classify a genuine-distress tier for a message that also mentions food or activity, give the complete care-first response only and do not reference the logging at all.
+LOGGING - if the person mentions something they ate or drank, or physical activity they did, set logIntent to 'food' or 'activity' (else 'none'). The app saves it and shows a brief save confirmation itself, separately from your reply, so nothing they share is lost - even mid goal-setting. NEVER write a "Logged: ..." line or macro breakdown yourself, and do not derail the goals conversation to talk about the save; just continue naturally. When you classify a genuine-distress tier for a message that also mentions food or activity, give the complete care-first response only and do not reference the saving at all.
 
 ${SAFETY_PROMPT_BLOCK}`;
 
@@ -176,37 +176,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Silent food/activity logging during onboarding, mirroring ask-unflump. A
-  // user can mention food (often a distress disclosure) mid goal-setting; we
-  // capture it as data and let the safety classification govern the reply via
-  // buildLoggedReply. For the goal classifications (clear_goal/ambiguous_goal,
-  // never 'neutral') the matrix logs silently with no "Logged:" bubble, keeping
-  // the goals conversation on track; distress+food still gets care-first + ack.
-  let finalReply = replyText;
+  // Silent food/activity logging, mirroring ask-unflump. A user can mention food
+  // (often a distress disclosure) mid goal-setting; we save it and let the reply
+  // stay purely conversational/care-first. The save is confirmed by the ephemeral
+  // client toast (the `saved` field), never in the reply text. On failure `saved`
+  // stays null.
+  let saved: { kind: 'food' | 'activity'; summary: string } | null = null;
   if (result.logIntent === 'food' || result.logIntent === 'activity') {
     try {
-      let loggedLabel: string | null = null;
-      let loggedLine: string | null = null;
       if (result.logIntent === 'food') {
         const entry = await logFoodFromText(supabase, user.id, message);
-        loggedLabel = entry.meal_label;
-        loggedLine = `Logged: ${entry.meal_label} — ${entry.kcal} kcal, ${entry.protein_g}g protein, ${entry.carbs_g}g carbs, ${entry.fat_g}g fat.`;
+        saved = { kind: 'food', summary: foodSaveSummary(entry) };
       } else {
         const entries = await logActivityFromText(supabase, user.id, message);
-        if (entries[0]) {
-          loggedLabel = entries[0].activity_type;
-          loggedLine = `Logged: ${entries
-            .map((e) => `${e.activity_type} — ${e.duration_min} min, ${e.kcal_burned} kcal burned`)
-            .join('; ')}.`;
-        }
+        if (entries[0]) saved = { kind: 'activity', summary: activitySaveSummary(entries) };
       }
-      finalReply = buildLoggedReply({
-        replyText,
-        nextClassification,
-        nextEscalationStep,
-        loggedLabel,
-        loggedLine,
-      });
     } catch (err) {
       console.log('ONBOARDING-CHAT SILENT LOG FAILED:', err instanceof Error ? err.message : err);
     }
@@ -215,7 +199,7 @@ export async function POST(request: NextRequest) {
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
-    content: finalReply,
+    content: replyText,
     source: 'onboarding',
     classification: nextClassification,
     escalation_step: nextEscalationStep,
@@ -226,8 +210,9 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    reply: finalReply,
+    reply: replyText,
     classification: nextClassification,
     resourceCard,
+    saved,
   });
 }

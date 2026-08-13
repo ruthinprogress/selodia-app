@@ -12,7 +12,7 @@ import {
 import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
-import { buildLoggedReply } from '../../lib/chat-reply';
+import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -156,7 +156,7 @@ ${measurementSummary}
 ${healthContextBlock ? `\n${healthContextBlock}\n` : ''}
 Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, or 'none' otherwise. This is INDEPENDENT of the safety classification - a message can be a genuine distress disclosure AND a food/activity log at the same time; set logIntent to whatever is loggable regardless of the emotional content. The app stores the data and adds any logging confirmation itself, separately from your reply. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, your reply must be the complete care-first response to the emotional content ONLY - do not mention, reference, acknowledge, or lead with anything about the logging, and never write a "Logged: ..." style line yourself.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${SAFETY_PROMPT_BLOCK}`;
 
@@ -224,37 +224,22 @@ ${SAFETY_PROMPT_BLOCK}`;
       previousRevisitCount,
     });
 
-  // Logging is a silent data side-effect, independent of the safety-governed
-  // reply (Part Twelve, build step 2). We always store the data; the safety
-  // classification alone governs what the reply says (buildLoggedReply).
-  let finalReply = replyText;
+  // Silent food/activity logging (Part Twelve). The reply is purely the
+  // safety/conversational response; the save is confirmed by an ephemeral
+  // visual toast in the client (the `saved` field), never in the reply text.
+  // On storage failure `saved` stays null - we never signal a save that didn't
+  // happen.
+  let saved: { kind: 'food' | 'activity'; summary: string } | null = null;
   if (result.logIntent === 'food' || result.logIntent === 'activity') {
     try {
-      let loggedLabel: string | null = null;
-      let loggedLine: string | null = null;
       if (result.logIntent === 'food') {
         const entry = await logFoodFromText(supabase, user.id, message);
-        loggedLabel = entry.meal_label;
-        loggedLine = `Logged: ${entry.meal_label} — ${entry.kcal} kcal, ${entry.protein_g}g protein, ${entry.carbs_g}g carbs, ${entry.fat_g}g fat.`;
+        saved = { kind: 'food', summary: foodSaveSummary(entry) };
       } else {
         const entries = await logActivityFromText(supabase, user.id, message);
-        if (entries[0]) {
-          loggedLabel = entries[0].activity_type;
-          loggedLine = `Logged: ${entries
-            .map((e) => `${e.activity_type} — ${e.duration_min} min, ${e.kcal_burned} kcal burned`)
-            .join('; ')}.`;
-        }
+        if (entries[0]) saved = { kind: 'activity', summary: activitySaveSummary(entries) };
       }
-      finalReply = buildLoggedReply({
-        replyText,
-        nextClassification,
-        nextEscalationStep,
-        loggedLabel,
-        loggedLine,
-      });
     } catch (err) {
-      // Storage failed: append nothing, never claim it saved. The safety reply
-      // stands on its own; the error stays server-side, out of the moment.
       console.log('ASK-UNFLUMP SILENT LOG FAILED:', err instanceof Error ? err.message : err);
     }
   }
@@ -281,7 +266,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
-    content: finalReply,
+    content: replyText,
     source: 'chat',
     classification: nextClassification,
     escalation_step: nextEscalationStep,
@@ -297,9 +282,10 @@ ${SAFETY_PROMPT_BLOCK}`;
     hasHealthContext(healthContext) && result.healthGuidanceApplied === true;
 
   return NextResponse.json({
-    reply: finalReply,
+    reply: replyText,
     savedContext,
     resourceCard,
     healthGuidanceApplied,
+    saved,
   });
 }

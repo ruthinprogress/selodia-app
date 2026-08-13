@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
 import { ResourceCard } from '@/components/resource-card';
+import { SaveConfirmation } from '@/components/save-confirmation';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -28,6 +29,7 @@ export default function GoalsScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -68,6 +70,9 @@ export default function GoalsScreen() {
         ...prev,
         { role: 'assistant', content: data.reply, resourceCard: data.resourceCard },
       ]);
+      if (data.saved?.summary) {
+        setSaveToast((prev) => ({ summary: data.saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
+      }
     } catch (err) {
       console.error('Goals chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
@@ -127,6 +132,8 @@ export default function GoalsScreen() {
             </ThemedView>
           </Pressable>
         </ThemedView>
+
+        <SaveConfirmation summary={saveToast?.summary ?? null} nonce={saveToast?.nonce ?? 0} />
       </SafeAreaView>
     </ThemedView>
   );
