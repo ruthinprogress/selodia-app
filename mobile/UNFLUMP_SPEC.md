@@ -134,7 +134,7 @@ unflump.app (primary), unflump.com, unflump.online (defensive), registered via N
 - No real feature screens (Chat, Almanac, Dashboard content) built yet. Everything from Part Five onward describes what still needs to be built, not what already exists.
 - **Known polish item (tracked, not blocking):** the resource card (`resource-card.tsx`, shown for eating-related-distress/acute-crisis moments per `UNFLUMP_LANGUAGE_RULES.md`) doesn't currently read as clearly tappable in the chat UI. Worth revisiting once real visual design work happens, per the cosmetic-can-wait principle — noted 2026-08-12 so it isn't forgotten.
 
-**Not yet built at all:** real authentication (step 5), cycle tracking, the itemized food breakdown, the Almanac, the Daily and Weekly Roundups, push notifications, the Fat Focus/Muscle Focus category model beyond its schema, and everything else described in Parts Five through Nine below.
+**Not yet built at all:** cycle tracking, the itemized food breakdown, the Almanac, the Daily and Weekly Roundups, push notifications, the Fat Focus/Muscle Focus category model beyond its schema, and everything else described in Parts Five through Nine below. (Real authentication, step 5, is done — see the auth bullet above; the remaining auth-side gap is the session-restoration listener, step 6.)
 
 ---
 
