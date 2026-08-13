@@ -62,12 +62,11 @@ export default function HealthContextScreen() {
     });
   }, []);
 
-  async function finishOnboarding() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) await advanceOnboardingStep(supabase, user.id, 'complete');
-    router.replace('/');
+  // Health context sits mid-flow now (Part Seven order: … → health_context →
+  // technical → nutrition → activity → complete). Both exits move on to the
+  // technical step; the onboarding finish lives at the activity step's wrap.
+  async function goToTechnical() {
+    router.push('/onboarding/technical');
   }
 
   // Skip writes nothing - no health context stored, no acknowledgment needed,
@@ -75,7 +74,7 @@ export default function HealthContextScreen() {
   async function handleSkip() {
     if (saving) return;
     setSaving(true);
-    await finishOnboarding();
+    await goToTechnical();
   }
 
   async function handleSave() {
@@ -85,7 +84,7 @@ export default function HealthContextScreen() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      await finishOnboarding();
+      await goToTechnical();
       return;
     }
     const now = new Date().toISOString();
@@ -107,7 +106,7 @@ export default function HealthContextScreen() {
       acknowledged_at: now,
       updated_at: now,
     });
-    await finishOnboarding();
+    await goToTechnical();
   }
 
   return (
@@ -115,7 +114,7 @@ export default function HealthContextScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <ChatBubble role="assistant">
-            One optional last thing. If you know any health markers — cholesterol, blood sugar, iron,
+            One more optional thing. If you know any health markers — cholesterol, blood sugar, iron,
             thyroid — or have a diagnosed condition, I can keep them in mind so my food suggestions
             protect what matters for you, rather than treating every food as interchangeable.
           </ChatBubble>
@@ -192,7 +191,7 @@ export default function HealthContextScreen() {
             <>
               <ActionButton label="Skip" onPress={handleSkip} disabled={saving} muted />
               <ActionButton
-                label={saving ? 'Saving…' : 'Save & finish'}
+                label={saving ? 'Saving…' : 'Save & continue'}
                 onPress={handleSave}
                 disabled={saving}
               />

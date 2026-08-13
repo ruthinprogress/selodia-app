@@ -278,6 +278,12 @@ export async function POST(request: NextRequest) {
   // here via reply-override, never by the model. Safety always wins - a distress
   // turn keeps the care-first reply and skips the target logic entirely.
   let finalReply = replyText;
+  // Signals to the client that this step's target turn has landed, so the screen
+  // can reveal Continue precisely then rather than after any reply. Keyed on the
+  // deterministic confirmation event (measurements/activity confirmed), which is
+  // exactly when the code-built statement is emitted. Stays false on distress
+  // turns (guarded below), so a care-first turn never reads as "step done".
+  let phaseComplete = false;
   const isDistressTurn =
     (DISTRESS_TIERS as readonly string[]).includes(nextClassification) || nextEscalationStep !== null;
 
@@ -311,7 +317,10 @@ export async function POST(request: NextRequest) {
       const loggedToday = Math.round(
         (todayFood ?? []).reduce((s: number, f: { protein_g: number | null }) => s + (f.protein_g ?? 0), 0)
       );
-      if (target != null) finalReply = formatProteinStatement(target, loggedToday);
+      if (target != null) {
+        finalReply = formatProteinStatement(target, loggedToday);
+        phaseComplete = true;
+      }
     } else if (h != null || w != null) {
       finalReply = formatMeasurementEcho(h, w);
     }
@@ -325,6 +334,10 @@ export async function POST(request: NextRequest) {
     }
     const level = result.activityLevel;
     if (result.activityConfirmed && level) {
+      // Confirmation is the completion event for this step. The TDEE statement is
+      // emitted below when it can be computed; when BMR is uncomputable (e.g. sex
+      // undisclosed) the step still completes gracefully rather than stranding.
+      phaseComplete = true;
       await supabase.from('user_profile').upsert({ user_id: user.id, activity_level: level });
       const { data: prof } = await supabase
         .from('user_profile')
@@ -368,5 +381,6 @@ export async function POST(request: NextRequest) {
     classification: nextClassification,
     resourceCard,
     saved,
+    phaseComplete,
   });
 }
