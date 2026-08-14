@@ -26,7 +26,7 @@ export default function DashboardScreen() {
   const [protein, setProtein] = useState<ProteinTarget | null>(null);
   const [proteinNote, setProteinNote] = useState<string | null>(null);
   const [bmrLine, setBmrLine] = useState<string | null>(null);
-  const [cycleNote, setCycleNote] = useState<string | null>(null);
+  const [readingNote, setReadingNote] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -67,9 +67,9 @@ export default function DashboardScreen() {
         }
       }
 
-      // Cycle-context interpretation of the latest reading (Part Nine layer,
-      // cycle slice). Only produces a note during the water-retention window;
-      // stays context-only under three readings. RLS scopes the cycle read.
+      // Interpretation of the latest reading (Part Nine layer): the trend engine
+      // separates a real multi-reading trend from single-day noise, with cycle
+      // phase as the first noise flagger. RLS scopes the cycle read.
       if (latest) {
         const { data: lastPeriod } = await supabase
           .from('cycle_events')
@@ -81,10 +81,9 @@ export default function DashboardScreen() {
         const interp = interpretLatestReading({
           latest: { weightKg: latest.weight_kg, measuredAt: latest.measured_at },
           priorWeights: rows.slice(1).map((r) => r.weight_kg).filter((w): w is number => w != null),
-          readingCount: rows.length,
           lastPeriodStart: lastPeriod?.event_date ?? null,
         });
-        setCycleNote(interp?.message ?? null);
+        setReadingNote(interp?.message ?? null);
       }
 
       setLoading(false);
@@ -132,10 +131,10 @@ export default function DashboardScreen() {
             )}
           </ThemedView>
 
-          {cycleNote && (
+          {readingNote && (
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Cycle context</ThemedText>
-              <ThemedText type="small">{cycleNote}</ThemedText>
+              <ThemedText type="smallBold">Your latest reading</ThemedText>
+              <ThemedText type="small">{readingNote}</ThemedText>
             </ThemedView>
           )}
         </ThemedView>

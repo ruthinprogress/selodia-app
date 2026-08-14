@@ -1,59 +1,124 @@
-import { computeCycleDayAndPhase, isWaterRetentionPhase, type CyclePhase } from '@/lib/cycle';
+import { computeCycleDayAndPhase, isWaterRetentionPhase } from '@/lib/cycle';
 
-// Body Measurement Interpretation Layer — cycle-phase slice (UNFLUMP_SPEC.md,
-// Part Nine + Part Thirteen). Reads the latest reading through the cycle lens
-// built in step 9, so a flat or raised weight during expected water retention is
-// read as expected, not a plateau. Deliberately narrow for now: the other noise
-// sources (sodium, pump/DOMS, time-of-day) and the cross-source trend engine are
-// later slices of item 19. Honours the sparse-data rule (Part Nine): under three
-// readings there's no reliable comparison, so it stays context-only and never
-// makes a trend claim.
+// Body Measurement Interpretation Layer (UNFLUMP_SPEC.md, Part Nine). This is the
+// composition backbone: a set of noise flaggers — each spotting a reason a single
+// reading might be inflated — plus a trend engine that separates a single-day
+// fluctuation from a genuine multi-reading trend (the Reliability Framework's
+// "actual change: weeks-long trend, not single readings"). Cycle phase is the
+// first flagger; pump (activity recency) and time-of-day are later slices that
+// plug into the same pipeline. Sodium/water retention is deferred until sodium is
+// actually captured. Honours the sparse-data rule: under three readings there is
+// no reliable comparison, so no direction or trend is ever claimed.
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
-// A drop smaller than this reads as effectively flat rather than a real decrease.
+// Moves smaller than this read as flat rather than a real step — both for the
+// single-day delta and for counting a direction toward a trend.
 const FLAT_TOLERANCE_KG = 0.1;
+
+export type NoiseSource = 'cycle';
+type NoiseFlag = { source: NoiseSource; reason: string };
+export type TrendVerdict = 'insufficient' | 'single_day' | 'trend_up' | 'trend_down';
 
 export type ReadingInterpretation = {
   message: string;
-  phase: CyclePhase;
-  cycleDay: number;
+  trend: TrendVerdict;
+  sources: NoiseSource[];
 };
 
+// --- Trend engine ------------------------------------------------------------
+// A genuine trend is 3+ weight readings moving consistently one way: the two most
+// recent consecutive steps agree in direction, beyond the flat tolerance.
+// Anything else with 3+ readings is a single-day fluctuation; under three there is
+// no reliable comparison (Part Nine).
+export function assessTrend(weightsNewestFirst: number[]): TrendVerdict {
+  const w = weightsNewestFirst.filter((x) => x != null);
+  if (w.length < 3) return 'insufficient';
+  const step = (a: number, b: number): 'up' | 'down' | 'flat' => {
+    const d = a - b;
+    return d > FLAT_TOLERANCE_KG ? 'up' : d < -FLAT_TOLERANCE_KG ? 'down' : 'flat';
+  };
+  const latestStep = step(w[0], w[1]);
+  if (latestStep === 'flat') return 'single_day';
+  const priorStep = step(w[1], w[2]);
+  if (priorStep === latestStep) return latestStep === 'up' ? 'trend_up' : 'trend_down';
+  return 'single_day';
+}
+
+// --- Noise flaggers ----------------------------------------------------------
+// Each returns a reason clause (lower-case, sentence-embeddable) or null.
+function cycleFlag(lastPeriodStart: string | null, measuredAt: string): NoiseFlag | null {
+  if (!lastPeriodStart) return null;
+  const info = computeCycleDayAndPhase(lastPeriodStart, measuredAt);
+  if (!info || !isWaterRetentionPhase(info.cycleDay)) return null;
+  const reason =
+    info.cycleDay <= 5
+      ? `you're on your period (cycle day ${info.cycleDay}), when water retention is common`
+      : `you're in your late-luteal phase (cycle day ${info.cycleDay}), when some water retention is expected`;
+  return { source: 'cycle', reason };
+}
+
+function joinReasons(flags: NoiseFlag[]): string {
+  const reasons = flags.map((f) => f.reason);
+  if (reasons.length <= 1) return reasons[0] ?? '';
+  return reasons.slice(0, -1).join('; ') + '; and ' + reasons[reasons.length - 1];
+}
+
+const capitalizeFirst = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+// --- Composer ----------------------------------------------------------------
 export function interpretLatestReading(params: {
   latest: { weightKg: number | null; measuredAt: string };
   priorWeights: number[]; // most-recent-first, excluding the latest reading
-  readingCount: number;
   lastPeriodStart: string | null;
 }): ReadingInterpretation | null {
-  const { latest, priorWeights, readingCount, lastPeriodStart } = params;
-  if (!lastPeriodStart) return null; // cycle tracking not enabled → nothing to say
+  const { latest, priorWeights, lastPeriodStart } = params;
 
-  const info = computeCycleDayAndPhase(lastPeriodStart, latest.measuredAt);
-  if (!info) return null;
-  const { cycleDay, phase } = info;
-  // Only speak during the window where a flat/up reading is likely noise. Outside
-  // it, there's no cycle caveat to offer, so no card (no dead UI).
-  if (!isWaterRetentionPhase(cycleDay)) return null;
+  const flags = [cycleFlag(lastPeriodStart, latest.measuredAt)].filter(
+    (f): f is NoiseFlag => f != null
+  );
+  const sources = flags.map((f) => f.source);
+  const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);
+  const trend = assessTrend(weights);
 
-  const onPeriod = cycleDay <= 5;
-
-  // Context-only (Part Nine): under three readings, no comparison is reliable, so
-  // give phase context and make no claim about direction or trend.
-  const prior = priorWeights.find((w) => w != null);
-  if (readingCount < 3 || latest.weightKg == null || prior == null) {
-    const message = onPeriod
-      ? `You're on your period right now (cycle day ${cycleDay}), when bloating and water retention are common — a flat or higher reading around now is often unreliable rather than a real change.`
-      : `You're in your late-luteal phase (cycle day ${cycleDay}) — the week or so before your period, when some water retention is expected. If the scale looks flat or up around now, that's usually water, not fat.`;
-    return { message, phase, cycleDay };
+  // A real trend is the actionable signal, and it outranks the noise flags: a run
+  // of readings in one direction is more than any single-day inflator.
+  if (trend === 'trend_down') {
+    return {
+      message:
+        "Weight's trending down across your last few readings — that's real change settling in, not just a blip.",
+      trend,
+      sources,
+    };
+  }
+  if (trend === 'trend_up') {
+    let message =
+      "Weight's edged up across your last few readings — that's more than a single-day blip, so it's worth a calm look rather than a shrug or a spiral.";
+    if (flags.length > 0) {
+      message += ` (${capitalizeFirst(joinReasons(flags))}, which can hold a little water — but a run of readings like this usually runs deeper than that.)`;
+    }
+    return { message, trend, sources };
   }
 
-  // Three or more readings: a single-day reassurance, and only when the reading
-  // is flat or up. A genuine drop needs no water caveat.
+  // Not a real trend. Under three readings there's no reliable comparison, so we
+  // only offer phase context when a noise flag is present, never a direction claim.
+  const prior = priorWeights.find((w) => w != null);
+  if (trend === 'insufficient' || latest.weightKg == null || prior == null) {
+    if (flags.length === 0) return null;
+    return {
+      message: `${capitalizeFirst(joinReasons(flags))}. If the scale looks flat or up around now, that's usually water rather than a real change.`,
+      trend,
+      sources,
+    };
+  }
+
+  // Single-day fluctuation with a usable weight delta. A genuine drop needs no
+  // caveat; a flat or up reading gets reassurance (with the noise reasons if any).
   const delta = round1(latest.weightKg - prior);
   if (delta < -FLAT_TOLERANCE_KG) return null;
   const change = delta > 0 ? `up ${delta} kg` : 'flat';
-  const message = onPeriod
-    ? `Weight's ${change} since your last reading — but you're on your period (cycle day ${cycleDay}), when water retention is common. That's very likely water, not a setback.`
-    : `Weight's ${change} since your last reading — but you're in your late-luteal phase (cycle day ${cycleDay}), when some water retention is expected. That's within the normal water range around now, not a setback.`;
-  return { message, phase, cycleDay };
+  const message =
+    flags.length > 0
+      ? `Weight's ${change} since your last reading — but ${joinReasons(flags)}. A single reading like this is very likely noise, not a setback.`
+      : `Weight's ${change} since your last reading, but that's a single day, not a trend — nothing to act on.`;
+  return { message, trend, sources };
 }
