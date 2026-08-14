@@ -74,7 +74,27 @@ const TECHNICAL_ROLE = `You are Unflump, on the technical-tracking step of onboa
 
 const NUTRITION_ROLE = `You are Unflump, on the nutrition-target step of onboarding (Part Seven, step 10). First check they're happy to work out a protein target now - an explicit yes, never assumed. To do it you need their height and current weight; ask warmly and accept whatever units they give (centimetres or feet/inches; kilograms, pounds, or stone). Extract exactly what they say into the height/weight fields WITHOUT converting - fill only the fields matching their units, and never put in a converted or guessed value. Do NOT state any number, target, or conversion yourself, and do NOT treat their figures as final: the app echoes the interpreted numbers back for them to confirm, and states the target itself once confirmed. Set measurementsConfirmed true ONLY on a turn where they clearly confirm the echoed numbers are right; if they correct one, extract the new value with measurementsConfirmed false.`;
 
-const ACTIVITY_ROLE = `You are Unflump, on the activity step of onboarding (Part Seven, step 11). Ask warmly about a typical week of movement and validate whatever comes back - busy schedules, childcare, and physical jobs all count. From their description, set activityLevel to the best-fitting category: sedentary, light, moderate, active, or very_active. Do NOT state any energy or TDEE number yourself - the app echoes the level back to confirm, and states the estimate itself once confirmed. Set activityConfirmed true ONLY when they confirm the level fits; an adjustment must come with a reason (e.g. "I'm on my feet ten hours a day") - factor a real reason into a revised level, but never accept a bump with no reason. If they mention something they'd like to do but can't currently fit in, put it in deferredActivity and don't try to solve it now.`;
+const ACTIVITY_ROLE = `You are Unflump, on the activity step of onboarding (Part Seven, step 11). Open by asking warmly about a typical week of movement, and validate whatever comes back - busy schedules, childcare, physical jobs, and "honestly, not much" all count equally, with no judgement.
+
+THE HEART OF THIS STEP IS A GUIDED DISCOVERY, NOT A DATA GRAB. Once you have a rough sense of what they currently do, explore their RELATIONSHIP to movement so that any realisation about enjoyment being what sustains it is one THEY arrive at, never one you hand them. This uses Motivational Interviewing's evocation, and it has one unbreakable rule: NEVER state the insight or the research behind it - no "studies show...", no "people stick with movement they enjoy", no asserting that enjoyment helps consistency, not once, not in passing, in any wording. You only ask genuine, open questions and reflect back what you hear; the person joins the dots themselves.
+
+Run it in stages, adapting to their answer:
+1. Ask an open question about how they relate to what they do - e.g. "How do you feel about [their activity] generally - something you look forward to, or more something you push through?" Genuinely open, no right answer implied.
+2. Branch on what they reveal:
+   - Obligation or "should" framing: reflect it warmly and without judgement, then evoke - e.g. "When did moving your body last feel genuinely fun, even years ago as a kid?" or "If there were zero obligation attached, is there anything you'd actually want to try?"
+   - Genuine enjoyment already there: don't push or interrogate - a short warm reflection is plenty; move toward stage 3.
+   - Little or no movement: no judgement at all; a gentle version of the same evocative questions.
+3. Invite them to make the connection themselves - e.g. "Do you think that could also work toward what you're aiming for?" Inviting, never asserting the link for them.
+
+Keep it light and human, one or two short warm paragraphs per turn, never an interrogation and never bullets or headers. ESCAPE HATCH: if they are terse, guarded, or clearly not wanting to go deep, do NOT force the evocation - back off gracefully and move to reflecting their activity level. The discovery is offered, never imposed.
+
+If at any point they mention something they would like to do but cannot currently fit in, put it in deferredActivity and don't try to solve it now - just hold it warmly.
+
+MECHANICS (keep these invisible to the person):
+- You may infer activityLevel (sedentary, light, moderate, active, or very_active) from their described week at any point, for the app's own use.
+- Set readyToReflectLevel TRUE only once the guided discovery has run its course - or you have taken the escape hatch - and you are ready to reflect their level back for confirmation. Keep it FALSE during the evocative turns, so reflecting the level never pre-empts the discovery. While it is false, just continue the conversation naturally in your own reply.
+- Do NOT state any energy or TDEE number yourself: once readyToReflectLevel is true the app reflects the level back to confirm, and states the estimate itself once confirmed.
+- Set activityConfirmed true ONLY when they confirm the reflected level fits; an adjustment must come with a reason (e.g. "I'm on my feet ten hours a day") - factor a real reason into a revised level, but never accept a bump with no reason.`;
 
 const PHASE_ROLE: Record<Phase, string> = {
   intro: INTRO_ROLE,
@@ -141,9 +161,14 @@ function phaseExtraProps(phase: Phase): Record<string, unknown> {
         enum: ['sedentary', 'light', 'moderate', 'active', 'very_active'],
         description: 'Best-fitting activity category from their described typical week',
       },
+      readyToReflectLevel: {
+        type: 'boolean',
+        description:
+          'True ONLY once the guided-discovery evocation has run its course (or the escape hatch was taken) and you are ready for the level to be reflected back for confirmation. MUST stay false during the evocative turns so reflecting the level cannot pre-empt the discovery.',
+      },
       activityConfirmed: {
         type: 'boolean',
-        description: 'True ONLY when the person confirms the echoed activity level fits',
+        description: 'True ONLY when the person confirms the reflected activity level fits',
       },
       deferredActivity: {
         type: 'string',
@@ -208,8 +233,26 @@ export async function POST(request: NextRequest) {
     .reverse()
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content as string }));
 
+  // Activity's stage-3 evocation invites the person to connect movement they enjoy
+  // to their own goal. The goal was written to user_context back in the goals step
+  // precisely so it can be referenced later (Context Persistence, Part Seven) - by
+  // now it's likely outside the 40-turn history window, so inject it explicitly.
+  let goalContext = '';
+  if (phase === 'activity_tdee') {
+    const { data: goalRow } = await supabase
+      .from('user_context')
+      .select('content')
+      .eq('user_id', user.id)
+      .eq('category', 'goal')
+      .limit(1)
+      .maybeSingle();
+    if (goalRow?.content) {
+      goalContext = `\n\nThe person's own stated goal, from earlier in onboarding: "${goalRow.content}". When you reach the stage of inviting them to connect movement they enjoy to what they're aiming for, you may refer to this goal specifically rather than generically - but still only invite the connection, never assert it for them.`;
+    }
+  }
+
   const systemPrompt =
-    `${PHASE_ROLE[phase]}\n\n${ONBOARDING_COMMON}\n\n${SAFETY_PROMPT_BLOCK}` +
+    `${PHASE_ROLE[phase]}${goalContext}\n\n${ONBOARDING_COMMON}\n\n${SAFETY_PROMPT_BLOCK}` +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount);
 
   const tool = buildClassifyTool(
@@ -255,6 +298,7 @@ export async function POST(request: NextRequest) {
     weightStoneLb?: number;
     measurementsConfirmed?: boolean;
     activityLevel?: string;
+    readyToReflectLevel?: boolean;
     activityConfirmed?: boolean;
     deferredActivity?: string;
   };
@@ -382,7 +426,11 @@ export async function POST(request: NextRequest) {
       });
       const tdee = calculateTDEE(bmr, level);
       if (tdee != null) finalReply = formatTDEEStatement(tdee);
-    } else if (level) {
+    } else if (result.readyToReflectLevel && level) {
+      // Route-enforced gate (decision B): the level reflection only fires once the
+      // model signals the guided discovery has run its course. Until then, even if
+      // a level has been inferred, the model's own evocative reply passes through
+      // untouched, so the deterministic echo can never short-circuit the MI flow.
       finalReply = formatActivityEcho(level);
     }
   }
