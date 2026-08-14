@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { ResourceCard } from '@/components/resource-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -11,13 +12,26 @@ import { useTheme } from '@/hooks/use-theme';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
 
-const ACKNOWLEDGMENT =
-  "Thanks for sharing that. Let's talk about what you'll need to get started.";
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+  resourceCard?: { title: string; description: string; url: string } | null;
+};
+
+// Part Seven, step 3: the soft, warm open. The greeting is fixed client-side; the
+// real acknowledgement is AI-driven via the 'intro' phase, which — unlike the old
+// scripted shell — runs the shared safety classifier, so an emotionally open
+// answer to "what brings you here" now gets the same care-first branch the goals
+// step has, instead of a canned line.
+const OPENING_LINE = "Hi, I'm Unflump. What brings you here today?";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function IntroScreen() {
   const theme = useTheme();
-  const [answer, setAnswer] = useState('');
-  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -26,52 +40,77 @@ export default function IntroScreen() {
   }, []);
 
   async function handleSend() {
-    const trimmed = answer.trim();
-    if (!trimmed) return;
-    setSubmitted(trimmed);
+    const trimmed = input.trim();
+    if (!trimmed || sending) return;
+    setInput('');
+    setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
+    setSending(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from('chat_messages').insert([
-      { user_id: user.id, role: 'user', content: trimmed, source: 'onboarding' },
-      { user_id: user.id, role: 'assistant', content: ACKNOWLEDGMENT, source: 'onboarding' },
-    ]);
+    try {
+      if (!API_BASE_URL) throw new Error('Backend URL not configured');
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in');
+
+      const response = await fetch(`${API_BASE_URL}/api/onboarding-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ message: trimmed, phase: 'intro' }),
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Request failed (${response.status}): ${body}`);
+      }
+
+      const data = await response.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: data.reply, resourceCard: data.resourceCard },
+      ]);
+    } catch (err) {
+      console.error('Intro chat send failed:', err instanceof Error ? err.message : err);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+      ]);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ChatBubble role="assistant">Hi, I&apos;m Unflump. What brings you here today?</ChatBubble>
+          <ChatBubble role="assistant">{OPENING_LINE}</ChatBubble>
 
-          {submitted && (
-            <>
-              <ChatBubble role="user">{submitted}</ChatBubble>
-              <ChatBubble role="assistant">{ACKNOWLEDGMENT}</ChatBubble>
-            </>
-          )}
+          {messages.map((m, i) => (
+            <ThemedView key={i} style={styles.messageGroup}>
+              <ChatBubble role={m.role}>{m.content}</ChatBubble>
+              {m.resourceCard && (
+                <ResourceCard
+                  title={m.resourceCard.title}
+                  description={m.resourceCard.description}
+                  url={m.resourceCard.url}
+                />
+              )}
+            </ThemedView>
+          ))}
+
+          {sending && <ChatBubble role="assistant">…</ChatBubble>}
         </ScrollView>
 
-        {!submitted ? (
-          <ThemedView style={styles.inputRow}>
-            <TextInput
-              value={answer}
-              onChangeText={setAnswer}
-              placeholder="Type your answer…"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-              multiline
-            />
-            <Pressable onPress={handleSend} style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundSelected" style={styles.sendButton}>
-                <ThemedText type="smallBold">Send</ThemedText>
-              </ThemedView>
-            </Pressable>
-          </ThemedView>
-        ) : (
+        {messages.length > 0 && (
           <Pressable
             onPress={async () => {
-              const { data: { user } } = await supabase.auth.getUser();
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
               if (user) await advanceOnboardingStep(supabase, user.id, 'equipment');
               router.push('/onboarding/equipment');
             }}
@@ -81,6 +120,23 @@ export default function IntroScreen() {
             </ThemedView>
           </Pressable>
         )}
+
+        <ThemedView style={styles.inputRow}>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            placeholder="Type your answer…"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+            multiline
+            editable={!sending}
+          />
+          <Pressable onPress={handleSend} disabled={sending} style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedView type="backgroundSelected" style={styles.sendButton}>
+              <ThemedText type="smallBold">Send</ThemedText>
+            </ThemedView>
+          </Pressable>
+        </ThemedView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -100,6 +156,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.six,
     gap: Spacing.three,
+  },
+  messageGroup: {
+    gap: Spacing.two,
   },
   inputRow: {
     flexDirection: 'row',
@@ -125,7 +184,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     marginHorizontal: Spacing.four,
-    marginBottom: Spacing.four,
+    marginBottom: Spacing.two,
     paddingVertical: Spacing.three,
     borderRadius: Spacing.three,
     alignItems: 'center',
