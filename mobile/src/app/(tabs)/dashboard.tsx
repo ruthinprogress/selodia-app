@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { getBasalMetabolismTrend } from '@/lib/basal-metabolism';
+import { interpretLatestReading } from '@/lib/measurement-interpretation';
 import { calculateProteinTarget, type ProteinTarget } from '@/lib/protein';
 import { supabase } from '@/lib/supabase';
 
@@ -25,6 +26,7 @@ export default function DashboardScreen() {
   const [protein, setProtein] = useState<ProteinTarget | null>(null);
   const [proteinNote, setProteinNote] = useState<string | null>(null);
   const [bmrLine, setBmrLine] = useState<string | null>(null);
+  const [cycleNote, setCycleNote] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -63,6 +65,26 @@ export default function DashboardScreen() {
         } else {
           setBmrLine(`${Math.round(last.bmr)} kcal${muscle}`);
         }
+      }
+
+      // Cycle-context interpretation of the latest reading (Part Nine layer,
+      // cycle slice). Only produces a note during the water-retention window;
+      // stays context-only under three readings. RLS scopes the cycle read.
+      if (latest) {
+        const { data: lastPeriod } = await supabase
+          .from('cycle_events')
+          .select('event_date')
+          .eq('event_type', 'period_start')
+          .order('event_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const interp = interpretLatestReading({
+          latest: { weightKg: latest.weight_kg, measuredAt: latest.measured_at },
+          priorWeights: rows.slice(1).map((r) => r.weight_kg).filter((w): w is number => w != null),
+          readingCount: rows.length,
+          lastPeriodStart: lastPeriod?.event_date ?? null,
+        });
+        setCycleNote(interp?.message ?? null);
       }
 
       setLoading(false);
@@ -109,6 +131,13 @@ export default function DashboardScreen() {
               </ThemedText>
             )}
           </ThemedView>
+
+          {cycleNote && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText type="smallBold">Cycle context</ThemedText>
+              <ThemedText type="small">{cycleNote}</ThemedText>
+            </ThemedView>
+          )}
         </ThemedView>
       </SafeAreaView>
     </ThemedView>

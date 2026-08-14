@@ -31,6 +31,13 @@ export function phaseForCycleDay(cycleDay: number): CyclePhase {
   return 'luteal';
 }
 
+// The water-retention window where a flat or raised reading is more likely noise
+// than real change (Part Nine reliability table): the menstrual days and the
+// late-luteal (premenstrual) stretch. Boundaries are the nominal-28 approximation.
+export function isWaterRetentionPhase(cycleDay: number): boolean {
+  return cycleDay <= 5 || cycleDay >= 22;
+}
+
 // Cycle day (day 1 = the period start day) and phase for `date`, derived from
 // the most recent period start on or before it. The caller supplies that start
 // (e.g. the latest cycle_events.event_date <= date). Null when inputs are

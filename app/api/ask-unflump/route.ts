@@ -10,6 +10,7 @@ import {
   type EscalationStep,
 } from '../../lib/safety-classification';
 import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
+import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
@@ -128,6 +129,18 @@ export async function POST(request: NextRequest) {
   const healthContext = (healthContextRow as HealthContext | null) ?? null;
   const healthContextBlock = buildHealthContextPrompt(healthContext);
 
+  // Cycle phase (Part Thirteen): once a period has been logged, every
+  // conversation loads the current cycle phase so weight/measurement talk is read
+  // in context. Empty when cycle tracking isn't enabled. RLS scopes the read.
+  const { data: lastPeriodRow } = await supabase
+    .from('cycle_events')
+    .select('event_date')
+    .eq('event_type', 'period_start')
+    .order('event_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const cycleContextBlock = buildCycleContextPrompt(lastPeriodRow?.event_date ?? null);
+
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => f.happened_at.slice(0, 10) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
@@ -153,7 +166,7 @@ ${activitySummary}
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
-${healthContextBlock ? `\n${healthContextBlock}\n` : ''}
+${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}
 Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact.
 
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
