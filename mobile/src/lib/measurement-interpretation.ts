@@ -17,8 +17,15 @@ const FLAT_TOLERANCE_KG = 0.1;
 // A reading taken within this long after training carries a post-workout pump
 // (Reliability Framework: "clears within hours").
 const PUMP_WINDOW_HOURS = 4;
+// Time-of-day comparability (Reliability Framework: consistent conditions). Need
+// this many prior readings to know a "usual" time; flag when the latest is more
+// than this many hours off it; and only trust a usual when prior times are
+// concentrated enough (resultant length), so scattered loggers aren't nagged.
+const TOD_MIN_HISTORY = 3;
+const TOD_TOLERANCE_HOURS = 3;
+const TOD_MIN_CONCENTRATION = 0.5;
 
-export type NoiseSource = 'cycle' | 'pump';
+export type NoiseSource = 'cycle' | 'pump' | 'time_of_day';
 type NoiseFlag = { source: NoiseSource; reason: string };
 export type TrendVerdict = 'insufficient' | 'single_day' | 'trend_up' | 'trend_down';
 
@@ -81,6 +88,53 @@ function pumpFlag(activityTimes: string[], measuredAt: string): NoiseFlag | null
   };
 }
 
+// Hours-of-day are circular (23:00 and 01:00 are 2h apart), so the "usual" time
+// and the distance from it are computed on the unit circle. UTC hours are used
+// for both sides: a user's offset is constant, so it cancels out of the
+// difference, and it keeps the maths deterministic.
+const hourToRad = (h: number): number => (h / 24) * 2 * Math.PI;
+
+function circularHourStats(hours: number[]): { mean: number; concentration: number } {
+  const n = hours.length;
+  const s = hours.reduce((a, h) => a + Math.sin(hourToRad(h)), 0) / n;
+  const c = hours.reduce((a, h) => a + Math.cos(hourToRad(h)), 0) / n;
+  let angle = Math.atan2(s, c);
+  if (angle < 0) angle += 2 * Math.PI;
+  return { mean: (angle / (2 * Math.PI)) * 24, concentration: Math.sqrt(s * s + c * c) };
+}
+
+function circularHourDistance(a: number, b: number): number {
+  const d = Math.abs(a - b) % 24;
+  return Math.min(d, 24 - d);
+}
+
+const hourOfDay = (iso: string): number | null => {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d.getUTCHours() + d.getUTCMinutes() / 60;
+};
+
+// Time-of-day variation: a reading taken well off the user's usual time is less
+// comparable, since weight drifts across the day (Reliability Framework). Needs a
+// concentrated history to establish a usual; otherwise there's nothing to be
+// "off" from.
+function timeOfDayFlag(latestMeasuredAt: string, priorMeasuredAts: string[]): NoiseFlag | null {
+  const latestHour = hourOfDay(latestMeasuredAt);
+  if (latestHour == null) return null;
+  const priorHours = priorMeasuredAts
+    .map(hourOfDay)
+    .filter((h): h is number => h != null);
+  if (priorHours.length < TOD_MIN_HISTORY) return null;
+
+  const { mean, concentration } = circularHourStats(priorHours);
+  if (concentration < TOD_MIN_CONCENTRATION) return null; // no clear usual time
+  if (circularHourDistance(latestHour, mean) <= TOD_TOLERANCE_HOURS) return null;
+
+  return {
+    source: 'time_of_day',
+    reason: 'this reading was taken a good bit off your usual time of day, and weight naturally drifts through the day',
+  };
+}
+
 function joinReasons(flags: NoiseFlag[]): string {
   const reasons = flags.map((f) => f.reason);
   if (reasons.length <= 1) return reasons[0] ?? '';
@@ -95,12 +149,20 @@ export function interpretLatestReading(params: {
   priorWeights: number[]; // most-recent-first, excluding the latest reading
   lastPeriodStart: string | null;
   recentActivityTimes?: string[]; // happened_at ISO strings near the reading
+  priorMeasuredAts?: string[]; // measured_at of prior readings, for usual-time
 }): ReadingInterpretation | null {
-  const { latest, priorWeights, lastPeriodStart, recentActivityTimes = [] } = params;
+  const {
+    latest,
+    priorWeights,
+    lastPeriodStart,
+    recentActivityTimes = [],
+    priorMeasuredAts = [],
+  } = params;
 
   const flags = [
     cycleFlag(lastPeriodStart, latest.measuredAt),
     pumpFlag(recentActivityTimes, latest.measuredAt),
+    timeOfDayFlag(latest.measuredAt, priorMeasuredAts),
   ].filter((f): f is NoiseFlag => f != null);
   const sources = flags.map((f) => f.source);
   const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);

@@ -95,6 +95,7 @@ export default function DashboardScreen() {
           recentActivityTimes: (recentActs ?? [])
             .map((a) => a.happened_at as string | null)
             .filter((t): t is string => t != null),
+          priorMeasuredAts: rows.slice(1).map((r) => r.measured_at),
         });
         setReadingNote(interp?.message ?? null);
       }
