@@ -96,49 +96,57 @@ function pumpFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag 
   };
 }
 
-// DOMS is caused by eccentric muscle loading, not a training "category" — a hard
-// hill run or long ride can produce it as much as a gym leg day, while an easy
-// flat jog does not. This is a deliberately flat keyword proxy for that (semantic)
-// signal: it captures common phrasings and safely misses the long tail (a miss is
-// no worse than no flag, and the flag only ever reassures). Bare cardio (run,
-// walk, cycle) is excluded; intensity/terrain-qualified cardio is included. The
-// principled upgrade, if accuracy ever matters, is classifying eccentric load at
-// log time in parse-activity.
-const LEG_DOMS_TERMS = [
+// TEMPORARY STOPGAP — see UNFLUMP_SPEC.md Part Two, principle 13. This closed
+// keyword list can never be complete (human activity is unbounded), so it ships
+// only because the failure cost is benign: DOMS is a reassurance-only flag, a miss
+// is no worse than no flag, and a false positive still errs in the safe direction
+// and is outranked by the trend engine. The real fix is the tracked build-order
+// item 27 — classify eccentric load at log time in parse-activity, where the
+// activity is already understood — not an ever-growing list here.
+//
+// DOMS is eccentric muscle damage, a general mechanism, not leg-specific: legs get
+// named in casual guidance only because their larger mass makes the scale effect
+// easier to see. So this spans eccentric leg resistance, intensity/terrain-
+// qualified cardio (bare run/walk/cycle excluded; "long" phrase-only so "long
+// walk" doesn't match), and eccentric upper/full-body work (climbing, aerial,
+// gymnastics, heavy rowing).
+const DOMS_TERMS = [
   // eccentric leg resistance
   'leg', 'squat', 'deadlift', 'lunge', 'leg press', 'leg day', 'lower body', 'lower-body',
   'glute', 'hamstring', 'quad', 'calf', 'calves', 'hip thrust', 'rdl', 'bulgarian', 'step-up',
   // eccentric / intense cardio — standalone strong signals (descending terrain is
-  // real eccentric quad load, so hill walks and hikes flagging is correct)
+  // real eccentric load, so hill walks and hikes flagging is correct)
   'sprint', 'hill', 'hilly', 'uphill', 'incline', 'trail', 'hike', 'hiking', 'stairs',
+  // eccentric upper / full-body — muscle damage isn't leg-specific
+  'climb', 'bouldering', 'aerial', 'silks', 'gymnastics', 'rowing',
   // weak qualifiers, phrase-form only so easy cardio ("long walk") doesn't match
   'long run', 'long ride', 'long cycle', 'long bike',
 ];
 
-function isEccentricLegSession(activityType: string | null): boolean {
+function isEccentricSession(activityType: string | null): boolean {
   if (!activityType) return false;
   const t = activityType.toLowerCase();
-  return LEG_DOMS_TERMS.some((term) => t.includes(term));
+  return DOMS_TERMS.some((term) => t.includes(term));
 }
 
-// A leg/eccentric session 24-72h before the reading carries delayed-onset soreness
-// swelling that can inflate it (Reliability Framework).
+// An eccentric-loading session 24-72h before the reading carries delayed-onset
+// soreness swelling that can inflate it (Reliability Framework).
 function domsFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag | null {
   const measured = new Date(measuredAt).getTime();
   if (isNaN(measured)) return null;
   const minMs = DOMS_MIN_HOURS * 60 * 60 * 1000;
   const maxMs = DOMS_MAX_HOURS * 60 * 60 * 1000;
-  const legDayRecently = activities.some((a) => {
-    if (!isEccentricLegSession(a.activityType)) return false;
+  const trainedHardRecently = activities.some((a) => {
+    if (!isEccentricSession(a.activityType)) return false;
     const at = new Date(a.happenedAt).getTime();
     if (isNaN(at)) return false;
     const gap = measured - at; // positive when the activity came before the reading
     return gap >= minMs && gap <= maxMs;
   });
-  if (!legDayRecently) return null;
+  if (!trainedHardRecently) return null;
   return {
     source: 'doms',
-    reason: 'you trained legs a day or two ago, and delayed muscle soreness can hold a little water in the muscle',
+    reason: 'you did a hard session a day or two ago, and delayed muscle soreness can hold a little water in the muscle',
   };
 }
 
