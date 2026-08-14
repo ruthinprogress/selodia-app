@@ -23,7 +23,13 @@ type ParsedItem = {
   carbs_g?: number;
   fat_g?: number;
   sodium_mg?: number;
+  protein_source?: string;
 };
+
+// Coerce the model's protein_source to a valid enum value or null, so a stray
+// value can never violate the DB check constraint and fail the whole log.
+const proteinSource = (s: unknown): 'animal' | 'plant' | 'collagen' | null =>
+  s === 'animal' || s === 'plant' || s === 'collagen' ? s : null;
 
 // Shared text-only food logging: extract macros via Haiku, insert into
 // food_logs, return the stored row. Used by parse-food's text path AND by the
@@ -52,6 +58,7 @@ async function writeItems(
       carbs_g: it.carbs_g ?? null,
       fat_g: it.fat_g ?? null,
       sodium_mg: it.sodium_mg ?? null,
+      protein_source: proteinSource(it.protein_source),
     }))
   );
   if (error) console.log('food_items insert failed (non-fatal):', error.message);
@@ -69,7 +76,7 @@ export async function logFoodFromText(
   updateLogId?: string
 ): Promise<FoodEntry> {
   const instruction =
-    'Estimate the macros for this food entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number}], "meal_label": string, "confidence": "clear" or "uncertain"} Set breakdown_type and, when it warrants a breakdown, itemise into items: "simple" for a single or branded item like an apple or a branded yoghurt (items empty); "multi_component" for a meal of distinct parts like steak with a sauce (list each part); "consistent_ratio" for a composite whose make-up is usually consistent like lasagne (one item, items empty); "high_variability" for a composite that really varies like shakshuka or a full English (list each part with a quantity). Item macros should roughly sum to the totals; use the person\'s own portion words for quantity, or a typical portion if none given. For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries. Food entry: "' +
+    'Estimate the macros for this food entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null}], "meal_label": string, "confidence": "clear" or "uncertain"} For protein_source (on the log and on each item), classify the dominant protein source as "animal" (meat, fish, eggs, dairy, whey), "plant" (legumes, tofu, grains, nuts, seeds), or "collagen" (collagen or gelatin supplements), or null when the food has negligible protein; on the log, use whichever source contributes most of the protein. Set breakdown_type and, when it warrants a breakdown, itemise into items: "simple" for a single or branded item like an apple or a branded yoghurt (items empty); "multi_component" for a meal of distinct parts like steak with a sauce (list each part); "consistent_ratio" for a composite whose make-up is usually consistent like lasagne (one item, items empty); "high_variability" for a composite that really varies like shakshuka or a full English (list each part with a quantity). Item macros should roughly sum to the totals; use the person\'s own portion words for quantity, or a typical portion if none given. For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries. Food entry: "' +
     foodText +
     '"';
 
@@ -94,6 +101,7 @@ export async function logFoodFromText(
     carbs_g: macros.carbs_g,
     fat_g: macros.fat_g,
     sodium_mg: macros.sodium_mg ?? null,
+    protein_source: proteinSource(macros.protein_source),
     breakdown_type: macros.breakdown_type ?? null,
     confidence: macros.confidence || 'clear',
   };

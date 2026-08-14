@@ -8,6 +8,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { getBasalMetabolismTrend } from '@/lib/basal-metabolism';
 import { interpretLatestReading } from '@/lib/measurement-interpretation';
 import { calculateProteinTarget, type ProteinTarget } from '@/lib/protein';
+import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
 
 type Measurement = {
@@ -25,6 +26,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [protein, setProtein] = useState<ProteinTarget | null>(null);
   const [proteinNote, setProteinNote] = useState<string | null>(null);
+  const [proteinQualityNote, setProteinQualityNote] = useState<string | null>(null);
   const [bmrLine, setBmrLine] = useState<string | null>(null);
   const [readingNote, setReadingNote] = useState<string | null>(null);
 
@@ -52,6 +54,21 @@ export default function DashboardScreen() {
               : 'Based on bodyweight.'
         );
       }
+
+      // Day-level protein-quality nudge (Part Eight, build item 12): if more than
+      // half of today's logged protein comes from incomplete sources, suggest a
+      // complementary pairing and a buffered target. RLS scopes the read.
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const { data: todayFood } = await supabase
+        .from('food_logs')
+        .select('protein_g, protein_source')
+        .gte('happened_at', startOfDay.toISOString());
+      const proteinBySource = (todayFood ?? []).map((f) => ({
+        source: (f.protein_source as ProteinSource | null) ?? null,
+        grams: (f.protein_g as number | null) ?? 0,
+      }));
+      setProteinQualityNote(dayLevelProteinNudge(proteinBySource, p?.grams ?? null)?.message ?? null);
 
       // getBasalMetabolismTrend re-sorts ascending internally; latest is last.
       const trend = getBasalMetabolismTrend(rows);
@@ -142,6 +159,7 @@ export default function DashboardScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   {proteinNote}
                 </ThemedText>
+                {proteinQualityNote && <ThemedText type="small">{proteinQualityNote}</ThemedText>}
               </>
             ) : (
               <ThemedText type="small" themeColor="textSecondary">
