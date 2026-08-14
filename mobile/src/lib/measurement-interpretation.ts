@@ -14,8 +14,11 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
 // Moves smaller than this read as flat rather than a real step — both for the
 // single-day delta and for counting a direction toward a trend.
 const FLAT_TOLERANCE_KG = 0.1;
+// A reading taken within this long after training carries a post-workout pump
+// (Reliability Framework: "clears within hours").
+const PUMP_WINDOW_HOURS = 4;
 
-export type NoiseSource = 'cycle';
+export type NoiseSource = 'cycle' | 'pump';
 type NoiseFlag = { source: NoiseSource; reason: string };
 export type TrendVerdict = 'insufficient' | 'single_day' | 'trend_up' | 'trend_down';
 
@@ -57,6 +60,27 @@ function cycleFlag(lastPeriodStart: string | null, measuredAt: string): NoiseFla
   return { source: 'cycle', reason };
 }
 
+// Post-workout pump: a reading taken within ~4h after any logged activity carries
+// transient water/glycogen inflation (Reliability Framework). `activityTimes` are
+// happened_at ISO strings near the reading; only training up to 4h *before* it
+// counts (a workout after the reading can't have inflated it).
+function pumpFlag(activityTimes: string[], measuredAt: string): NoiseFlag | null {
+  const measured = new Date(measuredAt).getTime();
+  if (isNaN(measured)) return null;
+  const windowMs = PUMP_WINDOW_HOURS * 60 * 60 * 1000;
+  const trainedRecently = activityTimes.some((t) => {
+    const at = new Date(t).getTime();
+    if (isNaN(at)) return false;
+    const gap = measured - at; // positive when the activity came before the reading
+    return gap >= 0 && gap <= windowMs;
+  });
+  if (!trainedRecently) return null;
+  return {
+    source: 'pump',
+    reason: 'you trained within about four hours before this reading, so a post-workout pump could be nudging it up',
+  };
+}
+
 function joinReasons(flags: NoiseFlag[]): string {
   const reasons = flags.map((f) => f.reason);
   if (reasons.length <= 1) return reasons[0] ?? '';
@@ -70,12 +94,14 @@ export function interpretLatestReading(params: {
   latest: { weightKg: number | null; measuredAt: string };
   priorWeights: number[]; // most-recent-first, excluding the latest reading
   lastPeriodStart: string | null;
+  recentActivityTimes?: string[]; // happened_at ISO strings near the reading
 }): ReadingInterpretation | null {
-  const { latest, priorWeights, lastPeriodStart } = params;
+  const { latest, priorWeights, lastPeriodStart, recentActivityTimes = [] } = params;
 
-  const flags = [cycleFlag(lastPeriodStart, latest.measuredAt)].filter(
-    (f): f is NoiseFlag => f != null
-  );
+  const flags = [
+    cycleFlag(lastPeriodStart, latest.measuredAt),
+    pumpFlag(recentActivityTimes, latest.measuredAt),
+  ].filter((f): f is NoiseFlag => f != null);
   const sources = flags.map((f) => f.source);
   const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);
   const trend = assessTrend(weights);
@@ -105,7 +131,7 @@ export function interpretLatestReading(params: {
   if (trend === 'insufficient' || latest.weightKg == null || prior == null) {
     if (flags.length === 0) return null;
     return {
-      message: `${capitalizeFirst(joinReasons(flags))}. If the scale looks flat or up around now, that's usually water rather than a real change.`,
+      message: `${capitalizeFirst(joinReasons(flags))}. If the scale looks flat or up around now, that's usually temporary rather than a real change.`,
       trend,
       sources,
     };
