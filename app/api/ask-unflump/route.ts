@@ -171,6 +171,8 @@ Use this information naturally in your replies, the way a friend who already kno
 
 NUTRIENT DEPTH (passive, occasional): protein and calories miss things that can matter over time - dietary saturated fat and cholesterol, omega-3s, iron, fibre, refined carbs, overall micronutrient variety. From the food ALREADY LOGGED above, you may occasionally and gently notice a PATTERN worth a light mention - never from a single meal (one lower-density choice is noise, only a trend across the logs is worth raising), never as a running micronutrient tracker or checklist, and never by labelling any food "good" or "bad". Let the HEALTH CONTEXT above decide what is worth watching: the markers and protective foods it already lists ARE your priority lens - infer the relevant nutrient pattern from that block, don't restate or second-guess it, and don't run a generic scan. If there is NO health context, keep this very light and mostly stay quiet: a depth nudge is prioritised by what they have actually disclosed, not applied one-size-fits-all. Only raise it when it genuinely fits the moment and is worth saying - most replies will not touch it at all. When such a nudge draws on their health context, set healthGuidanceApplied to true (as above) so the disclaimer shows.
 
+CLARIFYING A COMPOSITE (consistent-ratio only): when someone logs a composite dish whose make-up is usually consistent but where ONE variable materially changes the macros - the type of meat in a lasagne, the portion size of a set dish - and they did NOT already specify it, gently ask about that one variable in your reply, and always offer an easy way out ("...or I'll just go with a typical beef one, no worries either way"). It is logged immediately with a sensible default regardless, so this is a light confirmation, never a gate and never a demand. Set clarificationAsked to the short name of the variable you asked about. Do this ONLY for that case: never for a simple or branded item, never for a multi-component meal (those are just broken into their parts, with no single pivotal variable), and never more than the one variable that actually matters. Never nag. When a later message answers a clarification you asked on the previous turn, set clarificationResolved to the full enriched food description combining the original dish with their answer (e.g. "beef lasagne"); the app re-reads it and quietly updates the stored entry, so don't restate macros.
+
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${SAFETY_PROMPT_BLOCK}`;
@@ -197,6 +199,16 @@ ${SAFETY_PROMPT_BLOCK}`;
       enum: ['none', 'food', 'activity'],
       description:
         "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, else 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a food/activity log; set this to whatever is loggable regardless of emotional content.",
+    },
+    clarificationAsked: {
+      type: 'string',
+      description:
+        'Only when logging a consistent-ratio composite dish (e.g. lasagne) whose ONE material variable (meat type, portion) the person did NOT specify, and you gently ask about it in your reply with an easy-out fallback: the short name of the variable you asked about (e.g. "the type of meat"). Never for simple/branded or multi-component items, never more than the one variable, never naggy. Leave unset otherwise.',
+    },
+    clarificationResolved: {
+      type: 'string',
+      description:
+        'Only when THIS message answers a clarification you asked on the previous turn (you will see your question and their answer in the recent history): the full enriched food description combining the original dish with their answer (e.g. "beef lasagne"). Leave unset otherwise.',
     },
   });
 
@@ -230,6 +242,8 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
     logIntent?: 'none' | 'food' | 'activity';
+    clarificationAsked?: string;
+    clarificationResolved?: string;
   };
 
   const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
@@ -250,12 +264,60 @@ ${SAFETY_PROMPT_BLOCK}`;
       if (result.logIntent === 'food') {
         const entry = await logFoodFromText(supabase, user.id, message);
         saved = { kind: 'food', summary: foodSaveSummary(entry) };
+        // A new food log ends any prior clarification (that moment has passed);
+        // then pin this log's own question, if the model asked one (slice 2a).
+        await supabase
+          .from('food_logs')
+          .update({ clarification_pending: null })
+          .eq('user_id', user.id)
+          .not('clarification_pending', 'is', null);
+        if (result.clarificationAsked) {
+          await supabase
+            .from('food_logs')
+            .update({ clarification_pending: result.clarificationAsked })
+            .eq('id', entry.id);
+        }
       } else {
         const entries = await logActivityFromText(supabase, user.id, message);
         if (entries[0]) saved = { kind: 'activity', summary: activitySaveSummary(entries) };
       }
     } catch (err) {
       console.log('ASK-UNFLUMP SILENT LOG FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // Resolve a pending consistent-ratio clarification (build item 11, slice 2a):
+  // the answer re-parses the enriched description into the pending log in place.
+  // Recency-guarded so a late, unrelated answer can't rewrite an old entry, and
+  // skipped when this turn is itself a new food log (that path handles its own).
+  if (result.logIntent !== 'food' && result.clarificationResolved) {
+    const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: pending } = await supabase
+      .from('food_logs')
+      .select('id')
+      .eq('user_id', user.id)
+      .not('clarification_pending', 'is', null)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (pending) {
+      try {
+        const updated = await logFoodFromText(
+          supabase,
+          user.id,
+          result.clarificationResolved,
+          undefined,
+          pending.id
+        );
+        await supabase
+          .from('food_logs')
+          .update({ clarification_pending: null })
+          .eq('id', pending.id);
+        saved = { kind: 'food', summary: foodSaveSummary(updated) };
+      } catch (err) {
+        console.log('ASK-UNFLUMP CLARIFICATION RESOLVE FAILED:', err instanceof Error ? err.message : err);
+      }
     }
   }
 
