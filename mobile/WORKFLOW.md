@@ -14,6 +14,24 @@
 
 ---
 
+## The Three-Way Collaboration Loop
+The actual working methodology of this project is a repeating three-party loop, run one verified piece at a time:
+
+1. **Ruth states intent in plain language** — what she wants and why it matters, in product terms, not implementation terms.
+2. **Claude (chat) translates it into a scoped plan-request** for Claude Code — turning loose intent into a bounded, well-framed ask rather than a vague forward.
+3. **Claude Code proposes a grounded plan** — read against the real codebase and spec, and crucially it often surfaces genuine decisions *neither Ruth nor Claude would have known to ask about*: a schema mismatch, a hidden dependency, a design fork with real trade-offs.
+4. **Ruth relays Claude Code's response back to the chat**, annotated with her own reactions or not.
+5. **Claude (chat) translates the proposal into plain terms with a genuine recommendation** — not a neutral menu of options, but "here's what it actually means, and here's what I'd do," so the decision is real and informed rather than quietly deferred to whoever sounds most confident.
+6. **Ruth decides.**
+7. **Claude (chat) turns the decision into a precise, ready-to-send instruction** (see The Prompt-Handoff Convention, below — that convention is this step of the loop).
+8. **Repeat, one verified piece at a time** — each round is built, checked, and stood behind before the next begins.
+
+**Why this matters:** the loop preserves genuine decision-making authority with the person who holds the product judgment, *without* requiring her to have technical implementation fluency. The two translation layers — intent → plan-request, and proposal → plain-terms-with-a-recommendation — are what make that possible: Ruth decides the things that are actually hers to decide, on their real merits, while implementation detail stays where it belongs. This is a reusable collaboration pattern, not specific to Unflump — the same treatment as the Development Workflow Principles (UNFLUMP_SPEC.md): worth carrying into any future project where the person with the domain judgment is not the person with the build fluency.
+
+**The loop is self-reinforcing, not just repeatable.** Real decisions made through it are periodically extracted into `DECISION_PATTERNS.md` as genuine patterns in how Ruth exercises judgment — not merely a log of individual choices. Those extracted patterns then feed back into future rounds of the same loop: they shape what Claude Code proposes in the first place, what gets flagged for explicit sign-off versus handled with a reasonable default, and what gets caught before it is ever built. This is the actual mechanism behind the project's increasing pace and precision over time — the system is not just executing faster, it is building an increasingly accurate model of the person directing it.
+
+---
+
 ## The Prompt-Handoff Convention
 Claude (chat) always gives Ruth the exact text to send to Claude Code, in a clear, copyable block — never a vague description of what to ask for. Once something is agreed in this chat (a design decision, a correction, a scope choice), it gets turned into an explicit, ready-to-send instruction before the conversation moves on. This exists so agreed decisions don't get diluted, re-explained inconsistently, or lost in translation between the design conversation and the actual build instruction.
 
