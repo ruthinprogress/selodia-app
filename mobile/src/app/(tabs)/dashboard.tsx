@@ -89,6 +89,16 @@ export default function DashboardScreen() {
           .select('happened_at, activity_type')
           .gte('happened_at', windowStart)
           .lte('happened_at', latest.measured_at);
+        // Food in the ~26h up to the reading, for the sodium flag (the util applies
+        // the exact 12-24h lag window).
+        const foodWindowStart = new Date(
+          new Date(latest.measured_at).getTime() - 26 * 60 * 60 * 1000
+        ).toISOString();
+        const { data: recentFoodRows } = await supabase
+          .from('food_logs')
+          .select('happened_at, sodium_mg')
+          .gte('happened_at', foodWindowStart)
+          .lte('happened_at', latest.measured_at);
         const interp = interpretLatestReading({
           latest: { weightKg: latest.weight_kg, measuredAt: latest.measured_at },
           priorWeights: rows.slice(1).map((r) => r.weight_kg).filter((w): w is number => w != null),
@@ -100,6 +110,12 @@ export default function DashboardScreen() {
               activityType: (a.activity_type as string | null) ?? null,
             })),
           priorMeasuredAts: rows.slice(1).map((r) => r.measured_at),
+          recentFoods: (recentFoodRows ?? [])
+            .filter((f) => f.happened_at != null)
+            .map((f) => ({
+              happenedAt: f.happened_at as string,
+              sodiumMg: (f.sodium_mg as number | null) ?? null,
+            })),
         });
         setReadingNote(interp?.message ?? null);
       }

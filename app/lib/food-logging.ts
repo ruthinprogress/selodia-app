@@ -27,7 +27,7 @@ export async function logFoodFromText(
   happenedAt?: string
 ): Promise<FoodEntry> {
   const instruction =
-    'Estimate the macros for this food entry. Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "meal_label": string, "confidence": "clear" or "uncertain"} For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries. Food entry: "' +
+    'Estimate the macros for this food entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: {"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "meal_label": string, "confidence": "clear" or "uncertain"} For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries. Food entry: "' +
     foodText +
     '"';
 
@@ -52,6 +52,7 @@ export async function logFoodFromText(
       protein_g: macros.protein_g,
       carbs_g: macros.carbs_g,
       fat_g: macros.fat_g,
+      sodium_mg: macros.sodium_mg ?? null,
       confidence: macros.confidence || 'clear',
     })
     .select();

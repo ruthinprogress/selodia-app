@@ -28,13 +28,25 @@ const TOD_MIN_CONCENTRATION = 0.5;
 // (Reliability Framework).
 const DOMS_MIN_HOURS = 24;
 const DOMS_MAX_HOURS = 72;
+// Salty food holds water on a 12-24h lag (Reliability Framework) — a genuine
+// physiological delay, not a convenience window, so the bounds are kept exact.
+const SODIUM_LAG_MIN_HOURS = 12;
+const SODIUM_LAG_MAX_HOURS = 24;
+// Summed sodium (mg) over that window above which the day reads as notably salty
+// (daily reference ~2300mg; a single takeaway can reach 2000-3000mg).
+const SODIUM_HIGH_MG = 1500;
 
-export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms';
+export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms' | 'sodium';
 type NoiseFlag = { source: NoiseSource; reason: string };
 
 // A logged activity's time and free-text type, the context both the pump and
 // DOMS flaggers read (pump needs only the time; DOMS needs the type too).
 export type ActivityContext = { happenedAt: string; activityType: string | null };
+
+// A logged food's time and estimated sodium, for the salty-food flag. sodium_mg
+// is null on older rows (captured only from the point sodium logging shipped) and
+// on any parse that omitted it — those simply don't count toward the window total.
+export type FoodContext = { happenedAt: string; sodiumMg: number | null };
 export type TrendVerdict = 'insufficient' | 'single_day' | 'trend_up' | 'trend_down';
 
 export type ReadingInterpretation = {
@@ -150,6 +162,30 @@ function domsFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag 
   };
 }
 
+// Salty food holds water on a 12-24h lag: if food logged in that window sums to a
+// notably salty total, a flat/up reading here is likely water (Reliability
+// Framework). Sodium is an LLM estimate at log time (the principled log-time
+// capture, per Part Two principle 13 — not a keyword stopgap), rough like any
+// macro estimate but fine for a reassurance-only flag.
+function sodiumFlag(recentFoods: FoodContext[], measuredAt: string): NoiseFlag | null {
+  const measured = new Date(measuredAt).getTime();
+  if (isNaN(measured)) return null;
+  const minMs = SODIUM_LAG_MIN_HOURS * 60 * 60 * 1000;
+  const maxMs = SODIUM_LAG_MAX_HOURS * 60 * 60 * 1000;
+  const windowSodium = recentFoods.reduce((sum, f) => {
+    if (f.sodiumMg == null) return sum;
+    const at = new Date(f.happenedAt).getTime();
+    if (isNaN(at)) return sum;
+    const gap = measured - at; // positive when the food came before the reading
+    return gap >= minMs && gap <= maxMs ? sum + f.sodiumMg : sum;
+  }, 0);
+  if (windowSodium < SODIUM_HIGH_MG) return null;
+  return {
+    source: 'sodium',
+    reason: 'you had a fairly salty day yesterday, and sodium can hold on to water for a day or so',
+  };
+}
+
 // Hours-of-day are circular (23:00 and 01:00 are 2h apart), so the "usual" time
 // and the distance from it are computed on the unit circle. UTC hours are used
 // for both sides: a user's offset is constant, so it cancels out of the
@@ -212,6 +248,7 @@ export function interpretLatestReading(params: {
   lastPeriodStart: string | null;
   recentActivities?: ActivityContext[]; // activities near the reading (pump + DOMS)
   priorMeasuredAts?: string[]; // measured_at of prior readings, for usual-time
+  recentFoods?: FoodContext[]; // foods near the reading, for the sodium flag
 }): ReadingInterpretation | null {
   const {
     latest,
@@ -219,6 +256,7 @@ export function interpretLatestReading(params: {
     lastPeriodStart,
     recentActivities = [],
     priorMeasuredAts = [],
+    recentFoods = [],
   } = params;
 
   const flags = [
@@ -226,6 +264,7 @@ export function interpretLatestReading(params: {
     pumpFlag(recentActivities, latest.measuredAt),
     timeOfDayFlag(latest.measuredAt, priorMeasuredAts),
     domsFlag(recentActivities, latest.measuredAt),
+    sodiumFlag(recentFoods, latest.measuredAt),
   ].filter((f): f is NoiseFlag => f != null);
   const sources = flags.map((f) => f.source);
   const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);
