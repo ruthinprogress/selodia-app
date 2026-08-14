@@ -24,9 +24,17 @@ const PUMP_WINDOW_HOURS = 4;
 const TOD_MIN_HISTORY = 3;
 const TOD_TOLERANCE_HOURS = 3;
 const TOD_MIN_CONCENTRATION = 0.5;
+// DOMS-related swelling peaks 24-48h after eccentric loading and clears by ~72h
+// (Reliability Framework).
+const DOMS_MIN_HOURS = 24;
+const DOMS_MAX_HOURS = 72;
 
-export type NoiseSource = 'cycle' | 'pump' | 'time_of_day';
+export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms';
 type NoiseFlag = { source: NoiseSource; reason: string };
+
+// A logged activity's time and free-text type, the context both the pump and
+// DOMS flaggers read (pump needs only the time; DOMS needs the type too).
+export type ActivityContext = { happenedAt: string; activityType: string | null };
 export type TrendVerdict = 'insufficient' | 'single_day' | 'trend_up' | 'trend_down';
 
 export type ReadingInterpretation = {
@@ -71,12 +79,12 @@ function cycleFlag(lastPeriodStart: string | null, measuredAt: string): NoiseFla
 // transient water/glycogen inflation (Reliability Framework). `activityTimes` are
 // happened_at ISO strings near the reading; only training up to 4h *before* it
 // counts (a workout after the reading can't have inflated it).
-function pumpFlag(activityTimes: string[], measuredAt: string): NoiseFlag | null {
+function pumpFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag | null {
   const measured = new Date(measuredAt).getTime();
   if (isNaN(measured)) return null;
   const windowMs = PUMP_WINDOW_HOURS * 60 * 60 * 1000;
-  const trainedRecently = activityTimes.some((t) => {
-    const at = new Date(t).getTime();
+  const trainedRecently = activities.some((a) => {
+    const at = new Date(a.happenedAt).getTime();
     if (isNaN(at)) return false;
     const gap = measured - at; // positive when the activity came before the reading
     return gap >= 0 && gap <= windowMs;
@@ -85,6 +93,52 @@ function pumpFlag(activityTimes: string[], measuredAt: string): NoiseFlag | null
   return {
     source: 'pump',
     reason: 'you trained within about four hours before this reading, so a post-workout pump could be nudging it up',
+  };
+}
+
+// DOMS is caused by eccentric muscle loading, not a training "category" — a hard
+// hill run or long ride can produce it as much as a gym leg day, while an easy
+// flat jog does not. This is a deliberately flat keyword proxy for that (semantic)
+// signal: it captures common phrasings and safely misses the long tail (a miss is
+// no worse than no flag, and the flag only ever reassures). Bare cardio (run,
+// walk, cycle) is excluded; intensity/terrain-qualified cardio is included. The
+// principled upgrade, if accuracy ever matters, is classifying eccentric load at
+// log time in parse-activity.
+const LEG_DOMS_TERMS = [
+  // eccentric leg resistance
+  'leg', 'squat', 'deadlift', 'lunge', 'leg press', 'leg day', 'lower body', 'lower-body',
+  'glute', 'hamstring', 'quad', 'calf', 'calves', 'hip thrust', 'rdl', 'bulgarian', 'step-up',
+  // eccentric / intense cardio — standalone strong signals (descending terrain is
+  // real eccentric quad load, so hill walks and hikes flagging is correct)
+  'sprint', 'hill', 'hilly', 'uphill', 'incline', 'trail', 'hike', 'hiking', 'stairs',
+  // weak qualifiers, phrase-form only so easy cardio ("long walk") doesn't match
+  'long run', 'long ride', 'long cycle', 'long bike',
+];
+
+function isEccentricLegSession(activityType: string | null): boolean {
+  if (!activityType) return false;
+  const t = activityType.toLowerCase();
+  return LEG_DOMS_TERMS.some((term) => t.includes(term));
+}
+
+// A leg/eccentric session 24-72h before the reading carries delayed-onset soreness
+// swelling that can inflate it (Reliability Framework).
+function domsFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag | null {
+  const measured = new Date(measuredAt).getTime();
+  if (isNaN(measured)) return null;
+  const minMs = DOMS_MIN_HOURS * 60 * 60 * 1000;
+  const maxMs = DOMS_MAX_HOURS * 60 * 60 * 1000;
+  const legDayRecently = activities.some((a) => {
+    if (!isEccentricLegSession(a.activityType)) return false;
+    const at = new Date(a.happenedAt).getTime();
+    if (isNaN(at)) return false;
+    const gap = measured - at; // positive when the activity came before the reading
+    return gap >= minMs && gap <= maxMs;
+  });
+  if (!legDayRecently) return null;
+  return {
+    source: 'doms',
+    reason: 'you trained legs a day or two ago, and delayed muscle soreness can hold a little water in the muscle',
   };
 }
 
@@ -148,21 +202,22 @@ export function interpretLatestReading(params: {
   latest: { weightKg: number | null; measuredAt: string };
   priorWeights: number[]; // most-recent-first, excluding the latest reading
   lastPeriodStart: string | null;
-  recentActivityTimes?: string[]; // happened_at ISO strings near the reading
+  recentActivities?: ActivityContext[]; // activities near the reading (pump + DOMS)
   priorMeasuredAts?: string[]; // measured_at of prior readings, for usual-time
 }): ReadingInterpretation | null {
   const {
     latest,
     priorWeights,
     lastPeriodStart,
-    recentActivityTimes = [],
+    recentActivities = [],
     priorMeasuredAts = [],
   } = params;
 
   const flags = [
     cycleFlag(lastPeriodStart, latest.measuredAt),
-    pumpFlag(recentActivityTimes, latest.measuredAt),
+    pumpFlag(recentActivities, latest.measuredAt),
     timeOfDayFlag(latest.measuredAt, priorMeasuredAts),
+    domsFlag(recentActivities, latest.measuredAt),
   ].filter((f): f is NoiseFlag => f != null);
   const sources = flags.map((f) => f.source);
   const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);

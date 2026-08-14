@@ -78,23 +78,27 @@ export default function DashboardScreen() {
           .order('event_date', { ascending: false })
           .limit(1)
           .maybeSingle();
-        // Activity in the day up to the reading, for the post-workout pump flag
-        // (the util applies the 4h window). RLS scopes it to this user.
+        // Activity up to ~80h before the reading, covering both the pump window
+        // (0-4h) and the DOMS window (24-72h); the util applies the exact windows.
+        // RLS scopes it to this user.
         const windowStart = new Date(
-          new Date(latest.measured_at).getTime() - 24 * 60 * 60 * 1000
+          new Date(latest.measured_at).getTime() - 80 * 60 * 60 * 1000
         ).toISOString();
         const { data: recentActs } = await supabase
           .from('activity_logs')
-          .select('happened_at')
+          .select('happened_at, activity_type')
           .gte('happened_at', windowStart)
           .lte('happened_at', latest.measured_at);
         const interp = interpretLatestReading({
           latest: { weightKg: latest.weight_kg, measuredAt: latest.measured_at },
           priorWeights: rows.slice(1).map((r) => r.weight_kg).filter((w): w is number => w != null),
           lastPeriodStart: lastPeriod?.event_date ?? null,
-          recentActivityTimes: (recentActs ?? [])
-            .map((a) => a.happened_at as string | null)
-            .filter((t): t is string => t != null),
+          recentActivities: (recentActs ?? [])
+            .filter((a) => a.happened_at != null)
+            .map((a) => ({
+              happenedAt: a.happened_at as string,
+              activityType: (a.activity_type as string | null) ?? null,
+            })),
           priorMeasuredAts: rows.slice(1).map((r) => r.measured_at),
         });
         setReadingNote(interp?.message ?? null);
