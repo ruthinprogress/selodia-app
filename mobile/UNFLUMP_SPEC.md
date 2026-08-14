@@ -618,6 +618,7 @@ A real deletion mechanism must exist for anyone who wants their data removed, in
 - **Long-term training-response research thread** — whether meaningful, identifiable training-response phenotypes exist among women 40+ who lift seriously. Requires real users and opted-in longitudinal data before it is meaningful; not a build-phase concern.
 - **Mailing list opt-in incentive** — the "keep me posted" consent checkbox will go largely unticked without a real reason to opt in. Needs an actual incentive designed before pushing on this; capturing contacts opportunistically now would be wasted effort.
 - **The full "lite mode" experience beyond the pause mechanism** — what the app becomes for a long-term graduated user, and any formal re-engagement flow beyond the weekly check-ins already scoped in Part Eleven.
+- **Genetic health markers as a future Health Context extension** — results from consumer genetic testing (nutrigenomic or health-predisposition reports and similar) tracked the same way existing health markers already are: the app would never interpret a raw genetic result itself, only respond to what the user reports their results *indicated* — the identical status-based, not-raw-data architecture established for Health Context (Part Twelve). The architectural fit is exact, which is the whole reason to note it; not scoped in detail, just tracked so the direction isn't lost.
 - **Barcode scanning, social/sharing features, a paid tier, and dedicated joint pain/recovery tracking** (captured as free-text notes for now, not a structured feature).
 
 ---
