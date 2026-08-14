@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ResourceCard } from '@/components/resource-card';
 import { SaveConfirmation } from '@/components/save-confirmation';
@@ -10,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
 import { supabase } from '@/lib/supabase';
 
 type Message = {
@@ -30,6 +32,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
+  const [cyclePrompt, setCyclePrompt] = useState<'discover' | 'relog' | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,6 +46,33 @@ export default function ChatScreen() {
         setMessages(data.map((m) => ({ role: m.role, content: m.content })));
       }
       setLoadingHistory(false);
+    })();
+  }, []);
+
+  // Cycle-tracking discovery (Part Thirteen): a background check on the last
+  // logged period start and any prior dismissal decides whether the invitation
+  // surfaces. RLS scopes both reads to the signed-in user.
+  useEffect(() => {
+    (async () => {
+      const { data: lastPeriod } = await supabase
+        .from('cycle_events')
+        .select('event_date')
+        .eq('event_type', 'period_start')
+        .order('event_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const { data: profile } = await supabase
+        .from('user_profile')
+        .select('cycle_prompt_dismissed_at')
+        .maybeSingle();
+      if (
+        shouldShowDiscoveryPrompt({
+          lastPeriodStart: lastPeriod?.event_date ?? null,
+          dismissedAt: profile?.cycle_prompt_dismissed_at ?? null,
+        })
+      ) {
+        setCyclePrompt(lastPeriod?.event_date ? 'relog' : 'discover');
+      }
     })();
   }, []);
 
@@ -107,6 +137,10 @@ export default function ChatScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          {cyclePrompt && (
+            <CycleDiscoveryCard mode={cyclePrompt} onDone={() => setCyclePrompt(null)} />
+          )}
+
           {!loadingHistory && messages.length === 0 && (
             <ChatBubble role="assistant">
               What did you eat, what did you do, or what&apos;s on your mind?
