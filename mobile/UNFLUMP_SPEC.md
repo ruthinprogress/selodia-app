@@ -534,7 +534,7 @@ Notifications suppressed by quiet hours are not discarded or fired individually 
 
 **Mode is a deliberate, persistent user choice** — set once, stays that way. It does not follow the phone's system setting automatically and does not shift through the day.
 
-Exact hex values are left open for real design work; the concept and direction are locked here.
+**Confirmed palette (2026-08-14), triple-verified — the colour note, the HTML mockup's image2 palette, and Ruth's direct confirmation all agree:** cream `#F7F3EA` (the warm off-white neutral / light-mode background), sand `#E9D6C2`, terracotta `#C97458` (the brand accent), sage `#95A987`, forest `#37584A`, charcoal `#2D2B28`. The light/dark role inversion described above — and any slight dark-mode readability tuning of terracotta — remains design-execution work on top of these locked values.
 
 ## Loading State
 A slow, calm line-drawing animation, in terracotta, of the Unflump logo itself gradually being drawn — not a generic spinner. A loading moment is an opportunity to reinforce identity, not a throwaway technical necessity.
