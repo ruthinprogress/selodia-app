@@ -1,6 +1,5 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import { getQueryParams } from 'expo-auth-session/build/QueryParams';
-import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps } from 'react-native';
@@ -48,7 +47,6 @@ async function upsertProfile(userId: string, dob: Date | null, sex: BiologicalSe
 }
 
 export default function AccountScreen() {
-  const theme = useTheme();
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,7 +87,8 @@ export default function AccountScreen() {
       const session = await createSessionFromUrl(result.url);
       if (session) {
         await upsertProfile(session.user.id, dateOfBirth, biologicalSex);
-        router.push('/onboarding/intro');
+        // The auth guard (step 6) is the sole post-auth router: it resumes the
+        // user at their onboarding step or sends a finished user to the app.
       } else {
         setError('Sign-in did not complete. Please try again.');
       }
@@ -116,7 +115,7 @@ export default function AccountScreen() {
         password,
       });
       if (signInError) throw signInError;
-      router.push('/onboarding/intro');
+      // Post-auth routing is the guard's job (step 6) — no manual navigation.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong signing in.');
     } finally {
@@ -168,7 +167,7 @@ export default function AccountScreen() {
 
       if (data.session) {
         await upsertProfile(data.session.user.id, dateOfBirth, biologicalSex);
-        router.push('/onboarding/intro');
+        // The auth guard (step 6) routes onward once the session is set.
       } else {
         setInfo('Check your email to confirm your account, then come back to continue.');
       }
