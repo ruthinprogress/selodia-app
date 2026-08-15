@@ -294,6 +294,17 @@ Two independent category states exist simultaneously for every user, rather than
 
 **Body fat and recomposition guidance, calibrated to evidence:** general recomposition research (simultaneous fat loss and muscle gain) is well documented in beginners, people returning to training, and people with higher body fat — becoming marginal mainly for lean, advanced/trained individuals. This general pattern is not reliably sex-disaggregated, however, and should not be assumed to transfer cleanly to older or perimenopausal women without a specific citation for that group — one study of older women found the *opposite* pattern to the general rule. What is genuinely well-supported specifically for perimenopausal women: documented weight-loss resistance that increases through the menopause transition, alongside heightened appetite and elevated ghrelin during perimenopause compared to pre- and post-menopausal stages. Guidance should be age/life-stage and training-history conditional, raised only when relevant — never applied as a universal rule.
 
+## Calorie Targets
+Calorie (energy) targets are **computed automatically** from the person's own BMR/TDEE (the existing body-metric utilities) plus a Focus-driven adjustment — never a fabricated or hand-entered range. This replaces the placeholder calorie figure shown in the branding mockup. The adjustment is driven by **Fat Focus**, always derived from the person's own TDEE rather than a fixed number:
+
+- **Fat Focus = reduce:** default to roughly a **0.5% of bodyweight per week** deficit, translated into a daily kcal figure via the person's TDEE. The slow rate is deliberate and evidence-grounded: in resistance-training populations, faster loss (closer to ~1%/week) costs measurably more strength and lean mass than slower loss for the *same eventual weight change*, and aggressive energy restriction is associated with greater endocrine disruption — directly relevant to Unflump's demographic (women 40+ who train). [Resources: weight-loss rate & lean mass; low energy availability.]
+- **Fat Focus = increase:** default to a **150-200 kcal/day surplus** — the gentle end of the evidence-supported ~150-300 kcal/day range for lean gain, since larger surpluses convert disproportionately to fat rather than muscle. [Resources: surplus for lean gain.]
+- **Fat Focus = maintain:** TDEE unchanged.
+
+Targets are overrideable (like protein) and recompute as BMR/TDEE and bodyweight update.
+
+**Open question — how Fat Focus and Muscle Focus combine (UNRESOLVED; must be settled before the calc is built).** The two Focus states are independent (see Fat Focus / Muscle Focus above), and their energy implications are **not** a naive sum of two separate deltas. The hard case is **reduce fat + increase muscle (recomposition)**: adding a fat-loss deficit to a muscle-gain surplus is not how recomposition works — the evidence points to recomposition happening around **maintenance** energy (roughly TDEE, not a real deficit), with an elevated protein target and progressive resistance training, and it is most achievable in beginners, returning trainees, and higher-body-fat individuals (with the standing caveat that one study of older women found the *opposite* of the general recomposition pattern, and that weight-loss resistance rises through the menopause transition — see Fat Focus above). The likely resolution is an explicit **combination matrix** (energy target per Fat×Muscle combination) in which Fat Focus sets the energy *direction*, Muscle Focus mainly sets the protein target / training emphasis and acts as a *constraint* (a muscle-gain intent clamps a deficit toward maintenance rather than stacking a surplus on top), and recomposition is a named special case — but the exact matrix is a product decision to confirm with Ruth, not to assume.
+
 ## Protein Targets
 Calculated from muscle mass × 2.2g (lean body mass from scales, not total bodyweight) — more accurate than bodyweight-based formulas, especially in a deficit. Overrideable always. Displayed per meal as well as daily total.
 
@@ -303,6 +314,16 @@ Calculated from muscle mass × 2.2g (lean body mass from scales, not total bodyw
 
 ## Basal Metabolism Tracking
 Pulled directly from smart scale data (Zepp Life, Withings, Fitbit Aria, and similar — most modern bioimpedance scales output this). Tracked as a trend over months, overlaid with muscle mass, and kept clearly separate from active/activity burn so the user understands the difference.
+
+**BMR/TDEE/muscle explainer — Measurements segment.** The Measurements segment (Part Five, Screen Structure) carries a short, collapsible explainer, **open by default**, ported *verbatim* from the original Session-8 design — built and user-tested before the native rewrite, and recovered here so it is not lost again. This is existing, validated content to port exactly, **not** to redesign:
+
+> **What's basal metabolic rate (BMR)?** What your body burns just staying alive at complete rest — breathing, heartbeat, organ function, cell repair. The energy cost of simply existing, before you've moved a muscle.
+>
+> **What's total daily energy expenditure (TDEE)?** Your BMR plus everything else — walking, training, digesting food, even fidgeting. TDEE is always higher than BMR; it's BMR with your whole day layered on top.
+>
+> **Does building muscle raise your BMR?** Yes — but modestly. Research puts it at roughly 10-13 kcal a day for every kilogram of muscle gained.
+
+The "10-13 kcal/kg/day" figure is the resting metabolic rate of skeletal muscle [Resources: muscle resting metabolic rate].
 
 ## Body Measurement Tracking
 Weight, body fat %, muscle mass, and basal metabolism from smart scales; thigh and waist periodically; cycle day logged alongside automatically once cycle tracking is enabled. Supports fully flexible, user-defined custom metrics beyond the fixed fields — any user can track any personally meaningful point, not limited to a preset menu.
@@ -668,6 +689,10 @@ A real deletion mechanism must exist for anyone who wants their data removed, in
 - **Consumer bioimpedance scale accuracy:** commonly cited at ±3-5% versus gold-standard methods (e.g. DEXA) under consistent conditions.
 - **Body recomposition, general population:** well documented in beginners, returning trainees, and higher body fat individuals; becomes marginal in lean, advanced/trained lifters. This general literature is not reliably sex-disaggregated.
 - **Body recomposition in older women specifically:** a study of roughly 99 older women (average age ~69, 24-week resistance training) found the *lowest* baseline fat mass group showed *greater* positive recomposition than moderate/high fat mass groups — the opposite direction to the general pattern.
+- **Weight-loss rate & lean mass:** slower energy restriction (~0.5-0.7% of bodyweight/week) preserves more lean mass and strength than faster loss (~1%+/week) for the *same eventual weight change*, in resistance-trained populations. Commonly cited source: Garthe et al. (2011), *International Journal of Sport Nutrition and Exercise Metabolism* — elite athletes, both sexes. **Verify the exact reference before treating as authoritative.**
+- **Low energy availability / endocrine disruption:** aggressive or prolonged energy deficits are associated with endocrine and reproductive-hormone disruption (the Relative Energy Deficiency in Sport / low-energy-availability literature; IOC consensus, Mountjoy et al.). **Caveat to check:** the specific "testosterone disruption in women" framing needs a direct citation — the robustly-supported claim is broader endocrine/reproductive disruption from low energy availability, not testosterone specifically; do not state the testosterone claim as established until sourced.
+- **Surplus for lean gain:** a modest surplus (~150-300 kcal/day; gentle end preferred) supports muscle gain while limiting fat gain, and larger surpluses add disproportionate fat — reviews such as Iraki et al. (2019, *Sports*) and Slater et al. (2019). **Verify exact figures/references.**
+- **Muscle resting metabolic rate:** skeletal muscle at rest is ~13 kcal/kg/day (Elia 1992; Wang et al. 2010, specific metabolic rates of organs and tissues) — the basis for the "building muscle modestly raises BMR (roughly 10-13 kcal/kg/day)" figure in the Measurements explainer.
 - **Body recomposition in trained women:** a study found over half of participants in an 8-week resistance training study recomposed with no dietary intervention at all.
 - **Weight loss resistance across menopause:** survey-based research shows this increases through perimenopause and peaks postmenopause, in resistance-trained women specifically.
 - **Perimenopause hunger/ghrelin:** a study of 40 women found heightened appetite and elevated ghrelin specifically during perimenopause versus pre- and post-menopausal stages.
