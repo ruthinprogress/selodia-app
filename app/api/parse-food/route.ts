@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const { foodText, happenedAt, images } = await request.json();
 
-  const content: any[] = [];
+  const content: Anthropic.ContentBlockParam[] = [];
 
   if (images && images.length > 0) {
     for (const img of images) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
   let macros: ParsedMacros;
   try {
     macros = JSON.parse(cleanedText) as ParsedMacros;
-  } catch (err) {
+  } catch {
     console.log('PARSE-FOOD JSON PARSE ERROR:', cleanedText);
     return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
   }
