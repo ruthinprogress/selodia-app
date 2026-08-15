@@ -168,18 +168,32 @@ Chat being the home screen does not mean everything requires typing. The Almanac
 ## The Overview Segment
 The default landing of the Dashboard (Screen Structure, above): a lightweight cross-facet summary, each element tapping through into the relevant detail segment. Composition:
 
-- **Body summary** — the latest weight, body fat %, and muscle-mass values as compact cards; taps through to Measurements.
+- **Body summary** — the latest weight, body fat %, and muscle mass (**in kg**, matching `body_measurements.muscle_kg`) as compact cards; taps through to Measurements.
 - **Nutrition bars** — calorie and protein shown as **target-vs-current progress bars** (the calorie target from the computed Calorie Targets, Part Eight — replacing the old fabricated range); tap through to Food.
 - **Hydration bar** — a tap/fill bar in the same visual family as the calorie and protein bars (see Hydration Tracking). Explicitly **not gamified**.
 - **Personal line** — a small, warm, genuinely specific line (see The Overview Personal Line). Explicitly **not** a generic rotating affirmation.
 - **Activity** — omitted until the Activity segment is built (Part Two, principle 8: no empty segments).
 
-**Cut deliberately (2026-08-15):** a "recent entries" list was considered for the Overview and removed. The Food segment's weekly table is where entries are browsed; a recent-entries feed here duplicated that view without adding a genuinely distinct one. Recorded so it isn't reintroduced by default.
+**Cut deliberately (2026-08-15):** a "recent entries" list was considered for the Overview and removed. Entries are browsed in the Food segment (today's log) and Measurements (the weekly table); a recent-entries feed on the Overview duplicated those without adding a genuinely distinct view. Recorded so it isn't reintroduced by default.
 
 ## The Overview Personal Line
 A small, warm line of text on the Overview reflecting something genuinely specific to this user — a saved Almanac pattern, something recently discussed — and **never a generic rotating affirmation or motivational quote**. This is the same "personal, never generic" principle already established for whoosh personalization (Part Nine) and food-and-joy pattern tracing (Part Nine, Food-and-feeling pattern tracing): a real pattern in the user's own data, framed as theirs — or nothing at all, never filler.
 
 **Scope (build item 32):** this records the concept and placement only. The actual content-selection logic — which saved pattern or recent thread to surface, and when to show nothing rather than reach for something — is real, separate future work, and depends on there being enough saved Almanac/pattern data to draw from. Not yet built.
+
+## The Measurements Segment
+The body/measurement detail view (confirmed by the 2026-08-15 mockup). Composition:
+- **Key measurements** — waist / thigh / hip cards.
+- **The weekly table** — a minimized week of body data (Day / Wt / Muscle / ±), one row per day, each row carrying the eye-icon discuss-card trigger (see "The 'What's In Here' Discuss-Card"). This is the **home of the minimized weekly table and its historical week-stepping** (see Historical Browsing) — a body-data mechanic, not a food one.
+- **Then & Now** — first-vs-latest for weight *and* muscle (e.g. weight −5.2%, muscle +2.9%): the recomposition story the two rows tell together, which either number alone would hide.
+- Muscle is shown **in kg** throughout, matching `body_measurements.muscle_kg`.
+- The BMR/TDEE explainer is **not** here — it moved to Activity (see Basal Metabolism Tracking).
+
+## The Food Segment
+Confirmed by the 2026-08-15 mockup as a **today's-log** view, *not* a full weekly table:
+- Today's food **entries** as rows (meal label + confidence tag + kcal · protein), each with the eye-icon discuss-card trigger.
+- **Today's total** (kcal and protein vs target) and a single one-line **weekly average** (e.g. "Avg 1,590 kcal · 91g protein") — a summary line, not a browsable week.
+- **Build note (2026-08-15):** the weekly-table mechanic already built in `food-week-view.tsx` (the Food-log host slice — Mon–Sun grouping over `food_logs`, addressed by `week.ts`) is structurally the **Measurements** weekly table, not this Food screen. When Measurements is built, that mechanic ports there; the Food segment gets a lighter, genuinely new today's-log view. The `week.ts` addressing utilities are reused by whichever segment owns the weekly table.
 
 ## Conversation-First Logging
 Free text describes food naturally ("chicken salad, handful of nuts, oat latte"); the AI estimates kcal, protein, carbs, fat with no database lookup or barcode scanning. Smart defaults apply for vague portions and common incidentals (butter on toast, milk in a latte) unless the user specifies otherwise. All vague portions still run through AI estimation rather than being skipped — an approximation of a bite of cheese still matters more than nothing logged at all. Weight input is optional, never required. Restaurant and social meals are estimated more loosely and flagged as lower confidence, rather than presented with false precision.
@@ -331,7 +345,7 @@ Calculated from muscle mass × 2.2g (lean body mass from scales, not total bodyw
 ## Basal Metabolism Tracking
 Pulled directly from smart scale data (Zepp Life, Withings, Fitbit Aria, and similar — most modern bioimpedance scales output this). Tracked as a trend over months, overlaid with muscle mass, and kept clearly separate from active/activity burn so the user understands the difference.
 
-**BMR/TDEE/muscle explainer — Measurements segment.** The Measurements segment (Part Five, Screen Structure) carries a short, collapsible explainer, **open by default**, ported *verbatim* from the original Session-8 design — built and user-tested before the native rewrite, and recovered here so it is not lost again. This is existing, validated content to port exactly, **not** to redesign:
+**BMR/TDEE stat summary + explainer — Activity segment.** The **Activity** segment (not Measurements — confirmed by the 2026-08-15 mockup) carries a quiet **BMR & TDEE stat summary** (the BMR and TDEE figures with their week-over-week deltas, as understated line-drawing figures) above a short, collapsible explainer, **open by default**, ported *verbatim* from the original Session-8 design — built and user-tested before the native rewrite, and recovered here so it is not lost again. This is existing, validated content to port exactly, **not** to redesign:
 
 > **What's basal metabolic rate (BMR)?** What your body burns just staying alive at complete rest — breathing, heartbeat, organ function, cell repair. The energy cost of simply existing, before you've moved a muscle.
 >

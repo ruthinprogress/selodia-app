@@ -7,12 +7,18 @@ import { Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { dayLabel, daysOfWeek, toLocalDateKey, weekLabel, weekRange } from '@/lib/week';
 
-// The Food segment of the Dashboard: one week of logged food, as a day-by-day
-// table (build: Food log / weekly-table host, first slice). Addressed entirely
-// by `weekStart` — it never reads "today" itself — so a default mount, a future
+// One week of logged data, as a day-by-day table, addressed entirely by
+// `weekStart` — it never reads "today" itself — so a default mount, a future
 // week-step, and a chat deep-link all drive it the same way. Entries render as
 // quiet rows under each day; the per-entry "What's In Here" eye icon (item 13)
 // will attach to these rows in a later slice.
+//
+// REPOINTED (2026-08-15, per the confirmed mockup): this weekly-table mechanic
+// is structurally the MEASUREMENTS segment's weekly table (body data: Wt /
+// Muscle / ±), not the Food segment. When Measurements is built, this ports
+// there; the Food segment instead gets a lighter, genuinely new today's-log
+// view (today's entries + total + a one-line weekly average). `week.ts` stays
+// shared. See UNFLUMP_SPEC.md — The Measurements Segment / The Food Segment.
 type FoodLogRow = {
   id: string;
   happened_at: string;
