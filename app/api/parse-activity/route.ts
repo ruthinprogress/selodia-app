@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
-import { coerceEccentricLoad, coerceIntensity, logActivityFromText } from '../../lib/activity-logging';
+import {
+  coerceEccentricLoad,
+  coerceIntensity,
+  logActivityFromText,
+  type ParsedActivity,
+} from '../../lib/activity-logging';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -19,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   const { activityText, happenedAt, images } = await request.json();
 
-  const content: any[] = [];
+  const content: Anthropic.ContentBlockParam[] = [];
 
   if (images && images.length > 0) {
     for (const img of images) {
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest) {
   let parsed;
   try {
     parsed = JSON.parse(cleanedText);
-  } catch (err) {
+  } catch {
     console.log('PARSE-ACTIVITY JSON PARSE ERROR:', cleanedText);
     return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
   }
@@ -95,7 +100,7 @@ let finalHappenedAt = happenedAt || new Date().toISOString();
     finalHappenedAt = parsed.detected_date + 'T' + timeOnly;
   }
 
-  const rowsToInsert = parsed.activities.map((activity: any) => ({
+  const rowsToInsert = parsed.activities.map((activity: ParsedActivity) => ({
     user_id: user.id,
     happened_at: finalHappenedAt,
     activity_type: activity.activity_type,

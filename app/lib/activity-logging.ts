@@ -14,6 +14,18 @@ export const coerceIntensity = (v: unknown): 'light' | 'moderate' | 'intense' | 
 export const coerceEccentricLoad = (v: unknown): 'none' | 'low' | 'moderate' | 'high' | null =>
   v === 'none' || v === 'low' || v === 'moderate' || v === 'high' ? v : null;
 
+// One activity object as the parse model returns it (all fields optional — the
+// model may omit any; intensity/eccentric_load are coerced valid-or-null before
+// insert). Shared with the screenshot path (parse-activity/route.ts).
+export type ParsedActivity = {
+  activity_type?: string;
+  duration_min?: number;
+  kcal_burned?: number;
+  notes?: string | null;
+  intensity?: unknown;
+  eccentric_load?: unknown;
+};
+
 export type ActivityEntry = {
   id: string;
   activity_type: string;
@@ -57,7 +69,7 @@ export async function logActivityFromText(
     finalHappenedAt = parsed.detected_date + 'T' + timeOnly;
   }
 
-  const rowsToInsert = parsed.activities.map((activity: any) => ({
+  const rowsToInsert = parsed.activities.map((activity: ParsedActivity) => ({
     user_id: userId,
     happened_at: finalHappenedAt,
     activity_type: activity.activity_type,
