@@ -39,9 +39,11 @@ const SODIUM_HIGH_MG = 1500;
 export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms' | 'sodium';
 type NoiseFlag = { source: NoiseSource; reason: string };
 
-// A logged activity's time and free-text type, the context both the pump and
-// DOMS flaggers read (pump needs only the time; DOMS needs the type too).
-export type ActivityContext = { happenedAt: string; activityType: string | null };
+// A logged activity's time and its log-time eccentric-load classification, the
+// context both the pump and DOMS flaggers read (pump needs only the time; DOMS
+// reads eccentric_load — the real semantic signal from parse-activity, build
+// item 27 — replacing the old keyword stopgap).
+export type ActivityContext = { happenedAt: string; eccentricLoad: string | null };
 
 // A logged food's time and estimated sodium, for the salty-food flag. sodium_mg
 // is null on older rows (captured only from the point sodium logging shipped) and
@@ -108,38 +110,13 @@ function pumpFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag 
   };
 }
 
-// TEMPORARY STOPGAP — see UNFLUMP_SPEC.md Part Two, principle 13. This closed
-// keyword list can never be complete (human activity is unbounded), so it ships
-// only because the failure cost is benign: DOMS is a reassurance-only flag, a miss
-// is no worse than no flag, and a false positive still errs in the safe direction
-// and is outranked by the trend engine. The real fix is the tracked build-order
-// item 27 — classify eccentric load at log time in parse-activity, where the
-// activity is already understood — not an ever-growing list here.
-//
-// DOMS is eccentric muscle damage, a general mechanism, not leg-specific: legs get
-// named in casual guidance only because their larger mass makes the scale effect
-// easier to see. So this spans eccentric leg resistance, intensity/terrain-
-// qualified cardio (bare run/walk/cycle excluded; "long" phrase-only so "long
-// walk" doesn't match), and eccentric upper/full-body work (climbing, aerial,
-// gymnastics, heavy rowing).
-const DOMS_TERMS = [
-  // eccentric leg resistance
-  'leg', 'squat', 'deadlift', 'lunge', 'leg press', 'leg day', 'lower body', 'lower-body',
-  'glute', 'hamstring', 'quad', 'calf', 'calves', 'hip thrust', 'rdl', 'bulgarian', 'step-up',
-  // eccentric / intense cardio — standalone strong signals (descending terrain is
-  // real eccentric load, so hill walks and hikes flagging is correct)
-  'sprint', 'hill', 'hilly', 'uphill', 'incline', 'trail', 'hike', 'hiking', 'stairs',
-  // eccentric upper / full-body — muscle damage isn't leg-specific
-  'climb', 'bouldering', 'aerial', 'silks', 'gymnastics', 'rowing',
-  // weak qualifiers, phrase-form only so easy cardio ("long walk") doesn't match
-  'long run', 'long ride', 'long cycle', 'long bike',
-];
-
-function isEccentricSession(activityType: string | null): boolean {
-  if (!activityType) return false;
-  const t = activityType.toLowerCase();
-  return DOMS_TERMS.some((term) => t.includes(term));
-}
+// The log-time eccentric_load values that carry enough eccentric muscle stress
+// to flag (moderate/high). This reads the real semantic classification captured
+// by parse-activity at log time (build item 27, per Part Two principle 13) —
+// replacing the earlier keyword-list stopgap. Older rows and any session the
+// parser couldn't classify are null and simply don't flag (benign: a miss is no
+// worse than no flag, and the trend engine outranks this reassurance-only flag).
+const ECCENTRIC_LOADS_THAT_FLAG = new Set(['moderate', 'high']);
 
 // An eccentric-loading session 24-72h before the reading carries delayed-onset
 // soreness swelling that can inflate it (Reliability Framework).
@@ -149,7 +126,7 @@ function domsFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag 
   const minMs = DOMS_MIN_HOURS * 60 * 60 * 1000;
   const maxMs = DOMS_MAX_HOURS * 60 * 60 * 1000;
   const trainedHardRecently = activities.some((a) => {
-    if (!isEccentricSession(a.activityType)) return false;
+    if (a.eccentricLoad == null || !ECCENTRIC_LOADS_THAT_FLAG.has(a.eccentricLoad)) return false;
     const at = new Date(a.happenedAt).getTime();
     if (isNaN(at)) return false;
     const gap = measured - at; // positive when the activity came before the reading

@@ -102,7 +102,7 @@ export function OverviewPanel() {
         ).toISOString();
         const { data: recentActs } = await supabase
           .from('activity_logs')
-          .select('happened_at, activity_type')
+          .select('happened_at, eccentric_load')
           .gte('happened_at', windowStart)
           .lte('happened_at', latest.measured_at);
         // Food in the ~26h up to the reading, for the sodium flag (the util
@@ -123,7 +123,7 @@ export function OverviewPanel() {
             .filter((a) => a.happened_at != null)
             .map((a) => ({
               happenedAt: a.happened_at as string,
-              activityType: (a.activity_type as string | null) ?? null,
+              eccentricLoad: (a.eccentric_load as string | null) ?? null,
             })),
           priorMeasuredAts: rows.slice(1).map((r) => r.measured_at),
           recentFoods: (recentFoodRows ?? [])

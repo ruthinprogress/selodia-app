@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
-import { logActivityFromText } from '../../lib/activity-logging';
+import { coerceEccentricLoad, coerceIntensity, logActivityFromText } from '../../lib/activity-logging';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -48,9 +48,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const textInstruction = hasImages
-    ? 'This image is a screenshot from a fitness tracking app (e.g. Samsung Health). It could be either: (a) a DAILY SUMMARY screen showing total steps, active time, activity calories, total burnt calories, and distance for a whole day, or (b) a SPECIFIC WORKOUT screen showing one activity (e.g. a run) with details like distance, pace, duration, cadence. Identify which type this is. If it is a daily summary, respond with ONE activity object: activity_type "Daily Summary", duration_min = active time shown, kcal_burned = total burnt calories figure, and notes should include steps and distance if shown (e.g. "10,228 steps, 7.33km"). If it is a specific workout, respond with ONE activity object: activity_type = the activity name (e.g. "Running"), duration_min = its duration, kcal_burned = its calorie figure, notes = distance/pace/cadence/incline as a short readable summary. ' + (activityText ? 'The person also added this note: "' + activityText + '". ' : '') + 'Respond ONLY with valid JSON, no other text, in this exact format: {"activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null}], "source": "Samsung daily summary" or "Samsung workout screenshot"}'
-    : 'The person described one or more physical activities in free text. Today\'s date is ' + new Date().toISOString().slice(0, 10) + '. If they mention a relative date (e.g. "yesterday", "on Monday", "two days ago", "this morning"), calculate the actual date they mean and return it as detected_date in ISO 8601 format (just the date, e.g. "2026-07-30"). If no date is mentioned, return null for detected_date and the current time will be used instead. If they describe MULTIPLE distinct activities (e.g. "1.5 hours ballet then 1 hour yoga"), split them into SEPARATE entries in the activities array, each with its own duration and calorie estimate - do not combine them into one entry. Estimate duration and calories burned for each based on the activity type and any intensity clues mentioned (e.g. "moderate", "intense", "easy"). Respond ONLY with valid JSON, no other text, in this exact format: {"activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null}], "source": "manual text", "detected_date": iso8601_date_string_or_null} Activity description: "' + activityText + '"'
+  // Image-only prompt: text-only entries already returned above via the shared
+  // logger, so this path always has images. (The screenshot parse can rarely
+  // determine eccentric_load — a summary screen shows no exertion detail — so
+  // intensity/eccentric_load are best-effort here, null when not evident.)
+  const textInstruction =
+    'This image is a screenshot from a fitness tracking app (e.g. Samsung Health). It could be either: (a) a DAILY SUMMARY screen showing total steps, active time, activity calories, total burnt calories, and distance for a whole day, or (b) a SPECIFIC WORKOUT screen showing one activity (e.g. a run) with details like distance, pace, duration, cadence. Identify which type this is. If it is a daily summary, respond with ONE activity object: activity_type "Daily Summary", duration_min = active time shown, kcal_burned = total burnt calories figure, and notes should include steps and distance if shown (e.g. "10,228 steps, 7.33km"). If it is a specific workout, respond with ONE activity object: activity_type = the activity name (e.g. "Running"), duration_min = its duration, kcal_burned = its calorie figure, notes = distance/pace/cadence/incline as a short readable summary. ' + (activityText ? 'The person also added this note: "' + activityText + '". ' : '') + 'Where the screen makes it evident, also set "intensity" ("light" | "moderate" | "intense") and "eccentric_load" ("none" | "low" | "moderate" | "high" — the eccentric muscle stress that drives next-day soreness, e.g. higher for hilly/downhill running); use null for either when the screen does not make it clear. Respond ONLY with valid JSON, no other text, in this exact format: {"activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null, "intensity": "light" | "moderate" | "intense" | null, "eccentric_load": "none" | "low" | "moderate" | "high" | null}], "source": "Samsung daily summary" or "Samsung workout screenshot"}'
 
   content.push({
     type: 'text',
@@ -101,6 +104,8 @@ let finalHappenedAt = happenedAt || new Date().toISOString();
     source: parsed.source,
     raw_input: activityText || (hasImages ? '(screenshot upload)' : ''),
     notes: activity.notes,
+    intensity: coerceIntensity(activity.intensity),
+    eccentric_load: coerceEccentricLoad(activity.eccentric_load),
   }));
 
   const { data, error } = await supabase
