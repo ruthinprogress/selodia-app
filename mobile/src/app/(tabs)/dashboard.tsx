@@ -39,8 +39,6 @@ export default function DashboardScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ThemedText type="title">Dashboard</ThemedText>
-
           <ThemedView style={styles.switcher}>
             {SEGMENTS.map((s) => {
               const active = s.key === view;

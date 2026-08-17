@@ -1,202 +1,281 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { getBasalMetabolismTrend } from '@/lib/basal-metabolism';
-import { interpretLatestReading } from '@/lib/measurement-interpretation';
-import { calculateProteinTarget, type ProteinTarget } from '@/lib/protein';
-import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
+import { useTheme } from '@/hooks/use-theme';
+import { resolveTDEE } from '@/lib/body-metrics';
+import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
+import {
+  findWeekAgoReading,
+  formatWeeklyDelta,
+  weeklyDelta,
+  type MeasurementRow,
+} from '@/lib/overview-metrics';
+import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
+import { calculateProteinTarget } from '@/lib/protein';
 import { supabase } from '@/lib/supabase';
 
-// The Overview segment of the Dashboard — the default landing. Today it carries
-// the protein / basal-metabolism / latest-reading summary cards (formerly the
-// whole dashboard screen, now correctly named as one segment). Next slice turns
-// this into a genuine cross-facet summary that taps through into Food and
-// Measurements; for now it is the body-facing summary it has always been.
-type Measurement = {
-  measured_at: string;
-  bmr: number | null;
-  muscle_kg: number | null;
-  weight_kg: number | null;
+// The Overview segment of the Body tab — the default landing (UNFLUMP_SPEC.md,
+// The Overview Segment). A lightweight cross-facet glance: a rotating personal
+// line, a body summary (weight / body fat / muscle with vs-last-week deltas),
+// and a food-intake card with calorie + protein target-vs-current bars. The
+// calorie target composes the two already-built pure functions —
+// resolveTDEE(...) -> calculateCalorieTarget(...). Hydration (item 31) is
+// deliberately deferred until its backend exists. Colours use the current
+// neutral theme; the brand palette (terracotta/forest/sage) is a separate
+// Part Fifteen visual pass.
+
+type ProfileRow = {
+  height_cm: number | null;
+  date_of_birth: string | null;
+  biological_sex: string | null;
+  activity_level: string | null;
+  fat_focus_state: string | null;
+  muscle_focus_state: string | null;
+  has_scales: boolean | null;
 };
 
+type Metric = { value: number | null; delta: string | null };
+type OverviewData = {
+  hasMeasurement: boolean;
+  personalLine: string;
+  weight: Metric;
+  bodyFat: Metric;
+  muscle: Metric;
+  todayKcal: number;
+  todayProtein: number;
+  calorieTargetKcal: number | null;
+  proteinTargetG: number | null;
+};
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+const asFocus = (s: string | null): FocusState =>
+  s === 'reduce' || s === 'increase' ? s : 'maintain';
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 export function OverviewPanel() {
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
-  const [protein, setProtein] = useState<ProteinTarget | null>(null);
-  const [proteinNote, setProteinNote] = useState<string | null>(null);
-  const [proteinQualityNote, setProteinQualityNote] = useState<string | null>(null);
-  const [bmrLine, setBmrLine] = useState<string | null>(null);
-  const [readingNote, setReadingNote] = useState<string | null>(null);
+  const [data, setData] = useState<OverviewData | null>(null);
 
   useEffect(() => {
     (async () => {
-      // RLS scopes reads to the signed-in user - no explicit user_id filter.
+      // RLS scopes every read to the signed-in user.
       const { data: measurements } = await supabase
         .from('body_measurements')
-        .select('measured_at, bmr, muscle_kg, weight_kg')
+        .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
         .order('measured_at', { ascending: false });
-      const { data: profile } = await supabase.from('user_profile').select('has_scales').maybeSingle();
+      const { data: profile } = await supabase
+        .from('user_profile')
+        .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales')
+        .maybeSingle();
 
-      const rows = (measurements ?? []) as Measurement[];
-      const latest = rows[0] ?? null;
-      const hasScales = profile?.has_scales ?? false;
-
-      const p = calculateProteinTarget(latest?.muscle_kg, latest?.weight_kg, hasScales);
-      setProtein(p);
-      if (p) {
-        setProteinNote(
-          p.source === 'muscle_mass'
-            ? 'Based on your muscle mass.'
-            : p.expectToImprove
-              ? 'Based on bodyweight for now — this sharpens once you have scale readings.'
-              : 'Based on bodyweight.'
-        );
-      }
-
-      // Day-level protein-quality nudge (build item 12): if more than half of
-      // today's logged protein comes from incomplete sources, suggest a
-      // complementary pairing and a buffered target. RLS scopes the read.
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
-      const { data: todayFood } = await supabase
+      const { data: food } = await supabase
         .from('food_logs')
-        .select('protein_g, protein_source')
+        .select('kcal, protein_g')
         .gte('happened_at', startOfDay.toISOString());
-      const proteinBySource = (todayFood ?? []).map((f) => ({
-        source: (f.protein_source as ProteinSource | null) ?? null,
-        grams: (f.protein_g as number | null) ?? 0,
-      }));
-      setProteinQualityNote(dayLevelProteinNudge(proteinBySource, p?.grams ?? null)?.message ?? null);
 
-      // getBasalMetabolismTrend re-sorts ascending internally; latest is last.
-      const trend = getBasalMetabolismTrend(rows);
-      if (trend.length > 0) {
-        const last = trend[trend.length - 1];
-        const muscle = last.muscleKg != null ? ` (muscle ${last.muscleKg} kg)` : '';
-        if (trend.length >= 2) {
-          const delta = Math.round(last.bmr - trend[0].bmr);
-          const dir = delta > 0 ? `up ${delta}` : delta < 0 ? `down ${Math.abs(delta)}` : 'level';
-          setBmrLine(`${Math.round(last.bmr)} kcal${muscle} · ${dir} since ${formatDate(trend[0].measuredAt)}`);
-        } else {
-          setBmrLine(`${Math.round(last.bmr)} kcal${muscle}`);
-        }
-      }
+      const rows = (measurements ?? []) as MeasurementRow[];
+      const latest = rows[0] ?? null;
+      const p = (profile ?? {}) as ProfileRow;
+      const foodRows = (food ?? []) as { kcal: number | null; protein_g: number | null }[];
+      const todayKcal = foodRows.reduce((s, f) => s + (f.kcal ?? 0), 0);
+      const todayProtein = foodRows.reduce((s, f) => s + (f.protein_g ?? 0), 0);
 
-      // Interpretation of the latest reading (Part Nine layer): the trend engine
-      // separates a real multi-reading trend from single-day noise, with cycle
-      // phase as the first noise flagger. RLS scopes the cycle read.
-      if (latest) {
-        const { data: lastPeriod } = await supabase
-          .from('cycle_events')
-          .select('event_date')
-          .eq('event_type', 'period_start')
-          .order('event_date', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        // Activity up to ~80h before the reading, covering both the pump window
-        // (0-4h) and the DOMS window (24-72h); the util applies the exact windows.
-        const windowStart = new Date(
-          new Date(latest.measured_at).getTime() - 80 * 60 * 60 * 1000
-        ).toISOString();
-        const { data: recentActs } = await supabase
-          .from('activity_logs')
-          .select('happened_at, eccentric_load')
-          .gte('happened_at', windowStart)
-          .lte('happened_at', latest.measured_at);
-        // Food in the ~26h up to the reading, for the sodium flag (the util
-        // applies the exact 12-24h lag window).
-        const foodWindowStart = new Date(
-          new Date(latest.measured_at).getTime() - 26 * 60 * 60 * 1000
-        ).toISOString();
-        const { data: recentFoodRows } = await supabase
-          .from('food_logs')
-          .select('happened_at, sodium_mg')
-          .gte('happened_at', foodWindowStart)
-          .lte('happened_at', latest.measured_at);
-        const interp = interpretLatestReading({
-          latest: { weightKg: latest.weight_kg, measuredAt: latest.measured_at },
-          priorWeights: rows.slice(1).map((r) => r.weight_kg).filter((w): w is number => w != null),
-          lastPeriodStart: lastPeriod?.event_date ?? null,
-          recentActivities: (recentActs ?? [])
-            .filter((a) => a.happened_at != null)
-            .map((a) => ({
-              happenedAt: a.happened_at as string,
-              eccentricLoad: (a.eccentric_load as string | null) ?? null,
-            })),
-          priorMeasuredAts: rows.slice(1).map((r) => r.measured_at),
-          recentFoods: (recentFoodRows ?? [])
-            .filter((f) => f.happened_at != null)
-            .map((f) => ({
-              happenedAt: f.happened_at as string,
-              sodiumMg: (f.sodium_mg as number | null) ?? null,
-            })),
+      if (!latest) {
+        // Empty state — no measurement to summarise. The personal line is the
+        // true day-one exception ONLY when there are zero logged entries ever
+        // (no food, no activity either); otherwise it rotates like any day.
+        const [{ data: anyFood }, { data: anyActivity }] = await Promise.all([
+          supabase.from('food_logs').select('id').limit(1),
+          supabase.from('activity_logs').select('id').limit(1),
+        ]);
+        const isTrueDayOne = !(anyFood && anyFood.length) && !(anyActivity && anyActivity.length);
+        setData({
+          hasMeasurement: false,
+          personalLine: isTrueDayOne ? PERSONAL_LINE_DAY_ONE : pickDailyPersonalLine(),
+          weight: { value: null, delta: null },
+          bodyFat: { value: null, delta: null },
+          muscle: { value: null, delta: null },
+          todayKcal,
+          todayProtein,
+          calorieTargetKcal: null,
+          proteinTargetG: null,
         });
-        setReadingNote(interp?.message ?? null);
+        setLoading(false);
+        return;
       }
 
+      const weekAgo = findWeekAgoReading(rows, latest.measured_at);
+      const tdee = resolveTDEE({
+        scaleBmr: latest.bmr,
+        weightKg: latest.weight_kg,
+        heightCm: p.height_cm,
+        dateOfBirth: p.date_of_birth,
+        biologicalSex: p.biological_sex,
+        activityLevel: p.activity_level,
+      });
+      const calorieTarget = tdee
+        ? calculateCalorieTarget({
+            tdeeKcal: tdee.tdeeKcal,
+            weightKg: latest.weight_kg,
+            fatFocus: asFocus(p.fat_focus_state),
+            muscleFocus: asFocus(p.muscle_focus_state),
+          })
+        : null;
+      const proteinTarget = calculateProteinTarget(latest.muscle_kg, latest.weight_kg, p.has_scales ?? false);
+
+      setData({
+        hasMeasurement: true,
+        personalLine: pickDailyPersonalLine(),
+        weight: {
+          value: latest.weight_kg,
+          delta: formatWeeklyDelta(weeklyDelta(latest.weight_kg, weekAgo?.weight_kg ?? null)),
+        },
+        bodyFat: {
+          value: latest.body_fat_pct,
+          delta: formatWeeklyDelta(weeklyDelta(latest.body_fat_pct, weekAgo?.body_fat_pct ?? null)),
+        },
+        muscle: {
+          value: latest.muscle_kg,
+          delta: formatWeeklyDelta(weeklyDelta(latest.muscle_kg, weekAgo?.muscle_kg ?? null)),
+        },
+        todayKcal,
+        todayProtein,
+        calorieTargetKcal: calorieTarget?.targetKcal ?? null,
+        proteinTargetG: proteinTarget?.grams ?? null,
+      });
       setLoading(false);
     })();
   }, []);
 
   return (
     <>
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="smallBold">Daily protein target</ThemedText>
-        {loading ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            …
-          </ThemedText>
-        ) : protein ? (
-          <>
-            <ThemedText type="title">{protein.grams}g</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {proteinNote}
+      <ThemedText type="title">Today</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {todayLabel()}
+      </ThemedText>
+
+      {loading || !data ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          …
+        </ThemedText>
+      ) : (
+        <>
+          <ThemedView style={[styles.personalLine, { borderLeftColor: theme.textSecondary }]}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.personalLineText}>
+              {data.personalLine}
             </ThemedText>
-            {proteinQualityNote && <ThemedText type="small">{proteinQualityNote}</ThemedText>}
-          </>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            Log a body measurement to see your protein target.
-          </ThemedText>
-        )}
-      </ThemedView>
+          </ThemedView>
 
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="smallBold">Basal metabolism</ThemedText>
-        {loading ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            …
-          </ThemedText>
-        ) : bmrLine ? (
-          <ThemedText type="small">{bmrLine}</ThemedText>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            No basal metabolism readings yet.
-          </ThemedText>
-        )}
-      </ThemedView>
+          <View style={styles.row3}>
+            <BodyCard label="Weight" value={fmt(data.weight.value, 'kg')} delta={cardDelta(data)} deltaText={data.weight.delta} />
+            <BodyCard label="Body fat" value={fmt(data.bodyFat.value, '%')} delta={cardDelta(data)} deltaText={data.bodyFat.delta} />
+            <BodyCard label="Muscle" value={fmt(data.muscle.value, 'kg')} delta={cardDelta(data)} deltaText={data.muscle.delta} />
+          </View>
 
-      {readingNote && (
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Your latest reading</ThemedText>
-          <ThemedText type="small">{readingNote}</ThemedText>
-        </ThemedView>
+          <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedText type="smallBold">Food intake</ThemedText>
+            <Bar label="Calories" current={data.todayKcal} target={data.calorieTargetKcal} unit="kcal" />
+            <Bar label="Protein" current={data.todayProtein} target={data.proteinTargetG} unit="g" />
+          </ThemedView>
+        </>
       )}
     </>
   );
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${round1(v)}${unit}`);
+// When there's no measurement at all, every card reads "No data yet".
+const cardDelta = (d: OverviewData): boolean => d.hasMeasurement;
+
+function BodyCard({ label, value, delta, deltaText }: { label: string; value: string; delta: boolean; deltaText: string | null }) {
+  return (
+    <ThemedView type="backgroundElement" style={styles.bodyCard}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.bodyCardLabel}>
+        {label}
+      </ThemedText>
+      <ThemedText type="smallBold">{value}</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.bodyCardDelta}>
+        {delta ? (deltaText ?? ' ') : 'No data yet'}
+      </ThemedText>
+    </ThemedView>
+  );
+}
+
+function Bar({ label, current, target, unit }: { label: string; current: number; target: number | null; unit: string }) {
+  const theme = useTheme();
+  const cur = Math.round(current);
+  const pct = target != null && target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+  return (
+    <View style={styles.barRow}>
+      <View style={styles.barLabelRow}>
+        <ThemedText type="small">{label}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {target != null ? `${cur} / ${Math.round(target)} ${unit}` : `${cur} ${unit} logged`}
+        </ThemedText>
+      </View>
+      <View style={[styles.barTrack, { backgroundColor: theme.background }]}>
+        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: theme.textSecondary }]} />
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  personalLine: {
+    borderLeftWidth: 2,
+    paddingLeft: Spacing.three,
+    paddingVertical: Spacing.one,
+    marginTop: Spacing.one,
+  },
+  personalLineText: {
+    fontStyle: 'italic',
+  },
+  row3: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  bodyCard: {
+    flex: 1,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.three,
+    gap: Spacing.half,
+  },
+  bodyCardLabel: {
+    fontSize: 11,
+  },
+  bodyCardDelta: {
+    fontSize: 10,
+  },
   card: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+    gap: Spacing.two,
+  },
+  barRow: {
     gap: Spacing.one,
+  },
+  barLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  barTrack: {
+    height: 6,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 4,
   },
 });
