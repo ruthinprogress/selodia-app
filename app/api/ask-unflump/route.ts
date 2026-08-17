@@ -14,6 +14,7 @@ import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
+import { saveAlmanacEntry } from '../../lib/almanac';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -173,6 +174,8 @@ NUTRIENT DEPTH (passive, occasional): protein and calories miss things that can 
 
 CLARIFYING A COMPOSITE: two kinds of composite dish are worth a light, single clarifying question when the person did NOT already specify the details. (1) A consistent-ratio dish (lasagne) where ONE variable materially changes the macros - the type of meat, the portion of a set dish: ask about that one variable. (2) A high-variability dish (shakshuka, a full English) whose make-up really varies: ask about the KEY items and quantities in ONE question ("A full English - roughly how many eggs and rashers of bacon? I'll assume a typical spread otherwise"), never item by item across turns. Either way, ask just once, gently, and always offer an easy way out ("...or I'll just go with a typical one, no worries either way"). It is logged immediately with a sensible default regardless, so this is a light confirmation, never a gate or a demand - and you never chase items they leave out: a typical portion fills anything unmentioned. Set clarificationAsked to a short name for what you asked about. Do this ONLY for those two cases: never for a simple or branded item, and never for a multi-component meal (those are just broken into their parts). Never nag, never re-ask. When a later message answers your clarification, set clarificationResolved to the full enriched food description combining the original dish with everything they said (e.g. "beef lasagne", or "full English with 2 fried eggs and 3 rashers of bacon"); the app re-reads it and quietly updates the stored entry, so don't restate macros.
 
+SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved plans, patterns, and insights - the things worth keeping within easy reach. A save is worth it only for (a) a real plan you've genuinely worked out together (a routine, a movement plan, a meal or drink plan) or (b) a genuine INSIGHT - a pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight/waist tending higher in the days before a period). It is NOT worth saving a plain result (a number the data already shows, like a 5-day trend) or a one-off observation (a contextual note that connects to nothing) - those stay in the conversation. **Confirm first, always:** when something save-worthy emerges, ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after the person agrees - never save without a yes, never save a passing remark. Use an open, natural word for almanacKind (e.g. "insight", "routine", "movement plan", "pattern"), a short almanacTitle, and almanacCategory only when a natural grouping exists. For an INSIGHT, put its rule in almanacContent as a condition and an expectation, e.g. {"condition": "the days before your period", "expectation": "weight and waist read a little higher"}, so it can inform how future readings are interpreted.
+
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${SAFETY_PROMPT_BLOCK}`;
@@ -210,6 +213,24 @@ ${SAFETY_PROMPT_BLOCK}`;
       description:
         'Only when THIS message answers a clarification you asked on the previous turn (you will see your question and their answer in the recent history): the full enriched food description combining the original dish with everything they said (e.g. "beef lasagne", or "full English with 2 eggs and 3 rashers"). Leave unset otherwise.',
     },
+    almanacKind: {
+      type: 'string',
+      description:
+        'Only when saving a genuinely save-worthy Almanac item AND the person has AGREED to save it (confirm first): an open, natural word for the kind (e.g. "insight", "routine", "movement plan", "pattern"). Never without agreement; never for a plain result or one-off observation.',
+    },
+    almanacTitle: {
+      type: 'string',
+      description: 'Only alongside almanacKind: a short title for the saved entry.',
+    },
+    almanacCategory: {
+      type: 'string',
+      description: 'Only alongside almanacKind, and only when a natural grouping exists: an emergent category (e.g. "Workouts").',
+    },
+    almanacContent: {
+      type: 'object',
+      description:
+        'Only alongside almanacKind: the entry content as an object. For an INSIGHT use { "condition": ..., "expectation": ... } so it can inform future readings; for a plan, the plan\'s structure; otherwise a { "summary": ... }.',
+    },
   });
 
   let response;
@@ -244,6 +265,10 @@ ${SAFETY_PROMPT_BLOCK}`;
     logIntent?: 'none' | 'food' | 'activity';
     clarificationAsked?: string;
     clarificationResolved?: string;
+    almanacKind?: string;
+    almanacTitle?: string;
+    almanacCategory?: string;
+    almanacContent?: unknown;
   };
 
   const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
@@ -340,6 +365,21 @@ ${SAFETY_PROMPT_BLOCK}`;
     }
   }
 
+  // Almanac save (build item 15): the model emits these only after the person
+  // has agreed (confirm-first is enforced in the prompt), so persist on emit -
+  // mirroring the [REMEMBER] write above. saveAlmanacEntry returns null on a
+  // non-save or a failed insert, so we never claim a save that didn't happen.
+  let savedAlmanac: { kind: string; title: string } | null = null;
+  if (result.almanacKind && result.almanacTitle) {
+    const entry = await saveAlmanacEntry(supabase, user.id, {
+      kind: result.almanacKind,
+      title: result.almanacTitle,
+      category: result.almanacCategory,
+      content: result.almanacContent,
+    });
+    if (entry) savedAlmanac = { kind: entry.kind, title: entry.title };
+  }
+
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
@@ -361,6 +401,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   return NextResponse.json({
     reply: replyText,
     savedContext,
+    savedAlmanac,
     resourceCard,
     healthGuidanceApplied,
     saved,
