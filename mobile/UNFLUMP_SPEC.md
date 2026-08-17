@@ -177,6 +177,8 @@ The default landing of the Body tab (Screen Structure, above): a lightweight cro
 - **Personal line** — a small, warm, genuinely specific line (see The Overview Personal Line). Explicitly **not** a generic rotating affirmation.
 - **Activity** — omitted until the Activity segment is built (Part Two, principle 8: no empty segments).
 
+**Empty / day-one state (2026-08-17 mockup).** Before anything is logged, the Overview still renders warmly rather than as a broken/blank screen: the body-summary cards show a muted "—" with "No data yet"; the food card reads "Nothing logged yet · Tell me about your day in Chat"; the calorie/protein bars sit at 0 / target and the water drops are all empty. The personal line uses a gentler **day-one** phrasing (e.g. *"Welcome — nothing logged yet. Whenever you're ready."*) rather than an MVP-set line. The whole state invites, never nags.
+
 **Cut deliberately:** two things were considered for the Overview and removed. (1) A "recent entries" list (2026-08-15) — entries are browsed in the Food segment (today's log) and Measurements (the weekly table); a feed here duplicated those without adding a genuinely distinct view. (2) The "Key measurements" cards — waist / thigh / hip (2026-08-16) — deliberately moved to **Measurements**, because surfacing those specific numbers on *every* open of the default landing felt intrusive and body-shaming; they belong in the detail view someone chooses to open, not the daily glance. Both recorded so they aren't reintroduced by default. (Note: the Overview's **body summary** — weight / body fat / muscle — stays; it's the light glance, distinct from the waist/thigh/hip detail.)
 
 ## The Overview Personal Line
@@ -184,12 +186,12 @@ A small, warm line of text — on the Overview, with a separate Almanac variant 
 
 **Tone — a hard constraint on every phrase in this family (Overview *and* Almanac).** A personal-line phrase must **never read as a motivational quote or slogan.** It should feel like something a trusted friend would say quietly — a gentle reminder of the underlying philosophy — never an attempt to inspire or hype. **Two distinct sets, because the two screens serve different emotional moments:** the **Chat/Overview** set is daily and personal (e.g. *"You don't have to remember everything."*); the **Almanac** set speaks to accumulated understanding (e.g. *"Building knowledge about you."*). Real candidate content now exists (2026-08-17) — a brainstorm narrowed to a ~10-phrase MVP shortlist for Chat/Overview plus a separate Almanac set, held in the design chat / mockup (the two above are the worked examples).
 
-**Scope (build item 32):** placement and tone are settled and a candidate MVP shortlist now exists; the **content-selection logic** — which phrase or user-specific pattern to surface when, and when to show nothing rather than reach — is still separate future work. The fuller data-specific personalization (a real pattern drawn from the user's own data) remains the aspiration beyond the curated MVP phrases. Not yet built.
+**Scope (build item 32):** placement and tone are settled and a candidate MVP shortlist now exists. The MVP behaviour is a simple **rotation through the curated set** (the 2026-08-17 mockup tags the line "Rotates — MVP set" on Overview and "Rotates — Almanac set" on the Almanac), plus the gentler day-one variant when nothing's logged. The fuller **content-selection logic** — surfacing a phrase tied to the user's *own* data, and when to show nothing rather than reach — remains separate future work beyond the curated MVP phrases. Not yet built.
 
 ## The Measurements Segment
 The body/measurement detail view (confirmed by the 2026-08-15 mockup). Composition:
 - **Key measurements** — waist / thigh / hip cards. Deliberately live *here*, not on the Overview (moved 2026-08-16): surfacing these specific numbers on every open of the default landing felt intrusive/body-shaming, so they belong in the detail view someone chooses to open.
-- **The weekly table** — a minimized week of body data (Day / Wt / Muscle / ±), one row per day, each row carrying the eye-icon discuss-card trigger (see "The 'What's In Here' Discuss-Card"). This is the **home of the minimized weekly table and its historical week-stepping** (see Historical Browsing) — a body-data mechanic, not a food one.
+- **The weekly table** — a minimized week of body data, one row per day: **Day / Weight / Body fat / Muscle, and each metric carries a "7d" trailing % delta** (e.g. weight "−0.5% 7d", muscle "+1.2% 7d"), per the 2026-08-17 mockup (evolved from the earlier Day / Wt / Muscle / ±). Each row carries the eye-icon discuss-card trigger (see "The 'What's In Here' Discuss-Card"). This is the **home of the minimized weekly table and its historical week-stepping** (see Historical Browsing) — a body-data mechanic, not a food one.
 - **Then & Now** — first-vs-latest for weight *and* muscle (e.g. weight −5.2%, muscle +2.9%): the recomposition story the two rows tell together, which either number alone would hide.
 - Muscle is shown **in kg** throughout, matching `body_measurements.muscle_kg`.
 - The BMR/TDEE explainer is **not** here — it moved to Activity (see Basal Metabolism Tracking).
@@ -228,7 +230,9 @@ The **Food entry detail** view (opened via the eye icon on a Food entry) is the 
 - **A factual note card** (sand-toned, calm) for anything worth flagging against the user's health context — e.g. saturated fat against a cholesterol focus. Framed as **"worth knowing," not a warning** — never alarmist.
 - **An Unflump insight card** (sage-toned, with the logo mark) surfacing a personal pattern — e.g. a chocolate/cycle-phase correlation — with **Save insight / Not now** buttons. This reuses the one app-wide insight-card interaction (the "save to Almanac" pattern from the original brand mockups), so it is one consistent mechanism, not a one-off.
 
-**Open work (not yet designed):** detail views for **Measurements** table rows and **Activity** entries. The eye icon is present and intended on those, but only the **Food entry** and **Workout** detail views have had a design pass so far; each of the other two needs its own, following this template.
+**All four detail views are now designed (2026-08-17 mockup)** — Food entry, Workout, and now Measurements-row and Activity-entry, each following this template:
+- **Measurement detail** (opened from a weekly-table row) — a stats grid (weight / body fat / muscle / bone mass), then note cards and an insight card per the Result / Observation / Insight distinction (below): e.g. a "Cycle context" *observation* note, and — when a genuine cross-domain pattern exists — an *insight* card ("weight and waist both read higher in the days before your period") with Save / Not now. Plus "Ask about this".
+- **Activity detail** (opened from an activity entry) — a stats grid (duration / est. burn / intensity / source, e.g. "Samsung Health · phone in pocket"), an "Estimate note" where the figure was adjusted (e.g. nudged up because a tracker undercounts phone-free movement), and "Ask about this".
 
 ## Established Design-System Elements
 Reusable components, now fixed so they mean the same thing everywhere (2026-08-16):
@@ -513,6 +517,8 @@ This reuses two mechanisms already built, not new infrastructure. The Daily Roun
 A living, practical reference — not a static profile page — that grows entirely from real conversations and holds goals, personal plans, and anything the user wants kept within easy reach.
 
 **Core principle: no dead pages.** The Almanac contains only what has actually been discussed and saved. It never has pre-built empty sections waiting to be filled — an untouched "Sleep" heading would undermine the warmth of the feature and read as content-bloat rather than support.
+
+**Empty state (2026-08-17 mockup).** Before anything is saved, the Almanac shows a warm empty state — a small sage line-illustration, "Nothing here yet", and copy that frames *why* it's empty and *when* it fills: *"We'll build this together — the first entries appear once a pattern's worth remembering, and you've said yes to saving it."* The "worth remembering" wording ties directly to the Result / Observation / Insight distinction (Part Five): only a genuine insight, saved, ever lands here. Once entries exist, the Almanac list shows them (e.g. "Late-luteal energy pattern", "Workouts") with an Almanac-set personal line beneath (see The Overview Personal Line).
 
 **Structure:** conceptually replaces a traditional profile area, but standard account items (settings, sign-out) remain separate and standard, not folded into the Almanac.
 
