@@ -19,6 +19,8 @@
 
 **Prefers building real, working things over polished narrative before it's true.** Explicitly deferred marketing and content creation until the product itself is something she can honestly stand behind — "no point starting until I have a product I can stand behind."
 
+**Designs for the degraded real-world state, not the ideal demo — and reframes the calmer choice as the stronger one, not a fallback.** Chooses the option that stays graceful when conditions are bad over the more ambitious one that only looks better when everything works. (18 August 2026: rejected a stroke-trace / line-drawing loading animation for the logo in favour of a gentle breathing pulse on the complete mark. The deciding reasoning was resilience under real conditions — a trace implies visible *progress toward completion*, so a stalled connection leaves a visibly broken, half-drawn mark on screen, whereas a pulse never implies completion and stays calm and whole even mid-stall. Explicitly named it as "genuinely the more on-brand choice under real conditions, not a fallback from the more ambitious idea." The pattern: judge a design by how it behaves in the failure case, and don't treat the quieter option as a compromise when it's actually the more robust one. Sits alongside "matches the strength of a guarantee to how much rides on the outcome" — both are about building for what actually happens, not the happy path.)
+
 ## How this gets built
 
 At natural session-close points, add any new decision moment that reveals a genuine pattern — not every decision, only ones that add real signal about how Ruth thinks, distinct from the specific product or process choice itself.
