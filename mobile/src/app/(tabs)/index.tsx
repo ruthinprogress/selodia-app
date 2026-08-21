@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
 import { supabase } from '@/lib/supabase';
 
@@ -19,6 +20,13 @@ type Message = {
   content: string;
   resourceCard?: { title: string; description: string; url: string } | null;
   healthGuidanceApplied?: boolean;
+  // A discuss-card image posted into the thread (build item 30). imagePath is
+  // the stored object; imageUri is its short-lived signed URL, since the bucket
+  // is private. Only history carries these today — the "Ask about this" button
+  // that creates them lands with slice 4, alongside the capture that makes an
+  // image to post in the first place.
+  imagePath?: string | null;
+  imageUri?: string | null;
 };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -38,12 +46,23 @@ export default function ChatScreen() {
     (async () => {
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('role, content')
+        .select('role, content, image_path')
         .eq('source', 'chat')
         .order('created_at', { ascending: true });
 
       if (!error && data) {
-        setMessages(data.map((m) => ({ role: m.role, content: m.content })));
+        const rows: Message[] = data.map((m) => ({
+          role: m.role,
+          content: m.content,
+          imagePath: m.image_path ?? null,
+        }));
+        // One batched signing call for the whole thread rather than one per
+        // message. A path that fails to sign just renders without its image,
+        // so a broken object can never cost the person their history.
+        const urls = await signCardImageUrls(
+          rows.map((r) => r.imagePath).filter((v): v is string => typeof v === 'string')
+        );
+        setMessages(attachImageUrls(rows, urls));
       }
       setLoadingHistory(false);
     })();
@@ -149,7 +168,9 @@ export default function ChatScreen() {
 
           {messages.map((m, i) => (
             <ThemedView key={i} style={styles.messageGroup}>
-              <ChatBubble role={m.role}>{m.content}</ChatBubble>
+              <ChatBubble role={m.role} imageUri={m.imageUri}>
+                {m.content}
+              </ChatBubble>
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}
