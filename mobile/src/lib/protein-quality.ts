@@ -55,3 +55,26 @@ export function dayLevelProteinNudge(
 
   return { incompleteShare, bufferedTarget, message };
 }
+
+// Per-item protein-quality flags (build item 13's half of item 12). The same
+// captured `protein_source` that drives the day-level nudge above, read one item
+// at a time for the itemised breakdown card. Collagen is always incomplete;
+// plant protein is complete enough in combination, so it gets a pairing nudge
+// rather than a deficiency label; animal protein needs no flag at all.
+//
+// Returns null for anything with nothing to say — animal protein, an
+// unclassified source (older rows predating item 12, or a food carrying
+// negligible protein), or an item with no meaningful protein in it.
+export function perItemProteinFlag(
+  source: ProteinSource | null | undefined,
+  grams: number | null | undefined
+): string | null {
+  if (grams == null || grams < MIN_ITEM_PROTEIN_G) return null;
+  if (source === 'collagen') return 'incomplete';
+  if (source === 'plant') return 'pair it';
+  return null;
+}
+
+// Below this an item's protein is incidental (a splash of milk, a garnish) and
+// flagging it would be noise on a card that should read calmly.
+const MIN_ITEM_PROTEIN_G = 3;

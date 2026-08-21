@@ -1,14 +1,13 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FoodWeekView } from '@/components/food-week-view';
+import { FoodTodayView } from '@/components/food-today-view';
 import { OverviewPanel } from '@/components/overview-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { currentWeekStart, parseWeekStartParam } from '@/lib/week';
 
 // The Dashboard destination: one screen hosting an in-screen switcher across
 // facets (UNFLUMP_SPEC.md, Screen Structure). Segments appear only once built
@@ -27,13 +26,10 @@ export default function DashboardScreen() {
   const initialView: SegmentKey = params.view === 'food' ? 'food' : 'overview';
   const [view, setView] = useState<SegmentKey>(initialView);
 
-  // A `week` param (from a deep-link) addresses a specific week; otherwise the
-  // current week. Memoised so the Date identity is stable across re-renders.
-  const weekParam = typeof params.week === 'string' ? params.week : null;
-  const weekStart = useMemo(
-    () => parseWeekStartParam(weekParam) ?? currentWeekStart(),
-    [weekParam]
-  );
+  // The `?week=` param is still accepted in the route's type, but nothing reads
+  // it right now: it addresses the WEEKLY TABLE, which is a body-data mechanic
+  // that belongs to Measurements (item 38), not to this Food view. Its parsing
+  // helpers stay in week.ts, unchanged, for that port — see food-week-view.tsx.
 
   return (
     <ThemedView style={styles.container}>
@@ -61,7 +57,7 @@ export default function DashboardScreen() {
             })}
           </ThemedView>
 
-          {view === 'overview' ? <OverviewPanel /> : <FoodWeekView weekStart={weekStart} />}
+          {view === 'overview' ? <OverviewPanel /> : <FoodTodayView />}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
