@@ -15,6 +15,13 @@ import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
 import { saveAlmanacEntry } from '../../lib/almanac';
+import {
+  isCardMediaType,
+  isDiscussEntryType,
+  loadPendingCardImage,
+  markCardImageSent,
+  uploadDiscussCard,
+} from '../../lib/discuss-card';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -40,12 +47,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { message } = await request.json();
+  const { message, cardImageBase64, cardMediaType, entryId, entryType } =
+    await request.json();
   console.log('CHAT REQUEST RECEIVED:', message);
 
-  const { error: userInsertError } = await supabase
-    .from('chat_messages')
-    .insert({ user_id: user.id, role: 'user', content: message, source: 'chat' });
+  // "Ask about this" (item 30): the tapped entry's card rides this turn as an
+  // image. Upload first so the turn is persisted with its reference; a failed
+  // upload degrades to an ordinary text turn rather than losing the message.
+  let cardImagePath: string | null = null;
+  if (cardImageBase64 && isCardMediaType(cardMediaType)) {
+    cardImagePath = await uploadDiscussCard(supabase, user.id, cardImageBase64, cardMediaType);
+  }
+  // The entry tag travels with the message from the posting turn forward, so a
+  // single entry's Q&A can be pulled back out of the date-scrolled thread.
+  const taggedEntryId = typeof entryId === 'string' && isDiscussEntryType(entryType) ? entryId : null;
+  const taggedEntryType = taggedEntryId ? entryType : null;
+
+  const { error: userInsertError } = await supabase.from('chat_messages').insert({
+    user_id: user.id,
+    role: 'user',
+    content: message,
+    source: 'chat',
+    image_path: cardImagePath,
+    discuss_entry_id: taggedEntryId,
+    discuss_entry_type: taggedEntryType,
+  });
   if (userInsertError) {
     console.log('ASK-UNFLUMP USER TURN INSERT FAILED:', userInsertError.message);
   }
@@ -86,13 +112,35 @@ export async function POST(request: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(40);
 
-  const messages = (recentHistory ?? [])
+  const messages: Anthropic.MessageParam[] = (recentHistory ?? [])
     .slice()
     .reverse()
     .map((m) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content as string,
     }));
+
+  // The card image reaches the model exactly ONCE (decision, 2026-08-21):
+  // re-sending it every turn would charge vision tokens for the rest of the
+  // conversation to no benefit, since the reply it produces is already in the
+  // text history. Attached to the newest user turn so "this" is unambiguous.
+  const pendingCard = await loadPendingCardImage(supabase, user.id);
+  if (pendingCard) {
+    const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
+    if (lastUserIdx >= 0) {
+      const existing = messages[lastUserIdx].content;
+      messages[lastUserIdx] = {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: pendingCard.mediaType, data: pendingCard.base64 },
+          },
+          { type: 'text', text: typeof existing === 'string' ? existing : '' },
+        ],
+      };
+    }
+  }
 
   const { data: contextRows } = await supabase
     .from('user_context')
@@ -245,8 +293,12 @@ ${SAFETY_PROMPT_BLOCK}`;
     });
   } catch (err) {
     console.log('ANTHROPIC API ERROR:', err instanceof Error ? err.message : err);
+    // Deliberately NOT marking the card sent here: a failed call must not
+    // consume the one chance the image had to be seen.
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
+
+  if (pendingCard) await markCardImageSent(supabase, pendingCard.messageId);
 
   const toolUse = response.content.find((block) => block.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') {
