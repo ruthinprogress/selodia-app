@@ -15,12 +15,14 @@ import {
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
 import { calculateProteinTarget } from '@/lib/protein';
+import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
 
 // The Overview segment of the Body tab — the default landing (UNFLUMP_SPEC.md,
 // The Overview Segment). A lightweight cross-facet glance: a rotating personal
 // line, a body summary (weight / body fat / muscle with vs-last-week deltas),
-// and a food-intake card with calorie + protein target-vs-current bars. The
+// and a food-intake card with calorie + protein target-vs-current bars plus the
+// day-level protein-quality nudge (item 12). The
 // calorie target composes the two already-built pure functions —
 // resolveTDEE(...) -> calculateCalorieTarget(...). Hydration (item 31) is
 // deliberately deferred until its backend exists. Colours use the current
@@ -48,6 +50,7 @@ type OverviewData = {
   todayProtein: number;
   calorieTargetKcal: number | null;
   proteinTargetG: number | null;
+  proteinQualityNote: string | null;
 };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
@@ -79,15 +82,27 @@ export function OverviewPanel() {
       startOfDay.setHours(0, 0, 0, 0);
       const { data: food } = await supabase
         .from('food_logs')
-        .select('kcal, protein_g')
+        .select('kcal, protein_g, protein_source')
         .gte('happened_at', startOfDay.toISOString());
 
       const rows = (measurements ?? []) as MeasurementRow[];
       const latest = rows[0] ?? null;
       const p = (profile ?? {}) as ProfileRow;
-      const foodRows = (food ?? []) as { kcal: number | null; protein_g: number | null }[];
+      const foodRows = (food ?? []) as {
+        kcal: number | null;
+        protein_g: number | null;
+        protein_source: string | null;
+      }[];
       const todayKcal = foodRows.reduce((s, f) => s + (f.kcal ?? 0), 0);
       const todayProtein = foodRows.reduce((s, f) => s + (f.protein_g ?? 0), 0);
+      // Day-level protein-quality nudge (build item 12): when more than half of
+      // today's logged protein comes from incomplete sources, the complementary-
+      // pairing note rides this same card, next to the protein bar it qualifies.
+      // protein_source is classified at log time (Part Two, principle 13).
+      const proteinBySource = foodRows.map((f) => ({
+        source: (f.protein_source as ProteinSource | null) ?? null,
+        grams: f.protein_g ?? 0,
+      }));
 
       if (!latest) {
         // Empty state — no measurement to summarise. The personal line is the
@@ -108,6 +123,7 @@ export function OverviewPanel() {
           todayProtein,
           calorieTargetKcal: null,
           proteinTargetG: null,
+          proteinQualityNote: dayLevelProteinNudge(proteinBySource, null)?.message ?? null,
         });
         setLoading(false);
         return;
@@ -151,6 +167,8 @@ export function OverviewPanel() {
         todayProtein,
         calorieTargetKcal: calorieTarget?.targetKcal ?? null,
         proteinTargetG: proteinTarget?.grams ?? null,
+        proteinQualityNote:
+          dayLevelProteinNudge(proteinBySource, proteinTarget?.grams ?? null)?.message ?? null,
       });
       setLoading(false);
     })();
@@ -185,6 +203,11 @@ export function OverviewPanel() {
             <ThemedText type="smallBold">Food intake</ThemedText>
             <Bar label="Calories" current={data.todayKcal} target={data.calorieTargetKcal} unit="kcal" />
             <Bar label="Protein" current={data.todayProtein} target={data.proteinTargetG} unit="g" />
+            {data.proteinQualityNote && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.proteinNote}>
+                {data.proteinQualityNote}
+              </ThemedText>
+            )}
           </ThemedView>
         </>
       )}
@@ -261,6 +284,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
     gap: Spacing.two,
+  },
+  proteinNote: {
+    fontSize: 11,
+    lineHeight: 16,
   },
   barRow: {
     gap: Spacing.one,
