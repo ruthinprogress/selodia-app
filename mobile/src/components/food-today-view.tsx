@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { loadEntriesWithDiscussion } from '@/lib/discuss-state';
 import { entryLabel, sumDay, weeklyAverage, type FoodLogSummary } from '@/lib/food-today';
 import { supabase } from '@/lib/supabase';
 import { toLocalDateKey, weekRange } from '@/lib/week';
@@ -27,6 +28,20 @@ export function FoodTodayView() {
   const [today, setToday] = useState<FoodLogSummary[]>([]);
   const [avg, setAvg] = useState<{ kcal: number; protein: number; daysLogged: number } | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Which of today's entries already carry a discussion (build item 30). One
+  // query for the whole view, not one per row.
+  const [discussed, setDiscussed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const set = await loadEntriesWithDiscussion('food');
+      if (!cancelled) setDiscussed(set);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,11 +102,25 @@ export function FoodTodayView() {
               <Pressable
                 onPress={() => setOpenId(row.id)}
                 accessibilityRole="button"
-                accessibilityLabel={`What's in ${entryLabel(row)}`}
+                accessibilityLabel={
+                  discussed.has(row.id)
+                    ? `What's in ${entryLabel(row)} (discussed)`
+                    : `What's in ${entryLabel(row)}`
+                }
                 hitSlop={Spacing.two}
                 style={({ pressed }) => pressed && styles.pressed}
               >
-                <Ionicons name="eye-outline" size={18} color={theme.textSecondary} />
+                {/* Neutral until a discussion exists against this entry, then
+                    permanently changed — no third "unread" state, no fading
+                    back. ITEM 37 SWAP POINT: theme.text is a placeholder for
+                    the brand treatment, which is intended to be genuinely
+                    eye-catching (a saturated brand colour, a badge/dot, or a
+                    one-time animation) rather than this quiet token shift. */}
+                <Ionicons
+                  name="eye-outline"
+                  size={18}
+                  color={discussed.has(row.id) ? theme.text : theme.textSecondary}
+                />
               </Pressable>
             </View>
           ))}

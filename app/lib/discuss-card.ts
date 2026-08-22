@@ -132,3 +132,34 @@ export async function markCardImageSent(supabase: SupabaseClient, messageId: str
     .eq('id', messageId);
   if (error) console.log('DISCUSS CARD FLAG UPDATE FAILED:', error.message);
 }
+
+export type DiscussTag = { entryId: string; entryType: DiscussEntryType } | null;
+
+// Which entry (if any) the current turn belongs to.
+//
+// The tag persists for the natural life of a conversational thread — from the
+// posting turn forward — rather than expiring on a timer. A clock can't tell a
+// twenty-minute pause from a change of subject, so the only honest signal is
+// the model's own read of whether the conversation has moved on, declared on
+// the classify tool call it already makes (Part Two principle 13: classify
+// where the understanding already is, never by pattern-matching downstream).
+//
+// CONTINUE-BY-DEFAULT is deliberate (decided 2026-08-21). Silence from the
+// model keeps the tag, because the alternative — dropping it unless re-affirmed
+// every turn — loses genuine follow-ups. The accepted trade is a "stuck tag":
+// if the model never declares an end, one entry's history slowly absorbs the
+// whole conversation. That is a known, monitorable risk (count consecutive
+// messages sharing one entry id), not an oversight.
+export function resolveDiscussTag(input: {
+  posted: DiscussTag;
+  previous: DiscussTag;
+  topicEnded: boolean;
+}): DiscussTag {
+  // Posting a card starts that entry's discussion outright. It outranks an
+  // end-of-topic declaration: the declaration is about the message the person
+  // just sent, while the posting is a deliberate act of changing the subject TO
+  // this entry.
+  if (input.posted) return input.posted;
+  if (input.previous && !input.topicEnded) return input.previous;
+  return null;
+}

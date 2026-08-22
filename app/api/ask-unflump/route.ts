@@ -20,7 +20,9 @@ import {
   isDiscussEntryType,
   loadPendingCardImage,
   markCardImageSent,
+  resolveDiscussTag,
   uploadDiscussCard,
+  type DiscussTag,
 } from '../../lib/discuss-card';
 
 const anthropic = new Anthropic({
@@ -63,15 +65,52 @@ export async function POST(request: NextRequest) {
   const taggedEntryId = typeof entryId === 'string' && isDiscussEntryType(entryType) ? entryId : null;
   const taggedEntryType = taggedEntryId ? entryType : null;
 
-  const { error: userInsertError } = await supabase.from('chat_messages').insert({
-    user_id: user.id,
-    role: 'user',
-    content: message,
-    source: 'chat',
-    image_path: cardImagePath,
-    discuss_entry_id: taggedEntryId,
-    discuss_entry_type: taggedEntryType,
+  // The tag carried by the turn before this one — read BEFORE inserting, so it
+  // is genuinely the previous message rather than the one being written now.
+  const { data: prevTagRow } = await supabase
+    .from('chat_messages')
+    .select('discuss_entry_id, discuss_entry_type')
+    .eq('user_id', user.id)
+    .eq('source', 'chat')
+    .not('discuss_entry_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const postedTag: DiscussTag =
+    taggedEntryId && isDiscussEntryType(taggedEntryType)
+      ? { entryId: taggedEntryId, entryType: taggedEntryType }
+      : null;
+  const previousTag: DiscussTag =
+    prevTagRow?.discuss_entry_id && isDiscussEntryType(prevTagRow.discuss_entry_type)
+      ? {
+          entryId: prevTagRow.discuss_entry_id as string,
+          entryType: prevTagRow.discuss_entry_type,
+        }
+      : null;
+
+  // Insert optimistically under continue-by-default. The model's verdict on
+  // whether the topic has moved on arrives with the reply, so this is corrected
+  // below rather than blocking the turn on a call that hasn't happened yet.
+  const provisionalTag = resolveDiscussTag({
+    posted: postedTag,
+    previous: previousTag,
+    topicEnded: false,
   });
+
+  const { data: userRow, error: userInsertError } = await supabase
+    .from('chat_messages')
+    .insert({
+      user_id: user.id,
+      role: 'user',
+      content: message,
+      source: 'chat',
+      image_path: cardImagePath,
+      discuss_entry_id: provisionalTag?.entryId ?? null,
+      discuss_entry_type: provisionalTag?.entryType ?? null,
+    })
+    .select('id')
+    .maybeSingle();
   if (userInsertError) {
     console.log('ASK-UNFLUMP USER TURN INSERT FAILED:', userInsertError.message);
   }
@@ -261,6 +300,11 @@ ${SAFETY_PROMPT_BLOCK}`;
       description:
         'Only when THIS message answers a clarification you asked on the previous turn (you will see your question and their answer in the recent history): the full enriched food description combining the original dish with everything they said (e.g. "beef lasagne", or "full English with 2 eggs and 3 rashers"). Leave unset otherwise.',
     },
+    discussTopicEnded: {
+      type: 'boolean',
+      description:
+        "Set true ONLY when the conversation was about a specific logged entry (a card was shown earlier) and this message has genuinely moved on to an unrelated subject. A follow-up question about the same entry, or a natural tangent still rooted in it, is NOT a move. Leave unset when in doubt - the tag continues by default.",
+    },
     almanacKind: {
       type: 'string',
       description:
@@ -317,11 +361,30 @@ ${SAFETY_PROMPT_BLOCK}`;
     logIntent?: 'none' | 'food' | 'activity';
     clarificationAsked?: string;
     clarificationResolved?: string;
+    discussTopicEnded?: boolean;
     almanacKind?: string;
     almanacTitle?: string;
     almanacCategory?: string;
     almanacContent?: unknown;
   };
+
+  // Now the model has spoken, settle the tag properly. Posting a card always
+  // wins; otherwise the previous tag carries forward unless the topic moved on.
+  const resolvedTag = resolveDiscussTag({
+    posted: postedTag,
+    previous: previousTag,
+    topicEnded: result.discussTopicEnded === true,
+  });
+  if (userRow?.id && resolvedTag?.entryId !== provisionalTag?.entryId) {
+    const { error: tagFixError } = await supabase
+      .from('chat_messages')
+      .update({
+        discuss_entry_id: resolvedTag?.entryId ?? null,
+        discuss_entry_type: resolvedTag?.entryType ?? null,
+      })
+      .eq('id', userRow.id);
+    if (tagFixError) console.log('ASK-UNFLUMP TAG CORRECTION FAILED:', tagFixError.message);
+  }
 
   const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
     applySafetyStateMachine(result, {
@@ -437,6 +500,10 @@ ${SAFETY_PROMPT_BLOCK}`;
     role: 'assistant',
     content: replyText,
     source: 'chat',
+    // Tagged alongside the user turn so pulling one entry's history back out
+    // yields both halves of the exchange, not a column of unanswered questions.
+    discuss_entry_id: resolvedTag?.entryId ?? null,
+    discuss_entry_type: resolvedTag?.entryType ?? null,
     classification: nextClassification,
     escalation_step: nextEscalationStep,
     distress_revisit_count: nextRevisitCount,
