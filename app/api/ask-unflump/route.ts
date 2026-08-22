@@ -115,41 +115,86 @@ export async function POST(request: NextRequest) {
     console.log('ASK-UNFLUMP USER TURN INSERT FAILED:', userInsertError.message);
   }
 
-  const { data: lastAssistantTurn } = await supabase
-    .from('chat_messages')
-    .select('classification, escalation_step, distress_revisit_count')
-    .eq('user_id', user.id)
-    .eq('source', 'chat')
-    .eq('role', 'assistant')
-    // Read-hardening: only safety-classified turns carry escalation state. Skip
-    // pure logging turns (classification null, e.g. the photo/direct food-log
-    // path) so a food log dropped mid-escalation cannot null out an active
-    // C-SSRS ladder by simply being the most recent assistant row.
-    .not('classification', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Every read below is independent of the others, so they go out together
+  // rather than as eight sequential round trips. Each one previously cost its
+  // own latency before the model call had even started.
+  //
+  // ORDER STILL MATTERS in one direction: this batch must run AFTER the user
+  // turn is inserted, because recentHistory has to include the message just
+  // sent. The previous-tag read above must run BEFORE it, or it would read the
+  // row being written. Only the mutual independence within this batch is new.
+  const [
+    { data: lastAssistantTurn },
+    { data: recentHistory },
+    { data: contextRows },
+    { data: recentFood },
+    { data: recentActivity },
+    { data: recentMeasurements },
+    { data: healthContextRow },
+    { data: lastPeriodRow },
+  ] = await Promise.all([
+    supabase
+      .from('chat_messages')
+      .select('classification, escalation_step, distress_revisit_count')
+      .eq('user_id', user.id)
+      .eq('source', 'chat')
+      .eq('role', 'assistant')
+      // Read-hardening: only safety-classified turns carry escalation state. Skip
+      // pure logging turns (classification null, e.g. the photo/direct food-log
+      // path) so a food log dropped mid-escalation cannot null out an active
+      // C-SSRS ladder by simply being the most recent assistant row.
+      .not('classification', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // Descending + limit to get the most recent 40, then reverse to
+    // chronological order - ascending + limit would take the OLDEST 40
+    // instead, silently dropping the just-inserted current turn once the
+    // conversation passes 40 messages and leaving the array ending on an
+    // assistant turn, which the model rejects outright. (Confirmed as the
+    // real cause of onboarding-chat's 500s, via live Vercel logs - this
+    // route shares the identical bug, just hadn't hit 40 messages yet.)
+    supabase
+      .from('chat_messages')
+      .select('role, content')
+      .eq('user_id', user.id)
+      .eq('source', 'chat')
+      .order('created_at', { ascending: false })
+      .limit(40),
+    supabase.from('user_context').select('*').order('category', { ascending: true }),
+    supabase
+      .from('food_logs')
+      .select('*')
+      .gte('happened_at', sevenDaysAgo.toISOString())
+      .order('happened_at', { ascending: false }),
+    supabase
+      .from('activity_logs')
+      .select('*')
+      .gte('happened_at', sevenDaysAgo.toISOString())
+      .order('happened_at', { ascending: false }),
+    supabase
+      .from('body_measurements')
+      .select('*')
+      .gte('measured_at', sevenDaysAgo.toISOString())
+      .order('measured_at', { ascending: false }),
+    supabase.from('health_context').select('*').maybeSingle(),
+    supabase
+      .from('cycle_events')
+      .select('event_date')
+      .eq('event_type', 'period_start')
+      .order('event_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const previousEscalationStep: EscalationStep =
     (lastAssistantTurn?.escalation_step as EscalationStep) ?? null;
   const previousClassification: Classification | null =
     (lastAssistantTurn?.classification as Classification) ?? null;
   const previousRevisitCount: number = lastAssistantTurn?.distress_revisit_count ?? 0;
-
-  // Descending + limit to get the most recent 40, then reverse to
-  // chronological order - ascending + limit would take the OLDEST 40
-  // instead, silently dropping the just-inserted current turn once the
-  // conversation passes 40 messages and leaving the array ending on an
-  // assistant turn, which the model rejects outright. (Confirmed as the
-  // real cause of onboarding-chat's 500s, via live Vercel logs - this
-  // route shares the identical bug, just hadn't hit 40 messages yet.)
-  const { data: recentHistory } = await supabase
-    .from('chat_messages')
-    .select('role, content')
-    .eq('user_id', user.id)
-    .eq('source', 'chat')
-    .order('created_at', { ascending: false })
-    .limit(40);
 
   const messages: Anthropic.MessageParam[] = (recentHistory ?? [])
     .slice()
@@ -181,52 +226,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { data: contextRows } = await supabase
-    .from('user_context')
-    .select('*')
-    .order('category', { ascending: true });
-
   const contextText = contextRows && contextRows.length > 0
     ? contextRows.map((c) => c.category + ': ' + c.content).join('\n')
     : 'No stored context yet.';
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const { data: recentFood } = await supabase
-    .from('food_logs')
-    .select('*')
-    .gte('happened_at', sevenDaysAgo.toISOString())
-    .order('happened_at', { ascending: false });
-
-  const { data: recentActivity } = await supabase
-    .from('activity_logs')
-    .select('*')
-    .gte('happened_at', sevenDaysAgo.toISOString())
-    .order('happened_at', { ascending: false });
-
-  const { data: recentMeasurements } = await supabase
-    .from('body_measurements')
-    .select('*')
-    .gte('measured_at', sevenDaysAgo.toISOString())
-    .order('measured_at', { ascending: false });
-
   // Health Context (Part Twelve): RLS scopes this to the current user, so no
   // explicit user_id filter is needed. Injected alongside macro/context below.
-  const { data: healthContextRow } = await supabase.from('health_context').select('*').maybeSingle();
   const healthContext = (healthContextRow as HealthContext | null) ?? null;
   const healthContextBlock = buildHealthContextPrompt(healthContext);
 
   // Cycle phase (Part Thirteen): once a period has been logged, every
   // conversation loads the current cycle phase so weight/measurement talk is read
   // in context. Empty when cycle tracking isn't enabled. RLS scopes the read.
-  const { data: lastPeriodRow } = await supabase
-    .from('cycle_events')
-    .select('event_date')
-    .eq('event_type', 'period_start')
-    .order('event_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
   const cycleContextBlock = buildCycleContextPrompt(lastPeriodRow?.event_date ?? null);
 
   const foodSummary = recentFood && recentFood.length > 0
