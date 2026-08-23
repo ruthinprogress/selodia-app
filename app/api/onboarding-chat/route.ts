@@ -31,6 +31,8 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // A stronger model than the routine parsing tasks (see UNFLUMP_SPEC.md, Part
 // Three): this route's classification decides whether the safety boundary fires.
+import { PHASE_OPENERS } from '../../lib/onboarding-openers';
+
 const MODEL = 'claude-sonnet-5';
 
 type Phase = 'intro' | 'equipment' | 'goals' | 'technical_targets' | 'nutrition_targets' | 'activity_tdee';
@@ -193,6 +195,38 @@ export async function POST(request: NextRequest) {
   const { message, phase: rawPhase } = await request.json();
   const phase: Phase = PHASES.includes(rawPhase) ? rawPhase : 'goals';
 
+  // Persist this phase's opening line BEFORE the user turn, so history reads in
+  // the order the person actually experienced it.
+  //
+  // Each screen used to render its opener client-side only - never sent, never
+  // stored - so the model received an ANSWER with no QUESTION. On 2026-08-23
+  // that produced a real failure: "Just yoga and a run" landed straight after a
+  // turn about what she had eaten today, and was read as a log of today rather
+  // than her weekly pattern. Given the context the model actually had, that was
+  // the reasonable reading. Storing the opener also makes the transcript honest,
+  // which previously omitted messages the person demonstrably saw.
+  //
+  // Idempotent by exact content: onboarding is forward-only, so an opener that
+  // is already present belongs to this same phase visit and must not double up.
+  const opener = PHASE_OPENERS[phase];
+  if (opener) {
+    const { data: seen } = await supabase
+      .from('chat_messages')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('source', 'onboarding')
+      .eq('role', 'assistant')
+      .eq('content', opener)
+      .limit(1)
+      .maybeSingle();
+    if (!seen) {
+      const { error: openerError } = await supabase
+        .from('chat_messages')
+        .insert({ user_id: user.id, role: 'assistant', content: opener, source: 'onboarding' });
+      if (openerError) console.log('ONBOARDING-CHAT OPENER INSERT FAILED:', openerError.message);
+    }
+  }
+
   const { error: userInsertError } = await supabase
     .from('chat_messages')
     .insert({ user_id: user.id, role: 'user', content: message, source: 'onboarding' });
@@ -345,15 +379,12 @@ export async function POST(request: NextRequest) {
   // Deterministic numeric turns (decision A): every stated figure is built in code
   // here via reply-override, never by the model. Safety always wins - a distress
   // turn keeps the care-first reply and skips the target logic entirely.
-  let finalReply = replyText;
-  // Signals to the client that this step's target turn has landed, so the screen
-  // can reveal Continue precisely then rather than after any reply. Keyed on the
-  // deterministic confirmation event (measurements/activity confirmed), which is
-  // exactly when the code-built statement is emitted. Stays false on distress
-  // turns (guarded below), so a care-first turn never reads as "step done".
-  let phaseComplete = false;
   const isDistressTurn =
     (DISTRESS_TIERS as readonly string[]).includes(nextClassification) || nextEscalationStep !== null;
+
+  let finalReply = replyText;
+
+  let phaseComplete = false;
 
   if (!isDistressTurn && phase === 'nutrition_targets') {
     const h = normalizeHeight({ cm: result.heightCm, feet: result.heightFeet, inches: result.heightInches });
@@ -386,11 +417,16 @@ export async function POST(request: NextRequest) {
         (todayFood ?? []).reduce((s: number, f: { protein_g: number | null }) => s + (f.protein_g ?? 0), 0)
       );
       if (target != null) {
-        finalReply = formatProteinStatement(target, loggedToday);
+      // APPENDED, never substituted (corrected 2026-08-23). The figure stays
+      // code-built so it can never be hallucinated, but replacing the whole turn
+      // also deleted whatever the model said - including, on 2026-08-23, a direct
+      // "can I see the dashboard?" that was never acknowledged. The phase roles
+      // already forbid the model stating numbers, so the two do not collide.
+        finalReply = `${replyText}\n\n${formatProteinStatement(target, loggedToday)}`;
         phaseComplete = true;
       }
     } else if (h != null || w != null) {
-      finalReply = formatMeasurementEcho(h, w);
+      finalReply = `${replyText}\n\n${formatMeasurementEcho(h, w)}`;
     }
   } else if (!isDistressTurn && phase === 'activity_tdee') {
     if (result.deferredActivity) {
@@ -425,13 +461,13 @@ export async function POST(request: NextRequest) {
         biologicalSex: prof?.biological_sex,
       });
       const tdee = calculateTDEE(bmr, level);
-      if (tdee != null) finalReply = formatTDEEStatement(tdee);
+      if (tdee != null) finalReply = `${replyText}\n\n${formatTDEEStatement(tdee)}`;
     } else if (result.readyToReflectLevel && level) {
       // Route-enforced gate (decision B): the level reflection only fires once the
       // model signals the guided discovery has run its course. Until then, even if
       // a level has been inferred, the model's own evocative reply passes through
       // untouched, so the deterministic echo can never short-circuit the MI flow.
-      finalReply = formatActivityEcho(level);
+      finalReply = `${replyText}\n\n${formatActivityEcho(level)}`;
     }
   }
 
