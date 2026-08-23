@@ -19,7 +19,7 @@ export default function ConsentScreen() {
         <ThemedText type="subtitle">Before we start</ThemedText>
 
         <ThemedText>
-          Unflump asks about things like your food, weight, body measurements, and activity so it
+          Unflump asks about things like your food, weight, body measurements and activity so it
           can actually understand you — not just log numbers. This is health data, so we want to
           be upfront: it&apos;s yours, it&apos;s kept secure, and it&apos;s never sold or shared.
         </ThemedText>

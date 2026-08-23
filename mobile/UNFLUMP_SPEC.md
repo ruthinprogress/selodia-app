@@ -298,7 +298,7 @@ Onboarding happens conversationally, inside the same chat interface as the rest 
 1. **Consent screen** — required, an explicit tick, not a click-through (health data is special category data under UK data protection law). Text:
    > **Before we start**
    >
-   > Unflump asks about things like your food, weight, body measurements, and activity so it can actually understand you — not just log numbers. This is health data, so we want to be upfront: it's yours, it's kept secure, and it's never sold or shared.
+   > Unflump asks about things like your food, weight, body measurements and activity so it can actually understand you — not just log numbers. This is health data, so we want to be upfront: it's yours, it's kept secure, and it's never sold or shared.
    >
    > Unflump isn't a medical service and doesn't replace advice from your doctor — think of it as a very attentive companion for the day-to-day. You can delete your data at any time.
    >
