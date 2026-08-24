@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +38,21 @@ export default function ChatScreen() {
   const theme = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  // The Almanac's "Update this" hands the entry over with the opening line
+  // already written, so editing stays conversational without the person having
+  // to retype what they are referring to (Part Ten, Editing). Applied once, and
+  // never over something already typed.
+  // Adjusted during render rather than in an effect: the Chat tab stays mounted
+  // in the tab navigator, so a lazy useState initialiser would never see a
+  // prefill arriving later, and setState-in-effect is both disallowed and an
+  // extra render. This is React's sanctioned shape for reacting to a changed
+  // prop. Never overwrites something already typed.
+  const { prefill } = useLocalSearchParams<{ prefill?: string }>();
+  const [lastPrefill, setLastPrefill] = useState<string | null>(null);
+  if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
+    setLastPrefill(prefill);
+    if (input.length === 0) setInput(prefill);
+  }
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);

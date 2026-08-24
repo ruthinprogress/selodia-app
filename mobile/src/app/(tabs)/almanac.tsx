@@ -1,8 +1,10 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
+import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacList } from '@/components/almanac-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,9 +19,12 @@ import { supabase } from '@/lib/supabase';
 // not current reference material, and showing one as though it were would
 // undercut the re-confirmation rule the lifecycle exists for (Part Ten).
 export default function AlmanacScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<AlmanacGroup[]>([]);
   const [entryCount, setEntryCount] = useState(0);
+  const [entries, setEntries] = useState<DetailEntry[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +44,7 @@ export default function AlmanacScreen() {
         const rows = (error ? [] : (data ?? [])) as unknown as AlmanacEntryRow[];
         setEntryCount(rows.length);
         setGroups(groupAlmanacEntries(rows));
+        setEntries(rows as unknown as DetailEntry[]);
         setLoading(false);
       }
     })();
@@ -60,9 +66,24 @@ export default function AlmanacScreen() {
           ) : entryCount === 0 ? (
             <AlmanacEmptyState />
           ) : (
-            <AlmanacList groups={groups} />
+            <AlmanacList groups={groups} onOpen={setOpenId} />
           )}
         </ScrollView>
+
+        <AlmanacDetail
+          entry={entries.find((e) => e.id === openId) ?? null}
+          onClose={() => setOpenId(null)}
+          // Editing is conversational, always (Part Ten): this hands the entry
+          // to Chat with the opening line already written, rather than opening
+          // any form. Unflump stays the only writer.
+          onEdit={(entry) => {
+            setOpenId(null);
+            router.push({
+              pathname: '/',
+              params: { prefill: `I'd like to update my Almanac entry "${entry.title}" — ` },
+            });
+          }}
+        />
       </SafeAreaView>
     </ThemedView>
   );
