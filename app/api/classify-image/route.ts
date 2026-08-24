@@ -11,6 +11,17 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // reserves Haiku for, and it keeps the extra hop cheap and fast.
 const MODEL = 'claude-haiku-4-5-20251001';
 
+// Room for the whole forced tool_use block, not just the answer inside it.
+//
+// This was 20, which looked generous for a one-word classification and was not:
+// a complete `classify_image` call costs 33 output tokens, because the block
+// carries the tool name and JSON scaffolding before it ever reaches `kind`.
+// At 20 the response stopped mid-block with `stop_reason: 'max_tokens'` and
+// `input: {}` — no `kind` at all — which coerceImageKind then correctly read as
+// 'unclear'. Every image, every time, since the route shipped. Sized well clear
+// of the real cost now, because the failure it caused was silent and total.
+const MAX_TOKENS = 256;
+
 const ALLOWED_MEDIA = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
 type MediaType = (typeof ALLOWED_MEDIA)[number];
 const isMediaType = (v: unknown): v is MediaType =>
@@ -44,10 +55,14 @@ export async function POST(request: NextRequest) {
   }
 
   let kind: ImageKind;
+  // True when 'unclear' is a failure wearing an answer's clothes, rather than a
+  // real read of the image. Never changes what the person is told; it exists so
+  // the difference is visible to us.
+  let degraded = false;
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 20,
+      max_tokens: MAX_TOKENS,
       system: IMAGE_KIND_PROMPT,
       messages: [
         {
@@ -77,17 +92,31 @@ export async function POST(request: NextRequest) {
       tool_choice: { type: 'tool', name: 'classify_image' },
     });
 
+    // A truncated response is a broken call, not a judgement about the photo.
+    // Worth naming separately: conflating the two is exactly what hid the
+    // max_tokens bug, because a total outage was indistinguishable in the logs
+    // and on screen from the model honestly saying it could not tell.
+    if (response.stop_reason === 'max_tokens') {
+      console.log('CLASSIFY-IMAGE TRUNCATED: raise MAX_TOKENS; output hit the ceiling before `kind`');
+      degraded = true;
+    }
+
     const toolUse = response.content.find((b) => b.type === 'tool_use');
-    kind = coerceImageKind(
-      toolUse && toolUse.type === 'tool_use' ? (toolUse.input as { kind?: unknown }).kind : undefined
-    );
+    const raw = toolUse && toolUse.type === 'tool_use' ? (toolUse.input as { kind?: unknown }).kind : undefined;
+    if (raw === undefined) {
+      console.log('CLASSIFY-IMAGE NO KIND: stop_reason=' + response.stop_reason);
+      degraded = true;
+    }
+    kind = coerceImageKind(raw);
   } catch (err) {
     console.log('CLASSIFY-IMAGE FAILED:', err instanceof Error ? err.message : err);
     // Degrade to 'unclear' rather than erroring: the app can still ask the
     // person what it is, which is a far better outcome than losing their photo
-    // to a failure message.
+    // to a failure message. `degraded` keeps that kindness from also being
+    // invisible — the reply is the same, the telemetry is not.
+    degraded = true;
     kind = 'unclear';
   }
 
-  return NextResponse.json({ kind });
+  return NextResponse.json(degraded ? { kind, degraded: true } : { kind });
 }

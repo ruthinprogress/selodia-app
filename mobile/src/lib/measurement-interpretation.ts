@@ -37,7 +37,12 @@ const SODIUM_LAG_MAX_HOURS = 24;
 const SODIUM_HIGH_MG = 1500;
 
 export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms' | 'sodium';
-type NoiseFlag = { source: NoiseSource; reason: string };
+// Each flag carries two forms of the same fact. `reason` is the full
+// explanatory clause, used when it is the only thing to say. `short` is a bare
+// noun phrase, used when several causes combine - because three physiological
+// explanations stacked into one sentence stops sounding like reassurance and
+// starts sounding like a defence (see composeCause below).
+type NoiseFlag = { source: NoiseSource; reason: string; short: string };
 
 // A logged activity's time and its log-time eccentric-load classification, the
 // context both the pump and DOMS flaggers read (pump needs only the time; DOMS
@@ -82,11 +87,14 @@ function cycleFlag(lastPeriodStart: string | null, measuredAt: string): NoiseFla
   if (!lastPeriodStart) return null;
   const info = computeCycleDayAndPhase(lastPeriodStart, measuredAt);
   if (!info || !isWaterRetentionPhase(info.cycleDay)) return null;
-  const reason =
-    info.cycleDay <= 5
-      ? `you're on your period (cycle day ${info.cycleDay}), when water retention is common`
-      : `you're in your late-luteal phase (cycle day ${info.cycleDay}), when some water retention is expected`;
-  return { source: 'cycle', reason };
+  const onPeriod = info.cycleDay <= 5;
+  const reason = onPeriod
+    ? `you're on your period (cycle day ${info.cycleDay}), when water retention is common`
+    : `you're in your late-luteal phase (cycle day ${info.cycleDay}), when some water retention is expected`;
+  // The short form drops the cycle-day number and the phase name: in a
+  // condensed sentence they are precision nobody asked for.
+  const short = onPeriod ? "you're on your period" : "you're in the days before your period";
+  return { source: 'cycle', reason, short };
 }
 
 // Post-workout pump: a reading taken within ~4h after any logged activity carries
@@ -107,6 +115,7 @@ function pumpFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag 
   return {
     source: 'pump',
     reason: 'you trained within about four hours before this reading, so a post-workout pump could be nudging it up',
+    short: 'you trained not long before weighing in',
   };
 }
 
@@ -136,6 +145,7 @@ function domsFlag(activities: ActivityContext[], measuredAt: string): NoiseFlag 
   return {
     source: 'doms',
     reason: 'you did a hard session a day or two ago, and delayed muscle soreness can hold a little water in the muscle',
+    short: 'you had a hard session a day or two ago',
   };
 }
 
@@ -160,6 +170,7 @@ function sodiumFlag(recentFoods: FoodContext[], measuredAt: string): NoiseFlag |
   return {
     source: 'sodium',
     reason: 'you had a fairly salty day yesterday, and sodium can hold on to water for a day or so',
+    short: 'yesterday was on the salty side',
   };
 }
 
@@ -207,13 +218,36 @@ function timeOfDayFlag(latestMeasuredAt: string, priorMeasuredAts: string[]): No
   return {
     source: 'time_of_day',
     reason: 'this reading was taken a good bit off your usual time of day, and weight naturally drifts through the day',
+    short: 'you weighed in off your usual time',
   };
 }
 
-function joinReasons(flags: NoiseFlag[]): string {
-  const reasons = flags.map((f) => f.reason);
-  if (reasons.length <= 1) return reasons[0] ?? '';
-  return reasons.slice(0, -1).join('; ') + '; and ' + reasons[reasons.length - 1];
+// Which cause to lead with when several are present. Ordered by how much of a
+// bump each can actually account for: the cycle is systematic and runs for
+// days; sodium and DOMS are real but acute; a pump is transient; and time-of-day
+// is not an inflator at all, only a reason the reading is less comparable - so
+// it goes last and is the first thing dropped.
+const FLAG_PRIORITY: NoiseSource[] = ['cycle', 'sodium', 'doms', 'pump', 'time_of_day'];
+
+// At most this many causes are named. Beyond two, a reply stops reading as
+// "here's what's going on" and starts reading as a pile-up of excuses - which
+// is the opposite of calm, however true each item is. The dropped flags still
+// count as flags; they simply are not recited.
+const MAX_NAMED_CAUSES = 2;
+
+// One cause, fully explained; or two, condensed to bare phrases. Never a list.
+//
+// `brief` forces the short form even for a single cause. It is used where the
+// flag is a supporting aside rather than the point of the sentence: there, the
+// full clause's physiology lecture competes with the actual message instead of
+// serving it.
+function composeCause(flags: NoiseFlag[], opts?: { brief?: boolean }): string {
+  const ranked = [...flags].sort(
+    (a, b) => FLAG_PRIORITY.indexOf(a.source) - FLAG_PRIORITY.indexOf(b.source)
+  );
+  if (ranked.length === 1 && !opts?.brief) return ranked[0].reason;
+  const named = ranked.slice(0, MAX_NAMED_CAUSES);
+  return named.map((f) => f.short).join(' and ');
 }
 
 const capitalizeFirst = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -258,10 +292,15 @@ export function interpretLatestReading(params: {
     };
   }
   if (trend === 'trend_up') {
+    // The decision that a trend outranks the noise flags has already been made
+    // above. The message states it and moves on: walking through an alternative
+    // explanation only to overrule it mid-sentence reads as an argument with
+    // itself, and leaves the reader unsure which half to believe. So the flags
+    // are added as a plain forward-looking fact, never as a rebutted excuse.
     let message =
       "Weight's edged up across your last few readings — that's more than a single-day blip, so it's worth a calm look rather than a shrug or a spiral.";
     if (flags.length > 0) {
-      message += ` (${capitalizeFirst(joinReasons(flags))}, which can hold a little water — but a run of readings like this usually runs deeper than that.)`;
+      message += ` ${capitalizeFirst(composeCause(flags, { brief: true }))}, so some of this may settle on its own.`;
     }
     return { message, trend, sources };
   }
@@ -272,7 +311,7 @@ export function interpretLatestReading(params: {
   if (trend === 'insufficient' || latest.weightKg == null || prior == null) {
     if (flags.length === 0) return null;
     return {
-      message: `${capitalizeFirst(joinReasons(flags))}. If the scale looks flat or up around now, that's usually temporary rather than a real change.`,
+      message: `${capitalizeFirst(composeCause(flags))}. If the scale looks flat or up around now, that's usually temporary rather than a real change.`,
       trend,
       sources,
     };
@@ -285,7 +324,7 @@ export function interpretLatestReading(params: {
   const change = delta > 0 ? `up ${delta} kg` : 'flat';
   const message =
     flags.length > 0
-      ? `Weight's ${change} since your last reading — but ${joinReasons(flags)}. A single reading like this is very likely noise, not a setback.`
+      ? `Weight's ${change} since your last reading — but ${composeCause(flags)}. A single reading like this is very likely noise, not a setback.`
       : `Weight's ${change} since your last reading, but that's a single day, not a trend — nothing to act on.`;
   return { message, trend, sources };
 }
