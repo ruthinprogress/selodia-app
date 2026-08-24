@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ResourceCard } from '@/components/resource-card';
@@ -13,6 +14,8 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
+import type { AddSource } from '@/lib/composer-add';
+import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
 import { supabase } from '@/lib/supabase';
 
@@ -57,6 +60,8 @@ export default function ChatScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
   const [cyclePrompt, setCyclePrompt] = useState<'discover' | 'relog' | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -134,6 +139,42 @@ export default function ChatScreen() {
     return response.json();
   }
 
+  // Image logging (build item 10b). The sheet asks only WHERE the image comes
+  // from; what it is gets classified afterwards, so the person is never made to
+  // categorise their own photo.
+  async function handleAdd(source: AddSource) {
+    setAddOpen(false);
+    if (picking) return;
+    setPicking(true);
+    try {
+      const picked = await pickImage(source);
+      if (!picked.ok) {
+        const msg = messageForResult(
+          picked.reason === 'denied'
+            ? { status: 'denied', source }
+            : picked.reason === 'too_large'
+              ? { status: 'too_large' }
+              : picked.reason === 'failed'
+                ? { status: 'failed' }
+                : { status: 'cancelled' }
+        );
+        if (msg) setMessages((m) => [...m, { role: 'assistant', content: msg }]);
+        return;
+      }
+
+      const result = await classifyAndLog(picked.image);
+      const msg = messageForResult(result);
+      if (msg) setMessages((m) => [...m, { role: 'assistant', content: msg }]);
+      if (result.status === 'logged') {
+        // Same brief confirmation the text path shows - never a written-out
+        // receipt in the reply itself.
+        setSaveToast({ summary: 'Saved from your photo', nonce: Date.now() });
+      }
+    } finally {
+      setPicking(false);
+    }
+  }
+
   async function handleSend() {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
@@ -202,6 +243,21 @@ export default function ChatScreen() {
         </ScrollView>
 
         <ThemedView style={styles.inputRow}>
+          <Pressable
+            onPress={() => setAddOpen(true)}
+            disabled={picking || sending}
+            accessibilityRole="button"
+            accessibilityLabel="Add a photo"
+            hitSlop={Spacing.two}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.addButton, (picking || sending) && styles.addDisabled]}
+            >
+              <ThemedText type="smallBold">{picking ? '…' : '+'}</ThemedText>
+            </ThemedView>
+          </Pressable>
           <TextInput
             value={input}
             onChangeText={setInput}
@@ -231,6 +287,11 @@ export default function ChatScreen() {
         </ThemedView>
 
         <SaveConfirmation summary={saveToast?.summary ?? null} nonce={saveToast?.nonce ?? 0} />
+        <ComposerAddSheet
+          visible={addOpen}
+          onSelect={handleAdd}
+          onCancel={() => setAddOpen(false)}
+        />
       </SafeAreaView>
     </ThemedView>
   );
@@ -277,6 +338,16 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
   },
   sendDisabled: {
+    opacity: 0.4,
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addDisabled: {
     opacity: 0.4,
   },
   pressed: {

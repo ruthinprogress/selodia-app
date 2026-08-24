@@ -13,11 +13,9 @@ import { ADD_OPTIONS, type AddSource } from '@/lib/composer-add';
 // and the image is classified afterwards. Asking someone to categorise their
 // own photo would be the closed menu the free-text philosophy exists to reject.
 //
-// NOT MOUNTED YET. Every option needs expo-image-picker, which is not installed
-// until the next EAS build, so rendering the "+" today would put three dead
-// options on screen - exactly what principle 8 rules out. This ships as a tested
-// component and gets mounted in step 3, when the callbacks can actually do
-// something.
+// "Choose a file" is absent: expo-image-picker covers the camera and the photo
+// library only, and arbitrary files need expo-document-picker - another native
+// module, deliberately kept out of this build. See composer-add.ts.
 
 export function ComposerAddSheet({
   visible,
