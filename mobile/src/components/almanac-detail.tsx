@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { WorkingWeightControl } from '@/components/working-weight-control';
+import { supabase } from '@/lib/supabase';
 import { WorkoutPlanView } from '@/components/workout-plan-view';
 import { readContent, type ContentView, type PlanExerciseView } from '@/lib/almanac-content';
+import { latestWeightByExercise } from '@/lib/working-weight';
 
 // The Almanac entry detail (build item 15, UI slice 3).
 //
@@ -36,6 +39,28 @@ export function AlmanacDetail({
   onEdit: (entry: DetailEntry) => void;
 }) {
   const [openExercise, setOpenExercise] = useState<PlanExerciseView | null>(null);
+  const [weights, setWeights] = useState<Map<string, number>>(new Map());
+  const planId = entry?.id ?? null;
+
+  // "Current = latest", read from the append-only history rather than any value
+  // stored on the plan - the plan is a document and must not carry state that
+  // the log owns (Part Ten).
+  useEffect(() => {
+    if (!planId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('workout_weight_log')
+        .select('exercise_name, weight_kg, logged_at')
+        .eq('plan_id', planId)
+        .order('logged_at', { ascending: false });
+      if (!cancelled) setWeights(latestWeightByExercise(data ?? []));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [planId]);
+
   if (!entry) return null;
   const view = readContent(entry.content);
 
@@ -62,6 +87,7 @@ export function AlmanacDetail({
                 planTitle={entry.title}
                 plan={view.plan}
                 onOpenExercise={setOpenExercise}
+                weights={weights}
               />
             ) : (
               <Content view={view} />
@@ -84,7 +110,15 @@ export function AlmanacDetail({
       </View>
 
       {openExercise && (
-        <ExerciseDetail exercise={openExercise} onClose={() => setOpenExercise(null)} />
+        <ExerciseDetail
+          exercise={openExercise}
+          planId={entry.id}
+          currentKg={weights.get(openExercise.name) ?? null}
+          onLogged={(kg) =>
+            setWeights((w) => new Map(w).set(openExercise.name, kg))
+          }
+          onClose={() => setOpenExercise(null)}
+        />
       )}
     </Modal>
   );
@@ -102,9 +136,15 @@ export function AlmanacDetail({
 // row with an id). Both are recorded gaps, not oversights.
 function ExerciseDetail({
   exercise,
+  planId,
+  currentKg,
+  onLogged,
   onClose,
 }: {
   exercise: PlanExerciseView;
+  planId: string;
+  currentKg: number | null;
+  onLogged: (kg: number) => void;
   onClose: () => void;
 }) {
   return (
@@ -130,6 +170,13 @@ function ExerciseDetail({
                 No safety note saved for this one yet.
               </ThemedText>
             )}
+
+            <WorkingWeightControl
+              planId={planId}
+              exerciseName={exercise.name}
+              currentKg={currentKg}
+              onLogged={onLogged}
+            />
           </ScrollView>
 
           <View style={styles.actions}>

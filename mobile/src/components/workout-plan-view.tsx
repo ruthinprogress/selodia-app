@@ -24,20 +24,25 @@ import { exerciseMetaLine, groupPlanExercises, shouldGroup } from '@/lib/workout
 // the session so the DOMS flag sees the hardest work. A direct client insert
 // would skip that silently.
 //
-// NOT here, deliberately: the working-weight control (slice E) and the
-// movement-demo animation (item 36, no assets exist). Showing either now would
-// be a dead control, which is exactly what principle 8 rules out.
+// Each row shows its current working weight, read as the LATEST entry in the
+// append-only history (slice E) — never a value stored on the plan, which is a
+// document and must not carry state the log owns.
+//
+// NOT here, deliberately: the movement-demo animation (item 36 — no assets
+// exist), which would be a dead control, exactly what principle 8 rules out.
 
 export function WorkoutPlanView({
   planId,
   planTitle,
   plan,
   onOpenExercise,
+  weights,
 }: {
   planId: string;
   planTitle: string;
   plan: PlanView;
   onOpenExercise: (exercise: PlanExerciseView) => void;
+  weights: Map<string, number>;
 }) {
   const groups = groupPlanExercises(plan);
   // Headings already carry the group, so repeating it on every row would be
@@ -93,6 +98,7 @@ export function WorkoutPlanView({
               showGroup={showGroupInline}
               done={done[x.name] === true}
               failed={failed[x.name] === true}
+              workingWeightKg={weights.get(x.name) ?? null}
               onTick={() => tick(x)}
               onOpen={() => onOpenExercise(x)}
             />
@@ -108,6 +114,7 @@ function ExerciseRow({
   showGroup,
   done,
   failed,
+  workingWeightKg,
   onTick,
   onOpen,
 }: {
@@ -115,12 +122,12 @@ function ExerciseRow({
   showGroup: boolean;
   done: boolean;
   failed: boolean;
+  workingWeightKg: number | null;
   onTick: () => void;
   onOpen: () => void;
 }) {
   const theme = useTheme();
-  // Working weight is slice E; until it can be logged there is nothing to show.
-  const meta = exerciseMetaLine(exercise, null, showGroup);
+  const meta = exerciseMetaLine(exercise, workingWeightKg, showGroup);
 
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
