@@ -867,6 +867,32 @@ These principles govern how building actually proceeds, distinct from the produc
 
 3. Batch verification around natural milestones, not artificial checkpoints. Don't force an early visual check just because a step is "done" — wait for the point where a real, complete user journey becomes naturally reachable end to end (e.g. once auth and routing make onboarding actually navigable), and do one thorough pass there rather than many small ones along the way.
 
+4. **"Built" is not "works" — say which rung of the ladder a thing is actually on.** Every claim about a piece of work sits somewhere on this ladder, and the rungs are not interchangeable:
+
+   1. **Reasoned** — argued from the code or the spec, nothing executed. Design decisions live here, and so does *"verified by prompt/spec review"*.
+   2. **Type- and lint-checked** — it compiles. This proves shape, never behaviour.
+   3. **Unit-tested** — pure logic exercised against real cases. Proves the logic, not the wiring around it.
+   4. **Integration-verified** — the real path run against real infrastructure: a migration applied and queried back, an API returning what was expected.
+   5. **Verified in use** — a real person did the real thing on a real device and the outcome was observed.
+
+   **The rule: state the rung, and never let a lower one be reported as a higher one.** "Built", "done" and "complete" all quietly imply rung 5 and usually mean rung 3. Writing *"tsc clean; node-tested; model behaviour unverified"* costs one clause and prevents a false picture accumulating across dozens of items — which is exactly how a build status drifts from reality without anyone lying.
+
+   **No contradiction with principle 1 above.** That principle is about where to *spend effort* — do not rebuild an app just to look at an ordinary screen, because review catches more per hour. This one is about what to *claim* afterwards. Review remains the right way to work; it is simply not the same as evidence that something works. Trust review to decide, never to certify.
+
+   **Two failure modes this exists to catch, both of which have already happened here:**
+
+   **Unverifiable-by-construction: model behaviour can only ever be checked at rung 5.** Prompt review is rung 1 no matter how carefully done, because the thing being claimed is what a model will do with real input. Every classification-quality claim in this document — `protein_source`, `eccentric_load`, `intensity`, sodium estimation, the safety classifier's live behaviour — is rung 1 until someone actually uses it. This was proved sharply on 2026-08-23: an extraction fix designed against a real transcript failure could not reproduce that failure in twenty replay trials, and a mechanism that reviewed well made the underlying complaint measurably worse.
+
+   **Unreachable, which is different from unverified.** Code can pass rungs 1-4 and still have *no user-facing effect whatsoever*, because nothing renders or calls it. That is not a weaker kind of verification — it is a separate defect, and it hides well: the tests pass, the types check, the item reads as done. The standing example is the Body Measurement Interpretation Layer, complete since 2026-08-14 with every noise flagger and the trend engine, and with **no UI consumer at all** for over a week before anyone noticed.
+
+   **Currently sitting below rung 5 — maintain this the way Part Four is maintained:**
+
+   - **Unreachable (built, nothing renders or calls it):** the interpretation layer's five flaggers and trend engine, plus `basal-metabolism.ts` — both waiting on the Measurements and Activity segments (items 38/39). The discuss-card image pipeline (item 30 slices 1-3): storage, tagging and rendering are built, but no capture exists to produce an image. The workout progress logs (item 35 slices A/B): schema and write helpers, with no UI to call them.
+   - **Never fired in production:** the Almanac save path. `almanac_entries` held **zero rows** as of 2026-08-24 — nothing has ever been saved by anyone.
+   - **Model behaviour, rung 1 only:** every parse-time classification above, and the 2026-08-24 brevity instruction, whose effect is measured in replay but not yet observed in a real session.
+   - **Native capability, unconfirmed at rung 5:** whether the Health Connect permission dialog actually appears on the equipment step. Onboarding was completed on the standalone build on 2026-08-23, which implies the step passed, but the OS dialog firing was never separately confirmed.
+
+
 ---
 
 # PART SEVENTEEN: DATA RETENTION & RESEARCH USE
