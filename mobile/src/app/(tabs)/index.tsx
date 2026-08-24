@@ -195,8 +195,20 @@ export default function ChatScreen() {
             multiline
             editable={!sending}
           />
-          <Pressable onPress={handleSend} disabled={sending} style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedView type="backgroundSelected" style={styles.sendButton}>
+          <Pressable
+            onPress={handleSend}
+            // Empty input previously did nothing at all - no message, no re-ask,
+            // nothing - so Send looked pressable and behaved dead. Disabling it
+            // lets the control state the truth instead of failing silently. A
+            // "please type something" nag would be the other option and is worse:
+            // scolding someone for a tap that should never have been offered.
+            disabled={sending || input.trim().length === 0}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedView
+              type="backgroundSelected"
+              style={[styles.sendButton, (sending || input.trim().length === 0) && styles.sendDisabled]}
+            >
               <ThemedText type="smallBold">Send</ThemedText>
             </ThemedView>
           </Pressable>
@@ -247,6 +259,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Spacing.three,
+  },
+  sendDisabled: {
+    opacity: 0.4,
   },
   pressed: {
     opacity: 0.7,
