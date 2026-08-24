@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { readContent, type ContentView } from '@/lib/almanac-content';
+import { WorkoutPlanView } from '@/components/workout-plan-view';
+import { readContent, type ContentView, type PlanExerciseView } from '@/lib/almanac-content';
 
 // The Almanac entry detail (build item 15, UI slice 3).
 //
@@ -33,6 +35,7 @@ export function AlmanacDetail({
   onClose: () => void;
   onEdit: (entry: DetailEntry) => void;
 }) {
+  const [openExercise, setOpenExercise] = useState<PlanExerciseView | null>(null);
   if (!entry) return null;
   const view = readContent(entry.content);
 
@@ -53,7 +56,16 @@ export function AlmanacDetail({
               {entry.category ? `${entry.category} · ${entry.kind}` : entry.kind}
             </ThemedText>
 
-            <Content view={view} />
+            {view.shape === 'plan' ? (
+              <WorkoutPlanView
+                planId={entry.id}
+                planTitle={entry.title}
+                plan={view.plan}
+                onOpenExercise={setOpenExercise}
+              />
+            ) : (
+              <Content view={view} />
+            )}
           </ScrollView>
 
           <View style={styles.actions}>
@@ -62,6 +74,65 @@ export function AlmanacDetail({
                 <ThemedText type="smallBold">Update this</ThemedText>
               </ThemedView>
             </Pressable>
+            <Pressable onPress={onClose} style={({ pressed }) => pressed && styles.pressed}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.close}>
+                Close
+              </ThemedText>
+            </Pressable>
+          </View>
+        </ThemedView>
+      </View>
+
+      {openExercise && (
+        <ExerciseDetail exercise={openExercise} onClose={() => setOpenExercise(null)} />
+      )}
+    </Modal>
+  );
+}
+
+// The exercise detail (build item 35, slice D). Part Ten fixes the order:
+// the "Before you start" safety note comes FIRST - it is the thing that matters
+// before someone loads a bar, not a footnote under the demo.
+//
+// The movement-demo animation belongs here next, and is deliberately absent:
+// item 36's assets do not exist yet, and an empty media slot would be exactly
+// the dead placeholder principle 8 rules out. "Ask about this" is likewise
+// held - it is the discuss-card mechanic, and an exercise is not currently a
+// valid discuss_entry_type (it lives inside a plan's JSONB rather than being a
+// row with an id). Both are recorded gaps, not oversights.
+function ExerciseDetail({
+  exercise,
+  onClose,
+}: {
+  exercise: PlanExerciseView;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal>
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <View style={styles.centre} pointerEvents="box-none">
+        <ThemedView style={styles.card}>
+          <ScrollView contentContainerStyle={styles.body}>
+            <ThemedText type="smallBold">{exercise.name}</ThemedText>
+
+            {exercise.safetyNote ? (
+              <ThemedView type="backgroundElement" style={styles.safety}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                  Before you start
+                </ThemedText>
+                <ThemedText type="small">{exercise.safetyNote}</ThemedText>
+              </ThemedView>
+            ) : (
+              // Every exercise card requires a safety note by rule. Saying it is
+              // missing is honest; inventing generic boilerplate would break the
+              // never-generic rule and be worse than silence.
+              <ThemedText type="small" themeColor="textSecondary">
+                No safety note saved for this one yet.
+              </ThemedText>
+            )}
+          </ScrollView>
+
+          <View style={styles.actions}>
             <Pressable onPress={onClose} style={({ pressed }) => pressed && styles.pressed}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.close}>
                 Close
@@ -184,5 +255,11 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
   },
   close: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
+  safety: {
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    gap: Spacing.half,
+    marginTop: Spacing.two,
+  },
   pressed: { opacity: 0.6 },
 });
