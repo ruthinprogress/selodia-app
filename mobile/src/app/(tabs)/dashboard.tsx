@@ -4,32 +4,42 @@ import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FoodTodayView } from '@/components/food-today-view';
+import { MeasurementsView } from '@/components/measurements-view';
 import { OverviewPanel } from '@/components/overview-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { parseWeekStartParam } from '@/lib/week';
 
 // The Dashboard destination: one screen hosting an in-screen switcher across
 // facets (UNFLUMP_SPEC.md, Screen Structure). Segments appear only once built
-// (principle 8): Overview (default) and Food today; Measurements and Activity
-// land in later slices. The `view` and `week` route params make the switcher
-// addressable from outside — a tap sets local state, and a future chat
-// deep-link can hand over `?view=food&week=YYYY-MM-DD` through the same path.
+// (principle 8): Overview (default), Food today, and Measurements; Activity
+// lands in a later slice. The `view` and `week` route params make the switcher
+// addressable from outside — a tap sets local state, and a chat deep-link can
+// hand over `?view=measurements&week=YYYY-MM-DD` through the same path.
 const SEGMENTS = [
   { key: 'overview', label: 'Overview' },
   { key: 'food', label: 'Food' },
+  { key: 'measurements', label: 'Measurements' },
 ] as const;
 type SegmentKey = (typeof SEGMENTS)[number]['key'];
 
+// A route param is untrusted text; anything unrecognised falls back to the
+// default rather than rendering a blank segment.
+function isSegmentKey(v: string | undefined): v is SegmentKey {
+  return SEGMENTS.some((s) => s.key === v);
+}
+
 export default function DashboardScreen() {
   const params = useLocalSearchParams<{ view?: string; week?: string }>();
-  const initialView: SegmentKey = params.view === 'food' ? 'food' : 'overview';
+  const initialView: SegmentKey = isSegmentKey(params.view) ? params.view : 'overview';
   const [view, setView] = useState<SegmentKey>(initialView);
 
-  // The `?week=` param is still accepted in the route's type, but nothing reads
-  // it right now: it addresses the WEEKLY TABLE, which is a body-data mechanic
-  // that belongs to Measurements (item 38), not to this Food view. Its parsing
-  // helpers stay in week.ts, unchanged, for that port — see food-week-view.tsx.
+  // `?week=` addresses the weekly table, which now has a home: Measurements
+  // owns it (item 38). Parsed once as the view's opening week — after that the
+  // segment's own stepping drives it, so a deep-link lands somewhere and then
+  // behaves exactly like arriving by tap.
+  const initialWeekStart = parseWeekStartParam(params.week) ?? undefined;
 
   return (
     <ThemedView style={styles.container}>
@@ -57,7 +67,13 @@ export default function DashboardScreen() {
             })}
           </ThemedView>
 
-          {view === 'overview' ? <OverviewPanel /> : <FoodTodayView />}
+          {view === 'overview' ? (
+            <OverviewPanel />
+          ) : view === 'food' ? (
+            <FoodTodayView />
+          ) : (
+            <MeasurementsView initialWeekStart={initialWeekStart} />
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
