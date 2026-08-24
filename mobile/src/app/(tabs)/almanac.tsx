@@ -3,34 +3,42 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
+import { AlmanacList } from '@/components/almanac-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { groupAlmanacEntries, type AlmanacEntryRow, type AlmanacGroup } from '@/lib/almanac-list';
 import { supabase } from '@/lib/supabase';
 
-// The Almanac destination (build item 15, UI slice 1). Slice 1 is the empty
-// state only — the entry list and detail view follow.
+// The Almanac destination (build item 15, UI slices 1-2): the empty state and
+// the entry list. The detail view is slice 3.
 //
-// The count query is here rather than in slice 2 because the screen has to know
-// which state to render, and asking for a count is cheaper than fetching rows it
-// would then discard. It also means slice 2 adds the list without restructuring
-// this.
+// Only ACTIVE entries are fetched. A stale or pending-reconfirmation entry is
+// not current reference material, and showing one as though it were would
+// undercut the re-confirmation rule the lifecycle exists for (Part Ten).
 export default function AlmanacScreen() {
   const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<AlmanacGroup[]>([]);
   const [entryCount, setEntryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       // RLS scopes this to the signed-in user, so no explicit user_id filter.
-      const { count, error } = await supabase
+      // Only active entries: a stale or pending-reconfirmation entry is not
+      // something to browse as current reference (Part Ten, staleness).
+      const { data, error } = await supabase
         .from('almanac_entries')
-        .select('id', { count: 'exact', head: true });
+        .select('id, kind, title, category, content, updated_at')
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false });
       if (!cancelled) {
         // On error, fall through to the empty state rather than an error
         // screen: a warm "nothing here yet" is a far better wrong answer than
         // a failure message on a tab someone just tapped.
-        setEntryCount(error ? 0 : (count ?? 0));
+        const rows = (error ? [] : (data ?? [])) as unknown as AlmanacEntryRow[];
+        setEntryCount(rows.length);
+        setGroups(groupAlmanacEntries(rows));
         setLoading(false);
       }
     })();
@@ -52,10 +60,7 @@ export default function AlmanacScreen() {
           ) : entryCount === 0 ? (
             <AlmanacEmptyState />
           ) : (
-            // Slice 2 replaces this with the real list.
-            <ThemedText type="small" themeColor="textSecondary">
-              {entryCount} saved
-            </ThemedText>
+            <AlmanacList groups={groups} />
           )}
         </ScrollView>
       </SafeAreaView>
