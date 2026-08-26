@@ -16,6 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
 import type { AddSource } from '@/lib/composer-add';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
+import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
 import { supabase } from '@/lib/supabase';
 
@@ -199,6 +200,28 @@ export default function ChatScreen() {
       ]);
       if (saved?.summary) {
         setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
+      }
+
+      // A weight logged by TEXT surfaced nothing but a toast, while the same
+      // weight photographed came back with the interpretation layer's reading
+      // of it. That asymmetry had no reason behind it - the person typed the
+      // number, so they already know it; what they do not know is what it
+      // means, which is the whole point of the layer.
+      //
+      // Only the interpretation, deliberately: no facts block and no second
+      // model call. The photo path needs a facts block because a photo has no
+      // words attached; a typed message already has the person's own.
+      if (saved?.kind === 'measurement') {
+        try {
+          const note = await loadLatestInterpretation();
+          // Null is a real answer - a clean drop, or too little history to say
+          // anything honest. Nothing is shown rather than filler.
+          if (note) setMessages((prev) => [...prev, { role: 'assistant', content: note }]);
+        } catch (err) {
+          // The reading is already saved; failing to explain it must not read
+          // as a failure to log it.
+          console.error('Interpretation failed:', err instanceof Error ? err.message : err);
+        }
       }
     } catch (err) {
       console.error('Chat send failed:', err instanceof Error ? err.message : err);

@@ -103,12 +103,19 @@ function recentWeightLines(rows: MeasurementRow[], excludeMeasuredAt: string): s
   return lines.length ? lines.join('\n') : null;
 }
 
-export async function bodyAckFacts(saved: BodyRow): Promise<BodyAckFacts> {
+// The interpretation layer's own words for the latest reading, or null when it
+// has nothing to say. Silence is a real answer here (see
+// measurement-interpretation.ts) and every caller must treat it as one.
+//
+// Shared by three surfaces so they can never disagree about the same reading:
+// the Measurements screen, the photo acknowledgment, and - since 2026-08-26 -
+// text weight logging in chat.
+export async function loadLatestInterpretation(): Promise<string | null> {
   // RLS scopes every read to the signed-in user.
-  const [{ data: history }, { data: lastPeriod }] = await Promise.all([
+  const [{ data: readings }, { data: lastPeriod }] = await Promise.all([
     supabase
       .from('body_measurements')
-      .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
+      .select('measured_at, weight_kg')
       .order('measured_at', { ascending: false })
       .limit(READING_HISTORY_LIMIT),
     supabase
@@ -119,6 +126,47 @@ export async function bodyAckFacts(saved: BodyRow): Promise<BodyAckFacts> {
       .limit(1)
       .maybeSingle(),
   ]);
+
+  const split = splitReadings((readings ?? []) as RawReading[]);
+  if (!split) return null;
+
+  // Both windows are anchored to the reading, so they can only be queried once
+  // it is known.
+  const [{ data: activities }, { data: foods }] = await Promise.all([
+    supabase
+      .from('activity_logs')
+      .select('happened_at, eccentric_load')
+      .gte('happened_at', hoursBefore(split.latest.measured_at, ACTIVITY_LOOKBACK_HOURS))
+      .lte('happened_at', split.latest.measured_at),
+    supabase
+      .from('food_logs')
+      .select('happened_at, sodium_mg')
+      .gte('happened_at', hoursBefore(split.latest.measured_at, FOOD_LOOKBACK_HOURS))
+      .lte('happened_at', split.latest.measured_at),
+  ]);
+
+  return (
+    interpretLatestReading({
+      latest: { weightKg: split.latest.weight_kg, measuredAt: split.latest.measured_at },
+      priorWeights: split.priorWeights,
+      priorWeightMeasuredAts: split.priorWeightMeasuredAts,
+      lastPeriodStart: lastPeriod?.event_date ?? null,
+      recentActivities: toActivityContexts((activities ?? []) as RawActivity[]),
+      priorMeasuredAts: split.priorMeasuredAts,
+      recentFoods: toFoodContexts((foods ?? []) as RawFood[]),
+    })?.message ?? null
+  );
+}
+
+export async function bodyAckFacts(saved: BodyRow): Promise<BodyAckFacts> {
+  // RLS scopes every read to the signed-in user. The cycle read that used to
+  // sit here went with the interpretation logic into loadLatestInterpretation;
+  // these rows are only for the delta and the recent-history block.
+  const { data: history } = await supabase
+    .from('body_measurements')
+    .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
+    .order('measured_at', { ascending: false })
+    .limit(READING_HISTORY_LIMIT);
 
   const rows = (history ?? []) as MeasurementRow[];
 
@@ -132,32 +180,7 @@ export async function bodyAckFacts(saved: BodyRow): Promise<BodyAckFacts> {
       )
     : null;
 
-  let interpretation: string | null = null;
-  const split = splitReadings(rows as RawReading[]);
-  if (split) {
-    const [{ data: activities }, { data: foods }] = await Promise.all([
-      supabase
-        .from('activity_logs')
-        .select('happened_at, eccentric_load')
-        .gte('happened_at', hoursBefore(split.latest.measured_at, ACTIVITY_LOOKBACK_HOURS))
-        .lte('happened_at', split.latest.measured_at),
-      supabase
-        .from('food_logs')
-        .select('happened_at, sodium_mg')
-        .gte('happened_at', hoursBefore(split.latest.measured_at, FOOD_LOOKBACK_HOURS))
-        .lte('happened_at', split.latest.measured_at),
-    ]);
-    interpretation =
-      interpretLatestReading({
-        latest: { weightKg: split.latest.weight_kg, measuredAt: split.latest.measured_at },
-        priorWeights: split.priorWeights,
-        priorWeightMeasuredAts: split.priorWeightMeasuredAts,
-        lastPeriodStart: lastPeriod?.event_date ?? null,
-        recentActivities: toActivityContexts((activities ?? []) as RawActivity[]),
-        priorMeasuredAts: split.priorMeasuredAts,
-        recentFoods: toFoodContexts((foods ?? []) as RawFood[]),
-      })?.message ?? null;
-  }
+  const interpretation = await loadLatestInterpretation();
 
   // The recent readings, as plain lines. Built from history already fetched
   // above, so it costs nothing extra - and it is the only thing that lets the
