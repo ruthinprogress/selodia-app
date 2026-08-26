@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { authedPost } from '@/lib/api';
 import type { AddSource } from '@/lib/composer-add';
+import { activityAckFacts, bodyAckFacts, foodAckFacts } from '@/lib/log-acknowledgment-facts';
 
 // Logging by photo (build item 10b, step 3).
 //
@@ -24,7 +25,11 @@ export type ImageKind = 'body_measurement' | 'food' | 'activity' | 'unclear';
 export type PickedImage = { base64: string; mediaType: string };
 
 export type ImageLogResult =
-  | { status: 'logged'; kind: Exclude<ImageKind, 'unclear'> }
+  // `message` is the composed acknowledgment - the facts block, the
+  // interpretation layer's own words, and the read that follows. Null when the
+  // acknowledgment could not be built, which degrades the reply rather than the
+  // log: the data is saved either way.
+  | { status: 'logged'; kind: Exclude<ImageKind, 'unclear'>; message: string | null }
   | { status: 'unclear' }
   | { status: 'cancelled' }
   | { status: 'denied'; source: AddSource }
@@ -102,25 +107,43 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
 
   if (kind === 'unclear') return { status: 'unclear' };
 
+  // What each parse route hands back differs, so the saved row is captured here
+  // rather than discarded - it is the raw material for the acknowledgment.
+  let facts: unknown;
   try {
     if (kind === 'body_measurement') {
-      await authedPost('/api/parse-body-measurement', {
+      const saved = await authedPost<Record<string, never>>('/api/parse-body-measurement', {
         imageBase64: image.base64,
         mediaType: image.mediaType,
       });
+      facts = await bodyAckFacts(saved as never);
     } else if (kind === 'food') {
-      await authedPost('/api/parse-food', {
+      const saved = await authedPost<Record<string, never>>('/api/parse-food', {
         images: [{ imageBase64: image.base64, mediaType: image.mediaType }],
       });
+      facts = await foodAckFacts(saved as never);
     } else {
-      await authedPost('/api/parse-activity', {
+      const saved = await authedPost<{ entries: unknown[] }>('/api/parse-activity', {
         images: [{ imageBase64: image.base64, mediaType: image.mediaType }],
       });
+      facts = activityAckFacts((saved.entries ?? []) as never);
     }
-    return { status: 'logged', kind };
   } catch {
     return { status: 'failed' };
   }
+
+  // The log has already succeeded by this point. An acknowledgment that fails
+  // must never turn a saved reading into an error message, so this is caught
+  // separately and degrades to a quiet save.
+  let message: string | null = null;
+  try {
+    const ack = await authedPost<{ message: string }>('/api/acknowledge-log', { kind, facts });
+    message = ack.message ?? null;
+  } catch {
+    message = null;
+  }
+
+  return { status: 'logged', kind, message };
 }
 
 // What Unflump says back. The unreadable-photo line is verbatim from Part
@@ -130,9 +153,13 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
 export function messageForResult(result: ImageLogResult): string | null {
   switch (result.status) {
     case 'logged':
-      // The save toast already confirms it; a second confirmation in the thread
-      // would be the functional receipt the logging rules rule out.
-      return null;
+      // Reversed 2026-08-26. This returned null on the reasoning that a reply
+      // would be the functional receipt ask-unflump's prompt forbids. That rule
+      // is about the TEXT path, where the person has just spoken and the reply
+      // belongs to what they said. A photo has no utterance to reply to, so
+      // silence here is not restraint - it is a log that vanishes into a toast.
+      // See app/lib/log-acknowledgment.ts for the full reasoning.
+      return result.message;
     case 'unclear':
       return "I couldn't quite make that out — want to just tell me what it was instead?";
     case 'too_large':
