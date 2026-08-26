@@ -42,10 +42,42 @@ export function weeklyDelta(latest: number | null, weekAgo: number | null): numb
   return Math.round((latest - weekAgo) * 10) / 10;
 }
 
-// Presentational: "↘ -0.4 vs last wk" / "↗ +0.2 vs last wk" / null.
-export function formatWeeklyDelta(delta: number | null): string | null {
+// How many days separate two readings. Fractional on purpose - the difference
+// between 20 hours and 30 hours decides whether "yesterday" is true.
+export function gapDays(laterISO: string, earlierISO: string): number | null {
+  const later = new Date(laterISO).getTime();
+  const earlier = new Date(earlierISO).getTime();
+  if (isNaN(later) || isNaN(earlier)) return null;
+  return (later - earlier) / 86_400_000;
+}
+
+// Says how far back the comparison actually reaches.
+//
+// This label used to be the constant string "vs last wk", which was simply
+// untrue most of the time: findWeekAgoReading returns the nearest earlier
+// reading at ANY distance, so with real, gappy logging the reference is
+// routinely a few days old - or months. Ruth's live Overview showed
+// "+0.2 vs last wk" against a reading 2.6 days earlier.
+//
+// The fix names the real distance rather than hiding the comparison. Hiding it
+// would lose information she can use; mislabelling it tells her something false
+// about her own body.
+export function comparisonLabel(days: number | null): string {
+  if (days == null) return 'vs your last reading';
+  if (days < 0.5) return 'vs earlier today';
+  if (days < 1.5) return 'vs yesterday';
+  if (days < 6.5) return `vs ${Math.round(days)} days ago`;
+  if (days < 10.5) return 'vs last wk';
+  if (days < 45) return `vs ${Math.round(days / 7)} wks ago`;
+  return `vs ${Math.round(days / 30)} mths ago`;
+}
+
+// Presentational: "↘ -0.4 vs yesterday" / "↗ +0.2 vs 3 days ago" / null.
+// `days` is required rather than optional: an omitted gap is exactly how the
+// old wording became a standing falsehood, so there is deliberately no default.
+export function formatWeeklyDelta(delta: number | null, days: number | null): string | null {
   if (delta == null) return null;
   const arrow = delta > 0 ? '↗' : delta < 0 ? '↘' : '→';
   const sign = delta > 0 ? '+' : ''; // negatives already carry '-'
-  return `${arrow} ${sign}${delta} vs last wk`;
+  return `${arrow} ${sign}${delta} ${comparisonLabel(days)}`;
 }

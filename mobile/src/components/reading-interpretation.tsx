@@ -83,6 +83,7 @@ export function ReadingInterpretationNote() {
       const result = interpretLatestReading({
         latest: { weightKg: split.latest.weight_kg, measuredAt: split.latest.measured_at },
         priorWeights: split.priorWeights,
+        priorWeightMeasuredAts: split.priorWeightMeasuredAts,
         lastPeriodStart: lastPeriod?.event_date ?? null,
         recentActivities: toActivityContexts((activities ?? []) as RawActivity[]),
         priorMeasuredAts: split.priorMeasuredAts,

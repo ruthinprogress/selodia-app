@@ -35,6 +35,16 @@ const SODIUM_LAG_MAX_HOURS = 24;
 // Summed sodium (mg) over that window above which the day reads as notably salty
 // (daily reference ~2300mg; a single takeaway can reach 2000-3000mg).
 const SODIUM_HIGH_MG = 1500;
+// Beyond this many days apart, two readings are not a comparable pair. They are
+// not a day-to-day fluctuation and they are not a step in a trend - they are two
+// separate snapshots with unknown territory in between.
+//
+// This was missing entirely, and it made the layer state falsehoods on real
+// data: Ruth's readings sit 2.6 days apart and were described as "a single day",
+// and had she skipped one the comparison would have reached back 37 days and
+// said the same. The trend engine had the same blind spot - three readings
+// spanning months counted as a trend exactly like three consecutive mornings.
+const COMPARABLE_GAP_DAYS = 10;
 
 export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms' | 'sodium';
 // Each flag carries two forms of the same fact. `reason` is the full
@@ -67,9 +77,24 @@ export type ReadingInterpretation = {
 // recent consecutive steps agree in direction, beyond the flat tolerance.
 // Anything else with 3+ readings is a single-day fluctuation; under three there is
 // no reliable comparison (Part Nine).
-export function assessTrend(weightsNewestFirst: number[]): TrendVerdict {
+// `stepGapsDays[i]` is the gap between weight i and weight i+1. Optional so the
+// pure arithmetic stays callable without timestamps, but the composer always
+// passes it: without gaps, "three readings in a row" cannot be told apart from
+// "three readings across four months".
+export function assessTrend(
+  weightsNewestFirst: number[],
+  stepGapsDays?: (number | null)[]
+): TrendVerdict {
   const w = weightsNewestFirst.filter((x) => x != null);
   if (w.length < 3) return 'insufficient';
+
+  // Both steps a trend rests on must span a comparable stretch. A gap that
+  // wide is not evidence of a direction, whichever way the numbers point.
+  if (stepGapsDays) {
+    const spanned = stepGapsDays.slice(0, 2);
+    if (spanned.some((g) => g == null || g > COMPARABLE_GAP_DAYS)) return 'insufficient';
+  }
+
   const step = (a: number, b: number): 'up' | 'down' | 'flat' => {
     const d = a - b;
     return d > FLAT_TOLERANCE_KG ? 'up' : d < -FLAT_TOLERANCE_KG ? 'down' : 'flat';
@@ -252,10 +277,32 @@ function composeCause(flags: NoiseFlag[], opts?: { brief?: boolean }): string {
 
 const capitalizeFirst = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
+// "since yesterday" / "since your reading 3 days ago". Says the real distance
+// rather than implying the readings are consecutive mornings.
+function sincePhrase(days: number | null): string {
+  if (days == null) return 'since your last reading';
+  if (days < 1.5) return 'since yesterday';
+  if (days < 6.5) return `since your reading ${Math.round(days)} days ago`;
+  if (days < 10.5) return 'since your reading last week';
+  return `since your last reading ${Math.round(days)} days ago`;
+}
+
+// What the single reading actually is. "A single day" is only true when a day
+// is what it spans.
+function singleReadingClause(days: number | null): string {
+  return days != null && days < 1.5
+    ? "that's a single day, not a trend"
+    : "that's one reading, not a trend";
+}
+
 // --- Composer ----------------------------------------------------------------
 export function interpretLatestReading(params: {
   latest: { weightKg: number | null; measuredAt: string };
   priorWeights: number[]; // most-recent-first, excluding the latest reading
+  // measured_at for each entry of priorWeights, index-aligned. Aligned rather
+  // than reusing priorMeasuredAts because that list keeps readings with no
+  // weight, so the two drift apart exactly when someone logs a partial reading.
+  priorWeightMeasuredAts?: string[];
   lastPeriodStart: string | null;
   recentActivities?: ActivityContext[]; // activities near the reading (pump + DOMS)
   priorMeasuredAts?: string[]; // measured_at of prior readings, for usual-time
@@ -264,6 +311,7 @@ export function interpretLatestReading(params: {
   const {
     latest,
     priorWeights,
+    priorWeightMeasuredAts = [],
     lastPeriodStart,
     recentActivities = [],
     priorMeasuredAts = [],
@@ -279,7 +327,18 @@ export function interpretLatestReading(params: {
   ].filter((f): f is NoiseFlag => f != null);
   const sources = flags.map((f) => f.source);
   const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);
-  const trend = assessTrend(weights);
+
+  // Gaps between consecutive weights, latest first, for both the trend engine
+  // and the wording below.
+  const stamps = [latest.measuredAt, ...priorWeightMeasuredAts];
+  const stepGaps = stamps.slice(0, -1).map((a, i) => {
+    const later = new Date(a).getTime();
+    const earlier = new Date(stamps[i + 1]).getTime();
+    if (isNaN(later) || isNaN(earlier)) return null;
+    return (later - earlier) / 86_400_000;
+  });
+  const gapToPrev = priorWeightMeasuredAts.length ? stepGaps[0] : null;
+  const trend = priorWeightMeasuredAts.length ? assessTrend(weights, stepGaps) : assessTrend(weights);
 
   // A real trend is the actionable signal, and it outranks the noise flags: a run
   // of readings in one direction is more than any single-day inflator.
@@ -305,26 +364,53 @@ export function interpretLatestReading(params: {
     return { message, trend, sources };
   }
 
-  // Not a real trend. Under three readings there's no reliable comparison, so we
-  // only offer phase context when a noise flag is present, never a direction claim.
+  // Not a real trend. What is still worth saying depends on WHY, and the three
+  // reasons below are genuinely different — collapsing them into one guard is
+  // what made this fall silent on Ruth's real data once gaps were respected.
   const prior = priorWeights.find((w) => w != null);
-  if (trend === 'insufficient' || latest.weightKg == null || prior == null) {
+  const phaseOnly = () => ({
+    message: `${capitalizeFirst(composeCause(flags))}. If the scale looks flat or up around now, that's usually temporary rather than a real change.`,
+    trend,
+    sources,
+  });
+
+  // (a) Nothing to compare at all — no weight now, or none before it.
+  if (latest.weightKg == null || prior == null) {
     if (flags.length === 0) return null;
+    return phaseOnly();
+  }
+
+  // (b) There IS a previous reading, but it sits too far back to read this one
+  // against. Said plainly rather than left as an empty screen: explaining why
+  // there is nothing to report is useful in itself, and it is the honest
+  // version of the delta this used to state as if the two were consecutive days.
+  if (gapToPrev != null && gapToPrev > COMPARABLE_GAP_DAYS) {
     return {
-      message: `${capitalizeFirst(composeCause(flags))}. If the scale looks flat or up around now, that's usually temporary rather than a real change.`,
+      message: `Your last reading before this was ${Math.round(gapToPrev)} days ago, so there's too much in between to read one against the other. A few more readings and I'll have something real to tell you.`,
       trend,
       sources,
     };
   }
 
-  // Single-day fluctuation with a usable weight delta. A genuine drop needs no
-  // caveat; a flat or up reading gets reassurance (with the noise reasons if any).
+  // (c) Genuinely too little history, with nothing close enough to compare.
+  if (trend === 'insufficient' && gapToPrev == null) {
+    if (flags.length === 0) return null;
+    return phaseOnly();
+  }
+
+  // Otherwise there is a usable comparison: either a fluctuation inside a run of
+  // readings, or two readings close enough together to speak about even though
+  // three would be needed before claiming a direction. Saying "up 0.2 kg since
+  // Sunday, which is one reading rather than a trend" is not a direction claim —
+  // it explicitly declines to make one — so the sparse-data rule permits it.
+  // A genuine drop still needs no caveat; flat or up gets the reassurance.
   const delta = round1(latest.weightKg - prior);
   if (delta < -FLAT_TOLERANCE_KG) return null;
   const change = delta > 0 ? `up ${delta} kg` : 'flat';
+  const since = sincePhrase(gapToPrev);
   const message =
     flags.length > 0
-      ? `Weight's ${change} since your last reading — but ${composeCause(flags)}. A single reading like this is very likely noise, not a setback.`
-      : `Weight's ${change} since your last reading, but that's a single day, not a trend — nothing to act on.`;
+      ? `Weight's ${change} ${since} — but ${composeCause(flags)}. A single reading like this is very likely noise, not a setback.`
+      : `Weight's ${change} ${since}, but ${singleReadingClause(gapToPrev)} — nothing to act on.`;
   return { message, trend, sources };
 }

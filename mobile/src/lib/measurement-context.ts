@@ -34,6 +34,10 @@ export function hoursBefore(iso: string, hours: number): string {
 export function splitReadings(rows: RawReading[]): {
   latest: RawReading;
   priorWeights: number[];
+  // Index-aligned with priorWeights. priorMeasuredAts below is NOT aligned - it
+  // keeps every prior reading including weightless ones - so anything reasoning
+  // about the distance between two weights must use this list, not that one.
+  priorWeightMeasuredAts: string[];
   priorMeasuredAts: string[];
 } | null {
   const sorted = [...rows]
@@ -42,12 +46,15 @@ export function splitReadings(rows: RawReading[]): {
   const latest = sorted[0];
   if (!latest) return null;
   const prior = sorted.slice(1);
+  // Nulls dropped rather than passed through: the trend engine counts steps
+  // between consecutive weights, and a hole would make two readings weeks apart
+  // look adjacent. The timestamps are filtered in the same pass so the two
+  // arrays cannot drift out of alignment.
+  const withWeight = prior.filter((r) => r.weight_kg != null);
   return {
     latest,
-    // Nulls dropped here rather than passed through: the trend engine counts
-    // steps between consecutive weights, and a gap would make two readings
-    // weeks apart look consecutive.
-    priorWeights: prior.map((r) => r.weight_kg).filter((w): w is number => w != null),
+    priorWeights: withWeight.map((r) => r.weight_kg as number),
+    priorWeightMeasuredAts: withWeight.map((r) => r.measured_at),
     priorMeasuredAts: prior.map((r) => r.measured_at),
   };
 }
