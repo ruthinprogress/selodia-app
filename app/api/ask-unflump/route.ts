@@ -14,6 +14,7 @@ import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
+import { logMeasurementFromText, measurementSaveSummary } from '../../lib/measurement-logging';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import {
   isCardMediaType,
@@ -274,7 +275,7 @@ CLARIFYING A COMPOSITE: two kinds of composite dish are worth a light, single cl
 
 SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved plans, patterns, and insights - the things worth keeping within easy reach. A save is worth it only for (a) a real plan you've genuinely worked out together (a routine, a movement plan, a meal or drink plan) or (b) a genuine INSIGHT - a pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight/waist tending higher in the days before a period). It is NOT worth saving a plain result (a number the data already shows, like a 5-day trend) or a one-off observation (a contextual note that connects to nothing) - those stay in the conversation. **Confirm first, always:** when something save-worthy emerges, ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after the person agrees - never save without a yes, never save a passing remark. Use an open, natural word for almanacKind (e.g. "insight", "routine", "movement plan", "pattern"), a short almanacTitle, and almanacCategory only when a natural grouping exists. For an INSIGHT, put its rule in almanacContent as a condition and an expectation, e.g. {"condition": "the days before your period", "expectation": "weight and waist read a little higher"}, so it can inform how future readings are interpreted.\nFOR A WORKOUT OR MOVEMENT PLAN specifically, almanacContent takes this shape: {"programType": string, "goal": string, "exercises": [{"name": string, "group": string, "sets": number, "reps": string, "safetyNote": string, "eccentricLoad": "none"|"low"|"moderate"|"high", "intensity": "light"|"moderate"|"intense"}]}. Notes on each: **programType** describes the kind of program in your own words (e.g. "general strength", "rehab", "skill practice") - it decides how the plan is grouped, so be accurate rather than inventive. **group** is the grouping key and its meaning follows programType: a body area for general strength, the skill being learned for skill practice, and it can be omitted for rehab, which shows as a flat list. **reps** is a STRING so you can write what is actually true - "8-10", "30s", "AMRAP", "12 per side" - never round it to a bare number if that loses meaning. **sets and reps are decided per person and per goal from what you have discussed** - a rep range for building muscle is not the range for rehab or endurance - never a fixed default per exercise. **safetyNote is required for every exercise and must name the real common failure modes of that specific movement** - what actually goes wrong and what it feels like when it does - never generic boilerplate like "use good form" or "warm up first". **eccentricLoad** is how much eccentric (lengthening-under-load) work the movement involves, which is what drives delayed-onset soreness; **intensity** is its typical effort level. Set both from the movement itself. Do NOT put working weights or completed sessions in the plan - those are logged separately, and writing them here would overwrite the history that progressive overload depends on.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${SAFETY_PROMPT_BLOCK}`;
 
@@ -297,9 +298,9 @@ ${SAFETY_PROMPT_BLOCK}`;
     },
     logIntent: {
       type: 'string',
-      enum: ['none', 'food', 'activity'],
+      enum: ['none', 'food', 'activity', 'measurement'],
       description:
-        "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, else 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a food/activity log; set this to whatever is loggable regardless of emotional content.",
+        "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content.",
     },
     clarificationAsked: {
       type: 'string',
@@ -369,7 +370,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberCategory?: string;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
-    logIntent?: 'none' | 'food' | 'activity';
+    logIntent?: 'none' | 'food' | 'activity' | 'measurement';
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -409,7 +410,21 @@ ${SAFETY_PROMPT_BLOCK}`;
   // visual toast in the client (the `saved` field), never in the reply text.
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
-  let saved: { kind: 'food' | 'activity'; summary: string } | null = null;
+  let saved: { kind: 'food' | 'activity' | 'measurement'; summary: string } | null = null;
+
+  // A body measurement stated in text (build item 10c). Kept separate from the
+  // food/activity branch below because it has no clarification loop and its own
+  // failure mode: a message that reads like a weight but yields no usable
+  // number saves nothing at all rather than writing an empty row.
+  if (result.logIntent === 'measurement') {
+    try {
+      const entry = await logMeasurementFromText(supabase, user.id, message);
+      if (entry) saved = { kind: 'measurement', summary: measurementSaveSummary(entry) };
+    } catch (err) {
+      console.log('ASK-UNFLUMP MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
   if (result.logIntent === 'food' || result.logIntent === 'activity') {
     try {
       if (result.logIntent === 'food') {
