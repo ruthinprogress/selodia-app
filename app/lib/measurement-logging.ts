@@ -57,7 +57,12 @@ export async function logMeasurementFromText(
   supabase: SupabaseClient,
   userId: string,
   measurementText: string,
-  measuredAt?: string
+  measuredAt?: string,
+  // When set, the corrected values replace that row instead of inserting a new
+  // one (build item 10d). A correction must never leave the wrong reading
+  // behind alongside the right one - two readings minutes apart would look like
+  // a re-weigh and both would feed the trend.
+  updateId?: string
 ): Promise<MeasurementEntry | null> {
   const instruction =
     "The person stated a body measurement in free text. Today's date is " +
@@ -116,11 +121,31 @@ export async function logMeasurementFromText(
     finalMeasuredAt = parsed.detected_date + 'T' + timeOnly + 'Z';
   }
 
-  // Inserted, never merged over a same-day reading. Re-weighing in a day is
-  // normal and the history is append-only; everything downstream already takes
-  // the latest reading of a day (see measurements-week.ts). The overwrite/skip
-  // prompt in parse-body-measurement exists for bulk screenshot imports, where
-  // the same reading really can arrive twice - a typed number cannot.
+  // A correction replaces the row it is correcting. Otherwise: inserted, never
+  // merged over a same-day reading - re-weighing in a day is normal, the
+  // history is append-only, and everything downstream already takes the latest
+  // reading of a day (see measurements-week.ts). The overwrite/skip prompt in
+  // parse-body-measurement is for bulk screenshot imports, where the same
+  // reading really can arrive twice; a typed number cannot.
+  if (updateId) {
+    const { data, error } = await supabase
+      .from('body_measurements')
+      .update({
+        measured_at: finalMeasuredAt,
+        weight_kg: weightKg,
+        body_fat_pct: bodyFatPct,
+        muscle_kg: muscleKg,
+        raw_input: measurementText,
+      })
+      .eq('id', updateId)
+      // RLS already scopes this, but the explicit filter means a wrong id can
+      // never reach another person's row even if a policy is later relaxed.
+      .eq('user_id', userId)
+      .select();
+    if (error) throw new Error('body_measurements update failed: ' + error.message);
+    return (data?.[0] as MeasurementEntry) ?? null;
+  }
+
   const { data, error } = await supabase
     .from('body_measurements')
     .insert({

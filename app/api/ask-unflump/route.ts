@@ -15,6 +15,14 @@ import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
 import { logMeasurementFromText, measurementSaveSummary } from '../../lib/measurement-logging';
+import {
+  correctionCutoff,
+  deletionMessage,
+  nothingToCorrectMessage,
+  resolveCorrection,
+  TABLE_FOR,
+  TIME_COLUMN_FOR,
+} from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import {
   isCardMediaType,
@@ -275,6 +283,8 @@ CLARIFYING A COMPOSITE: two kinds of composite dish are worth a light, single cl
 
 SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved plans, patterns, and insights - the things worth keeping within easy reach. A save is worth it only for (a) a real plan you've genuinely worked out together (a routine, a movement plan, a meal or drink plan) or (b) a genuine INSIGHT - a pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight/waist tending higher in the days before a period). It is NOT worth saving a plain result (a number the data already shows, like a 5-day trend) or a one-off observation (a contextual note that connects to nothing) - those stay in the conversation. **Confirm first, always:** when something save-worthy emerges, ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after the person agrees - never save without a yes, never save a passing remark. Use an open, natural word for almanacKind (e.g. "insight", "routine", "movement plan", "pattern"), a short almanacTitle, and almanacCategory only when a natural grouping exists. For an INSIGHT, put its rule in almanacContent as a condition and an expectation, e.g. {"condition": "the days before your period", "expectation": "weight and waist read a little higher"}, so it can inform how future readings are interpreted.\nFOR A WORKOUT OR MOVEMENT PLAN specifically, almanacContent takes this shape: {"programType": string, "goal": string, "exercises": [{"name": string, "group": string, "sets": number, "reps": string, "safetyNote": string, "eccentricLoad": "none"|"low"|"moderate"|"high", "intensity": "light"|"moderate"|"intense"}]}. Notes on each: **programType** describes the kind of program in your own words (e.g. "general strength", "rehab", "skill practice") - it decides how the plan is grouped, so be accurate rather than inventive. **group** is the grouping key and its meaning follows programType: a body area for general strength, the skill being learned for skill practice, and it can be omitted for rehab, which shows as a flat list. **reps** is a STRING so you can write what is actually true - "8-10", "30s", "AMRAP", "12 per side" - never round it to a bare number if that loses meaning. **sets and reps are decided per person and per goal from what you have discussed** - a rep range for building muscle is not the range for rehab or endurance - never a fixed default per exercise. **safetyNote is required for every exercise and must name the real common failure modes of that specific movement** - what actually goes wrong and what it feels like when it does - never generic boilerplate like "use good form" or "warm up first". **eccentricLoad** is how much eccentric (lengthening-under-load) work the movement involves, which is what drives delayed-onset soreness; **intensity** is its typical effort level. Set both from the movement itself. Do NOT put working weights or completed sessions in the plan - those are logged separately, and writing them here would overwrite the history that progressive overload depends on.
 
+CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask.
+
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${SAFETY_PROMPT_BLOCK}`;
@@ -301,6 +311,18 @@ ${SAFETY_PROMPT_BLOCK}`;
       enum: ['none', 'food', 'activity', 'measurement'],
       description:
         "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content.",
+    },
+    correctionKind: {
+      type: 'string',
+      enum: ['food', 'activity', 'measurement'],
+      description:
+        "Set ONLY when the person is fixing or removing something they just logged, rather than logging something new - e.g. \"no that was 55.2 not 52.5\", \"make that 300 calories\", \"delete that last one\", \"scrap the run, I didn't go\". Which kind of entry they mean. When set, leave logIntent as 'none' - a correction is not a new log.",
+    },
+    correctionAction: {
+      type: 'string',
+      enum: ['update', 'delete'],
+      description:
+        "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
     },
     clarificationAsked: {
       type: 'string',
@@ -371,6 +393,8 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
     logIntent?: 'none' | 'food' | 'activity' | 'measurement';
+    correctionKind?: string;
+    correctionAction?: string;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -411,6 +435,53 @@ ${SAFETY_PROMPT_BLOCK}`;
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
   let saved: { kind: 'food' | 'activity' | 'measurement'; summary: string } | null = null;
+  // A correction or deletion of something just logged (build item 10d). Runs
+  // BEFORE the logging branches so a corrected value can never also be stored
+  // as a second, new entry.
+  let correctionNote: string | null = null;
+  const correction = resolveCorrection(result.correctionKind, result.correctionAction);
+  if (correction) {
+    try {
+      const table = TABLE_FOR[correction.kind];
+      const timeCol = TIME_COLUMN_FOR[correction.kind];
+      // The most recent entry of that kind inside the window. Ordered by the
+      // event time rather than created_at so "that last one" means the entry
+      // they are looking at, not whichever row was written most recently.
+      const { data: target } = await supabase
+        .from(table)
+        .select('id')
+        .eq('user_id', user.id)
+        .gte(timeCol, correctionCutoff())
+        .order(timeCol, { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!target) {
+        correctionNote = nothingToCorrectMessage(correction.kind);
+      } else if (correction.action === 'delete') {
+        const { error } = await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
+        correctionNote = error ? null : deletionMessage(correction.kind);
+        if (error) console.log('ASK-UNFLUMP DELETE FAILED:', error.message);
+      } else if (correction.kind === 'measurement') {
+        const entry = await logMeasurementFromText(supabase, user.id, message, undefined, target.id);
+        if (entry) saved = { kind: 'measurement', summary: measurementSaveSummary(entry) };
+      } else if (correction.kind === 'food') {
+        const entry = await logFoodFromText(supabase, user.id, message, undefined, target.id);
+        saved = { kind: 'food', summary: foodSaveSummary(entry) };
+      } else {
+        // Activity has no in-place update path: logActivityFromText can split
+        // one message into several rows, so "replace row X" is not well
+        // defined. Removing and re-logging is the honest equivalent, and it is
+        // what the person asked for in substance.
+        await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
+        const entries = await logActivityFromText(supabase, user.id, message);
+        if (entries[0]) saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+      }
+    } catch (err) {
+      console.log('ASK-UNFLUMP CORRECTION FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
 
   // A body measurement stated in text (build item 10c). Kept separate from the
   // food/activity branch below because it has no clarification loop and its own
@@ -521,10 +592,20 @@ ${SAFETY_PROMPT_BLOCK}`;
     if (entry) savedAlmanac = { kind: entry.kind, title: entry.title };
   }
 
+  // A deletion is stated by the app, not by the model. The prompt tells it not
+  // to claim it has changed anything, precisely so a failed delete can never be
+  // reported as done - this line only exists when the row is genuinely gone.
+  const finalReply = correctionNote ? `${replyText}
+
+${correctionNote}` : replyText;
+
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
-    content: replyText,
+    // What was actually shown, including any deletion line. Storing replyText
+    // instead would leave the model unaware on the next turn that an entry it
+    // can no longer see was removed at its own request.
+    content: finalReply,
     source: 'chat',
     // Tagged alongside the user turn so pulling one entry's history back out
     // yields both halves of the exchange, not a column of unanswered questions.
@@ -544,7 +625,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     hasHealthContext(healthContext) && result.healthGuidanceApplied === true;
 
   return NextResponse.json({
-    reply: replyText,
+    reply: finalReply,
     savedContext,
     savedAlmanac,
     resourceCard,
