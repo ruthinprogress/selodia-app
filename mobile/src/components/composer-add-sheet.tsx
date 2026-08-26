@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { ADD_OPTIONS, type AddSource } from '@/lib/composer-add';
 
 // The composer's "+" action sheet (build item 10b, step 1).
@@ -26,11 +27,16 @@ export function ComposerAddSheet({
   onSelect: (source: AddSource) => void;
   onCancel: () => void;
 }) {
+  const theme = useTheme();
   if (!visible) return null;
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onCancel} accessibilityViewIsModal>
-      <Pressable style={styles.backdrop} onPress={onCancel} accessibilityLabel="Close" />
+      <Pressable
+        style={[styles.backdrop, { backgroundColor: theme.scrim }]}
+        onPress={onCancel}
+        accessibilityLabel="Close"
+      />
       <View style={styles.bottom} pointerEvents="box-none">
         <ThemedView style={styles.sheet}>
           {ADD_OPTIONS.map((o) => (
@@ -65,7 +71,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    // Colour comes from theme.scrim at render; only the geometry lives here.
   },
   bottom: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
