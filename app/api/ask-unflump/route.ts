@@ -16,7 +16,11 @@ import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
-import { logMeasurementFromText, measurementSaveSummary } from '../../lib/measurement-logging';
+import {
+  logMeasurementFromText,
+  measurementSaveSummary,
+  personalSaveSummary,
+} from '../../lib/measurement-logging';
 import {
   correctionCutoff,
   deletionMessage,
@@ -473,8 +477,8 @@ ${SAFETY_PROMPT_BLOCK}`;
         correctionNote = error ? null : deletionMessage(correction.kind);
         if (error) console.log('ASK-UNFLUMP DELETE FAILED:', error.message);
       } else if (correction.kind === 'measurement') {
-        const entry = await logMeasurementFromText(supabase, user.id, message, undefined, target.id);
-        if (entry) saved = { kind: 'measurement', summary: measurementSaveSummary(entry) };
+        const { reading } = await logMeasurementFromText(supabase, user.id, message, undefined, target.id);
+        if (reading) saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
       } else if (correction.kind === 'food') {
         const entry = await logFoodFromText(supabase, user.id, message, undefined, target.id);
         saved = { kind: 'food', summary: foodSaveSummary(entry) };
@@ -499,10 +503,21 @@ ${SAFETY_PROMPT_BLOCK}`;
   // number saves nothing at all rather than writing an empty row.
   if (result.logIntent === 'measurement') {
     try {
-      const entry = await logMeasurementFromText(supabase, user.id, message);
-      if (entry) {
-        saved = { kind: 'measurement', summary: measurementSaveSummary(entry) };
+      const { reading, personal } = await logMeasurementFromText(supabase, user.id, message);
+      if (reading) {
+        saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
         attempt.landed.push('reading');
+      }
+      // Personal metrics land independently of the scale half - "waist 70" with
+      // no weight in it is a complete log. They are named individually in
+      // `landed` so a partial miss can say which ones made it, rather than the
+      // whole turn reading as one undifferentiated "reading".
+      for (const m of personal) attempt.landed.push(m.metric_name);
+      // The toast says something either way. Its summary is the scale reading
+      // when there is one, since that is the headline number; otherwise it names
+      // what was actually kept.
+      if (!saved && personal.length > 0) {
+        saved = { kind: 'measurement', summary: personalSaveSummary(personal) };
       }
     } catch (err) {
       console.log('ASK-UNFLUMP MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);

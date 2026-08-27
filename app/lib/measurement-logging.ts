@@ -27,7 +27,27 @@ export type MeasurementEntry = {
   muscle_kg: number | null;
 };
 
+// One personally-tracked metric: a waist, a resting heart rate, a blood
+// pressure. Open by design - the spec promises "any personally meaningful
+// point, not limited to a preset menu" - so the NAME is free text, normalised
+// at log time against what this person already tracks rather than matched
+// against a list nobody can finish writing (Part Two, principle 13).
+export type ParsedPersonalMetric = {
+  name?: string;
+  value?: number | null;
+  value_secondary?: number | null;
+  unit?: string | null;
+};
+
+export type PersonalMetricEntry = {
+  id: string;
+  metric_name: string;
+  value: number;
+  unit: string | null;
+};
+
 type ParsedMeasurement = {
+  personal?: ParsedPersonalMetric[] | null;
   weight_kg: number | null;
   weight_lb: number | null;
   weight_stone: number | null;
@@ -63,7 +83,20 @@ export async function logMeasurementFromText(
   // behind alongside the right one - two readings minutes apart would look like
   // a re-weigh and both would feed the trend.
   updateId?: string
-): Promise<MeasurementEntry | null> {
+  // Returns BOTH destinations, because one message routinely carries both:
+  // "55.2 and waist 70" is a scale reading and a tape reading, and making the
+  // model pick one bucket would silently drop the other.
+): Promise<{ reading: MeasurementEntry | null; personal: PersonalMetricEntry[] }> {
+  // The names this person ALREADY tracks, handed to the model so it reuses them.
+  // Without this, "my waist", "waist" and "Waist" become three separate metrics
+  // and the table grows a row per phrasing - the open-ended equivalent of a
+  // misclassification, and invisible until the table looks wrong.
+  const { data: knownRows } = await supabase
+    .from('personal_metrics')
+    .select('metric_name')
+    .eq('user_id', userId);
+  const known = Array.from(new Set((knownRows ?? []).map((r) => r.metric_name as string)));
+
   const instruction =
     "The person stated a body measurement in free text. Today's date is " +
     new Date().toISOString().slice(0, 10) +
@@ -80,7 +113,20 @@ export async function logMeasurementFromText(
     'Respond ONLY with valid JSON, no other text, in this exact format: ' +
     '{"weight_kg": number_or_null, "weight_lb": number_or_null, "weight_stone": number_or_null, ' +
     '"weight_stone_lb": number_or_null, "body_fat_pct": number_or_null, "muscle_kg": number_or_null, ' +
-    '"detected_date": iso8601_date_string_or_null} Measurement: "' +
+    '"detected_date": iso8601_date_string_or_null, ' +
+    '"personal": [{"name": string, "value": number, "value_secondary": number_or_null, "unit": string_or_null}]} ' +
+    'Put ANY body measurement that is not weight, body fat or muscle into "personal" - a waist, a thigh, a hip, ' +
+    'a resting heart rate, a blood pressure, anything they choose to track. Use the unit they said (cm, in, bpm, ' +
+    'mmHg) and leave unit null if they gave none. For a paired reading like a blood pressure of 120 over 80, put ' +
+    '120 in value and 80 in value_secondary; everything else leaves value_secondary null. ' +
+    (known.length > 0
+      ? 'This person already tracks these metrics: ' +
+        known.map((k) => '"' + k + '"').join(', ') +
+        '. If they mean one of those, reuse its name EXACTLY as written above, whatever words they used this time - ' +
+        '"my waist", "waist" and "Waist" are all the existing "waist". Only invent a new name for something genuinely new. '
+      : 'Name each one in lower case, as plainly as possible ("waist", not "waist circumference"), since these names become the labels they will see. ') +
+    'Return an empty array when there are none. ' +
+    'Measurement: "' +
     measurementText +
     '"';
 
@@ -110,16 +156,60 @@ export async function logMeasurementFromText(
   const bodyFatPct = plausible(parsed.body_fat_pct, MIN_BODY_FAT_PCT, MAX_BODY_FAT_PCT);
   const muscleKg = plausible(parsed.muscle_kg, 1, MAX_WEIGHT_KG);
 
-  // Nothing usable. Returns null rather than writing an empty row: a row with
-  // no numbers would still count as a reading everywhere downstream - breaking
-  // a trend chain, and satisfying "they logged today" when they did not.
-  if (weightKg == null && bodyFatPct == null && muscleKg == null) return null;
-
-  let finalMeasuredAt = measuredAt || new Date().toISOString();
+  let finalMeasuredAtForPersonal = measuredAt || new Date().toISOString();
   if (parsed.detected_date) {
-    const timeOnly = new Date(measuredAt || new Date().toISOString()).toISOString().slice(11, 19);
-    finalMeasuredAt = parsed.detected_date + 'T' + timeOnly + 'Z';
+    const timeOnly = new Date(finalMeasuredAtForPersonal).toISOString().slice(11, 19);
+    finalMeasuredAtForPersonal = parsed.detected_date + 'T' + timeOnly + 'Z';
   }
+
+  // Personal metrics are written FIRST and independently of the scale fields,
+  // because the two halves genuinely stand alone: "waist 70" with no weight in
+  // it must still save, and the all-null guard below is about the scale row
+  // only. A correction (updateId) targets one specific scale row, so it does
+  // not touch these - correcting a personal metric is not yet a thing the
+  // correction path knows how to do, and half-doing it would be worse.
+  const personal: PersonalMetricEntry[] = [];
+  if (!updateId && Array.isArray(parsed.personal)) {
+    const rows = parsed.personal
+      .map((m) => ({
+        user_id: userId,
+        measured_at: finalMeasuredAtForPersonal,
+        metric_name: String(m?.name ?? '').trim().slice(0, 60),
+        value: typeof m?.value === 'number' && isFinite(m.value) ? m.value : null,
+        value_secondary:
+          typeof m?.value_secondary === 'number' && isFinite(m.value_secondary)
+            ? m.value_secondary
+            : null,
+        unit: typeof m?.unit === 'string' && m.unit.trim() ? m.unit.trim().slice(0, 16) : null,
+        raw_input: measurementText,
+      }))
+      // A metric with no name or no number is not a measurement, it is a
+      // misparse. Dropped rather than stored, on the same grounds as the
+      // empty-scale-row guard: a nameless row would sit in her table forever.
+      .filter((r) => r.metric_name.length > 0 && r.value != null);
+
+    if (rows.length > 0) {
+      const { data, error } = await supabase
+        .from('personal_metrics')
+        .insert(rows)
+        .select('id, metric_name, value, unit');
+      if (error) {
+        console.log('personal_metrics insert failed (non-fatal):', error.message);
+      } else {
+        personal.push(...((data ?? []) as PersonalMetricEntry[]));
+      }
+    }
+  }
+
+  // Nothing usable in the SCALE half. Returns no reading rather than writing an
+  // empty row: a row with no numbers would still count as a reading everywhere
+  // downstream - breaking a trend chain, and satisfying "they logged today"
+  // when they did not. Any personal metrics above still stand.
+  if (weightKg == null && bodyFatPct == null && muscleKg == null) {
+    return { reading: null, personal };
+  }
+
+  const finalMeasuredAt = finalMeasuredAtForPersonal;
 
   // A correction replaces the row it is correcting. Otherwise: inserted, never
   // merged over a same-day reading - re-weighing in a day is normal, the
@@ -143,7 +233,7 @@ export async function logMeasurementFromText(
       .eq('user_id', userId)
       .select();
     if (error) throw new Error('body_measurements update failed: ' + error.message);
-    return (data?.[0] as MeasurementEntry) ?? null;
+    return { reading: (data?.[0] as MeasurementEntry) ?? null, personal };
   }
 
   const { data, error } = await supabase
@@ -159,7 +249,7 @@ export async function logMeasurementFromText(
     .select();
 
   if (error) throw new Error('body_measurements insert failed: ' + error.message);
-  return (data?.[0] as MeasurementEntry) ?? null;
+  return { reading: (data?.[0] as MeasurementEntry) ?? null, personal };
 }
 
 // The toast line, matching foodSaveSummary / activitySaveSummary: label plus
@@ -170,4 +260,14 @@ export function measurementSaveSummary(entry: MeasurementEntry): string {
   if (entry.body_fat_pct != null) parts.push(`${Math.round(entry.body_fat_pct * 10) / 10}% fat`);
   if (entry.muscle_kg != null) parts.push(`${Math.round(entry.muscle_kg * 10) / 10} kg muscle`);
   return `Weigh-in — ${parts.join(' · ')}`;
+}
+
+// The toast line when a message carried only personal metrics - no weight, no
+// body fat, no muscle. Same shape as measurementSaveSummary: a label plus the
+// numbers, short enough to verify at a glance without reading a sentence.
+export function personalSaveSummary(entries: PersonalMetricEntry[]): string {
+  const parts = entries.map(
+    (e) => `${e.metric_name} ${Math.round(e.value * 10) / 10}${e.unit ? e.unit : ''}`
+  );
+  return `Logged — ${parts.join(' · ')}`;
 }

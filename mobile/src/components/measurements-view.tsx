@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
+import { PersonalMetricsView } from '@/components/personal-metrics-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -152,6 +153,14 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           </ThemedView>
         </Pressable>
       ) : null}
+
+      {/* The second table, stacked directly under the scale one on the same
+          continuous screen - both visible together, no toggle (Ruth, 2026-08-27).
+          Split by SOURCE: someone can stop using a scale and keep measuring
+          everything else, or the reverse, and one combined table would leave
+          permanent empty cells for whichever they stopped. */}
+      <PersonalMetricsView />
+
     </ThemedView>
   );
 }
