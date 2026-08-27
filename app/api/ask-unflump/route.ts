@@ -151,6 +151,7 @@ export async function POST(request: NextRequest) {
     { data: recentMeasurements },
     { data: healthContextRow },
     { data: lastPeriodRow },
+    { data: yesterdaySummary },
   ] = await Promise.all([
     supabase
       .from('chat_messages')
@@ -202,6 +203,17 @@ export async function POST(request: NextRequest) {
       .select('event_date')
       .eq('event_type', 'period_start')
       .order('event_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // Yesterday's stored summary (Part Nine, next-morning mechanism). Read on
+    // every turn rather than only on a measurement, because the spiral this
+    // exists to pre-empt can start with "I feel huge today" just as easily as
+    // with a number.
+    supabase
+      .from('daily_summaries')
+      .select('summary_date, mediating_factor')
+      .not('mediating_factor', 'is', null)
+      .order('summary_date', { ascending: false })
       .limit(1)
       .maybeSingle(),
   ]);
@@ -256,6 +268,24 @@ export async function POST(request: NextRequest) {
   // in context. Empty when cycle tracking isn't enabled. RLS scopes the read.
   const cycleContextBlock = buildCycleContextPrompt(lastPeriodRow?.event_date ?? null);
 
+  // The next-morning weave. Only YESTERDAY's factor, and only in the morning:
+  // a mediating factor is about how today's reading should be read, and by the
+  // afternoon it has stopped explaining anything and started being an excuse
+  // offered on someone's behalf.
+  const yesterdayKey = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  })();
+  const isMorning = new Date().getHours() < 12;
+  const mediating =
+    isMorning && yesterdaySummary?.summary_date === yesterdayKey
+      ? (yesterdaySummary.mediating_factor as string | null)
+      : null;
+  const yesterdayBlock = mediating
+    ? `YESTERDAY, FOR CONTEXT: ${mediating}. If they mention this morning's reading or how they feel about their body today, bring this in BEFORE they have a chance to read a higher number as fat gained - it is water and food settling, and it passes. Say it once, warmly, as context rather than as reassurance they asked for. Never suggest eating less today to compensate; the opposite - eating normally when hungry is what stops the swing. If they do not raise it, do not raise it either.`
+    : '';
+
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => f.happened_at.slice(0, 10) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
@@ -281,7 +311,7 @@ ${activitySummary}
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
-${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}
+${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}
 Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact.
 
 NUTRIENT DEPTH (passive, occasional): protein and calories miss things that can matter over time - dietary saturated fat and cholesterol, omega-3s, iron, fibre, refined carbs, overall micronutrient variety. From the food ALREADY LOGGED above, you may occasionally and gently notice a PATTERN worth a light mention - never from a single meal (one lower-density choice is noise, only a trend across the logs is worth raising), never as a running micronutrient tracker or checklist, and never by labelling any food "good" or "bad". Let the HEALTH CONTEXT above decide what is worth watching: the markers and protective foods it already lists ARE your priority lens - infer the relevant nutrient pattern from that block, don't restate or second-guess it, and don't run a generic scan. If there is NO health context, keep this very light and mostly stay quiet: a depth nudge is prioritised by what they have actually disclosed, not applied one-size-fits-all. Only raise it when it genuinely fits the moment and is worth saying - most replies will not touch it at all. When such a nudge draws on their health context, set healthGuidanceApplied to true (as above) so the disclaimer shows.
