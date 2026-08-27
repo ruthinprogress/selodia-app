@@ -15,6 +15,7 @@ import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '
 import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import { logActivityFromText } from '../../lib/activity-logging';
+import { hydrationSaveSummary, logHydrationFromText } from '../../lib/hydration-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
 import {
   logMeasurementFromText,
@@ -291,7 +292,7 @@ SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved pla
 
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${APP_STRUCTURE_PROMPT_BLOCK}
 
@@ -316,7 +317,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     },
     logIntent: {
       type: 'string',
-      enum: ['none', 'food', 'activity', 'measurement'],
+      enum: ['none', 'food', 'activity', 'measurement', 'hydration'],
       description:
         "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content.",
     },
@@ -400,7 +401,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberCategory?: string;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
-    logIntent?: 'none' | 'food' | 'activity' | 'measurement';
+    logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration';
     correctionKind?: string;
     correctionAction?: string;
     clarificationAsked?: string;
@@ -442,7 +443,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   // visual toast in the client (the `saved` field), never in the reply text.
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
-  let saved: { kind: 'food' | 'activity' | 'measurement'; summary: string } | null = null;
+  let saved: { kind: 'food' | 'activity' | 'measurement' | 'hydration'; summary: string } | null = null;
   // What actually reached the database this turn, for the honesty note below.
   // Kept separate from `saved` because `saved` drives the toast and carries one
   // headline summary, while this has to survive a PARTIAL landing - a weight
@@ -521,6 +522,21 @@ ${SAFETY_PROMPT_BLOCK}`;
       }
     } catch (err) {
       console.log('ASK-UNFLUMP MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // Water and other zero-calorie drinks (Part Twelve). Kept out of the food
+  // branch deliberately: a glass of water is not an entry in a food breakdown,
+  // and folding it in would put one in every table.
+  if (result.logIntent === 'hydration') {
+    try {
+      const entry = await logHydrationFromText(supabase, user.id, message);
+      if (entry) {
+        saved = { kind: 'hydration', summary: hydrationSaveSummary(entry) };
+        attempt.landed.push('water');
+      }
+    } catch (err) {
+      console.log('ASK-UNFLUMP HYDRATION LOG FAILED:', err instanceof Error ? err.message : err);
     }
   }
 

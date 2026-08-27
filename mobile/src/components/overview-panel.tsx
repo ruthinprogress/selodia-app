@@ -15,6 +15,7 @@ import {
   type MeasurementRow,
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
+import { DAILY_TARGET_ML, hydrationLabel, hydrationToday } from '@/lib/hydration';
 import { calculateProteinTarget } from '@/lib/protein';
 import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
@@ -52,6 +53,7 @@ type OverviewData = {
   calorieTargetKcal: number | null;
   proteinTargetG: number | null;
   proteinQualityNote: string | null;
+  hydrationMl: number;
 };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
@@ -81,10 +83,18 @@ export function OverviewPanel() {
 
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
-      const { data: food } = await supabase
-        .from('food_logs')
-        .select('kcal, protein_g, protein_source')
-        .gte('happened_at', startOfDay.toISOString());
+      const [{ data: food }, { data: water }] = await Promise.all([
+        supabase
+          .from('food_logs')
+          .select('kcal, protein_g, protein_source')
+          .gte('happened_at', startOfDay.toISOString()),
+        // Today only. Hydration is a same-day reflection by design (Part
+        // Twelve), so nothing here is capable of producing a streak.
+        supabase
+          .from('hydration_logs')
+          .select('ml, happened_at')
+          .gte('happened_at', startOfDay.toISOString()),
+      ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
       const latest = rows[0] ?? null;
@@ -94,6 +104,9 @@ export function OverviewPanel() {
         protein_g: number | null;
         protein_source: string | null;
       }[];
+      const hydrationMl = hydrationToday(
+        (water ?? []) as { ml: number; happened_at: string }[]
+      ).ml;
       const todayKcal = foodRows.reduce((s, f) => s + (f.kcal ?? 0), 0);
       const todayProtein = foodRows.reduce((s, f) => s + (f.protein_g ?? 0), 0);
       // Day-level protein-quality nudge (build item 12): when more than half of
@@ -125,6 +138,7 @@ export function OverviewPanel() {
           calorieTargetKcal: null,
           proteinTargetG: null,
           proteinQualityNote: dayLevelProteinNudge(proteinBySource, null)?.message ?? null,
+          hydrationMl,
         });
         setLoading(false);
         return;
@@ -174,6 +188,7 @@ export function OverviewPanel() {
         proteinTargetG: proteinTarget?.grams ?? null,
         proteinQualityNote:
           dayLevelProteinNudge(proteinBySource, proteinTarget?.grams ?? null)?.message ?? null,
+        hydrationMl,
       });
       setLoading(false);
     })();
@@ -208,6 +223,17 @@ export function OverviewPanel() {
             <ThemedText type="smallBold">Food intake</ThemedText>
             <Bar label="Calories" current={data.todayKcal} target={data.calorieTargetKcal} unit="kcal" />
             <Bar label="Protein" current={data.todayProtein} target={data.proteinTargetG} unit="g" />
+            {/* Same visual family as the two bars above it (Part Twelve), and
+                deliberately last: water is a gentle reflection, not a headline.
+                Its label reads "1.2L of about 2L" - no percentage and no "to
+                go", both of which turn a reflection into a target to hit. */}
+            <Bar
+              label="Water"
+              current={data.hydrationMl}
+              target={DAILY_TARGET_ML}
+              unit="ml"
+              valueLabel={hydrationLabel(data.hydrationMl)}
+            />
             {data.proteinQualityNote && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.proteinNote}>
                 {data.proteinQualityNote}
@@ -238,7 +264,22 @@ function BodyCard({ label, value, delta, deltaText }: { label: string; value: st
   );
 }
 
-function Bar({ label, current, target, unit }: { label: string; current: number; target: number | null; unit: string }) {
+function Bar({
+  label,
+  current,
+  target,
+  unit,
+  // Lets a bar state its own value in its own words. Calories and protein read
+  // naturally as "1400 / 1670 kcal"; water does not, because a target one is
+  // invited to exceed should not be written like one to hit.
+  valueLabel,
+}: {
+  label: string;
+  current: number;
+  target: number | null;
+  unit: string;
+  valueLabel?: string;
+}) {
   const theme = useTheme();
   const cur = Math.round(current);
   const pct = target != null && target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
@@ -247,7 +288,7 @@ function Bar({ label, current, target, unit }: { label: string; current: number;
       <View style={styles.barLabelRow}>
         <ThemedText type="small">{label}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {target != null ? `${cur} / ${Math.round(target)} ${unit}` : `${cur} ${unit} logged`}
+          {valueLabel ?? (target != null ? `${cur} / ${Math.round(target)} ${unit}` : `${cur} ${unit} logged`)}
         </ThemedText>
       </View>
       <View style={[styles.barTrack, { backgroundColor: theme.background }]}>

@@ -32,7 +32,7 @@
 export type LogAttempt = {
   // What the model classified this message as. 'none' means no log was intended,
   // so there is nothing to be honest about.
-  intent: 'none' | 'food' | 'activity' | 'measurement';
+  intent: 'none' | 'food' | 'activity' | 'measurement' | 'hydration';
   // Plain names of what genuinely reached the database this turn. Empty means
   // nothing did.
   landed: string[];
