@@ -40,7 +40,17 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
           alt="The entry being discussed"
         />
       )}
-      {hasText && <ThemedText type="small">{children}</ThemedText>}
+      {/* Selectable so a turn can actually be copied - long-press gives the
+          platform's own selection handles and copy menu. Found live 2026-08-27:
+          nothing in the app was selectable, because RN <Text> defaults to false,
+          so neither Unflump's replies NOR the person's own messages could be
+          copied out. One prop here covers Chat and all seven onboarding steps,
+          since they all render through this component. */}
+      {hasText && (
+        <ThemedText type="small" selectable>
+          {children}
+        </ThemedText>
+      )}
     </ThemedView>
   );
 }

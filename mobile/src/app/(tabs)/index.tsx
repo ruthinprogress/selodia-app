@@ -4,15 +4,17 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
-import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
+import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
+import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ResourceCard } from '@/components/resource-card';
 import { SaveConfirmation } from '@/components/save-confirmation';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
 import type { AddSource } from '@/lib/composer-add';
@@ -44,6 +46,11 @@ const FALLBACK_ERROR = "Something went wrong on my end — mind trying that agai
 const NOT_SIGNED_IN_ERROR = "You're not signed in — please sign in and try again.";
 
 export default function ChatScreen() {
+  // Destructured here rather than read as chatScroll.ref inside the JSX:
+  // with the React Compiler on, a property access on the returned object
+  // during render trips react-hooks/refs, which cannot tell it apart from
+  // reading .current. Passing a ref BINDING to ref= is the sanctioned shape.
+  const { ref: scrollRef, onContentSizeChange: onThreadGrew } = useChatScroll();
   const theme = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -245,9 +252,14 @@ export default function ChatScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          ref={scrollRef}
+          onContentSizeChange={onThreadGrew}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           {cyclePrompt && (
             <CycleDiscoveryCard mode={cyclePrompt} onDone={() => setCyclePrompt(null)} />
           )}
@@ -334,14 +346,11 @@ export default function ChatScreen() {
           onCancel={() => setAddOpen(false)}
         />
       </SafeAreaView>
-    </ThemedView>
+    </ConversationLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   safeArea: {
     flex: 1,
   },

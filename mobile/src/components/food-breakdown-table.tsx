@@ -123,13 +123,13 @@ export function FoodBreakdownTable({ foodLogId }: { foodLogId: string }) {
               r.isTotal && [styles.totalRow, { borderTopColor: theme.backgroundSelected }],
             ]}
           >
-            <ThemedText type={r.isTotal ? 'smallBold' : 'small'} style={styles.cellLabel}>
+            <ThemedText type={r.isTotal ? 'smallBold' : 'small'} style={styles.cellLabel} selectable>
               {r.label}
             </ThemedText>
-            <ThemedText type={r.isTotal ? 'smallBold' : 'small'} style={styles.cellNum}>
+            <ThemedText type={r.isTotal ? 'smallBold' : 'small'} style={styles.cellNum} selectable>
               {r.kcal}
             </ThemedText>
-            <ThemedText type={r.isTotal ? 'smallBold' : 'small'} style={styles.cellNum}>
+            <ThemedText type={r.isTotal ? 'smallBold' : 'small'} style={styles.cellNum} selectable>
               {r.protein}
             </ThemedText>
           </View>

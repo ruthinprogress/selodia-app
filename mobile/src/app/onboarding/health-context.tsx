@@ -4,9 +4,11 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { ConversationLayout } from '@/components/conversation-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
@@ -44,6 +46,11 @@ const CONDITIONS: { key: ConditionKey; label: string }[] = [
 type ConditionKey = 'condition_pcos' | 'condition_ibs' | 'condition_hypothyroid' | 'condition_t2d';
 
 export default function HealthContextScreen() {
+  // Destructured here rather than read as chatScroll.ref inside the JSX:
+  // with the React Compiler on, a property access on the returned object
+  // during render trips react-hooks/refs, which cannot tell it apart from
+  // reading .current. Passing a ref BINDING to ref= is the sanctioned shape.
+  const { ref: scrollRef, onContentSizeChange: onThreadGrew } = useChatScroll();
   const theme = useTheme();
   const [phase, setPhase] = useState<'intro' | 'capture'>('intro');
   const [markers, setMarkers] = useState<Partial<Record<MarkerKey, MarkerStatus>>>({});
@@ -110,9 +117,14 @@ export default function HealthContextScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          ref={scrollRef}
+          onContentSizeChange={onThreadGrew}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <ChatBubble role="assistant">
             One more optional thing. If you know any health markers — cholesterol, blood sugar, iron,
             thyroid — or have a diagnosed condition, I can keep them in mind so my food suggestions
@@ -199,7 +211,7 @@ export default function HealthContextScreen() {
           )}
         </ThemedView>
       </SafeAreaView>
-    </ThemedView>
+    </ConversationLayout>
   );
 }
 
@@ -242,9 +254,6 @@ function ActionButton({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   safeArea: {
     flex: 1,
   },
