@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { nextFireTime } from '@/lib/quiet-hours';
@@ -31,16 +30,46 @@ export type ReminderSettings = {
   askedAt: string | null;
 };
 
-// Foreground behaviour: a reminder that arrives while someone is already IN the
-// app is noise - they are plainly not failing to remember.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: false,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// expo-notifications is loaded LAZILY, and never at module scope.
+//
+// Found live 2026-08-27: the Chat screen imports this module, so a top-level
+// `import * as Notifications from 'expo-notifications'` ran the moment Chat
+// loaded - and on a binary built before that native module existed, the import
+// threw and took the whole screen with it. The symptom was that nothing could
+// be typed into the message box: the app's single most important control, dead,
+// because of a reminder convenience.
+//
+// The rule this encodes: an optional feature must never be able to break a
+// primary one. A missing native module now degrades to "reminders unavailable"
+// and nothing else, which also means the app stays usable on any older build
+// while a newer one is still being made.
+type NotificationsModule = typeof import('expo-notifications');
+
+let cached: NotificationsModule | null | undefined;
+
+async function loadNotifications(): Promise<NotificationsModule | null> {
+  if (cached !== undefined) return cached;
+  try {
+    const mod = await import('expo-notifications');
+    // Foreground behaviour: a reminder arriving while someone is already IN the
+    // app is noise - they are plainly not failing to remember. Set once, here,
+    // rather than at module scope, for the reason above.
+    mod.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: false,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    cached = mod;
+  } catch {
+    // Older binary, or a platform without push. Not an error worth surfacing:
+    // the person simply is not offered reminders.
+    cached = null;
+  }
+  return cached;
+}
 
 export async function loadReminderSettings(): Promise<ReminderSettings | null> {
   const { data } = await supabase
@@ -64,6 +93,8 @@ export async function shouldOfferReminders(): Promise<boolean> {
 
 async function ensureAndroidChannel() {
   if (Platform.OS !== 'android') return;
+  const Notifications = await loadNotifications();
+  if (!Notifications) return;
   await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, {
     name: 'Reminders',
     importance: Notifications.AndroidImportance.DEFAULT,
@@ -80,6 +111,8 @@ async function ensureAndroidChannel() {
 // never throws - a failure here must never break the log that triggered it.
 export async function registerPushToken(userId: string): Promise<string | null> {
   try {
+    const Notifications = await loadNotifications();
+    if (!Notifications) return null;
     const existing = await Notifications.getPermissionsAsync();
     let granted = existing.granted;
     if (!granted && existing.canAskAgain) {
@@ -131,6 +164,8 @@ export async function saveReminderChoice(
 // which is a far worse failure than a redundant reschedule.
 export async function applyReminderSchedule(times: string[]): Promise<void> {
   try {
+    const Notifications = await loadNotifications();
+    if (!Notifications) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
     if (times.length === 0) return;
     await ensureAndroidChannel();
