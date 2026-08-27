@@ -8,7 +8,7 @@
 - **UNFLUMP_LANGUAGE_RULES.md** — the MI-grounded safety-boundary language rules. Lives in the repo at `mobile/UNFLUMP_LANGUAGE_RULES.md`. Referenced by the spec, not duplicated into it. Claude Code is the sole editor.
 - **WORKFLOW.md** (this document) — process and collaboration knowledge. Lives in the repo at `mobile/WORKFLOW.md`.
 
-**All three are also synced to Google Drive**, at `H:\My Drive\Unflump App Project Master Folder\Build Specs\Claude Code Working Build Specs` — a folder on Ruth's local machine that syncs automatically to Drive. Claude Code writes directly to this local path (it is not a manual download/upload step). Claude (chat) has read access to this Drive folder and can check it directly. **Rule for this specific folder: one file per document, always overwritten in place — never dated copies.** Older, superseded versions of documents living *elsewhere* (e.g. the old versioned V3-V8 history document, kept deliberately as a record of the project's reasoning) are not touched or deleted — that rule only applies within this one working folder.
+**All three are also synced to Google Drive**, at `H:\My Drive\Unflump App Project Master Folder\Build Specs\Claude Code Working Build Specs` — a folder on Ruth's local machine that syncs automatically to Drive. Claude Code writes directly to this local path (it is not a manual download/upload step) **— but only when Claude Code is executing ON the laptop.** See the session-type caveat below; a remotely-executed session cannot reach this folder at all. Claude (chat) has read access to this Drive folder and can check it directly. **Rule for this specific folder: one file per document, always overwritten in place — never dated copies.** Older, superseded versions of documents living *elsewhere* (e.g. the old versioned V3-V8 history document, kept deliberately as a record of the project's reasoning) are not touched or deleted — that rule only applies within this one working folder.
 
 **Why the repo is the real source of truth, not this chat:** Claude Code is the sole editor of the spec documents specifically so there is never a risk of Ruth's own copy and Claude Code's copy silently diverging. If this document or either spec document is ever unclear or seemingly contradicted by what's actually in the app, the repo wins, always.
 
@@ -72,10 +72,29 @@ If a session is pausing only briefly (e.g. a usage-limit reset a few hours away,
 ### Closing a session — the full ceremony
 1. Confirm everything is committed and the working tree is clean (`git status`).
 2. Get a brief current folder/file structure summary from Claude Code (path/type/purpose/layer — lightweight, not exhaustive; a full detailed nested visualization is only generated on request for a specific external reason, like a handover).
-3. Sync the current spec documents (SPEC, LANGUAGE_RULES, and now WORKFLOW) to the Drive folder, overwriting in place.
+3. Sync the current spec documents (SPEC, LANGUAGE_RULES, and now WORKFLOW) to the Drive folder, overwriting in place. **Check first whether this session can actually do that — see below.**
 4. Update the Checklist (Set Up / Status / Dates / Notes), the Decisions Log (Decision / Date / Reasoning), and the session log (session number, date, location, start/end time, duration, cumulative time from Toggl, what was done, what's next, notes) in the Google Sheet ("Unflump App Builder Mastersheet").
 5. Update the Glossary in the same sheet if new technical or process terms came up.
 6. Push everything to GitHub as the final step.
+
+---
+
+### Where the session is EXECUTING decides whether the Drive sync is possible (learned 2026-08-27)
+"Ruth is on her laptop" and "Claude Code is running on the laptop" are **two different facts**, and only the second one matters for step 3 of the close-out. A session driven from the laptop can still have its agent executing in a remote container — which is exactly what happened on 2026-08-27, and the ceremony silently failed: everything was committed and pushed, the spec had a full day of additions, and the Drive copy was left stale at 218,181 bytes against the repo's 228,505.
+
+**How to tell, in one command**, before relying on step 3:
+
+```bash
+ls /mnt/h /mnt/c "$HOME/Google Drive" 2>/dev/null || echo "no laptop filesystem — remote session"
+```
+
+A remote session has no `H:` and no Windows filesystem. The same limitation explains three other things that surprised us the same day: `api.expo.dev` blocked by the container's proxy (so `expo install` failed and a package version had to be pinned by hand), no `eas-cli` and no `EXPO_TOKEN` (so the build could not be triggered from the session), and Metro having to run on the laptop rather than in the session.
+
+**Google Drive's own MCP tools are not a substitute.** They can create files and change metadata, but cannot overwrite an existing file's *content* — and creating a second file would break this folder's one-file-per-document rule. So a remote session must **not** improvise a sync; it should verify and report instead.
+
+**What a remote session should do at close-out:** compare byte sizes and hashes against the Drive copies, state plainly which documents are stale, and hand over the exact copy command. The verification is genuinely useful; the write is not available.
+
+**Note the filenames differ** between repo and Drive, which makes an accidental duplicate easy: `UNFLUMP_SPEC.md` → `unflump-build-specification.md`, `WORKFLOW.md` → `unflump-workflow.md`, `UNFLUMP_LANGUAGE_RULES.md` → `unflump-mi-language-rules.md`, `DECISION_PATTERNS.md` → `unflump-decision-patterns.md`, `SAFETY_ARCHITECTURE.md` → `unflump-safety-architecture.md`.
 
 ---
 
