@@ -29,7 +29,14 @@ export type ImageLogResult =
   // interpretation layer's own words, and the read that follows. Null when the
   // acknowledgment could not be built, which degrades the reply rather than the
   // log: the data is saved either way.
-  | { status: 'logged'; kind: Exclude<ImageKind, 'unclear'>; message: string | null }
+  // foodLogId rides along for a FOOD log only: it is what lets the chat render
+  // the itemised table under the acknowledgment, the same way the text path does.
+  | {
+      status: 'logged';
+      kind: Exclude<ImageKind, 'unclear'>;
+      message: string | null;
+      foodLogId?: string | null;
+    }
   | { status: 'unclear' }
   | { status: 'cancelled' }
   | { status: 'denied'; source: AddSource }
@@ -110,6 +117,7 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
   // What each parse route hands back differs, so the saved row is captured here
   // rather than discarded - it is the raw material for the acknowledgment.
   let facts: unknown;
+  let foodLogId: string | null = null;
   try {
     if (kind === 'body_measurement') {
       const saved = await authedPost<Record<string, never>>('/api/parse-body-measurement', {
@@ -118,9 +126,11 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
       });
       facts = await bodyAckFacts(saved as never);
     } else if (kind === 'food') {
-      const saved = await authedPost<Record<string, never>>('/api/parse-food', {
+      // parse-food returns the inserted food_logs row, so the id is already here.
+      const saved = await authedPost<{ id?: string }>('/api/parse-food', {
         images: [{ imageBase64: image.base64, mediaType: image.mediaType }],
       });
+      foodLogId = typeof saved?.id === 'string' ? saved.id : null;
       facts = await foodAckFacts(saved as never);
     } else {
       const saved = await authedPost<{ entries: unknown[] }>('/api/parse-activity', {
@@ -143,7 +153,7 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
     message = null;
   }
 
-  return { status: 'logged', kind, message };
+  return { status: 'logged', kind, message, foodLogId };
 }
 
 // What Unflump says back. The unreadable-photo line is verbatim from Part

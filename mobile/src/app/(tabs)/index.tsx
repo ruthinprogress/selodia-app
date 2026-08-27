@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
@@ -25,6 +26,10 @@ type Message = {
   content: string;
   resourceCard?: { title: string; description: string; url: string } | null;
   healthGuidanceApplied?: boolean;
+  // The food entry this turn logged, when it logged one. The turn carries only
+  // the REFERENCE; the table itself is read from food_items at render time, so
+  // it always shows what was stored rather than what the reply said.
+  foodLogId?: string | null;
   // A discuss-card image posted into the thread (build item 30). imagePath is
   // the stored object; imageUri is its short-lived signed URL, since the bucket
   // is private. Only history carries these today — the "Ask about this" button
@@ -68,7 +73,7 @@ export default function ChatScreen() {
     (async () => {
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('role, content, image_path')
+        .select('role, content, image_path, food_log_id')
         .eq('source', 'chat')
         .order('created_at', { ascending: true });
 
@@ -77,6 +82,7 @@ export default function ChatScreen() {
           role: m.role,
           content: m.content,
           imagePath: m.image_path ?? null,
+          foodLogId: m.food_log_id ?? null,
         }));
         // One batched signing call for the whole thread rather than one per
         // message. A path that fails to sign just renders without its image,
@@ -165,7 +171,13 @@ export default function ChatScreen() {
 
       const result = await classifyAndLog(picked.image);
       const msg = messageForResult(result);
-      if (msg) setMessages((m) => [...m, { role: 'assistant', content: msg }]);
+      const foodLogId = result.status === 'logged' ? (result.foodLogId ?? null) : null;
+      // A photographed meal earns the same itemised table as a typed one - it is
+      // the same food_items data either way, and the photo path is the one where
+      // seeing what was counted matters most, since nobody typed the items.
+      if (msg || foodLogId) {
+        setMessages((m) => [...m, { role: 'assistant', content: msg ?? '', foodLogId }]);
+      }
       if (result.status === 'logged') {
         // Same brief confirmation the text path shows - never a written-out
         // receipt in the reply itself.
@@ -191,12 +203,12 @@ export default function ChatScreen() {
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved } = await authedFetch('/api/ask-unflump', {
+      const { reply, resourceCard, healthGuidanceApplied, saved, foodLogId } = await authedFetch('/api/ask-unflump', {
         message: trimmed,
       });
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied },
+        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId },
       ]);
       if (saved?.summary) {
         setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
@@ -248,9 +260,15 @@ export default function ChatScreen() {
 
           {messages.map((m, i) => (
             <ThemedView key={i} style={styles.messageGroup}>
-              <ChatBubble role={m.role} imageUri={m.imageUri}>
-                {m.content}
-              </ChatBubble>
+              {/* A turn can now carry a table and no words - a photo log whose
+                  acknowledgment came back empty. Rendering the bubble anyway
+                  would put an empty coloured box above the table. */}
+              {(m.content.length > 0 || m.imageUri) && (
+                <ChatBubble role={m.role} imageUri={m.imageUri}>
+                  {m.content}
+                </ChatBubble>
+              )}
+              {m.foodLogId && <FoodBreakdownTable foodLogId={m.foodLogId} />}
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}

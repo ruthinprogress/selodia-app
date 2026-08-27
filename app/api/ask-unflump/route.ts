@@ -287,7 +287,7 @@ SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved pla
 
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${APP_STRUCTURE_PROMPT_BLOCK}
 
@@ -444,6 +444,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   // headline summary, while this has to survive a PARTIAL landing - a weight
   // stored while a waist was not.
   const attempt: LogAttempt = { intent: result.logIntent ?? 'none', landed: [], missed: [] };
+  let breakdownFoodLogId: string | null = null;
   // A correction or deletion of something just logged (build item 10d). Runs
   // BEFORE the logging branches so a corrected value can never also be stored
   // as a second, new entry.
@@ -514,6 +515,10 @@ ${SAFETY_PROMPT_BLOCK}`;
         const entry = await logFoodFromText(supabase, user.id, message);
         saved = { kind: 'food', summary: foodSaveSummary(entry) };
         attempt.landed.push('food');
+        // The turn carries a REFERENCE to what it logged, so the client can
+        // render the itemised table from food_items rather than from anything
+        // the model wrote. See mobile/src/lib/food-breakdown-table.ts.
+        breakdownFoodLogId = entry.id;
         // A new food log ends any prior clarification (that moment has passed);
         // then pin this log's own question, if the model asked one (slice 2a).
         await supabase
@@ -645,6 +650,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     classification: nextClassification,
     escalation_step: nextEscalationStep,
     distress_revisit_count: nextRevisitCount,
+    food_log_id: breakdownFoodLogId,
   });
   if (insertError) {
     console.log('ASK-UNFLUMP ASSISTANT TURN INSERT FAILED:', insertError.message);
@@ -662,5 +668,6 @@ ${SAFETY_PROMPT_BLOCK}`;
     resourceCard,
     healthGuidanceApplied,
     saved,
+    foodLogId: breakdownFoodLogId,
   });
 }
