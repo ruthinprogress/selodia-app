@@ -18,7 +18,7 @@
 // that was 55.2" is how a person actually corrects someone. It also needs no
 // new control, so it cannot become a dead one.
 
-export type CorrectionKind = 'food' | 'activity' | 'measurement';
+export type CorrectionKind = 'food' | 'activity' | 'measurement' | 'personal_metric';
 export type CorrectionAction = 'update' | 'delete';
 
 // How far back a correction may reach.
@@ -34,6 +34,7 @@ export const TABLE_FOR: Record<CorrectionKind, string> = {
   food: 'food_logs',
   activity: 'activity_logs',
   measurement: 'body_measurements',
+  personal_metric: 'personal_metrics',
 };
 
 // Each table stamps its own event time under a different name.
@@ -41,13 +42,14 @@ export const TIME_COLUMN_FOR: Record<CorrectionKind, string> = {
   food: 'happened_at',
   activity: 'happened_at',
   measurement: 'measured_at',
+  personal_metric: 'measured_at',
 };
 
 export function correctionCutoff(now: Date = new Date()): string {
   return new Date(now.getTime() - CORRECTION_WINDOW_MIN * 60 * 1000).toISOString();
 }
 
-const KINDS: CorrectionKind[] = ['food', 'activity', 'measurement'];
+const KINDS: CorrectionKind[] = ['food', 'activity', 'measurement', 'personal_metric'];
 const ACTIONS: CorrectionAction[] = ['update', 'delete'];
 
 // Valid-or-nothing, never valid-or-guess. An unrecognised value must not fall
@@ -96,6 +98,12 @@ export function deletionMessage(kind: CorrectionKind): string {
 // not is worse off than one who knows it did not work.
 export function nothingToCorrectMessage(kind: CorrectionKind): string {
   const what =
-    kind === 'measurement' ? 'a reading' : kind === 'activity' ? 'an activity' : 'a food entry';
+    kind === 'measurement'
+      ? 'a reading'
+      : kind === 'personal_metric'
+        ? 'a measurement'
+        : kind === 'activity'
+          ? 'an activity'
+          : 'a food entry';
   return `I can't find ${what} recent enough to change — if it's an older one, tell me which day and what it should say.`;
 }

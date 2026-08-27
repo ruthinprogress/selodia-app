@@ -9,6 +9,7 @@ import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
+import { ReminderOffer } from '@/components/reminder-offer';
 import { ResourceCard } from '@/components/resource-card';
 import { SaveConfirmation } from '@/components/save-confirmation';
 import { ThemedText } from '@/components/themed-text';
@@ -21,6 +22,7 @@ import type { AddSource } from '@/lib/composer-add';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
+import { shouldOfferReminders } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 
 type Message = {
@@ -73,6 +75,9 @@ export default function ChatScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
   const [cyclePrompt, setCyclePrompt] = useState<'discover' | 'relog' | null>(null);
+  // Shown once, after a log has actually happened - never on open, and never
+  // before there is a reason to want it (Part Fourteen).
+  const [offerReminders, setOfferReminders] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [picking, setPicking] = useState(false);
 
@@ -189,6 +194,7 @@ export default function ChatScreen() {
         // Same brief confirmation the text path shows - never a written-out
         // receipt in the reply itself.
         setSaveToast({ summary: 'Saved from your photo', nonce: Date.now() });
+        if (await shouldOfferReminders()) setOfferReminders(true);
       }
     } finally {
       setPicking(false);
@@ -219,6 +225,7 @@ export default function ChatScreen() {
       ]);
       if (saved?.summary) {
         setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
+        if (await shouldOfferReminders()) setOfferReminders(true);
       }
 
       // A weight logged by TEXT surfaced nothing but a toast, while the same
@@ -293,6 +300,8 @@ export default function ChatScreen() {
           ))}
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
+
+          {offerReminders && <ReminderOffer onDone={() => setOfferReminders(false)} />}
         </ScrollView>
 
         <ThemedView style={styles.inputRow}>

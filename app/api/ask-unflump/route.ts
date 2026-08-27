@@ -353,9 +353,9 @@ ${SAFETY_PROMPT_BLOCK}`;
     },
     correctionKind: {
       type: 'string',
-      enum: ['food', 'activity', 'measurement'],
+      enum: ['food', 'activity', 'measurement', 'personal_metric'],
       description:
-        "Set ONLY when the person is fixing or removing something they just logged, rather than logging something new - e.g. \"no that was 55.2 not 52.5\", \"make that 300 calories\", \"delete that last one\", \"scrap the run, I didn't go\". Which kind of entry they mean. When set, leave logIntent as 'none' - a correction is not a new log.",
+        "Set ONLY when the person is fixing or removing something they just logged, rather than logging something new - e.g. \"no that was 55.2 not 52.5\", \"make that 300 calories\", \"delete that last one\", \"scrap the run, I didn't go\". Which kind of entry they mean - use 'personal_metric' for a waist, thigh, blood pressure, resting heart rate or anything else they track that is not a weight, body fat or muscle reading, and 'measurement' for those three. When set, leave logIntent as 'none' - a correction is not a new log.",
     },
     correctionAction: {
       type: 'string',
@@ -507,6 +507,34 @@ ${SAFETY_PROMPT_BLOCK}`;
         const { error } = await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
         correctionNote = error ? null : deletionMessage(correction.kind);
         if (error) console.log('ASK-UNFLUMP DELETE FAILED:', error.message);
+      } else if (correction.kind === 'personal_metric') {
+        // Corrected by METRIC NAME, not by "the most recent row". Someone who
+        // logged a waist and a thigh a minute apart and says "no, the waist was
+        // 71" means the waist - and the most recent row is the thigh. Finding
+        // the target above by time alone would confidently rewrite the wrong
+        // number, which is the exact failure the correction path exists for.
+        const { personal } = await logMeasurementFromText(supabase, user.id, message);
+        for (const m of personal) {
+          const { data: prior } = await supabase
+            .from('personal_metrics')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('metric_name', m.metric_name)
+            .neq('id', m.id)
+            .gte('measured_at', correctionCutoff())
+            .order('measured_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          // The corrected value has just been inserted, so the wrong one is
+          // removed rather than updated - leaving both would put two readings
+          // minutes apart into a table whose whole job is showing the latest.
+          if (prior?.id) {
+            await supabase.from('personal_metrics').delete().eq('id', prior.id).eq('user_id', user.id);
+          }
+        }
+        if (personal.length > 0) {
+          saved = { kind: 'measurement', summary: personalSaveSummary(personal) };
+        }
       } else if (correction.kind === 'measurement') {
         const { reading } = await logMeasurementFromText(supabase, user.id, message, undefined, target.id);
         if (reading) saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
