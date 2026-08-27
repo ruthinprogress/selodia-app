@@ -17,9 +17,17 @@
 // a fact about someone's stored data is the app's to state, never the model's
 // to promise.
 //
-// TONE. Ruth's register (2026-08-27), matching the Almanac empty state: warm
-// and plain, never clinical, never blaming. It says what happened and what to
-// do about it, and it does not apologise or explain itself at length.
+// TONE. Ruth's wording (2026-08-27, second pass). The first draft - "Nothing
+// from that reached your log, though - say it again if you'd like it kept" -
+// was too blunt and too bossy: it stated a fact and then issued an instruction,
+// at the moment someone has just told Unflump something about their body and is
+// being told it did not stick. Hers opens with a softener, ASKS rather than
+// tells, and puts the app on the person's side of it ("so we can make sure").
+//
+// "for some reason" is load-bearing, not filler: it says out loud that we do
+// not know why, which is the truth. The causes differ - an unparseable number, a
+// metric with nowhere to go, a failed insert - and a confident wrong explanation
+// is the exact failure this module exists to stop.
 
 export type LogAttempt = {
   // What the model classified this message as. 'none' means no log was intended,
@@ -54,17 +62,21 @@ export function unsavedNote(attempt: LogAttempt): string | null {
   // Part of it landed and we can name what didn't. The specific case, and the
   // one the two-table split makes common: a weight saves while a waist does not.
   if (landed.length > 0 && missed.length > 0) {
-    const those = missed.length > 1 ? 'those' : 'that';
-    const them = missed.length > 1 ? 'them' : 'it';
-    return `One thing — ${list(missed)} didn't reach your log. Say ${those} again if you'd like ${them} kept.`;
+    const plural = missed.length > 1;
+    return (
+      `Hmm, it looks like the ${list(missed)} didn't save for some reason. ` +
+      `Would you mind re-entering ${plural ? 'those' : 'it'} so we can make sure ` +
+      `${plural ? "they're" : "it's"} properly logged for you?`
+    );
   }
 
   // Something landed and nothing is known to be missing: silence is right.
   if (landed.length > 0) return null;
 
-  // A whole-message miss. Deliberately does not guess WHY - the reasons differ
-  // (an unparseable number, a metric with nowhere to go, a failed insert) and a
-  // confident wrong explanation is the failure mode this whole module exists to
-  // stop.
-  return "Nothing from that reached your log, though — say it again if you'd like it kept.";
+  // A whole-message miss. "that entry" rather than naming anything, because in
+  // this branch we genuinely do not know what was lost.
+  return (
+    "Hmm, it looks like that entry didn't save for some reason. " +
+    'Would you mind re-entering it so we can make sure it\'s properly logged for you?'
+  );
 }
