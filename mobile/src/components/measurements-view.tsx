@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
+import { MonthYearPicker } from '@/components/month-year-picker';
 import { PersonalMetricsView } from '@/components/personal-metrics-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -51,6 +52,8 @@ const LOOKBACK_DAYS = 12;
 
 export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const [weekStart, setWeekStart] = useState<Date>(initialWeekStart ?? currentWeekStart());
+  // Never persistent: it opens only when someone reaches for it (Part Five).
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<MeasurementRow[]>([]);
 
@@ -96,9 +99,20 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
 
       <ThemedView style={styles.weekBar}>
         <StepButton label="‹" hint="Previous week" onPress={() => setWeekStart(addWeeks(weekStart, -1))} />
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.weekLabel}>
-          {weekLabel(weekStart)}
-        </ThemedText>
+        {/* The single far-jump entry point. Ordinary browsing never needs it -
+            week stepping is the calm default - so it is one quiet control on
+            the label itself rather than a persistent picker. */}
+        <Pressable
+          onPress={() => setPickerOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Jump to another month"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.weekLabel}>
+            {weekLabel(weekStart)}
+          </ThemedText>
+        </Pressable>
         <StepButton
           label="›"
           hint="Next week"
@@ -159,6 +173,16 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           Split by SOURCE: someone can stop using a scale and keep measuring
           everything else, or the reverse, and one combined table would leave
           permanent empty cells for whichever they stopped. */}
+      <MonthYearPicker
+        visible={pickerOpen}
+        initial={weekStart}
+        onCancel={() => setPickerOpen(false)}
+        onSelect={(ws) => {
+          setWeekStart(ws);
+          setPickerOpen(false);
+        }}
+      />
+
       <PersonalMetricsView />
 
     </ThemedView>

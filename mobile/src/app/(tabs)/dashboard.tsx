@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActivityView } from '@/components/activity-view';
 import { FoodTodayView } from '@/components/food-today-view';
 import { MeasurementsView } from '@/components/measurements-view';
 import { OverviewPanel } from '@/components/overview-panel';
@@ -21,6 +22,7 @@ const SEGMENTS = [
   { key: 'overview', label: 'Overview' },
   { key: 'food', label: 'Food' },
   { key: 'measurements', label: 'Measurements' },
+  { key: 'activity', label: 'Activity' },
 ] as const;
 type SegmentKey = (typeof SEGMENTS)[number]['key'];
 
@@ -71,8 +73,10 @@ export default function DashboardScreen() {
             <OverviewPanel />
           ) : view === 'food' ? (
             <FoodTodayView />
-          ) : (
+          ) : view === 'measurements' ? (
             <MeasurementsView initialWeekStart={initialWeekStart} />
+          ) : (
+            <ActivityView />
           )}
         </ScrollView>
       </SafeAreaView>
