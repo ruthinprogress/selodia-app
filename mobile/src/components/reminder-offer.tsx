@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { DEFAULT_REMINDER_TIMES, registerPushToken, saveReminderChoice } from '@/lib/notifications';
+import { DEFAULT_REMINDER_TIMES, persistReminderChoice } from '@/lib/reminder-settings';
 import { nextFireTime } from '@/lib/quiet-hours';
 import { supabase } from '@/lib/supabase';
 
@@ -37,11 +37,28 @@ export function ReminderOffer({ onDone }: { onDone: () => void }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        // The OS permission prompt only appears when they have said yes -
-        // asking the system for something they just declined would be rude and
-        // pointless.
-        if (enabled) await registerPushToken(user.id);
-        await saveReminderChoice(user.id, { enabled, times: chosen });
+        // The choice is RECORDED first, and on any binary: that is a Supabase
+        // write with nothing native about it, and it must survive even where
+        // push does not exist - otherwise someone answers the question and gets
+        // asked again tomorrow.
+        const times = await persistReminderChoice(user.id, { enabled, times: chosen });
+
+        // Push is reached only here, only on a yes, and only through a dynamic
+        // import - so this component never drags expo-notifications into the
+        // Chat screen's module graph. On a binary without it, isPushAvailable
+        // returns false and the whole block is skipped rather than throwing.
+        if (enabled) {
+          try {
+            const push = await import('@/lib/notifications');
+            if (push.isPushAvailable()) {
+              await push.registerPushToken(user.id);
+              await push.applyReminderSchedule(times);
+            }
+          } catch {
+            // Reminders are unavailable on this build. The preference is saved
+            // either way, so a later build honours it without re-asking.
+          }
+        }
       }
     } finally {
       setSaving(false);

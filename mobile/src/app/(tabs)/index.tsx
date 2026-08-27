@@ -22,7 +22,7 @@ import type { AddSource } from '@/lib/composer-add';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
-import { shouldOfferReminders } from '@/lib/notifications';
+import { shouldOfferReminders } from '@/lib/reminder-settings';
 import { supabase } from '@/lib/supabase';
 
 type Message = {

@@ -1,3 +1,4 @@
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
 import { nextFireTime } from '@/lib/quiet-hours';
@@ -21,39 +22,37 @@ import { supabase } from '@/lib/supabase';
 // mode for no gain. Push tokens are still registered, because the roundups DO
 // need server-initiated delivery.
 
-export const DEFAULT_REMINDER_TIMES = ['14:00', '20:00'];
+export { DEFAULT_REMINDER_TIMES, loadReminderSettings, shouldOfferReminders } from '@/lib/reminder-settings';
+
 const REMINDER_CHANNEL = 'reminders';
 
-export type ReminderSettings = {
-  enabled: boolean;
-  times: string[];
-  askedAt: string | null;
-};
+// Is expo-notifications' NATIVE side actually in this binary?
+//
+// requireOptionalNativeModule returns null instead of throwing, and lives in
+// expo-modules-core, which is present in every build. So this is the one probe
+// that can ask the question without being the thing that breaks.
+//
+// It has to be asked BEFORE importing expo-notifications, not inside a try/catch
+// around the import: the throw happens while the module EVALUATES, and Metro
+// surfaces that as an uncaught error rather than a rejected promise.
+export function isPushAvailable(): boolean {
+  return requireOptionalNativeModule('ExpoPushTokenManager') != null;
+}
 
-// expo-notifications is loaded LAZILY, and never at module scope.
-//
-// Found live 2026-08-27: the Chat screen imports this module, so a top-level
-// `import * as Notifications from 'expo-notifications'` ran the moment Chat
-// loaded - and on a binary built before that native module existed, the import
-// threw and took the whole screen with it. The symptom was that nothing could
-// be typed into the message box: the app's single most important control, dead,
-// because of a reminder convenience.
-//
-// The rule this encodes: an optional feature must never be able to break a
-// primary one. A missing native module now degrades to "reminders unavailable"
-// and nothing else, which also means the app stays usable on any older build
-// while a newer one is still being made.
 type NotificationsModule = typeof import('expo-notifications');
 
 let cached: NotificationsModule | null | undefined;
 
 async function loadNotifications(): Promise<NotificationsModule | null> {
   if (cached !== undefined) return cached;
+  if (!isPushAvailable()) {
+    cached = null;
+    return null;
+  }
   try {
     const mod = await import('expo-notifications');
-    // Foreground behaviour: a reminder arriving while someone is already IN the
-    // app is noise - they are plainly not failing to remember. Set once, here,
-    // rather than at module scope, for the reason above.
+    // A reminder arriving while someone is already IN the app is noise - they
+    // are plainly not failing to remember. Set here rather than at module scope.
     mod.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowBanner: false,
@@ -64,31 +63,9 @@ async function loadNotifications(): Promise<NotificationsModule | null> {
     });
     cached = mod;
   } catch {
-    // Older binary, or a platform without push. Not an error worth surfacing:
-    // the person simply is not offered reminders.
     cached = null;
   }
   return cached;
-}
-
-export async function loadReminderSettings(): Promise<ReminderSettings | null> {
-  const { data } = await supabase
-    .from('reminder_settings')
-    .select('enabled, times, asked_at')
-    .maybeSingle();
-  if (!data) return null;
-  return {
-    enabled: data.enabled,
-    times: (data.times as string[]) ?? [],
-    askedAt: data.asked_at ?? null,
-  };
-}
-
-// True when this person has never been asked - the only state in which the
-// "would you like help remembering to log?" offer may appear.
-export async function shouldOfferReminders(): Promise<boolean> {
-  const settings = await loadReminderSettings();
-  return settings === null || settings.askedAt === null;
 }
 
 async function ensureAndroidChannel() {
@@ -139,22 +116,15 @@ export async function registerPushToken(userId: string): Promise<string | null> 
   }
 }
 
-// Records the answer to the first-log offer, whichever way it went, and puts the
-// chosen schedule in place. Saying no is recorded just as deliberately as saying
-// yes - that is what stops the offer coming back.
+// Records the choice AND puts the schedule in place. The storage half works on
+// any binary; the scheduling half quietly does nothing where push is absent.
 export async function saveReminderChoice(
   userId: string,
   choice: { enabled: boolean; times?: string[] }
 ): Promise<void> {
-  const times = choice.times ?? DEFAULT_REMINDER_TIMES;
-  await supabase.from('reminder_settings').upsert({
-    user_id: userId,
-    enabled: choice.enabled,
-    times,
-    asked_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  await applyReminderSchedule(choice.enabled ? times : []);
+  const { persistReminderChoice } = await import('@/lib/reminder-settings');
+  const times = await persistReminderChoice(userId, choice);
+  await applyReminderSchedule(times);
 }
 
 // Puts the device's scheduled reminders in sync with `times`.
