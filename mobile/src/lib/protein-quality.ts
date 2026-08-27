@@ -212,13 +212,27 @@ export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | n
     };
   }
 
-  // A real gap remains. Name the acid that is actually short and what supplies
-  // it, and say plainly that it does not have to be in this meal: the day's
-  // amino pool is what matters, not per-meal combining.
+  // A real gap remains. Name the acid that is short and what supplies it, and
+  // scope the reassurance to THE DAY - never to timing being irrelevant.
+  //
+  // THIS DISTINCTION IS DELIBERATE AND MUST NOT BE "TIDIED" INTO SOMETHING
+  // SIMPLER (research, Ruth, 2026-08-27). Two different claims sit here:
+  //   - That complementary proteins need not be eaten in the SAME MEAL for
+  //     amino-acid adequacy is well established (Academy of Nutrition and
+  //     Dietetics position, 2016), and superseded the 1970s protein-combining
+  //     idea. Saying "later today rounds out the day" is squarely inside it.
+  //   - Whether same-day-but-different-meal complementation is as effective as
+  //     same-meal specifically for MUSCLE PROTEIN SYNTHESIS is NOT settled - it
+  //     is open research, with a trial running because it has never been tested.
+  // An earlier draft said "It doesn't have to be in the same meal", which reads
+  // as the second claim, and this app's user lifts seriously - MPS is precisely
+  // the outcome she is training for. So the copy stays in the supported lane and
+  // makes no claim about timing for training purposes, in either direction.
+  // See UNFLUMP_SPEC.md Resources for the citations.
   if (!tryptophanCovered) {
     return {
       verdict: 'short',
-      message: `The protein here is mostly collagen, which is very low in tryptophan — any other protein source at some point today covers that.`,
+      message: `The protein here is mostly collagen, which is very low in tryptophan — another protein source later today rounds out the day.`,
     };
   }
 
@@ -229,6 +243,6 @@ export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | n
       : 'grains, nuts or seeds — or any animal source';
   return {
     verdict: 'short',
-    message: `Nothing here supplies much ${shortOn} — ${supplies} at any point today rounds it out. It doesn't have to be in the same meal.`,
+    message: `Nothing here supplies much ${shortOn} — ${supplies} later today rounds out the day.`,
   };
 }
