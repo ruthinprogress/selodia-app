@@ -18,6 +18,7 @@ export type BreakdownItem = {
   kcal: number | null;
   protein_g: number | null;
   protein_source: string | null;
+  amino_profile: string | null;
 };
 
 export type BreakdownRow = {
@@ -115,45 +116,3 @@ export function buildBreakdownRows(items: BreakdownItem[]): BreakdownRow[] {
   return rows;
 }
 
-// The interpretation line UNDER the table, never folded into it (Ruth's
-// direction, 2026-08-27): the table states what was eaten, this says what is
-// worth noticing about it. Reuses perItemProteinFlag's own rules rather than
-// re-deriving them, so the chat line and the breakdown card can never disagree.
-//
-// Returns null when there is nothing worth saying, which is most meals - a line
-// that fires on every log stops being read. No moralising language, per the
-// hard voice rule: it names a protein source and what pairs with it, and never
-// characterises a food.
-export function breakdownCommentary(
-  items: BreakdownItem[],
-  flagFor: (source: string | null, grams: number | null) => string | null
-): string | null {
-  // Names are kept EXACTLY as stored. Lower-casing them mangles brands
-  // ("Felix Pizza Crisps" -> "felix pizza crisps"), and the person wrote them.
-  const named = (kind: string) =>
-    items
-      .filter((i) => flagFor(i.protein_source, i.protein_g) != null && i.protein_source === kind)
-      .map((i) => i.name.trim());
-
-  const plant = named('plant');
-  const collagen = named('collagen');
-  if (plant.length === 0 && collagen.length === 0) return null;
-
-  const list = (names: string[]) =>
-    names.length === 1
-      ? names[0]
-      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-
-  const clauses: string[] = [];
-  if (plant.length > 0) {
-    clauses.push(
-      `The protein in the ${list(plant)} is plant-based — a grain or a little dairy alongside rounds out the amino acids`
-    );
-  }
-  if (collagen.length > 0) {
-    clauses.push(
-      `The protein in the ${list(collagen)} is collagen, which is incomplete on its own`
-    );
-  }
-  return `${clauses.join('. ')}.`;
-}

@@ -6,12 +6,11 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
-  breakdownCommentary,
   breakdownHeading,
   buildBreakdownRows,
   type BreakdownItem,
 } from '@/lib/food-breakdown-table';
-import { perItemProteinFlag, type ProteinSource } from '@/lib/protein-quality';
+import { aminoProfile, mealAminoAssessment } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
 
 // The itemised breakdown rendered INTO the chat thread when food is logged
@@ -48,7 +47,7 @@ export function FoodBreakdownTable({ foodLogId }: { foodLogId: string }) {
           .maybeSingle(),
         supabase
           .from('food_items')
-          .select('id, name, quantity, kcal, protein_g, protein_source')
+          .select('id, name, quantity, kcal, protein_g, protein_source, amino_profile')
           .eq('food_log_id', foodLogId)
           .order('created_at', { ascending: true }),
       ]);
@@ -71,8 +70,16 @@ export function FoodBreakdownTable({ foodLogId }: { foodLogId: string }) {
 
   const rows = buildBreakdownRows(items);
   const heading = breakdownHeading(log?.happened_at ?? null, log?.meal_label ?? null);
-  const commentary = breakdownCommentary(items, (source, grams) =>
-    perItemProteinFlag(source as ProteinSource | null, grams)
+  // Assessed over the WHOLE meal, not per item. Mapping a per-item flag into a
+  // sentence is what told Ruth to add dairy to a breakfast containing yoghurt:
+  // a flag scoped to one item silently becomes a claim about the meal once it
+  // is written as prose. See mealAminoAssessment for the reasoning it replaced.
+  const assessment = mealAminoAssessment(
+    items.map((i) => ({
+      name: i.name,
+      proteinG: i.protein_g,
+      aminoProfile: aminoProfile(i.amino_profile),
+    }))
   );
 
   return (
@@ -129,9 +136,9 @@ export function FoodBreakdownTable({ foodLogId }: { foodLogId: string }) {
         ))}
       </ThemedView>
 
-      {commentary && (
+      {assessment && (
         <ThemedText type="small" themeColor="textSecondary" style={styles.commentary}>
-          {commentary}
+          {assessment.message}
         </ThemedText>
       )}
     </ThemedView>

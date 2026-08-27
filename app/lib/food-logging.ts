@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   FOOD_PARSE_CLASSIFICATION_RULES,
   FOOD_PARSE_JSON_SCHEMA,
-  proteinSource,
+  aminoProfile, proteinSource,
   type ParsedItem,
   type ParsedMacros,
 } from './food-parse-prompt';
@@ -33,6 +33,7 @@ export function buildFoodLogFields(macros: ParsedMacros) {
     fat_g: macros.fat_g,
     sodium_mg: macros.sodium_mg ?? null,
     protein_source: proteinSource(macros.protein_source),
+    amino_profile: aminoProfile(macros.amino_profile),
     breakdown_type: macros.breakdown_type ?? null,
     confidence: macros.confidence || 'clear',
   };
@@ -67,6 +68,7 @@ export async function writeItems(
       fat_g: it.fat_g ?? null,
       sodium_mg: it.sodium_mg ?? null,
       protein_source: proteinSource(it.protein_source),
+      amino_profile: aminoProfile(it.amino_profile),
     }))
   );
   if (error) console.log('food_items insert failed (non-fatal):', error.message);

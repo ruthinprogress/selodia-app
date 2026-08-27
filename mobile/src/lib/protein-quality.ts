@@ -78,3 +78,157 @@ export function perItemProteinFlag(
 // Below this an item's protein is incidental (a splash of milk, a garnish) and
 // flagging it would be noise on a card that should read calmly.
 const MIN_ITEM_PROTEIN_G = 3;
+
+// ---------------------------------------------------------------------------
+// Meal-level amino-acid completeness (2026-08-27).
+//
+// WHY THIS EXISTS. The chat breakdown's commentary was built by mapping
+// perItemProteinFlag over the items and writing a sentence from the result. On
+// a real breakfast - banana, chia pudding, a spoon of 0% yoghurt, blueberries -
+// it said "a grain or a little dairy alongside rounds out the amino acids",
+// underneath a table that visibly contained yoghurt.
+//
+// The lesson is bigger than the bug. A per-item flag is scoped to ITS ITEM: "pair
+// it" beside chia is true whatever else is on the plate. Lift the same flag into
+// a sentence under the table and it silently becomes a claim about the WHOLE
+// MEAL, which nothing checked. Per-item labels must never be promoted to
+// meal-level prose without re-reasoning over the meal - which is what this does.
+//
+// It reasons over amino_profile, not protein_source: {animal, plant, collagen}
+// cannot express complementarity, because complementarity is about WHICH amino
+// acid is limiting. Legumes are methionine-limited, grains lysine-limited;
+// together they are complete, and two legumes are not.
+
+export type AminoProfile =
+  | 'complete'
+  | 'limiting_lysine'
+  | 'limiting_methionine'
+  | 'limiting_tryptophan';
+
+const AMINO_PROFILES: AminoProfile[] = [
+  'complete',
+  'limiting_lysine',
+  'limiting_methionine',
+  'limiting_tryptophan',
+];
+
+// Valid-or-null, never valid-or-guess - the same contract as proteinSource, so a
+// stray classification degrades to "we don't know" rather than to a wrong claim.
+export const aminoProfile = (v: unknown): AminoProfile | null =>
+  typeof v === 'string' && (AMINO_PROFILES as string[]).includes(v) ? (v as AminoProfile) : null;
+
+// Below this a meal is not carrying meaningful protein, and amino-acid
+// completeness is not a conversation worth having about it. The real case that
+// exposed the bug was ~6.7g across a whole breakfast: the honest assessment
+// there is silence, not advice. (The day-level nudge holds the same line at 20g
+// for a whole day, and for the same reason.)
+const MEAL_MIN_PROTEIN_G = 15;
+
+// Below this share, the meal's protein is mostly complete already and its
+// incomplete portion is a side note - saying anything would be nagging.
+const INCOMPLETE_SHARE_FLOOR = 1 / 3;
+
+// What it takes for a source to genuinely cover another's gap. EITHER threshold
+// passes: complementation does not need equal amounts (5g of rice meaningfully
+// complements 20g of lentils), but a garnish does not count - the 1g spoon of
+// yoghurt that started all this fails both, as it should.
+const COVERING_MIN_G = 5;
+const COVERING_MIN_SHARE = 0.25;
+
+export type AminoItem = {
+  name: string;
+  proteinG: number | null;
+  aminoProfile: AminoProfile | null;
+};
+
+export type MealAminoAssessment = {
+  // 'complete' when the meal's incomplete sources are genuinely covered;
+  // 'short' when a gap really remains once everything present is accounted for.
+  verdict: 'complete' | 'short';
+  message: string;
+};
+
+function gramsWith(items: AminoItem[], profile: AminoProfile): number {
+  return items
+    .filter((i) => i.aminoProfile === profile)
+    .reduce((s, i) => s + (i.proteinG && i.proteinG > 0 ? i.proteinG : 0), 0);
+}
+
+// Names in the order the items were LOGGED, so the sentence reads down the same
+// order as the table above it. Grouping them by profile instead put "Basmati
+// rice and Lentil dhal" under a table listing the dhal first.
+function namesWith(items: AminoItem[], profiles: AminoProfile[]): string[] {
+  return items
+    .filter((i) => i.aminoProfile != null && profiles.includes(i.aminoProfile) && (i.proteinG ?? 0) > 0)
+    .map((i) => i.name.trim());
+}
+
+// Names are kept EXACTLY as stored - lower-casing mangles brands, and the person
+// wrote them. Every sentence below is built so its verb agrees with "protein",
+// never with a food name, because no rule can pluralise an arbitrary one.
+function list(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+// Does this source contribute enough to genuinely cover a gap, rather than
+// being a garnish that happens to be the right kind of food?
+function covers(grams: number, mealTotal: number): boolean {
+  return grams >= COVERING_MIN_G || (mealTotal > 0 && grams / mealTotal >= COVERING_MIN_SHARE);
+}
+
+// The whole meal, assessed together. Returns null when there is nothing honest
+// and non-obvious to say, which is most meals - and deliberately so, since a
+// line that fires on every log stops being read.
+export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | null {
+  const total = items.reduce((s, i) => s + (i.proteinG && i.proteinG > 0 ? i.proteinG : 0), 0);
+  if (total < MEAL_MIN_PROTEIN_G) return null;
+
+  const complete = gramsWith(items, 'complete');
+  const lysine = gramsWith(items, 'limiting_lysine');
+  const methionine = gramsWith(items, 'limiting_methionine');
+  const tryptophan = gramsWith(items, 'limiting_tryptophan');
+  const incomplete = lysine + methionine + tryptophan;
+
+  // Mostly complete protein already: the incomplete part is a side note.
+  if (incomplete / total < INCOMPLETE_SHARE_FLOOR) return null;
+
+  const completeCovers = covers(complete, total);
+  // Grains and legumes cover each other's limiting acid. Each side has to be
+  // present in a real amount for that to mean anything.
+  const pairCovers = covers(lysine, total) && covers(methionine, total);
+  // Collagen is short on tryptophan specifically, which any other real protein
+  // source supplies - so it is covered by anything that is not itself collagen.
+  const tryptophanCovered = tryptophan === 0 || covers(complete + lysine + methionine, total);
+
+  if ((completeCovers || pairCovers) && tryptophanCovered) {
+    const coveringNames = completeCovers
+      ? namesWith(items, ['complete'])
+      : namesWith(items, ['limiting_lysine', 'limiting_methionine']);
+    return {
+      verdict: 'complete',
+      message: `The protein here is complete between the ${list(coveringNames)} — nothing missing across this meal.`,
+    };
+  }
+
+  // A real gap remains. Name the acid that is actually short and what supplies
+  // it, and say plainly that it does not have to be in this meal: the day's
+  // amino pool is what matters, not per-meal combining.
+  if (!tryptophanCovered) {
+    return {
+      verdict: 'short',
+      message: `The protein here is mostly collagen, which is very low in tryptophan — any other protein source at some point today covers that.`,
+    };
+  }
+
+  const shortOn = lysine > methionine ? 'lysine' : 'methionine';
+  const supplies =
+    shortOn === 'lysine'
+      ? 'legumes, dairy, eggs, fish or meat'
+      : 'grains, nuts or seeds — or any animal source';
+  return {
+    verdict: 'short',
+    message: `Nothing here supplies much ${shortOn} — ${supplies} at any point today rounds it out. It doesn't have to be in the same meal.`,
+  };
+}
