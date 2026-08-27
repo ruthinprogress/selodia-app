@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK } from '../../lib/app-structure';
+import { unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import {
   CLASSIFY_TOOL_NAME,
   SAFETY_PROMPT_BLOCK,
@@ -438,6 +439,11 @@ ${SAFETY_PROMPT_BLOCK}`;
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
   let saved: { kind: 'food' | 'activity' | 'measurement'; summary: string } | null = null;
+  // What actually reached the database this turn, for the honesty note below.
+  // Kept separate from `saved` because `saved` drives the toast and carries one
+  // headline summary, while this has to survive a PARTIAL landing - a weight
+  // stored while a waist was not.
+  const attempt: LogAttempt = { intent: result.logIntent ?? 'none', landed: [], missed: [] };
   // A correction or deletion of something just logged (build item 10d). Runs
   // BEFORE the logging branches so a corrected value can never also be stored
   // as a second, new entry.
@@ -493,7 +499,10 @@ ${SAFETY_PROMPT_BLOCK}`;
   if (result.logIntent === 'measurement') {
     try {
       const entry = await logMeasurementFromText(supabase, user.id, message);
-      if (entry) saved = { kind: 'measurement', summary: measurementSaveSummary(entry) };
+      if (entry) {
+        saved = { kind: 'measurement', summary: measurementSaveSummary(entry) };
+        attempt.landed.push('reading');
+      }
     } catch (err) {
       console.log('ASK-UNFLUMP MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);
     }
@@ -504,6 +513,7 @@ ${SAFETY_PROMPT_BLOCK}`;
       if (result.logIntent === 'food') {
         const entry = await logFoodFromText(supabase, user.id, message);
         saved = { kind: 'food', summary: foodSaveSummary(entry) };
+        attempt.landed.push('food');
         // A new food log ends any prior clarification (that moment has passed);
         // then pin this log's own question, if the model asked one (slice 2a).
         await supabase
@@ -519,7 +529,10 @@ ${SAFETY_PROMPT_BLOCK}`;
         }
       } else {
         const entries = await logActivityFromText(supabase, user.id, message);
-        if (entries[0]) saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+        if (entries[0]) {
+          saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+          attempt.landed.push('activity');
+        }
       }
     } catch (err) {
       console.log('ASK-UNFLUMP SILENT LOG FAILED:', err instanceof Error ? err.message : err);
@@ -598,9 +611,24 @@ ${SAFETY_PROMPT_BLOCK}`;
   // A deletion is stated by the app, not by the model. The prompt tells it not
   // to claim it has changed anything, precisely so a failed delete can never be
   // reported as done - this line only exists when the row is genuinely gone.
-  const finalReply = correctionNote ? `${replyText}
+  // A correction that silently failed is the same defect as a silent log - the
+  // reply has already said something reassuring either way. A delete states its
+  // own outcome through correctionNote, and a missing target is handled above,
+  // so only the update path needs routing into the honesty check.
+  if (correction && correction.action === 'update' && saved === null) {
+    attempt.intent = correction.kind;
+  }
 
-${correctionNote}` : replyText;
+  // What the app knows about the person's data, stated by the app. The model
+  // composed its reply before any of this ran, so it cannot have known - see
+  // save-honesty.ts for the live failure that made this necessary.
+  const honestyNote = unsavedNote(attempt);
+
+  const trailingLines = [correctionNote, honestyNote].filter(
+    (line): line is string => typeof line === 'string' && line.length > 0
+  );
+  const finalReply =
+    trailingLines.length > 0 ? `${replyText}\n\n${trailingLines.join('\n\n')}` : replyText;
 
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
