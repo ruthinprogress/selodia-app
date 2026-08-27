@@ -5,6 +5,7 @@ import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { perItemProteinFlag } from '@/lib/protein-quality';
 import type { ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
@@ -56,6 +57,7 @@ export function FoodBreakdownCard({
   foodLogId: string | null;
   onClose: () => void;
 }) {
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [log, setLog] = useState<FoodLog | null>(null);
   const [items, setItems] = useState<FoodItem[]>([]);
@@ -106,7 +108,11 @@ export function FoodBreakdownCard({
       accessibilityViewIsModal
     >
       {/* Tapping the dimmed backdrop dismisses; the card itself swallows the tap. */}
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close">
+      <Pressable
+        style={[styles.backdrop, { backgroundColor: theme.scrim }]}
+        onPress={onClose}
+        accessibilityLabel="Close"
+      >
         <Pressable style={styles.cardWrap} onPress={() => {}}>
           <ThemedView style={styles.card}>
             {loading || !log ? (
@@ -190,7 +196,7 @@ function Macro({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    // Colour comes from theme.scrim at render; only the geometry lives here.
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.three,

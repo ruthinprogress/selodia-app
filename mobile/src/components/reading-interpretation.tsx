@@ -4,23 +4,7 @@ import { StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import {
-  ACTIVITY_LOOKBACK_HOURS,
-  FOOD_LOOKBACK_HOURS,
-  READING_HISTORY_LIMIT,
-  hoursBefore,
-  splitReadings,
-  toActivityContexts,
-  toFoodContexts,
-  type RawActivity,
-  type RawFood,
-  type RawReading,
-} from '@/lib/measurement-context';
-import {
-  interpretLatestReading,
-  type ReadingInterpretation,
-} from '@/lib/measurement-interpretation';
-import { supabase } from '@/lib/supabase';
+import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 
 // What the latest reading actually means (build item 38, slice 2) - the Body
 // Measurement Interpretation Layer, Part Nine, finally reaching a screen.
@@ -41,55 +25,13 @@ import { supabase } from '@/lib/supabase';
 // be a lie (Part Nine's sparse-data rule).
 
 export function ReadingInterpretationNote() {
-  const [note, setNote] = useState<ReadingInterpretation | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // RLS scopes every read to the signed-in user.
-      const [{ data: readings }, { data: lastPeriod }] = await Promise.all([
-        supabase
-          .from('body_measurements')
-          .select('measured_at, weight_kg')
-          .order('measured_at', { ascending: false })
-          .limit(READING_HISTORY_LIMIT),
-        supabase
-          .from('cycle_events')
-          .select('event_date')
-          .eq('event_type', 'period_start')
-          .order('event_date', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-
-      const split = splitReadings((readings ?? []) as RawReading[]);
-      if (!split) return; // nothing logged yet - the table's empty state covers it
-
-      // These two windows are anchored to the reading, so they can only be
-      // queried once it is known.
-      const [{ data: activities }, { data: foods }] = await Promise.all([
-        supabase
-          .from('activity_logs')
-          .select('happened_at, eccentric_load')
-          .gte('happened_at', hoursBefore(split.latest.measured_at, ACTIVITY_LOOKBACK_HOURS))
-          .lte('happened_at', split.latest.measured_at),
-        supabase
-          .from('food_logs')
-          .select('happened_at, sodium_mg')
-          .gte('happened_at', hoursBefore(split.latest.measured_at, FOOD_LOOKBACK_HOURS))
-          .lte('happened_at', split.latest.measured_at),
-      ]);
-
-      const result = interpretLatestReading({
-        latest: { weightKg: split.latest.weight_kg, measuredAt: split.latest.measured_at },
-        priorWeights: split.priorWeights,
-        lastPeriodStart: lastPeriod?.event_date ?? null,
-        recentActivities: toActivityContexts((activities ?? []) as RawActivity[]),
-        priorMeasuredAts: split.priorMeasuredAts,
-        recentFoods: toFoodContexts((foods ?? []) as RawFood[]),
-      });
-
-      if (!cancelled) setNote(result);
+      const message = await loadLatestInterpretation();
+      if (!cancelled) setNote(message);
     })();
     return () => {
       cancelled = true;
@@ -100,7 +42,7 @@ export function ReadingInterpretationNote() {
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="small">{note.message}</ThemedText>
+      <ThemedText type="small">{note}</ThemedText>
     </ThemedView>
   );
 }

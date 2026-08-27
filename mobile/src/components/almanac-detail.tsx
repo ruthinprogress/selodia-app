@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/hooks/use-theme';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { WorkingWeightControl } from '@/components/working-weight-control';
@@ -61,6 +62,8 @@ export function AlmanacDetail({
     };
   }, [planId]);
 
+  const theme = useTheme();
+
   if (!entry) return null;
   const view = readContent(entry.content);
 
@@ -72,7 +75,11 @@ export function AlmanacDetail({
       onRequestClose={onClose}
       accessibilityViewIsModal
     >
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable
+        style={[styles.backdrop, { backgroundColor: theme.scrim }]}
+        onPress={onClose}
+        accessibilityLabel="Close"
+      />
       <View style={styles.centre} pointerEvents="box-none">
         <ThemedView style={styles.card}>
           <ScrollView contentContainerStyle={styles.body}>
@@ -147,9 +154,15 @@ function ExerciseDetail({
   onLogged: (kg: number) => void;
   onClose: () => void;
 }) {
+  const theme = useTheme();
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable
+        style={[styles.backdrop, { backgroundColor: theme.scrim }]}
+        onPress={onClose}
+        accessibilityLabel="Close"
+      />
       <View style={styles.centre} pointerEvents="box-none">
         <ThemedView style={styles.card}>
           <ScrollView contentContainerStyle={styles.body}>
@@ -277,7 +290,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    // Colour comes from theme.scrim at render; only the geometry lives here.
   },
   centre: { flex: 1, justifyContent: 'center', padding: Spacing.three },
   card: { borderRadius: Spacing.three, maxHeight: '80%', overflow: 'hidden' },

@@ -10,6 +10,7 @@ import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
 import {
   findWeekAgoReading,
   formatWeeklyDelta,
+  gapDays,
   weeklyDelta,
   type MeasurementRow,
 } from '@/lib/overview-metrics';
@@ -130,6 +131,10 @@ export function OverviewPanel() {
       }
 
       const weekAgo = findWeekAgoReading(rows, latest.measured_at);
+      // How far back that reference actually sits, so the label can say so.
+      // With real logging it is rarely a week (Ruth's live screen compared
+      // against a reading 2.6 days old and called it "vs last wk").
+      const refGap = weekAgo ? gapDays(latest.measured_at, weekAgo.measured_at) : null;
       const tdee = resolveTDEE({
         scaleBmr: latest.bmr,
         weightKg: latest.weight_kg,
@@ -153,15 +158,15 @@ export function OverviewPanel() {
         personalLine: pickDailyPersonalLine(),
         weight: {
           value: latest.weight_kg,
-          delta: formatWeeklyDelta(weeklyDelta(latest.weight_kg, weekAgo?.weight_kg ?? null)),
+          delta: formatWeeklyDelta(weeklyDelta(latest.weight_kg, weekAgo?.weight_kg ?? null), refGap),
         },
         bodyFat: {
           value: latest.body_fat_pct,
-          delta: formatWeeklyDelta(weeklyDelta(latest.body_fat_pct, weekAgo?.body_fat_pct ?? null)),
+          delta: formatWeeklyDelta(weeklyDelta(latest.body_fat_pct, weekAgo?.body_fat_pct ?? null), refGap),
         },
         muscle: {
           value: latest.muscle_kg,
-          delta: formatWeeklyDelta(weeklyDelta(latest.muscle_kg, weekAgo?.muscle_kg ?? null)),
+          delta: formatWeeklyDelta(weeklyDelta(latest.muscle_kg, weekAgo?.muscle_kg ?? null), refGap),
         },
         todayKcal,
         todayProtein,
