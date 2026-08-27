@@ -54,6 +54,13 @@
       "react-native-health",
       "react-native-health-connect",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#C97458"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
