@@ -47,7 +47,19 @@ export default function DashboardScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ThemedView style={styles.switcher}>
+          {/* The four labels are wider than a phone at "Measurements" length, so
+              the row scrolls rather than being cut off. It was a plain flex row
+              until 2026-08-28, which silently clipped "Activity" off the right
+              edge on a 1080px device - the segment was reachable only by deep
+              link, so the newest facet looked unbuilt. Scrolling rather than
+              wrapping keeps the switcher one line high, which is what stops it
+              from pushing the content down as labels are added. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.switcherScroll}
+            contentContainerStyle={styles.switcher}
+          >
             {SEGMENTS.map((s) => {
               const active = s.key === view;
               return (
@@ -67,7 +79,7 @@ export default function DashboardScreen() {
                 </Pressable>
               );
             })}
-          </ThemedView>
+          </ScrollView>
 
           {view === 'overview' ? (
             <OverviewPanel />
@@ -99,9 +111,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.six,
     gap: Spacing.three,
   },
+  // The row bleeds out to the screen edges and restores the inset inside its own
+  // content, so the first and last pill can scroll fully clear of the padding
+  // instead of coming to rest half-hidden under it. flexGrow: 0 stops a
+  // horizontal ScrollView nested in a vertical one from claiming spare height.
+  switcherScroll: {
+    marginHorizontal: -Spacing.four,
+    flexGrow: 0,
+  },
   switcher: {
     flexDirection: 'row',
     gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
   },
   segment: {
     paddingVertical: Spacing.two,
