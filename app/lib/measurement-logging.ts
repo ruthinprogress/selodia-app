@@ -55,7 +55,44 @@ type ParsedMeasurement = {
   body_fat_pct: number | null;
   muscle_kg: number | null;
   detected_date: string | null;
+  // Did they NAME the thing they were measuring, or just say a number? Only
+  // meaningful on a correction, where a bare number has to be attached to one
+  // of three existing readings and guessing wrong rewrites the wrong one.
+  field_stated: MeasurementField | null;
 };
+
+// The three scale fields, as the person would refer to them.
+export type MeasurementField = 'weight' | 'body_fat' | 'muscle';
+
+// A correction whose target could not be worked out. Carries the candidates so
+// the question names them rather than asking a vague "which one?".
+export type MeasurementAmbiguity = { value: number; candidates: MeasurementField[] };
+
+// The current values of the row a correction is aimed at, so ambiguity can be
+// judged against what is actually on it: a number that could be either of two
+// readings THIS PERSON HAS is ambiguous; one that could only be a weight is not.
+export type CorrectionTargetRow = {
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  muscle_kg: number | null;
+};
+
+// Which of the row's populated fields this value could plausibly be.
+//
+// Plausibility alone is not enough to pick a field and never was: 26.4 is a
+// credible body fat percentage AND a credible weight in kg, and on a row that
+// has both there is no honest way to choose. The ranges here are the same ones
+// the write guard uses, so a value that could not be stored as a field is not
+// offered as a candidate for it either.
+function candidateFields(value: number, row: CorrectionTargetRow): MeasurementField[] {
+  const out: MeasurementField[] = [];
+  if (row.weight_kg != null && value >= MIN_WEIGHT_KG && value <= MAX_WEIGHT_KG) out.push('weight');
+  if (row.body_fat_pct != null && value >= MIN_BODY_FAT_PCT && value <= MAX_BODY_FAT_PCT) {
+    out.push('body_fat');
+  }
+  if (row.muscle_kg != null && value >= 1 && value <= MAX_WEIGHT_KG) out.push('muscle');
+  return out;
+}
 
 // Plausible human bodyweight in kg. Not a judgement about anyone - it is a
 // guard against a misparse writing nonsense into the one table the
@@ -82,11 +119,21 @@ export async function logMeasurementFromText(
   // one (build item 10d). A correction must never leave the wrong reading
   // behind alongside the right one - two readings minutes apart would look like
   // a re-weigh and both would feed the trend.
-  updateId?: string
+  updateId?: string,
+  // The row `updateId` points at, when this is a correction. Supplied so a bare
+  // number can be checked against the readings that actually exist on it before
+  // anything is written.
+  targetRow?: CorrectionTargetRow
   // Returns BOTH destinations, because one message routinely carries both:
   // "55.2 and waist 70" is a scale reading and a tape reading, and making the
-  // model pick one bucket would silently drop the other.
-): Promise<{ reading: MeasurementEntry | null; personal: PersonalMetricEntry[] }> {
+  // model pick one bucket would silently drop the other. `ambiguous` is set
+  // instead of `reading` when a correction could not be aimed safely - nothing
+  // is written in that case, and the caller asks.
+): Promise<{
+  reading: MeasurementEntry | null;
+  personal: PersonalMetricEntry[];
+  ambiguous?: MeasurementAmbiguity | null;
+}> {
   // The names this person ALREADY tracks, handed to the model so it reuses them.
   // Without this, "my waist", "waist" and "Waist" become three separate metrics
   // and the table grows a row per phrasing - the open-ended equivalent of a
@@ -110,10 +157,14 @@ export async function logMeasurementFromText(
     + 'or hoping to reach is a GOAL, not a measurement - phrases like "my target is", "I want to get to", '
     + '"aiming for", "hoping to be", "down to" mean return every field as null. The same applies to any '
     + 'weight that is not theirs, or any number that is not a body measurement at all. ' +
+    'Set field_stated to "weight", "body_fat" or "muscle" ONLY when they actually named which reading they meant ' +
+    '(a word like "weight", "body fat", "muscle", or a unit that settles it such as "%"). If they gave a bare ' +
+    'number with nothing identifying it - "no, 55.2" - return null. Do NOT infer it from the size of the number: ' +
+    'null is the correct and useful answer there, and the app asks them. ' +
     'Respond ONLY with valid JSON, no other text, in this exact format: ' +
     '{"weight_kg": number_or_null, "weight_lb": number_or_null, "weight_stone": number_or_null, ' +
     '"weight_stone_lb": number_or_null, "body_fat_pct": number_or_null, "muscle_kg": number_or_null, ' +
-    '"detected_date": iso8601_date_string_or_null, ' +
+    '"detected_date": iso8601_date_string_or_null, "field_stated": "weight"_or_"body_fat"_or_"muscle"_or_null, ' +
     '"personal": [{"name": string, "value": number, "value_secondary": number_or_null, "unit": string_or_null}]} ' +
     'Put ANY body measurement that is not weight, body fat or muscle into "personal" - a waist, a thigh, a hip, ' +
     'a resting heart rate, a blood pressure, anything they choose to track. Use the unit they said (cm, in, bpm, ' +
@@ -155,6 +206,7 @@ export async function logMeasurementFromText(
   );
   const bodyFatPct = plausible(parsed.body_fat_pct, MIN_BODY_FAT_PCT, MAX_BODY_FAT_PCT);
   const muscleKg = plausible(parsed.muscle_kg, 1, MAX_WEIGHT_KG);
+
 
   let finalMeasuredAtForPersonal = measuredAt || new Date().toISOString();
   if (parsed.detected_date) {
@@ -209,6 +261,30 @@ export async function logMeasurementFromText(
     return { reading: null, personal };
   }
 
+  // ASK, DON'T ASSUME (2026-08-28). A correction carrying one bare number and
+  // no word saying which reading it is cannot be aimed by inference: on a row
+  // holding a weight, a body fat and a muscle mass, 26.4 is a credible value
+  // for more than one of them, and picking the likeliest silently rewrites a
+  // reading the person never mentioned. The same rule the safety and extraction
+  // work already follow - a question is cheap, a wrong write to someone's body
+  // data is not, and it is wrong invisibly.
+  //
+  // Sits after the personal-metric write and before any scale write, so an
+  // ambiguous scale correction cannot leave a half-applied turn behind.
+  //
+  // Scoped to corrections on purpose. A FRESH log has no row to be confused
+  // with, so a bare number there is an ordinary weigh-in, and asking about it
+  // would be the nagging the voice rules exist to prevent.
+  if (updateId && targetRow && parsed.field_stated == null) {
+    const stated = [weightKg, bodyFatPct, muscleKg].filter((v): v is number => v != null);
+    if (stated.length === 1) {
+      const candidates = candidateFields(stated[0], targetRow);
+      if (candidates.length > 1) {
+        return { reading: null, personal, ambiguous: { value: stated[0], candidates } };
+      }
+    }
+  }
+
   const finalMeasuredAt = finalMeasuredAtForPersonal;
 
   // A correction replaces the row it is correcting. Otherwise: inserted, never
@@ -218,15 +294,23 @@ export async function logMeasurementFromText(
   // parse-body-measurement is for bulk screenshot imports, where the same
   // reading really can arrive twice; a typed number cannot.
   if (updateId) {
+    // ONLY THE FIELDS THE CORRECTION ACTUALLY CARRIED. Writing all three put a
+    // null into every field the person did not restate, so "no, 55.2" against a
+    // row holding a weight, a body fat and a muscle mass corrected the weight
+    // and DELETED the other two - readings they never mentioned and had no
+    // reason to think were at risk. Silent, and unrecoverable from the app.
+    // A correction is a patch, not a replacement.
+    const patch: Record<string, unknown> = {
+      measured_at: finalMeasuredAt,
+      raw_input: measurementText,
+    };
+    if (weightKg != null) patch.weight_kg = weightKg;
+    if (bodyFatPct != null) patch.body_fat_pct = bodyFatPct;
+    if (muscleKg != null) patch.muscle_kg = muscleKg;
+
     const { data, error } = await supabase
       .from('body_measurements')
-      .update({
-        measured_at: finalMeasuredAt,
-        weight_kg: weightKg,
-        body_fat_pct: bodyFatPct,
-        muscle_kg: muscleKg,
-        raw_input: measurementText,
-      })
+      .update(patch)
       .eq('id', updateId)
       // RLS already scopes this, but the explicit filter means a wrong id can
       // never reach another person's row even if a policy is later relaxed.

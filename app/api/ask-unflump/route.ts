@@ -29,6 +29,7 @@ import {
   resolveCorrection,
   TABLE_FOR,
   TIME_COLUMN_FOR,
+  whichReadingMessage,
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import {
@@ -554,8 +555,29 @@ ${SAFETY_PROMPT_BLOCK}`;
         // a duplicate.
         for (const m of personal) attempt.landed.push(m.metric_name);
       } else if (correction.kind === 'measurement' && target) {
-        const { reading } = await logMeasurementFromText(supabase, user.id, message, undefined, target.id);
-        if (reading) {
+        // The row's current values, so a bare number can be judged against the
+        // readings that actually exist on it before anything is written.
+        const { data: targetRow } = await supabase
+          .from('body_measurements')
+          .select('weight_kg, body_fat_pct, muscle_kg')
+          .eq('id', target.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const { reading, ambiguous } = await logMeasurementFromText(
+          supabase,
+          user.id,
+          message,
+          undefined,
+          target.id,
+          targetRow ?? undefined
+        );
+        if (ambiguous) {
+          // Nothing was written. The question is the whole outcome of the turn,
+          // and it has to be the only thing the app says about it - an honesty
+          // note underneath would answer a question it has just asked.
+          correctionNote = whichReadingMessage(ambiguous.value, ambiguous.candidates);
+        } else if (reading) {
           saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
           attempt.landed.push('reading');
         }

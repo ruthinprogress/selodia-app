@@ -18,6 +18,8 @@
 // that was 55.2" is how a person actually corrects someone. It also needs no
 // new control, so it cannot become a dead one.
 
+import type { MeasurementField } from './measurement-logging';
+
 export type CorrectionKind = 'food' | 'activity' | 'measurement' | 'personal_metric';
 export type CorrectionAction = 'update' | 'delete';
 
@@ -106,4 +108,32 @@ export function nothingToCorrectMessage(kind: CorrectionKind): string {
           ? 'an activity'
           : 'a food entry';
   return `I can't find ${what} recent enough to change — if it's an older one, tell me which day and what it should say.`;
+}
+
+// ASK, DON'T ASSUME (2026-08-28). A bare number in a correction can fit more
+// than one reading on the row it is aimed at, and there is no honest way to
+// pick: 26.4 is a credible body fat percentage and a credible weight in kg.
+// Guessing rewrites a reading the person never mentioned, and does it silently.
+//
+// So the app asks — the same discipline the safety classification and the food
+// extraction already follow, and for the same reason: the question costs one
+// turn, the wrong write costs a number they may never notice is wrong.
+//
+// Names the candidates rather than asking a bare "which one?", because the
+// person cannot see the row and should not have to remember what was on it. No
+// apology and no explanation of the mechanism: they made a normal request, and
+// being told the app is confused is not their problem to hold.
+export function whichReadingMessage(value: number, candidates: MeasurementField[]): string {
+  const label: Record<MeasurementField, string> = {
+    weight: 'your weight',
+    body_fat: 'body fat',
+    muscle: 'muscle',
+  };
+  const names = candidates.map((c) => label[c]);
+  const list =
+    names.length <= 2
+      ? names.join(' or ')
+      : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+  const shown = Math.round(value * 10) / 10;
+  return `Just so I change the right one — is ${shown} ${list}?`;
 }
