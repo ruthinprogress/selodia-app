@@ -501,9 +501,18 @@ ${SAFETY_PROMPT_BLOCK}`;
         .limit(1)
         .maybeSingle();
 
-      if (!target) {
+      // A personal-metric UPDATE finds its own row, per metric name, inside the
+      // branch below - so `target` is not its precondition and must not gate it.
+      // It did, until 2026-08-28: `!target` short-circuited first, so the very
+      // first waist or thigh anyone stated was answered with "I can't find a
+      // measurement recent enough to change" and never written, while the branch
+      // built to handle exactly that case sat unreachable underneath. Every other
+      // kind genuinely does need a target, because each one edits that row by id.
+      const findsItsOwnTarget = correction.kind === 'personal_metric' && correction.action === 'update';
+
+      if (!target && !findsItsOwnTarget) {
         correctionNote = nothingToCorrectMessage(correction.kind);
-      } else if (correction.action === 'delete') {
+      } else if (correction.action === 'delete' && target) {
         const { error } = await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
         correctionNote = error ? null : deletionMessage(correction.kind);
         if (error) console.log('ASK-UNFLUMP DELETE FAILED:', error.message);
@@ -535,21 +544,40 @@ ${SAFETY_PROMPT_BLOCK}`;
         if (personal.length > 0) {
           saved = { kind: 'measurement', summary: personalSaveSummary(personal) };
         }
-      } else if (correction.kind === 'measurement') {
+        // A correction that WROTE is a landing, and has to be recorded as one.
+        // Until 2026-08-28 these branches set `saved` but left `landed` empty,
+        // so the honesty note read the turn as a total miss and appended "that
+        // entry didn't save" underneath a correction that had just succeeded -
+        // telling someone their measurement was lost while it sat in the table.
+        // A false "nothing was kept" is worse than the false "got it" this
+        // module was built to stop: it invites a re-entry, and the re-entry is
+        // a duplicate.
+        for (const m of personal) attempt.landed.push(m.metric_name);
+      } else if (correction.kind === 'measurement' && target) {
         const { reading } = await logMeasurementFromText(supabase, user.id, message, undefined, target.id);
-        if (reading) saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
-      } else if (correction.kind === 'food') {
+        if (reading) {
+          saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
+          attempt.landed.push('reading');
+        }
+      } else if (correction.kind === 'food' && target) {
         const entry = await logFoodFromText(supabase, user.id, message, undefined, target.id);
         saved = { kind: 'food', summary: foodSaveSummary(entry) };
-      } else {
+        attempt.landed.push('food');
+      } else if (target) {
         // Activity has no in-place update path: logActivityFromText can split
         // one message into several rows, so "replace row X" is not well
         // defined. Removing and re-logging is the honest equivalent, and it is
         // what the person asked for in substance.
         await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
         const entries = await logActivityFromText(supabase, user.id, message);
-        if (entries[0]) saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+        if (entries[0]) {
+          saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+          attempt.landed.push('activity');
+        }
       }
+      // No final `else`: every branch above either has its target or finds its
+      // own. If none matched, nothing was touched and nothing is claimed - the
+      // honesty note below is then the only thing that speaks, which is correct.
     } catch (err) {
       console.log('ASK-UNFLUMP CORRECTION FAILED:', err instanceof Error ? err.message : err);
     }
@@ -716,7 +744,18 @@ ${SAFETY_PROMPT_BLOCK}`;
   // What the app knows about the person's data, stated by the app. The model
   // composed its reply before any of this ran, so it cannot have known - see
   // save-honesty.ts for the live failure that made this necessary.
-  const honestyNote = unsavedNote(attempt);
+  //
+  // AT MOST ONE OF THESE MAY SPEAK. They are computed independently, and on
+  // 2026-08-27 both did: a single reply carried "that's updated now" from the
+  // model, then "I can't find a measurement recent enough to change", then "it
+  // looks like that entry didn't save" - three answers to one question, two of
+  // them wrong, on a turn whose data had in fact been stored. Where both have
+  // something to say, correctionNote wins: it is the more specific of the two,
+  // it knows which kind of thing was being changed, and it is the only one that
+  // can explain WHY nothing happened rather than merely reporting that nothing
+  // did. The honesty note is the fallback for every turn that had no correction
+  // in it at all.
+  const honestyNote = correctionNote === null ? unsavedNote(attempt) : null;
 
   const trailingLines = [correctionNote, honestyNote].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
