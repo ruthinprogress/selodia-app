@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccountDeletion } from '@/components/account-deletion';
 import { DataExport } from '@/components/data-export';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -25,10 +26,10 @@ import { supabase } from '@/lib/supabase';
 // the same reasoning rules out inventing a settings menu the product has not
 // asked for. This page grows when the spec says it does.
 //
-// Deletion arrives in the next slice, deliberately NOT stubbed here: an inert
-// row that does nothing when tapped is exactly the dead control principle 8
-// rules out, and shipping one to "reserve the space" would be worse than the
-// space being empty for a day.
+// Deletion is DATA deletion, not account deletion, and the copy says so. The
+// auth credential survives because removing it needs a service-role key this
+// project does not have yet. Overstating it would be the worst kind of bug: one
+// someone acts on believing they are gone.
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -93,6 +94,10 @@ export default function SettingsScreen() {
 
           {/* Entry point one of the two Part Five requires. */}
           <DataExport />
+
+          {/* Deliberately AFTER the export. Someone about to erase everything
+              should pass the offer of a copy on the way. */}
+          <AccountDeletion />
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
