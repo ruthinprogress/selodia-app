@@ -35,11 +35,16 @@ import { Platform } from 'react-native';
 //   - Sand is the SELECTED state, never a text ground: charcoal on sand is fine
 //     at 9.99:1, but secondary text on it drops to 4.08:1.
 //
-// Sage and forest are in the palette and deliberately absent here: they belong
-// to the sage-toned insight card and sand-toned note card (Part Five, Detail
-// Views), neither of which is built. Adding them as tokens now would be colour
-// nothing renders. Note also that sage on cream is 2.28:1 - a fill colour only,
-// never text.
+// SAGE was deliberately absent from these tokens until 2026-08-31, on the
+// grounds that adding a colour nothing renders is dead weight. The Almanac's
+// empty-state illustration now renders it, so it earns its place - and only it.
+// FOREST stays out for the same original reason: the sage-toned insight card and
+// sand-toned note card (Part Five, Detail Views) are still unbuilt.
+//
+// Sage is a LINE AND FILL COLOUR, never text: on cream it is 2.28:1, far under
+// the AA floor. It is legitimate on the illustration because a decorative
+// graphic carries no information a reader must decode - the copy beneath it
+// does that work. Do not reach for this token for a label.
 //
 // Every text-on-surface pair in both modes was verified at AA or better before
 // this landed.
@@ -58,6 +63,8 @@ export const Colors = {
     accentDeep: '#8D513E',
     link: '#8D513E',
     danger: '#A63A2E',
+    // Brand sage at full strength. Reads as a soft green line on cream.
+    sage: '#95A987',
     scrim: 'rgba(45, 43, 40, 0.45)',
   },
   dark: {
@@ -73,6 +80,11 @@ export const Colors = {
     accentDeep: '#C97458',
     link: '#F0E0CE',
     danger: '#FFC9BF',
+    // The same sage, unchanged. It holds against the terracotta ground at about
+    // 2.9:1 - low, but this is a line drawing, not type, and shifting it toward
+    // sand here would quietly make the illustration a different colour in each
+    // mode for no reason a viewer could see.
+    sage: '#95A987',
     scrim: 'rgba(23, 13, 9, 0.6)',
   },
 } as const;
