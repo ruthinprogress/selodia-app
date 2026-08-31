@@ -1,0 +1,21 @@
+-- The Almanac's first-view orientation, stamped when it is dismissed (Part Ten,
+-- First-view introduction). Null means never seen, so the card shows.
+--
+-- REPLACES A DEVICE-LOCAL FLAG. The introduction shipped on 2026-08-31 using
+-- AsyncStorage, because that slice was scoped against schema changes. That made
+-- the flag a property of the phone rather than of the person: the card came back
+-- after a reinstall, and appeared again on a second device. An orientation is
+-- something someone has been shown, not something a handset has displayed, so it
+-- belongs on the account.
+--
+-- Mirrors user_profile.cycle_prompt_dismissed_at exactly - same table, same
+-- nullable timestamptz shape, same stamp-on-dismiss reading. That column is the
+-- established pattern for "this has been shown once"; matching it means no new
+-- concept to learn and one place to look when either behaves oddly.
+--
+-- No backfill. Everyone with the AsyncStorage flag already set will see the card
+-- once more, and that is the correct trade: the alternative is inventing a
+-- dismissal that never happened on the server, and stamping a date nobody chose
+-- is worse than one repeated welcome. It also cannot be done - the old flag lives
+-- on devices this migration cannot reach.
+alter table user_profile add column almanac_intro_seen_at timestamptz;

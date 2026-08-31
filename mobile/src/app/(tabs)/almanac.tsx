@@ -50,11 +50,9 @@ export default function AlmanacScreen() {
         .select('id, kind, title, category, content, updated_at')
         .eq('status', 'active')
         .order('updated_at', { ascending: false });
-      // Orientation is per-person, so it is keyed on the user rather than the
-      // device — a shared device gives the next person their own introduction.
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth?.user?.id ?? '';
-      const seen = await hasSeenAlmanacIntro(userId);
+      // Orientation state lives on the account (user_profile.almanac_intro_seen_at),
+      // so it follows the person rather than the device. RLS scopes the read.
+      const seen = await hasSeenAlmanacIntro();
 
       if (!cancelled) {
         setShowIntro(!seen);
@@ -80,10 +78,7 @@ export default function AlmanacScreen() {
   // deliberately.
   const dismissIntro = () => {
     setShowIntro(false);
-    void (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (auth?.user?.id) await markAlmanacIntroSeen(auth.user.id);
-    })();
+    void markAlmanacIntroSeen();
   };
 
   return (
