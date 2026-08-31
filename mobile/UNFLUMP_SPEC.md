@@ -843,6 +843,21 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 5. Verify connectivity end to end: confirm a basic native screen can successfully call an existing API route from a real device, before building anything further.
 
 ## Phase 1: Native Feature Build
+
+> **Status reconciliation — 31 August 2026.** 23 of the 48 items below carried no build-status marker at all, which made the list unusable for planning: an unmarked item could equally be finished or untouched. Every one has now been checked against the codebase, the migrations and git history. **This block is the authoritative status; the prose on individual items below may still lag.**
+>
+> **Phase 1: 32 of 48 built (67%) · 2 partial · 1 retired · 13 not built.**
+>
+> **Verified built** (were unmarked): **1** core schema (migration `…120000_phase1_step1_schema_foundations`) · **2** muscle-mass protein target (`body-metrics.ts` — `muscleKg × 2.2`, bodyweight fallback) · **4** onboarding conversational flow (`onboarding-chat` + 10 screens) · **8** Health Context (migration `…813160000`) · **9** cycle discovery (`cycle.ts`, `cycle-discovery-card.tsx`) · **10** chat-based logging (`ask-unflump`) · **17** daily nudges (`notifications.ts`, `quiet-hours.ts`, migration `…827180000`) · **18** Daily Roundup (`api/daily-roundup`, migration `…827200000`) · **37** visual-design pass (brand palette live in `theme.ts`) · **44** far-jump picker (`month-year-picker.tsx`).
+>
+> **Partial:** **20** Weekly Roundup — only the *gate* exists (`weeklyGate`, `WEEKLY_MIN_FULL_DAYS` in `roundup-rules.ts`); there is no weekly route and no weekly output. **26** zero-calorie drinks — hydration logging is built (`hydration.ts` + migration), the *quick-tap shortcut* is not.
+>
+> **Retired, not outstanding:** **3** basal-metabolism trend view. The BMR/muscle trend chart was **abandoned deliberately on 2026-08-15** ("abandoned, not deferred"), and `basal-metabolism.ts` cites that decision in its own comments. What exists — the Overview BMR summary line — is built. This item should not be read as work remaining.
+>
+> **Confirmed not built:** **14** confidence/habit bars · **16** Then & Now · **23** navigation Layer 1 (spotlight) · **24** Graduation moment · **25** navigation Layer 2 · **29** persisted interpretation notes · **41** data export / account settings / deletion · **42** allergies as a structured constraint (a migration *comment* mentions allergies; nothing implements the constraint) · **45** onboarding steps 6–7 · **46** conversational substitution for movements.
+>
+> **What "built" means here, precisely:** the code, route or migration exists and is wired in. It is the first rung of the ladder in Development Workflow Principles §4 — **not** a claim that any of it has been exercised on a device. Two of the ten were verified this week only because their commits were still fresh in view; the rest were confirmed by file and migration, not by use.
+
 1. Core schema foundations — the routing layer, Fat Focus/Muscle Focus fields, custom-metric generalization for body measurements, the equipment-status field, onboarding-progress and deferred-topic tracking, the pause mechanism, the `cycle_events` table.
 2. Muscle-mass-based protein calculation — reads existing `body_measurements.muscle_kg`.
 3. Basal metabolism trend view — reads existing `body_measurements.bmr`.
