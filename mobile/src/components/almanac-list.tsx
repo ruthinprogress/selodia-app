@@ -16,9 +16,14 @@ import { isSeeded, type AlmanacGroup } from '@/lib/almanac-list';
 export function AlmanacList({
   groups,
   onOpen,
+  onOpenCategory,
 }: {
   groups: AlmanacGroup[];
   onOpen: (id: string) => void;
+  // Opening a category is optional: the heading is only a way IN to a filtered
+  // view, never the only route to an entry. Every entry stays reachable from
+  // this list whether or not a category page is ever visited.
+  onOpenCategory?: (category: string) => void;
 }) {
   return (
     <View style={styles.wrap}>
@@ -26,11 +31,23 @@ export function AlmanacList({
         <View key={g.category ?? '__ungrouped'} style={styles.group}>
           {/* No heading for the ungrouped remainder — see almanac-list.ts on why
               there is deliberately no "Uncategorised" label. */}
-          {g.category && (
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupHeading}>
-              {g.category}
-            </ThemedText>
-          )}
+          {g.category &&
+            (onOpenCategory ? (
+              <Pressable
+                onPress={() => onOpenCategory(g.category as string)}
+                accessibilityRole="button"
+                accessibilityLabel={`Open the ${g.category} category`}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedText type="smallBold" themeColor="link" style={styles.groupHeading}>
+                  {g.category}
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupHeading}>
+                {g.category}
+              </ThemedText>
+            ))}
           {g.entries.map((e) => (
             <EntryRow
               key={e.id}

@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AlmanacCategoryView } from '@/components/almanac-category-view';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacList } from '@/components/almanac-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { entriesInCategory } from '@/lib/almanac-category';
 import { groupAlmanacEntries, type AlmanacEntryRow, type AlmanacGroup } from '@/lib/almanac-list';
 import { supabase } from '@/lib/supabase';
 
@@ -25,6 +27,11 @@ export default function AlmanacScreen() {
   const [entryCount, setEntryCount] = useState(0);
   const [entries, setEntries] = useState<DetailEntry[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  // The category page is a filtered view of what is already loaded, not a
+  // second fetch - the rows are in memory, and refetching would make an
+  // emergent field look like a route (Part Ten).
+  const [rows, setRows] = useState<AlmanacEntryRow[]>([]);
+  const [category, setCategory] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +50,7 @@ export default function AlmanacScreen() {
         // a failure message on a tab someone just tapped.
         const rows = (error ? [] : (data ?? [])) as unknown as AlmanacEntryRow[];
         setEntryCount(rows.length);
+        setRows(rows);
         setGroups(groupAlmanacEntries(rows));
         setEntries(rows as unknown as DetailEntry[]);
         setLoading(false);
@@ -65,8 +73,15 @@ export default function AlmanacScreen() {
             <ThemedView style={styles.spacer} />
           ) : entryCount === 0 ? (
             <AlmanacEmptyState />
+          ) : category ? (
+            <AlmanacCategoryView
+              category={category}
+              entries={entriesInCategory(rows, category)}
+              onOpen={setOpenId}
+              onBack={() => setCategory(null)}
+            />
           ) : (
-            <AlmanacList groups={groups} onOpen={setOpenId} />
+            <AlmanacList groups={groups} onOpen={setOpenId} onOpenCategory={setCategory} />
           )}
         </ScrollView>
 
