@@ -13,10 +13,13 @@ import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 // sits above the table rather than on a row, and why it is computed on read.
 // The per-entry PERSISTED note described under Persisted Interpretation Notes
 // is a different artefact: a point-in-time diary entry attached to one
-// body_measurements row, shown by that row's discuss-card. That needs a column,
-// a write at log time, and the discuss-card itself (item 30 slice 4) - none of
-// which exist yet. Building the live glance first does not block it; the same
-// pure function composes both.
+// body_measurements row, shown by that row's discuss-card. Its store and write
+// exist as of 2026-08-31 (item 29, interpretation-notes.ts) - and this very
+// component is one of the three surfaces that triggers the write, since it calls
+// loadLatestInterpretation. What is still missing is only the VIEWER, the
+// discuss-card (item 30 slice 4). So the same sentence rendered here is also the
+// one recorded against that reading forever, composed once by the same pure
+// function.
 //
 // It renders nothing at all when there is nothing worth saying. interpretLatest-
 // Reading returns null for a clean drop with no caveats and for a sparse history

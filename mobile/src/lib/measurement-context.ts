@@ -21,7 +21,10 @@ export const FOOD_LOOKBACK_HOURS = 24;
 // than the minimum so a row with a null weight doesn't starve the trend.
 export const READING_HISTORY_LIMIT = 12;
 
-export type RawReading = { measured_at: string; weight_kg: number | null };
+// id is optional because most readers of this shape only need the numbers.
+// loadLatestInterpretation selects it so the note it persists can be attached to
+// the specific row it was generated for (build item 29).
+export type RawReading = { measured_at: string; weight_kg: number | null; id?: string };
 export type RawActivity = { happened_at: string; eccentric_load: string | null };
 export type RawFood = { happened_at: string; sodium_mg: number | null };
 

@@ -45,6 +45,9 @@ export type DeletionOutcome = {
 
 // Children before parents. See the note above on why this is caution, not need.
 const DELETE_ORDER = [
+  // First, and deliberately before the entries they describe: these hold no
+  // foreign key, so nothing would cascade them if a later step failed part-way.
+  'interpretation_notes',
   'food_items',
   'workout_weight_log',
   'workout_completion_log',

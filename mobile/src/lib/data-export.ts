@@ -46,6 +46,10 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: 'cycle_events', label: 'Cycle events', dateColumn: 'event_date' },
   { table: 'daily_summaries', label: 'Daily summaries', dateColumn: 'created_at' },
   { table: 'almanac_entries', label: 'Almanac entries', dateColumn: 'created_at' },
+  // What Unflump said about a specific entry at the time it said it. Nothing in
+  // the app displays these yet (item 30 slice 4 is the viewer), so for now the
+  // export is the ONLY place a person can read them back.
+  { table: 'interpretation_notes', label: 'What Unflump said at the time', dateColumn: 'created_at' },
   { table: 'workout_weight_log', label: 'Working weights', dateColumn: 'logged_at' },
   { table: 'workout_completion_log', label: 'Completed workouts', dateColumn: 'completed_at' },
   { table: 'reminder_settings', label: 'Reminder settings', dateColumn: null },

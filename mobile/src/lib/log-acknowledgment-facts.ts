@@ -18,6 +18,7 @@ import {
   type RawReading,
 } from '@/lib/measurement-context';
 import { interpretLatestReading } from '@/lib/measurement-interpretation';
+import { persistNote } from '@/lib/interpretation-notes';
 import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
 
@@ -115,7 +116,8 @@ export async function loadLatestInterpretation(): Promise<string | null> {
   const [{ data: readings }, { data: lastPeriod }] = await Promise.all([
     supabase
       .from('body_measurements')
-      .select('measured_at, weight_kg')
+      // id is selected only so the note below can name the row it is about.
+      .select('id, measured_at, weight_kg')
       .order('measured_at', { ascending: false })
       .limit(READING_HISTORY_LIMIT),
     supabase
@@ -145,7 +147,7 @@ export async function loadLatestInterpretation(): Promise<string | null> {
       .lte('happened_at', split.latest.measured_at),
   ]);
 
-  return (
+  const message =
     interpretLatestReading({
       latest: { weightKg: split.latest.weight_kg, measuredAt: split.latest.measured_at },
       priorWeights: split.priorWeights,
@@ -154,8 +156,28 @@ export async function loadLatestInterpretation(): Promise<string | null> {
       recentActivities: toActivityContexts((activities ?? []) as RawActivity[]),
       priorMeasuredAts: split.priorMeasuredAts,
       recentFoods: toFoodContexts((foods ?? []) as RawFood[]),
-    })?.message ?? null
-  );
+    })?.message ?? null;
+
+  // The point-in-time record (build item 29). This is the right write point
+  // precisely BECAUSE it is not a log-time hook: it fires the first time a
+  // reading is actually interpreted for someone, on whichever of the three
+  // surfaces got there first, and the store's unique constraint discards every
+  // later write for the same reading. So the note is the sentence the person was
+  // genuinely shown, not one composed for the database's benefit.
+  //
+  // Awaited but never allowed to change the return value, and it does not throw.
+  // Nothing reads these yet - the display surface is the discuss-card, item 30
+  // slice 4 - so today they simply accumulate and appear in the data export.
+  // That is expected, not an oversight.
+  //
+  // A silence is not stored. interpretLatestReading returning null means there
+  // was nothing worth saying, and recording "nothing was said" as a note would
+  // make an empty row indistinguishable from an unvisited reading.
+  if (message && split.latest.id) {
+    await persistNote('body_measurement', split.latest.id, message);
+  }
+
+  return message;
 }
 
 export async function bodyAckFacts(saved: BodyRow): Promise<BodyAckFacts> {
