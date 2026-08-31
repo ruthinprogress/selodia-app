@@ -5,6 +5,7 @@ import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { MonthYearPicker } from '@/components/month-year-picker';
 import { PersonalMetricsView } from '@/components/personal-metrics-view';
 import { ExportLink } from '@/components/data-export-link';
+import { ThenAndNowTable } from '@/components/then-and-now';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -185,6 +186,11 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
       />
 
       <PersonalMetricsView />
+
+      {/* Slice 3 of this segment (build item 16). Below both tables: it is the
+          longest view back, so it reads last, and Part Five keeps it in a
+          segment someone chooses to open rather than on the landing. */}
+      <ThenAndNowTable />
 
       {/* The SECOND of the two entry points Part Five requires, and it names
           this one specifically: "a quiet link from the history/week view
