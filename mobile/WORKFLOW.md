@@ -114,6 +114,16 @@ A remote session has no `H:` and no Windows filesystem. The same limitation expl
 
 ---
 
+## Visual verification
+
+Drawings and illustrations must be rendered and visually inspected before committing — typecheck and lint are not sufficient. A geometry error that reads obviously wrong on screen is invisible to static analysis.
+
+Precedent: the Almanac empty-state shoot (f273b31) drew a flag on a pole twice before the geometry was right. Only caught by rendering to PNG and looking at it.
+
+Standing exception to the skip-visual-verification default: any component whose primary output is a drawing or illustration.
+
+---
+
 ## Project Setup Lessons (For Any Future Project, Not Just This One)
 - **Set up dedicated accounts (email, and any tooling accounts) for a new project from day one**, not retrofitted later once things are already tangled with personal accounts. This was raised explicitly as something to insist on earlier next time, even if it creates minor friction upfront.
 - **A specific test/beta account should be treated as a real, ongoing account**, not a disposable throwaway — worth choosing something usable long-term rather than something to be deleted right after.
