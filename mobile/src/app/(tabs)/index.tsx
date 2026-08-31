@@ -12,6 +12,8 @@ import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ReminderOffer } from '@/components/reminder-offer';
 import { ResourceCard } from '@/components/resource-card';
 import { SaveConfirmation } from '@/components/save-confirmation';
+import { useSpotlight } from '@/components/spotlight-provider';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -55,6 +57,7 @@ export default function ChatScreen() {
   // reading .current. Passing a ref BINDING to ref= is the sanctioned shape.
   const { ref: scrollRef, onContentSizeChange: onThreadGrew } = useChatScroll();
   const theme = useTheme();
+  const spotlight = useSpotlight();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   // The Almanac's "Update this" hands the entry over with the opening line
@@ -217,9 +220,10 @@ export default function ChatScreen() {
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved, foodLogId } = await authedFetch('/api/ask-unflump', {
-        message: trimmed,
-      });
+      const { reply, resourceCard, healthGuidanceApplied, saved, foodLogId, navigationTarget } =
+        await authedFetch('/api/ask-unflump', {
+          message: trimmed,
+        });
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId },
@@ -228,6 +232,12 @@ export default function ChatScreen() {
         setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
         if (await shouldOfferReminders()) setOfferReminders(true);
       }
+
+      // The spotlight (build item 23). Requested AFTER the reply is on screen,
+      // never instead of it: the words answer the question on their own, and the
+      // highlight is the extra. If the target is on another tab nothing appears
+      // now - the request waits, and highlights if the person goes there.
+      if (navigationTarget) spotlight?.show(navigationTarget, reply);
 
       // A weight logged by TEXT surfaced nothing but a toast, while the same
       // weight photographed came back with the interpretation layer's reading
@@ -268,16 +278,22 @@ export default function ChatScreen() {
             and not in the Almanac, which Part Ten sets aside from standard
             account items. Quiet and top-aligned so it never competes with the
             conversation. */}
-        <Pressable
-          onPress={() => router.push('/settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Account settings"
-          style={({ pressed }) => [styles.settingsEntry, pressed && styles.settingsPressed]}
-        >
-          <ThemedText type="small" themeColor="textSecondary">
-            Settings
-          </ThemedText>
-        </Pressable>
+        {/* The one pointable step that actually crosses a screen (item 23):
+            "where do I get my data" pulses this link, the tap opens Settings,
+            and the export highlights on arrival. Every other cross-screen route
+            in the app runs through a tab icon, which cannot be pointed at. */}
+        <SpotlightTarget id="chat.settings" onActivate={() => router.push('/settings')}>
+          <Pressable
+            onPress={() => router.push('/settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Account settings"
+            style={({ pressed }) => [styles.settingsEntry, pressed && styles.settingsPressed]}
+          >
+            <ThemedText type="small" themeColor="textSecondary">
+              Settings
+            </ThemedText>
+          </Pressable>
+        </SpotlightTarget>
 
         <ScrollView
           ref={scrollRef}
@@ -323,30 +339,37 @@ export default function ChatScreen() {
         </ScrollView>
 
         <ThemedView style={styles.inputRow}>
-          <Pressable
-            onPress={() => setAddOpen(true)}
-            disabled={picking || sending}
-            accessibilityRole="button"
-            accessibilityLabel="Add a photo"
-            hitSlop={Spacing.two}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedView
-              type="backgroundElement"
-              style={[styles.addButton, (picking || sending) && styles.addDisabled]}
+          <SpotlightTarget id="chat.add" onActivate={() => setAddOpen(true)}>
+            <Pressable
+              onPress={() => setAddOpen(true)}
+              disabled={picking || sending}
+              accessibilityRole="button"
+              accessibilityLabel="Add a photo"
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}
             >
-              <ThemedText type="smallBold">{picking ? '…' : '+'}</ThemedText>
-            </ThemedView>
-          </Pressable>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Talk to unflump…"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-            multiline
-            editable={!sending}
-          />
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.addButton, (picking || sending) && styles.addDisabled]}
+              >
+                <ThemedText type="smallBold">{picking ? '…' : '+'}</ThemedText>
+              </ThemedView>
+            </Pressable>
+          </SpotlightTarget>
+          {/* No onActivate: there is nothing to "press" on a text field, and
+              stealing focus behind a closing overlay would put a keyboard up
+              that nobody asked for. Dismissing leaves it there to tap. */}
+          <SpotlightTarget id="chat.composer" style={styles.composerTarget}>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder="Talk to unflump…"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+              multiline
+              editable={!sending}
+            />
+          </SpotlightTarget>
           <Pressable
             onPress={handleSend}
             // Empty input previously did nothing at all - no message, no re-ask,
@@ -411,6 +434,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
+  // The wrapper takes the flex the input used to, so wrapping it does not
+  // collapse the composer to its content width.
+  composerTarget: { flex: 1 },
   input: {
     flex: 1,
     paddingVertical: Spacing.three,

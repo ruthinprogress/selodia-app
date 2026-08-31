@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountDeletion } from '@/components/account-deletion';
 import { DataExport } from '@/components/data-export';
+import { SpotlightScroll } from '@/components/spotlight-provider';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -34,6 +36,9 @@ import { supabase } from '@/lib/supabase';
 export default function SettingsScreen() {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+  // Declared so a spotlight on "Delete my data" can scroll it into view before
+  // measuring - it sits below the fold on a short phone (build item 23).
+  const scrollRef = useRef<ScrollView>(null);
 
   // SIGN-OUT WAS NEVER CALLED ANYWHERE. Until this screen existed, `signOut`
   // appeared nowhere in the codebase: someone who signed in had no way out of
@@ -55,7 +60,8 @@ export default function SettingsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+        <SpotlightScroll scrollRef={scrollRef}>
           <ThemedView style={styles.header}>
             <ThemedText type="title">Settings</ThemedText>
             <Pressable
@@ -93,11 +99,16 @@ export default function SettingsScreen() {
           </ThemedView>
 
           {/* Entry point one of the two Part Five requires. */}
-          <DataExport />
+          <SpotlightTarget id="settings.export">
+            <DataExport />
+          </SpotlightTarget>
 
           {/* Deliberately AFTER the export. Someone about to erase everything
               should pass the offer of a copy on the way. */}
-          <AccountDeletion />
+          <SpotlightTarget id="settings.delete">
+            <AccountDeletion />
+          </SpotlightTarget>
+        </SpotlightScroll>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>

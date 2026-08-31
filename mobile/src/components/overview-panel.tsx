@@ -16,6 +16,7 @@ import {
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
 import { HydrationQuickTap } from '@/components/hydration-quick-tap';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { DAILY_TARGET_ML, hydrationLabel, hydrationToday } from '@/lib/hydration';
 import { calculateProteinTarget } from '@/lib/protein';
 import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
@@ -214,20 +215,32 @@ export function OverviewPanel() {
             </ThemedText>
           </ThemedView>
 
-          <View style={styles.row3}>
-            <BodyCard label="Weight" value={fmt(data.weight.value, 'kg')} delta={cardDelta(data)} deltaText={data.weight.delta} />
-            <BodyCard label="Body fat" value={fmt(data.bodyFat.value, '%')} delta={cardDelta(data)} deltaText={data.bodyFat.delta} />
-            <BodyCard label="Muscle" value={fmt(data.muscle.value, 'kg')} delta={cardDelta(data)} deltaText={data.muscle.delta} />
-          </View>
+          {/* The three cards are pointed at as one group (item 23) - someone
+              asking "where do I see my weight" means the row, not one card, and
+              three separate rings would be three answers to one question. */}
+          <SpotlightTarget id="overview.stats">
+            <View style={styles.row3}>
+              <BodyCard label="Weight" value={fmt(data.weight.value, 'kg')} delta={cardDelta(data)} deltaText={data.weight.delta} />
+              <BodyCard label="Body fat" value={fmt(data.bodyFat.value, '%')} delta={cardDelta(data)} deltaText={data.bodyFat.delta} />
+              <BodyCard label="Muscle" value={fmt(data.muscle.value, 'kg')} delta={cardDelta(data)} deltaText={data.muscle.delta} />
+            </View>
+          </SpotlightTarget>
 
           <ThemedView type="backgroundElement" style={styles.card}>
             <ThemedText type="smallBold">Food intake</ThemedText>
-            <Bar label="Calories" current={data.todayKcal} target={data.calorieTargetKcal} unit="kcal" />
-            <Bar label="Protein" current={data.todayProtein} target={data.proteinTargetG} unit="g" />
+            <SpotlightTarget id="overview.calories">
+              <Bar label="Calories" current={data.todayKcal} target={data.calorieTargetKcal} unit="kcal" />
+            </SpotlightTarget>
+            <SpotlightTarget id="overview.protein">
+              <Bar label="Protein" current={data.todayProtein} target={data.proteinTargetG} unit="g" />
+            </SpotlightTarget>
             {/* Same visual family as the two bars above it (Part Twelve), and
                 deliberately last: water is a gentle reflection, not a headline.
                 Its label reads "1.2L of about 2L" - no percentage and no "to
                 go", both of which turn a reflection into a target to hit. */}
+            {/* Bar and quick-tap together: "how do I log a drink" is answered
+                by the tap, and the bar is what makes the tap make sense. */}
+            <SpotlightTarget id="overview.water">
             <Bar
               label="Water"
               current={data.hydrationMl}
@@ -246,6 +259,7 @@ export function OverviewPanel() {
                 )
               }
             />
+            </SpotlightTarget>
             {data.proteinQualityNote && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.proteinNote}>
                 {data.proteinQualityNote}

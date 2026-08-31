@@ -33,6 +33,7 @@ import {
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
+import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
   isDiscussEntryType,
@@ -345,6 +346,14 @@ ${SAFETY_PROMPT_BLOCK}`;
     SYSTEM_PROMPT + buildContextualAdditions(previousEscalationStep, previousRevisitCount);
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
+    // The spotlight (build item 23). Free-form on the wire, validated below
+    // against the registry - the model is asked for an exact id, and anything
+    // else is dropped rather than corrected or guessed at.
+    navigationTarget: {
+      type: 'string',
+      description:
+        'Only when the person is looking for something in the app. The exact id of the element to highlight, from the list in the app-structure block. Omit entirely otherwise, and never invent an id.',
+    },
     // Captured CONVERSATIONALLY, wherever it comes up - Part Twelve is explicit
     // that there is never a form or a dedicated screen, and that "an allergy
     // mentioned in passing while logging dinner is captured exactly as reliably
@@ -462,6 +471,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
+    navigationTarget?: string;
     allergiesDisclosed?: string[];
     almanacKind?: string;
     almanacTitle?: string;
@@ -845,8 +855,21 @@ ${SAFETY_PROMPT_BLOCK}`;
   const healthGuidanceApplied =
     hasHealthContext(healthContext) && result.healthGuidanceApplied === true;
 
+  // NEVER INVENT A CONTROL, enforced rather than asked for. An id that is not
+  // exactly one the app knows becomes null here, and the reply goes out as plain
+  // words - which it has to stand up as anyway, since the person may be on a
+  // different screen entirely. A pointer to a control that is not there would
+  // send someone hunting and leave them thinking they had missed it.
+  const navigationTarget = isSpotlightTarget(result.navigationTarget)
+    ? result.navigationTarget
+    : null;
+  if (result.navigationTarget && !navigationTarget) {
+    console.log('ASK-UNFLUMP DROPPED UNKNOWN SPOTLIGHT TARGET:', result.navigationTarget);
+  }
+
   return NextResponse.json({
     reply: finalReply,
+    navigationTarget,
     savedContext,
     savedAlmanac,
     resourceCard,

@@ -5,6 +5,7 @@ import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { MonthYearPicker } from '@/components/month-year-picker';
 import { PersonalMetricsView } from '@/components/personal-metrics-view';
 import { ExportLink } from '@/components/data-export-link';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThenAndNowTable } from '@/components/then-and-now';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -99,6 +100,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           history - it is a statement about now, not about the week on screen. */}
       <ReadingInterpretationNote />
 
+      <SpotlightTarget id="measurements.week">
       <ThemedView style={styles.weekBar}>
         <StepButton label="‹" hint="Previous week" onPress={() => setWeekStart(addWeeks(weekStart, -1))} />
         {/* The single far-jump entry point. Ordinary browsing never needs it -
@@ -122,6 +124,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           onPress={() => setWeekStart(addWeeks(weekStart, 1))}
         />
       </ThemedView>
+      </SpotlightTarget>
 
       {loading ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -197,7 +200,9 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           itself, since that is where someone browsing old data would naturally
           think to look." Quiet is the operative word - a link, under the
           history, not a button competing with it. */}
-      <ExportLink />
+      <SpotlightTarget id="measurements.export">
+        <ExportLink />
+      </SpotlightTarget>
 
     </ThemedView>
   );

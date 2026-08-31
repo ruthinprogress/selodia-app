@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,6 +7,9 @@ import { ActivityView } from '@/components/activity-view';
 import { FoodTodayView } from '@/components/food-today-view';
 import { MeasurementsView } from '@/components/measurements-view';
 import { OverviewPanel } from '@/components/overview-panel';
+import { SpotlightScroll } from '@/components/spotlight-provider';
+import { SpotlightTarget } from '@/components/spotlight-target';
+import type { SpotlightId } from '@/lib/spotlight';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -26,6 +29,16 @@ const SEGMENTS = [
 ] as const;
 type SegmentKey = (typeof SEGMENTS)[number]['key'];
 
+// Spotlight ids for the segments (build item 23). Typed as a full record so
+// adding a fourth segment cannot compile until it has decided whether it is
+// pointable.
+const SEGMENT_TARGET: Record<SegmentKey, SpotlightId> = {
+  overview: 'body.overview',
+  food: 'body.food',
+  measurements: 'body.measurements',
+  activity: 'body.activity',
+};
+
 // A route param is untrusted text; anything unrecognised falls back to the
 // default rather than rendering a blank segment.
 function isSegmentKey(v: string | undefined): v is SegmentKey {
@@ -43,10 +56,16 @@ export default function DashboardScreen() {
   // behaves exactly like arriving by tap.
   const initialWeekStart = parseWeekStartParam(params.week) ?? undefined;
 
+  // The outer scroller, declared for the spotlight (build item 23): the bars and
+  // the week stepper sit below the fold on a short phone, and a ring measured
+  // off-screen would be a cut-out over nothing.
+  const scrollRef = useRef<ScrollView>(null);
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+        <SpotlightScroll scrollRef={scrollRef}>
           {/* The four labels are wider than a phone at "Measurements" length, so
               the row scrolls rather than being cut off. It was a plain flex row
               until 2026-08-28, which silently clipped "Activity" off the right
@@ -63,20 +82,30 @@ export default function DashboardScreen() {
             {SEGMENTS.map((s) => {
               const active = s.key === view;
               return (
-                <Pressable
+                // Each segment is pointable (build item 23). Switching segments
+                // is the one navigation inside this tab, so "where do I see my
+                // measurements" has something real to highlight once someone is
+                // here - which is as far as the spotlight reaches, since the tab
+                // icon that got them here cannot be pointed at.
+                <SpotlightTarget
                   key={s.key}
-                  onPress={() => setView(s.key)}
-                  style={({ pressed }) => pressed && styles.pressed}
+                  id={SEGMENT_TARGET[s.key]}
+                  onActivate={() => setView(s.key)}
                 >
-                  <ThemedView
-                    type={active ? 'backgroundSelected' : 'backgroundElement'}
-                    style={styles.segment}
+                  <Pressable
+                    onPress={() => setView(s.key)}
+                    style={({ pressed }) => pressed && styles.pressed}
                   >
-                    <ThemedText type="smallBold" themeColor={active ? 'text' : 'textSecondary'}>
-                      {s.label}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
+                    <ThemedView
+                      type={active ? 'backgroundSelected' : 'backgroundElement'}
+                      style={styles.segment}
+                    >
+                      <ThemedText type="smallBold" themeColor={active ? 'text' : 'textSecondary'}>
+                        {s.label}
+                      </ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                </SpotlightTarget>
               );
             })}
           </ScrollView>
@@ -90,6 +119,7 @@ export default function DashboardScreen() {
           ) : (
             <ActivityView />
           )}
+        </SpotlightScroll>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>

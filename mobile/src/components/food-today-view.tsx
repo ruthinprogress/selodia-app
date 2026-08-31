@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -87,6 +88,7 @@ export function FoodTodayView() {
           Nothing logged yet · Tell me about your day in Chat
         </ThemedText>
       ) : (
+        <SpotlightTarget id="food.entries">
         <ThemedView type="backgroundElement" style={styles.card}>
           {today.map((row) => (
             <View key={row.id} style={styles.row}>
@@ -132,6 +134,7 @@ export function FoodTodayView() {
             </ThemedText>
           </View>
         </ThemedView>
+        </SpotlightTarget>
       )}
 
       {avg && (

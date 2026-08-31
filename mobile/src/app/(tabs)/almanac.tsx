@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +8,8 @@ import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacIntro } from '@/components/almanac-intro';
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacList } from '@/components/almanac-list';
+import { SpotlightScroll } from '@/components/spotlight-provider';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -28,6 +30,7 @@ export default function AlmanacScreen() {
   const [groups, setGroups] = useState<AlmanacGroup[]>([]);
   const [entryCount, setEntryCount] = useState(0);
   const [entries, setEntries] = useState<DetailEntry[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   // The category page is a filtered view of what is already loaded, not a
   // second fetch - the rows are in memory, and refetching would make an
@@ -84,7 +87,11 @@ export default function AlmanacScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={[styles.content, entryCount === 0 && styles.centred]}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.content, entryCount === 0 && styles.centred]}
+        >
+        <SpotlightScroll scrollRef={scrollRef}>
           <ThemedText type="title">Almanac</ThemedText>
 
           {loading ? (
@@ -100,18 +107,29 @@ export default function AlmanacScreen() {
               <AlmanacEmptyState />
             </>
           ) : category ? (
-            <AlmanacCategoryView
-              category={category}
-              entries={entriesInCategory(rows, category)}
-              onOpen={setOpenId}
-              onBack={() => setCategory(null)}
-            />
+            // The entries of one category, which is what "where are my saved
+            // plans" wants once someone has opened a category (item 23).
+            <SpotlightTarget id="almanac.entries">
+              <AlmanacCategoryView
+                category={category}
+                entries={entriesInCategory(rows, category)}
+                onOpen={setOpenId}
+                onBack={() => setCategory(null)}
+              />
+            </SpotlightTarget>
           ) : (
             <>
               {showIntro && <AlmanacIntro onDismiss={dismissIntro} />}
-              <AlmanacList groups={groups} onOpen={setOpenId} onOpenCategory={setCategory} />
+              {/* The grouping itself - the default Almanac view. Not wrapped
+                  when the Almanac is empty: there is nothing to point at, and a
+                  ring around an empty-state illustration would answer the
+                  question with a picture of why there is no answer. */}
+              <SpotlightTarget id="almanac.categories">
+                <AlmanacList groups={groups} onOpen={setOpenId} onOpenCategory={setCategory} />
+              </SpotlightTarget>
             </>
           )}
+        </SpotlightScroll>
         </ScrollView>
 
         <AlmanacDetail
