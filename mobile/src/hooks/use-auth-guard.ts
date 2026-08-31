@@ -72,11 +72,17 @@ export function useAuthGuard(): { ready: boolean } {
     const screen = segments[1];
     const inTabs = group === '(tabs)' || group === undefined;
     const inOnboarding = group === 'onboarding';
+    // Settings sits on the root stack rather than inside (tabs), so it would
+    // otherwise fall through BOTH redirects below: a signed-out person deep
+    // linking here would sit on a settings screen with no session, and someone
+    // mid-onboarding would escape the resume chain. Anything that is part of the
+    // signed-in app, wherever it lives in the router, is gated the same way.
+    const inApp = inTabs || group === 'settings';
     const onConversation = inOnboarding && CONVERSATION_SCREENS.has(screen);
     const onAuthEntry = inOnboarding && (screen === 'consent' || screen === 'account');
 
     if (!session) {
-      if (inTabs) router.replace('/onboarding/consent');
+      if (inApp) router.replace('/onboarding/consent');
       return;
     }
     // Signed in: never police the linear conversation chain.
@@ -97,7 +103,7 @@ export function useAuthGuard(): { ready: boolean } {
         return;
       }
       // Unfinished, and sitting at an entry point → resume where they left off.
-      if (inTabs || onAuthEntry) router.replace(RESUME_ROUTE[step]);
+      if (inApp || onAuthEntry) router.replace(RESUME_ROUTE[step]);
     })();
     return () => {
       cancelled = true;

@@ -18,6 +18,10 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
+        {/* Settings is pushed OVER the tabs rather than being a fourth one:
+            Part Five keeps the app to three top-level destinations, and an
+            account surface is not a destination someone visits to use the app. */}
+        <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );

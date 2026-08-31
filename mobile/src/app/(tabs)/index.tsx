@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +48,7 @@ const FALLBACK_ERROR = "Something went wrong on my end — mind trying that agai
 const NOT_SIGNED_IN_ERROR = "You're not signed in — please sign in and try again.";
 
 export default function ChatScreen() {
+  const router = useRouter();
   // Destructured here rather than read as chatScroll.ref inside the JSX:
   // with the React Compiler on, a property access on the returned object
   // during render trips react-hooks/refs, which cannot tell it apart from
@@ -261,6 +262,23 @@ export default function ChatScreen() {
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
+        {/* The single entry to account settings (build item 41). On Chat because
+            it is the home screen and the one surface everyone lands on; not a
+            fourth tab, because Part Five keeps the app to three destinations;
+            and not in the Almanac, which Part Ten sets aside from standard
+            account items. Quiet and top-aligned so it never competes with the
+            conversation. */}
+        <Pressable
+          onPress={() => router.push('/settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Account settings"
+          style={({ pressed }) => [styles.settingsEntry, pressed && styles.settingsPressed]}
+        >
+          <ThemedText type="small" themeColor="textSecondary">
+            Settings
+          </ThemedText>
+        </Pressable>
+
         <ScrollView
           ref={scrollRef}
           onContentSizeChange={onThreadGrew}
@@ -360,6 +378,15 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Deliberately understated: a text link, not a button or an icon badge. The
+  // account surface should be findable without advertising itself above the
+  // conversation the screen exists for.
+  settingsEntry: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  settingsPressed: { opacity: 0.6 },
   safeArea: {
     flex: 1,
   },
