@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DataExport } from '@/components/data-export';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -24,10 +25,10 @@ import { supabase } from '@/lib/supabase';
 // the same reasoning rules out inventing a settings menu the product has not
 // asked for. This page grows when the spec says it does.
 //
-// Export and deletion arrive in the next two slices. They are deliberately NOT
-// stubbed here: an inert row that does nothing when tapped is exactly the dead
-// control principle 8 rules out, and shipping one to "reserve the space" would
-// be worse than the space being empty for a day.
+// Deletion arrives in the next slice, deliberately NOT stubbed here: an inert
+// row that does nothing when tapped is exactly the dead control principle 8
+// rules out, and shipping one to "reserve the space" would be worse than the
+// space being empty for a day.
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -89,6 +90,9 @@ export default function SettingsScreen() {
               </ThemedView>
             </Pressable>
           </ThemedView>
+
+          {/* Entry point one of the two Part Five requires. */}
+          <DataExport />
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
