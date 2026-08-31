@@ -20,6 +20,21 @@ const MUG_ML = 300;
 const PINT_ML = 568;
 const BOTTLE_ML = 500;
 
+// The measures offered by the quick-tap (build item 26). Deliberately the same
+// four the free-text parser already understands, and in the same millilitres -
+// a tap and the sentence "a mug of tea" must not disagree about what a mug is.
+//
+// Four, not more. This is a shortcut for the common case, and a longer menu
+// would recreate the typing it exists to remove. Anything unusual still goes
+// through chat, where the parser handles explicit volumes.
+export type QuickMeasure = { label: string; ml: number };
+export const QUICK_MEASURES: QuickMeasure[] = [
+  { label: 'Glass', ml: GLASS_ML },
+  { label: 'Mug', ml: MUG_ML },
+  { label: 'Bottle', ml: BOTTLE_ML },
+  { label: 'Pint', ml: PINT_ML },
+];
+
 export type HydrationEntry = { ml: number; happened_at: string };
 
 // Free text to millilitres, or null when there is no drink in it.

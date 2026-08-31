@@ -15,6 +15,7 @@ import {
   type MeasurementRow,
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
+import { HydrationQuickTap } from '@/components/hydration-quick-tap';
 import { DAILY_TARGET_ML, hydrationLabel, hydrationToday } from '@/lib/hydration';
 import { calculateProteinTarget } from '@/lib/protein';
 import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
@@ -233,6 +234,17 @@ export function OverviewPanel() {
               target={DAILY_TARGET_ML}
               unit="ml"
               valueLabel={hydrationLabel(data.hydrationMl)}
+            />
+            {/* Directly beneath the bar it moves (build item 26). Adjusts the
+                loaded figure in place rather than refetching: the insert has
+                already succeeded, and a round trip to re-read a number we just
+                wrote would make a tap feel slower than typing. */}
+            <HydrationQuickTap
+              onLogged={(deltaMl) =>
+                setData((d) =>
+                  d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d
+                )
+              }
             />
             {data.proteinQualityNote && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.proteinNote}>
