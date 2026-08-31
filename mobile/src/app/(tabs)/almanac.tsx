@@ -5,12 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlmanacCategoryView } from '@/components/almanac-category-view';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
+import { AlmanacIntro } from '@/components/almanac-intro';
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacList } from '@/components/almanac-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { entriesInCategory } from '@/lib/almanac-category';
+import { hasSeenAlmanacIntro, markAlmanacIntroSeen } from '@/lib/almanac-intro';
 import { groupAlmanacEntries, type AlmanacEntryRow, type AlmanacGroup } from '@/lib/almanac-list';
 import { supabase } from '@/lib/supabase';
 
@@ -32,6 +34,10 @@ export default function AlmanacScreen() {
   // emergent field look like a route (Part Ten).
   const [rows, setRows] = useState<AlmanacEntryRow[]>([]);
   const [category, setCategory] = useState<string | null>(null);
+  // Starts false so the card can never flash before the stored flag is read.
+  // The wrong default here would show the orientation for one frame to someone
+  // who dismissed it months ago.
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +50,14 @@ export default function AlmanacScreen() {
         .select('id, kind, title, category, content, updated_at')
         .eq('status', 'active')
         .order('updated_at', { ascending: false });
+      // Orientation is per-person, so it is keyed on the user rather than the
+      // device — a shared device gives the next person their own introduction.
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id ?? '';
+      const seen = await hasSeenAlmanacIntro(userId);
+
       if (!cancelled) {
+        setShowIntro(!seen);
         // On error, fall through to the empty state rather than an error
         // screen: a warm "nothing here yet" is a far better wrong answer than
         // a failure message on a tab someone just tapped.
@@ -61,6 +74,18 @@ export default function AlmanacScreen() {
     };
   }, []);
 
+  // Hidden immediately, persisted in the background. The card must never sit
+  // there waiting on a write to finish - and if the write fails the only cost
+  // is that the orientation appears once more, which almanac-intro.ts accepts
+  // deliberately.
+  const dismissIntro = () => {
+    setShowIntro(false);
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth?.user?.id) await markAlmanacIntroSeen(auth.user.id);
+    })();
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -72,7 +97,13 @@ export default function AlmanacScreen() {
             // a spinner would flash. Blank reads as calm; a flash reads as jank.
             <ThemedView style={styles.spacer} />
           ) : entryCount === 0 ? (
-            <AlmanacEmptyState />
+            // The introduction sits ABOVE the empty state rather than replacing
+            // it: one says what this place is, the other says why it is empty
+            // and when it fills. Neither does the other's job.
+            <>
+              {showIntro && <AlmanacIntro onDismiss={dismissIntro} />}
+              <AlmanacEmptyState />
+            </>
           ) : category ? (
             <AlmanacCategoryView
               category={category}
@@ -81,7 +112,10 @@ export default function AlmanacScreen() {
               onBack={() => setCategory(null)}
             />
           ) : (
-            <AlmanacList groups={groups} onOpen={setOpenId} onOpenCategory={setCategory} />
+            <>
+              {showIntro && <AlmanacIntro onDismiss={dismissIntro} />}
+              <AlmanacList groups={groups} onOpen={setOpenId} onOpenCategory={setCategory} />
+            </>
           )}
         </ScrollView>
 
