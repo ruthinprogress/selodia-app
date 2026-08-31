@@ -771,9 +771,9 @@ Notifications suppressed by quiet hours are not discarded or fired individually 
 ## Wordmark (confirmed 2026-08-18)
 The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four alternatives (Quicksand, Montserrat, Century Gothic, and a monospace) as the most cohesive pairing with the Seed Mark — Comfortaa's rounded terminals echo the mark's seed-curl, and lowercase reads as the calmest, most human treatment (all-caps felt too formal for the brand voice). It pairs with the finalised tapered Seed Mark in both **horizontal** (mark left, wordmark right) and **stacked** (mark above, wordmark below) lockups. In delivered logo files the wordmark is **converted to outlines** (vector paths), so assets never depend on the font being installed. Comfortaa is an open-source Google Font (SIL Open Font License), free for commercial use. Full asset pack (mark, wordmark, lockups, favicons, glyph, breathing-pulse animation) lives in the Drive `Branding/Logo Asset Pack v1.0` folder.
 
-## Candidate name — Selodía (NOT CONFIRMED, 2026-08-31)
+## Product name — Selodía (CONFIRMED FINAL, 2026-08-31)
 
-> **Status: candidate only.** Nothing in the build changes on this. **The repository, domains, package identifiers and every file path stay `unflump`** until Ruth confirms the switch — this section records the candidate so it is not lost, and is explicitly not an instruction to rename anything.
+> **Status: confirmed final 31 August 2026.** The *name* is settled. **The build is not renamed.** The repository, Vercel project, EAS config, package identifiers, domain references and every file path stay `unflump` — a code/infrastructure migration is parked for its own dedicated session, and nothing here authorises starting it. Confirming the name and renaming the codebase are two separate decisions; only the first has been made.
 
 **Wordmark:** **`selodía`** — lowercase, Comfortaa, medium weight, charcoal `#2D2B28`. Same typeface and lowercase treatment already confirmed for the unflump wordmark (2026-08-18), so the Seed Mark pairing carries over unchanged.
 
@@ -781,7 +781,21 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 **Category line:** *"A body literacy app for women 40+"* — Comfortaa regular, forest `#37584A`. Consistent with existing internal language: the onboarding goals prompt already describes Unflump as "a body literacy app".
 
-**Tagline (confirmed copy, unchanged):** *"Your body isn't a problem to solve. It's something to get to know."* — Lora italic. This is **existing manifesto copy**, carried over verbatim; it is not new and is not up for redrafting here.
+**Tagline (CONFIRMED FINAL, 2026-08-31):** *"Your body isn't a problem to solve. It's something to get to know."* — Lora italic. This is **existing manifesto copy**, carried over verbatim; it is not new and is not up for redrafting here.
+
+**Tagline typeface — Work Sans Italic (CONFIRMED FINAL, 2026-08-31).** Chosen from nine treatments, then a head-to-head against Spectral Italic. **Exact setting: Work Sans, italic, weight 300, 17px, line-height 1.75, letter-spacing +0.085em.**
+
+*Why the sans won, in Ruth's words: "it all looks more coherent."* That is a real typographic effect, not a preference — Comfortaa and Work Sans are built on the same skeleton (circular bowls, even stroke weight, open shapes), so the lockup reads as **one type system**. A serif tagline reads as a second voice; not wrong, but two voices where one will do.
+
+**The two-line structure is load-bearing, not incidental.** Each sentence is set as its **own block element**, so the line break falls at the full stop rather than wherever the measure happens to run out. This is what makes the open tracking safe: the wrap point cannot drift as the tracking widens, the type scales, or the container narrows. **Do not collapse the tagline into a single flowing paragraph** — it will find a third line at the first awkward width, which was an explicit rejection criterion.
+
+**Small-size tracking rule — required.** The +0.085em that makes this setting work above ~15px turns against it below: at 12px the gaps stop reading as poise and start breaking words into loose letters, so the eye reads letter-by-letter instead of recognising the word shape. **Above ~15px: +0.085em. At or below ~15px (App Store subtitle, footer, small print): reduce to ≈ +0.02em.** Same face, two settings.
+
+**Full lockup, both grounds (the confirmed artwork):**
+- **Light:** Seed Mark **terracotta `#C97458`** · wordmark Comfortaa 500 **charcoal `#2D2B28`** · category line Comfortaa 400 **forest `#37584A`** · tagline **charcoal**.
+- **Dark (the inverted ground, background `#834B39`):** Seed Mark **sand `#E9D6C2`** — *not* terracotta, which would disappear into its own ground · wordmark and tagline **cream `#F7F3EA`** · category line **sand**.
+
+*(Weight 200 was tested and rejected: it thins out badly when reversed onto the terracotta ground.)*
 
 **One accessibility flag on the mockup, not on the name.** The tagline is set in sage `#95A987` on cream `#F7F3EA`. The palette note in `mobile/src/constants/theme.ts` records that pair at **2.28:1** and states sage is "a fill colour only, never text". That is fine on a static brand card viewed at size, but the tagline must not be rendered in sage on cream **in the app or on the website** without re-testing — at body size it fails AA badly. Forest `#37584A`, already used for the category line, is the safe substitute.
 
