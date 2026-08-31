@@ -110,7 +110,20 @@ Supabase (Postgres). **Eleven tables:** `food_logs`, `food_items`, `body_measure
 Anthropic API, Haiku model, used for structured extraction (parsing food/activity/measurements into data) and for the conversational persona (Unflump's actual voice in chat).
 
 ## Domains
-unflump.app (primary), unflump.com, unflump.online (defensive), registered via Namecheap. Once app-store distribution is the primary channel, these domains' role shifts to a marketing landing page linking to the app store listings, rather than hosting the product itself.
+**`selodia.app` — purchased 31 August 2026, and the intended primary going forward.** Unaccented, per the accent convention in Part Fifteen: the accented `í` is for the wordmark and display copy, never for a domain, where a non-ASCII character invites encoding bugs and typo-squatting.
+
+**Nothing points at it yet, and nothing in the build references it.** Buying the domain and migrating to it are separate steps; only the first has happened. `unflump.app` (primary), `unflump.com` and `unflump.online` (defensive) remain registered via Namecheap and remain what the project actually uses. The cutover belongs to the code/infrastructure rename session, not here.
+
+**Scoping note for the rename session (audited 2026-08-31).** The cutover is smaller than it looks: **no domain is hardcoded anywhere in the source.** A full search of `.ts`, `.tsx`, `.json` and `.mjs` returns no `unflump.app` / `.com` / `.online` reference in any code file — the only occurrence in the repo is this section. What actually has to change lives in config and platform settings, not source:
+
+- `EXPO_PUBLIC_API_URL` in `mobile/.env.local` → currently `https://unflump-app.vercel.app`
+- The Vercel project name → currently `unflump-app`
+- The GitHub repository name
+- `mobile/app.json`: `owner`, `slug`, and the Android `package`
+
+**One of those is not like the others.** The Android package `com.unflump.mobile` is the app's permanent identity on the Play Store — changing it does not rename the app, it publishes a *different* app, and existing installs do not carry over. That is a one-way door, and it should be decided deliberately in the rename session rather than swept along with the cosmetic renames. (`app.json`'s `scheme` is `mobile`, which carries no brand name and needs nothing.)
+
+Once app-store distribution is the primary channel, these domains' role shifts to a marketing landing page linking to the app store listings, rather than hosting the product itself — that reasoning is unchanged by the name, and applies to whichever domain ends up in front.
 
 ---
 
@@ -773,7 +786,7 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 ## Product name — Selodía (CONFIRMED FINAL, 2026-08-31)
 
-> **Status: confirmed final 31 August 2026.** The *name* is settled. **The build is not renamed.** The repository, Vercel project, EAS config, package identifiers, domain references and every file path stay `unflump` — a code/infrastructure migration is parked for its own dedicated session, and nothing here authorises starting it. Confirming the name and renaming the codebase are two separate decisions; only the first has been made.
+> **Status: confirmed final 31 August 2026.** The *name* is settled, and `selodia.app` was purchased the same day (see Domains). **The build is still not renamed.** The repository, Vercel project, EAS config, package identifiers, domain references and every file path stay `unflump` — a code/infrastructure migration is parked for its own dedicated session, and nothing here authorises starting it. Confirming the name and renaming the codebase are two separate decisions; only the first has been made.
 
 **Wordmark:** **`selodía`** — lowercase, Comfortaa, medium weight, charcoal `#2D2B28`. Same typeface and lowercase treatment already confirmed for the unflump wordmark (2026-08-18), so the Seed Mark pairing carries over unchanged.
 
