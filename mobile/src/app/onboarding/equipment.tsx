@@ -208,7 +208,7 @@ export default function EquipmentScreen() {
         )}
         {step === 'done' && (
           <Pressable
-            onPress={() => router.push('/onboarding/goals')}
+            onPress={() => router.push('/onboarding/first-log')}
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView type="backgroundElement" style={styles.continueButton}>
               <ThemedText type="smallBold">Continue</ThemedText>

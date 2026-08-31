@@ -5,6 +5,10 @@ export const ONBOARDING_STEPS = [
   'not_started',
   'intro',
   'equipment',
+  // Steps 6-7 of Part Seven, persisted as one: the acknowledgement happens in
+  // the turn after the log, on the same screen, so a separate step would create
+  // a resume point in the middle of one exchange.
+  'first_log',
   'goals',
   'health_context',
   'technical_targets',
@@ -43,6 +47,7 @@ export const RESUME_ROUTE: Record<OnboardingStep, Href> = {
   not_started: '/onboarding/intro',
   intro: '/onboarding/intro',
   equipment: '/onboarding/equipment',
+  first_log: '/onboarding/first-log',
   goals: '/onboarding/goals',
   health_context: '/onboarding/health-context',
   technical_targets: '/onboarding/technical',

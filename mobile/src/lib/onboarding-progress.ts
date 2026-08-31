@@ -26,6 +26,7 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
   { route: 'account', label: 'Your account' },
   { route: 'intro', label: 'Hello' },
   { route: 'equipment', label: 'What you have' },
+  { route: 'first-log', label: 'Your first log' },
   { route: 'goals', label: 'What matters to you' },
   { route: 'health-context', label: 'Anything to know' },
   { route: 'technical', label: 'How tracking works' },

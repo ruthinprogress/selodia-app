@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 const CONVERSATION_SCREENS = new Set([
   'intro',
   'equipment',
+  'first-log',
   'goals',
   'health-context',
   'technical',
