@@ -34,6 +34,8 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: 'user_profile', label: 'Your profile', dateColumn: null },
   { table: 'user_context', label: 'Things Unflump remembers about you', dateColumn: 'created_at' },
   { table: 'health_context', label: 'Health context', dateColumn: null },
+  // Medical data, and someone's copy of their own record has to include it.
+  { table: 'allergies', label: 'Allergies and dietary restrictions', dateColumn: 'disclosed_at' },
   { table: 'chat_messages', label: 'Conversations', dateColumn: 'created_at' },
   { table: 'food_logs', label: 'Food logs', dateColumn: 'happened_at' },
   { table: 'food_items', label: 'Food breakdown items', dateColumn: 'created_at' },

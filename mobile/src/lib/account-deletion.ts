@@ -59,6 +59,10 @@ const DELETE_ORDER = [
   'almanac_entries',
   'user_context',
   'health_context',
+  // The one place an allergy row is ever deleted. Permanence is a promise about
+  // suggestions, not a reason to keep medical data after someone has asked for
+  // their account to be erased.
+  'allergies',
   'reminder_settings',
   'push_tokens',
   'user_profile',

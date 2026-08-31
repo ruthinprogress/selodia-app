@@ -32,6 +32,7 @@ import {
   whichReadingMessage,
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
+import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
 import {
   isCardMediaType,
   isDiscussEntryType,
@@ -153,6 +154,7 @@ export async function POST(request: NextRequest) {
     { data: healthContextRow },
     { data: lastPeriodRow },
     { data: yesterdaySummary },
+    disclosedAllergies,
   ] = await Promise.all([
     supabase
       .from('chat_messages')
@@ -217,6 +219,9 @@ export async function POST(request: NextRequest) {
       .order('summary_date', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // Not a { data } shape - loadAllergies returns the rows directly. Positional
+    // destructuring above, so it stays last.
+    loadAllergies(supabase),
   ]);
 
   const previousEscalationStep: EscalationStep =
@@ -269,6 +274,13 @@ export async function POST(request: NextRequest) {
   // in context. Empty when cycle tracking isn't enabled. RLS scopes the read.
   const cycleContextBlock = buildCycleContextPrompt(lastPeriodRow?.event_date ?? null);
 
+  // Allergies (Part Twelve, item 42 part (d)). AWARENESS ONLY - see
+  // app/lib/allergies.ts. This makes the model know about them within a session;
+  // it is NOT the filter gate, which is part (c) and does not exist. Loaded from
+  // its own table rather than user_context so a soft preference can never be
+  // read as an allergy, or the reverse.
+  const allergyBlock = buildAllergyPrompt(disclosedAllergies);
+
   // The next-morning weave. Only YESTERDAY's factor, and only in the morning:
   // a mediating factor is about how today's reading should be read, and by the
   // afternoon it has stopped explaining anything and started being an excuse
@@ -312,8 +324,8 @@ ${activitySummary}
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
-${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}
-Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact.
+${allergyBlock}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}
+Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact. If they mention an ALLERGY or a medical dietary restriction - however casually, and including in the middle of logging a meal - set allergiesDisclosed as well; a dislike or a choice is not one, and belongs in rememberCategory instead. Never turn this into a questionnaire: never ask whether they have any allergies, never ask them to confirm a list, and do not remark on capturing it.
 
 NUTRIENT DEPTH (passive, occasional): protein and calories miss things that can matter over time - dietary saturated fat and cholesterol, omega-3s, iron, fibre, refined carbs, overall micronutrient variety. From the food ALREADY LOGGED above, you may occasionally and gently notice a PATTERN worth a light mention - never from a single meal (one lower-density choice is noise, only a trend across the logs is worth raising), never as a running micronutrient tracker or checklist, and never by labelling any food "good" or "bad". Let the HEALTH CONTEXT above decide what is worth watching: the markers and protective foods it already lists ARE your priority lens - infer the relevant nutrient pattern from that block, don't restate or second-guess it, and don't run a generic scan. If there is NO health context, keep this very light and mostly stay quiet: a depth nudge is prioritised by what they have actually disclosed, not applied one-size-fits-all. Only raise it when it genuinely fits the moment and is worth saying - most replies will not touch it at all. When such a nudge draws on their health context, set healthGuidanceApplied to true (as above) so the disclaimer shows.
 
@@ -333,6 +345,18 @@ ${SAFETY_PROMPT_BLOCK}`;
     SYSTEM_PROMPT + buildContextualAdditions(previousEscalationStep, previousRevisitCount);
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
+    // Captured CONVERSATIONALLY, wherever it comes up - Part Twelve is explicit
+    // that there is never a form or a dedicated screen, and that "an allergy
+    // mentioned in passing while logging dinner is captured exactly as reliably
+    // as one volunteered at signup". Kept separate from rememberCategory on
+    // purpose: a dislike must never reach the allergy store, and an allergy must
+    // never be filed as a soft preference.
+    allergiesDisclosed: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        'Only when the person states an ALLERGY or a medical dietary restriction (coeliac, an intolerance that makes them ill), in any context including in passing. The allergen itself in their words, e.g. ["peanuts"]. NOT dislikes, NOT preferences, NOT things they are avoiding by choice or for a diet - those go to rememberCategory. When in doubt it is a preference, not an allergy.',
+    },
     rememberCategory: {
       type: 'string',
       description: 'Only when the person shares a genuinely durable fact worth remembering long-term',
@@ -438,6 +462,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
+    allergiesDisclosed?: string[];
     almanacKind?: string;
     almanacTitle?: string;
     almanacCategory?: string;
@@ -716,6 +741,15 @@ ${SAFETY_PROMPT_BLOCK}`;
         console.log('ASK-UNFLUMP CLARIFICATION RESOLVE FAILED:', err instanceof Error ? err.message : err);
       }
     }
+  }
+
+  // Allergy capture (item 42 part (b)). Fire-and-persist with no confirmation
+  // turn and no toast: Part Twelve requires this to be captured conversationally
+  // wherever it surfaces, and a "shall I remember that?" prompt would make
+  // disclosure a small ceremony rather than something said in passing. Idempotent
+  // on (user_id, name), so a repeat mention is silently the same row.
+  if (Array.isArray(result.allergiesDisclosed) && result.allergiesDisclosed.length > 0) {
+    await recordAllergies(supabase, user.id, result.allergiesDisclosed, message);
   }
 
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
