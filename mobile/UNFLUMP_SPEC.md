@@ -771,6 +771,22 @@ Notifications suppressed by quiet hours are not discarded or fired individually 
 ## Wordmark (confirmed 2026-08-18)
 The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four alternatives (Quicksand, Montserrat, Century Gothic, and a monospace) as the most cohesive pairing with the Seed Mark — Comfortaa's rounded terminals echo the mark's seed-curl, and lowercase reads as the calmest, most human treatment (all-caps felt too formal for the brand voice). It pairs with the finalised tapered Seed Mark in both **horizontal** (mark left, wordmark right) and **stacked** (mark above, wordmark below) lockups. In delivered logo files the wordmark is **converted to outlines** (vector paths), so assets never depend on the font being installed. Comfortaa is an open-source Google Font (SIL Open Font License), free for commercial use. Full asset pack (mark, wordmark, lockups, favicons, glyph, breathing-pulse animation) lives in the Drive `Branding/Logo Asset Pack v1.0` folder.
 
+## Candidate name — Selodía (NOT CONFIRMED, 2026-08-31)
+
+> **Status: candidate only.** Nothing in the build changes on this. **The repository, domains, package identifiers and every file path stay `unflump`** until Ruth confirms the switch — this section records the candidate so it is not lost, and is explicitly not an instruction to rename anything.
+
+**Wordmark:** **`selodía`** — lowercase, Comfortaa, medium weight, charcoal `#2D2B28`. Same typeface and lowercase treatment already confirmed for the unflump wordmark (2026-08-18), so the Seed Mark pairing carries over unchanged.
+
+**Accent convention:** the **accented `í` is for branding only** — wordmark, marketing, display copy. **Code, package names, domains and identifiers use the unaccented form.** This is a deliberate split, not an inconsistency: a non-ASCII character in a domain or an import path invites encoding bugs and typo-squatting, while the accent does real work on the wordmark.
+
+**Category line:** *"A body literacy app for women 40+"* — Comfortaa regular, forest `#37584A`. Consistent with existing internal language: the onboarding goals prompt already describes Unflump as "a body literacy app".
+
+**Tagline (confirmed copy, unchanged):** *"Your body isn't a problem to solve. It's something to get to know."* — Lora italic. This is **existing manifesto copy**, carried over verbatim; it is not new and is not up for redrafting here.
+
+**One accessibility flag on the mockup, not on the name.** The tagline is set in sage `#95A987` on cream `#F7F3EA`. The palette note in `mobile/src/constants/theme.ts` records that pair at **2.28:1** and states sage is "a fill colour only, never text". That is fine on a static brand card viewed at size, but the tagline must not be rendered in sage on cream **in the app or on the website** without re-testing — at body size it fails AA badly. Forest `#37584A`, already used for the category line, is the safe substitute.
+
+**Also note:** sage and forest are deliberately absent from the app's colour tokens (nothing in the product renders them yet). A brand card using both does not change that — adding them as tokens before something needs them would be colour nothing draws.
+
 ## Loading State
 A gentle breathing pulse — a slow, subtle scale/fade on the **complete, static** Unflump logo mark (the finalised tapered Seed Mark) — not a generic spinner, and deliberately **not** a stroke-trace / line-drawing animation. A loading moment is an opportunity to reinforce identity, not a throwaway technical necessity.
 
