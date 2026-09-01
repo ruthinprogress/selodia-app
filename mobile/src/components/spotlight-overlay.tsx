@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Animated, Easing } from 'react-native';
 
@@ -53,7 +53,10 @@ export function SpotlightOverlay() {
   // against a newer request - and so the effect never has to clear state
   // synchronously, which is a cascading render the compiler rightly objects to.
   const [measured, setMeasured] = useState<{ id: string; rect: Rect } | null>(null);
-  const pulse = useMemo(() => new Animated.Value(0), []);
+  // useState, matching save-confirmation.tsx - see the note there. useMemo is a
+  // cache React may discard, and a discarded value here would leave the ring
+  // stuck at whatever opacity it held when the loop lost its target.
+  const [pulse] = useState(() => new Animated.Value(0));
 
   const active = spotlight?.active ?? null;
   const showing = active?.showing ?? null;
