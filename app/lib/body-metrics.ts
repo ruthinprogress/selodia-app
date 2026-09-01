@@ -64,13 +64,32 @@ export function calculateTDEE(bmr: number | null, activityLevel: string | null |
 // side protein.ts formula so onboarding can state it server-side; the tiny
 // duplication is deliberate (the client Dashboard and the server conversation
 // can't share a lib across the Next/Expo boundary).
+// The server twin of mobile/src/lib/protein.ts. The two MUST change together -
+// they are the same rule computed on both sides of the Next/Expo boundary, and a
+// divergence would have onboarding state one number while the Overview bar shows
+// another.
+//
+// The bodyweight fallback was removed from both on 2026-09-01. See the mobile
+// file for the full reasoning; in short, it produced a confident specific figure
+// out of data that could not support one, and null is the honest answer instead.
+// A manually chosen target outranks a calculation, including one from a real
+// muscle-mass reading.
 export function proteinTargetGrams(
-  muscleKg: number | null | undefined,
-  weightKg: number | null | undefined
+  manualG: number | null | undefined,
+  muscleKg: number | null | undefined
 ): number | null {
+  if (manualG != null && manualG > 0) return Math.round(manualG);
   if (muscleKg != null && muscleKg > 0) return Math.round(muscleKg * 2.2);
-  if (weightKg != null && weightKg > 0) return Math.round(weightKg * 2.2);
   return null;
+}
+
+// 1.6-2.0 g per kg of bodyweight, scaled so "at your weight" is true for whoever
+// is reading it. Mirrors proteinRange in mobile/src/lib/protein.ts.
+export function proteinRangeGrams(
+  weightKg: number | null | undefined
+): { low: number; high: number } | null {
+  if (weightKg == null || weightKg <= 0) return null;
+  return { low: Math.round(weightKg * 1.6), high: Math.round(weightKg * 2.0) };
 }
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;

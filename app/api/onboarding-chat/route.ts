@@ -18,11 +18,14 @@ import {
   calculateTDEE,
   normalizeHeight,
   normalizeWeight,
+  proteinRangeGrams,
   proteinTargetGrams,
 } from '../../lib/body-metrics';
 import {
   formatActivityEcho,
   formatMeasurementEcho,
+  formatProteinExplainer,
+  formatProteinRangeOffer,
   formatProteinStatement,
   formatTDEEStatement,
 } from '../../lib/onboarding-targets';
@@ -112,7 +115,13 @@ LENGTH. Match the reply to what was actually said. Most turns want one or two se
 
 Genuine distress is the exception. A care-first response gets whatever room it needs, and nothing here shortens it.`;
 
-const NUTRITION_ROLE = `You are Unflump, on the nutrition-target step of onboarding (Part Seven, step 10). First check they're happy to work out a protein target now - an explicit yes, never assumed. To do it you need their height and current weight; ask warmly and accept whatever units they give (centimetres or feet/inches; kilograms, pounds, or stone). Extract exactly what they say into the height/weight fields WITHOUT converting - fill only the fields matching their units, and never put in a converted or guessed value. Do NOT state any number, target, or conversion yourself, and do NOT treat their figures as final: the app echoes the interpreted numbers back for them to confirm, and states the target itself once confirmed. Set measurementsConfirmed true ONLY on a turn where they clearly confirm the echoed numbers are right; if they correct one, extract the new value with measurementsConfirmed false.
+const NUTRITION_ROLE = `You are Unflump, on the nutrition-target step of onboarding (Part Seven, step 10).
+
+THE PROTEIN TARGET IS NOT ALWAYS A NUMBER, and this is the most important thing about this step. When there is no muscle-mass reading, the app states a RANGE and asks them to choose within it - because protein need tracks lean mass, and bodyweight alone cannot support a specific figure. Never state, guess or round a protein number yourself in any of these turns: every figure is appended by the app after your reply. Your job is the warmth around it and the reading of what they want.
+- If they ask how it is worked out, what affects it, or say anything like "tell me more", set wantsProteinExplainer true. The app supplies the explanation.
+- When they choose a number, or accept a part of the range ("the higher end", "let us say 100"), set chosenProteinG to that number in grams. Convert a described choice into the figure it means, and set it ONLY for something they have actually agreed to - never for a number you or the app has merely offered.
+- Do not push them toward the higher end, and do not treat a lower choice as a compromise. Someone choosing where they sit in a range is the point of asking.
+- Do not chase a decision. If they would rather move on, that is fine and it can be settled later. First check they're happy to work out a protein target now - an explicit yes, never assumed. To do it you need their height and current weight; ask warmly and accept whatever units they give (centimetres or feet/inches; kilograms, pounds, or stone). Extract exactly what they say into the height/weight fields WITHOUT converting - fill only the fields matching their units, and never put in a converted or guessed value. Do NOT state any number, target, or conversion yourself, and do NOT treat their figures as final: the app echoes the interpreted numbers back for them to confirm, and states the target itself once confirmed. Set measurementsConfirmed true ONLY on a turn where they clearly confirm the echoed numbers are right; if they correct one, extract the new value with measurementsConfirmed false.
 
 LENGTH. Match the reply to what was actually said. Most turns want one or two sentences - what a person types in a chat, not a paragraph. If they asked something answerable in a few words, answer in a few words and stop. Reflecting something back is fine where it earns its place; adding a reassuring coda to a reply that was already finished is not, and neither is explaining at length why you cannot do something.
 
@@ -202,6 +211,16 @@ function phaseExtraProps(phase: Phase): Record<string, unknown> {
       measurementsConfirmed: {
         type: 'boolean',
         description: 'True ONLY when the person confirms the echoed height/weight are right',
+      },
+      wantsProteinExplainer: {
+        type: 'boolean',
+        description:
+          'True when they ask to understand the range better - "Tell me more", "how is that worked out", "what affects it". Not when they simply state a number.',
+      },
+      chosenProteinG: {
+        type: 'number',
+        description:
+          'A daily protein target in grams that THEY have chosen or accepted, e.g. "let us go with 100" or "the higher end sounds right" (convert to a number). Never a figure you suggested that they have not agreed to.',
       },
       ...LOG_INTENT_PROP,
     };
@@ -381,6 +400,8 @@ export async function POST(request: NextRequest) {
     weightStone?: number;
     weightStoneLb?: number;
     measurementsConfirmed?: boolean;
+    wantsProteinExplainer?: boolean;
+    chosenProteinG?: number;
     activityLevel?: string;
     readyToReflectLevel?: boolean;
     activityConfirmed?: boolean;
@@ -435,6 +456,10 @@ export async function POST(request: NextRequest) {
   let finalReply = replyText;
 
   let phaseComplete = false;
+  // True on the turn that offers the protein range, so the screen can show the
+  // two choices beneath it. Not a mode - the person can equally just type a
+  // number, and the chips are a shortcut past typing rather than a gate.
+  let proteinChoiceOpen = false;
 
   if (!isDistressTurn && phase === 'nutrition_targets') {
     const h = normalizeHeight({ cm: result.heightCm, feet: result.heightFeet, inches: result.heightInches });
@@ -456,7 +481,14 @@ export async function POST(request: NextRequest) {
         .order('measured_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      const target = proteinTargetGrams(mm?.muscle_kg ?? null, w);
+      // A target they have already chosen outranks any calculation, so it is
+      // read before anything is computed.
+      const { data: prof } = await supabase
+        .from('user_profile')
+        .select('protein_target_g')
+        .maybeSingle();
+      const target = proteinTargetGrams(prof?.protein_target_g ?? null, mm?.muscle_kg ?? null);
+      const range = proteinRangeGrams(w);
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
       const { data: todayFood } = await supabase
@@ -466,14 +498,36 @@ export async function POST(request: NextRequest) {
       const loggedToday = Math.round(
         (todayFood ?? []).reduce((s: number, f: { protein_g: number | null }) => s + (f.protein_g ?? 0), 0)
       );
-      if (target != null) {
+      // THREE OUTCOMES, and the third is the redesign (2026-09-01). Ordered by
+      // how much the app actually knows.
+      //
       // APPENDED, never substituted (corrected 2026-08-23). The figure stays
       // code-built so it can never be hallucinated, but replacing the whole turn
       // also deleted whatever the model said - including, on 2026-08-23, a direct
       // "can I see the dashboard?" that was never acknowledged. The phase roles
       // already forbid the model stating numbers, so the two do not collide.
+      if (result.chosenProteinG != null && result.chosenProteinG > 0) {
+        // Their own answer. Stored, and from here it outranks everything.
+        const chosen = Math.round(result.chosenProteinG);
+        await supabase
+          .from('user_profile')
+          .upsert({ user_id: user.id, protein_target_g: chosen });
+        finalReply = `${replyText}\n\n${formatProteinStatement(chosen, loggedToday)}`;
+        phaseComplete = true;
+      } else if (target != null) {
+        // A real lean-mass reading, or a target chosen in an earlier turn.
         finalReply = `${replyText}\n\n${formatProteinStatement(target, loggedToday)}`;
         phaseComplete = true;
+      } else if (range) {
+        // No lean mass and nothing chosen: offer the range rather than invent a
+        // number. NOT phaseComplete - the step finishes when they have chosen,
+        // not when they have been told.
+        finalReply = `${replyText}\n\n${
+          result.wantsProteinExplainer
+            ? formatProteinExplainer(range.low, range.high)
+            : formatProteinRangeOffer(range.low, range.high)
+        }`;
+        proteinChoiceOpen = !result.wantsProteinExplainer;
       }
     } else if (h != null || w != null) {
       finalReply = `${replyText}\n\n${formatMeasurementEcho(h, w)}`;
@@ -540,5 +594,6 @@ export async function POST(request: NextRequest) {
     resourceCard,
     saved,
     phaseComplete,
+    proteinChoiceOpen,
   });
 }

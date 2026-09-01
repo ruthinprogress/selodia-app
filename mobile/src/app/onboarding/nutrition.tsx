@@ -30,6 +30,11 @@ type Message = {
 const OPENING_LINE =
   "Now that I understand where you're headed, we can work out a daily protein target that fits you — it's one of the most useful numbers to have on hand. Want to do that now?";
 
+// Sent verbatim as the person's message. "I'll start with a number" is
+// deliberately not a command the app interprets - it goes to the model like any
+// other sentence, which keeps one path through this step instead of two.
+const PROTEIN_CHOICES = ["I'll start with a number", 'Tell me more'] as const;
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function NutritionScreen() {
@@ -43,6 +48,9 @@ export default function NutritionScreen() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [phaseComplete, setPhaseComplete] = useState(false);
+  // Set on the turn that offers the protein range. Two shortcuts, not a gate:
+  // typing a number, or anything else, works exactly as well.
+  const [proteinChoice, setProteinChoice] = useState(false);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
 
   useEffect(() => {
@@ -51,10 +59,12 @@ export default function NutritionScreen() {
     });
   }, []);
 
-  async function handleSend() {
-    const trimmed = input.trim();
+  async function handleSend(override?: string) {
+    const trimmed = (override ?? input).trim();
     if (!trimmed || sending) return;
-    setInput('');
+    if (override === undefined) setInput('');
+    // The offer has been answered either way, so the chips go.
+    setProteinChoice(false);
     setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setSending(true);
 
@@ -85,6 +95,7 @@ export default function NutritionScreen() {
         { role: 'assistant', content: data.reply, resourceCard: data.resourceCard },
       ]);
       if (data.phaseComplete) setPhaseComplete(true);
+      if (data.proteinChoiceOpen) setProteinChoice(true);
       if (data.saved?.summary) {
         setSaveToast((prev) => ({ summary: data.saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
       }
@@ -130,6 +141,28 @@ export default function NutritionScreen() {
           ))}
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
+
+          {/* Two ways forward from the range, sent as the person's own words -
+              the model reads "Tell me more" exactly as if they had typed it.
+              Not a gate: the message box is right there, and a number typed
+              straight in works identically. */}
+          {proteinChoice && !sending && (
+            <ThemedView style={styles.choiceRow}>
+              {PROTEIN_CHOICES.map((label) => (
+                <Pressable
+                  key={label}
+                  onPress={() => void handleSend(label)}
+                  accessibilityRole="button"
+                  accessibilityLabel={label}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <ThemedView type="backgroundElement" style={styles.choiceChip}>
+                    <ThemedText type="small">{label}</ThemedText>
+                  </ThemedView>
+                </Pressable>
+              ))}
+            </ThemedView>
+          )}
         </ScrollView>
 
         <ThemedView style={styles.inputRow}>
@@ -143,7 +176,7 @@ export default function NutritionScreen() {
             editable={!sending}
           />
           <Pressable
-            onPress={handleSend}
+            onPress={() => handleSend()}
             // Empty input previously did nothing at all - no message, no re-ask,
             // nothing - so Send looked pressable and behaved dead. Disabling it
             // lets the control state the truth instead of failing silently. A
@@ -178,6 +211,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.six,
     gap: Spacing.three,
+  },
+  choiceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
+  },
+  choiceChip: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
   },
   messageGroup: {
     gap: Spacing.two,

@@ -680,6 +680,20 @@ When Unflump helps build a movement or exercise plan here, the conversation is a
 
 ---
 
+## Stating a target when the data cannot support one (redesigned 2026-09-01)
+
+**The pattern: inform the range, explain what moves you within it, let them choose.** This replaced a calculation, and the reason it replaced one is the reusable part.
+
+The protein target was always derived — lean mass × 2.2 where a bioimpedance reading existed, and **bodyweight × 2.2 where it did not**. That fallback was wrong twice. It used the wrong input: Part Eight is explicit that lean mass is the basis, because it stays accurate in a deficit where bodyweight does not. And it manufactured a confident, specific figure out of data that could not support one — "121 g" reads as a measurement, and this was an assumption wearing a measurement's clothes, displayed on the Overview bar as though it had been derived from something.
+
+**The fix was not a better formula. It was not pretending to have one.** Three sources now, in order: a target the person set themselves; lean mass × 2.2 where a reading exists; and otherwise **nothing at all** — `calculateProteinTarget` returns null and the Overview bar shows "84 g logged" with no denominator rather than inventing one. Silence is a supported outcome, and most of the work was making it possible rather than computing around it.
+
+The gap that leaves is filled by **asking**, during onboarding: the range (1.6–2.0 g per kg, scaled to their weight so "at your weight" is true for whoever is reading it), what moves someone within it, and their own choice. A range is not a hedge here — without lean mass the evidence genuinely supports a span and not a point, so saying so is the accurate answer, and it lets someone choose inside it rather than accept a figure they had no part in. **A manually set target then outranks every calculation, including one from a real reading**: someone who has been told what the numbers suggest and chosen differently has not made a mistake for the app to correct on the next render, and recomputing over their answer would make the question theatre.
+
+**This is the template for any other target in the same position** — calorie targets, step targets, anything where the honest answer is a span. The test is not "can we compute something" but "does what we know support the precision we are about to display". Where it does not, offer the range, name what moves it, and let the person decide. Two implementations must move together for any of these (`mobile/src/lib/protein.ts` and `app/lib/body-metrics.ts` for this one), or onboarding and the dashboard will state different numbers.
+
+---
+
 # PART ELEVEN: THE GRADUATION MOMENT & CONSOLIDATION PHASE
 
 This names the app's actual exit condition — a deliberate point of difference from products designed to maximise ongoing engagement.

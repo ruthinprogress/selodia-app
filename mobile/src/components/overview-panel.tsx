@@ -41,6 +41,7 @@ type ProfileRow = {
   fat_focus_state: string | null;
   muscle_focus_state: string | null;
   has_scales: boolean | null;
+  protein_target_g: number | null;
 };
 
 type Metric = { value: number | null; delta: string | null };
@@ -80,7 +81,7 @@ export function OverviewPanel() {
         .order('measured_at', { ascending: false });
       const { data: profile } = await supabase
         .from('user_profile')
-        .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales')
+        .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g')
         .maybeSingle();
 
       const startOfDay = new Date();
@@ -167,7 +168,10 @@ export function OverviewPanel() {
             muscleFocus: asFocus(p.muscle_focus_state),
           })
         : null;
-      const proteinTarget = calculateProteinTarget(latest.muscle_kg, latest.weight_kg, p.has_scales ?? false);
+      // A chosen target first, then lean mass, then nothing. No bodyweight
+      // fallback any more - the bar shows "84 g logged" with no denominator
+      // rather than a figure invented from the wrong input.
+      const proteinTarget = calculateProteinTarget(p.protein_target_g, latest.muscle_kg);
 
       setData({
         hasMeasurement: true,
