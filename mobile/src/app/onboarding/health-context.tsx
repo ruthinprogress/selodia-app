@@ -266,7 +266,23 @@ function ActionButton({
   muted?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={({ pressed }) => pressed && styles.pressed}>
+    // flex:1 belongs on the PRESSABLE, not on the view inside it. The Pressable
+    // is the flex child of actionRow, and it carried no style at all except when
+    // pressed - so it sized to its content, while the ThemedView inside asked for
+    // flex:1, which Yoga expands to flexBasis:0. Nothing was left to grow that
+    // basis back, so the box collapsed, the label had no room to lay out and
+    // vanished, and only paddingVertical kept a visible pill on screen. Two
+    // blank pills, found on device 2026-09-01; the style dated from the original
+    // Health Context build on 13 August, so it had been wrong the whole time.
+    //
+    // The working buttons elsewhere never hit this because they size themselves
+    // instead of asking a parent to do it - see goals.tsx's continueButton, which
+    // uses width:'100%' and no flex at all.
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.actionSlot, pressed && styles.pressed]}
+    >
       <ThemedView type={muted ? 'backgroundElement' : 'backgroundSelected'} style={styles.actionButton}>
         <ThemedText type="smallBold">{label}</ThemedText>
       </ThemedView>
@@ -322,8 +338,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
-  actionButton: {
+  // The row splits evenly between the two buttons, and it is the Pressable that
+  // does the splitting - see the note on ActionButton.
+  actionSlot: {
     flex: 1,
+  },
+  actionButton: {
     paddingVertical: Spacing.three,
     borderRadius: Spacing.three,
     alignItems: 'center',
