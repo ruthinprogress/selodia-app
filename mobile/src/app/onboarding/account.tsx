@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ConversationLayout } from '@/components/conversation-layout';
 import { DateOfBirthField } from '@/components/date-of-birth-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -180,26 +179,31 @@ export default function AccountScreen() {
   }
 
   return (
-    <ConversationLayout>
+    // NO ConversationLayout HERE, and that omission is the experiment.
+    //
+    // The previous attempt (38881d6) kept the shell's KeyboardAvoidingView and
+    // added automaticallyAdjustKeyboardInsets on top. Tested on iOS: no change,
+    // keyboard still covered the field. The likely reason is the exact mechanism
+    // that commit cited as proof the two were safe together - iOS derives the
+    // inset from the intersection of the keyboard frame with the scroll view
+    // frame, so if the shell has already padded the view clear of the keyboard
+    // that intersection is EMPTY, the inset computes to zero, and the prop does
+    // nothing at all. Not double-counting: mutual cancellation.
+    //
+    // So the shell comes off this screen and the ScrollView owns the keyboard
+    // alone. ConversationLayout was built for a pinned input row below a thread,
+    // which is not this screen - it is a form whose inputs are inside the scroll
+    // area, and for that iOS wants the scroll view to handle its own insets.
+    // ThemedView replaces it for the background; that is all the shell otherwise
+    // contributed here.
+    //
+    // THIS IS A TEST, deliberately narrow: one screen, no native module, ships
+    // over EAS Update. react-native-keyboard-controller is queued as the durable
+    // fix regardless of how this reads on device, because KeyboardAwareScrollView
+    // is the only thing here that genuinely SCROLLS a focused field into view
+    // rather than resizing the space around it.
+    <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* KEYBOARD: the shell's KeyboardAvoidingView is not enough on its own
-            here. ConversationLayout was built for a pinned input row - it pads
-            the whole layout, which lifts a fixed bar clear of the keyboard
-            perfectly. This screen's inputs are INSIDE the scroll area, so
-            padding shrinks the viewport without moving the scroll position,
-            and a focused field below the new fold stays hidden. Found live on
-            sign-in, 2026-09-01.
-
-            automaticallyAdjustKeyboardInsets is the iOS rescue, and it cannot
-            double-count with the padding above it: iOS derives the inset from
-            the intersection of the keyboard frame with the scroll view frame,
-            so once the shell has lifted the view clear the intersection is
-            empty and the inset is zero. It is a no-op on Android, which
-            relies on the window resizing (softwareKeyboardLayoutMode defaults
-            to resize) plus the same padding.
-
-            keyboardDismissMode gives an unconditional way out: whatever the
-            platform does, a downward swipe puts the keyboard away. */}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -309,7 +313,7 @@ export default function AccountScreen() {
           </Pressable>
         </ScrollView>
       </SafeAreaView>
-    </ConversationLayout>
+    </ThemedView>
   );
 }
 
@@ -330,6 +334,10 @@ function LabeledInput({ label, style, ...rest }: TextInputProps & { label: strin
 }
 
 const styles = StyleSheet.create({
+  // Was ConversationLayout's own wrapper until the keyboard test above.
+  container: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },
