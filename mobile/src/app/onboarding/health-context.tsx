@@ -4,7 +4,6 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
-import { ConversationLayout } from '@/components/conversation-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -117,26 +116,28 @@ export default function HealthContextScreen() {
   }
 
   return (
-    <ConversationLayout>
+    // NO ConversationLayout, matching account.tsx - the same fix, now that it is
+    // a confirmed fix rather than a hypothesis.
+    //
+    // Both screens share one fault: their inputs sit INSIDE the scroll area,
+    // where the shell's KeyboardAvoidingView shrinks the viewport without moving
+    // the scroll position, so a focused field below the new fold stays hidden.
+    // Adding automaticallyAdjustKeyboardInsets on top (38881d6) did nothing,
+    // because iOS derives that inset from the intersection of the keyboard and
+    // the scroll view frames - and once the shell has padded the view clear, the
+    // intersection is empty and the inset is zero. The two cancel rather than
+    // combine. Removing the shell lets the scroll view own its own insets, which
+    // is what iOS wants for a form.
+    //
+    // Verified on device for sign-in (9551b64) before being applied here. The two
+    // were split deliberately so that test had a single variable.
+    //
+    // ConversationLayout still belongs on the eight screens that pin an input row
+    // below a thread - it was built for exactly that and it works there.
+    // ThemedView replaces it here for the background, which is all it otherwise
+    // contributed.
+    <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* KEYBOARD: the shell's KeyboardAvoidingView is not enough on its own
-            here. ConversationLayout was built for a pinned input row - it pads
-            the whole layout, which lifts a fixed bar clear of the keyboard
-            perfectly. This screen's inputs are INSIDE the scroll area, so
-            padding shrinks the viewport without moving the scroll position,
-            and a focused field below the new fold stays hidden. Found live on
-            sign-in, 2026-09-01.
-
-            automaticallyAdjustKeyboardInsets is the iOS rescue, and it cannot
-            double-count with the padding above it: iOS derives the inset from
-            the intersection of the keyboard frame with the scroll view frame,
-            so once the shell has lifted the view clear the intersection is
-            empty and the inset is zero. It is a no-op on Android, which
-            relies on the window resizing (softwareKeyboardLayoutMode defaults
-            to resize) plus the same padding.
-
-            keyboardDismissMode gives an unconditional way out: whatever the
-            platform does, a downward swipe puts the keyboard away. */}
         <ScrollView
           ref={scrollRef}
           onContentSizeChange={onThreadGrew}
@@ -231,7 +232,7 @@ export default function HealthContextScreen() {
           )}
         </ThemedView>
       </SafeAreaView>
-    </ConversationLayout>
+    </ThemedView>
   );
 }
 
@@ -274,6 +275,10 @@ function ActionButton({
 }
 
 const styles = StyleSheet.create({
+  // Was ConversationLayout's own wrapper until the keyboard fix.
+  container: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },
