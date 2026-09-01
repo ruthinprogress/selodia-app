@@ -947,7 +947,7 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 31. Hydration tracking (Overview) — log water intake against a sensible daily target, surfaced as a tap/fill bar on the Overview in the same visual family as the calorie and protein bars. An honest same-day wellbeing nudge, **explicitly not gamified** (no streaks, no "don't break the chain", no badges). Real backend work: a water-intake log (likely reusing the existing silent-logging pattern, overlapping the zero-calorie-drinks path, item 26) plus a daily target. See Hydration Tracking. Not yet built.
 32. Overview "personal line" (with a separate Almanac variant) — a small, warm, quiet line that **never reads as a motivational quote or slogan** (the "personal, never generic" principle). **Rotating line built 2026-08-17:** the finalized 26-phrase Overview set + daily deterministic rotation + the true-day-one exception, in `personal-line.ts`, wired into the Overview. Still open: the **data-specific content-selection** (a phrase tied to the user's own data; silence over reach) and the **Almanac-set** phrases (pending the Almanac screen). See The Overview Personal Line.
 33. Activity intensity indicator — a light/moderate/intense tag on individual `activity_logs` entries, since intensity (not type or frequency) drives real physiological effect (EPOC; whether resistance-training RMR benefits apply). Prefer **inferring** intensity from the AI's existing free-text understanding (it already reads "gentle"/"vigorous"/"to failure") over a new manual input. **Built 2026-08-16 (with item 27):** `activity_logs.intensity` (`light`/`moderate`/`intense`), inferred at log time in the activity parse, coerced valid-or-null. Data is Tag-ready — the future Activity segment selects `intensity` and passes the string straight to the established Tag component (null → no tag). Classification quality is model behaviour (prompt/spec-review + device spot-check).
-34. Voice input for logging (Chat mic button) — **confirmed a real, intended feature (2026-08-16), not incidental OS dictation:** someone can *speak* a food or activity entry instead of typing it. **Architecture:** capture speech and transcribe it, then feed the transcribed text into the **exact same text pipeline already built** (intent classification, parsing, safety checks) — no new understanding logic, only speech capture + speech-to-text on the front. Because it needs microphone access and speech-to-text, this is a genuine **native-dependency addition**, so it **joins the existing native-module batch** (alongside `expo-image-picker`, the Almanac animation library, and `expo-notifications`) and ships in that rebuild rather than over-the-air via EAS Update. **Interaction (2026-08-17) is deliberately minimal, modelled on Claude's own voice input:** tap mic → button changes colour and pulses while listening → speech → text → the transcript lands in the input field fully editable and is sent like any typed message; no confirmation screen, no special mishearing handling beyond normal text editing. Not yet built.
+34. Voice input for logging (Chat mic button) — **confirmed a real, intended feature (2026-08-16), not incidental OS dictation:** someone can *speak* a food or activity entry instead of typing it. **Architecture:** capture speech and transcribe it, then feed the transcribed text into the **exact same text pipeline already built** (intent classification, parsing, safety checks) — no new understanding logic, only speech capture + speech-to-text on the front. Because it needs microphone access and speech-to-text, this is a genuine **native-dependency addition**, so it **joins the existing native-module batch** (alongside `expo-image-picker`, the Almanac animation library, and `expo-notifications`) and ships in that rebuild rather than over-the-air via EAS Update. **Interaction (2026-08-17) is deliberately minimal, modelled on Claude's own voice input:** tap mic → button changes colour and pulses while listening → speech → text → the transcript lands in the input field fully editable and is sent like any typed message; no confirmation screen, no special mishearing handling beyond normal text editing. Not yet built. **SUPERSEDED IN SCOPE, 2026-09-01 — see Part Eighteen.** This item describes voice INPUT only: dictation into the composer, transcript editable before sending. The decision taken on 1 September is a full conversational voice mode, voice in and voice out, via ElevenLabs Conversational AI with Claude still doing the thinking. Part Eighteen is the live design; this entry is kept because the pipeline point it makes still holds — transcribed speech enters the existing text pipeline and needs no new understanding logic — and because a narrower dictation-only version remains a legitimate fallback if the research pass rules the conversational mode out.
 35. Structured workout tracking with progressive-overload — the interactive Almanac Workouts depth (see Part Ten, Workouts): program-type-driven conditional grouping (strength→body area, rehab→flat, skill→by skill, none→plain list), per-user per-goal computed sets × reps, and an exercise-specific "Before you start" safety note card (real failure modes, never boilerplate). **Design settled 2026-08-17 (data-model mechanics); gated on item 15 (the Almanac data model) — a workout plan IS an Almanac entry, so it can't be built until "what an Almanac entry is" exists.** The settled model separates two genuinely different things, which resolves the mockup controls' apparent clash with the Almanac's chat-only editing rule:
    - **Plan = Almanac content** (exercises, sets/reps, grouping, per-exercise safety note, demo-asset ref) — document-like, **authored/edited through chat** (single-entry-point rule holds). Sets/reps and safety notes are *stored* per exercise (decided by chat at plan-creation), not computed at runtime — no new compute mechanism.
    - **Progress = append-only logs** — never mutating the plan. Two logs: a **working-weight history** (the slider/typed control appends `{exercise, weight, logged_at}`; the plan displays *current = latest*, never an in-place overwrite — progressive overload depends on keeping the history), and a **completion log** (Q1(b): a durable row per completed exercise/session). **The quick chip and the done-checkbox are data-logging, not plan-editing** — they record facts about training sessions, so they never touch the Almanac's read-only/chat-only rule.
@@ -1093,3 +1093,88 @@ A real deletion mechanism must exist for anyone who wants their data removed, in
 - **Shared positive emotion specifically:** a Berkeley study of long-married couples found shared positive emotion — not just individual happiness — predicted better long-term health outcomes.
 - **Positive emotion actively speeds stress recovery (experimental, not just correlational):** Fredrickson's "undoing hypothesis," tested across multiple studies (n≈170, n≈185), showed faster cardiovascular recovery after stress from contentment/amusement versus neutral content, with the "simple replacement" alternative explanation specifically ruled out. Grounds treating joy and connection as genuine markers of a successful day (Part Two, principle 12), not consolation.
 - **Exercise enjoyment and long-term adherence:** enjoyment-based motivation is consistently the strongest predictor of sustained exercise adherence, ahead of health-, fitness-, or appearance-based reasons. A study of 645 older adults found enjoyment the single strongest factor distinguishing long-term maintainers from early dropouts, and a recent RCT in adults aged 65-80 linked enjoyment-based exercise motivation to both positive emotion and measured quality-of-life outcomes. Honest limitation: no single study directly compares life expectancy between "joy exercisers" and "chore exercisers" — the longevity link is a reasonable two-step inference (joy motivation → sustained adherence → the separately well-established longevity benefit of sustained activity), not one unified finding. Grounds the Almanac's movement-plan design (Part Ten) and the onboarding activity step (Part Seven, step 11).
+
+---
+
+# PART EIGHTEEN: VOICE FEATURE — CONVERSATIONAL VOICE MODE
+
+> **STATUS: Scoped and decided 1 September 2026. Research pass required before any build work. Dedicated build session needed with device testing time built in.**
+>
+> Recorded as a complete design brief so nothing is lost or re-derived. Nothing here is built.
+
+## What it is
+
+Full conversational voice mode — voice in, voice out — sitting alongside existing text chat. Not a replacement, a parallel option. All voice transcribed into the chat thread identically to typed messages. No differentiation in the main interface; data export flags voice-logged entries.
+
+## Technology
+
+- **ElevenLabs Conversational AI** — voice layer, STT, TTS, session management.
+- **Claude** — existing LLM pipeline, unchanged.
+- ElevenLabs handles STT + TTS, Claude handles the thinking. The existing Anthropic pipeline stays as the brain; ElevenLabs is the voice layer only.
+- **Apply for the ElevenLabs Startup Grant before building** — 33M characters free for 12 months, rolling application, decisions within a week. Apply from hello@selodia.app.
+
+## Interaction model
+
+- Mic icon lives in the composer bar, same position as Claude and ChatGPT.
+- **Long-press to start** a voice session — icon turns sage.
+- **Tap to pause** — icon dims, session stays warm.
+- **Long-press again to end** the session — back to text mode.
+- Voice command **"switch to text"** — ends the session.
+- **10-minute silence timeout** — session closes gracefully, chat message: "Switched back to text mode".
+- **No tap-to-send** — fluid conversation, ElevenLabs handles turn detection (silence = end of turn).
+- **Listening state, not live transcription** — the transcript appears after the turn ends, and the response follows. This avoids race conditions between transcription and response generation.
+
+## Visual states
+
+- **Off** — mic icon greyed out.
+- **On / session active** — sage.
+- **Actively listening** — brighter sage pulse.
+- **Paused** — sage, dimmed.
+- Follows the existing brand palette.
+
+## Session management
+
+The app manages the conversation actively.
+
+When the user seems to be wrapping up: *"Would you like to close the voice session or keep going?"*
+
+- On keep going: *"OK, let me know when you want to switch back to text."*
+- On end (voice or long-press): session closes, chat message written: *"Switched back to text mode"*.
+- On 10-minute silence timeout: same close message.
+
+Pause is especially important for driving / hands-free use — a voice command to pause matters more than a button in that context.
+
+## Privacy and opt-in
+
+- **Off by default.**
+- First enable triggers: (1) a brief in-app explanation that audio is sent to a transcription service and not stored beyond processing, (2) the OS microphone permission dialog.
+- The toggle lives on the mic icon — always visible, not hidden in settings.
+- The target demographic (40+) may not notice it exists — **visibility is intentional.**
+
+## Onboarding
+
+Intro step — pulse highlight on the mic icon. Copy:
+
+> "Good to have you here. You can talk to me or type — whatever feels most natural. Here are a few places we could start:"
+
+Four chips beneath, mic icon pulsing gently below. Users can complete the entire onboarding by voice. **No pressure toward voice — a genuine equal choice.**
+
+## Thread behaviour
+
+- All voice transcribed into the thread identically to typed messages.
+- No visual differentiation in chat.
+- Data export flags voice-logged entries.
+- Same pattern as photo logging.
+
+## Research pass required before building
+
+- Audit ElevenLabs British female voice options, shortlist 2–3 for Ruth to audition.
+- Confirm ElevenLabs Conversational AI supports Claude as the LLM (not forcing their own model).
+- Pricing at expected usage (short daily check-ins, 2–5 mins per session).
+- Native module implications — EAS build or EAS Update?
+
+## Not yet decided
+
+- **Exact voice** — female neutral British is the default preference, final choice after auditioning.
+- **Whether users can change voice preference in settings** — future feature, not MVP.
+- **Exact trigger phrases for voice commands** — needs testing to feel natural.
