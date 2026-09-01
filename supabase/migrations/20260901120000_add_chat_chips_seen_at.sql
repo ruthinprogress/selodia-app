@@ -1,0 +1,28 @@
+-- The first-time Chat landing chips, stamped on first interaction. Null means
+-- never interacted with, so the chips show.
+--
+-- The chips are a gentle on-ramp: four tappable openers above the input, so
+-- someone arriving from onboarding meets an invitation rather than a blank field
+-- and an expectation to free-type cold at an app they have just met.
+--
+-- ON THE ACCOUNT, NOT THE DEVICE, and that is the whole reason this is a
+-- migration rather than an AsyncStorage key. The Almanac introduction shipped
+-- device-local on 2026-08-31 and was moved onto user_profile the same day,
+-- because the flag was really a property of the phone: the card returned after a
+-- reinstall and appeared again on a second device. Having been welcomed is
+-- something that happens to a person. The lesson is cheap to reuse and expensive
+-- to relearn, so this starts where that one ended up.
+--
+-- Mirrors user_profile.almanac_intro_seen_at and cycle_prompt_dismissed_at
+-- exactly - same table, same nullable timestamptz, same stamp-on-interaction
+-- reading. Three columns now share one shape, which is the point: "this has been
+-- shown once" is a single concept in this app and should not fragment into three
+-- slightly different ones.
+--
+-- NO BACKFILL, AND NO NEED FOR ONE. Every existing user gets null here, which on
+-- its own would show a first-run on-ramp above their existing conversation. The
+-- client therefore requires BOTH a null stamp and an empty thread before it
+-- renders anything, so existing users never see the chips at all and the column
+-- simply stays null for them forever. That belt-and-braces lives in the client
+-- because it is a question about what is on screen, not about what is stored.
+alter table user_profile add column chat_chips_seen_at timestamptz;
