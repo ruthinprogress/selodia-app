@@ -1,0 +1,29 @@
+-- A protein target the person chose themselves (Part Eight).
+--
+-- WHY A COLUMN AT ALL. Until now the target was always derived: muscle mass ×
+-- 2.2 where a bioimpedance reading existed, and bodyweight × 2.2 where it did
+-- not. The second half of that was wrong twice over. It used the wrong input —
+-- Part Eight is explicit that lean mass is the basis, because it stays accurate
+-- in a deficit where bodyweight does not — and it manufactured a confident,
+-- specific number out of data that could not support one. A figure like "121 g"
+-- reads as a measurement. It was an assumption wearing a measurement's clothes.
+--
+-- So the bodyweight fallback is being removed rather than corrected, and the gap
+-- it leaves is filled by asking. This column is where that answer lives.
+--
+-- IT OUTRANKS EVERYTHING. A value here takes precedence over any calculation,
+-- including one from a real muscle-mass reading. Someone who has been told what
+-- the numbers suggest and has chosen differently has not made a mistake for the
+-- app to correct on the next render — that is the whole point of asking, and
+-- silently recomputing over their answer would make the question theatre.
+--
+-- Nullable with no default, and null is the ordinary state. Null means "nobody
+-- has chosen", not "zero" and not "unknown error": the app falls back to a
+-- muscle-mass calculation if it has one, and to saying nothing if it does not.
+-- Saying nothing is a real, correct outcome here, and the redesign exists
+-- largely to make it possible.
+--
+-- Integer because grams of protein per day is not a measurement anyone benefits
+-- from seeing to a decimal place, and a target that reads as 121.4 invites a
+-- precision the underlying estimate does not have.
+alter table user_profile add column protein_target_g integer;
