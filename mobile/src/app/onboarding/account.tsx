@@ -182,7 +182,30 @@ export default function AccountScreen() {
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* KEYBOARD: the shell's KeyboardAvoidingView is not enough on its own
+            here. ConversationLayout was built for a pinned input row - it pads
+            the whole layout, which lifts a fixed bar clear of the keyboard
+            perfectly. This screen's inputs are INSIDE the scroll area, so
+            padding shrinks the viewport without moving the scroll position,
+            and a focused field below the new fold stays hidden. Found live on
+            sign-in, 2026-09-01.
+
+            automaticallyAdjustKeyboardInsets is the iOS rescue, and it cannot
+            double-count with the padding above it: iOS derives the inset from
+            the intersection of the keyboard frame with the scroll view frame,
+            so once the shell has lifted the view clear the intersection is
+            empty and the inset is zero. It is a no-op on Android, which
+            relies on the window resizing (softwareKeyboardLayoutMode defaults
+            to resize) plus the same padding.
+
+            keyboardDismissMode gives an unconditional way out: whatever the
+            platform does, a downward swipe puts the keyboard away. */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="on-drag"
+        >
           <ThemedText type="subtitle">
             {mode === 'signup' ? 'Create your account' : 'Sign in'}
           </ThemedText>
@@ -316,6 +339,9 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.six,
+    // Slack below the last field, so a focused input near the bottom has
+    // somewhere to scroll TO once the keyboard has taken the lower half.
+    paddingBottom: Spacing.six * 2,
     gap: Spacing.four,
   },
   googleButton: {
