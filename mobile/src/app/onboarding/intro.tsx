@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
 import { ThemedText } from '@/components/themed-text';
@@ -90,6 +91,21 @@ export default function IntroScreen() {
     }
   }
 
+  // Continue lives in the header now, not above the message box - see
+  // components/onboarding-action.tsx. The condition and the destination stay
+  // here, where they belong; only the button moved.
+  useOnboardingAction({
+    label: 'Continue',
+    enabled: messages.length > 0,
+    onPress: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) await advanceOnboardingStep(supabase, user.id, 'equipment');
+      router.push('/onboarding/equipment');
+    },
+  });
+
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
@@ -116,22 +132,6 @@ export default function IntroScreen() {
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
         </ScrollView>
-
-        {messages.length > 0 && (
-          <Pressable
-            onPress={async () => {
-              const {
-                data: { user },
-              } = await supabase.auth.getUser();
-              if (user) await advanceOnboardingStep(supabase, user.id, 'equipment');
-              router.push('/onboarding/equipment');
-            }}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedView type="backgroundElement" style={styles.continueButton}>
-              <ThemedText type="smallBold">Continue</ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
 
         <ThemedView style={styles.inputRow}>
           <TextInput
@@ -202,16 +202,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Spacing.three,
-  },
-  continueButton: {
-    marginHorizontal: Spacing.four,
-    marginBottom: Spacing.two,
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
-    alignItems: 'center',
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
   },
   sendDisabled: {
     opacity: 0.4,

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { SaveConfirmation } from '@/components/save-confirmation';
 import { ThemedText } from '@/components/themed-text';
@@ -120,6 +121,18 @@ export default function FirstLogScreen() {
     }
   }
 
+  // Two actions here, and the skip is the reason the context carries a
+  // secondary at all. Part Two principle 4: a skip offered only after someone
+  // hesitates is a skip that was hoping not to be taken, so it sits there from
+  // the first moment - and it disappears once something has been logged, because
+  // by then there is nothing left to skip.
+  useOnboardingAction({
+    label: 'Continue',
+    enabled: done,
+    onPress: () => router.push('/onboarding/goals'),
+    secondary: done ? undefined : { label: 'Skip for now', onPress: handleSkip },
+  });
+
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
@@ -141,32 +154,6 @@ export default function FirstLogScreen() {
         </ScrollView>
 
         {saveToast && <SaveConfirmation summary={saveToast.summary} nonce={saveToast.nonce} />}
-
-        {done ? (
-          <Pressable
-            onPress={() => router.push('/onboarding/goals')}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedView type="backgroundElement" style={styles.continueButton}>
-              <ThemedText type="smallBold">Continue</ThemedText>
-            </ThemedView>
-          </Pressable>
-        ) : (
-          // Offered from the start, not surfaced after a pause or a nudge. A
-          // skip that only appears once someone has hesitated is a skip that
-          // was hoping they would not take it.
-          <Pressable
-            onPress={handleSkip}
-            disabled={sending}
-            accessibilityRole="button"
-            accessibilityLabel="Skip logging for now"
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedText type="small" themeColor="textSecondary" style={styles.skip}>
-              Skip for now
-            </ThemedText>
-          </Pressable>
-        )}
 
         <ThemedView style={styles.inputRow}>
           <TextInput
@@ -203,18 +190,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   messageGroup: { gap: Spacing.two },
-  continueButton: {
-    alignSelf: 'center',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.two,
-  },
-  skip: {
-    alignSelf: 'center',
-    paddingVertical: Spacing.two,
-    marginBottom: Spacing.one,
-  },
   inputRow: {
     flexDirection: 'row',
     gap: Spacing.two,

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
 import { SaveConfirmation } from '@/components/save-confirmation';
@@ -91,6 +92,12 @@ export default function GoalsScreen() {
     }
   }
 
+  useOnboardingAction({
+    label: 'Continue',
+    enabled: messages.length > 0,
+    onPress: () => router.push('/onboarding/health-context'),
+  });
+
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
@@ -117,16 +124,6 @@ export default function GoalsScreen() {
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
         </ScrollView>
-
-        {messages.length > 0 && (
-          <Pressable
-            onPress={() => router.push('/onboarding/health-context')}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedView type="backgroundElement" style={styles.continueButton}>
-              <ThemedText type="smallBold">Continue</ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
 
         <ThemedView style={styles.inputRow}>
           <TextInput
@@ -199,16 +196,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Spacing.three,
-  },
-  continueButton: {
-    marginHorizontal: Spacing.four,
-    marginBottom: Spacing.two,
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
-    alignItems: 'center',
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
   },
   sendDisabled: {
     opacity: 0.4,

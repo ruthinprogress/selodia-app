@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
 import { ThemedText } from '@/components/themed-text';
@@ -166,6 +167,16 @@ export default function EquipmentScreen() {
     await postToRoute(trimmed, true);
   }
 
+  // Only the step-advance moves to the header. "Continue to permission request"
+  // stays where it is: it is an in-conversation action that fires a native
+  // dialog, not a way out of this screen, and putting it in the progress header
+  // would say it advances the step when it does not.
+  useOnboardingAction({
+    label: 'Continue',
+    enabled: step === 'done',
+    onPress: () => router.push('/onboarding/first-log'),
+  });
+
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
@@ -203,15 +214,6 @@ export default function EquipmentScreen() {
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView type="backgroundElement" style={styles.continueButton}>
               <ThemedText type="smallBold">Continue to permission request</ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
-        {step === 'done' && (
-          <Pressable
-            onPress={() => router.push('/onboarding/first-log')}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedView type="backgroundElement" style={styles.continueButton}>
-              <ThemedText type="smallBold">Continue</ThemedText>
             </ThemedView>
           </Pressable>
         )}

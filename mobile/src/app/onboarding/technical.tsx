@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
 import { SaveConfirmation } from '@/components/save-confirmation';
@@ -96,6 +97,14 @@ export default function TechnicalScreen() {
     }
   }
 
+  // This screen's Continue was always enabled - it explains rather than asks -
+  // so it stays that way rather than acquiring a gate it never had.
+  useOnboardingAction({
+    label: 'Continue',
+    enabled: true,
+    onPress: () => router.push('/onboarding/nutrition'),
+  });
+
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
@@ -122,14 +131,6 @@ export default function TechnicalScreen() {
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
         </ScrollView>
-
-        <Pressable
-          onPress={() => router.push('/onboarding/nutrition')}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <ThemedView type="backgroundElement" style={styles.continueButton}>
-            <ThemedText type="smallBold">Continue</ThemedText>
-          </ThemedView>
-        </Pressable>
 
         <ThemedView style={styles.inputRow}>
           <TextInput
@@ -202,16 +203,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Spacing.three,
-  },
-  continueButton: {
-    marginHorizontal: Spacing.four,
-    marginBottom: Spacing.two,
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
-    alignItems: 'center',
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
   },
   sendDisabled: {
     opacity: 0.4,

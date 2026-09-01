@@ -276,8 +276,8 @@ function ActionButton({
     // Health Context build on 13 August, so it had been wrong the whole time.
     //
     // The working buttons elsewhere never hit this because they size themselves
-    // instead of asking a parent to do it - see goals.tsx's continueButton, which
-    // uses width:'100%' and no flex at all.
+    // instead of asking a parent to do it - see consent.tsx's continueButton,
+    // which uses alignItems and no flex at all.
     <Pressable
       onPress={onPress}
       disabled={disabled}
