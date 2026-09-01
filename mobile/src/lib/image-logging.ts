@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { authedPost } from '@/lib/api';
 import type { AddSource } from '@/lib/composer-add';
 import { activityAckFacts, bodyAckFacts, foodAckFacts } from '@/lib/log-acknowledgment-facts';
+import { persistLogTurn } from '@/lib/log-turn';
 
 // Logging by photo (build item 10b, step 3).
 //
@@ -152,6 +153,13 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
   } catch {
     message = null;
   }
+
+  // Into the thread, not just onto the screen. Done HERE rather than in each
+  // caller so every photo log gets it - the Chat composer, the food quick-log
+  // and the activity quick-log all go through this one function, and a caller
+  // that forgot would silently reintroduce the vanishing-history bug this
+  // fixes. Awaited so the row exists before the caller navigates or refreshes.
+  if (message) await persistLogTurn(message, foodLogId);
 
   return { status: 'logged', kind, message, foodLogId };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { QuickLogBar } from '@/components/quick-log-bar';
 import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -57,6 +58,8 @@ export function ActivityView() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [tdee, setTdee] = useState<{ bmr: number | null; tdee: number | null; estimated: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  // See food-today-view: the quick-log bar bumps this so the list re-reads.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,12 +115,15 @@ export function ActivityView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   if (loading) return null;
 
   return (
     <ThemedView style={styles.wrap}>
+      {/* Above the list, because it is the thing you came here to do. */}
+      <QuickLogBar kind="activity" onLogged={() => setReloadKey((k) => k + 1)} />
+
       <ThemedText type="smallBold" style={styles.heading}>
         Recent activity
       </ThemedText>
@@ -128,7 +134,7 @@ export function ActivityView() {
             Nothing logged yet
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centred}>
-            Tell me what you did in Chat — a walk, a session, a class — and it&apos;ll show up here.
+            Add what you did above — a walk, a session, a class — and it&apos;ll show up here.
           </ThemedText>
         </ThemedView>
       ) : (

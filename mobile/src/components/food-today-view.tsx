@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { QuickLogBar } from '@/components/quick-log-bar';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
@@ -32,6 +33,9 @@ export function FoodTodayView() {
   // Which of today's entries already carry a discussion (build item 30). One
   // query for the whole view, not one per row.
   const [discussed, setDiscussed] = useState<Set<string>>(new Set());
+  // Bumped by the quick-log bar so the reads below re-run. The whole point of
+  // logging on this tab is watching it land on this tab.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +46,7 @@ export function FoodTodayView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +71,7 @@ export function FoodTodayView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const totals = sumDay(today);
 
@@ -81,11 +85,14 @@ export function FoodTodayView() {
 
   return (
     <>
+      {/* Above the day, because it is the thing you came here to do. */}
+      <QuickLogBar kind="food" onLogged={() => setReloadKey((k) => k + 1)} />
+
       <ThemedText type="smallBold">Today</ThemedText>
 
       {today.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
-          Nothing logged yet · Tell me about your day in Chat
+          Nothing logged yet · add a meal above whenever you like
         </ThemedText>
       ) : (
         <SpotlightTarget id="food.entries">
