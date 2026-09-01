@@ -35,6 +35,12 @@ Worth noting what she did **not** do: she reaffirmed this direction twice before
 
 The tell is that this costs a round trip and she takes it anyway, rather than either deferring to the recommendation or overriding it on taste. It is adjacent to "resistance to anything paternalistic," but pointed inward: not *don't tell me what to do*, but *don't let me agree to something I can't independently assess*. Note also the sequence — the instinct ("more coherent") arrived before the vocabulary for it, which is the positive form of "notices when something is technically correct but still feels wrong": the same judgment running forwards instead of catching an error.
 
+**Treats a generic answer as a failure even when it is not wrong — the test is whether the data already held the real one.** Noticing a leg-soreness question answered with "a heavier session in the last day or two" while 40 kg deadlifts and 90 minutes of ballet sat in the previous day's activity log, she did not read it as a wrong reply to be corrected. She read it as a *hollow* one, and turned it straight into a standing rule: a symptom query triggers a check of the prior 24-48 hours before anything is said.
+
+The distinguishing move is the standard she applied. A reply that is defensible in isolation still fails if the app already stored what would have made it specific — "could not know" is forgivable, "did not look" is not, and from the person's side the two are indistinguishable. That is a higher bar than accuracy, and it is the bar an app whose proposition is *knowing you* actually has to clear.
+
+She also recognised the shape rather than the instance: this is the Almanac insight rule (connect a result to a different data type across time) applied in real time, so it went into the spec as a general behaviour rather than a fix for soreness questions. Adjacent to "separates her own context from the product's requirements" — a lived annoyance became a product rule, not an anecdote.
+
 ## How this gets built
 
 At natural session-close points, add any new decision moment that reveals a genuine pattern — not every decision, only ones that add real signal about how Ruth thinks, distinct from the specific product or process choice itself.
