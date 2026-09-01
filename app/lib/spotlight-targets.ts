@@ -43,7 +43,7 @@ export const SPOTLIGHT_TARGETS = {
   'almanac.categories': 'the Almanac entries grouped by category - the default Almanac view',
   'almanac.entries': 'the entries inside an opened Almanac category',
   'settings.export': 'the data export in Settings — "Prepare my data"',
-  'settings.delete': 'the delete-my-data control in Settings',
+  'settings.delete': 'the delete-my-account control in Settings',
 } as const;
 
 export type SpotlightTargetId = keyof typeof SPOTLIGHT_TARGETS;

@@ -9,12 +9,20 @@ import { supabase } from '@/lib/supabase';
 
 // Deleting your data (build item 41 — Part Seventeen).
 //
-// THE WORD "DELETE MY ACCOUNT" DOES NOT APPEAR, and that is the whole point of
-// this file's copy. Removing the auth.users row needs a service-role key this
-// project does not yet have, so the login credential survives. Calling this
-// account deletion would be a lie someone acts on: they would believe they were
-// gone. It is called deleting your data, because that is what it does, and the
-// panel says outright what stays.
+// IT IS ACCOUNT DELETION NOW, and the copy says so — changed 2026-09-01, when
+// the service-role key reached the deployed environment and the auth shell
+// finally went with the data. Until then this file avoided the word "account"
+// entirely, because the login credential survived and calling it account
+// deletion would have been a lie someone acts on: they would believe they were
+// gone.
+//
+// THE CAUTION MOVED, IT DID NOT GO. The completeness claim on the results screen
+// is made from `authAccountRemains`, which the server sets from what actually
+// happened. If the key is missing from a deployment, or the admin call fails, the
+// person is told their sign-in survived — in almost the words this panel used to
+// carry permanently. The pre-confirm warning states the finished behaviour,
+// because that is what the code does when it works; the results screen states
+// the observed one, because that is the screen a failure would land on.
 //
 // ONE CONFIRMATION, AND IT IS A REAL ONE. The first tap opens a panel that
 // states the consequences in full; only the button inside it deletes anything.
@@ -64,7 +72,9 @@ export function AccountDeletion() {
     const leftovers = outcome.remaining.filter((r) => r.rows !== 0);
     return (
       <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="smallBold">Your data has been deleted</ThemedText>
+        <ThemedText type="smallBold">
+          {outcome.authAccountRemains ? 'Your data has been deleted' : 'Your account has been deleted'}
+        </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
           {outcome.cleared.length} of {outcome.cleared.length + leftovers.length} categories are now
           empty
@@ -88,22 +98,32 @@ export function AccountDeletion() {
           </ThemedText>
         )}
 
-        {outcome.authAccountRemains && (
+        {outcome.authAccountRemains ? (
+          // Only reachable when the last step genuinely did not happen. Kept, and
+          // kept honest, precisely because it should now be rare: a rare wrong
+          // answer that nobody is warned about is worse than a common one.
+          <ThemedText type="small" themeColor="danger" style={styles.body}>
+            Your sign-in still exists — the email and password themselves. Everything you recorded
+            is gone, but that last step did not go through. Please tell us so it can be finished.
+          </ThemedText>
+        ) : (
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-            Your sign-in still exists — the email and password themselves. Removing that needs a
-            step we cannot do from the app yet, so it has not happened. Everything you recorded is
-            gone.
+            Your sign-in is gone as well. There is nothing left here belonging to you.
           </ThemedText>
         )}
 
+        {/* Still needed even when the account is gone. The token is dead the
+            moment the auth user is deleted, but this device is holding a stored
+            session that nothing has cleared — signing out is what drops it and
+            lets the auth guard return the person to the start. */}
         <Pressable
           onPress={() => void supabase.auth.signOut()}
           accessibilityRole="button"
-          accessibilityLabel="Sign out"
+          accessibilityLabel={outcome.authAccountRemains ? 'Sign out' : 'Close'}
           style={({ pressed }) => pressed && styles.pressed}
         >
           <ThemedView type="backgroundSelected" style={styles.action}>
-            <ThemedText type="smallBold">Sign out</ThemedText>
+            <ThemedText type="smallBold">{outcome.authAccountRemains ? 'Sign out' : 'Close'}</ThemedText>
           </ThemedView>
         </Pressable>
       </ThemedView>
@@ -112,21 +132,22 @@ export function AccountDeletion() {
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="smallBold">Deleting your data</ThemedText>
+      <ThemedText type="smallBold">Deleting your account</ThemedText>
 
       {!open ? (
         <>
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-            You can have everything Unflump holds about you removed, whenever you want.
+            You can have everything Unflump holds about you removed, and your account with it,
+            whenever you want.
           </ThemedText>
           <Pressable
             onPress={() => setOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel="See what deleting your data would do"
+            accessibilityLabel="See what deleting your account would do"
             style={({ pressed }) => pressed && styles.pressed}
           >
             <ThemedText type="small" themeColor="link" style={styles.link}>
-              Delete my data…
+              Delete my account…
             </ThemedText>
           </Pressable>
         </>
@@ -140,10 +161,9 @@ export function AccountDeletion() {
           <ThemedText type="small" style={styles.body}>
             It cannot be undone. There is no copy kept, and nothing to restore from afterwards.
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-            Your sign-in itself will remain for now — the email and password. Removing that needs a
-            step we cannot do from inside the app yet, so we are not going to claim otherwise.
-            Everything else goes.
+          <ThemedText type="small" style={styles.body}>
+            Your sign-in goes too — the email and password themselves. Afterwards there is no
+            account here at all, and signing up again would start from nothing.
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
             If you want a copy first, close this and use “Prepare my data” above.
@@ -154,7 +174,7 @@ export function AccountDeletion() {
               onPress={confirmDelete}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Permanently delete all of my data"
+              accessibilityLabel="Permanently delete my account and all of my data"
               style={({ pressed }) => pressed && styles.pressed}
             >
               <ThemedView type="backgroundSelected" style={styles.action}>

@@ -36,7 +36,7 @@ import { supabase } from '@/lib/supabase';
 export default function SettingsScreen() {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
-  // Declared so a spotlight on "Delete my data" can scroll it into view before
+  // Declared so a spotlight on "Delete my account" can scroll it into view before
   // measuring - it sits below the fold on a short phone (build item 23).
   const scrollRef = useRef<ScrollView>(null);
 
