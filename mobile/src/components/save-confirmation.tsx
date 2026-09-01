@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,7 +11,12 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 // so it never competes with the emotional content of a reply. Trigger by
 // passing a new `nonce` (with the summary) on each save; it re-animates each time.
 export function SaveConfirmation({ summary, nonce }: { summary: string | null; nonce: number }) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  // useState with a lazy initialiser, not useRef(...).current and not useMemo.
+  // React documents useMemo as a cache it MAY discard, and a discarded
+  // Animated.Value would be replaced mid-animation by one nothing is driving -
+  // the pill would freeze part-faded. useState guarantees the same instance for
+  // the life of the component, which is what an animation primitive needs.
+  const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (!summary || nonce <= 0) return;
