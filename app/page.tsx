@@ -129,6 +129,23 @@ export default async function LandingPage({
           max-width: 22ch;
           margin: 0;
         }
+        /* Each sentence gets its own line once there is room for one. The 22ch
+           cap above is a phone measure - it keeps the tagline from running the
+           full width of a small screen - but on a desktop it was forcing both
+           sentences to wrap mid-thought, four lines for two sentences. Above the
+           breakpoint the cap comes off and each span refuses to break, so the
+           line break falls where the full stop is and nowhere else.
+
+           360px, not 700px, and not unconditional. The type scales with 4.5vw
+           below its cap, so the sentence shrinks nearly as fast as the screen
+           does - measured, the longest one leaves 56px of headroom at 375px but
+           only 2px at 320px. Two pixels is not a margin, it is a coincidence
+           waiting for a wider fallback font to load, so the smallest phones keep
+           wrapping and everything from 360px up gets one line per sentence. */
+        @media (min-width: 360px) {
+          .selodia__tagline { max-width: none; }
+          .selodia__tagline span { white-space: nowrap; }
+        }
         .selodia__category {
           font-size: 0.9rem;
           font-weight: 400;
