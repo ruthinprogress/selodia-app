@@ -4,8 +4,22 @@
     {
       "name": "expo-mobile-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "mobile", "run", "web"],
+      "runtimeArgs": [
+        "--prefix",
+        "mobile",
+        "run",
+        "web"
+      ],
       "port": 8081
+    },
+    {
+      "name": "selodia-landing",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000
     }
   ]
 }
