@@ -5,6 +5,15 @@
 // for the same reason body-metrics.ts and cycle.ts are, and it is kept honest
 // by a parity test rather than by discipline.
 //
+// EXCEPT THERE IS NO SUCH TEST. Checked 2026-09-01 while changing the intro
+// opener: this repository contains no test files at all, so the parity promised
+// one line above is enforced by nothing. Recorded in UNFLUMP_SPEC.md as a known
+// gap rather than quietly fixed here, since writing the first test in the
+// project is its own piece of work. Until then, THREE places quote the intro
+// opener and all three move together: this map, the OPENING_LINE constant in
+// mobile/src/app/onboarding/intro.tsx, and the verbatim quotation inside
+// INTRO_ROLE in app/api/onboarding-chat/route.ts.
+//
 // WHY THE SERVER NEEDS THESE AT ALL. Each screen rendered its opener purely on
 // the client - never persisted, never sent - so the model received the person's
 // ANSWER with no visible QUESTION. On 2026-08-23 that produced a real failure:
@@ -20,7 +29,7 @@
 // demonstrably saw, which matters for anything that reads chat history back.
 
 export const PHASE_OPENERS: Record<string, string> = {
-  "intro": "Hi, I'm Unflump. What brings you here today?",
+  "intro": "Good to have you here. Here are a few places we could start:",
   "equipment": "Now, the first step is just getting a little visibility on your body \u2014 that's what makes the numbers mean something later on. To start: do you have bioimpedance scales? The kind that read body fat and muscle, not just weight.",
   "first_log": "Before we go further into what you're aiming for — shall we log something? Whatever you've eaten today so far, in your own words. No weighing, no detail, just however you'd say it to a person.",
   "goals": "Let's talk about what you're hoping to get out of this \u2014 how are you feeling about things right now?",

@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -112,19 +112,59 @@ export default function ChatScreen() {
           rows.map((r) => r.imagePath).filter((v): v is string => typeof v === 'string')
         );
         setMessages(attachImageUrls(rows, urls));
-        // BOTH conditions, not just the stamp. Every existing account has a
-        // null chat_chips_seen_at, so the flag alone would put a first-run
-        // on-ramp above a conversation someone has been having for weeks. The
-        // chips exist to replace an empty thread, so an empty thread is part of
-        // what they are for.
-        setShowChips(rows.length === 0 && !(await hasSeenChatChips()));
-      } else {
-        // A failed history read is not evidence of a new user. Say no.
-        setShowChips(false);
       }
       setLoadingHistory(false);
     })();
   }, []);
+
+  // WHETHER THE LANDING CHIPS BELONG ON SCREEN, re-checked every time Chat comes
+  // into focus.
+  //
+  // This used to ride along inside the history effect above, which runs once on
+  // mount with an empty dependency list — and the Chat tab STAYS MOUNTED in the
+  // tab navigator. So the answer was decided at whatever moment Chat first
+  // mounted, which can be before onboarding has finished, and was never revisited.
+  // That is what made the chips turn up at the end of onboarding rather than on a
+  // genuine first landing: the decision had been taken minutes earlier, against a
+  // different state, and nothing re-asked it. Found on device 2026-09-01.
+  //
+  // THREE conditions, all necessary:
+  //   1. Onboarding is COMPLETE. The chips are an on-ramp into ordinary use, and
+  //      someone still being set up has not arrived yet. This is the condition
+  //      that was missing entirely.
+  //   2. The post-onboarding thread is EMPTY. Onboarding turns are stored with
+  //      source 'onboarding' and Chat reads only source 'chat', so they already
+  //      do not count — but this also keeps the chips off an established
+  //      conversation, which matters because every existing account has a null
+  //      stamp and would otherwise see them once.
+  //   3. They have not been used before.
+  //
+  // Fails closed in every direction: any error, and the chips do not appear.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const [{ data: profile }, { count }] = await Promise.all([
+            supabase.from('user_profile').select('onboarding_step').maybeSingle(),
+            supabase
+              .from('chat_messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('source', 'chat'),
+          ]);
+          const complete = profile?.onboarding_step === 'complete';
+          const emptyThread = (count ?? 0) === 0;
+          const show = complete && emptyThread && !(await hasSeenChatChips());
+          if (!cancelled) setShowChips(show);
+        } catch {
+          if (!cancelled) setShowChips(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   // Cycle-tracking discovery (Part Thirteen): a background check on the last
   // logged period start and any prior dismissal decides whether the invitation

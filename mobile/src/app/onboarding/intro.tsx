@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { ChatLandingChips } from '@/components/chat-landing-chips';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
@@ -24,9 +25,20 @@ type Message = {
 // Part Seven, step 3: the soft, warm open. The greeting is fixed client-side; the
 // real acknowledgement is AI-driven via the 'intro' phase, which — unlike the old
 // scripted shell — runs the shared safety classifier, so an emotionally open
-// answer to "what brings you here" now gets the same care-first branch the goals
-// step has, instead of a canned line.
-const OPENING_LINE = "Hi, I'm Unflump. What brings you here today?";
+// first answer gets the same care-first branch the goals step has, instead of a
+// canned line.
+//
+// REWRITTEN 2026-09-01 after device testing: the old opener was "Hi, I'm Unflump.
+// What brings you here today?" and it left people stranded. Two faults. The
+// question was wide open with nothing to push against, so someone who had just
+// arrived had to invent the shape of the conversation themselves — one tester had
+// to prompt it to carry on at all. And it introduced the app by name, which reads
+// as a product greeting rather than a person: they have just installed this and
+// tapped its icon, so they know where they are.
+//
+// The replacement does the opposite of asking a big question — it offers a few
+// small ones, as chips, and lets the first move be a tap.
+const OPENING_LINE = 'Good to have you here. Here are a few places we could start:';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -40,6 +52,8 @@ export default function IntroScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [typedSomething, setTypedSomething] = useState(false);
+  const showChips = messages.length === 0 && !sending && !typedSomething;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -47,10 +61,14 @@ export default function IntroScreen() {
     });
   }, []);
 
-  async function handleSend() {
-    const trimmed = input.trim();
+  // `override` lets a chip send its own words without routing them through the
+  // input field. Same shape as the Chat screen's handleSend, deliberately — a
+  // chip tap is a shortcut past typing, not a different kind of message, and
+  // nothing downstream can tell the difference.
+  async function handleSend(override?: string) {
+    const trimmed = (override ?? input).trim();
     if (!trimmed || sending) return;
-    setInput('');
+    if (override === undefined) setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setSending(true);
 
@@ -117,6 +135,19 @@ export default function IntroScreen() {
         >
           <ChatBubble role="assistant">{OPENING_LINE}</ChatBubble>
 
+          {/* Beneath the greeting, inside the thread — these are four things the
+              person could say, sitting where their reply will go. Shown only
+              while nothing has been said and nothing typed, which is what "at
+              the opening only" means here: no flag needed, because a thread with
+              a message in it is self-evidently past its opening.
+
+              Local state, unlike the post-onboarding Chat chips, which need a
+              database column because they must not return on another device
+              weeks later. These live for the length of one screen. */}
+          {showChips && (
+            <ChatLandingChips inline onPick={(text) => void handleSend(text)} />
+          )}
+
           {messages.map((m, i) => (
             <ThemedView key={i} style={styles.messageGroup}>
               <ChatBubble role={m.role}>{m.content}</ChatBubble>
@@ -136,7 +167,11 @@ export default function IntroScreen() {
         <ThemedView style={styles.inputRow}>
           <TextInput
             value={input}
-            onChangeText={setInput}
+            onChangeText={(t) => {
+              setInput(t);
+              // Typing freely is its own answer to the offer.
+              if (t.length > 0) setTypedSomething(true);
+            }}
             placeholder="Type your answer…"
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
@@ -144,7 +179,7 @@ export default function IntroScreen() {
             editable={!sending}
           />
           <Pressable
-            onPress={handleSend}
+            onPress={() => handleSend()}
             // Empty input previously did nothing at all - no message, no re-ask,
             // nothing - so Send looked pressable and behaved dead. Disabling it
             // lets the control state the truth instead of failing silently. A

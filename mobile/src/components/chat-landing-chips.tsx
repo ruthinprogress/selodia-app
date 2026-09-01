@@ -27,9 +27,24 @@ import { CHAT_CHIPS } from '@/lib/chat-chips';
 // these" would turn an offer into an instruction, which is exactly the
 // difference Part Two, principle 4 keeps asking for.
 
-export function ChatLandingChips({ onPick }: { onPick: (text: string) => void }) {
+// TWO PLACEMENTS, ONE LIST. The same four labels open onboarding (beneath the
+// greeting, inside the thread) and open Chat for the first time afterwards
+// (above the message box). Deliberately the same four in both: they are the
+// things this app is for, and hearing them twice in different contexts is
+// orientation rather than repetition. Sharing the component is what keeps the
+// two from drifting into slightly different wordings.
+//
+// `inline` is the only difference - beneath a chat bubble the chips need no
+// alignment to the input row, because there is no input row above them there.
+export function ChatLandingChips({
+  onPick,
+  inline,
+}: {
+  onPick: (text: string) => void;
+  inline?: boolean;
+}) {
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, inline && styles.inline]}>
       {CHAT_CHIPS.map((label) => (
         <Pressable
           key={label}
@@ -61,6 +76,14 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
+  },
+  // Inside the thread the surrounding ScrollView already provides the padding
+  // and the width cap, so applying them again would inset the chips from the
+  // bubble they belong to.
+  inline: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    maxWidth: undefined,
   },
   chip: {
     paddingVertical: Spacing.one,
