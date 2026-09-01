@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { EXPORT_TABLES } from '@/lib/data-export';
+import { supabase } from '@/lib/supabase';
 
 // Account data deletion (build item 41 — Part Seventeen).
 //
@@ -9,14 +10,25 @@ import { EXPORT_TABLES } from '@/lib/data-export';
 // right, not conditional on that checkbox." So nothing here reads a consent
 // flag, for the same reason the export does not.
 //
-// THIS IS NOT COMPLETE ACCOUNT DELETION, AND MUST NOT BE DESCRIBED AS ONE.
-// Removing the auth.users row would cascade all 17 tables in a single statement,
-// but that is `auth.admin`, which needs a service-role key. This project has
-// none: .env.local carries only the URL, the anon key and the Anthropic key.
-// Until SUPABASE_SERVICE_ROLE_KEY exists in .env.local and on Vercel, the login
-// credential survives and every row of personal data does not. The UI says this
-// in those terms, and so does this file, because a half-deletion described as a
-// deletion is worse than no deletion at all — the person believes they are gone.
+// THIS IS NOW COMPLETE DELETION — as of 2026-09-01, when SUPABASE_SERVICE_ROLE_KEY
+// reached the deployed environment and `/api/delete-account` shipped. It was
+// deliberately partial before then, and the file said so in those terms, because
+// a half-deletion described as a deletion is worse than no deletion at all: the
+// person believes they are gone.
+//
+// THAT HONESTY IS NOT RETIRED, ONLY RE-AIMED. The completeness claim is now made
+// from the RESULT rather than from the intention. `authAccountRemains` is set by
+// what the route actually reported, and the UI reads it rather than hardcoding a
+// happy ending — so a deployment whose key is missing or whose admin call fails
+// tells the person their sign-in survived, in exactly the words the old build
+// used. Nothing anywhere asserts completeness that has not been observed.
+//
+// WHY THE DATA IS STILL WIPED CLIENT-SIDE FIRST, when deleting the auth.users row
+// cascades all 17 tables by itself and makes this pass redundant. Because the
+// cascade cannot report. This pass VERIFIES by re-counting every table afterwards
+// and names anything it could not clear; a single cascading delete succeeds or
+// fails as one opaque statement. Data first with proof, then the shell — and if
+// the shell step fails, the data is already gone rather than waiting on it.
 //
 // THE TABLE LIST IS THE EXPORT'S LIST. Deliberately the same constant: if a
 // table is worth handing someone under portability, it is worth erasing under
@@ -38,9 +50,14 @@ export type DeletionOutcome = {
   remaining: { table: string; rows: number }[];
   storageRemoved: number;
   storageFailed: boolean;
-  // Always true today. Kept as a field rather than a comment so the UI states
-  // it from the result rather than hardcoding an assumption that will change.
+  // Whether the login credential survived. Set from what the server actually
+  // reported, never assumed — the UI states completeness from this field, so an
+  // optimistic default here would become a false promise on screen.
   authAccountRemains: boolean;
+  // Why it survived, when it did. Separated from the boolean because "the server
+  // is missing its key" and "the delete call failed" need different handling by
+  // whoever reads the report, even though both look identical to the person.
+  authFailureReason: 'not_configured' | 'delete_failed' | 'unreachable' | null;
 };
 
 // Children before parents. See the note above on why this is caution, not need.
@@ -100,6 +117,52 @@ async function removeStorage(
   }
 }
 
+// Asks the server to remove the auth user. Deliberately NOT authedPost: that
+// helper throws on any non-2xx, and here the difference between the failures IS
+// the information — "your data went but your sign-in did not" has to reach the
+// person as a report, not as an exception that collapses into a generic error.
+// So every outcome resolves, and none of them throws.
+async function deleteAuthUser(): Promise<{
+  removed: boolean;
+  reason: DeletionOutcome['authFailureReason'];
+}> {
+  const apiBase = process.env.EXPO_PUBLIC_API_URL;
+  if (!apiBase) return { removed: false, reason: 'unreachable' };
+
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return { removed: false, reason: 'unreachable' };
+
+    const response = await fetch(`${apiBase}/api/delete-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    // The route takes the user id from the verified token, so the body carries
+    // nothing. Sending an id would be the client asking to delete an account by
+    // number, which the route refuses to honour anyway.
+    if (response.ok) return { removed: true, reason: null };
+
+    const body = (await response.json().catch(() => null)) as { reason?: string } | null;
+    const reason =
+      body?.reason === 'not_configured' || body?.reason === 'delete_failed'
+        ? body.reason
+        : 'unreachable';
+    return { removed: false, reason };
+  } catch {
+    // Offline, DNS, a dropped connection. The data is already gone by the time
+    // this runs, so this is genuinely "the last step did not happen", not "the
+    // deletion failed" — and the person is told exactly that.
+    return { removed: false, reason: 'unreachable' };
+  }
+}
+
 export async function deleteAllUserData(
   supabase: SupabaseClient,
   userId: string
@@ -143,11 +206,19 @@ export async function deleteAllUserData(
     }
   }
 
+  // LAST, and only now. The moment the auth user goes, this session's token
+  // refers to somebody who does not exist and every call above would start
+  // failing — including the verification counts, which would then report
+  // "could not be removed" for tables that were already empty. So the shell is
+  // removed after the data is gone AND after it has been proved gone.
+  const authUser = await deleteAuthUser();
+
   return {
     cleared,
     remaining,
     storageRemoved: storage.removed,
     storageFailed: storage.failed,
-    authAccountRemains: true,
+    authAccountRemains: !authUser.removed,
+    authFailureReason: authUser.reason,
   };
 }
