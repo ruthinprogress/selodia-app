@@ -11,6 +11,7 @@ import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ReminderOffer } from '@/components/reminder-offer';
 import { ResourceCard } from '@/components/resource-card';
+import { ChatLandingChips } from '@/components/chat-landing-chips';
 import { SaveConfirmation } from '@/components/save-confirmation';
 import { useSpotlight } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -25,6 +26,7 @@ import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
 import { shouldOfferReminders } from '@/lib/reminder-settings';
+import { hasSeenChatChips, markChatChipsSeen } from '@/lib/chat-chips';
 import { supabase } from '@/lib/supabase';
 
 type Message = {
@@ -84,6 +86,9 @@ export default function ChatScreen() {
   const [offerReminders, setOfferReminders] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  // The first-time landing chips. Null while the checks are still running, so
+  // nothing flashes on screen before it is known whether it belongs there.
+  const [showChips, setShowChips] = useState<boolean | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -107,6 +112,15 @@ export default function ChatScreen() {
           rows.map((r) => r.imagePath).filter((v): v is string => typeof v === 'string')
         );
         setMessages(attachImageUrls(rows, urls));
+        // BOTH conditions, not just the stamp. Every existing account has a
+        // null chat_chips_seen_at, so the flag alone would put a first-run
+        // on-ramp above a conversation someone has been having for weeks. The
+        // chips exist to replace an empty thread, so an empty thread is part of
+        // what they are for.
+        setShowChips(rows.length === 0 && !(await hasSeenChatChips()));
+      } else {
+        // A failed history read is not evidence of a new user. Say no.
+        setShowChips(false);
       }
       setLoadingHistory(false);
     })();
@@ -205,10 +219,33 @@ export default function ChatScreen() {
     }
   }
 
-  async function handleSend() {
-    const trimmed = input.trim();
+  // `override` lets a landing chip send its own words without them having to be
+  // routed through the input field first. Optional rather than required so every
+  // existing caller is unchanged - but note the Send button now calls this
+  // through an arrow, because passing handleSend directly to onPress would hand
+  // it a press event as the override.
+  // Dismissal is one path whatever triggered it, so a tap and a keystroke can
+  // never leave the chips in different states. Stamped on FIRST INTERACTION
+  // rather than on first sight: someone who lands, reads and leaves without
+  // touching anything has not been on-ramped, and deserves the offer again.
+  function dismissChips() {
+    if (!showChips) return;
+    setShowChips(false);
+    void markChatChipsSeen();
+  }
+
+  function handleChipPick(text: string) {
+    dismissChips();
+    void handleSend(text);
+  }
+
+  async function handleSend(override?: string) {
+    const trimmed = (override ?? input).trim();
     if (!trimmed || sending) return;
-    setInput('');
+    // Only clear the field when the field is what was sent. A chip tap must not
+    // wipe something half-typed - though in practice typing has already
+    // dismissed the chips by then.
+    if (override === undefined) setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setSending(true);
 
@@ -338,6 +375,13 @@ export default function ChatScreen() {
           {offerReminders && <ReminderOffer onDone={() => setOfferReminders(false)} />}
         </ScrollView>
 
+        {/* Above the input row and outside the ScrollView, deliberately. Inline
+            among the bubbles they would read as something Unflump had said, and
+            they are not - they are the person's own opening lines, waiting to be
+            chosen. Sitting directly over the message box makes the relationship
+            obvious: these are things you could type, already typed. */}
+        {showChips === true && <ChatLandingChips onPick={handleChipPick} />}
+
         <ThemedView style={styles.inputRow}>
           <SpotlightTarget id="chat.add" onActivate={() => setAddOpen(true)}>
             <Pressable
@@ -362,7 +406,13 @@ export default function ChatScreen() {
           <SpotlightTarget id="chat.composer" style={styles.composerTarget}>
             <TextInput
               value={input}
-              onChangeText={setInput}
+              onChangeText={(t) => {
+                setInput(t);
+                // Typing freely is itself an answer to the offer, so the chips
+                // get out of the way on the first character rather than waiting
+                // for the message to be sent.
+                if (t.length > 0) dismissChips();
+              }}
               placeholder="Talk to unflump…"
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
@@ -371,7 +421,7 @@ export default function ChatScreen() {
             />
           </SpotlightTarget>
           <Pressable
-            onPress={handleSend}
+            onPress={() => handleSend()}
             // Empty input previously did nothing at all - no message, no re-ask,
             // nothing - so Send looked pressable and behaved dead. Disabling it
             // lets the control state the truth instead of failing silently. A
