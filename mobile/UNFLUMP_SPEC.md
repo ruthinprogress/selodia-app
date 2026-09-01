@@ -592,6 +592,20 @@ Alongside the whoosh explanation above, Unflump carries a small set of accurate 
 
 Both stay reactive and are phrased as calm de-mystification, never as reassurance handed down as a verdict.
 
+## Symptom queries check the prior 24-48 hours before answering
+
+**Default behaviour: any query referencing a physical symptom, ache, sensation, fatigue, bloating, or low energy triggers a check of the prior 24-48h activity log before responding — not just today's data.**
+
+**Why.** A same-day symptom is a *result*, not a standalone data point. It only becomes a useful observation once it is connected to a different data point across time. Answering without that check produces generic reassurance instead of actual insight — and for an app whose value proposition is *knowing you*, forgetting what happened yesterday breaks trust in a particular way: it reads as not paying attention, not as a technical gap. The person cannot see the difference between "could not look" and "did not bother".
+
+**The example that surfaced this (1 September 2026, macro-tracker chat).** A leg-soreness query was answered generically — "a heavier session in the last day or two" — while the actual cause sat unchecked in the activity log: 40 kg deadlifts plus 90 minutes of ballet, the day before. Every fact needed to give the real answer was already stored. The reply was not wrong, which is the point; it was hollow, and hollow is what a person notices.
+
+**This is the Almanac principle in miniature** — connect a result to a different data type across time and it becomes an observation worth having (Part Five: "is it cross-domain, does it only emerge over time, and does it change how the next reading should be read?"). The Almanac applies that test to what is worth *saving*; this applies the same test in real time, to what is worth *saying*.
+
+**The 24-48h window is not arbitrary** and already exists elsewhere in this document: Part Eight's Measurement Reliability Framework gives DOMS-related swelling as peaking at 24-48h and clearing by 72h, contextualised against the training log. The same window, read for the same reason.
+
+**Status: the reference example is documented; formal implementation waits for the companion behaviour build. This is the spec line that will govern it.** Note that the ingredients already exist — `activity_logs` carries `eccentric_load` classified at log time (build item 27), and `measurement-context.ts` already queries a 72h activity window for the interpretation layer's DOMS flagger. What is missing is not data or a lookup; it is the rule that a symptom query is a trigger to go and read it.
+
 ## Food-and-feeling pattern tracing
 This reuses two mechanisms already built, not new infrastructure. The Daily Roundup's context extraction (above) already captures why a day looked the way it did; it should also capture how food *felt* — physically or emotionally — whenever the user volunteers it, without adding a mandatory field. The same personal-pattern-tracing architecture already proven for whoosh-timing personalization (above) and water/caffeine-symptom correlation (Part Twelve) then applies: after 2-3+ genuine instances, Unflump can surface a real individual pattern — e.g. *"meals with your sister tend to come up alongside some of your best days"* — always framed as a personal pattern in this user's own data, never a general claim (Part Two, principle 7). Joy and connection around food are treated as first-class signal here, consistent with principle 12, not as incidental colour.
 
