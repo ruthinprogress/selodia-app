@@ -850,7 +850,7 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 > **Status: confirmed final 31 August 2026.** The *name* is settled, and `selodia.app` was purchased the same day (see Domains). **The build is still not renamed.** The repository, Vercel project, EAS config, package identifiers, domain references and every file path stay `unflump` — a code/infrastructure migration is parked for its own dedicated session, and nothing here authorises starting it. Confirming the name and renaming the codebase are two separate decisions; only the first has been made.
 
-**Wordmark:** **`selodía`** — lowercase, Comfortaa, medium weight, charcoal `#2D2B28`. Same typeface and lowercase treatment already confirmed for the unflump wordmark (2026-08-18), so the Seed Mark pairing carries over unchanged.
+**Wordmark:** **`selodía`** — lowercase, **Comfortaa 300**, upright, charcoal `#2D2B28`. *(Was Comfortaa 500 until 2026-09-02; see the lockup decision below.)* Same typeface and lowercase treatment already confirmed for the unflump wordmark (2026-08-18), so the Seed Mark pairing carries over unchanged.
 
 **Accent convention:** the **accented `í` is for branding only** — wordmark, marketing, display copy. **Code, package names, domains and identifiers use the unaccented form.** This is a deliberate split, not an inconsistency: a non-ASCII character in a domain or an import path invites encoding bugs and typo-squatting, while the accent does real work on the wordmark.
 
@@ -860,25 +860,43 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 > *Corrected 2026-09-02 during a spec reconciliation pass.* This line previously ended "— Lora italic", directly contradicting the Work Sans Italic decision recorded immediately below it and dated the same day. Lora was a candidate from an earlier draft; the sentence was never updated when the head-to-head was resolved. **Two adjacent paragraphs naming different typefaces for the same element is the most expensive kind of spec defect** — a reader scanning for "the tagline typeface" can land on either and be confident in the wrong one, which is exactly what happened on 2026-09-01, when the landing page and the first Instagram post were both built with the tagline's setting applied to the wordmark.
 
-**Tagline typeface — Work Sans Italic (CONFIRMED FINAL, 2026-08-31).** Chosen from nine treatments, then a head-to-head against Spectral Italic. **Exact setting: Work Sans, italic, weight 300, 17px, line-height 1.75, letter-spacing +0.085em.**
+**TYPEFACE — ONE FAMILY THROUGHOUT. CONFIRMED FINAL 2026-09-02, and this supersedes every earlier typeface decision in this section.**
 
-*Why the sans won, in Ruth's words: "it all looks more coherent."* That is a real typographic effect, not a preference — Comfortaa and Work Sans are built on the same skeleton (circular bowls, even stroke weight, open shapes), so the lockup reads as **one type system**. A serif tagline reads as a second voice; not wrong, but two voices where one will do.
+**The setting:**
 
-**The two-line structure is load-bearing, not incidental.** Each sentence is set as its **own block element**, so the line break falls at the full stop rather than wherever the measure happens to run out. This is what makes the open tracking safe: the wrap point cannot drift as the tracking widens, the type scales, or the container narrows. **Do not collapse the tagline into a single flowing paragraph** — it will find a third line at the first awkward width, which was an explicit rejection criterion.
+| Element | Setting |
+|---|---|
+| Wordmark `selodía` | **Comfortaa 300**, upright, no tracking, charcoal `#2D2B28` |
+| Tagline | **Comfortaa 300**, charcoal `#2D2B28` |
+| Category line | **Comfortaa 400**, forest `#37584A` |
 
-**Small-size tracking rule — required.** The +0.085em that makes this setting work above ~15px turns against it below: at 12px the gaps stop reading as poise and start breaking words into loose letters, so the eye reads letter-by-letter instead of recognising the word shape. **Above ~15px: +0.085em. At or below ~15px (App Store subtitle, footer, small print): reduce to ≈ +0.02em.** Same face, two settings.
+**Confirmed by comparison testing with real users** — Fiona, Carol, Auguste and Ruth — against rendered full lockups rather than descriptions.
 
-**LOCKUP TYPEFACE PAIRING - CONFIRMED FINAL BY USER FEEDBACK, 2026-09-02.** Four options were rendered side by side as a single comparison image and tested with **three respondents. All three included Option 1 among their preferred.** Option 1 is what this section already specifies, so nothing in the build changes and no code moved as a result.
+**The reasoning, which is the part that must survive:**
 
-The four tested: **1)** wordmark Comfortaa 500, tagline Work Sans italic 300 +0.085em, category Comfortaa 400. **2)** the two faces swapped, wordmark Work Sans italic, tagline Comfortaa 400. **3)** Work Sans throughout, with an upright tagline. **4)** Comfortaa throughout.
+- **The italic tagline read as fuzzy and hard to read.** For a 40+ demographic that is not a stylistic quibble, it is a legibility failure, and it was reported by readers rather than inferred by anyone. Work Sans Italic 300 at +0.085em had been chosen on 2026-08-31 from nine treatments and a head-to-head against Spectral Italic — chosen, note, by looking at it rather than by anyone trying to read it at length.
+- **The upright sans tagline read as an instruction.** Too hard, too directive. For a product whose whole voice is built on never being directive (Part Two, principle 4), a tagline that reads as a command is wrong in exactly the place it can least afford to be.
+- **All Comfortaa at the lightest weight reads as a gentle invitation.** Unified, clear, and nothing fighting for attention — which is the brief for this brand stated in typographic terms.
 
-**This is settled and is not to be relitigated.** It is recorded with the date and the basis because it had already been relitigated once by accident: on 2026-09-01 the landing page and the first Instagram post were both built with the tagline's setting applied to the wordmark, from a brief that quoted one under the other's heading. The pairing is now confirmed twice over, by the original nine-treatment selection and by user feedback against three alternatives. The comparison artwork is `selodia-font-comparison.png` in the Drive branding folder.
+**What this overturns, stated plainly so the record is honest.** The earlier argument here was that Comfortaa and Work Sans share a skeleton, so a two-face lockup would still read as one type system. That reasoning was sound and the conclusion was still wrong: sharing a skeleton is not the same as being easy to read, and the italic is where the two came apart. One family removes the question entirely.
+
+**A note on the numbering, because "Option 4" appears twice in this project's history.** The confirmed setting is Option 4 of the SECOND comparison grid (2026-09-02), where every option carried a Comfortaa 300 wordmark. Option 4 of the FIRST grid was also "Comfortaa throughout" but paired a Comfortaa **500** wordmark with a 300 tagline. **The settings in the table above are authoritative; the option number is not.** This footnote exists because ambiguous shorthand in a brief is precisely what produced the 2026-09-01 error, where the tagline's setting was applied to the wordmark on both the landing page and the first Instagram post.
+
+**The two-line structure is load-bearing, not incidental.** Each sentence is set as its **own block element**, so the line break falls at the full stop rather than wherever the measure happens to run out. This survives the typeface change unaltered: it is about where the sentence breaks, not what it is set in.
+
+**The +0.085em tracking rule is retired along with the italic.** It existed to keep a light italic from reading as cramped at display size, and there is no italic left to keep. Comfortaa 300 takes no tracking at any size in this lockup.
 
 **Full lockup, both grounds (the confirmed artwork):**
-- **Light:** Seed Mark **terracotta `#C97458`** · wordmark Comfortaa 500 **charcoal `#2D2B28`** · category line Comfortaa 400 **forest `#37584A`** · tagline **charcoal**.
+- **Light:** Seed Mark **terracotta `#C97458`** · wordmark Comfortaa 300 **charcoal `#2D2B28`** · tagline Comfortaa 300 **charcoal** · category line Comfortaa 400 **forest `#37584A`**.
 - **Dark (the inverted ground, background `#834B39`):** Seed Mark **sand `#E9D6C2`** — *not* terracotta, which would disappear into its own ground · wordmark and tagline **cream `#F7F3EA`** · category line **sand**.
 
-*(Weight 200 was tested and rejected: it thins out badly when reversed onto the terracotta ground.)*
+*(Weight 200 was tested and rejected: it thins out badly when reversed onto the terracotta ground. **Weight 300 now carries the wordmark on both grounds, so the reverse treatment needs re-checking on the terracotta ground specifically** — 300 is one step from the weight that failed there, and nothing has yet been rendered to confirm it holds.)*
+
+> **OUTSTANDING: 46 brand asset files still carry the old wordmark and must be regenerated before any external use.** Every `*-wordmark-*` and `*-lockup-*` file in `Build Specs/Branding` — across both the Logo Asset Pack and the Exercise Animatic Logo Kit, in SVG, PNG and PDF, at every size and colourway — contains the word **"unflump"** set in Comfortaa and converted to outlines. They were deliberately **left with their `unflump-` filenames** during the 2026-09-02 Drive rename, because a `selodia-` name on a file drawing the old word would promise an asset it does not contain, and someone would eventually ship it.
+>
+> Regenerating them means setting `selodía` in **Comfortaa 300** per the table above — not the Comfortaa 500 the old wordmark used — and rebuilding every lockup that embeds it. The two ZIP archives in that folder are stale for the same reason: `selodia-logo-assets.zip` has 118 of 121 entries still old-named, and `Selodia-Logo-Kit.zip` has 36 of 38.
+>
+> **Until that work is done, no wordmark or lockup asset in the Branding folder is safe to send to a vendor, a printer, or an app store.** The mark-only assets are fine and were renamed: the Seed Mark itself is unchanged by any of this.
 
 **One accessibility flag on the mockup, not on the name.** The tagline is set in sage `#95A987` on cream `#F7F3EA`. The palette note in `mobile/src/constants/theme.ts` records that pair at **2.28:1** and states sage is "a fill colour only, never text". That is fine on a static brand card viewed at size, but the tagline must not be rendered in sage on cream **in the app or on the website** without re-testing — at body size it fails AA badly. Forest `#37584A`, already used for the category line, is the safe substitute.
 
