@@ -270,7 +270,7 @@ export default function AccountScreen() {
                 </ThemedView>
                 {biologicalSex === 'prefer_not_to_say' && (
                   <ThemedText type="small" themeColor="textSecondary">
-                    We&apos;ll use a general estimate for your calorie needs — it&apos;ll be a bit
+                    We&apos;ll use a general estimate for your calorie needs. It&apos;ll be a bit
                     less precise without this.
                   </ThemedText>
                 )}

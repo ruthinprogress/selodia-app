@@ -145,7 +145,7 @@ export function buildSummary(result: ExportResult): string {
   if (result.failed.length > 0) {
     lines.push('');
     lines.push(
-      `COULD NOT BE READ: ${result.failed.join(', ')}. This copy is incomplete — please try again, and tell us if it keeps happening.`
+      `COULD NOT BE READ: ${result.failed.join(', ')}. This copy is incomplete. Please try again, and tell us if it keeps happening.`
     );
   }
 
@@ -161,7 +161,7 @@ export function buildJson(result: ExportResult): string {
       generated_at: result.generatedAt,
       // Named in the file so anyone opening it later knows what it is and what
       // produced it, without having to ask.
-      source: 'Selodía — personal data export (UK GDPR right to portability)',
+      source: 'Selodía · personal data export (UK GDPR right to portability)',
       incomplete_tables: result.failed,
       data: result.tables,
     },

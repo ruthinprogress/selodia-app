@@ -71,5 +71,5 @@ export async function logHydrationFromText(
 
 export function hydrationSaveSummary(entry: HydrationEntry): string {
   const ml = Math.round(entry.ml);
-  return `Logged — ${ml >= 1000 ? `${Math.round(ml / 100) / 10}L` : `${ml}ml`}`;
+  return `Logged · ${ml >= 1000 ? `${Math.round(ml / 100) / 10}L` : `${ml}ml`}`;
 }

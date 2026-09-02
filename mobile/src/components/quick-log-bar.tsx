@@ -70,7 +70,7 @@ export function QuickLogBar({
       setNote(data?.saved?.summary ?? 'Saved.');
       onLogged();
     } catch {
-      setNote('That did not save — worth trying again.');
+      setNote('That did not save. Worth trying again.');
     } finally {
       setBusy(false);
     }
@@ -89,7 +89,7 @@ export function QuickLogBar({
             ? 'I need permission to reach your photos for that.'
             : picked.reason === 'cancelled'
               ? null
-              : 'That image did not come through — worth trying again.'
+              : 'That image did not come through. Worth trying again.'
         );
         return;
       }
@@ -97,7 +97,7 @@ export function QuickLogBar({
       setNote(messageForResult(result));
       if (result.status === 'logged') onLogged();
     } catch {
-      setNote('That did not save — worth trying again.');
+      setNote('That did not save. Worth trying again.');
     } finally {
       setBusy(false);
     }

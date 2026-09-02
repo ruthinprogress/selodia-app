@@ -88,7 +88,7 @@ export function WorkingWeightControl({
       onLogged(typed);
     } catch {
       // Never report a save that did not happen.
-      setError("Couldn't save that — try again");
+      setError("Couldn't save that. Try again");
     } finally {
       setSaving(false);
     }

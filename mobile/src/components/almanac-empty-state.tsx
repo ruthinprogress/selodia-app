@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export const ALMANAC_EMPTY_HEADING = 'Nothing here yet';
 export const ALMANAC_EMPTY_BODY =
-  "We'll build this together — the first entries appear once a pattern's worth remembering, and you've said yes to saving it.";
+  "We'll build this together. The first entries appear once a pattern's worth remembering, and you've said yes to saving it.";
 
 // THE SAGE LINE-ILLUSTRATION (built 2026-08-31, unblocked by item 37).
 //

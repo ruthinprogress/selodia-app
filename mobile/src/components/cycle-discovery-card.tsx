@@ -86,7 +86,7 @@ export function CycleDiscoveryCard({ mode, onDone }: Props) {
       ) : (
         <>
           <ThemedText type="small">
-            When did your last period start? If it was today, just log it — or say how many days ago.
+            When did your last period start? If it was today, just log it, or say how many days ago.
           </ThemedText>
           <ThemedView style={styles.enableRow}>
             <TextInput

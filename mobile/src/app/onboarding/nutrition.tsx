@@ -28,7 +28,7 @@ type Message = {
 // this screen only relays the conversation and waits for phaseComplete — the
 // signal that the target statement actually landed — before offering Continue.
 const OPENING_LINE =
-  "Now that I understand where you're headed, we can work out a daily protein target that fits you — it's one of the most useful numbers to have on hand. Want to do that now?";
+  "Now that I understand where you're headed, we can work out a daily protein target that fits you. It's one of the most useful numbers to have on hand. Want to do that now?";
 
 // Sent verbatim as the person's message. "I'll start with a number" is
 // deliberately not a command the app interprets - it goes to the model like any
@@ -103,7 +103,7 @@ export default function NutritionScreen() {
       console.error('Nutrition chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

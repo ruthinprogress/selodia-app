@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   // in ask-unflump, not here. This only asks the question.
   if (gate.kind === 'ask_how_its_going') {
     const question =
-      'How have you been finding the logging this week? No wrong answer — I just want to know how it has actually felt.';
+      'How have you been finding the logging this week? No wrong answer. I just want to know how it has actually felt.';
     await supabase.from('chat_messages').insert({
       user_id: user.id,
       role: 'assistant',
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
   const weekText = [
     `Week of ${dates[0]} to ${dates[WEEK_DAYS - 1]}. ${gate.fullDays} of ${WEEK_DAYS} days had food logged.`,
     '',
-    'GROUNDING DATA — each figure already carries its own confidence note where one applies. Use those notes next to the number they belong to, never as a disclaimer at the top.',
+    'GROUNDING DATA. Each figure already carries its own confidence note where one applies. Use those notes next to the number they belong to, never as a disclaimer at the top.',
     fig('Average daily calories across logged days', avgKcal, ' kcal'),
     fig('Average daily protein across logged days', avgProtein, 'g'),
     delta
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
     '',
     `THIS WEEK'S DAILY SUMMARIES (your own notes, in order):\n${
       (summaries ?? [])
-        .map((s) => `${s.summary_date}: ${s.context ?? ''}${s.interpretation ? ` — ${s.interpretation}` : ''}`)
+        .map((s) => `${s.summary_date}: ${s.context ?? ''}${s.interpretation ? ` · ${s.interpretation}` : ''}`)
         .join('\n') || '(none stored)'
     }`,
     '',

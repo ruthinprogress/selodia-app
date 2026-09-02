@@ -42,7 +42,7 @@ export const SPOTLIGHT_TARGETS = {
   'measurements.export': 'the link to your data at the foot of Measurements',
   'almanac.categories': 'the Almanac entries grouped by category - the default Almanac view',
   'almanac.entries': 'the entries inside an opened Almanac category',
-  'settings.export': 'the data export in Settings — "Prepare my data"',
+  'settings.export': 'the data export in Settings, "Prepare my data"',
   'settings.delete': 'the delete-my-account control in Settings',
 } as const;
 

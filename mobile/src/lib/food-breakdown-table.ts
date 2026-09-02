@@ -48,7 +48,7 @@ export function breakdownHeading(happenedAt: string | null, mealLabel: string | 
   }
   const label = mealLabel?.trim();
   if (label) parts.push(label);
-  return parts.join(' — ');
+  return parts.join(' · ');
 }
 
 // Cell formatting follows Ruth's own logging format exactly (2026-08-27):

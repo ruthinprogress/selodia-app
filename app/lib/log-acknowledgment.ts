@@ -76,7 +76,7 @@ function longDate(iso: string): string {
 // columns would ragged out on a phone. The label carries the structure instead.
 
 export function bodyFactsBlock(f: BodyFacts): string {
-  const lines = [`${longDate(f.measuredAt)} — weigh-in logged`, ''];
+  const lines = [`${longDate(f.measuredAt)} · weigh-in logged`, ''];
   const w = n1(f.weightKg);
   lines.push(w ? `Weight ${w} kg${f.deltaLabel ? `  ${f.deltaLabel}` : ''}` : 'Weight not readable');
   const bf = n1(f.bodyFatPct);
@@ -96,7 +96,7 @@ export function foodFactsBlock(f: FoodFacts): string {
   const parts = [n0(f.kcal) && `${n0(f.kcal)} kcal`, n0(f.proteinG) && `${n0(f.proteinG)}g protein`]
     .filter(Boolean)
     .join(' · ');
-  const lines = [`${f.mealLabel} — logged`, ''];
+  const lines = [`${f.mealLabel} · logged`, ''];
   if (parts) lines.push(parts);
   const dayParts = [
     n0(f.dayKcal) && `${n0(f.dayKcal)}${f.kcalTarget ? ` / ${n0(f.kcalTarget)}` : ''} kcal`,
@@ -108,7 +108,7 @@ export function foodFactsBlock(f: FoodFacts): string {
   // Low confidence is a real caveat about the number, so it is stated with the
   // number rather than buried in the prose.
   if (f.confidence && f.confidence.toLowerCase() === 'low') {
-    lines.push('Rough estimate — hard to be precise from a photo.');
+    lines.push('Rough estimate. Hard to be precise from a photo.');
   }
   return lines.join('\n');
 }
@@ -122,14 +122,14 @@ export function activityFactsBlock(f: ActivityFacts): string {
     ]
       .filter(Boolean)
       .join(' · ');
-    lines.push(bits ? `${e.activityType} — ${bits}` : e.activityType);
+    lines.push(bits ? `${e.activityType} · ${bits}` : e.activityType);
   }
   // A tracker only counts what it was worn for. Naming that is the same
   // discipline as naming a missing body-fat reading: the number is not wrong,
   // but it is not the whole day either.
   const tracked = f.entries.find((e) => e.source && e.source !== 'manual');
   if (tracked) {
-    lines.push('', `Counted by ${tracked.source} — anything it wasn't on you for won't be in there.`);
+    lines.push('', `Counted by ${tracked.source}. Anything it wasn't on you for won't be in there.`);
   }
   return lines.join('\n');
 }

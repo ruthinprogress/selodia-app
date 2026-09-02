@@ -71,7 +71,7 @@ export function ThenAndNowTable() {
       {data.rows.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
           {data.emptyReason === 'no_readings'
-            ? 'Nothing to compare yet — this fills in once there are readings to look back on.'
+            ? 'Nothing to compare yet. This fills in once there are readings to look back on.'
             : 'One reading so far. This shows the change once there are two to compare.'}
         </ThemedText>
       ) : (

@@ -35,15 +35,15 @@ type Step = 'scales' | 'tapeMeasure' | 'acknowledge' | 'permissionIntro' | 'perm
 // acknowledgement of what they shared already happened one screen earlier, in the
 // intro phase, so this opener stays a stable, on-spec line.
 const OPENING_LINE =
-  "Now, the first step is just getting a little visibility on your body — that's what makes the numbers mean something later on. To start: do you have bioimpedance scales? The kind that read body fat and muscle, not just weight.";
+  "Now, the first step is just getting a little visibility on your body. That's what makes the numbers mean something later on. To start: do you have bioimpedance scales? The kind that read body fat and muscle, not just weight.";
 const TAPE_QUESTION = 'And do you have a tape measure?';
 const PERMISSION_INTRO =
-  "One more thing — I can read your step count straight from your phone's health data, so movement counts without you having to log it. I'll ask your phone for permission next.";
+  "One more thing. I can read your step count straight from your phone's health data, so movement counts without you having to log it. I'll ask your phone for permission next.";
 // Permission-result copy stays canned (D5): the fallback line is quoted verbatim
 // in the spec (Part Seven, step 4).
-const PERMISSION_GRANTED = 'Got it — step tracking is connected.';
+const PERMISSION_GRANTED = 'Got it. Step tracking is connected.';
 const PERMISSION_FALLBACK =
-  "No worries — maybe you have a tracker that doesn't sync to your phone's health app, like some cheaper fitness watches. You can just tell me your step count from its own app directly, or send a screenshot.";
+  "No worries. Maybe you have a tracker that doesn't sync to your phone's health app, like some cheaper fitness watches. You can just tell me your step count from its own app directly, or send a screenshot.";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -108,7 +108,7 @@ export default function EquipmentScreen() {
       console.error('Equipment chat failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

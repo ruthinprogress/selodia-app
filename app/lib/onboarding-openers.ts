@@ -31,7 +31,7 @@
 export const PHASE_OPENERS: Record<string, string> = {
   "intro": "Good to have you here. Here are a few places we could start:",
   "equipment": "Now, the first step is just getting a little visibility on your body \u2014 that's what makes the numbers mean something later on. To start: do you have bioimpedance scales? The kind that read body fat and muscle, not just weight.",
-  "first_log": "Before we go further into what you're aiming for — shall we log something? Whatever you've eaten today so far, in your own words. No weighing, no detail, just however you'd say it to a person.",
+  "first_log": "Before we go further into what you're aiming for, shall we log something? Whatever you've eaten today so far, in your own words. No weighing, no detail, just however you'd say it to a person.",
   "goals": "Let's talk about what you're hoping to get out of this \u2014 how are you feeling about things right now?",
   "technical_targets": "There are a couple of ways to keep an eye on body fat. Bioimpedance scales \u2014 the kind that read body composition \u2014 give a useful estimate, and they're most valuable as a trend: any single reading has a fairly wide margin (roughly \u00b13\u20135% next to a DEXA scan), so what it's doing over weeks matters far more than any one number. Waist measurement is another simple, meaningful marker. If there's a particular area you'd like to keep an eye on, we can note that too.",
   "nutrition_targets": "Now that I understand where you're headed, we can work out a daily protein target that fits you \u2014 it's one of the most useful numbers to have on hand. Want to do that now?",

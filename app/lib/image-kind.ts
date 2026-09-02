@@ -39,9 +39,9 @@ export function routeForKind(kind: ImageKind): string | null {
 
 export const IMAGE_KIND_PROMPT = `You are looking at ONE photo someone has just added to a body-literacy app, to be logged. Say which of these it is:
 
-- "body_measurement" — a reading from bioimpedance scales or a scale app: weight, body fat percentage, muscle mass, BMR. Usually a phone screenshot of an app like Zepp Life, or a scale's own display.
-- "food" — something eaten or drunk, or something that describes it: a meal, a snack, a drink, a menu, a nutrition label, a packet.
-- "activity" — movement that was done, or a device reporting it: a treadmill or bike display, a fitness watch, a step count, a workout summary screen.
-- "unclear" — anything else, or genuinely ambiguous between the above.
+- "body_measurement": a reading from bioimpedance scales or a scale app: weight, body fat percentage, muscle mass, BMR. Usually a phone screenshot of an app like Zepp Life, or a scale's own display.
+- "food": something eaten or drunk, or something that describes it: a meal, a snack, a drink, a menu, a nutrition label, a packet.
+- "activity": movement that was done, or a device reporting it: a treadmill or bike display, a fitness watch, a step count, a workout summary screen.
+- "unclear": anything else, or genuinely ambiguous between the above.
 
 Choose "unclear" rather than guessing. A wrong guess files a photo against the wrong kind of data and is worse than asking. Respond with the classification only.`;

@@ -40,7 +40,7 @@ export const PERSONAL_LINE_MVP: string[] = [
 // first-time user, vs. the ambient rotation for someone already using the app —
 // the same honest empty-state treatment the Almanac's empty state uses. Every
 // day after the first entry, the 26-phrase rotation applies.
-export const PERSONAL_LINE_DAY_ONE = "Welcome — nothing logged yet. Whenever you're ready.";
+export const PERSONAL_LINE_DAY_ONE = "Welcome. Nothing logged yet. Whenever you're ready.";
 
 // Deterministic per calendar day: the same phrase all day, the next one
 // tomorrow. Uses local midnight so it turns over at the user's midnight.

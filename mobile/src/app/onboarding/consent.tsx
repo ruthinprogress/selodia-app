@@ -35,13 +35,13 @@ export default function ConsentScreen() {
 
           <ThemedText>
             Selodía asks about things like your food, weight, body measurements and activity so it
-            can actually understand you — not just log numbers. This is health data, so we want to
+            can actually understand you, not just log numbers. This is health data, so we want to
             be upfront: it&apos;s yours, it&apos;s kept secure, and it&apos;s never sold or shared.
           </ThemedText>
 
           <ThemedText>
-            Selodía isn&apos;t a medical service and doesn&apos;t replace advice from your doctor —
-            think of it as a very attentive companion for the day-to-day. You can delete your data
+            Selodía isn&apos;t a medical service and doesn&apos;t replace advice from your doctor.
+            Think of it as a very attentive companion for the day-to-day. You can delete your data
             at any time.
           </ThemedText>
 
@@ -59,7 +59,7 @@ export default function ConsentScreen() {
             <Checkbox
               checked={researchOptIn}
               onToggle={() => setResearchOptIn((v) => !v)}
-              label="I'm happy for de-identified data from my use of Selodía to be used to help improve the product and understand patterns across users — separate from selling data, which Selodía never does."
+              label="I'm happy for de-identified data from my use of Selodía to be used to help improve the product and understand patterns across users. This is separate from selling data, which Selodía never does."
             />
           </ThemedView>
 

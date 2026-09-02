@@ -179,15 +179,15 @@ export function messageForResult(result: ImageLogResult): string | null {
       // See app/lib/log-acknowledgment.ts for the full reasoning.
       return result.message;
     case 'unclear':
-      return "I couldn't quite make that out — want to just tell me what it was instead?";
+      return "I couldn't quite make that out. Want to just tell me what it was instead?";
     case 'too_large':
-      return "That image is a bit too big for me to take in — a smaller one, or just tell me what it was?";
+      return "That image is a bit too big for me to take in. A smaller one, or just tell me what it was?";
     case 'denied':
       return result.source === 'camera'
-        ? "I don't have camera access yet — you can turn it on in your phone's settings, or just tell me what it was."
-        : "I don't have access to your photos yet — you can turn it on in your phone's settings, or just tell me what it was.";
+        ? "I don't have camera access yet. You can turn it on in your phone's settings, or just tell me what it was."
+        : "I don't have access to your photos yet. You can turn it on in your phone's settings, or just tell me what it was.";
     case 'failed':
-      return "Something went wrong with that image — want to try again, or just tell me what it was?";
+      return "Something went wrong with that image. Want to try again, or just tell me what it was?";
     case 'cancelled':
     default:
       return null;

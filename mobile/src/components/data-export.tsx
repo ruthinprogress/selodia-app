@@ -51,7 +51,7 @@ export function DataExport({ compact = false }: { compact?: boolean }) {
     try {
       await Share.share({
         message: what === 'summary' ? buildSummary(result) : buildJson(result),
-        title: what === 'summary' ? 'Your Selodía data — summary' : 'Your Selodía data — full export',
+        title: what === 'summary' ? 'Your Selodía data · summary' : 'Your Selodía data · full export',
       });
     } catch {
       setError(

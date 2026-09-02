@@ -48,8 +48,8 @@ type Message = {
 };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const FALLBACK_ERROR = "Something went wrong on my end — mind trying that again?";
-const NOT_SIGNED_IN_ERROR = "You're not signed in — please sign in and try again.";
+const FALLBACK_ERROR = "Something went wrong on my end. Mind trying that again?";
+const NOT_SIGNED_IN_ERROR = "You're not signed in. Please sign in and try again.";
 
 export default function ChatScreen() {
   const router = useRouter();

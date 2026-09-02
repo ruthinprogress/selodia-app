@@ -103,7 +103,7 @@ export function AccountDeletion() {
           // kept honest, precisely because it should now be rare: a rare wrong
           // answer that nobody is warned about is worse than a common one.
           <ThemedText type="small" themeColor="danger" style={styles.body}>
-            Your sign-in still exists — the email and password themselves. Everything you recorded
+            Your sign-in still exists: the email and password themselves. Everything you recorded
             is gone, but that last step did not go through. Please tell us so it can be finished.
           </ThemedText>
         ) : (
@@ -162,7 +162,7 @@ export function AccountDeletion() {
             It cannot be undone. There is no copy kept, and nothing to restore from afterwards.
           </ThemedText>
           <ThemedText type="small" style={styles.body}>
-            Your sign-in goes too — the email and password themselves. Afterwards there is no
+            Your sign-in goes too: the email and password themselves. Afterwards there is no
             account here at all, and signing up again would start from nothing.
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>

@@ -28,7 +28,7 @@ type Message = {
 // handles any follow-up questions. Continue is available from the start — there's
 // nothing to gather or confirm here.
 const OPENING_LINE =
-  "There are a couple of ways to keep an eye on body fat. Bioimpedance scales — the kind that read body composition — give a useful estimate, and they're most valuable as a trend: any single reading has a fairly wide margin (roughly ±3–5% next to a DEXA scan), so what it's doing over weeks matters far more than any one number. Waist measurement is another simple, meaningful marker. If there's a particular area you'd like to keep an eye on, we can note that too.";
+  "There are a couple of ways to keep an eye on body fat. Bioimpedance scales (the kind that read body composition) give a useful estimate, and they're most valuable as a trend: any single reading has a fairly wide margin (roughly ±3–5% next to a DEXA scan), so what it's doing over weeks matters far more than any one number. Waist measurement is another simple, meaningful marker. If there's a particular area you'd like to keep an eye on, we can note that too.";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -90,7 +90,7 @@ export default function TechnicalScreen() {
       console.error('Technical chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

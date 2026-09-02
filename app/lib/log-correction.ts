@@ -86,12 +86,12 @@ export function resolveCorrection(
 export function deletionMessage(kind: CorrectionKind): string {
   switch (kind) {
     case 'measurement':
-      return "Removed that reading — it's gone from your history.";
+      return "Removed that reading. It's gone from your history.";
     case 'activity':
-      return "Removed that one — it's out of today's activity.";
+      return "Removed that one. It's out of today's activity.";
     case 'food':
     default:
-      return "Removed that one — it's out of today's total.";
+      return "Removed that one. It's out of today's total.";
   }
 }
 
@@ -107,7 +107,7 @@ export function nothingToCorrectMessage(kind: CorrectionKind): string {
         : kind === 'activity'
           ? 'an activity'
           : 'a food entry';
-  return `I can't find ${what} recent enough to change — if it's an older one, tell me which day and what it should say.`;
+  return `I can't find ${what} recent enough to change. If it's an older one, tell me which day and what it should say.`;
 }
 
 // ASK, DON'T ASSUME (2026-08-28). A bare number in a correction can fit more
@@ -135,5 +135,5 @@ export function whichReadingMessage(value: number, candidates: MeasurementField[
       ? names.join(' or ')
       : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
   const shown = Math.round(value * 10) / 10;
-  return `Just so I change the right one — is ${shown} ${list}?`;
+  return `Just so I change the right one. Is ${shown} ${list}?`;
 }

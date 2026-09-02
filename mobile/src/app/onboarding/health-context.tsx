@@ -147,20 +147,20 @@ export default function HealthContextScreen() {
           keyboardDismissMode="on-drag"
         >
           <ChatBubble role="assistant">
-            One more optional thing. If you know any health markers — cholesterol, blood sugar, iron,
-            thyroid — or have a diagnosed condition, I can keep them in mind so my food suggestions
+            One more optional thing. If you know any health markers (cholesterol, blood sugar, iron,
+            thyroid) or have a diagnosed condition, I can keep them in mind so my food suggestions
             protect what matters for you, rather than treating every food as interchangeable.
           </ChatBubble>
           <ChatBubble role="assistant">
             This is sensitive health information, kept private to your account and used only to shape
-            what I suggest. It never replaces medical advice — anything that affects a medical marker
+            what I suggest. It never replaces medical advice. Anything that affects a medical marker
             is always worth confirming with your GP or dietitian. Totally fine to skip.
           </ChatBubble>
 
           {phase === 'capture' && (
             <>
               <ChatBubble role="assistant">
-                Just tap whatever your results or GP have told you — skip anything you don&apos;t know.
+                Just tap whatever your results or GP have told you. Skip anything you don&apos;t know.
               </ChatBubble>
 
               {MARKERS.map((m) => (

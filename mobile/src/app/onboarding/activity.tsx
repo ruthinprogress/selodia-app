@@ -31,7 +31,7 @@ type DeferredTopic = { topic?: string; at?: string };
 // this session (the spec's topic-and-timestamp marker, checked before the session
 // naturally wraps) so a "let's come back to that later" is honoured, not dropped.
 const OPENING_LINE =
-  "Last thing for now — I'd love a feel for how you move in a typical week. Nothing structured, just what your days actually look like. What does a normal week look like for you?";
+  "Last thing for now. I'd love a feel for how you move in a typical week. Nothing structured, just what your days actually look like. What does a normal week look like for you?";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -43,11 +43,11 @@ function buildDeferralResurface(topics: DeferredTopic[]): string | null {
     .filter((t) => t.length > 0);
   if (phrases.length === 0) return null;
   if (phrases.length === 1) {
-    return `Before we finish — earlier you mentioned ${phrases[0]}. I've kept a note of it, and we can pick that up together whenever the time feels right.`;
+    return `Before we finish: earlier you mentioned ${phrases[0]}. I've kept a note of it, and we can pick that up together whenever the time feels right.`;
   }
   const list =
     phrases.slice(0, -1).join(', ') + ` and ${phrases[phrases.length - 1]}`;
-  return `Before we finish — earlier you mentioned a few things you'd like to get to: ${list}. I've kept a note of them, and we can come back to them whenever you're ready.`;
+  return `Before we finish: earlier you mentioned a few things you'd like to get to: ${list}. I've kept a note of them, and we can come back to them whenever you're ready.`;
 }
 
 export default function ActivityScreen() {
@@ -132,7 +132,7 @@ export default function ActivityScreen() {
       console.error('Activity chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

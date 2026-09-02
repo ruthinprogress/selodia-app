@@ -102,7 +102,7 @@ export default function IntroScreen() {
       console.error('Intro chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

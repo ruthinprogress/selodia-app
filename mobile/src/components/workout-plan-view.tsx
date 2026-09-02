@@ -140,7 +140,7 @@ function ExerciseRow({
         )}
         {failed && (
           <ThemedText type="small" style={[styles.meta, { color: theme.danger }]}>
-            Couldn&apos;t record that — tap to try again
+            Couldn&apos;t record that. Tap to try again
           </ThemedText>
         )}
       </View>

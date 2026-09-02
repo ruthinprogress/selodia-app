@@ -20,7 +20,7 @@ export type EscalationStep = 'gentle_asked' | 'direct_asked' | null;
 // AI-paraphrased, because its exact wording is what makes it grounded in
 // the C-SSRS's validated first screening question.
 export const DIRECT_ESCALATION_QUESTION =
-  "Thank you for telling me that — that took something to say. Can I ask you directly: have you been wishing you weren't here, or wishing you could just not wake up?";
+  "Thank you for telling me that. That took something to say. Can I ask you directly: have you been wishing you weren't here, or wishing you could just not wake up?";
 
 // Resource-org selection is deterministic, never an AI judgment call - see
 // SELODIA_LANGUAGE_RULES.md. URLs verified live 2026-08-11 (Beat, Shout)

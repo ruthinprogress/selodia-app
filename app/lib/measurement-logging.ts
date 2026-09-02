@@ -343,7 +343,7 @@ export function measurementSaveSummary(entry: MeasurementEntry): string {
   if (entry.weight_kg != null) parts.push(`${Math.round(entry.weight_kg * 10) / 10} kg`);
   if (entry.body_fat_pct != null) parts.push(`${Math.round(entry.body_fat_pct * 10) / 10}% fat`);
   if (entry.muscle_kg != null) parts.push(`${Math.round(entry.muscle_kg * 10) / 10} kg muscle`);
-  return `Weigh-in — ${parts.join(' · ')}`;
+  return `Weigh-in · ${parts.join(' · ')}`;
 }
 
 // The toast line when a message carried only personal metrics - no weight, no
@@ -353,5 +353,5 @@ export function personalSaveSummary(entries: PersonalMetricEntry[]): string {
   const parts = entries.map(
     (e) => `${e.metric_name} ${Math.round(e.value * 10) / 10}${e.unit ? e.unit : ''}`
   );
-  return `Logged — ${parts.join(' · ')}`;
+  return `Logged · ${parts.join(' · ')}`;
 }

@@ -41,15 +41,15 @@ type ActivityRow = {
 export const BMR_EXPLAINER = [
   {
     q: "What's basal metabolic rate (BMR)?",
-    a: 'What your body burns just staying alive at complete rest — breathing, heartbeat, organ function, cell repair. The energy cost of simply existing, before you’ve moved a muscle.',
+    a: 'What your body burns just staying alive at complete rest: breathing, heartbeat, organ function, cell repair. The energy cost of simply existing, before you’ve moved a muscle.',
   },
   {
     q: "What's total daily energy expenditure (TDEE)?",
-    a: 'Your BMR plus everything else — walking, training, digesting food, even fidgeting. TDEE is always higher than BMR; it’s BMR with your whole day layered on top.',
+    a: 'Your BMR plus everything else: walking, training, digesting food, even fidgeting. TDEE is always higher than BMR; it’s BMR with your whole day layered on top.',
   },
   {
     q: 'Does building muscle raise your BMR?',
-    a: 'Yes — but modestly. Research puts it at roughly 10-13 kcal a day for every kilogram of muscle gained.',
+    a: 'Yes, but modestly. Research puts it at roughly 10-13 kcal a day for every kilogram of muscle gained.',
   },
 ];
 
@@ -134,7 +134,7 @@ export function ActivityView() {
             Nothing logged yet
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centred}>
-            Add what you did above — a walk, a session, a class — and it&apos;ll show up here.
+            Add what you did above (a walk, a session, a class) and it&apos;ll show up here.
           </ThemedText>
         </ThemedView>
       ) : (
@@ -186,7 +186,7 @@ export function ActivityView() {
             at before she reasons from it. */}
         {tdee?.estimated ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-            Estimated from your height, age and weight — a scale that reads BMR directly gives a
+            Estimated from your height, age and weight. A scale that reads BMR directly gives a
             closer figure.
           </ThemedText>
         ) : null}

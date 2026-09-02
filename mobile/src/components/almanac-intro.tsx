@@ -33,7 +33,7 @@ import { Spacing } from '@/constants/theme';
 
 export const ALMANAC_INTRO_HEADING = 'This is your Almanac';
 export const ALMANAC_INTRO_BODY =
-  "Your goals, your plans, and anything else worth keeping within easy reach — this is where they live.";
+  "Your goals, your plans, and anything else worth keeping within easy reach. This is where they live.";
 export const ALMANAC_INTRO_DISMISS = 'Got it';
 
 export function AlmanacIntro({ onDismiss }: { onDismiss: () => void }) {

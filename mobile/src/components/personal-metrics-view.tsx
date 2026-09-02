@@ -27,7 +27,7 @@ import { supabase } from '@/lib/supabase';
 
 export const PERSONAL_EMPTY_HEADING = 'Nothing else tracked yet';
 export const PERSONAL_EMPTY_BODY =
-  "Anything you measure yourself lives here — a waist, a resting heart rate, whatever you find worth watching. Tell me a number in Chat and it'll appear.";
+  "Anything you measure yourself lives here: a waist, a resting heart rate, whatever you find worth watching. Tell me a number in Chat and it'll appear.";
 
 export function PersonalMetricsView() {
   const theme = useTheme();

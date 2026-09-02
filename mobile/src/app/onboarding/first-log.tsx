@@ -41,12 +41,12 @@ import { supabase } from '@/lib/supabase';
 type Message = { role: 'user' | 'assistant'; content: string };
 
 const OPENING_LINE =
-  "Before we go further into what you're aiming for — shall we log something? Whatever you've eaten today so far, in your own words. No weighing, no detail, just however you'd say it to a person.";
+  "Before we go further into what you're aiming for, shall we log something? Whatever you've eaten today so far, in your own words. No weighing, no detail, just however you'd say it to a person.";
 
 // Said by the app, not the model: declining should cost nothing and wait on
 // nothing, and a round trip to be told "that's fine" would undercut the point.
 const SKIP_LINE =
-  "That's completely fine — we can come back to it whenever. Nothing here needs to happen today.";
+  "That's completely fine. We can come back to it whenever. Nothing here needs to happen today.";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -114,7 +114,7 @@ export default function FirstLogScreen() {
       console.error('First-log chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

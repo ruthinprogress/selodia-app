@@ -155,7 +155,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
         // without implying anyone has fallen behind.
         <ThemedText type="small" themeColor="textSecondary">
           {isPresent
-            ? 'No readings this week yet — tell me your weight any time and it lands here.'
+            ? 'No readings this week yet. Tell me your weight any time and it lands here.'
             : 'Nothing was recorded this week.'}
         </ThemedText>
       ) : null}

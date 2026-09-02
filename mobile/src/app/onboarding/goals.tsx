@@ -23,7 +23,7 @@ type Message = {
 };
 
 const OPENING_LINE =
-  "Let's talk about what you're hoping to get out of this — how are you feeling about things right now?";
+  "Let's talk about what you're hoping to get out of this. How are you feeling about things right now?";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -85,7 +85,7 @@ export default function GoalsScreen() {
       console.error('Goals chat send failed:', err instanceof Error ? err.message : err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "Something went wrong on my end — mind trying that again?" },
+        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
       ]);
     } finally {
       setSending(false);

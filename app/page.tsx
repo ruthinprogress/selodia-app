@@ -295,7 +295,7 @@ export default async function LandingPage({
 
         {joined === '1' ? (
           <p className="selodia__said">
-            You&rsquo;re on the list — we&rsquo;ll be in touch when Selod&iacute;a launches.
+            You&rsquo;re on the list. We&rsquo;ll be in touch when Selod&iacute;a launches.
           </p>
         ) : (
           <>
@@ -331,7 +331,7 @@ export default async function LandingPage({
 
             {joined === 'error' && (
               <p className="selodia__said selodia__error">
-                That didn&rsquo;t go through — worth trying again in a moment.
+                That didn&rsquo;t go through. Worth trying again in a moment.
               </p>
             )}
           </>

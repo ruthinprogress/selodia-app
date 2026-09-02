@@ -98,7 +98,7 @@ export function ReminderOffer({ onDone }: { onDone: () => void }) {
           <ThemedText type="small" themeColor="textSecondary">
             {parsed.length > 0
               ? `I'll check in at ${parsed.join(' and ')}. Nothing between 9pm and 7am.`
-              : "I didn't catch a time in that — something like 14:00 works."}
+              : "I didn't catch a time in that. Something like 14:00 works."}
           </ThemedText>
           <View style={styles.row}>
             <Choice

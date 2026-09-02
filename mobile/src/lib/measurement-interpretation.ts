@@ -345,7 +345,7 @@ export function interpretLatestReading(params: {
   if (trend === 'trend_down') {
     return {
       message:
-        "Weight's trending down across your last few readings — that's real change settling in, not just a blip.",
+        "Weight's trending down across your last few readings. That's real change settling in, not just a blip.",
       trend,
       sources,
     };
@@ -357,7 +357,7 @@ export function interpretLatestReading(params: {
     // itself, and leaves the reader unsure which half to believe. So the flags
     // are added as a plain forward-looking fact, never as a rebutted excuse.
     let message =
-      "Weight's edged up across your last few readings — that's more than a single-day blip, so it's worth a calm look rather than a shrug or a spiral.";
+      "Weight's edged up across your last few readings. That's more than a single-day blip, so it's worth a calm look rather than a shrug or a spiral.";
     if (flags.length > 0) {
       message += ` ${capitalizeFirst(composeCause(flags, { brief: true }))}, so some of this may settle on its own.`;
     }
@@ -410,7 +410,7 @@ export function interpretLatestReading(params: {
   const since = sincePhrase(gapToPrev);
   const message =
     flags.length > 0
-      ? `Weight's ${change} ${since} — but ${composeCause(flags)}. A single reading like this is very likely noise, not a setback.`
-      : `Weight's ${change} ${since}, but ${singleReadingClause(gapToPrev)} — nothing to act on.`;
+      ? `Weight's ${change} ${since}, but ${composeCause(flags)}. A single reading like this is very likely noise, not a setback.`
+      : `Weight's ${change} ${since}, but ${singleReadingClause(gapToPrev)}. Nothing to act on.`;
   return { message, trend, sources };
 }

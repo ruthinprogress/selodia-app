@@ -142,7 +142,7 @@ export default function AlmanacScreen() {
             setOpenId(null);
             router.push({
               pathname: '/',
-              params: { prefill: `I'd like to update my Almanac entry "${entry.title}" — ` },
+              params: { prefill: `I'd like to update my Almanac entry "${entry.title}"... ` },
             });
           }}
         />

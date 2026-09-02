@@ -48,10 +48,10 @@ export function dayLevelProteinNudge(
     baseTargetG != null && baseTargetG > 0 ? Math.round(baseTargetG * PROTEIN_BUFFER_FACTOR) : null;
   const targetClause =
     bufferedTarget != null
-      ? ` Plant protein is absorbed a little less efficiently, so nudging your target up a touch today — around ${bufferedTarget}g rather than ${Math.round(baseTargetG!)}g — covers the difference.`
+      ? ` Plant protein is absorbed a little less efficiently, so nudging your target up a touch today (around ${bufferedTarget}g rather than ${Math.round(baseTargetG!)}g) covers the difference.`
       : '';
   const message =
-    `Most of today's protein so far is from incomplete sources (collagen or plant). Pairing a complementary source — a grain alongside the legumes, or a little dairy — rounds out the amino acids.${targetClause}`;
+    `Most of today's protein so far is from incomplete sources (collagen or plant). Pairing a complementary source (a grain alongside the legumes, or a little dairy) rounds out the amino acids.${targetClause}`;
 
   return { incompleteShare, bufferedTarget, message };
 }
@@ -208,7 +208,7 @@ export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | n
       : namesWith(items, ['limiting_lysine', 'limiting_methionine']);
     return {
       verdict: 'complete',
-      message: `The protein here is complete between the ${list(coveringNames)} — nothing missing across this meal.`,
+      message: `The protein here is complete between the ${list(coveringNames)}. Nothing missing across this meal.`,
     };
   }
 
@@ -232,7 +232,7 @@ export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | n
   if (!tryptophanCovered) {
     return {
       verdict: 'short',
-      message: `The protein here is mostly collagen, which is very low in tryptophan — another protein source later today rounds out the day.`,
+      message: `The protein here is mostly collagen, which is very low in tryptophan. Another protein source later today rounds out the day.`,
     };
   }
 
@@ -240,9 +240,9 @@ export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | n
   const supplies =
     shortOn === 'lysine'
       ? 'legumes, dairy, eggs, fish or meat'
-      : 'grains, nuts or seeds — or any animal source';
+      : 'grains, nuts or seeds, or any animal source';
   return {
     verdict: 'short',
-    message: `Nothing here supplies much ${shortOn} — ${supplies} later today rounds out the day.`,
+    message: `Nothing here supplies much ${shortOn}, so ${supplies} later today rounds out the day.`,
   };
 }
