@@ -95,7 +95,7 @@ Two sheets, and only ever two. One tab per session was tried on 2026-09-02 and r
 | `Checklist` | Task \| Status \| Date \| Notes |
 | `Decisions` | Decision \| Date \| Reasoning |
 
-Both run oldest at the top, newest appended at the bottom. Before each session's rows: one blank spacer row, then a sand-filled label row in the established format, **`S36: 3Sep26`** (`S<number>: <D>Mon<YY>`). Keep to that format rather than inventing a new one per session, because the label is the thing being scanned for.
+Both run oldest at the top, newest appended at the bottom. Before each session's rows: one blank spacer row, then a sand-filled label row in the established format, **`S36: 3Sep26`** (`S<number>: <D>Mon<YY>`). Keep to that format rather than inventing a new one per session, because the label is the thing being scanned for. It is deliberately short so it would still fit a sheet tab if these ever need splitting out again (confirmed 2026-09-03).
 
 Status values: Done, Diagnosed, Unresolved, Queued, Outstanding. The status cell is colour-filled, green for Done and Diagnosed, terracotta-tint for Unresolved, cream for the rest. **Unfinished work gets a row saying so**, carried forward as Queued or Outstanding. A close-out that only lists wins is a worse record than no close-out.
 
