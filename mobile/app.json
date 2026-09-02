@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Unflump",
+    "name": "Selodía",
     "slug": "mobile",
     "owner": "unflump",
     "version": "1.0.0",
@@ -47,8 +47,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Unflump uses your photos so you can log a meal or a scale reading by picture instead of typing it.",
-          "cameraPermission": "Unflump uses your camera so you can log a meal or a scale reading by photo instead of typing it."
+          "photosPermission": "Selodía uses your photos so you can log a meal or a scale reading by picture instead of typing it.",
+          "cameraPermission": "Selodía uses your camera so you can log a meal or a scale reading by photo instead of typing it."
         }
       ],
       "react-native-health",
