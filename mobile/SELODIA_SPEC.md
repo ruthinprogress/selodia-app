@@ -890,7 +890,22 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 - **Light:** Seed Mark **terracotta `#C97458`** · wordmark Comfortaa 300 **charcoal `#2D2B28`** · tagline Comfortaa 300 **charcoal** · category line Comfortaa 400 **forest `#37584A`**.
 - **Dark (the inverted ground, background `#834B39`):** Seed Mark **sand `#E9D6C2`** — *not* terracotta, which would disappear into its own ground · wordmark and tagline **cream `#F7F3EA`** · category line **sand**.
 
-*(Weight 200 was tested and rejected: it thins out badly when reversed onto the terracotta ground. **Weight 300 now carries the wordmark on both grounds, so the reverse treatment needs re-checking on the terracotta ground specifically** — 300 is one step from the weight that failed there, and nothing has yet been rendered to confirm it holds.)*
+**REVERSE TREATMENT — VERIFIED BY RENDER, 2026-09-02.** Weight 200 was rejected in August for thinning out when reversed. Weight 300 was one step from it and unverified, so the lockup was rendered at 200, 300 and 400 on both candidate grounds, with the mark in sand, wordmark and tagline in cream, category in sand.
+
+**Weight: 300 holds.** At 200 the strokes go wispy and start breaking up, worst in the tagline. **300 reads cleanly.** 400 is sturdier, but 300 is not thin, and the gap between them is modest. The confirmed weight stands on the dark ground with no change.
+
+**"The terracotta ground" was ambiguous, and the two candidates behave differently.** This matters more than the weight question and is the reason the render covered both:
+
+| Ground | Cream `#F7F3EA` | Sand `#E9D6C2` |
+|---|---|---|
+| **`#834B39`** — the spec's dark ground | **6.26:1**, passes AA | **4.90:1**, passes AA |
+| **`#C97458`** — brand terracotta | **3.10:1**, large text only | **2.43:1**, fails |
+
+**On brand terracotta this is a contrast problem, not a weight problem, and no weight fixes it.** The tagline and category are below AA on `#C97458` at every weight tested. Going heavier makes it *look* better without making it legible, which is the trap: at 400 the right-hand column reads acceptably to the eye while still measuring 3.10:1.
+
+**Rule, therefore: on `#C97458`, the mark and wordmark at display size only. Never the tagline or the category line at body size, whatever the weight.** The full dark lockup belongs on `#834B39`, which is what the dark-ground line above specifies and where every measurement passes.
+
+*(Asset caveat: the render used the terracotta master recoloured to sand `#E9D6C2` in the SVG, because the asset pack has no sand variant — `selodia-mark-reverse-on-terracotta.svg` exists but its exact fill was not verified. The shape is identical and the result stands, but **the official sand asset should be confirmed when the 46 wordmark and lockup files are regenerated**, so the shipped dark lockup is built from a real asset rather than a recolour.)*
 
 > **OUTSTANDING: 46 brand asset files still carry the old wordmark and must be regenerated before any external use.** Every `*-wordmark-*` and `*-lockup-*` file in `Build Specs/Branding` — across both the Logo Asset Pack and the Exercise Animatic Logo Kit, in SVG, PNG and PDF, at every size and colourway — contains the word **"unflump"** set in Comfortaa and converted to outlines. They were deliberately **left with their `unflump-` filenames** during the 2026-09-02 Drive rename, because a `selodia-` name on a file drawing the old word would promise an asset it does not contain, and someone would eventually ship it.
 >
