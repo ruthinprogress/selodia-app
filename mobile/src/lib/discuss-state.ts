@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 // "Has this entry been discussed?" — the eye icon's state (build item 30,
-// slice 3, per UNFLUMP_SPEC.md, The "What's In Here" Discuss-Card).
+// slice 3, per SELODIA_SPEC.md, The "What's In Here" Discuss-Card).
 //
 // The icon is neutral until a discussion exists against that entry, then
 // changes permanently. There is deliberately no third "unread" state and no

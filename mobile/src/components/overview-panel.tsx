@@ -22,7 +22,7 @@ import { calculateProteinTarget } from '@/lib/protein';
 import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
 
-// The Overview segment of the Body tab — the default landing (UNFLUMP_SPEC.md,
+// The Overview segment of the Body tab — the default landing (SELODIA_SPEC.md,
 // The Overview Segment). A lightweight cross-facet glance: a rotating personal
 // line, a body summary (weight / body fat / muscle with vs-last-week deltas),
 // and a food-intake card with calorie + protein target-vs-current bars plus the

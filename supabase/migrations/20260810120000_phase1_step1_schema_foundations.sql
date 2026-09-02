@@ -1,4 +1,4 @@
--- Phase 1, step 1: core schema foundations (mobile/UNFLUMP_SPEC.md, Part Sixteen)
+-- Phase 1, step 1: core schema foundations (mobile/SELODIA_SPEC.md, Part Sixteen)
 
 -- user_profile: structured, typed fields (distinct from the freeform
 -- category/content user_context table used by [REMEMBER])

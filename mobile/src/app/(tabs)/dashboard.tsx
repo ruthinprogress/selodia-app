@@ -16,7 +16,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { parseWeekStartParam } from '@/lib/week';
 
 // The Dashboard destination: one screen hosting an in-screen switcher across
-// facets (UNFLUMP_SPEC.md, Screen Structure). Segments appear only once built
+// facets (SELODIA_SPEC.md, Screen Structure). Segments appear only once built
 // (principle 8): Overview (default), Food today, and Measurements; Activity
 // lands in a later slice. The `view` and `week` route params make the switcher
 // addressable from outside — a tap sets local state, and a chat deep-link can

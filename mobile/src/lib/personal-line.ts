@@ -1,5 +1,5 @@
 // The Overview personal line (build item 32, first version). A curated MVP set
-// under the hard tone constraint (UNFLUMP_SPEC.md, The Overview Personal Line):
+// under the hard tone constraint (SELODIA_SPEC.md, The Overview Personal Line):
 // never a slogan or affirmation, no "we"/"us" ownership language — a quiet,
 // trusted-friend reminder of the philosophy. Rotation is DAILY (stable through
 // a calendar day, not flickering on every open). The fuller data-specific

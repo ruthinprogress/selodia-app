@@ -31,7 +31,7 @@ import {
 
 // The Measurements segment (build item 38, slice 1): the minimized weekly table
 // of body data - Day / Weight / Body fat / Muscle, each carrying a trailing 7d
-// percentage delta (UNFLUMP_SPEC.md, The Measurements Segment).
+// percentage delta (SELODIA_SPEC.md, The Measurements Segment).
 //
 // This is the weekly table's HOME. food-week-view.tsx holds the same mechanic
 // on the wrong screen; it stays there untouched until the Food segment's

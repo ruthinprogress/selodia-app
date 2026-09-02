@@ -28,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 // food_items.protein_source, already persisted at log time and never changed, so
 // computing it on read in food-breakdown-card.tsx is stable forever and a stored
 // copy could only drift from its own input. It is deliberately not persisted —
-// see UNFLUMP_SPEC.md, item 29.
+// see SELODIA_SPEC.md, item 29.
 
 // Kept in step with the migration's check constraint. food_log and activity_log
 // are declared but not written today: the seam is real from the start rather

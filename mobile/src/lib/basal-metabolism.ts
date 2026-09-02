@@ -6,7 +6,7 @@ export type BasalMetabolismPoint = {
 
 // Only points with a bmr reading can contribute to the trend; sorted ascending
 // so the latest is last, for the Overview's BMR summary line. (No BMR/muscle
-// trend chart is planned - abandoned deliberately; see UNFLUMP_SPEC.md, Basal
+// trend chart is planned - abandoned deliberately; see SELODIA_SPEC.md, Basal
 // Metabolism Tracking.)
 export function getBasalMetabolismTrend(
   measurements: { measured_at: string; bmr: number | null; muscle_kg: number | null }[]

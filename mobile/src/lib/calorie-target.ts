@@ -1,5 +1,5 @@
 // Daily calorie (energy) target from the decided Fat×Muscle combination matrix
-// (UNFLUMP_SPEC.md, Part Eight, Calorie Targets — decided 2026-08-15). Pure and
+// (SELODIA_SPEC.md, Part Eight, Calorie Targets — decided 2026-08-15). Pure and
 // node-tested. It takes TDEE as an INPUT (never computes it) so the matrix is
 // testable in isolation; the caller sources TDEE (scale BMR or estimate ×
 // activity multiplier) and reads the Focus states, then feeds them in.

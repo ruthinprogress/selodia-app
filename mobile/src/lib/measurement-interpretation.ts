@@ -1,6 +1,6 @@
 import { computeCycleDayAndPhase, isWaterRetentionPhase } from '@/lib/cycle';
 
-// Body Measurement Interpretation Layer (UNFLUMP_SPEC.md, Part Nine). This is the
+// Body Measurement Interpretation Layer (SELODIA_SPEC.md, Part Nine). This is the
 // composition backbone: a set of noise flaggers — each spotting a reason a single
 // reading might be inflated — plus a trend engine that separates a single-day
 // fluctuation from a genuine multi-reading trend (the Reliability Framework's

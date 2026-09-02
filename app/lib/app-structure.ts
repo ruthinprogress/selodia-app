@@ -2,7 +2,7 @@ import { SPOTLIGHT_PROMPT_BLOCK } from './spotlight-targets';
 
 // What Unflump knows about the app it lives inside.
 //
-// The Standing Help-Layer Capability (UNFLUMP_SPEC.md, Part Five) requires
+// The Standing Help-Layer Capability (SELODIA_SPEC.md, Part Five) requires
 // exactly this: "Unflump's knowledge to include the app's own structure, not
 // only food/body/goals domain knowledge." Without it the model has no idea what
 // the person is looking at, so a "how do I..." question produces a confident,

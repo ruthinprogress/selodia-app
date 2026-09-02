@@ -22,7 +22,7 @@ type Message = {
   resourceCard?: { title: string; description: string; url: string } | null;
 };
 
-// Step 10 (UNFLUMP_SPEC.md, Part Seven): confirm an explicit yes, then collect
+// Step 10 (SELODIA_SPEC.md, Part Seven): confirm an explicit yes, then collect
 // height/weight so the route can state a protein target tied to today's logged
 // intake. The number is built deterministically server-side (never the model);
 // this screen only relays the conversation and waits for phaseComplete — the

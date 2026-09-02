@@ -7,7 +7,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
-// The cycle-tracking discovery invitation (UNFLUMP_SPEC.md, Part Thirteen),
+// The cycle-tracking discovery invitation (SELODIA_SPEC.md, Part Thirteen),
 // surfaced as a dismissible card at the top of the Chat tab — invitation, never
 // a nag. `discover` is the never-logged copy (spec-verbatim); `relog` is the
 // gentle re-offer once a previously-logged cycle has lapsed 35+ days. Accepting

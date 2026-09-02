@@ -1,5 +1,5 @@
 # Ruth's Decision Patterns
-*Started 13 August 2026. This document exists to capture recurring patterns in how Ruth actually makes decisions — not rules imposed on her, but observations of judgment already demonstrated across this project. Unlike WORKFLOW.md (process) or UNFLUMP_SPEC.md's Core Values (product principles), this is about the person making the decisions, and is meant to eventually outgrow this one project — likely extracted into its own standalone reference once there's enough real material to draw from, same treatment as the Development Workflow Principles.*
+*Started 13 August 2026. This document exists to capture recurring patterns in how Ruth actually makes decisions — not rules imposed on her, but observations of judgment already demonstrated across this project. Unlike WORKFLOW.md (process) or SELODIA_SPEC.md's Core Values (product principles), this is about the person making the decisions, and is meant to eventually outgrow this one project — likely extracted into its own standalone reference once there's enough real material to draw from, same treatment as the Development Workflow Principles.*
 
 *Built incrementally, as real decisions happen — not written all at once. Each entry should trace back to an actual moment, not a general impression.*
 

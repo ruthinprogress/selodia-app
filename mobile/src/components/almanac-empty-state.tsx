@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-// The Almanac's empty state (build item 15, UI slice 1 — UNFLUMP_SPEC.md, Part
+// The Almanac's empty state (build item 15, UI slice 1 — SELODIA_SPEC.md, Part
 // Ten). Until this existed the Almanac tab rendered a title and nothing else:
 // one of three destinations was a dead end, and a live exception to principle 8.
 //

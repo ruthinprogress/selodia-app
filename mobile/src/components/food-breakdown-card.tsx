@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 // nothing else, so the same card serves today's-log rows now and any future
 // host (a weekly table, a chat deep-link) without change.
 //
-// Follows the Detail Views template (UNFLUMP_SPEC.md) in order: the itemised
+// Follows the Detail Views template (SELODIA_SPEC.md) in order: the itemised
 // content, then the macro breakdown with its confidence tag. The template's
 // other two parts are deliberately ABSENT, not forgotten:
 //   - the sand-toned factual note card needs per-entry health flags, which are

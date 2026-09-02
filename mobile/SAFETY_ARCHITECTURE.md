@@ -1,6 +1,6 @@
 # Unflump Safety State Machine: Engineering Design
 
-*Written 2026-08-13. This is the **engineering** companion to `UNFLUMP_LANGUAGE_RULES.md` — that document is the clinical *what and why* (the five tiers, MI grounding, the C-SSRS-derived wording); this one is the *how*: the deterministic state machine that decides, turn by turn, whether the safety boundary fires, whether a resource card attaches, and whether we are still screening. Both are implemented once in the shared module `app/lib/safety-classification.ts` and used identically by `app/api/onboarding-chat/route.ts` and `app/api/ask-unflump/route.ts`. Any future emotionally-open touchpoint must use the same module rather than reimplementing this.*
+*Written 2026-08-13. This is the **engineering** companion to `SELODIA_LANGUAGE_RULES.md` — that document is the clinical *what and why* (the five tiers, MI grounding, the C-SSRS-derived wording); this one is the *how*: the deterministic state machine that decides, turn by turn, whether the safety boundary fires, whether a resource card attaches, and whether we are still screening. Both are implemented once in the shared module `app/lib/safety-classification.ts` and used identically by `app/api/onboarding-chat/route.ts` and `app/api/ask-unflump/route.ts`. Any future emotionally-open touchpoint must use the same module rather than reimplementing this.*
 
 ---
 

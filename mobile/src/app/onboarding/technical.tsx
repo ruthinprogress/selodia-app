@@ -22,7 +22,7 @@ type Message = {
   resourceCard?: { title: string; description: string; url: string } | null;
 };
 
-// Step 9 (UNFLUMP_SPEC.md, Part Seven) is understanding, not capture. The opening
+// Step 9 (SELODIA_SPEC.md, Part Seven) is understanding, not capture. The opening
 // explanation is fixed and on-spec, so it's stated client-side rather than paying
 // for a model turn to render a known statement; the route (TECHNICAL_ROLE) only
 // handles any follow-up questions. Continue is available from the start — there's

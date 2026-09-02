@@ -15,7 +15,7 @@ import { entryLabel, sumDay, weeklyAverage, type FoodLogSummary } from '@/lib/fo
 import { supabase } from '@/lib/supabase';
 import { toLocalDateKey, weekRange } from '@/lib/week';
 
-// The Food segment (UNFLUMP_SPEC.md, The Food Segment): a TODAY'S-LOG view, not
+// The Food segment (SELODIA_SPEC.md, The Food Segment): a TODAY'S-LOG view, not
 // a browsable week. Today's entries as rows, today's total, and a single
 // one-line weekly average. The weekly *table* mechanic is a body-data pattern
 // and lives in Measurements — see food-week-view.tsx, parked for that port.

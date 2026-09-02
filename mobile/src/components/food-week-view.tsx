@@ -18,7 +18,7 @@ import { dayLabel, daysOfWeek, toLocalDateKey, weekLabel, weekRange } from '@/li
 // Muscle / ±), not the Food segment. When Measurements is built, this ports
 // there; the Food segment instead gets a lighter, genuinely new today's-log
 // view (today's entries + total + a one-line weekly average). `week.ts` stays
-// shared. See UNFLUMP_SPEC.md — The Measurements Segment / The Food Segment.
+// shared. See SELODIA_SPEC.md — The Measurements Segment / The Food Segment.
 type FoodLogRow = {
   id: string;
   happened_at: string;

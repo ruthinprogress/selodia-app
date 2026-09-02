@@ -11,7 +11,7 @@ type ResourceCardProps = {
   url: string;
 };
 
-// Small, quiet, tappable - never inline text. Per UNFLUMP_LANGUAGE_RULES.md:
+// Small, quiet, tappable - never inline text. Per SELODIA_LANGUAGE_RULES.md:
 // title/description are AI-generated and responsive to the moment; the org
 // and url are always passed in from the deterministic lookup, never chosen
 // here or by the model.

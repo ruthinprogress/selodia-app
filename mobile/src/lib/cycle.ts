@@ -1,4 +1,4 @@
-// Cycle-tracking foundation (UNFLUMP_SPEC.md, Part Thirteen). Pure, testable
+// Cycle-tracking foundation (SELODIA_SPEC.md, Part Thirteen). Pure, testable
 // utilities: the discovery-prompt trigger and the compute-on-read cycle
 // day/phase. `cycle_events` (a period_start per logged period) is the single
 // source of truth — cycle day is always derived from it, never stored, so a

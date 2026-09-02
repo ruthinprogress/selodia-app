@@ -51,7 +51,7 @@ const anthropic = new Anthropic({
 // Upgraded from Haiku to the same stronger model onboarding-chat uses -
 // this route now runs the same distress classification, which decides
 // whether the safety boundary fires, so it warrants the same reasoning
-// capability rather than the routine-task tier (see UNFLUMP_SPEC.md, Part
+// capability rather than the routine-task tier (see SELODIA_SPEC.md, Part
 // Three, and onboarding-chat/route.ts for the same rationale).
 const MODEL = 'claude-sonnet-5';
 

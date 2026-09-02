@@ -1,4 +1,4 @@
-// Pure helpers for the Food segment's today's-log view (UNFLUMP_SPEC.md, The
+// Pure helpers for the Food segment's today's-log view (SELODIA_SPEC.md, The
 // Food Segment). Kept out of the component so the arithmetic is node-testable —
 // the same split as overview-metrics.ts and protein-quality.ts.
 

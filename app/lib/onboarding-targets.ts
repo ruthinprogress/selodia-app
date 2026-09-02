@@ -1,5 +1,5 @@
 // Deterministic, traceable builders for the onboarding-targets conversation's
-// numeric turns (UNFLUMP_SPEC.md, Part Seven steps 10-11). Per decision A, every
+// numeric turns (SELODIA_SPEC.md, Part Seven steps 10-11). Per decision A, every
 // stated number comes from here (route reply-override), never from the model, so
 // a misparse can never reach a figure. The model only extracts unit-components,
 // classifies confirm/correct, and provides warmth around these fixed statements.
@@ -22,7 +22,7 @@ export function formatMeasurementEcho(heightCm: number | null, weightKg: number 
 // moves someone within it, then LET THEM CHOOSE. It replaces a bodyweight
 // calculation that produced a confident specific figure from data that could not
 // support one - and the fix for that is not a better formula, it is not
-// pretending to have one. See UNFLUMP_SPEC.md, Part Eight.
+// pretending to have one. See SELODIA_SPEC.md, Part Eight.
 //
 // "Most active women" is the population this app is for (Part One), so the
 // framing is true rather than generic. The range scales with their weight, so

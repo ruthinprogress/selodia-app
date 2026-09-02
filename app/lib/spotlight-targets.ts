@@ -10,7 +10,7 @@
 // TAB ICONS ARE DELIBERATELY ABSENT, and no id here names one. NativeTabs
 // renders a real UITabBarController / BottomNavigationView with no ref, no
 // onLayout and no frame API in JS, so the icons cannot be measured and an
-// in-screen overlay cannot draw over them. See UNFLUMP_SPEC.md, Part Six, KNOWN
+// in-screen overlay cannot draw over them. See SELODIA_SPEC.md, Part Six, KNOWN
 // PLATFORM CONSTRAINT. For a cross-tab question Unflump explains in words, which
 // is what it already does well — it does not get a made-up button to pulse
 // instead.

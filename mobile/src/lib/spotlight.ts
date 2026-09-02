@@ -14,7 +14,7 @@
 // arrival. Two stages of one request, not two requests.
 //
 // WHERE THERE IS NO reachedVia, the route to the target is a tab icon, and tab
-// icons cannot be spotlighted (UNFLUMP_SPEC.md, Part Six, KNOWN PLATFORM
+// icons cannot be spotlighted (SELODIA_SPEC.md, Part Six, KNOWN PLATFORM
 // CONSTRAINT). Those targets are NOT dropped: the request stays pending, Unflump
 // explains the way in words as it does today, and if the person walks there
 // themselves the destination still highlights when it appears. That is the whole

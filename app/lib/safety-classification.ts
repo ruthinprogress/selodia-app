@@ -2,7 +2,7 @@ import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 
 // The five distress tiers are the shared core of the safety-boundary
 // system, used by every emotionally-open touchpoint (onboarding-chat,
-// ask-unflump, and any future one) - grounded in UNFLUMP_LANGUAGE_RULES.md.
+// ask-unflump, and any future one) - grounded in SELODIA_LANGUAGE_RULES.md.
 // Each route adds its own non-distress classification(s) on top (e.g.
 // onboarding-chat's clear_goal/ambiguous_goal, ask-unflump's neutral).
 export const DISTRESS_TIERS = [
@@ -16,14 +16,14 @@ export type DistressTier = (typeof DISTRESS_TIERS)[number];
 
 export type EscalationStep = 'gentle_asked' | 'direct_asked' | null;
 
-// Verbatim from UNFLUMP_LANGUAGE_RULES.md's worked example - fixed, not
+// Verbatim from SELODIA_LANGUAGE_RULES.md's worked example - fixed, not
 // AI-paraphrased, because its exact wording is what makes it grounded in
 // the C-SSRS's validated first screening question.
 export const DIRECT_ESCALATION_QUESTION =
   "Thank you for telling me that — that took something to say. Can I ask you directly: have you been wishing you weren't here, or wishing you could just not wake up?";
 
 // Resource-org selection is deterministic, never an AI judgment call - see
-// UNFLUMP_LANGUAGE_RULES.md. URLs verified live 2026-08-11 (Beat, Shout)
+// SELODIA_LANGUAGE_RULES.md. URLs verified live 2026-08-11 (Beat, Shout)
 // and 2026-08-12 (Cruse), re-verify periodically per the doc's own
 // accuracy note.
 export const RESOURCES: Record<'Beat' | 'Shout' | 'Cruse', { name: string; url: string }> = {
@@ -94,7 +94,7 @@ export function buildClassifyTool<T extends string>(
 // universal distress-adjacent rules. Each route prepends its own
 // role-specific framing (what this conversation is for) before this
 // block, rather than duplicating any of the following.
-export const SAFETY_PROMPT_BLOCK = `SAFETY BOUNDARY - this is the most important part of your job, grounded in UNFLUMP_LANGUAGE_RULES.md (Motivational Interviewing, plus the C-SSRS for the ambiguous/acute tiers):
+export const SAFETY_PROMPT_BLOCK = `SAFETY BOUNDARY - this is the most important part of your job, grounded in SELODIA_LANGUAGE_RULES.md (Motivational Interviewing, plus the C-SSRS for the ambiguous/acute tiers):
 - Ordinary discouragement (tiredness, a hard day, mild self-criticism) gets a warm, physiologically-grounded reframe that keeps things moving forward.
 - Genuinely ambiguous statements (could be burnout with the process, could be something more serious - not enough to tell from the words alone) get ONE gentle, open clarifying question. Never guess either way, never jump to a resource.
 - Eating-related distress (disordered relationship with food, restriction, guilt-driven patterns, going extended periods without eating out of fear rather than choice) gets a care-first response. Do not pivot back to goals or ordinary tasks. Stay warmly present for as long as they want to keep talking.

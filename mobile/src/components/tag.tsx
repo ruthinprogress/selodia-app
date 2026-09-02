@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
-// The shared Tag component (UNFLUMP_SPEC.md, Established Design-System
+// The shared Tag component (SELODIA_SPEC.md, Established Design-System
 // Elements): ONE component, two contexts — food *confidence* and activity
 // *intensity*. Deliberately not two lookalike components, so a tag means the
 // same thing wherever it appears.

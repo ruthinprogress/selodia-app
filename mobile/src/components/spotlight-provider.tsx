@@ -21,7 +21,7 @@ import {
 //   arrive - they are on the destination screen, so highlight the thing itself.
 //
 // A request whose route is a tab icon has no `point` stage at all, because tab
-// icons cannot be spotlighted (UNFLUMP_SPEC.md, Part Six, KNOWN PLATFORM
+// icons cannot be spotlighted (SELODIA_SPEC.md, Part Six, KNOWN PLATFORM
 // CONSTRAINT). It waits instead: Unflump explains the way in words, and if the
 // person walks there the destination highlights when it mounts. That waiting
 // path is the common one, and it is a feature rather than a consolation - it

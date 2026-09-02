@@ -1,4 +1,4 @@
--- Health Context (mobile/UNFLUMP_SPEC.md, Part Twelve): optional, status-based
+-- Health Context (mobile/SELODIA_SPEC.md, Part Twelve): optional, status-based
 -- health markers + diagnosed conditions, captured at onboarding and injected
 -- into AI food guidance. Deliberately STATUS-based, never raw lab values: the
 -- app never computes a clinical threshold, it only ever acts on the status the

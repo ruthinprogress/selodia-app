@@ -1,4 +1,4 @@
-// Health Context (UNFLUMP_SPEC.md, Part Twelve). Turns a user's STATUS-based
+// Health Context (SELODIA_SPEC.md, Part Twelve). Turns a user's STATUS-based
 // health context into a deterministic system-prompt block that shapes food
 // guidance. The food-protection rules are fixed here, not invented by the
 // model - the model only phrases them. The app never interprets a raw lab

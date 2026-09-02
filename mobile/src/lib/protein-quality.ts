@@ -1,4 +1,4 @@
-// Protein-quality flagging (UNFLUMP_SPEC.md, Part Eight). The per-source
+// Protein-quality flagging (SELODIA_SPEC.md, Part Eight). The per-source
 // classification is captured deterministically at log time (protein_source, per
 // Part Two principle 13); the rules over it are fixed, not model-invented:
 // collagen is always incomplete, plant proteins are incomplete (worth a
@@ -228,7 +228,7 @@ export function mealAminoAssessment(items: AminoItem[]): MealAminoAssessment | n
   // as the second claim, and this app's user lifts seriously - MPS is precisely
   // the outcome she is training for. So the copy stays in the supported lane and
   // makes no claim about timing for training purposes, in either direction.
-  // See UNFLUMP_SPEC.md Resources for the citations.
+  // See SELODIA_SPEC.md Resources for the citations.
   if (!tryptophanCovered) {
     return {
       verdict: 'short',

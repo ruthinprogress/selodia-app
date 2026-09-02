@@ -1,11 +1,11 @@
 # Unflump — Workflow & Collaboration Process
-*This document exists because process knowledge, learned across many sessions, was at real risk of being lost if this chat ever ended or a new one started. It is not product spec — see UNFLUMP_SPEC.md for that, and UNFLUMP_LANGUAGE_RULES.md for the safety-language grounding. This document is about how Ruth, Claude (chat), and Claude Code actually work together.*
+*This document exists because process knowledge, learned across many sessions, was at real risk of being lost if this chat ever ended or a new one started. It is not product spec — see SELODIA_SPEC.md for that, and SELODIA_LANGUAGE_RULES.md for the safety-language grounding. This document is about how Ruth, Claude (chat), and Claude Code actually work together.*
 
 ---
 
 ## The Three Documents, and Where They Live
-- **UNFLUMP_SPEC.md** — the current, authoritative, present-tense build specification. Lives in the repo at `mobile/UNFLUMP_SPEC.md`. Claude Code is the sole editor.
-- **UNFLUMP_LANGUAGE_RULES.md** — the MI-grounded safety-boundary language rules. Lives in the repo at `mobile/UNFLUMP_LANGUAGE_RULES.md`. Referenced by the spec, not duplicated into it. Claude Code is the sole editor.
+- **SELODIA_SPEC.md** — the current, authoritative, present-tense build specification. Lives in the repo at `mobile/SELODIA_SPEC.md`. Claude Code is the sole editor.
+- **SELODIA_LANGUAGE_RULES.md** — the MI-grounded safety-boundary language rules. Lives in the repo at `mobile/SELODIA_LANGUAGE_RULES.md`. Referenced by the spec, not duplicated into it. Claude Code is the sole editor.
 - **WORKFLOW.md** (this document) — process and collaboration knowledge. Lives in the repo at `mobile/WORKFLOW.md`.
 
 **All three are also synced to Google Drive**, at `H:\My Drive\Unflump App Project Master Folder\Build Specs\Claude Code Working Build Specs` — a folder on Ruth's local machine that syncs automatically to Drive. Claude Code writes directly to this local path (it is not a manual download/upload step) **— but only when Claude Code is executing ON the laptop.** See the session-type caveat below; a remotely-executed session cannot reach this folder at all. Claude (chat) has read access to this Drive folder and can check it directly. **Rule for this specific folder: one file per document, always overwritten in place — never dated copies.** Older, superseded versions of documents living *elsewhere* (e.g. the old versioned V3-V8 history document, kept deliberately as a record of the project's reasoning) are not touched or deleted — that rule only applies within this one working folder.
@@ -26,7 +26,7 @@ The actual working methodology of this project is a repeating three-party loop, 
 7. **Claude (chat) turns the decision into a precise, ready-to-send instruction** (see The Prompt-Handoff Convention, below — that convention is this step of the loop).
 8. **Repeat, one verified piece at a time** — each round is built, checked, and stood behind before the next begins.
 
-**Why this matters:** the loop preserves genuine decision-making authority with the person who holds the product judgment, *without* requiring her to have technical implementation fluency. The two translation layers — intent → plan-request, and proposal → plain-terms-with-a-recommendation — are what make that possible: Ruth decides the things that are actually hers to decide, on their real merits, while implementation detail stays where it belongs. This is a reusable collaboration pattern, not specific to Unflump — the same treatment as the Development Workflow Principles (UNFLUMP_SPEC.md): worth carrying into any future project where the person with the domain judgment is not the person with the build fluency.
+**Why this matters:** the loop preserves genuine decision-making authority with the person who holds the product judgment, *without* requiring her to have technical implementation fluency. The two translation layers — intent → plan-request, and proposal → plain-terms-with-a-recommendation — are what make that possible: Ruth decides the things that are actually hers to decide, on their real merits, while implementation detail stays where it belongs. This is a reusable collaboration pattern, not specific to Unflump — the same treatment as the Development Workflow Principles (SELODIA_SPEC.md): worth carrying into any future project where the person with the domain judgment is not the person with the build fluency.
 
 **The loop is self-reinforcing, not just repeatable.** Real decisions made through it are periodically extracted into `DECISION_PATTERNS.md` as genuine patterns in how Ruth exercises judgment — not merely a log of individual choices. Those extracted patterns then feed back into future rounds of the same loop: they shape what Claude Code proposes in the first place, what gets flagged for explicit sign-off versus handled with a reasonable default, and what gets caught before it is ever built. This is the actual mechanism behind the project's increasing pace and precision over time — the system is not just executing faster, it is building an increasingly accurate model of the person directing it.
 
@@ -94,7 +94,7 @@ A remote session has no `H:` and no Windows filesystem. The same limitation expl
 
 **What a remote session should do at close-out:** compare byte sizes and hashes against the Drive copies, state plainly which documents are stale, and hand over the exact copy command. The verification is genuinely useful; the write is not available.
 
-**Note the filenames differ** between repo and Drive, which makes an accidental duplicate easy: `UNFLUMP_SPEC.md` → `unflump-build-specification.md`, `WORKFLOW.md` → `unflump-workflow.md`, `UNFLUMP_LANGUAGE_RULES.md` → `unflump-mi-language-rules.md`, `DECISION_PATTERNS.md` → `unflump-decision-patterns.md`, `SAFETY_ARCHITECTURE.md` → `unflump-safety-architecture.md`.
+**Note the filenames differ** between repo and Drive, which makes an accidental duplicate easy: `SELODIA_SPEC.md` → `unflump-build-specification.md`, `WORKFLOW.md` → `unflump-workflow.md`, `SELODIA_LANGUAGE_RULES.md` → `unflump-mi-language-rules.md`, `DECISION_PATTERNS.md` → `unflump-decision-patterns.md`, `SAFETY_ARCHITECTURE.md` → `unflump-safety-architecture.md`.
 
 ---
 

@@ -13,7 +13,7 @@ import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
 
 // Status-based capture only - never a lab number. The app acts on what the
-// person reports, never on a threshold it computes itself (UNFLUMP_SPEC.md,
+// person reports, never on a threshold it computes itself (SELODIA_SPEC.md,
 // Part Twelve). Every field is optional; the whole step is skippable.
 type MarkerStatus = 'normal' | 'elevated' | 'low' | 'borderline' | 'unsure';
 type MarkerKey = 'ldl' | 'hdl' | 'cholesterol' | 'glucose' | 'ferritin' | 'thyroid';

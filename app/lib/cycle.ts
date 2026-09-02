@@ -1,5 +1,5 @@
 // Server-side mirror of the cycle-phase computation, for ask-unflump's context
-// injection (UNFLUMP_SPEC.md, Part Thirteen: every conversation loads cycle
+// injection (SELODIA_SPEC.md, Part Thirteen: every conversation loads cycle
 // phase). This deliberately duplicates the phase logic in mobile/src/lib/cycle.ts
 // — the Next backend and the Expo client can't share a lib across the runtime
 // boundary, the same accepted trade-off as body-metrics.ts mirroring protein.ts.

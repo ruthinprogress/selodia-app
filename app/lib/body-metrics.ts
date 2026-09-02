@@ -1,5 +1,5 @@
 // Server-side body-metric calculations for the onboarding targets conversation
-// (UNFLUMP_SPEC.md, Part Seven steps 10-11). These produce the numbers the
+// (SELODIA_SPEC.md, Part Seven steps 10-11). These produce the numbers the
 // onboarding-chat route states in-conversation, computed deterministically
 // rather than left to the model to do arithmetic. Pure and unit-traceable.
 //
@@ -59,7 +59,7 @@ export function calculateTDEE(bmr: number | null, activityLevel: string | null |
   return Math.round(bmr * mult);
 }
 
-// Daily protein target in grams (UNFLUMP_SPEC.md, Part Eight): lean mass ×2.2,
+// Daily protein target in grams (SELODIA_SPEC.md, Part Eight): lean mass ×2.2,
 // falling back to bodyweight when no muscle reading exists. Mirrors the client-
 // side protein.ts formula so onboarding can state it server-side; the tiny
 // duplication is deliberate (the client Dashboard and the server conversation

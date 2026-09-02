@@ -24,7 +24,7 @@ type Message = {
 
 type DeferredTopic = { topic?: string; at?: string };
 
-// Step 11 (UNFLUMP_SPEC.md, Part Seven): a typical week of movement → activity
+// Step 11 (SELODIA_SPEC.md, Part Seven): a typical week of movement → activity
 // level → a TDEE estimate the route states deterministically. This is the final
 // content step, so it owns the onboarding finish. phaseComplete marks the
 // confirmation turn; on it we also resurface anything the person deferred earlier

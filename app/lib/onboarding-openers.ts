@@ -7,7 +7,7 @@
 //
 // EXCEPT THERE IS NO SUCH TEST. Checked 2026-09-01 while changing the intro
 // opener: this repository contains no test files at all, so the parity promised
-// one line above is enforced by nothing. Recorded in UNFLUMP_SPEC.md as a known
+// one line above is enforced by nothing. Recorded in SELODIA_SPEC.md as a known
 // gap rather than quietly fixed here, since writing the first test in the
 // project is its own piece of work. Until then, THREE places quote the intro
 // opener and all three move together: this map, the OPENING_LINE constant in

@@ -32,7 +32,7 @@ import {
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// A stronger model than the routine parsing tasks (see UNFLUMP_SPEC.md, Part
+// A stronger model than the routine parsing tasks (see SELODIA_SPEC.md, Part
 // Three): this route's classification decides whether the safety boundary fires.
 import { PHASE_OPENERS } from '../../lib/onboarding-openers';
 
