@@ -164,7 +164,7 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
   return { status: 'logged', kind, message, foodLogId };
 }
 
-// What Unflump says back. The unreadable-photo line is verbatim from Part
+// What Selodia says back. The unreadable-photo line is verbatim from Part
 // Fifteen's Error States - it was written for exactly this moment, and it keeps
 // the fallback in-world: not being able to read an image is a real perceptual
 // limit, not a build-status one.

@@ -4,7 +4,7 @@ import { View, type ScrollView, type StyleProp, type ViewStyle } from 'react-nat
 import { useSpotlight, useSpotlightScroll } from '@/components/spotlight-provider';
 import type { Rect, SpotlightId } from '@/lib/spotlight';
 
-// Marks one element as something Unflump is allowed to point at (build item 23).
+// Marks one element as something Selodia is allowed to point at (build item 23).
 //
 // A PLAIN WRAPPER ON PURPOSE. It renders a View around its children and nothing
 // else - no styling, no pressability, no layout opinion - so wrapping an element

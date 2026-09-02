@@ -28,7 +28,7 @@ type Message = {
 // first answer gets the same care-first branch the goals step has, instead of a
 // canned line.
 //
-// REWRITTEN 2026-09-01 after device testing: the old opener was "Hi, I'm Unflump.
+// REWRITTEN 2026-09-01 after device testing: the old opener was "Hi, I'm Selodia.
 // What brings you here today?" and it left people stranded. Two faults. The
 // question was wide open with nothing to push against, so someone who had just
 // arrived had to invent the shape of the conversation themselves — one tester had

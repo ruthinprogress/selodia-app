@@ -1,7 +1,7 @@
 // Saying so when a log did not land.
 //
 // WHY THIS EXISTS. Found live on 2026-08-27: Ruth typed "Waist 70cm / Thighs
-// 52.5cm" and Unflump replied "Got those down". Nothing was stored - waist and
+// 52.5cm" and Selodia replied "Got those down". Nothing was stored - waist and
 // thigh have no field in the measurement parser - and the storage layer behaved
 // correctly in refusing to write an empty row. The failure was that the reply
 // had already been written: the model composes its answer BEFORE the save is
@@ -20,7 +20,7 @@
 // TONE. Ruth's wording (2026-08-27, second pass). The first draft - "Nothing
 // from that reached your log, though - say it again if you'd like it kept" -
 // was too blunt and too bossy: it stated a fact and then issued an instruction,
-// at the moment someone has just told Unflump something about their body and is
+// at the moment someone has just told Selodia something about their body and is
 // being told it did not stick. Hers opens with a softener, ASKS rather than
 // tells, and puts the app on the person's side of it ("so we can make sure").
 //

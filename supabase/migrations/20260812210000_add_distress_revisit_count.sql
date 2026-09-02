@@ -1,4 +1,4 @@
--- Tracks how many times Unflump has gently returned to the same distress
+-- Tracks how many times Selodia has gently returned to the same distress
 -- disclosure after the person deflected, so it can allow one return but
 -- stop re-raising it after a second explicit decline (see
 -- SELODIA_LANGUAGE_RULES.md's deflection-handling rule). Read from the

@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase';
 // photo" as their words would be putting a sentence in their mouth to make the
 // thread look tidy. An unprompted assistant turn is already an established shape
 // here — the daily roundup writes one the same way — so the thread reads
-// honestly: something happened, and Unflump said what it was.
+// honestly: something happened, and Selodia said what it was.
 //
 // Best-effort, and silent on failure. The log itself succeeded long before this
 // runs; a thread entry that fails to write must never present as a failed log.

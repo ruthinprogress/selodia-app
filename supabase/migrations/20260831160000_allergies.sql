@@ -5,7 +5,7 @@
 -- Softer preferences and dislikes live in `user_context` as category/content
 -- rows written by the classify tool. The spec forbids sharing that mechanism, in
 -- both directions and for two different reasons: "a dislike that leaks into the
--- allergy filter makes Unflump needlessly restrictive, and an allergy that leaks
+-- allergy filter makes Selodia needlessly restrictive, and an allergy that leaks
 -- into preference handling makes it dangerous." Only one of those is a safety
 -- failure, so only this side gets its own guarantees.
 --

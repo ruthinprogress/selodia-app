@@ -9,7 +9,7 @@ import { isSeeded, type AlmanacGroup } from '@/lib/almanac-list';
 // The Almanac entry list (build item 15, UI slices 2-3).
 //
 // Read-only by design: the Almanac is never edited in place. Tapping a row
-// opens the detail view, and editing from there goes through chat, so Unflump
+// opens the detail view, and editing from there goes through chat, so Selodia
 // stays the single writer and there is no direct-edit path to keep in sync with
 // the conversational one (Part Ten, Editing).
 

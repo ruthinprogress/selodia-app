@@ -4,7 +4,7 @@
 -- A NOTE IS A DIARY ENTRY, NOT A CACHE, and that is the entire design. The spec
 -- draws this as a deliberate architectural split from the compute-on-read
 -- decision made for cycle day: a recalculated value should always be current,
--- whereas a note is a record of what Unflump actually said at the time. It
+-- whereas a note is a record of what Selodia actually said at the time. It
 -- follows that a retroactively-corrected input - a period start backdated weeks
 -- later - can leave an older note slightly inconsistent with the corrected data.
 -- That is accepted and correct. The note still honestly reflects what was said.

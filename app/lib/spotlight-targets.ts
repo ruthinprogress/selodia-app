@@ -1,4 +1,4 @@
-// What Unflump is allowed to point at (Part Six, build item 23 — Tier A).
+// What Selodia is allowed to point at (Part Six, build item 23 — Tier A).
 //
 // THIS LIST IS THE CODE-LEVEL VERSION OF "NEVER INVENT A CONTROL". The prompt
 // rule in app-structure.ts asks the model not to fabricate a screen; this list
@@ -11,7 +11,7 @@
 // renders a real UITabBarController / BottomNavigationView with no ref, no
 // onLayout and no frame API in JS, so the icons cannot be measured and an
 // in-screen overlay cannot draw over them. See SELODIA_SPEC.md, Part Six, KNOWN
-// PLATFORM CONSTRAINT. For a cross-tab question Unflump explains in words, which
+// PLATFORM CONSTRAINT. For a cross-tab question Selodia explains in words, which
 // is what it already does well — it does not get a made-up button to pulse
 // instead.
 //
@@ -54,7 +54,7 @@ export function isSpotlightTarget(v: unknown): v is SpotlightTargetId {
 
 // Appended to the system prompt. Kept separate from APP_STRUCTURE_PROMPT_BLOCK
 // so the description of the app and the list of pointable things cannot drift
-// into one another - the app block is what Unflump KNOWS, this is what it can DO.
+// into one another - the app block is what Selodia KNOWS, this is what it can DO.
 export const SPOTLIGHT_PROMPT_BLOCK = `
 
 SHOWING SOMEONE WHERE SOMETHING IS. When a question is genuinely about finding something in the app - "where do I...", "how do I get to...", "I can't find...", "I'm lost" - you may set navigationTarget to one of the ids below, and the app will dim the screen and pulse that element so they can see it. Set it ALONGSIDE your reply, never instead of one: the words still have to answer the question on their own, because the person may not be on the screen that holds it.

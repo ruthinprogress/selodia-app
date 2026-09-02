@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 //
 // When someone taps "Ask about this", the entry's breakdown card is carried
 // into the chat thread as an IMAGE — a shared visual reference both the person
-// and Unflump can see, rather than structured data handed to the model
+// and Selodia can see, rather than structured data handed to the model
 // invisibly. This module owns the two halves the server needs: getting that
 // image into Storage, and getting it in front of the model exactly once.
 

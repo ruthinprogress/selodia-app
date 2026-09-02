@@ -14,7 +14,7 @@ import { Spacing } from '@/constants/theme';
 // has already guaranteed.
 //
 // COPY — adapted from Part Ten, and the adaptation is deliberate. The spec
-// writes this as Unflump SPEAKING, post-onboarding: "This is where we'll keep
+// writes this as Selodia SPEAKING, post-onboarding: "This is where we'll keep
 // all your goals, personal plans, and anything else you feel you need to keep
 // within easy reach. Just click here any time you need to. Do you have any
 // questions about this area?" Two parts of that do not survive the move from a

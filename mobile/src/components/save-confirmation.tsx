@@ -7,7 +7,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // Ephemeral save confirmation, deliberately unlike a chat bubble: a muted grey
 // pill (textSecondary background, contrasting text) that fades in, holds, and
-// fades out - a system confirmation the app shows, not something Unflump "said",
+// fades out - a system confirmation the app shows, not something Selodia "said",
 // so it never competes with the emotional content of a reply. Trigger by
 // passing a new `nonce` (with the summary) on each save; it re-animates each time.
 export function SaveConfirmation({ summary, nonce }: { summary: string | null; nonce: number }) {

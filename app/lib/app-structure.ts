@@ -1,9 +1,9 @@
 import { SPOTLIGHT_PROMPT_BLOCK } from './spotlight-targets';
 
-// What Unflump knows about the app it lives inside.
+// What Selodia knows about the app it lives inside.
 //
 // The Standing Help-Layer Capability (SELODIA_SPEC.md, Part Five) requires
-// exactly this: "Unflump's knowledge to include the app's own structure, not
+// exactly this: "Selodia's knowledge to include the app's own structure, not
 // only food/body/goals domain knowledge." Without it the model has no idea what
 // the person is looking at, so a "how do I..." question produces a confident,
 // plausible fabrication - found live on 2026-08-26, telling someone to clear
@@ -16,18 +16,18 @@ import { SPOTLIGHT_PROMPT_BLOCK } from './spotlight-targets';
 // place to update when a screen ships or changes - a stale description here
 // fabricates just as effectively as no description at all. It deliberately does
 // not mention anything unbuilt: build status is internal (Part Four) and the
-// fourth-wall rule (Part One, Brand Voice) keeps it out of Unflump's voice
+// fourth-wall rule (Part One, Brand Voice) keeps it out of Selodia's voice
 // entirely. Describing only what exists satisfies both at once.
 //
 // AND THAT MAINTENANCE RULE WAS BROKEN, which is the second reason this file
 // reads the way it does. Between 2026-08-26 and 2026-08-31 five items shipped
 // and none of them updated this block, so it went on asserting - flatly, in the
 // negative - that there was "no settings screen, no account screen", and that
-// Unflump could not erase or delete anything and should never point at a
+// Selodia could not erase or delete anything and should never point at a
 // settings path for a data-removal request. By 31 August all of that was false:
 // Settings exists, reachable from Chat, holding sign-out, a full data export and
 // a deletion flow. A stale NEGATIVE is worse than a stale omission. An omission
-// makes Unflump quiet about something real; a false negative makes it deny a
+// makes Selodia quiet about something real; a false negative makes it deny a
 // control the person can see, and in this case deny someone their own data on a
 // request that is a legal right. Corrected 2026-08-31, and audited in one pass
 // rather than patched for the settings screen alone - the Almanac's categories
@@ -35,7 +35,7 @@ import { SPOTLIGHT_PROMPT_BLOCK } from './spotlight-targets';
 // Measurements week stepper, month picker, Then & Now table and data link had
 // all gone unmentioned too.
 // Composed, not concatenated by hand at the call site: the list of things
-// Unflump can POINT at has to travel with the description of what those things
+// Selodia can POINT at has to travel with the description of what those things
 // ARE, or the two drift and it points confidently at a control that moved. The
 // ids live in spotlight-targets.ts, which is also the server-side validator, so
 // there is exactly one list rather than a prompt copy and a code copy.

@@ -180,7 +180,7 @@ export function SpotlightOverlay() {
         />
       </Pressable>
 
-      {/* Unflump's own words, anchored to the thing they are about. Part Six
+      {/* Selodia's own words, anchored to the thing they are about. Part Six
           asks for the message below; it moves above when the element sits too
           near the bottom for "below" to be on screen at all. */}
       <View

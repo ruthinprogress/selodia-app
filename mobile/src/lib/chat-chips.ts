@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 //
 // THEY ARE SENT AS THE PERSON'S OWN WORDS, not as a command or a mode switch.
 // Tapping "Log what I've eaten" posts exactly that sentence into the thread and
-// Unflump answers it like any other opening line. Nothing about the chip path is
+// Selodia answers it like any other opening line. Nothing about the chip path is
 // special downstream, which is why there is no chip-specific branch anywhere in
 // ask-unflump: a tap is a shortcut past typing, not a different kind of message.
 export const CHAT_CHIPS = [

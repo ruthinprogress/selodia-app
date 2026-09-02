@@ -137,7 +137,7 @@ export default function AlmanacScreen() {
           onClose={() => setOpenId(null)}
           // Editing is conversational, always (Part Ten): this hands the entry
           // to Chat with the opening line already written, rather than opening
-          // any form. Unflump stays the only writer.
+          // any form. Selodia stays the only writer.
           onEdit={(entry) => {
             setOpenId(null);
             router.push({

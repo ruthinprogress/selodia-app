@@ -22,7 +22,7 @@ import {
 //
 // A request whose route is a tab icon has no `point` stage at all, because tab
 // icons cannot be spotlighted (SELODIA_SPEC.md, Part Six, KNOWN PLATFORM
-// CONSTRAINT). It waits instead: Unflump explains the way in words, and if the
+// CONSTRAINT). It waits instead: Selodia explains the way in words, and if the
 // person walks there the destination highlights when it mounts. That waiting
 // path is the common one, and it is a feature rather than a consolation - it
 // also covers someone who taps the tab a minute later having read the answer.
@@ -37,7 +37,7 @@ type Registration = { measure: () => Promise<Rect | null>; onActivate?: () => vo
 type Active = {
   // What the person is looking for.
   final: SpotlightId;
-  // Unflump's own words, anchored below the highlight.
+  // Selodia's own words, anchored below the highlight.
   message: string;
   // What is lit up right now: the pointer, the destination, or nothing yet.
   showing: SpotlightId | null;

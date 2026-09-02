@@ -1,7 +1,7 @@
 -- Discuss-card "Ask about this" plumbing (build item 30, slice 1).
 --
 -- Tapping "Ask about this" carries the entry's breakdown card into the chat
--- thread AS AN IMAGE, so the person and Unflump are demonstrably looking at the
+-- thread AS AN IMAGE, so the person and Selodia are demonstrably looking at the
 -- same thing rather than the model being handed structured data invisibly
 -- (SELODIA_SPEC.md, The "What's In Here" Discuss-Card).
 --

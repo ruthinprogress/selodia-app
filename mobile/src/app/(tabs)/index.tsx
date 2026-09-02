@@ -416,7 +416,7 @@ export default function ChatScreen() {
         </ScrollView>
 
         {/* Above the input row and outside the ScrollView, deliberately. Inline
-            among the bubbles they would read as something Unflump had said, and
+            among the bubbles they would read as something Selodia had said, and
             they are not - they are the person's own opening lines, waiting to be
             chosen. Sitting directly over the message box makes the relationship
             obvious: these are things you could type, already typed. */}

@@ -15,7 +15,7 @@
 //
 // WHERE THERE IS NO reachedVia, the route to the target is a tab icon, and tab
 // icons cannot be spotlighted (SELODIA_SPEC.md, Part Six, KNOWN PLATFORM
-// CONSTRAINT). Those targets are NOT dropped: the request stays pending, Unflump
+// CONSTRAINT). Those targets are NOT dropped: the request stays pending, Selodia
 // explains the way in words as it does today, and if the person walks there
 // themselves the destination still highlights when it appears. That is the whole
 // of Phase B standing on its own, and it is the more common path of the two.

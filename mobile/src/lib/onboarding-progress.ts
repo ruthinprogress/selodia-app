@@ -37,7 +37,7 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
 export const ONBOARDING_TOTAL = ONBOARDING_SCREENS.length;
 
 // The phase title. Avoids the word "onboarding" — that is internal product
-// vocabulary, and Unflump would never say it. This names a bounded setup phase
+// vocabulary, and Selodia would never say it. This names a bounded setup phase
 // in the person's own terms, which is orientation rather than a fourth-wall
 // break: the rule there is about never revealing build status, not about
 // refusing to say where someone is.

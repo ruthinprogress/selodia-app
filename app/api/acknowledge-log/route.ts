@@ -17,7 +17,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Sonnet, not Haiku. This is the one part of a photo log that is genuinely
 // conversational - a specific comparative read of someone's own data, in
-// Unflump's voice. Part Three reserves Haiku for routine parsing, which the
+// Selodia's voice. Part Three reserves Haiku for routine parsing, which the
 // classification and extraction steps already are; this is the other kind.
 const MODEL = 'claude-sonnet-5';
 

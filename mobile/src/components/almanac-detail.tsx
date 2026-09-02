@@ -19,7 +19,7 @@ import { latestWeightByExercise } from '@/lib/working-weight';
 // the person agreed to save must never open to a blank page.
 //
 // READ-ONLY. The Almanac is never edited in place; the edit affordance opens a
-// chat dialogue so Unflump stays the single writer and there is no direct-edit
+// chat dialogue so Selodia stays the single writer and there is no direct-edit
 // path to keep in sync with the conversational one (Part Ten, Editing).
 
 export type DetailEntry = {

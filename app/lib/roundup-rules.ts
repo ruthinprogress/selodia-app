@@ -36,7 +36,7 @@ export const WEEKLY_MIN_FULL_DAYS = 5;
 
 export type WeeklyGate =
   | { kind: 'full_roundup'; fullDays: number }
-  // Below the threshold there is no attempt at a full roundup. Unflump asks how
+  // Below the threshold there is no attempt at a full roundup. Selodia asks how
   // logging has been going instead - and the BRANCH on that answer (ordinary
   // friction vs something more concerning) is the safety classifier's, not
   // this module's. This only decides that the question gets asked.

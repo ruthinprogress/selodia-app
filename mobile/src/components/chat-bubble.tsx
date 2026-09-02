@@ -7,7 +7,7 @@ import { Spacing } from '@/constants/theme';
 
 // A chat turn. Ordinarily just text; a turn can also carry a discuss-card image
 // (build item 30) — the entry's breakdown card posted into the thread as a
-// shared visual reference both the person and Unflump can see.
+// shared visual reference both the person and Selodia can see.
 //
 // expo-image is already a dependency, so the image variant adds no native
 // module and ships over EAS Update like any other JS change.
@@ -43,7 +43,7 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
       {/* Selectable so a turn can actually be copied - long-press gives the
           platform's own selection handles and copy menu. Found live 2026-08-27:
           nothing in the app was selectable, because RN <Text> defaults to false,
-          so neither Unflump's replies NOR the person's own messages could be
+          so neither Selodia's replies NOR the person's own messages could be
           copied out. One prop here covers Chat and all seven onboarding steps,
           since they all render through this component. */}
       {hasText && (

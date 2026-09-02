@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 //
 // A NOTE IS A DIARY ENTRY, NOT A CACHE. Nothing here is an optimisation and
 // nothing should ever be rewritten to behave like one. The stored sentence is a
-// record of what Unflump actually said about one specific entry at the moment it
+// record of what Selodia actually said about one specific entry at the moment it
 // said it — so a later, differently-worded interpretation of the same reading is
 // DISCARDED rather than applied. If a period start is backdated weeks later and
 // an old note is now slightly inconsistent with the corrected data, that is
@@ -38,7 +38,7 @@ export type NoteEntryType = 'body_measurement' | 'food_log' | 'activity_log';
 // Best-effort in both directions. A note is a nice-to-have record ABOUT a
 // reading, never the reading itself, so a failure here must never break the
 // surface that was showing the interpretation — the person still sees what
-// Unflump said, which is the part that matters.
+// Selodia said, which is the part that matters.
 export async function persistNote(
   entryType: NoteEntryType,
   entryId: string,

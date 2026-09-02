@@ -26,7 +26,7 @@ export type CorrectionAction = 'update' | 'delete';
 // How far back a correction may reach.
 //
 // Longer than the food clarification's 15 minutes, because a clarification
-// answers a question Unflump just asked - it is inside a live exchange -
+// answers a question Selodia just asked - it is inside a live exchange -
 // whereas a correction is someone noticing their own mistake, which happens a
 // few minutes later when they glance at the screen. Short enough that "actually
 // make that 300 calories" cannot silently rewrite yesterday's dinner.
@@ -80,7 +80,7 @@ export function resolveCorrection(
   return { kind, action };
 }
 
-// What Unflump says once the row is gone. Plain and final - a deletion should
+// What Selodia says once the row is gone. Plain and final - a deletion should
 // read as done, not as a negotiation, and never as a telling-off for the
 // mistake that caused it.
 export function deletionMessage(kind: CorrectionKind): string {
