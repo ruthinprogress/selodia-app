@@ -1,4 +1,4 @@
-import { Work_Sans } from 'next/font/google';
+import { Comfortaa, Work_Sans } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { supabase } from './lib/supabase';
@@ -23,10 +23,24 @@ import { supabase } from './lib/supabase';
 // is a deliberate in-app choice and never follows the system setting, so the
 // landing page states its palette outright rather than inheriting one.
 
+// Part Fifteen assigns two faces to three roles, and they are not
+// interchangeable: the WORDMARK and the CATEGORY LINE are Comfortaa (500 and 400),
+// the TAGLINE is Work Sans italic 300 at +0.085em. Corrected 2026-09-02 — this
+// page originally set the wordmark in the tagline's face, applying Work Sans
+// italic 300 +0.085em to "selodía". That reading came from a brief that quoted
+// the tagline's setting under the wordmark heading; the spec has always been
+// explicit, and Comfortaa is the pairing chosen against four alternatives for
+// the Seed Mark's rounded forms.
+const comfortaa = Comfortaa({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
+});
+
 const workSans = Work_Sans({
   subsets: ['latin'],
-  weight: ['300', '400'],
-  style: ['normal', 'italic'],
+  weight: ['300'],
+  style: ['italic'],
   display: 'swap',
 });
 
@@ -100,32 +114,38 @@ export default async function LandingPage({
              Measured at 375x812 the fixed value made the column 841px tall -
              29px of scroll on a page that should sit still. A page that almost
              fits is more unsettling than one that clearly scrolls. */
-          gap: clamp(1.25rem, 3.2vh, 2rem);
+          gap: clamp(1.15rem, 2.9vh, 2rem);
           padding: clamp(2rem, 5vh, 3rem) 1.5rem clamp(2.5rem, 6vh, 4rem);
           text-align: center;
           box-sizing: border-box;
         }
         .selodia__mark { width: 132px; height: 132px; }
-        /* The wordmark, exactly as locked in Part Fifteen: Work Sans, italic,
-           weight 300, letter-spacing +0.085em, lowercase. The tracking is what
-           stops a light italic from reading as cramped at display size. */
+        /* Part Fifteen: wordmark is Comfortaa, medium (500), lowercase,
+           charcoal. Chosen against Quicksand, Montserrat, Century Gothic and a
+           monospace as the most cohesive pairing with the Seed Mark - its
+           rounded bowls answer the mark's curves. No tracking: that belongs to
+           the tagline. */
         .selodia__wordmark {
-          font-weight: 300;
-          font-style: italic;
-          letter-spacing: 0.085em;
-          font-size: clamp(2.75rem, 12vw, 4.25rem);
+          font-family: ${comfortaa.style.fontFamily};
+          font-weight: 500;
+          font-size: clamp(2.5rem, 11vw, 3.9rem);
           line-height: 1;
           margin: 0;
-          /* Optical: the trailing letter-space pushes the word off-centre. */
-          text-indent: 0.085em;
         }
+        /* Part Fifteen: tagline is Work Sans, italic, weight 300, +0.085em,
+           line-height 1.75. The second voice in the lockup, deliberately - the
+           two faces share a skeleton, so it reads as one type system rather than
+           a serif answering a sans. */
         .selodia__tagline {
+          font-family: ${workSans.style.fontFamily};
           display: flex;
           flex-direction: column;
           gap: 0.35rem;
-          font-size: clamp(1.05rem, 4.5vw, 1.4rem);
+          font-size: clamp(1rem, 4.2vw, 1.35rem);
           font-weight: 300;
-          line-height: 1.45;
+          font-style: italic;
+          letter-spacing: 0.085em;
+          line-height: 1.75;
           max-width: 22ch;
           margin: 0;
         }
@@ -136,20 +156,25 @@ export default async function LandingPage({
            breakpoint the cap comes off and each span refuses to break, so the
            line break falls where the full stop is and nowhere else.
 
-           360px, not 700px, and not unconditional. The type scales with 4.5vw
-           below its cap, so the sentence shrinks nearly as fast as the screen
-           does - measured, the longest one leaves 56px of headroom at 375px but
-           only 2px at 320px. Two pixels is not a margin, it is a coincidence
-           waiting for a wider fallback font to load, so the smallest phones keep
-           wrapping and everything from 360px up gets one line per sentence. */
-        @media (min-width: 360px) {
+           400px, and the number is measured rather than chosen. It was 360px
+           until the tagline took its specified +0.085em tracking (2026-09-02),
+           which widened the longest sentence and cut the headroom at that
+           breakpoint from about 40px to 10px. Ten pixels is not a margin.
+           Re-measured with the correct setting: 25px of headroom at 375px, ~50px
+           at 400px. The alternative was shrinking the hero type to force the fit,
+           which trades a real reading size for a layout preference - so the
+           narrowest phones wrap instead, and each sentence still holds its own
+           block either way. */
+        @media (min-width: 400px) {
           .selodia__tagline { max-width: none; }
           .selodia__tagline span { white-space: nowrap; }
         }
+        /* Part Fifteen: category line is Comfortaa regular (400), forest. */
         .selodia__category {
+          font-family: ${comfortaa.style.fontFamily};
           font-size: 0.9rem;
           font-weight: 400;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.02em;
           color: ${FOREST};
           margin: 0;
         }
@@ -208,7 +233,7 @@ export default async function LandingPage({
         }
       `}</style>
 
-      <main className={`selodia ${workSans.className}`}>
+      <main className={`selodia ${comfortaa.className}`}>
         {/* The breathing pulse lives inside the SVG itself — a slow scale and
             fade on the complete, whole mark (3.4s, ease-in-out), never a
             stroke-trace, and it honours prefers-reduced-motion in its own
