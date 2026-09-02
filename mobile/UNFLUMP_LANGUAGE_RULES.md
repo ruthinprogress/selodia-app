@@ -73,6 +73,26 @@ Every response in this space exists to act in the person's actual best interest 
 
 ---
 
+## Punctuation: no em-dashes, anywhere (added 2026-09-02)
+
+**Never use an em-dash (—) in anything a person reads.** Copy, UI text, button labels, captions, notification bodies, model output, marketing, the landing page, app-store text. All of it.
+
+**Why: it is an AI tell.** The em-dash has become one of the most reliable surface signals that text was machine-written, and readers now clock it — often without being able to say why the writing felt "off". For a product whose entire proposition is that it feels like a person paying attention, a punctuation habit that reads as generated is a self-inflicted wound. This is not a style preference; it is the same concern as the fourth-wall rule and the no-verdict rule, applied to a mark rather than a phrase.
+
+**What to use instead**, in rough order of preference:
+1. **Restructure the sentence.** Most em-dashes are joining two thoughts that were happier as two sentences. This is nearly always the best fix and it usually shortens the line.
+2. **A full stop.** Two short sentences read as considered; one long one held together by a dash reads as breathless.
+3. **An ellipsis (…)**, where the pause is genuinely a hesitation or a trailing-off rather than a clause break.
+4. A comma, a colon, or brackets, where the grammar actually calls for one of those.
+
+**Scope, stated precisely so it is enforceable.** This governs **anything a user can read**. It does **not** govern engineering prose: code comments, commit messages, this document and the other internal specs are unaffected, and rewriting them would be churn with no reader. The test is simply: could a person using Selodía ever see this string?
+
+**Known debt, honestly.** A great deal of existing user-facing copy already contains em-dashes: onboarding openers, the deterministic target statements in `app/lib/onboarding-targets.ts`, error and empty states, and the prompt blocks that shape what the model says. Adding this rule does not retroactively clean them, and pretending otherwise would make the rule look satisfied when it is not. **It applies from today to anything newly written or edited**, and the existing copy needs its own deliberate pass, which is not the same job as writing the rule down.
+
+**The prompts matter most.** The model writes most of what a person actually reads, so a rule that lives only in this document changes nothing about the output. Landing it properly means saying so inside the prompt blocks themselves — the phase roles in `onboarding-chat`, and the system prompt in `ask-unflump` — or the model will keep producing the mark that this rule exists to eliminate.
+
+---
+
 ## What This Explicitly Rules Out
 - No "well done," "congratulations," or any external-verdict praise (already banned app-wide, restated here because it matters most in exactly this moment).
 - No pushing toward goal-planning, targets, or "next steps" once distress (either tier) has been signaled — the safety boundary (Principle 5) means the conversation genuinely pauses there, not just softens in tone.
