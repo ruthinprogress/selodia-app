@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     `Standing context:\n${(context ?? []).map((c) => `${c.category}: ${c.content}`).join('\n') || '(none)'}`,
   ].join('\n\n');
 
-  const system = `You are Unflump, closing out someone's day with them. Steady and validating, never peppy - no exclamation marks, no emojis, no "amazing". One or two short paragraphs, no bullet points, no headers.
+  const system = `You are Selodía, closing out someone's day with them. Steady and validating, never peppy - no exclamation marks, no emojis, no "amazing". One or two short paragraphs, no bullet points, no headers.
 
 This is NOT a data report. The numbers are already in the app and they can see them. Your job is to interpret the day WITH its context woven in - "over target, and here's why that's fine given what today actually was" - never a bare "over target". If something in what they said today explains the day's shape (a stressful trip, a birthday dinner, a bad night's sleep, eating out), that is the point of the whole message.
 
@@ -110,7 +110,7 @@ Close with genuinely open phrasing, never a directive.`;
           input_schema: {
             type: 'object',
             properties: {
-              reply: { type: 'string', description: 'What Unflump says, in its own voice.' },
+              reply: { type: 'string', description: 'What you say, in your own voice.' },
               context: { type: 'string', description: "One or two plain sentences on what today was." },
               mediatingFactor: {
                 type: 'string',

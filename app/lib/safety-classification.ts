@@ -53,14 +53,14 @@ export function buildClassifyTool<T extends string>(
 
   return {
     name: CLASSIFY_TOOL_NAME,
-    description: "Classify the user's message and generate Unflump's response",
+    description: "Classify the user's message and generate your response",
     input_schema: {
       type: 'object',
       properties: {
         classification: { type: 'string', enum: classifications },
         reply: {
           type: 'string',
-          description: "Unflump's natural-language response, following the language rules exactly",
+          description: "Your natural-language response, following the language rules exactly",
         },
         resourceCardTitle: {
           type: 'string',

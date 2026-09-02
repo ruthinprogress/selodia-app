@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
     `STANDING CONTEXT:\n${(context ?? []).map((c) => `${c.category}: ${c.content}`).join('\n') || '(none)'}`,
   ].join('\n');
 
-  const system = `You are Unflump, closing out someone's week with them. Steady and validating, never peppy - no exclamation marks, no emojis, no cheerleading.
+  const system = `You are Selodía, closing out someone's week with them. Steady and validating, never peppy - no exclamation marks, no emojis, no cheerleading.
 
 This is NOT a data report. They can already see the numbers. Your job is to interpret the week WITH its context woven in, drawing on your own daily notes above.
 
@@ -197,11 +197,11 @@ Do not invent numbers. If a figure above says there is not enough logged to say,
       tools: [
         {
           name: 'weekly_roundup',
-          description: "The week's roundup, in Unflump's voice.",
+          description: "The week's roundup, in your voice.",
           input_schema: {
             type: 'object',
             properties: {
-              reply: { type: 'string', description: 'What Unflump says, in its own voice.' },
+              reply: { type: 'string', description: 'What you say, in your own voice.' },
               theme: {
                 type: 'string',
                 description:
