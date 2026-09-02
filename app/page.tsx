@@ -1,4 +1,4 @@
-import { Comfortaa, Work_Sans } from 'next/font/google';
+import { Comfortaa } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { supabase } from './lib/supabase';
@@ -23,26 +23,23 @@ import { supabase } from './lib/supabase';
 // is a deliberate in-app choice and never follows the system setting, so the
 // landing page states its palette outright rather than inheriting one.
 
-// Part Fifteen assigns two faces to three roles, and they are not
-// interchangeable: the WORDMARK and the CATEGORY LINE are Comfortaa (500 and 400),
-// the TAGLINE is Work Sans italic 300 at +0.085em. Corrected 2026-09-02 — this
-// page originally set the wordmark in the tagline's face, applying Work Sans
-// italic 300 +0.085em to "selodía". That reading came from a brief that quoted
-// the tagline's setting under the wordmark heading; the spec has always been
-// explicit, and Comfortaa is the pairing chosen against four alternatives for
-// the Seed Mark's rounded forms.
+// ONE TYPEFACE FOR THE WHOLE LOCKUP: Comfortaa. Wordmark 300, tagline 300,
+// category 400. Confirmed 2026-09-02 by comparison testing with real readers,
+// not by looking at it - the Work Sans italic this page carried until then was
+// reported as fuzzy and hard to read by a 40+ audience, and an upright sans read
+// as an instruction. Part Fifteen holds the full reasoning.
+//
+// That decision also dissolves the mistake made here the day before, when the
+// wordmark was set in the tagline's face because a brief quoted one setting
+// under the other's heading. With a single family there is no pairing left to
+// get backwards, which is worth more than the fix was.
 const comfortaa = Comfortaa({
   subsets: ['latin'],
-  // 300 is here for the waiting-list line only. Without it, asking for
-  // font-weight:300 silently resolves to 400 and "lighter" does nothing.
-  weight: ['300', '400', '500'],
-  display: 'swap',
-});
-
-const workSans = Work_Sans({
-  subsets: ['latin'],
-  weight: ['300'],
-  style: ['italic'],
+  // 300 carries the wordmark, the tagline and the waiting-list line; 400 the
+  // category line. 500 is gone with the heavier wordmark - nothing on the page
+  // asks for it now, and shipping a weight nothing uses is a font file for
+  // nobody.
+  weight: ['300', '400'],
   display: 'swap',
 });
 
@@ -122,31 +119,31 @@ export default async function LandingPage({
           box-sizing: border-box;
         }
         .selodia__mark { width: 132px; height: 132px; }
-        /* Part Fifteen: wordmark is Comfortaa, medium (500), lowercase,
-           charcoal. Chosen against Quicksand, Montserrat, Century Gothic and a
-           monospace as the most cohesive pairing with the Seed Mark - its
-           rounded bowls answer the mark's curves. No tracking: that belongs to
-           the tagline. */
+        /* Part Fifteen: wordmark is Comfortaa 300, upright, lowercase, charcoal.
+           Comfortaa was chosen against Quicksand, Montserrat, Century Gothic and
+           a monospace as the most cohesive pairing with the Seed Mark - its
+           rounded bowls answer the mark's curves. The weight dropped from 500 to
+           300 on 2026-09-02 with the one-family decision. No tracking anywhere
+           in this lockup any more. */
         .selodia__wordmark {
           font-family: ${comfortaa.style.fontFamily};
-          font-weight: 500;
+          font-weight: 300;
           font-size: clamp(2.5rem, 11vw, 3.9rem);
           line-height: 1;
           margin: 0;
         }
-        /* Part Fifteen: tagline is Work Sans, italic, weight 300, +0.085em,
-           line-height 1.75. The second voice in the lockup, deliberately - the
-           two faces share a skeleton, so it reads as one type system rather than
-           a serif answering a sans. */
+        /* Part Fifteen: tagline is Comfortaa 300, charcoal. One family for the
+           whole lockup, confirmed 2026-09-02 by readers rather than by looking:
+           the Work Sans italic that stood here read as fuzzy and hard to read for
+           a 40+ audience, and an upright sans read as an instruction. The +0.085em
+           tracking went with the italic it existed to support. */
         .selodia__tagline {
-          font-family: ${workSans.style.fontFamily};
+          font-family: ${comfortaa.style.fontFamily};
           display: flex;
           flex-direction: column;
           gap: 0.35rem;
           font-size: clamp(1rem, 4.2vw, 1.35rem);
           font-weight: 300;
-          font-style: italic;
-          letter-spacing: 0.085em;
           line-height: 1.75;
           max-width: 22ch;
           margin: 0;
@@ -158,16 +155,18 @@ export default async function LandingPage({
            breakpoint the cap comes off and each span refuses to break, so the
            line break falls where the full stop is and nowhere else.
 
-           400px, and the number is measured rather than chosen. It was 360px
-           until the tagline took its specified +0.085em tracking (2026-09-02),
-           which widened the longest sentence and cut the headroom at that
-           breakpoint from about 40px to 10px. Ten pixels is not a margin.
-           Re-measured with the correct setting: 25px of headroom at 375px, ~50px
-           at 400px. The alternative was shrinking the hero type to force the fit,
-           which trades a real reading size for a layout preference - so the
-           narrowest phones wrap instead, and each sentence still holds its own
-           block either way. */
-        @media (min-width: 400px) {
+           360px, and the number has been re-measured at every change rather
+           than carried forward. Measured with the current setting (Comfortaa
+           300, no tracking, 16px at these widths, longest sentence 282px):
+           400px leaves 56px of headroom, 375px leaves 45px, 360px leaves 30px,
+           and 320px is 10px SHORT - it would overflow, so it must wrap.
+
+           360 rather than the 400 the italic needed, because Comfortaa is a wide
+           face and its fallback during swap is narrower, not wider - so the
+           transient risk that made a thin margin dangerous with Work Sans does
+           not apply here. That buys back every 360px Android, which is a lot of
+           phones, at a 30px cushion. */
+        @media (min-width: 360px) {
           .selodia__tagline { max-width: none; }
           .selodia__tagline span { white-space: nowrap; }
         }
