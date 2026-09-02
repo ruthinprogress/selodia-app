@@ -868,6 +868,12 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 **Small-size tracking rule — required.** The +0.085em that makes this setting work above ~15px turns against it below: at 12px the gaps stop reading as poise and start breaking words into loose letters, so the eye reads letter-by-letter instead of recognising the word shape. **Above ~15px: +0.085em. At or below ~15px (App Store subtitle, footer, small print): reduce to ≈ +0.02em.** Same face, two settings.
 
+**LOCKUP TYPEFACE PAIRING - CONFIRMED FINAL BY USER FEEDBACK, 2026-09-02.** Four options were rendered side by side as a single comparison image and tested with **three respondents. All three included Option 1 among their preferred.** Option 1 is what this section already specifies, so nothing in the build changes and no code moved as a result.
+
+The four tested: **1)** wordmark Comfortaa 500, tagline Work Sans italic 300 +0.085em, category Comfortaa 400. **2)** the two faces swapped, wordmark Work Sans italic, tagline Comfortaa 400. **3)** Work Sans throughout, with an upright tagline. **4)** Comfortaa throughout.
+
+**This is settled and is not to be relitigated.** It is recorded with the date and the basis because it had already been relitigated once by accident: on 2026-09-01 the landing page and the first Instagram post were both built with the tagline's setting applied to the wordmark, from a brief that quoted one under the other's heading. The pairing is now confirmed twice over, by the original nine-treatment selection and by user feedback against three alternatives. The comparison artwork is `selodia-font-comparison.png` in the Drive branding folder.
+
 **Full lockup, both grounds (the confirmed artwork):**
 - **Light:** Seed Mark **terracotta `#C97458`** · wordmark Comfortaa 500 **charcoal `#2D2B28`** · category line Comfortaa 400 **forest `#37584A`** · tagline **charcoal**.
 - **Dark (the inverted ground, background `#834B39`):** Seed Mark **sand `#E9D6C2`** — *not* terracotta, which would disappear into its own ground · wordmark and tagline **cream `#F7F3EA`** · category line **sand**.
