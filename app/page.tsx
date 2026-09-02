@@ -33,7 +33,9 @@ import { supabase } from './lib/supabase';
 // the Seed Mark's rounded forms.
 const comfortaa = Comfortaa({
   subsets: ['latin'],
-  weight: ['400', '500'],
+  // 300 is here for the waiting-list line only. Without it, asking for
+  // font-weight:300 silently resolves to 400 and "lighter" does nothing.
+  weight: ['300', '400', '500'],
   display: 'swap',
 });
 
@@ -178,13 +180,37 @@ export default async function LandingPage({
           color: ${FOREST};
           margin: 0;
         }
-        .selodia__rule { width: 44px; height: 1px; background: ${SAND}; border: 0; margin: 0; }
+        /* Widened from 44px and given room either side: it is the beat between
+           the brand statement and the ask, and the eye should cross it. */
+        .selodia__rule {
+          width: 56px; height: 1px; background: ${SAND}; border: 0;
+          margin: clamp(0.4rem, 1.4vh, 1rem) 0;
+        }
+        /* A footnote, not a second headline. It was competing with the tagline
+           at 1rem in full-strength charcoal - two things asking to be read first,
+           and the tagline losing because the paragraph below it was longer.
+           Smaller, genuinely lighter (Comfortaa 300, loaded above), and dropped
+           to 70% charcoal.
+           
+           70% and no further, deliberately. Blended on cream that is #6A6762 at
+           5.08:1, which clears AA for normal text; the next step down, 65%, is
+           4.39:1 and fails. This line says when the app arrives and what the form
+           does - it is receding, not decorative, and the audience is 40+. */
         .selodia__soon {
-          font-size: 1rem;
+          /* Floor raised from 0.8rem: at 375px that resolved to 12.8px, which
+             is too small to ask a 40+ reader to work at, and the weight and the
+             70% charcoal already do most of the receding. */
+          font-size: clamp(0.85rem, 3.2vw, 0.875rem);
           font-weight: 300;
-          line-height: 1.6;
-          max-width: 34ch;
+          line-height: 1.65;
+          letter-spacing: 0.01em;
+          /* Wide enough to fall in two lines rather than three - a short
+             stack of three centred lines reads as a block and reclaims the
+             attention the smaller type just gave up. */
+          max-width: 46ch;
           margin: 0;
+          color: ${CHARCOAL};
+          opacity: 0.7;
         }
         .selodia__form {
           display: flex;
