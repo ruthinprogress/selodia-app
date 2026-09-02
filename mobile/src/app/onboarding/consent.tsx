@@ -31,16 +31,16 @@ export default function ConsentScreen() {
             pinning it would take vertical space away from three long checkbox
             labels on precisely the small screens that were the problem. */}
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle">Before we start</ThemedText>
+          <ThemedText type="subtitle">Welcome to Selodía</ThemedText>
 
           <ThemedText>
-            Unflump asks about things like your food, weight, body measurements and activity so it
+            Selodía asks about things like your food, weight, body measurements and activity so it
             can actually understand you — not just log numbers. This is health data, so we want to
             be upfront: it&apos;s yours, it&apos;s kept secure, and it&apos;s never sold or shared.
           </ThemedText>
 
           <ThemedText>
-            Unflump isn&apos;t a medical service and doesn&apos;t replace advice from your doctor —
+            Selodía isn&apos;t a medical service and doesn&apos;t replace advice from your doctor —
             think of it as a very attentive companion for the day-to-day. You can delete your data
             at any time.
           </ThemedText>
@@ -49,17 +49,17 @@ export default function ConsentScreen() {
             <Checkbox
               checked={coreConsent}
               onToggle={() => setCoreConsent((v) => !v)}
-              label="I understand and agree to Unflump collecting and using my health data as described, and I've read the Privacy Policy."
+              label="I understand and agree to Selodía collecting and using my health data as described, and I've read the Privacy Policy."
             />
             <Checkbox
               checked={marketingOptIn}
               onToggle={() => setMarketingOptIn((v) => !v)}
-              label="Keep me posted with occasional tips and updates from Unflump"
+              label="Keep me posted with occasional tips and updates from Selodía"
             />
             <Checkbox
               checked={researchOptIn}
               onToggle={() => setResearchOptIn((v) => !v)}
-              label="I'm happy for de-identified data from my use of Unflump to be used to help improve the product and understand patterns across users — separate from selling data, which Unflump never does."
+              label="I'm happy for de-identified data from my use of Selodía to be used to help improve the product and understand patterns across users — separate from selling data, which Selodía never does."
             />
           </ThemedView>
 

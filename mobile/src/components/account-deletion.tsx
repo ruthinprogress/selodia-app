@@ -137,7 +137,7 @@ export function AccountDeletion() {
       {!open ? (
         <>
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-            You can have everything Unflump holds about you removed, and your account with it,
+            You can have everything Selodía holds about you removed, and your account with it,
             whenever you want.
           </ThemedText>
           <Pressable

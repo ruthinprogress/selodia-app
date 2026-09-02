@@ -51,7 +51,7 @@ export function DataExport({ compact = false }: { compact?: boolean }) {
     try {
       await Share.share({
         message: what === 'summary' ? buildSummary(result) : buildJson(result),
-        title: what === 'summary' ? 'Your Unflump data — summary' : 'Your Unflump data — full export',
+        title: what === 'summary' ? 'Your Selodía data — summary' : 'Your Selodía data — full export',
       });
     } catch {
       setError(
@@ -65,8 +65,8 @@ export function DataExport({ compact = false }: { compact?: boolean }) {
       <ThemedText type="smallBold">Your data</ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
         {compact
-          ? 'Take a copy of everything Unflump holds about you.'
-          : 'You can take a copy of everything Unflump holds about you, at any time. This is yours by right, and it does not depend on whether you agreed to research use.'}
+          ? 'Take a copy of everything Selodía holds about you.'
+          : 'You can take a copy of everything Selodía holds about you, at any time. This is yours by right, and it does not depend on whether you agreed to research use.'}
       </ThemedText>
 
       {!result ? (

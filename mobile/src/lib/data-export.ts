@@ -32,7 +32,7 @@ export type ExportTable = {
 // 2026-08-31. Every one has user_id → auth.users ON DELETE CASCADE.
 export const EXPORT_TABLES: ExportTable[] = [
   { table: 'user_profile', label: 'Your profile', dateColumn: null },
-  { table: 'user_context', label: 'Things Unflump remembers about you', dateColumn: 'created_at' },
+  { table: 'user_context', label: 'Things Selodía remembers about you', dateColumn: 'created_at' },
   { table: 'health_context', label: 'Health context', dateColumn: null },
   // Medical data, and someone's copy of their own record has to include it.
   { table: 'allergies', label: 'Allergies and dietary restrictions', dateColumn: 'disclosed_at' },
@@ -49,7 +49,7 @@ export const EXPORT_TABLES: ExportTable[] = [
   // What Selodia said about a specific entry at the time it said it. Nothing in
   // the app displays these yet (item 30 slice 4 is the viewer), so for now the
   // export is the ONLY place a person can read them back.
-  { table: 'interpretation_notes', label: 'What Unflump said at the time', dateColumn: 'created_at' },
+  { table: 'interpretation_notes', label: 'What Selodía said at the time', dateColumn: 'created_at' },
   { table: 'workout_weight_log', label: 'Working weights', dateColumn: 'logged_at' },
   { table: 'workout_completion_log', label: 'Completed workouts', dateColumn: 'completed_at' },
   { table: 'reminder_settings', label: 'Reminder settings', dateColumn: null },
@@ -121,11 +121,11 @@ function span(rows: unknown[], dateColumn: string | null): string | null {
 // not stop applying because the context changed.
 export function buildSummary(result: ExportResult): string {
   const lines: string[] = [];
-  lines.push('YOUR UNFLUMP DATA');
+  lines.push('YOUR SELODÍA DATA');
   lines.push(`Prepared ${fmtDate(result.generatedAt) ?? 'today'}`);
   lines.push('');
   lines.push(
-    'This is everything Unflump holds about you. It is yours to keep, and it is not affected by whether you agreed to research use.'
+    'This is everything Selodía holds about you. It is yours to keep, and it is not affected by whether you agreed to research use.'
   );
   lines.push('');
   lines.push('WHAT IS INCLUDED');
@@ -161,7 +161,7 @@ export function buildJson(result: ExportResult): string {
       generated_at: result.generatedAt,
       // Named in the file so anyone opening it later knows what it is and what
       // produced it, without having to ask.
-      source: 'Unflump — personal data export (UK GDPR right to portability)',
+      source: 'Selodía — personal data export (UK GDPR right to portability)',
       incomplete_tables: result.failed,
       data: result.tables,
     },

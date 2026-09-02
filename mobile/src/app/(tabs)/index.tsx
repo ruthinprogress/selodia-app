@@ -453,7 +453,7 @@ export default function ChatScreen() {
                 // for the message to be sent.
                 if (t.length > 0) dismissChips();
               }}
-              placeholder="Talk to unflump…"
+              placeholder="Message…"
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
               multiline

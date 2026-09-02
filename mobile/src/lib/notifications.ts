@@ -147,7 +147,7 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
         content: {
           // No streak, no count, no "don't break the chain" - Part Fourteen and
           // the hydration rule are both explicit that none of this is gamified.
-          title: 'Unflump',
+          title: 'Selodía',
           body: 'Here whenever you want to log something.',
           data: { destination: 'chat' },
         },
