@@ -73,9 +73,42 @@ If a session is pausing only briefly (e.g. a usage-limit reset a few hours away,
 1. Confirm everything is committed and the working tree is clean (`git status`).
 2. Get a brief current folder/file structure summary from Claude Code (path/type/purpose/layer — lightweight, not exhaustive; a full detailed nested visualization is only generated on request for a specific external reason, like a handover).
 3. Sync the current spec documents (SPEC, LANGUAGE_RULES, and now WORKFLOW) to the Drive folder, overwriting in place. **Check first whether this session can actually do that — see below.**
-4. Update the Checklist (Set Up / Status / Dates / Notes), the Decisions Log (Decision / Date / Reasoning), and the session log (session number, date, location, start/end time, duration, cumulative time from Toggl, what was done, what's next, notes) in the Google Sheet ("Unflump App Builder Mastersheet").
+4. The Checklist and the Decisions Log are no longer updated by hand: see **Automated close-out** below, which runs without being asked. Still manual here: the session log (session number, date, location, start/end time, duration, cumulative time from Toggl, what was done, what's next, notes) in the Google Sheet ("Unflump App Builder Mastersheet").
 5. Update the Glossary in the same sheet if new technical or process terms came up.
 6. Push everything to GitHub as the final step.
+
+### Automated close-out (standing, from Session 36)
+
+This runs at the end of **every** session without being asked. It replaces the paste-ready tab-separated block that used to be printed into chat for copying by hand; that format is no longer produced.
+
+**1. Verify the session is actually closeable.**
+Working tree clean, everything pushed, and all five Drive documents byte-identical to their repo originals. Verify with `cmp`, not by assuming the copy landed. If this session is executing remotely there is no `H:` drive, so the write is impossible and the ceremony must say so plainly rather than appear to succeed (see the section above).
+
+**2. Append this session to both sheets of the close-out workbook.**
+
+`H:\My Drive\Selodia App Project Master Folder\Build Specs\Selodia-Session-Closeouts.xlsx`
+
+Two sheets, and only ever two. One tab per session was tried on 2026-09-02 and replaced the same day, because a log you scan for "when did we decide that" wants one continuous column, not thirty tabs.
+
+| Sheet | Columns |
+|---|---|
+| `Checklist` | Task \| Status \| Date \| Notes |
+| `Decisions` | Decision \| Date \| Reasoning |
+
+Both run oldest at the top, newest appended at the bottom. Before each session's rows: one blank spacer row, then a sand-filled label row in the established format, **`S36: 3Sep26`** (`S<number>: <D>Mon<YY>`). Keep to that format rather than inventing a new one per session, because the label is the thing being scanned for.
+
+Status values: Done, Diagnosed, Unresolved, Queued, Outstanding. The status cell is colour-filled, green for Done and Diagnosed, terracotta-tint for Unresolved, cream for the rest. **Unfinished work gets a row saying so**, carried forward as Queued or Outstanding. A close-out that only lists wins is a worse record than no close-out.
+
+Reasoning is the *why*, not the what: the thing that would otherwise have to be re-derived in three months. Not every choice earns a row, the same bar the decision patterns doc uses.
+
+**3. Confirm the rows are actually there.**
+Read the saved file back and report the sheet names, the new label row and its row number, and the new row count. Do not report success from the fact that the write did not raise.
+
+**Two traps, both hit on 2026-09-02:**
+
+- **If the file is open in Excel, the save fails** with `PermissionError`. Build to a staging copy first, swap it in after, and never force-close Excel to take the lock. Losing someone's unsaved work to finish your own task is not a trade that is yours to make.
+- **No Excel Table objects.** A Table cannot carry interior label or blank rows, and its fixed range fights appending at the bottom. Plain formatted ranges, with the header row frozen.
+
 
 ---
 
