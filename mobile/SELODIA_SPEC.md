@@ -507,6 +507,79 @@ protein target = body_weight_kg × 1.6  to  body_weight_kg × 2.0   (g/day)
 - **Presence is not coverage.** A source only covers another's gap if it contributes ≥5g of protein **or** ≥25% of the meal's protein. The 1g spoon of yoghurt fails both — so "there is dairy present, therefore complete" would have replaced one false statement with another.
 - **Day-level adequacy is claimed; timing for training is not (researched and corrected 2026-08-27).** A "short" verdict says the gap is rounded out by eating a complementary source *later today* — and stops exactly there. Two claims live in this territory and only one of them is settled: that complementary proteins need not be eaten in the **same meal** for amino-acid adequacy is well established and superseded the 1970s protein-combining idea; whether same-day-but-different-meal complementation is **as effective as same-meal specifically for muscle protein synthesis** is genuinely unresolved and under active trial. An earlier draft read "It doesn't have to be in the same meal", which lands as the second claim — and Unflump's user lifts seriously, so MPS is precisely the outcome she trains for. The copy therefore stays inside the supported lane and makes **no claim about timing for training purposes in either direction**. A guard test asserts this: a "short" message must say "rounds out the day" and must not contain "same meal", "any time" or "doesn't matter". See Resources for the citations, and the comment block in `protein-quality.ts`, which exists so this is not later "tidied" into something simpler.
 
+---
+
+## Hybrid Food Lookup System
+
+### Problem
+
+Every food log currently routes through the Anthropic API regardless of how common or simple the food is. A banana logged 50 times costs 50 API calls. At scale this is significant, and the answer never changes.
+
+### Solution: three-tier routing
+
+All food logging routes through a lookup pipeline before reaching the LLM. The experience is identical for the user regardless of which tier handles the log.
+
+TIER 1 — Personal food cache (instant, free)
+Foods the user has logged before, stored with their confirmed macro estimates. Returns the same estimate as before, personalised to how that user describes and eats that food. Grows over time.
+
+Schema: food_cache table
+- user_id (FK)
+- food_name (text, normalised lowercase)
+- kcal (numeric)
+- protein_g (numeric)
+- carbs_g (numeric)
+- fat_g (numeric)
+- source (enum: cache | usda | llm)
+- confidence (numeric 0-1)
+- log_count (integer, increments on hit)
+- last_used (timestamp)
+
+Match: fuzzy string match on food_name, confidence threshold 0.85 minimum to return a cache hit.
+
+TIER 2 — Food database (fast, free)
+USDA FoodData Central API. Free, government-maintained, comprehensive for whole foods. Open Food Facts as secondary source for packaged and branded foods.
+
+On a Tier 2 hit: result is stored in the user's personal cache for future use (source: usda).
+
+USDA API: https://api.nal.usda.gov/fdc/v1/
+Free API key required. Add as USDA_API_KEY environment variable.
+
+Match threshold: confidence 0.80 minimum to return without escalating to LLM.
+
+TIER 3 — LLM (current behaviour)
+Handles everything that doesn't match at Tier 1 or 2:
+- Complex dishes ("leftover pasta thing")
+- Estimated portions ("a big bowl of")
+- Photos
+- Anything below confidence threshold
+
+On a Tier 3 response: if the user confirms the estimate, store in personal cache (source: llm).
+
+### Routing logic
+
+1. Normalise the input (lowercase, strip quantities and portion words)
+2. Check personal cache → if hit above threshold, return immediately
+3. Check USDA + Open Food Facts → if hit above threshold, return and cache
+4. Send to LLM as current behaviour
+
+### Key principle
+
+The user never sees which tier handled their log. The experience is identical — they type, they get an estimate. Tier routing is invisible infrastructure.
+
+### Expected cost reduction
+
+If 50-60% of logs hit Tier 1 or 2 (reasonable for a daily user logging similar meals), API costs reduce by roughly 50-60%. At 1,000 daily active users logging 3 meals/day, that is approximately 1,500 LLM calls/day instead of 3,000.
+
+### Build status
+
+Not yet built. Spec complete.
+Prerequisite: USDA_API_KEY environment variable added to Vercel and EAS.
+Suggested build order:
+1. food_cache table migration
+2. USDA API integration and testing
+3. Routing logic in food logging pipeline
+4. Personal cache
+
 ## Basal Metabolism Tracking
 Pulled directly from smart scale data (Zepp Life, Withings, Fitbit Aria, and similar — most modern bioimpedance scales output this). Tracked as a trend over months, overlaid with muscle mass, and kept clearly separate from active/activity burn so the user understands the difference.
 
