@@ -697,6 +697,44 @@ Weighting table: complete, 30 activities.
 Citation pass: complete.
 Expert review: pending — to be published as part of Selodía public launch.
 Build status: not yet built — visual concept fully designed, data layer now complete.
+Full build brief: see Health Flower — Build Brief section below.
+
+
+---
+
+## Health Flower — Build Brief
+
+### Overview screen placement
+
+The Overview screen has two sections:
+
+TODAY
+- Body: weight, muscle, body fat %
+- Food: kcal and protein
+- Activity: steps only
+- Each with a chevron tap-through to its full detail screen
+
+THIS WEEK
+- The Health Flower only
+- No explanatory label — it simply appears beneath "This Week"
+- Steps not repeated here
+
+### The flower
+
+Six petals, one per health dimension.
+Colours: Strength #D4846A, Cardio #A8BF9C, Flexibility #C4947A, Balance #7BA99A, Bone #C9A882, Recovery #A89BAE.
+
+Each petal is always a proper oval shape. It grows from the outer tip inward as weekly coverage increases. No outlines — no sense of what is missing, only what is there. At 0% coverage, no petal renders at all.
+
+When all six petals meet at the centre: the Seed Mark appears and breathes (slow scale/fade pulse, same as the loading animation — never traces).
+
+The flower sits centred with generous padding. Category labels float around it with clear space — labels never touch petals (per brand spec Part Fifteen). Labels in Comfortaa.
+
+### Weighted activity classification
+
+Each logged activity contributes to multiple dimensions simultaneously. Weightings are in the activity table above. The AI classifier handles activities not in the table, using the table as context.
+
+Coverage per dimension is the sum of weighted contributions across all sessions logged that week.
 
 
 # PART NINE: PERSISTENT CONTEXT, THEME EXTRACTION, AND THE DAILY/WEEKLY ROUNDUPS
