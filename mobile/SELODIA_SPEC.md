@@ -534,12 +534,17 @@ A single measurement is nearly meaningless; a rolling average across consistent-
 
 | Cause | Timescale | Handling |
 |---|---|---|
-| Post-workout pump | Clears within hours | Flag if logged within 4hrs of training |
-| DOMS-related swelling | Peaks 24-48h, clears by 72h | Contextualised with training log |
-| Salty food/water retention | 12-24h lag | Noted alongside food log |
-| Luteal phase retention | Tracks with cycle day | Cycle context auto-loaded |
-| Period bloating (days 1-5) | Clears after clearout | Flagged as unreliable |
-| Actual fat/muscle change | Weeks-long trend | Trend view, not single readings |
+| Post-workout pump | Clears quickly post-session † | Flag if logged within 4hrs of training |
+| DOMS-related swelling | Peaks 24-48h, clears by 72h ‡ [R7] | Contextualised with training log |
+| Salty food/water retention | Typically takes several hours to appear † | Noted alongside food log |
+| Menstrual-cycle fluid variation | Peaks around day 1 of flow, lowest mid-follicular. Scale readings during days 1-5 may not reflect true baseline [R6] | Cycle context auto-loaded; days 1-5 flagged as unreliable |
+| Actual fat/muscle change | Emerges over multiple weeks of data † | Trend view, not single readings |
+
+**† Timing based on clinical convention — flagged for expert review.** These three rows previously carried specific figures ("clears within hours", "12-24h lag", "weeks-long trend"). No peer-reviewed source was found stating them, and rather than cite something that only approximately supports them, the numbers have been narrowed to qualitative language. They are clinically reasonable and probably right; that is not the same as sourced.
+
+**‡ The 24-48h peak and 72h resolution are clinical convention**, widely referenced in the exercise physiology literature. The specific window could not be independently verified from an open-access source: Cheung 2003 is the standard citation for it, but the paper is closed access (confirmed via Unpaywall and Europe PMC, `oa_status: closed`, not in PMC) and the timings do not appear in its abstract. [R7] is cited for the DOMS phenomenon and its eccentric cause, which the abstract does support. **The window itself is flagged for expert review** — and it matters more than the other three, because Part Nine's symptom-query check is built on it.
+
+**Rows 4 and 5 were merged (2026-09-03), and the old row 4 was wrong.** It read "luteal phase retention — tracks with cycle day". [R6] measured 765 cycles in 62 women with ovulation confirmed by basal temperature and serum hormones: retention peaked on the **first day of flow**, was lowest mid-follicular, and **neither estradiol nor progesterone was significantly associated with it**. The luteal framing is not supported by that data. One caveat carried forward for review: [R6] measures self-reported bloating, while this table is about scale readings, and perceived bloating is not the same quantity as body water.
 
 Consistent measurement conditions are recommended (morning, post-toilet, pre-food, 48h+ post leg day), with prompts and flags when conditions have not been met.
 
@@ -1340,6 +1345,12 @@ Supports the two bands the target range sits between: **1.4-2.0 g/kg bodyweight*
 
 [R5] Helms ER, Zinn C, Rowlands DS, Brown SR. A Systematic Review of Dietary Protein During Caloric Restriction in Resistance Trained Lean Athletes: A Case for Higher Intakes. Int J Sport Nutr Exerc Metab. 2014;24(2):127-138. doi: 10.1123/ijsnem.2013-0054
 Supports **lean body mass as the correct denominator** for a protein target, which is the reason this calculation moved off bodyweight and off `muscle_kg`. **Population caveat, for expert review:** the review covers lean, resistance-trained athletes in caloric restriction (six studies, males ≤23% and females ≤35% body fat). Generalising it to a broader 40+ population is a limitation, not a settled point. Section: Protein Targets, Part Eight.
+
+[R6] White CP, Hitchcock CL, Vigna YM, Prior JC. Fluid Retention over the Menstrual Cycle: 1-Year Data from the Prospective Ovulation Cohort. Obstet Gynecol Int. 2011;2011:138451. doi: 10.1155/2011/138451
+765 cycles in 62 women, ovulation documented by quantitative basal temperature analysis with serum estradiol and progesterone. Retention peaked on day 1 of flow and was lowest mid-follicular; **neither estradiol nor progesterone was significantly associated** with it, and there was no significant difference between ovulatory and anovulatory cycles. **The previous spec wording - luteal retention tracking with cycle day - is not supported by this data.** Caveat for review: measures self-reported bloating rather than body water. Section: Measurement Reliability Framework, Part Eight.
+
+[R7] Cheung K, Hume PA, Maxwell L. Delayed Onset Muscle Soreness: Treatment Strategies and Performance Factors. Sports Med. 2003;33(2):145-164. doi: 10.2165/00007256-200333020-00005
+Supports the DOMS phenomenon and its cause: eccentric activity induces micro-injury at greater frequency and severity than other muscle actions, and intensity and duration are contributing factors. **Does NOT verify the 24-48h peak / 72h resolution window** used in the reliability table - the paper is closed access (Unpaywall `oa_status: closed`, not in PMC) and the abstract does not state the timings. Cited for the phenomenon; the window is flagged as clinical convention pending expert review. Section: Measurement Reliability Framework, Part Eight; and Part Nine's symptom-query window, which depends on it.
 
 ---
 

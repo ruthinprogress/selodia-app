@@ -40,7 +40,7 @@ There is exactly **one** deliberate, bounded exception where a model judgment re
 
 ## 3. The generalized acute-gate and the consecutive-acute guard
 
-The deterministic direct question (C-SSRS Q1, used verbatim) is the **single gate before any `acute_crisis` card**. Its job is to resolve genuine ambiguity before a resource appears, and to guarantee that a *probing question* and a *resource card* can never occupy the same turn (the original "premature card" defect).
+The deterministic direct question (C-SSRS Q1, used verbatim — Posner et al. 2011, cited as [L3] in `SELODIA_LANGUAGE_RULES.md`) is the **single gate before any `acute_crisis` card**. Its job is to resolve genuine ambiguity before a resource appears, and to guarantee that a *probing question* and a *resource card* can never occupy the same turn (the original "premature card" defect).
 
 ```ts
 const acuteExplicit =
