@@ -45,6 +45,11 @@ type OverviewData = {
   personalLine: string;
   weight: Metric;
   muscle: Metric;
+  // Only present with a bioimpedance reading behind it. Null means "this scale
+  // does not measure that", which is a different thing from zero, and the
+  // difference is the whole reason the figure is omitted rather than shown as a
+  // dash: a 0% body fat reading would be alarming nonsense.
+  bodyFat: Metric;
   todayKcal: number;
   todayProtein: number;
   calorieTargetKcal: number | null;
@@ -165,6 +170,13 @@ export function OverviewPanel() {
           value: latest?.muscle_kg ?? null,
           delta: formatWeeklyDelta(weeklyDelta(latest?.muscle_kg ?? null, weekAgo?.muscle_kg ?? null), refGap),
         },
+        bodyFat: {
+          value: latest?.body_fat_pct ?? null,
+          delta: formatWeeklyDelta(
+            weeklyDelta(latest?.body_fat_pct ?? null, weekAgo?.body_fat_pct ?? null),
+            refGap
+          ),
+        },
         todayKcal,
         todayProtein,
         calorieTargetKcal: calorieTarget?.targetKcal ?? null,
@@ -219,6 +231,17 @@ export function OverviewPanel() {
           <View style={styles.figures}>
             <Figure value={fmt(data.weight.value, 'kg')} note={data.hasMeasurement ? data.weight.delta : 'No readings yet'} />
             <Figure value={fmt(data.muscle.value, 'kg')} unit="muscle" note={data.hasMeasurement ? data.muscle.delta : null} />
+            {/* Omitted entirely without a bioimpedance reading. Plenty of scales
+                weigh and nothing more, and a dash where a percentage should be
+                reads as a missing measurement rather than a scale that never
+                takes it. */}
+            {data.bodyFat.value != null && data.bodyFat.value > 0 ? (
+              <Figure
+                value={`${round1(data.bodyFat.value)}%`}
+                unit="body fat"
+                note={data.bodyFat.delta}
+              />
+            ) : null}
           </View>
         </SpotlightTarget>
       </Section>
@@ -334,7 +357,9 @@ const styles = StyleSheet.create({
   },
   figures: {
     flexDirection: 'row',
-    gap: Spacing.six,
+    flexWrap: 'wrap',
+    gap: Spacing.four,
+    rowGap: Spacing.two,
   },
   figure: {
     minWidth: 0,
