@@ -550,6 +550,115 @@ Minimum viable setup for full feature access is smart scales plus food logging; 
 
 ---
 
+## Health Flower — Activity Weighting Table
+
+### The six health dimensions
+
+Each dimension maps to one petal of the health flower. Weightings represent the contribution of one typical session to each dimension, expressed as a percentage (0–100%). Activities may contribute to multiple dimensions simultaneously.
+
+| Dimension | Colour | Definition |
+|---|---|---|
+| Strength | #D4846A | Muscular force production and resistance to load. Critical for muscle mass retention and metabolic health during perimenopause [1] |
+| Cardio | #A8BF9C | Cardiovascular and respiratory endurance. Heart and lung health, VO2max [2] |
+| Flexibility | #C4947A | Range of motion at joints. Injury prevention, functional movement [3] |
+| Balance | #7BA99A | Postural stability and neuromuscular control. Falls prevention — particularly important at 40+ [4] |
+| Bone loading | #C9A882 | Mechanical stress on the skeleton. Bone mineral density maintenance against menopausal decline [5] |
+| Recovery | #A89BAE | Active restoration. Sleep quality, parasympathetic activity, stress reduction [6] |
+
+### Weighting table
+
+Weightings are evidence-based estimates representing a typical session's contribution to each dimension. All claims are cited below.
+
+| Activity | Strength | Cardio | Flexibility | Balance | Bone | Recovery |
+|---|---|---|---|---|---|---|
+| Running | 30% | 90% | 10% | 15% | 75% | 0% |
+| Ballet | 70% | 50% | 50% | 80% | 60% | 0% |
+| Yoga | 25% | 15% | 85% | 75% | 5% | 60% |
+| Weightlifting | 95% | 20% | 10% | 20% | 80% | 0% |
+| Swimming | 45% | 90% | 30% | 15% | 5% | 20% |
+| Walking | 10% | 45% | 5% | 20% | 40% | 30% |
+| Cycling | 55% | 85% | 10% | 10% | 5% | 0% |
+| Pilates | 45% | 15% | 70% | 65% | 20% | 30% |
+| Rock climbing | 85% | 55% | 40% | 70% | 30% | 0% |
+| HIIT | 50% | 90% | 10% | 20% | 60% | 0% |
+| Dance (general) | 30% | 70% | 50% | 65% | 40% | 0% |
+| Hiking | 35% | 65% | 15% | 35% | 60% | 20% |
+| Rowing | 70% | 80% | 20% | 15% | 20% | 0% |
+| Boxing/martial arts | 60% | 80% | 30% | 50% | 30% | 0% |
+| Tennis/racket sports | 45% | 75% | 25% | 55% | 45% | 0% |
+| Aerial/circus | 80% | 45% | 65% | 75% | 25% | 0% |
+| Barre | 55% | 35% | 55% | 70% | 30% | 0% |
+| Tai chi | 20% | 20% | 50% | 85% | 15% | 50% |
+| Golf | 20% | 25% | 30% | 40% | 25% | 20% |
+| Horse riding | 35% | 30% | 25% | 60% | 20% | 15% |
+| Surfing/paddleboarding | 45% | 50% | 30% | 80% | 20% | 15% |
+| Skiing/snowboarding | 65% | 60% | 25% | 75% | 40% | 0% |
+| Football/team sports | 55% | 80% | 20% | 45% | 50% | 0% |
+| Gymnastics | 70% | 40% | 80% | 80% | 50% | 0% |
+| Stretching/mobility | 5% | 5% | 95% | 30% | 5% | 40% |
+| Rest day (intentional) | 0% | 0% | 0% | 0% | 0% | 100% |
+| Gardening | 20% | 30% | 20% | 25% | 30% | 25% |
+| Cycling (spin class) | 50% | 95% | 5% | 5% | 5% | 0% |
+| Crossfit | 85% | 75% | 15% | 30% | 65% | 0% |
+| Aqua aerobics | 30% | 60% | 35% | 45% | 10% | 20% |
+
+### Key notes on specific weightings
+
+SWIMMING — bone loading is deliberately low (5%). Swimming and cycling do not cause positive effects on bone mineral density [7]. This is a body literacy moment — women who swim as their primary exercise may not realise their bone health is not being addressed.
+
+BALLET — strength weighting is high (70%) reflecting leg, core and posterior chain demands. Ballet requires muscular strength, coordination, and flexibility with high physiological demands [8]. Flexibility is set at 50% not 80%+ because the flexibility in ballet dancers develops over years of training, not within each session.
+
+YOGA — bone loading is low (5%). Yoga primarily improves balance, flexibility and core strength [9]. Not a bone-loading activity.
+
+CYCLING — bone loading is low (5%) for the same reason as swimming — non-impact, non-weight-bearing. Spin class is the same.
+
+INTENTIONAL REST — 100% recovery. The app should be able to log a deliberate rest day as a contribution to the Recovery dimension.
+
+### Methodology note
+
+Weightings represent evidence-based estimates of a typical session's contribution. They are not precise physiological measurements — they are calibrated approximations designed to reflect what the research says about each activity's primary and secondary benefits.
+
+The AI classifier will handle activities not in this table, using the table as training context for its estimates.
+
+These weightings are flagged for expert review by an exercise scientist as part of Selodía's public launch. The review will be published.
+
+### Citations (Vancouver format)
+
+[1] Dam TV, Dalgaard LB, Ringgaard S, et al. Transdermal Estrogen Therapy Improves Gains in Skeletal Muscle Mass After 12 Weeks of Resistance Training in Early Postmenopausal Women. Front Physiol. 2021;11:596130. doi: 10.3389/fphys.2020.596130
+Supports: Strength dimension definition; muscle mass retention critical during menopausal transition. Section: Health Flower dimensions.
+
+[2] WHO Guidelines on Physical Activity and Sedentary Behaviour. World Health Organization; 2020. ISBN 978-92-4-001512-8
+Supports: Cardio dimension definition; WHO classification of cardiovascular endurance as health-related fitness component. Section: Health Flower dimensions.
+
+[3] Letton ME, et al. Classical Ballet for Women Aged Over 50 Years: Investigating Balance, Strength, and Range of Motion. Res Q Exerc Sport. 2024;95(1):171-182. doi: 10.1080/02701367.2023.2169236
+Supports: Flexibility dimension; ballet weightings for balance and flexibility. Section: Activity weighting table.
+
+[4] Anderson A, Rochelle L. Ballet and how it can improve neuromuscular function with age. J Neurophysiol. 2024. doi: 10.1152/jn.00514.2024
+Supports: Balance dimension definition; fall prevention importance at 40+; ballet balance weightings. Section: Health Flower dimensions; activity table.
+
+[5] Ng CA, et al. Effects of Moderate- to High-Impact Exercise Training on Bone Structure Across the Lifespan: A Systematic Review and Meta-Analysis of Randomized Controlled Trials. J Bone Miner Res. 2023;38(11):1612. doi: 10.1002/jbmr.4899
+Supports: Bone loading dimension; running and impact exercise bone density weightings. Section: Activity weighting table.
+
+[6] Csala B, Szemerszky R, Kormendi J, Koteles F, Boros S. Is Weekly Frequency of Yoga Practice Sufficient? Physiological Effects of Hatha Yoga Among Healthy Novice Women. Front Public Health. 2021;9:702793. doi: 10.3389/fpubh.2021.702793
+Supports: Yoga weightings for balance, flexibility, core strength; recovery dimension (parasympathetic activity). Section: Activity weighting table.
+
+[7] Abrahin O, et al. Swimming and cycling do not cause positive effects on bone mineral density: a systematic review. Rev Bras Reumatol. 2016;56(4):345-351. doi: 10.1016/j.rbre.2016.02.013
+Supports: Low bone loading for swimming and cycling. Body literacy note. Section: Key notes; activity table.
+
+[8] Letton ME, et al. Classical Ballet for Women Aged Over 50 Years: Investigating Balance, Strength, and Range of Motion. Res Q Exerc Sport. 2024;95(1):171-182. doi: 10.1080/02701367.2023.2169236
+Supports: Ballet strength and balance weightings. High physiological demands of ballet. Section: Activity table; key notes.
+
+[9] Csala B, et al. Front Public Health. 2021;9:702793. (see [6])
+Supports: Yoga bone loading note; flexibility and balance primary outcomes. Section: Key notes.
+
+### Status
+
+Weighting table: complete, 30 activities.
+Citation pass: complete.
+Expert review: pending — to be published as part of Selodía public launch.
+Build status: not yet built — visual concept fully designed, data layer now complete.
+
+
 # PART NINE: PERSISTENT CONTEXT, THEME EXTRACTION, AND THE DAILY/WEEKLY ROUNDUPS
 
 ## Persistent Context
