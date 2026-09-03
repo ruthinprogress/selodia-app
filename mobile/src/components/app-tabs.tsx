@@ -21,7 +21,7 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="dashboard">
+      <NativeTabs.Trigger name="body">
         <NativeTabs.Trigger.Label hidden>Body</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="body-outline" />}
