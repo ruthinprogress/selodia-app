@@ -25,11 +25,12 @@ export default function AppTabs() {
           <TabTrigger name="chat" href="/" asChild>
             <TabButton iconName="chatbubble-ellipses-outline" />
           </TabTrigger>
-          <TabTrigger name="almanac" href="/almanac" asChild>
-            <TabButton iconName="book-outline" />
-          </TabTrigger>
+          {/* Same order as the native bar: do, measure, understand. */}
           <TabTrigger name="dashboard" href="/dashboard" asChild>
             <TabButton iconName="body-outline" />
+          </TabTrigger>
+          <TabTrigger name="almanac" href="/almanac" asChild>
+            <TabButton iconName="book-outline" />
           </TabTrigger>
         </CustomTabList>
       </TabList>
