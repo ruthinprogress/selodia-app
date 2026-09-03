@@ -47,6 +47,11 @@ const comfortaa = Comfortaa({
 const CREAM = '#F7F3EA';
 const CHARCOAL = '#2D2B28';
 const TERRACOTTA = '#C97458';
+// Same hue, dark enough to be read. Terracotta text on cream is 3.10:1,
+// which fails AA for normal text; this is 6.07:1. It is the app's accentDeep
+// token, so the deep shade is not invented here. TERRACOTTA itself stays for
+// the submit button, where the measurement is cream ON terracotta and passes.
+const ACCENT_DEEP = '#874C3A';
 const SAGE = '#95A987';
 const FOREST = '#37584A';
 const SAND = '#E9D6C2';
@@ -113,7 +118,7 @@ export default async function LandingPage({
              Measured at 375x812 the fixed value made the column 841px tall -
              29px of scroll on a page that should sit still. A page that almost
              fits is more unsettling than one that clearly scrolls. */
-          gap: clamp(1.15rem, 2.9vh, 2rem);
+          gap: clamp(0.9rem, 2.3vh, 2rem);
           padding: clamp(2rem, 5vh, 3rem) 1.5rem clamp(2.5rem, 6vh, 4rem);
           text-align: center;
           box-sizing: border-box;
@@ -273,14 +278,16 @@ export default async function LandingPage({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.55rem;
-          margin-top: clamp(0.75rem, 3vh, 2rem);
+          gap: 0.3rem;
+          /* No margin of its own. The column gap below is the separator, and a
+             margin on top of it was spending 24px to say what the gap already
+             said. */
         }
         .selodia__contact-heading {
           font-family: ${comfortaa.style.fontFamily};
           font-size: clamp(1.05rem, 4vw, 1.2rem);
           font-weight: 300;
-          line-height: 1.4;
+          line-height: 1.3;
           color: ${CHARCOAL};
           margin: 0;
         }
@@ -288,7 +295,7 @@ export default async function LandingPage({
           font-family: ${comfortaa.style.fontFamily};
           font-size: clamp(0.85rem, 3.2vw, 0.9rem);
           font-weight: 300;
-          line-height: 1.65;
+          line-height: 1.45;
           color: ${CHARCOAL};
           opacity: 0.7;
           margin: 0;
@@ -297,7 +304,7 @@ export default async function LandingPage({
           font-family: ${comfortaa.style.fontFamily};
           font-size: clamp(0.95rem, 3.5vw, 1rem);
           font-weight: 400;
-          color: ${TERRACOTTA};
+          color: ${ACCENT_DEEP};
           text-decoration: none;
         }
         .selodia__contact-email:hover { text-decoration: underline; }
