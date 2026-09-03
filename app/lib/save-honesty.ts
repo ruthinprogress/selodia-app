@@ -53,6 +53,22 @@ function list(names: string[]): string {
 // Null in the ordinary case matters: a note on every successful log would be
 // the "Logged: ..." receipt the voice rules exist to prevent. This speaks only
 // when something the person said did not survive the turn.
+// When the duration gate refused an activity, specifically.
+//
+// unsavedNote says "for some reason" because it usually does not know the
+// reason, and this module's whole argument is that a confident wrong
+// explanation is the failure. Here we DO know: logActivityFromText returned
+// nothing because the description never said how long. Saying that is not a
+// guess, it is the actual cause, and the one thing that fixes it is three words
+// the person can type back.
+//
+// It also has to say that nothing was saved. The model has already written its
+// reply by this point and may well have congratulated them on the run - so this
+// line is the only thing in the turn that knows the run is not in the table.
+export function needDurationNote(): string {
+  return "I haven't saved that one yet. How long did it last?";
+}
+
 export function unsavedNote(attempt: LogAttempt): string | null {
   const { intent, landed, missed } = attempt;
 

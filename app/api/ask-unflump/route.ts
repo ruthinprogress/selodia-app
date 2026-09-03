@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK } from '../../lib/app-structure';
-import { unsavedNote, type LogAttempt } from '../../lib/save-honesty';
+import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import {
   CLASSIFY_TOOL_NAME,
   SAFETY_PROMPT_BLOCK,
@@ -633,11 +633,30 @@ ${SAFETY_PROMPT_BLOCK}`;
         // one message into several rows, so "replace row X" is not well
         // defined. Removing and re-logging is the honest equivalent, and it is
         // what the person asked for in substance.
-        await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
+        //
+        // THE ORDER IS THE SAFETY PROPERTY. The delete used to run first. That
+        // was survivable only while the re-log always wrote something: once the
+        // duration gate landed (2026-09-03), logActivityFromText began
+        // returning [] for a description with no duration in it - so a bare
+        // activity name read as a correction deleted the row and put nothing
+        // back. There is no transaction to roll that back, activity_logs has no
+        // updated_at and no soft delete, so the row left no trace that it had
+        // ever existed.
+        //
+        // Re-logging first costs a few seconds where both rows are present, and
+        // buys the guarantee that the old row is only ever removed once its
+        // replacement is genuinely in the table.
         const entries = await logActivityFromText(supabase, user.id, message);
         if (entries[0]) {
+          await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
           saved = { kind: 'activity', summary: activitySaveSummary(entries) };
           attempt.landed.push('activity');
+        } else {
+          // Nothing replaced it, so nothing is removed. The person asked to
+          // change an activity and the app could not, and this is the only line
+          // in the turn that knows it - the model wrote its reply before any of
+          // this ran.
+          correctionNote = needDurationNote();
         }
       }
       // No final `else`: every branch above either has its target or finds its
@@ -725,6 +744,13 @@ ${SAFETY_PROMPT_BLOCK}`;
         if (entries[0]) {
           saved = { kind: 'activity', summary: activitySaveSummary(entries) };
           attempt.landed.push('activity');
+        } else {
+          // The gate refused it: no duration, so no row. Without this the turn
+          // fell through to unsavedNote's "didn't save for some reason", which
+          // is true but vaguer than it needs to be - we know the reason, and
+          // the fix is one number. Says it plainly, because the model has very
+          // likely already replied as though the run were logged.
+          correctionNote = needDurationNote();
         }
       }
     } catch (err) {
