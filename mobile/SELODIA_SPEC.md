@@ -116,7 +116,10 @@ Anthropic API, Haiku model, used for structured extraction (parsing food/activit
 
 **Scoping note for the rename session (audited 2026-08-31).** The cutover is smaller than it looks: **no domain is hardcoded anywhere in the source.** A full search of `.ts`, `.tsx`, `.json` and `.mjs` returns no `unflump.app` / `.com` / `.online` reference in any code file — the only occurrence in the repo is this section. What actually has to change lives in config and platform settings, not source:
 
-- `EXPO_PUBLIC_API_URL` in `mobile/.env.local` → currently `https://unflump-app.vercel.app`
+- ~~`EXPO_PUBLIC_API_URL` in `mobile/.env.local`~~ → **done 2026-09-03: now `https://api.selodia.app`.** The custom domain was added to the Vercel project first, so the app had somewhere stable to point before anything moved. Certificate issued about 130 seconds after the CNAME resolved; verified serving 200 on the root and 401 on `/api/delete-account`, identical to the old host.
+  - **`.env.local` is gitignored** (`.env*.local`), so this change is not in version control and has to be made by hand on any other machine.
+  - **The variable does not exist in Vercel, and does not need to.** It is a build-time value for the Expo app; the Next.js backend has no use for its own URL. An audit on 2026-09-03 found 17 Vercel variables and none of them this one.
+  - **It does not exist in EAS either, which is a real gap.** `eas env:list --environment production` returns nothing, and EAS Build clones from git, where `.env.local` is ignored. A production build therefore has no source for this value. That needs settling as part of the EAS build batch, before any build is expected to reach the new domain.
 - The Vercel project name → currently `unflump-app`
 - The GitHub repository name
 - `mobile/app.json`: `owner`, `slug`, and the Android `package`
