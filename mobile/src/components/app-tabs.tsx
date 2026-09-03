@@ -14,7 +14,16 @@ export default function AppTabs() {
   // where they are understood. Body sat third until 2026-09-03, which put the
   // thing people open most often furthest from the thumb.
   return (
-    <NativeTabs backgroundColor={colors.background} indicatorColor={colors.backgroundElement}>
+    <NativeTabs
+      backgroundColor={colors.background}
+      indicatorColor={colors.backgroundElement}
+      // Terracotta for the tab you are on, softened charcoal for the rest.
+      // accent at full strength is 3.10:1 on cream, which clears the 3:1 a
+      // non-text control needs but nothing more, so it stays an icon tint and
+      // never becomes a label colour.
+      tintColor={colors.accent}
+      iconColor={colors.textSecondary}
+    >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label hidden>Chat</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

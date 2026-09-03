@@ -5,7 +5,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { SpotlightTarget } from '@/components/spotlight-target';
-import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -58,7 +57,7 @@ export function FoodTodayView() {
       const { startISO, endISO } = weekRange(new Date());
       const { data } = await supabase
         .from('food_logs')
-        .select('id, happened_at, meal_label, raw_text, kcal, protein_g, confidence')
+        .select('id, happened_at, meal_label, raw_text, kcal, protein_g')
         .gte('happened_at', startISO)
         .lt('happened_at', endISO)
         .order('happened_at', { ascending: true });
@@ -101,7 +100,6 @@ export function FoodTodayView() {
             <View key={row.id} style={styles.row}>
               <View style={styles.labelCol}>
                 <ThemedText type="small">{entryLabel(row)}</ThemedText>
-                <Tag context="confidence" value={row.confidence} />
               </View>
               <ThemedText type="small" themeColor="textSecondary">
                 {Math.round(row.kcal ?? 0)} kcal · {Math.round(row.protein_g ?? 0)}g

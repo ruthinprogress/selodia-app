@@ -32,8 +32,11 @@ import { Platform } from 'react-native';
 //   - Terracotta as small text on cream also fails at 3.10:1, so `link` and
 //     `accentDeep` use a 30% darker terracotta that clears AA on every light
 //     surface, not just on cream.
-//   - Sand is the SELECTED state, never a text ground: charcoal on sand is fine
-//     at 9.99:1, but secondary text on it drops to 4.08:1.
+//   - Sand IS the element ground from 2026-09-03. It was held back as a
+//     selected-state-only colour on the grounds that secondary text on it fell
+//     to 4.08:1; re-measured, charcoal on sand is 9.99:1 and textSecondary is
+//     4.82:1, which clears AA. Cards were an off-white a shade from the page and
+//     did not read as cards at all, and sand is what the palette has for this.
 //
 // SAGE was deliberately absent from these tokens until 2026-08-31, on the
 // grounds that adding a colour nothing renders is dead weight. The Almanac's
@@ -52,16 +55,20 @@ export const Colors = {
   light: {
     // Cream ground; element and selected step down gently from it.
     background: '#F7F3EA',
-    backgroundElement: '#EDE9E1',
+    // Brand sand. Cards sit on this and lift off the cream page.
+    backgroundElement: '#E9D6C2',
     backgroundSelected: '#E3E0D7',
     text: '#2D2B28',
     textSecondary: '#605A52',
     // The accent at full strength - fills, icons, large type. NOT small text.
     accent: '#C97458',
     // The same terracotta, deep enough to be read as body text on any of the
-    // three light surfaces above.
-    accentDeep: '#8D513E',
-    link: '#8D513E',
+    // three light surfaces above. Deepened from #8D513E on 2026-09-03, when
+    // cards became sand: links sit inside cards (the drink quick-tap, Settings,
+    // account deletion) and 8D513E measured 4.40:1 there, just under AA. This
+    // reads 4.76:1 on sand and 6.07:1 on cream.
+    accentDeep: '#874C3A',
+    link: '#874C3A',
     danger: '#A63A2E',
     // Brand sage at full strength. Reads as a soft green line on cream.
     sage: '#95A987',

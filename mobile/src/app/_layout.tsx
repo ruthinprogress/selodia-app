@@ -11,9 +11,33 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { SpotlightOverlay } from '@/components/spotlight-overlay';
 import { SpotlightProvider } from '@/components/spotlight-provider';
+import { Colors } from '@/constants/theme';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 
 SplashScreen.preventAutoHideAsync();
+
+// react-navigation's DefaultTheme paints its background rgb(242,242,242) and its
+// cards white. Neither is in the palette, and both showed: every screen that did
+// not paint its own ground sat on a flat grey, which is why the app read as grey
+// rather than cream however warm the cards on top of it were. The Body stack had
+// been setting contentStyle since it was built and was the one part that looked
+// right, which is what made the rest look wrong rather than intentional.
+//
+// Built by spreading DefaultTheme rather than hand-writing a theme object, so a
+// key react-navigation adds later still arrives with a sane default. Every
+// colour comes from the palette; nothing here names one.
+const BrandNavigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: Colors.light.background,
+    card: Colors.light.background,
+    text: Colors.light.text,
+    border: Colors.light.backgroundSelected,
+    primary: Colors.light.accentDeep,
+    notification: Colors.light.danger,
+  },
+};
 
 export default function RootLayout() {
   // The brand face has to be in memory before anything the person SEES is
@@ -45,11 +69,11 @@ export default function RootLayout() {
   // early return, because a hook cannot sit behind a condition.
   useAuthGuard();
 
-  // DefaultTheme unconditionally: the app is light-only from 2026-09-03, and
-  // handing react-navigation DarkTheme while every screen paints cream would
-  // give dark chrome around a light app. See use-theme.ts for the reasoning.
+  // Light unconditionally: the app is light-only from 2026-09-03, and handing
+  // react-navigation a dark theme while every screen paints cream would give
+  // dark chrome around a light app. See use-theme.ts for the reasoning.
   return (
-    <ThemeProvider value={DefaultTheme}>
+    <ThemeProvider value={BrandNavigationTheme}>
       {/* The spotlight provider wraps the whole Stack, not a single screen
           (build item 23). A request made in Chat has to survive the navigation
           to Settings so the destination can highlight on arrival - state living
@@ -59,7 +83,15 @@ export default function RootLayout() {
       {/* Mounted only once the font is in memory - see above. Until then the
           native splash is still covering everything. */}
       {fontsLoaded ? <AnimatedSplashOverlay /> : null}
-      <Stack screenOptions={{ headerShown: false }}>
+      {/* contentStyle as well as the theme: the theme covers what
+          react-navigation itself draws, and this covers the screen area behind
+          a route that has not painted its own ground yet. */}
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.light.background },
+        }}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
         {/* Settings is pushed OVER the tabs rather than being a fourth one:

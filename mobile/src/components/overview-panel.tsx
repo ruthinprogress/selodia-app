@@ -321,10 +321,7 @@ function Section({
   // it, under the AA floor. Every figure here has a secondary line beneath it,
   // so sand would put the small grey text below AA on all three cards at once.
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={[styles.card, { borderColor: theme.backgroundSelected }]}
-    >
+    <ThemedView type="backgroundElement" style={styles.card}>
       <SpotlightTarget id={id} onActivate={() => router.push(href)}>
         <Pressable
           onPress={() => router.push(href)}
@@ -334,10 +331,10 @@ function Section({
         >
           <View style={styles.headerRow}>
             <ThemedText type="smallBold">{title}</ThemedText>
-            {/* A real chevron in terracotta rather than a text ">". theme.ts
-                sanctions the accent at full strength for icons, and forbids it
-                for small text - which is exactly what this is and was not. */}
-            <Ionicons name="chevron-forward" size={22} color={theme.accent} />
+            {/* accentDeep, not accent. Full-strength terracotta on a sand card
+                is 2.43:1, under even the 3:1 floor a non-text control needs;
+                the deeper tone is 4.40:1 and reads as the same terracotta. */}
+            <Ionicons name="chevron-forward" size={22} color={theme.accentDeep} />
           </View>
         </Pressable>
       </SpotlightTarget>
@@ -389,7 +386,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
   },
   headerRow: {
     flexDirection: 'row',

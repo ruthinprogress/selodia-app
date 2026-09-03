@@ -9,7 +9,6 @@ export type FoodLogSummary = {
   raw_text: string | null;
   kcal: number | null;
   protein_g: number | null;
-  confidence: string | null;
 };
 
 export type DayTotals = { kcal: number; protein: number };

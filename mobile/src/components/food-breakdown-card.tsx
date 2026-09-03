@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -16,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 // host (a weekly table, a chat deep-link) without change.
 //
 // Follows the Detail Views template (SELODIA_SPEC.md) in order: the itemised
-// content, then the macro breakdown with its confidence tag. The template's
+// content, then the macro breakdown. The template's
 // other two parts are deliberately ABSENT, not forgotten:
 //   - the sand-toned factual note card needs per-entry health flags, which are
 //     point-in-time records (build item 29) — computing one live here would
@@ -33,7 +32,6 @@ type FoodLog = {
   protein_g: number | null;
   carbs_g: number | null;
   fat_g: number | null;
-  confidence: string | null;
   breakdown_type: string | null;
   protein_source: string | null;
 };
@@ -72,7 +70,7 @@ export function FoodBreakdownCard({
         supabase
           .from('food_logs')
           .select(
-            'meal_label, raw_text, kcal, protein_g, carbs_g, fat_g, confidence, breakdown_type, protein_source'
+            'meal_label, raw_text, kcal, protein_g, carbs_g, fat_g, breakdown_type, protein_source'
           )
           .eq('id', foodLogId)
           .maybeSingle(),
@@ -125,7 +123,6 @@ export function FoodBreakdownCard({
                   <ThemedText type="smallBold" style={styles.title}>
                     {log.meal_label ?? log.raw_text ?? 'This entry'}
                   </ThemedText>
-                  <Tag context="confidence" value={log.confidence} />
                 </View>
 
                 {hasItems ? (
