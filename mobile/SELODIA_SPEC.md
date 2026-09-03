@@ -529,12 +529,14 @@ Schema: food_cache table
 - protein_g (numeric)
 - carbs_g (numeric)
 - fat_g (numeric)
-- source (enum: cache | usda | llm)
+- source (enum: cache | open_food_facts | mcwiddowson | usda | llm)
 - confidence (numeric 0-1)
 - log_count (integer, increments on hit)
 - last_used (timestamp)
 
 Match: fuzzy string match on food_name, confidence threshold 0.85 minimum to return a cache hit.
+
+Tier 1 returns rows originally written by Tier 2 or 3. The cache source value records the original data source, not the lookup tier.
 
 TIER 2 — Food database (fast, free)
 Three sources in priority order, chosen for UK relevance:
@@ -548,7 +550,7 @@ Three sources in priority order, chosen for UK relevance:
    API: https://api.nal.usda.gov/fdc/v1/
    Free API key required if used.
 
-On a Tier 2 hit: result is stored in the user's personal cache for future use (source: usda).
+On a Tier 2 hit: result is stored in the user's personal cache for future use, with the appropriate source value.
 
 Match threshold: confidence 0.80 minimum to return without escalating to LLM.
 
@@ -582,7 +584,7 @@ Not yet built. Spec complete.
 Prerequisite: the McCance and Widdowson dataset imported as a local dataset before the feature can be built. Open Food Facts needs no API key.
 Suggested build order:
 1. food_cache table migration
-2. USDA API integration and testing
+2. Open Food Facts API integration and testing
 3. Routing logic in food logging pipeline
 4. Personal cache
 
