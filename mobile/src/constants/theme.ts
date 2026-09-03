@@ -116,6 +116,17 @@ export const Fonts = Platform.select({
   },
 });
 
+// Comfortaa, the brand face (Part Fifteen). React Native cannot synthesise a
+// weight for a custom family - fontWeight is ignored on iOS and unreliable on
+// Android - so each weight is its own family name and the style picks the file
+// it wants rather than asking for a number.
+export const BrandFont = {
+  regular: 'Comfortaa_400Regular',
+  medium: 'Comfortaa_500Medium',
+  semibold: 'Comfortaa_600SemiBold',
+  bold: 'Comfortaa_700Bold',
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,

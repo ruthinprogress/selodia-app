@@ -155,7 +155,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: {
-    padding: Spacing.three,
+    // Horizontal padding matches the Body screens at 24; vertical stays at 16.
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
     gap: Spacing.three,
     maxWidth: MaxContentWidth,
     width: '100%',

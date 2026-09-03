@@ -211,6 +211,18 @@ Three top-level destinations, deliberately kept to three rather than more, acces
 
 Chat being the home screen does not mean everything requires typing. The Almanac and the Body tab need direct, always-available tap access — someone checking a saved routine at the gym should not have to type a request to see it.
 
+## Dark Mode — withdrawn 2026-09-03
+
+**Part Fifteen's dark mode is built, correct, and switched off.** The palette inversion it specifies — terracotta as the ground, cream as the text, rather than a conventional near-black — was implemented and every text-on-surface pair was contrast-verified at AA, including darkening the ground from `#C97458` to `#834B39` so cream type clears 6.26:1.
+
+On a real phone it reads as heavy and brown rather than as Selodía. The palette is defensible pair by pair and wrong as a whole, which is not something a contrast table can tell you and a device can.
+
+**Brand consistency takes precedence at this stage.** The app is light-only: `userInterfaceStyle` is `"light"`, `useTheme` returns `Colors.light` unconditionally, and the root hands react-navigation `DefaultTheme` regardless of the system setting.
+
+**`Colors.dark` is left in place, not deleted.** The work was right and only unused, and reinstating it should be a change to `useTheme` alone. Two things to know before that day: the tab bars read `Colors[scheme]` directly until this change and had to be routed through `useTheme` (anything new that names a palette by index will reintroduce exactly this bug), and the tokens have not been re-verified since.
+
+**The cost, stated plainly:** someone using their phone in dark mode at night gets a cream screen. That is a real accessibility and comfort regression, accepted deliberately rather than overlooked, and it is the thing to revisit when a theme preference exists to hang it on.
+
 ## The Body Tab Summary (previously "The Overview Segment")
 The landing screen of the Body tab, **rewritten 2026-09-03**. Three sections, each headed by a tappable heading that is itself the route into that section's detail — the heading does two jobs deliberately, because a separate "see more" control would be a second thing to explain. **It does not scroll**, structurally: it renders in a plain flex view while the detail routes keep the scrolling shell, so anything that will not fit has to become a detail screen rather than quietly extending the glance. Composition:
 

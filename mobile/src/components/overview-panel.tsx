@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -312,8 +313,18 @@ function Section({
   href: Href;
   children: React.ReactNode;
 }) {
+  const theme = useTheme();
+
+  // The card ground is the ELEVATED CREAM element surface, not brand sand.
+  // theme.ts records why: charcoal on sand is comfortable at 9.99:1, but the
+  // secondary text these cards carry - units, week deltas - drops to 4.08:1 on
+  // it, under the AA floor. Every figure here has a secondary line beneath it,
+  // so sand would put the small grey text below AA on all three cards at once.
   return (
-    <View style={styles.section}>
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.card, { borderColor: theme.backgroundSelected }]}
+    >
       <SpotlightTarget id={id} onActivate={() => router.push(href)}>
         <Pressable
           onPress={() => router.push(href)}
@@ -323,14 +334,15 @@ function Section({
         >
           <View style={styles.headerRow}>
             <ThemedText type="smallBold">{title}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              ›
-            </ThemedText>
+            {/* A real chevron in terracotta rather than a text ">". theme.ts
+                sanctions the accent at full strength for icons, and forbids it
+                for small text - which is exactly what this is and was not. */}
+            <Ionicons name="chevron-forward" size={22} color={theme.accent} />
           </View>
         </Pressable>
       </SpotlightTarget>
       {children}
-    </View>
+    </ThemedView>
   );
 }
 
@@ -373,8 +385,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     paddingLeft: Spacing.three,
   },
-  section: {
+  card: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
     gap: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   headerRow: {
     flexDirection: 'row',

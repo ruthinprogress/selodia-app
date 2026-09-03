@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 
+import { BrandFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The Body tab is a stack, not a switcher (2026-09-03).
@@ -26,9 +27,15 @@ export default function BodyLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: theme.background },
         headerTintColor: theme.text,
-        headerTitleStyle: { color: theme.text },
+        headerTitleStyle: { color: theme.text, fontFamily: BrandFont.semibold },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.background },
+        // Swipe from the left edge to go back to the summary, the same place
+        // pressing the Body tab lands. iOS only: this is a UIKit gesture, and
+        // the native stack has no Android equivalent. Android's own back
+        // gesture is the counterpart there, and app.json currently sets
+        // predictiveBackGestureEnabled false - see the report.
+        gestureEnabled: true,
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

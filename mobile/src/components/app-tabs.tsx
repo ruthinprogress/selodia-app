@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : (scheme ?? 'light')];
+  // Through useTheme like everything else. This read Colors[scheme] directly
+  // until 2026-09-03, which meant the tab bar kept following the system even
+  // after the app stopped.
+  const colors = useTheme();
 
   // Order is the user journey, left to right: do, then measure, then understand.
   // Chat is where things are logged, Body is where they are measured, Almanac is

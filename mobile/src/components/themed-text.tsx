@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { BrandFont, Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -36,25 +36,32 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: 500,
   },
+  // Section headers land here, so this one takes Comfortaa despite its size.
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
+    fontFamily: BrandFont.semibold,
   },
+  // Comfortaa carries display, headings and section headers. `small`, `link`
+  // and `code` stay on the system face: a rounded display type is the wrong
+  // tool for dense utility text, and the system font is what a phone reads
+  // most comfortably at 14px.
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontFamily: BrandFont.regular,
   },
+  // 48px until 2026-09-03, where it dominated every screen it opened. 32 is
+  // still unmistakably the page's heading without being the whole page.
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontSize: 32,
+    lineHeight: 40,
+    fontFamily: BrandFont.semibold,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontSize: 24,
+    lineHeight: 32,
+    fontFamily: BrandFont.semibold,
   },
   link: {
     lineHeight: 30,

@@ -13,11 +13,15 @@
  */
 
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function useTheme() {
-  const scheme = useColorScheme();
-  // 'unspecified' is a real value on Android when no system preference is set.
-  const theme = scheme === 'unspecified' || scheme == null ? 'light' : scheme;
-  return Colors[theme];
+  // LIGHT ALWAYS, from 2026-09-03. The system setting is deliberately ignored.
+  //
+  // Part Fifteen specified a dark mode that inverts the palette's roles -
+  // terracotta as the ground, cream as the text - and it was built and contrast-
+  // verified. On a real phone in dark mode it reads as heavy and brown rather
+  // than as Selodia, and brand consistency wins at this stage. Colors.dark is
+  // left intact rather than deleted: the work was correct, it is only unused,
+  // and reinstating it later should be a change to this function alone.
+  return Colors.light;
 }
