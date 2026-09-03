@@ -336,6 +336,8 @@ SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved pla
 
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask.
 
+ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
+
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${APP_STRUCTURE_PROMPT_BLOCK}
@@ -383,7 +385,12 @@ ${SAFETY_PROMPT_BLOCK}`;
       type: 'string',
       enum: ['none', 'food', 'activity', 'measurement', 'hydration'],
       description:
-        "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content.",
+        "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText.",
+    },
+    logText: {
+      type: 'string',
+      description:
+        "Only alongside logIntent 'activity'. The COMPLETE description to store, assembled from the conversation - e.g. after \"I did a run\" then \"about 40 minutes\", send \"a 40 minute run\". Without this the app would store only the latest message, which on its own says \"about 40 minutes\" and describes no activity at all. Include the duration always, and anything else they said that belongs to the same session (intensity, terrain, how it felt). Omit it when the single message already contains everything.",
     },
     correctionKind: {
       type: 'string',
@@ -466,6 +473,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
     logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration';
+    logText?: string;
     correctionKind?: string;
     correctionAction?: string;
     clarificationAsked?: string;
@@ -707,7 +715,13 @@ ${SAFETY_PROMPT_BLOCK}`;
             .eq('id', entry.id);
         }
       } else {
-        const entries = await logActivityFromText(supabase, user.id, message);
+        // logText carries the description assembled across turns, so the answer
+        // to "how long was that?" logs the run rather than logging the answer.
+        const entries = await logActivityFromText(
+          supabase,
+          user.id,
+          result.logText?.trim() || message
+        );
         if (entries[0]) {
           saved = { kind: 'activity', summary: activitySaveSummary(entries) };
           attempt.landed.push('activity');

@@ -64,11 +64,21 @@ export function QuickLogBar({
     try {
       // The same route the Chat composer posts to, which also writes both turns
       // to the thread — so this costs nothing extra to keep history complete.
-      const data = await authedPost<{ saved?: { summary?: string } }>('/api/ask-unflump', {
-        message: trimmed,
-      });
-      setNote(data?.saved?.summary ?? 'Saved.');
-      onLogged();
+      const data = await authedPost<{ saved?: { summary?: string }; reply?: string }>(
+        '/api/ask-unflump',
+        { message: trimmed }
+      );
+      // "Saved." is only true when something actually saved. Activity now waits
+      // for a duration before it logs anything, so a first "Run" comes back with
+      // a question and nothing stored - and the old fallback would have answered
+      // that with a confirmation the data does not support. When nothing landed,
+      // the reply IS the response: it is the question being asked.
+      if (data?.saved?.summary) {
+        setNote(data.saved.summary);
+        onLogged();
+      } else {
+        setNote(data?.reply?.trim() || 'Nothing to save in that one.');
+      }
     } catch {
       setNote('That did not save. Worth trying again.');
     } finally {
