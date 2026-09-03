@@ -1,12 +1,16 @@
+import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { HydrationQuickTap } from '@/components/hydration-quick-tap';
+import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
+import { hydrationLabel, hydrationToday } from '@/lib/hydration';
 import {
   findWeekAgoReading,
   formatWeeklyDelta,
@@ -15,23 +19,40 @@ import {
   type MeasurementRow,
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
-import { HydrationQuickTap } from '@/components/hydration-quick-tap';
-import { SpotlightTarget } from '@/components/spotlight-target';
-import { DAILY_TARGET_ML, hydrationLabel, hydrationToday } from '@/lib/hydration';
 import { calculateProteinTarget } from '@/lib/protein';
-import { dayLevelProteinNudge, type ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
 
-// The Overview segment of the Body tab — the default landing (SELODIA_SPEC.md,
-// The Overview Segment). A lightweight cross-facet glance: a rotating personal
-// line, a body summary (weight / body fat / muscle with vs-last-week deltas),
-// and a food-intake card with calorie + protein target-vs-current bars plus the
-// day-level protein-quality nudge (item 12). The
-// calorie target composes the two already-built pure functions —
-// resolveTDEE(...) -> calculateCalorieTarget(...). Hydration (item 31) is
-// deliberately deferred until its backend exists. Colours use the current
-// neutral theme; the brand palette (terracotta/forest/sage) is a separate
-// Part Fifteen visual pass.
+// The Body tab's landing screen (rewritten 2026-09-03).
+//
+// Three sections, each headed by a tappable heading that IS the way into that
+// section's detail. The heading does two jobs on purpose: a separate "see more"
+// control would be a second thing to explain, and a heading that navigates is
+// the pattern every settings screen on the phone already uses.
+//
+// NUMBERS, NOT BARS. The previous version drew calorie, protein and water as
+// target-vs-current bars. A bar states a target as a thing to fill, and a
+// half-empty one reads as a failure at a glance in a way "1,450" does not. The
+// figures are the same; what has gone is the judgement drawn around them.
+//
+// NO SCROLLING. This screen is a glance, and a glance that scrolls is a screen.
+// It renders in a plain View rather than the scroller the detail routes use, so
+// there is nothing to scroll even if content grows. That is a constraint worth
+// keeping: anything that will not fit here belongs in a detail screen.
+
+type Metric = { value: number | null; delta: string | null };
+type OverviewData = {
+  hasMeasurement: boolean;
+  personalLine: string;
+  weight: Metric;
+  muscle: Metric;
+  todayKcal: number;
+  todayProtein: number;
+  calorieTargetKcal: number | null;
+  proteinTargetG: number | null;
+  activityCount: number;
+  activityMinutes: number;
+  hydrationMl: number;
+};
 
 type ProfileRow = {
   height_cm: number | null;
@@ -44,27 +65,18 @@ type ProfileRow = {
   protein_target_g: number | null;
 };
 
-type Metric = { value: number | null; delta: string | null };
-type OverviewData = {
-  hasMeasurement: boolean;
-  personalLine: string;
-  weight: Metric;
-  bodyFat: Metric;
-  muscle: Metric;
-  todayKcal: number;
-  todayProtein: number;
-  calorieTargetKcal: number | null;
-  proteinTargetG: number | null;
-  proteinQualityNote: string | null;
-  hydrationMl: number;
-};
-
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 const asFocus = (s: string | null): FocusState =>
   s === 'reduce' || s === 'increase' ? s : 'maintain';
 
 function todayLabel(): string {
   return new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function startOfToday(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
 export function OverviewPanel() {
@@ -74,311 +86,265 @@ export function OverviewPanel() {
 
   useEffect(() => {
     (async () => {
-      // RLS scopes every read to the signed-in user.
-      const { data: measurements } = await supabase
-        .from('body_measurements')
-        .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
-        .order('measured_at', { ascending: false });
-      const { data: profile } = await supabase
-        .from('user_profile')
-        .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g')
-        .maybeSingle();
+      const dayStart = startOfToday();
 
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const [{ data: food }, { data: water }] = await Promise.all([
-        supabase
-          .from('food_logs')
-          .select('kcal, protein_g, protein_source')
-          .gte('happened_at', startOfDay.toISOString()),
-        // Today only. Hydration is a same-day reflection by design (Part
-        // Twelve), so nothing here is capable of producing a streak.
-        supabase
-          .from('hydration_logs')
-          .select('ml, happened_at')
-          .gte('happened_at', startOfDay.toISOString()),
-      ]);
+      // RLS scopes every read to the signed-in user.
+      const [{ data: measurements }, { data: profileRow }, { data: foods }, { data: activity }, { data: drinks }] =
+        await Promise.all([
+          supabase
+            .from('body_measurements')
+            .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
+            .order('measured_at', { ascending: false })
+            .limit(30),
+          supabase
+            .from('user_profile')
+            .select(
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g'
+            )
+            .maybeSingle(),
+          supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
+          supabase
+            .from('activity_logs')
+            .select('duration_min')
+            .gte('happened_at', dayStart),
+          supabase.from('hydration_logs').select('ml, happened_at').gte('happened_at', dayStart),
+        ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
       const latest = rows[0] ?? null;
-      const p = (profile ?? {}) as ProfileRow;
-      const foodRows = (food ?? []) as {
-        kcal: number | null;
-        protein_g: number | null;
-        protein_source: string | null;
-      }[];
-      const hydrationMl = hydrationToday(
-        (water ?? []) as { ml: number; happened_at: string }[]
-      ).ml;
-      const todayKcal = foodRows.reduce((s, f) => s + (f.kcal ?? 0), 0);
-      const todayProtein = foodRows.reduce((s, f) => s + (f.protein_g ?? 0), 0);
-      // Day-level protein-quality nudge (build item 12): when more than half of
-      // today's logged protein comes from incomplete sources, the complementary-
-      // pairing note rides this same card, next to the protein bar it qualifies.
-      // protein_source is classified at log time (Part Two, principle 13).
-      const proteinBySource = foodRows.map((f) => ({
-        source: (f.protein_source as ProteinSource | null) ?? null,
-        grams: f.protein_g ?? 0,
-      }));
+      const weekAgo = latest ? findWeekAgoReading(rows, latest.measured_at) : null;
+      const refGap = latest && weekAgo ? gapDays(latest.measured_at, weekAgo.measured_at) : null;
 
+      const profile = (profileRow ?? null) as ProfileRow | null;
+      const todayKcal = (foods ?? []).reduce((n, f) => n + ((f as { kcal: number | null }).kcal ?? 0), 0);
+      const todayProtein = (foods ?? []).reduce(
+        (n, f) => n + ((f as { protein_g: number | null }).protein_g ?? 0),
+        0
+      );
+
+      const acts = (activity ?? []) as { duration_min: number | null }[];
+
+      // The day-one line belongs to someone with nothing logged AT ALL, not to
+      // someone who simply has not weighed. Today's rows cannot answer that, so
+      // it takes its own look back over everything.
+      let isTrueDayOne = false;
       if (!latest) {
-        // Empty state — no measurement to summarise. The personal line is the
-        // true day-one exception ONLY when there are zero logged entries ever
-        // (no food, no activity either); otherwise it rotates like any day.
         const [{ data: anyFood }, { data: anyActivity }] = await Promise.all([
           supabase.from('food_logs').select('id').limit(1),
           supabase.from('activity_logs').select('id').limit(1),
         ]);
-        const isTrueDayOne = !(anyFood && anyFood.length) && !(anyActivity && anyActivity.length);
-        setData({
-          hasMeasurement: false,
-          personalLine: isTrueDayOne ? PERSONAL_LINE_DAY_ONE : pickDailyPersonalLine(),
-          weight: { value: null, delta: null },
-          bodyFat: { value: null, delta: null },
-          muscle: { value: null, delta: null },
-          todayKcal,
-          todayProtein,
-          calorieTargetKcal: null,
-          proteinTargetG: null,
-          proteinQualityNote: dayLevelProteinNudge(proteinBySource, null)?.message ?? null,
-          hydrationMl,
-        });
-        setLoading(false);
-        return;
+        isTrueDayOne = !(anyFood && anyFood.length) && !(anyActivity && anyActivity.length);
       }
-
-      const weekAgo = findWeekAgoReading(rows, latest.measured_at);
-      // How far back that reference actually sits, so the label can say so.
-      // With real logging it is rarely a week (Ruth's live screen compared
-      // against a reading 2.6 days old and called it "vs last wk").
-      const refGap = weekAgo ? gapDays(latest.measured_at, weekAgo.measured_at) : null;
       const tdee = resolveTDEE({
-        scaleBmr: latest.bmr,
-        weightKg: latest.weight_kg,
-        heightCm: p.height_cm,
-        dateOfBirth: p.date_of_birth,
-        biologicalSex: p.biological_sex,
-        activityLevel: p.activity_level,
+        scaleBmr: latest?.bmr ?? null,
+        weightKg: latest?.weight_kg ?? null,
+        heightCm: profile?.height_cm ?? null,
+        dateOfBirth: profile?.date_of_birth ?? null,
+        biologicalSex: profile?.biological_sex ?? null,
+        activityLevel: profile?.activity_level ?? null,
       });
-      const calorieTarget = tdee
-        ? calculateCalorieTarget({
-            tdeeKcal: tdee.tdeeKcal,
-            weightKg: latest.weight_kg,
-            fatFocus: asFocus(p.fat_focus_state),
-            muscleFocus: asFocus(p.muscle_focus_state),
-          })
-        : null;
-      // A chosen target first, then lean mass, then nothing. No bodyweight
-      // fallback any more - the bar shows "84 g logged" with no denominator
-      // rather than a figure invented from the wrong input.
-      const proteinTarget = calculateProteinTarget(p.protein_target_g, latest.muscle_kg);
+      const calorieTarget = calculateCalorieTarget({
+        tdeeKcal: tdee?.tdeeKcal ?? null,
+        weightKg: latest?.weight_kg ?? null,
+        fatFocus: asFocus(profile?.fat_focus_state ?? null),
+        muscleFocus: asFocus(profile?.muscle_focus_state ?? null),
+      });
+      const proteinTarget = calculateProteinTarget(
+        profile?.protein_target_g ?? null,
+        latest?.muscle_kg ?? null
+      );
 
       setData({
-        hasMeasurement: true,
-        personalLine: pickDailyPersonalLine(),
+        hasMeasurement: latest != null,
+        personalLine: isTrueDayOne ? PERSONAL_LINE_DAY_ONE : pickDailyPersonalLine(),
         weight: {
-          value: latest.weight_kg,
-          delta: formatWeeklyDelta(weeklyDelta(latest.weight_kg, weekAgo?.weight_kg ?? null), refGap),
-        },
-        bodyFat: {
-          value: latest.body_fat_pct,
-          delta: formatWeeklyDelta(weeklyDelta(latest.body_fat_pct, weekAgo?.body_fat_pct ?? null), refGap),
+          value: latest?.weight_kg ?? null,
+          delta: formatWeeklyDelta(weeklyDelta(latest?.weight_kg ?? null, weekAgo?.weight_kg ?? null), refGap),
         },
         muscle: {
-          value: latest.muscle_kg,
-          delta: formatWeeklyDelta(weeklyDelta(latest.muscle_kg, weekAgo?.muscle_kg ?? null), refGap),
+          value: latest?.muscle_kg ?? null,
+          delta: formatWeeklyDelta(weeklyDelta(latest?.muscle_kg ?? null, weekAgo?.muscle_kg ?? null), refGap),
         },
         todayKcal,
         todayProtein,
         calorieTargetKcal: calorieTarget?.targetKcal ?? null,
         proteinTargetG: proteinTarget?.grams ?? null,
-        proteinQualityNote:
-          dayLevelProteinNudge(proteinBySource, proteinTarget?.grams ?? null)?.message ?? null,
-        hydrationMl,
+        activityCount: acts.length,
+        activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
+        hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
       });
       setLoading(false);
     })();
   }, []);
 
-  return (
-    <>
-      <ThemedText type="title">Today</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {todayLabel()}
-      </ThemedText>
-
-      {loading || !data ? (
+  if (loading || !data) {
+    return (
+      <View style={styles.screen}>
+        <ThemedText type="title">Today</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          …
+          {todayLabel()}
         </ThemedText>
-      ) : (
-        <>
-          <ThemedView style={[styles.personalLine, { borderLeftColor: theme.textSecondary }]}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.personalLineText}>
-              {data.personalLine}
-            </ThemedText>
-          </ThemedView>
+      </View>
+    );
+  }
 
-          {/* The three cards are pointed at as one group (item 23) - someone
-              asking "where do I see my weight" means the row, not one card, and
-              three separate rings would be three answers to one question. */}
-          <SpotlightTarget id="overview.stats">
-            <View style={styles.row3}>
-              <BodyCard label="Weight" value={fmt(data.weight.value, 'kg')} delta={cardDelta(data)} deltaText={data.weight.delta} />
-              <BodyCard label="Body fat" value={fmt(data.bodyFat.value, '%')} delta={cardDelta(data)} deltaText={data.bodyFat.delta} />
-              <BodyCard label="Muscle" value={fmt(data.muscle.value, 'kg')} delta={cardDelta(data)} deltaText={data.muscle.delta} />
-            </View>
+  return (
+    <View style={styles.screen}>
+      <View>
+        <ThemedText type="title">Today</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {todayLabel()}
+        </ThemedText>
+      </View>
+
+      <ThemedView style={[styles.personalLine, { borderLeftColor: theme.textSecondary }]}>
+        <ThemedText type="small" themeColor="textSecondary">
+          {data.personalLine}
+        </ThemedText>
+      </ThemedView>
+
+      <Section id="body.food" title="Food" href="/body/food">
+        <View style={styles.figures}>
+          <SpotlightTarget id="overview.calories">
+            <Figure value={String(Math.round(data.todayKcal))} unit="kcal" of={data.calorieTargetKcal} />
           </SpotlightTarget>
+          <SpotlightTarget id="overview.protein">
+            <Figure value={String(Math.round(data.todayProtein))} unit="g protein" of={data.proteinTargetG} />
+          </SpotlightTarget>
+        </View>
+      </Section>
 
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold">Food intake</ThemedText>
-            <SpotlightTarget id="overview.calories">
-              <Bar label="Calories" current={data.todayKcal} target={data.calorieTargetKcal} unit="kcal" />
-            </SpotlightTarget>
-            <SpotlightTarget id="overview.protein">
-              <Bar label="Protein" current={data.todayProtein} target={data.proteinTargetG} unit="g" />
-            </SpotlightTarget>
-            {/* Same visual family as the two bars above it (Part Twelve), and
-                deliberately last: water is a gentle reflection, not a headline.
-                Its label reads "1.2L of about 2L" - no percentage and no "to
-                go", both of which turn a reflection into a target to hit. */}
-            {/* Bar and quick-tap together: "how do I log a drink" is answered
-                by the tap, and the bar is what makes the tap make sense. */}
-            <SpotlightTarget id="overview.water">
-            <Bar
-              label="Water"
-              current={data.hydrationMl}
-              target={DAILY_TARGET_ML}
-              unit="ml"
-              valueLabel={hydrationLabel(data.hydrationMl)}
-            />
-            {/* Directly beneath the bar it moves (build item 26). Adjusts the
-                loaded figure in place rather than refetching: the insert has
-                already succeeded, and a round trip to re-read a number we just
-                wrote would make a tap feel slower than typing. */}
-            <HydrationQuickTap
-              onLogged={(deltaMl) =>
-                setData((d) =>
-                  d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d
-                )
-              }
-            />
-            </SpotlightTarget>
-            {data.proteinQualityNote && (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.proteinNote}>
-                {data.proteinQualityNote}
-              </ThemedText>
-            )}
-          </ThemedView>
-        </>
-      )}
-    </>
-  );
-}
+      <Section id="body.measurements" title="Body" href="/body/measurements">
+        <SpotlightTarget id="overview.stats">
+          <View style={styles.figures}>
+            <Figure value={fmt(data.weight.value, 'kg')} note={data.hasMeasurement ? data.weight.delta : 'No readings yet'} />
+            <Figure value={fmt(data.muscle.value, 'kg')} unit="muscle" note={data.hasMeasurement ? data.muscle.delta : null} />
+          </View>
+        </SpotlightTarget>
+      </Section>
 
-const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${round1(v)}${unit}`);
-// When there's no measurement at all, every card reads "No data yet".
-const cardDelta = (d: OverviewData): boolean => d.hasMeasurement;
-
-function BodyCard({ label, value, delta, deltaText }: { label: string; value: string; delta: boolean; deltaText: string | null }) {
-  return (
-    <ThemedView type="backgroundElement" style={styles.bodyCard}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.bodyCardLabel}>
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.bodyCardDelta}>
-        {delta ? (deltaText ?? ' ') : 'No data yet'}
-      </ThemedText>
-    </ThemedView>
-  );
-}
-
-function Bar({
-  label,
-  current,
-  target,
-  unit,
-  // Lets a bar state its own value in its own words. Calories and protein read
-  // naturally as "1400 / 1670 kcal"; water does not, because a target one is
-  // invited to exceed should not be written like one to hit.
-  valueLabel,
-}: {
-  label: string;
-  current: number;
-  target: number | null;
-  unit: string;
-  valueLabel?: string;
-}) {
-  const theme = useTheme();
-  const cur = Math.round(current);
-  const pct = target != null && target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-  return (
-    <View style={styles.barRow}>
-      <View style={styles.barLabelRow}>
-        <ThemedText type="small">{label}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {valueLabel ?? (target != null ? `${cur} / ${Math.round(target)} ${unit}` : `${cur} ${unit} logged`)}
+      <Section id="body.activity" title="Activity" href="/body/activity">
+        <ThemedText type="smallBold">
+          {data.activityCount === 0
+            ? 'Nothing logged yet'
+            : `${data.activityCount} ${data.activityCount === 1 ? 'session' : 'sessions'}, ${data.activityMinutes} min`}
         </ThemedText>
-      </View>
-      <View style={[styles.barTrack, { backgroundColor: theme.background }]}>
-        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: theme.textSecondary }]} />
-      </View>
+      </Section>
+
+      {/* Hydration has no header because it is not a view to go into. It is the
+          one thing on this screen you can DO, so it sits inline as an action. */}
+      <SpotlightTarget id="overview.water">
+        <ThemedView type="backgroundElement" style={styles.hydration}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {hydrationLabel(data.hydrationMl)}
+          </ThemedText>
+          <HydrationQuickTap
+            onLogged={(deltaMl) =>
+              setData((d) => (d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d))
+            }
+          />
+        </ThemedView>
+      </SpotlightTarget>
     </View>
   );
 }
 
+// The heading is the link. Wrapped in its spotlight target so "where do I see my
+// food" can pulse the heading that goes there, which is the first time an
+// Overview element has had a real destination to point at.
+function Section({
+  id,
+  title,
+  href,
+  children,
+}: {
+  id: 'body.food' | 'body.measurements' | 'body.activity';
+  title: string;
+  href: Href;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <SpotlightTarget id={id} onActivate={() => router.push(href)}>
+        <Pressable
+          onPress={() => router.push(href)}
+          accessibilityRole="link"
+          accessibilityLabel={`${title}, open detail`}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <View style={styles.headerRow}>
+            <ThemedText type="smallBold">{title}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              ›
+            </ThemedText>
+          </View>
+        </Pressable>
+      </SpotlightTarget>
+      {children}
+    </View>
+  );
+}
+
+function Figure({
+  value,
+  unit,
+  of,
+  note,
+}: {
+  value: string;
+  unit?: string;
+  of?: number | null;
+  note?: string | null;
+}) {
+  return (
+    <View style={styles.figure}>
+      <ThemedText type="title">{value}</ThemedText>
+      {unit ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {of != null ? `${unit} of ${Math.round(of)}` : unit}
+        </ThemedText>
+      ) : null}
+      {note ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {note}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
+}
+
+const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${round1(v)}${unit}`);
+
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    gap: Spacing.four,
+  },
   personalLine: {
     borderLeftWidth: 2,
     paddingLeft: Spacing.three,
-    paddingVertical: Spacing.one,
-    marginTop: Spacing.one,
   },
-  personalLineText: {
-    fontStyle: 'italic',
-  },
-  row3: {
-    flexDirection: 'row',
+  section: {
     gap: Spacing.two,
   },
-  bodyCard: {
-    flex: 1,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.two,
-    borderRadius: Spacing.three,
-    gap: Spacing.half,
-  },
-  bodyCardLabel: {
-    fontSize: 11,
-  },
-  bodyCardDelta: {
-    fontSize: 10,
-  },
-  card: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-    gap: Spacing.two,
-  },
-  proteinNote: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  barRow: {
-    gap: Spacing.one,
-  },
-  barLabelRow: {
+  headerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
-  barTrack: {
-    height: 6,
-    borderRadius: 4,
-    overflow: 'hidden',
+  figures: {
+    flexDirection: 'row',
+    gap: Spacing.six,
   },
-  barFill: {
-    height: '100%',
-    borderRadius: 4,
+  figure: {
+    minWidth: 0,
+  },
+  hydration: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

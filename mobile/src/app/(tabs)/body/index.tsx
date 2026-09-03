@@ -1,74 +1,40 @@
-import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BodyScreen } from '@/components/body-screen';
 import { OverviewPanel } from '@/components/overview-panel';
-import { SpotlightTarget } from '@/components/spotlight-target';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import type { SpotlightId } from '@/lib/spotlight';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-// The Body tab's landing screen.
+// Overview does NOT use BodyScreen, and that is the point: BodyScreen supplies a
+// ScrollView, and this screen is specified not to scroll. It renders in a plain
+// flex view so the constraint is structural rather than a promise about content
+// length - anything that will not fit here belongs in a detail screen.
 //
-// The row of links below is TEMPORARY. The design replaces it with three
-// tappable section headers inside the Overview itself, each one both a heading
-// and the way into that section's detail. That is the next piece of work; this
-// row exists so that no commit in between leaves Food, Measurements or Activity
-// unreachable. It also keeps the three existing spotlight targets pointing at
-// something real until the spotlight pass reworks them.
-//
-// `body.overview` is deliberately not registered here any more: it pointed at
-// the Overview segment button, and Overview is the screen now rather than a
-// button on it. The id still exists in the registry, and an unregistered id
-// renders nothing rather than a ring at the origin, so nothing breaks while the
-// two packages are brought back into step.
-const LINKS: { key: string; label: string; href: Href; target: SpotlightId }[] = [
-  { key: 'food', label: 'Food', href: '/body/food', target: 'body.food' },
-  { key: 'measurements', label: 'Measurements', href: '/body/measurements', target: 'body.measurements' },
-  { key: 'activity', label: 'Activity', href: '/body/activity', target: 'body.activity' },
-];
-
+// No SpotlightScroll either, and nothing needs it. useSpotlightScroll() returns
+// null outside a provider rather than throwing, so targets on this screen still
+// register and measure; they simply have nothing to scroll themselves into,
+// which is correct when everything is already on screen.
 export default function BodyOverviewScreen() {
   return (
-    <BodyScreen>
-      <OverviewPanel />
-
-      <View style={styles.links}>
-        {LINKS.map((l) => (
-          <SpotlightTarget
-            key={l.key}
-            id={l.target}
-            onActivate={() => router.push(l.href)}
-          >
-            <Pressable
-              onPress={() => router.push(l.href)}
-              accessibilityRole="button"
-              accessibilityLabel={l.label}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <ThemedView type="backgroundElement" style={styles.link}>
-                <ThemedText type="smallBold">{l.label}</ThemedText>
-              </ThemedView>
-            </Pressable>
-          </SpotlightTarget>
-        ))}
-      </View>
-    </BodyScreen>
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <ThemedView style={styles.content}>
+          <OverviewPanel />
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  links: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  link: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  pressed: {
-    opacity: 0.7,
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  content: {
+    flex: 1,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.six,
   },
 });
