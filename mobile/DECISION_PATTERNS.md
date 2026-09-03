@@ -41,6 +41,12 @@ The distinguishing move is the standard she applied. A reply that is defensible 
 
 She also recognised the shape rather than the instance: this is the Almanac insight rule (connect a result to a different data type across time) applied in real time, so it went into the spec as a general behaviour rather than a fix for soreness questions. Adjacent to "separates her own context from the product's requirements" — a lived annoyance became a product rule, not an anecdote.
 
+**Names the class of evidence required before an irreversible step, not just that evidence is required.** Told that the Vercel rename gate was satisfied because the app was configured to call `api.selodia.app` and that domain resolved, she did not accept it: *"Need observed traffic, not just configuration evidence."* The rename went ahead only once the runtime logs showed five real POSTs arriving on that host and none on the old one. (3 September 2026.)
+
+The distinction she drew is the whole of it. Configuration evidence says what *should* happen; observed evidence says what *did*. For a reversible change the first is plenty, and she has never asked for more. For a step that would break every installed build still calling the old host, she raised the standard specifically — and raised it before the step, not after it failed. The same move appears earlier the same day on the QuickLogBar: *"Investigate this first — report what's happening before fixing anything,"* where the suspected cause turned out to be wrong and the real one was worse.
+
+This is adjacent to "will not decide on authority she cannot check," but it is pointed at proof rather than reasoning: not *explain it until I can evaluate it*, but *that is the wrong kind of proof for a thing this hard to undo*. It also runs in her own direction, not only outward — she carries unfinished work forward as Queued or Outstanding rather than letting a close-out record only what went well.
+
 ## How this gets built
 
 At natural session-close points, add any new decision moment that reveals a genuine pattern — not every decision, only ones that add real signal about how Ruth thinks, distinct from the specific product or process choice itself.
