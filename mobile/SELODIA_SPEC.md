@@ -537,12 +537,18 @@ Schema: food_cache table
 Match: fuzzy string match on food_name, confidence threshold 0.85 minimum to return a cache hit.
 
 TIER 2 — Food database (fast, free)
-USDA FoodData Central API. Free, government-maintained, comprehensive for whole foods. Open Food Facts as secondary source for packaged and branded foods.
+Three sources in priority order, chosen for UK relevance:
+
+1. Open Food Facts — primary source. Free, open source, global coverage, strong UK supermarket own-brand coverage (Tesco, Sainsbury's, M&S, Waitrose etc). No API key required.
+   API: https://world.openfoodfacts.org/api/v0/
+
+2. McCance and Widdowson — secondary source for whole foods. The UK government's official food composition database, published by UKHSA. Authoritative for whole foods with UK-specific values. Available as a downloadable dataset (not a live API) — imported locally.
+
+3. USDA FoodData Central — tertiary fallback only. Useful for whole foods where UK values aren't available, but deprioritised behind UK sources. Portion sizes and product names may not reflect UK usage.
+   API: https://api.nal.usda.gov/fdc/v1/
+   Free API key required if used.
 
 On a Tier 2 hit: result is stored in the user's personal cache for future use (source: usda).
-
-USDA API: https://api.nal.usda.gov/fdc/v1/
-Free API key required. Add as USDA_API_KEY environment variable.
 
 Match threshold: confidence 0.80 minimum to return without escalating to LLM.
 
@@ -573,7 +579,7 @@ If 50-60% of logs hit Tier 1 or 2 (reasonable for a daily user logging similar m
 ### Build status
 
 Not yet built. Spec complete.
-Prerequisite: USDA_API_KEY environment variable added to Vercel and EAS.
+Prerequisite: the McCance and Widdowson dataset imported as a local dataset before the feature can be built. Open Food Facts needs no API key.
 Suggested build order:
 1. food_cache table migration
 2. USDA API integration and testing
