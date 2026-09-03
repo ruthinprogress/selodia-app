@@ -8,9 +8,11 @@ import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useHealthFlower } from '@/hooks/use-health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
+import { HealthFlower } from '@/components/health-flower';
 import { hydrationLabel, hydrationToday } from '@/lib/hydration';
 import {
   findWeekAgoReading,
@@ -87,6 +89,7 @@ function startOfToday(): string {
 
 export function OverviewPanel() {
   const theme = useTheme();
+  const flower = useHealthFlower();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
 
@@ -301,6 +304,23 @@ export function OverviewPanel() {
           />
         </ThemedView>
       </SpotlightTarget>
+
+      {/* THIS WEEK. A peer of Today rather than a subsection of it, which is why
+          the heading takes the same treatment: the spec describes the Overview
+          as two sections, and two headings at one weight is what says so.
+          Nothing else lives in here, and steps stay in Today's Activity card.
+
+          The flower renders only once coverage has loaded. An unloaded week and
+          an empty week are different things, and six absent petals popping into
+          shape is the second one telling a lie about the first. The wrapper
+          holds its height either way, so nothing below it moves when the data
+          lands. */}
+      <View style={styles.weekSection}>
+        <ThemedText type="title">This week</ThemedText>
+        <View style={styles.flowerWrap}>
+          {flower.coverage && <HealthFlower coverage={flower.coverage} size={FLOWER_SIZE} />}
+        </View>
+      </View>
     </View>
   );
 }
@@ -381,7 +401,20 @@ function Figure({
 
 const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${round1(v)}${unit}`);
 
+// Deliberately smaller than the component's 220 default. This screen does not
+// scroll (see body/index.tsx), so every pixel spent here is taken from
+// something already on it.
+const FLOWER_SIZE = 200;
+
 const styles = StyleSheet.create({
+  weekSection: {
+    gap: Spacing.three,
+  },
+  flowerWrap: {
+    height: FLOWER_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   screen: {
     flex: 1,
     gap: Spacing.four,
