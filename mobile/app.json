@@ -23,7 +23,8 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.health.READ_STEPS"
       ],
       "runtimeVersion": {
         "policy": "appVersion"
@@ -51,7 +52,12 @@
           "cameraPermission": "Selodía uses your camera so you can log a meal or a scale reading by photo instead of typing it."
         }
       ],
-      "react-native-health",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Selodía reads your step count and activity data to give you a more complete picture of your daily movement."
+        }
+      ],
       "react-native-health-connect",
       [
         "expo-notifications",

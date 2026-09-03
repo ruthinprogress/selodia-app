@@ -7,6 +7,7 @@ import {
 } from '@expo-google-fonts/comfortaa';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { SpotlightOverlay } from '@/components/spotlight-overlay';
@@ -74,6 +75,21 @@ export default function RootLayout() {
   // dark chrome around a light app. See use-theme.ts for the reasoning.
   return (
     <ThemeProvider value={BrandNavigationTheme}>
+      {/* Above the spotlight provider and the Stack, because it has to be above
+          every screen that has a text input in it - which is Chat, the sign-in
+          form, and all nine onboarding steps.
+
+          This is the fix for the keyboard covering the input, which the
+          three-line automaticallyAdjustKeyboardInsets change on 2026-09-01 only
+          half solved. That worked on account.tsx because ConversationLayout had
+          already padded the view clear; it could not work anywhere the shell had
+          not. This handles the insets itself rather than depending on what a
+          screen's wrapper happens to do.
+
+          Android translucency props are left at their defaults. Turning them on
+          without an edge-to-edge layout to match shifts every screen up by the
+          status bar height, and nothing here asks for that. */}
+      <KeyboardProvider>
       {/* The spotlight provider wraps the whole Stack, not a single screen
           (build item 23). A request made in Chat has to survive the navigation
           to Settings so the destination can highlight on arrival - state living
@@ -102,6 +118,7 @@ export default function RootLayout() {
       {/* Last, so its Modal sits above every screen the Stack renders. */}
       <SpotlightOverlay />
       </SpotlightProvider>
+      </KeyboardProvider>
     </ThemeProvider>
   );
 }
