@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { ActivityLogSheet } from '@/components/activity-log-sheet';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
+import { hasDuration } from '@/lib/activity-sheet';
 import type { AddSource } from '@/lib/composer-add';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 
@@ -51,14 +53,36 @@ export function QuickLogBar({
   // logs and gets out of the way, and the conversation is a tab away for anyone
   // who wants it.
   const [note, setNote] = useState<string | null>(null);
+  // The activity waiting on its effort and duration. Non-null means the sheet
+  // is open and nothing has been sent yet: the text has left the input, but it
+  // has not left the phone.
+  const [pendingActivity, setPendingActivity] = useState<string | null>(null);
 
   const placeholder =
     kind === 'food' ? 'What did you eat?' : 'What did you do?';
 
-  async function send() {
+  // The gate in front of sending, not a second way to send.
+  //
+  // On the Activity tab a description with no duration in it opens the sheet
+  // instead of posting. The server would refuse it anyway - a duration-less
+  // activity is a calorie figure with nothing underneath it - and coming back
+  // with "how long was that?" turns a log into a conversation with a text box.
+  // Food is deliberately untouched: it has no duration requirement, and the
+  // sheet there would be a question nobody asked.
+  function send() {
     const trimmed = input.trim();
     if (!trimmed || busy) return;
+    if (kind === 'activity' && !hasDuration(trimmed)) {
+      setInput('');
+      setNote(null);
+      setPendingActivity(trimmed);
+      return;
+    }
     setInput('');
+    void post(trimmed);
+  }
+
+  async function post(trimmed: string) {
     setBusy(true);
     setNote(null);
     try {
@@ -136,12 +160,12 @@ export function QuickLogBar({
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
           editable={!busy}
-          onSubmitEditing={() => void send()}
+          onSubmitEditing={send}
           returnKeyType="send"
         />
 
         <Pressable
-          onPress={() => void send()}
+          onPress={send}
           disabled={!input.trim() || busy}
           accessibilityRole="button"
           accessibilityLabel="Save this"
@@ -166,6 +190,22 @@ export function QuickLogBar({
         visible={addOpen}
         onSelect={(source) => void addPhoto(source)}
         onCancel={() => setAddOpen(false)}
+      />
+
+      {/* Cancelling puts the words back in the input rather than discarding
+          them. Somebody who opened the sheet by accident should not have to
+          retype what they had already written. */}
+      <ActivityLogSheet
+        visible={pendingActivity !== null}
+        activityText={pendingActivity ?? ''}
+        onCancel={() => {
+          setInput(pendingActivity ?? '');
+          setPendingActivity(null);
+        }}
+        onConfirm={(message) => {
+          setPendingActivity(null);
+          void post(message);
+        }}
       />
     </ThemedView>
   );

@@ -21,6 +21,7 @@ export type ParsedActivity = {
   activity_type?: string;
   duration_min?: number;
   kcal_burned?: number;
+  distance_km?: number;
   notes?: string | null;
   intensity?: unknown;
   eccentric_load?: unknown;
@@ -49,7 +50,7 @@ export async function logActivityFromText(
   const instruction =
     'The person described one or more physical activities in free text. Today\'s date is ' +
     new Date().toISOString().slice(0, 10) +
-    '. If they mention a relative date (e.g. "yesterday", "on Monday", "two days ago", "this morning"), calculate the actual date they mean and return it as detected_date in ISO 8601 format (just the date, e.g. "2026-07-30"). If no date is mentioned, return null for detected_date and the current time will be used instead. If they describe MULTIPLE distinct activities (e.g. "1.5 hours ballet then 1 hour yoga"), split them into SEPARATE entries in the activities array, each with its own duration and calorie estimate - do not combine them into one entry. DURATION IS NOT TO BE GUESSED: return duration_min as a number ONLY when the text actually says how long, or says something that fixes it (a distance with a pace, "a 5k in 28 minutes", "an hour of yoga"). If the text does not tell you, return null for duration_min and null for kcal_burned rather than a typical figure - a made-up 30 minutes becomes a made-up calorie burn, and the person is then shown a number about their day that nobody measured. Estimate calories burned from the activity type and the REAL duration, using any intensity clues mentioned (e.g. "moderate", "intense", "easy"). Also classify two things per activity from the description. "intensity": how hard it was, either "light" (gentle/easy, e.g. a stroll or restorative yoga), "moderate", or "intense" (vigorous, near-max, "to failure"), or null if the description gives no cue. "eccentric_load": the eccentric (lengthening-under-load) muscle stress that drives next-day soreness: "high" for downhill or hilly running, heavy slow lowering, plyometrics, or long eccentric-heavy sessions; "moderate" for ordinary resistance training or hilly hikes; "low" for mostly-concentric or light resistance; "none" for steady cycling, swimming, or easy flat walking, or null if unclear. Respond ONLY with valid JSON, no other text, in this exact format: {"activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null, "intensity": "light" | "moderate" | "intense" | null, "eccentric_load": "none" | "low" | "moderate" | "high" | null}], "source": "manual text", "detected_date": iso8601_date_string_or_null} Activity description: "' +
+    '. If they mention a relative date (e.g. "yesterday", "on Monday", "two days ago", "this morning"), calculate the actual date they mean and return it as detected_date in ISO 8601 format (just the date, e.g. "2026-07-30"). If no date is mentioned, return null for detected_date and the current time will be used instead. If they describe MULTIPLE distinct activities (e.g. "1.5 hours ballet then 1 hour yoga"), split them into SEPARATE entries in the activities array, each with its own duration and calorie estimate - do not combine them into one entry. DURATION IS NOT TO BE GUESSED: return duration_min as a number ONLY when the text actually says how long, or says something that fixes it (a distance with a pace, "a 5k in 28 minutes", "an hour of yoga"). If the text does not tell you, return null for duration_min and null for kcal_burned rather than a typical figure - a made-up 30 minutes becomes a made-up calorie burn, and the person is then shown a number about their day that nobody measured. Estimate calories burned from the activity type and the REAL duration, using any intensity clues mentioned (e.g. "moderate", "intense", "easy"). Return distance_km ONLY when the text states a distance, converting miles to kilometres if that is the unit given; return null when no distance is mentioned, and never infer one from a duration. A distance is not something to estimate: a person who ran for 30 minutes did not necessarily cover 5 km, and a number nobody measured is worse than no number. Also classify two things per activity from the description. "intensity": how hard it was, either "light" (gentle/easy, e.g. a stroll or restorative yoga), "moderate", or "intense" (vigorous, near-max, "to failure"), or null if the description gives no cue. "eccentric_load": the eccentric (lengthening-under-load) muscle stress that drives next-day soreness: "high" for downhill or hilly running, heavy slow lowering, plyometrics, or long eccentric-heavy sessions; "moderate" for ordinary resistance training or hilly hikes; "low" for mostly-concentric or light resistance; "none" for steady cycling, swimming, or easy flat walking, or null if unclear. Respond ONLY with valid JSON, no other text, in this exact format: {"activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "distance_km": number_or_null, "notes": string_or_null, "intensity": "light" | "moderate" | "intense" | null, "eccentric_load": "none" | "low" | "moderate" | "high" | null}], "source": "manual text", "detected_date": iso8601_date_string_or_null} Activity description: "' +
     activityText +
     '"';
 
@@ -87,6 +88,12 @@ export async function logActivityFromText(
     activity_type: activity.activity_type,
     duration_min: activity.duration_min,
     kcal_burned: activity.kcal_burned,
+    // Null rather than 0 when absent. A yoga session did not cover zero
+    // kilometres, it has no distance at all, and the column is nullable so the
+    // difference survives into the table.
+    distance_km: typeof activity.distance_km === 'number' && activity.distance_km > 0
+      ? activity.distance_km
+      : null,
     source: parsed.source,
     raw_input: activityText,
     notes: activity.notes,
