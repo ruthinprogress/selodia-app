@@ -561,7 +561,7 @@ Each dimension maps to one petal of the health flower. Weightings represent the 
 | Strength | #D4846A | Muscular force production and resistance to load. Critical for muscle mass retention and metabolic health during perimenopause [1] |
 | Cardio | #A8BF9C | Cardiovascular and respiratory endurance. Heart and lung health, VO2max [2] |
 | Flexibility | #C4947A | Range of motion at joints. Injury prevention, functional movement [3] |
-| Balance | #7BA99A | Postural stability and neuromuscular control. Falls prevention — particularly important at 40+ [4] |
+| Balance | #7BA99A | Postural stability and neuromuscular control [4]. Falls prevention — particularly important at 40+ [10] |
 | Bone loading | #C9A882 | Mechanical stress on the skeleton. Bone mineral density maintenance against menopausal decline [5] |
 | Recovery | #A89BAE | Active restoration. Sleep quality, parasympathetic activity, stress reduction [6] |
 
@@ -606,7 +606,7 @@ Weightings are evidence-based estimates representing a typical session's contrib
 
 SWIMMING — bone loading is deliberately low (5%). Swimming and cycling do not cause positive effects on bone mineral density [7]. This is a body literacy moment — women who swim as their primary exercise may not realise their bone health is not being addressed.
 
-BALLET — strength weighting is high (70%) reflecting leg, core and posterior chain demands. Ballet requires muscular strength, coordination, and flexibility with high physiological demands [8]. Flexibility is set at 50% not 80%+ because the flexibility in ballet dancers develops over years of training, not within each session.
+BALLET — strength weighting is high (70%) reflecting leg, core and posterior chain demands. Ballet requires muscular strength, coordination, and flexibility with high physiological demands [8]. Flexibility is set at 50% not 80%+ because the flexibility in ballet dancers develops over years of training, not within each session. The balance weighting (80%) reflects ballet's demands on neuromuscular control, which are argued to persist with age [11].
 
 YOGA — bone loading is low (5%). Yoga primarily improves balance, flexibility and core strength [9]. Not a bone-loading activity.
 
@@ -616,7 +616,7 @@ INTENTIONAL REST — 100% recovery. The app should be able to log a deliberate r
 
 ### Methodology note
 
-Weightings represent evidence-based estimates of a typical session's contribution. They are not precise physiological measurements — they are calibrated approximations designed to reflect what the research says about each activity's primary and secondary benefits.
+Weightings are evidence-based calibrated estimates, not values extracted directly from research papers. No single study quantifies that "running contributes 75% to bone loading" — that is not how exercise science is reported. What the citations support is the direction and relative magnitude of each activity's contribution to each dimension: that running is a high-impact bone-loading activity [5], that swimming provides negligible bone benefit [7], that ballet involves significant strength demands [3], and so on. The percentage values represent calibrated estimates of relative contribution based on the body of evidence. They are the starting point for expert review, not the output of it. Specific weightings should not be cited in marketing materials until the expert review has been completed and published.
 
 The AI classifier will handle activities not in this table, using the table as training context for its estimates.
 
@@ -633,9 +633,9 @@ Supports: Cardio dimension definition; WHO classification of cardiovascular endu
 [3] Letton ME, et al. Classical Ballet for Women Aged Over 50 Years: Investigating Balance, Strength, and Range of Motion. Res Q Exerc Sport. 2024;95(1):171-182. doi: 10.1080/02701367.2023.2169236
 Supports: Flexibility dimension; ballet weightings for balance and flexibility. Section: Activity weighting table.
 
-[4] Berg D, Hamernik W, Anderson A, Rochelle L, Blake B. Ballet and how it can improve neuromuscular function with age. J Neurophysiol. 2025;133(3):760-762. doi: 10.1152/jn.00514.2024
-*(Corrected 2026-09-03 against Crossref. Previously credited to "Anderson A, Rochelle L" — the third and fourth of five authors — and dated 2024, which is the year in the DOI suffix rather than the publication date. Note for the expert review: this is a three-page item, so it reads as a commentary rather than primary research, and it is currently the only support offered for the Balance dimension definition.)*
-Supports: Balance dimension definition; fall prevention importance at 40+; ballet balance weightings. Section: Health Flower dimensions; activity table.
+[4] Marques ACF, Rossi FE, Neves LM, Diniz TA, Messias IdA, Barela JA, Horak FB, Júnior IFF. Combined Aerobic and Strength Training Improves Dynamic Stability and can Prevent against Static Stability Decline in Postmenopausal Women: A Randomized Clinical Trial. Rev Bras Ginecol Obstet. 2023;45(8):e465-e473. doi: 10.1055/s-0043-1772178
+Supports: Balance dimension definition, the postural-stability half. A randomised clinical trial in postmenopausal women specifically, which is why it is the primary source here. It measures postural sway and dynamic stability; it does NOT measure falls. Section: Health Flower dimensions.
+*(Replaced the previous [4], Berg et al., on 2026-09-03. That is a three-page commentary and too thin to define a health dimension; it now sits at [11] against the ballet balance weighting, where it is genuinely on point.)*
 
 [5] Ng CA, et al. Effects of Moderate- to High-Impact Exercise Training on Bone Structure Across the Lifespan: A Systematic Review and Meta-Analysis of Randomized Controlled Trials. J Bone Miner Res. 2023;38(11):1612-1634. doi: 10.1002/jbmr.4899
 Supports: Bone loading dimension; running and impact exercise bone density weightings. Section: Activity weighting table.
@@ -651,6 +651,12 @@ Supports: Ballet strength and balance weightings. High physiological demands of 
 
 [9] Csala B, et al. Front Public Health. 2021;9:702793. (see [6])
 Supports: Yoga bone loading note; flexibility and balance primary outcomes. Section: Key notes.
+
+[10] Wei F, Hu Z, He R, Wang Y. Effects of balance training on balance and fall efficacy in patients with osteoporosis: A systematic review and meta-analysis with trial sequential analysis. J Rehabil Med. 2023;55:jrm00390. doi: 10.2340/jrm.v55.4529
+Supports: Balance dimension definition, the falls-prevention half, which [4] does not cover. Systematic review and meta-analysis with trial sequential analysis. **Inference limitation, stated deliberately:** the population is osteoporosis patients, who are overwhelmingly postmenopausal women, but the review does not report the finding as sex-specific. Reading it as evidence about women 40+ is an inference from the population, not a claim the paper makes. Section: Health Flower dimensions.
+
+[11] Berg D, Hamernik W, Anderson A, Rochelle L, Blake B. Ballet and how it can improve neuromuscular function with age. J Neurophysiol. 2025;133(3):760-762. doi: 10.1152/jn.00514.2024
+Supports: the ballet balance weighting only. A three-page commentary rather than primary research, retained because it is directly about ballet and neuromuscular function with age. Not load-bearing for any dimension definition. Section: Key notes.
 
 ### Status
 
