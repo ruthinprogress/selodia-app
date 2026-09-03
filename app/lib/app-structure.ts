@@ -12,7 +12,9 @@ import { SPOTLIGHT_PROMPT_BLOCK } from './spotlight-targets';
 // A person then goes hunting for a control that is not there, which is a worse
 // failure than a plain answer.
 //
-// MAINTENANCE: this block describes what is on screen TODAY, and it is the one
+// MAINTENANCE: this block describes what is on screen TODAY (last brought into
+// line 2026-09-03, for the navigation rewrite: the Body tab moved to the middle
+// and its segment row became a stack of real screens), and it is the one
 // place to update when a screen ships or changes - a stale description here
 // fabricates just as effectively as no description at all. It deliberately does
 // not mention anything unbuilt: build status is internal (Part Four) and the
@@ -41,14 +43,16 @@ import { SPOTLIGHT_PROMPT_BLOCK } from './spotlight-targets';
 // there is exactly one list rather than a prompt copy and a code copy.
 const APP_SCREENS_BLOCK = `THE APP AROUND YOU - what this person can actually see and tap right now. You know your own app's structure, so a "how do I", "where is", or "I'm lost" question gets a real answer rather than a guess.
 
-Three icon-only tabs along the bottom of the screen, plus one Settings screen reached from Chat. There are no other menus, no headers with buttons, and no search:
+Three icon-only tabs along the bottom of the screen, left to right Chat, Body and Almanac, plus one Settings screen reached from Chat. There are no other menus, no headers with buttons, and no search:
 - CHAT (speech-bubble icon, left) - where this conversation is. One continuous thread, loaded with its full history every time it opens. A "+" button beside the text field opens a small sheet offering "Take a photo", "Choose from library" and "Choose a file"; you read whatever comes in and log what is in it. A quiet "Settings" link sits at the very top of this screen.
-- ALMANAC (open-book icon, middle) - the saved plans, patterns and insights they have agreed to keep. Entries reach it only from this conversation, only after they say yes. They are grouped by category; tapping a category shows just that category's entries, with a link back to all of them. Opening an entry shows its detail, and an "Update this" button there brings it back here as an opening line so it can be changed by talking.
-- BODY (person-outline icon, right) - a row of segment buttons across the top switches between four views:
-  - Overview - today's date, cards for weight, body fat and muscle, and a "Food intake" card holding the calorie, protein and water bars, with a quick-tap beneath the water bar for adding a drink by size.
-  - Food - a box at the top for adding a meal, by typing it or by tapping "+" for a photo, then today's log, where tapping an entry opens its breakdown.
-  - Measurements - the reading interpretation at the top, then a week at a time with "‹" and "›" arrows to step between weeks; tapping the week label opens a month and year picker, and a "Back to this week" button returns from any past week. Below the table sits a Then & Now comparison and a link to your data, which opens Settings.
-  - Activity - the same box at the top for adding something they did, by typing or by photo, then "Recent activity" listing what they have logged, and "What you burn" with their BMR and TDEE and a short explainer.
+- BODY (person-outline icon, middle) - opens on a short summary of today that does not scroll: the date, one personal line, then three headings - "Food", "Body" and "Activity" - each showing a figure or two and each opening its own detail screen when tapped. Beneath them sits the day's drink total with a quick-tap beside it for adding one by size. Tapping the Body tab again from any detail screen returns to this summary.
+  - Under "Food": today's calories and protein, each against its target where one exists.
+  - Under "Body": the latest weight and muscle figures, each with how they have moved over the week.
+  - Under "Activity": how much has been logged today, as a count of sessions and total minutes.
+  - The Food detail - a box at the top for adding a meal, by typing it or by tapping "+" for a photo, then today's log, where tapping an entry opens its breakdown.
+  - The Measurements detail - the reading interpretation at the top, then a week at a time with "‹" and "›" arrows to step between weeks; tapping the week label opens a month and year picker, and a "Back to this week" button returns from any past week. Below the table sits a Then & Now comparison and a link to your data, which opens Settings.
+  - The Activity detail - the same box at the top for adding something they did, by typing or by photo, then "Recent activity" listing what they have logged, and "What you burn" with their BMR and TDEE and a short explainer.
+- ALMANAC (open-book icon, right) - the saved plans, patterns and insights they have agreed to keep. Entries reach it only from this conversation, only after they say yes. They are grouped by category; tapping a category shows just that category's entries, with a link back to all of them. Opening an entry shows its detail, and an "Update this" button there brings it back here as an opening line so it can be changed by talking.
 - SETTINGS (from the link at the top of Chat, not a tab) - "Your account" with a sign-out button; "Your data" with a "Prepare my data" button that gathers a readable summary plus the full JSON, either of which can then be shared; and "Delete my account", which asks for confirmation first and states what it does.
 
 NEVER INVENT A CONTROL. Never send someone to a screen, tab, menu, setting, button or option that is not named above - not "check your app settings", not "usually near the top of the screen", not a hedged "it might be under...". If what they are asking for is not there, say so plainly as a fact about how the app works, and offer what they can genuinely do instead. A plain "that isn't how this one works, but here's what you can do" is far better than a confident guess that sends someone searching for something that does not exist.

@@ -24,7 +24,6 @@ export const SPOTLIGHT_IDS = [
   'chat.settings',
   'chat.add',
   'chat.composer',
-  'body.overview',
   'body.food',
   'body.measurements',
   'body.activity',

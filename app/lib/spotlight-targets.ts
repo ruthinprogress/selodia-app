@@ -7,6 +7,12 @@
 // words. A wrong pointer is worse than no pointer: someone follows a glowing
 // circle to a control that is not there and concludes they are the problem.
 //
+// UPDATED 2026-09-03 for the navigation rewrite. The Body tab was one screen
+// holding four views behind a row of segment buttons; it is now a stack whose
+// landing screen carries three tappable headings. The four `body.*` segment
+// buttons no longer exist, so `body.overview` is gone entirely (Overview is the
+// screen now, not a button on it) and the other three point at the headings.
+//
 // TAB ICONS ARE DELIBERATELY ABSENT, and no id here names one. NativeTabs
 // renders a real UITabBarController / BottomNavigationView with no ref, no
 // onLayout and no frame API in JS, so the icons cannot be measured and an
@@ -29,14 +35,13 @@ export const SPOTLIGHT_TARGETS = {
   'chat.settings': 'the Settings link at the top of Chat',
   'chat.add': 'the "+" button beside the message box, which offers a photo or a file',
   'chat.composer': 'the message box itself, where they type to you',
-  'body.overview': 'the Overview segment button on the Body tab',
-  'body.food': 'the Food segment button on the Body tab',
-  'body.measurements': 'the Measurements segment button on the Body tab',
-  'body.activity': 'the Activity segment button on the Body tab',
-  'overview.stats': 'the weight, body fat and muscle cards on Overview',
-  'overview.calories': 'the calorie bar on Overview',
-  'overview.protein': 'the protein bar on Overview',
-  'overview.water': 'the water bar and the drink quick-tap beneath it on Overview',
+  'body.food': 'the "Food" heading on the Body tab, which opens the food detail',
+  'body.measurements': 'the "Body" heading on the Body tab, which opens the measurement detail',
+  'body.activity': 'the "Activity" heading on the Body tab, which opens the activity detail',
+  'overview.stats': 'the weight and muscle figures under the "Body" heading',
+  'overview.calories': "today's calorie figure under the \"Food\" heading",
+  'overview.protein': "today's protein figure under the \"Food\" heading",
+  'overview.water': 'the drink total and the quick-tap beside it, at the foot of the Body tab',
   'food.entries': "today's food entries, where tapping one opens its breakdown",
   'measurements.week': 'the week stepper on Measurements, for moving between weeks',
   'measurements.export': 'the link to your data at the foot of Measurements',
