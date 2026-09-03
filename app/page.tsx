@@ -253,6 +253,59 @@ export default async function LandingPage({
           margin: 0;
         }
         .selodia__error { color: ${TERRACOTTA}; }
+        /* GET IN TOUCH. A quiet coda under the ask, not a second ask. Heading
+           at Comfortaa 300 so it sits below the wordmark and the tagline in
+           the hierarchy rather than beside them, and no rule above it: the
+           whitespace is the separator.
+
+           The supporting line reuses the same 70% charcoal as .selodia__soon,
+           which blends to #6A6762 on cream at 5.08:1 and clears AA. It is the
+           page's established "receding but readable" value, so there is one
+           subdued tone here, not two that nearly match.
+
+           CONTRAST NOTE: terracotta on cream measures 3.10:1. That clears AA
+           for large text but NOT the 4.5:1 for normal text, and this page
+           already rejected 65% charcoal (4.39:1) as too low for a 40+ reader.
+           The colour is specified brand terracotta, so it stands; #874C3A
+           (the app's accentDeep) is the same hue at 6.07:1 if that call
+           changes. */
+        .selodia__contact {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.55rem;
+          margin-top: clamp(0.75rem, 3vh, 2rem);
+        }
+        .selodia__contact-heading {
+          font-family: ${comfortaa.style.fontFamily};
+          font-size: clamp(1.05rem, 4vw, 1.2rem);
+          font-weight: 300;
+          line-height: 1.4;
+          color: ${CHARCOAL};
+          margin: 0;
+        }
+        .selodia__contact-line {
+          font-family: ${comfortaa.style.fontFamily};
+          font-size: clamp(0.85rem, 3.2vw, 0.9rem);
+          font-weight: 300;
+          line-height: 1.65;
+          color: ${CHARCOAL};
+          opacity: 0.7;
+          margin: 0;
+        }
+        .selodia__contact-email {
+          font-family: ${comfortaa.style.fontFamily};
+          font-size: clamp(0.95rem, 3.5vw, 1rem);
+          font-weight: 400;
+          color: ${TERRACOTTA};
+          text-decoration: none;
+        }
+        .selodia__contact-email:hover { text-decoration: underline; }
+        .selodia__contact-email:focus-visible {
+          outline: 2px solid ${FOREST};
+          outline-offset: 3px;
+          border-radius: 0.2rem;
+        }
         @media (prefers-reduced-motion: reduce) {
           .selodia__mark { animation: none; }
         }
@@ -336,6 +389,17 @@ export default async function LandingPage({
             )}
           </>
         )}
+        {/* Outside the waitlist branch on purpose: someone who has just joined
+            the list is more likely to want to reach a person, not less. */}
+        <section className="selodia__contact">
+          <h2 className="selodia__contact-heading">Get in touch</h2>
+          <p className="selodia__contact-line">
+            Interested in Selod&iacute;a? Reach out directly.
+          </p>
+          <a className="selodia__contact-email" href="mailto:hello@selodia.app">
+            hello@selodia.app
+          </a>
+        </section>
       </main>
     </>
   );
