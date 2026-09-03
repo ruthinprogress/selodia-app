@@ -69,17 +69,44 @@ export function calculateTDEE(bmr: number | null, activityLevel: string | null |
 // divergence would have onboarding state one number while the Overview bar shows
 // another.
 //
-// The bodyweight fallback was removed from both on 2026-09-01. See the mobile
-// file for the full reasoning; in short, it produced a confident specific figure
-// out of data that could not support one, and null is the honest answer instead.
-// A manually chosen target outranks a calculation, including one from a real
-// muscle-mass reading.
-export function proteinTargetGrams(
-  manualG: number | null | undefined,
-  muscleKg: number | null | undefined
+// muscle_kg x 2.2 was retired on 2026-09-03 in favour of lean body mass derived
+// from body fat percentage. `muscle_kg` is not standardised across scale
+// manufacturers - skeletal muscle mass, lean body mass and fat-free mass all get
+// reported under that one label - so the old target depended on which scale
+// someone owned. See mobile/src/lib/protein.ts for the full reasoning; this is
+// the same rule, and the two must not diverge.
+//
+// body_fat_pct is a PERCENTAGE (26.4, not 0.264), hence the divide by 100.
+export type ProteinTarget =
+  | { kind: 'manual'; grams: number }
+  | { kind: 'range'; low: number; high: number; basis: 'lean_mass' | 'bodyweight' };
+
+const MIN_PLAUSIBLE_BF_PCT = 3;
+const MAX_PLAUSIBLE_BF_PCT = 70;
+
+export function leanBodyMassKg(
+  weightKg: number | null | undefined,
+  bodyFatPct: number | null | undefined
 ): number | null {
-  if (manualG != null && manualG > 0) return Math.round(manualG);
-  if (muscleKg != null && muscleKg > 0) return Math.round(muscleKg * 2.2);
+  if (weightKg == null || weightKg <= 0) return null;
+  if (bodyFatPct == null) return null;
+  if (bodyFatPct < MIN_PLAUSIBLE_BF_PCT || bodyFatPct > MAX_PLAUSIBLE_BF_PCT) return null;
+  return weightKg * (1 - bodyFatPct / 100);
+}
+
+export function proteinTarget(
+  manualG: number | null | undefined,
+  weightKg: number | null | undefined,
+  bodyFatPct: number | null | undefined
+): ProteinTarget | null {
+  if (manualG != null && manualG > 0) return { kind: 'manual', grams: Math.round(manualG) };
+  const lbm = leanBodyMassKg(weightKg, bodyFatPct);
+  if (lbm != null && lbm > 0) {
+    return { kind: 'range', low: Math.round(lbm * 2.0), high: Math.round(lbm * 2.4), basis: 'lean_mass' };
+  }
+  if (weightKg != null && weightKg > 0) {
+    return { kind: 'range', low: Math.round(weightKg * 1.6), high: Math.round(weightKg * 2.0), basis: 'bodyweight' };
+  }
   return null;
 }
 

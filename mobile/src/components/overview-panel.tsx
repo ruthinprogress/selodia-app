@@ -20,7 +20,7 @@ import {
   type MeasurementRow,
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
-import { calculateProteinTarget } from '@/lib/protein';
+import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { supabase } from '@/lib/supabase';
 
 // The Body tab's landing screen (rewritten 2026-09-03).
@@ -54,7 +54,7 @@ type OverviewData = {
   todayKcal: number;
   todayProtein: number;
   calorieTargetKcal: number | null;
-  proteinTargetG: number | null;
+  proteinTargetLabel: string | null;
   activityCount: number;
   activityMinutes: number;
   hydrationMl: number;
@@ -167,9 +167,11 @@ export function OverviewPanel() {
         fatFocus: asFocus(profile?.fat_focus_state ?? null),
         muscleFocus: asFocus(profile?.muscle_focus_state ?? null),
       });
+      // Lean mass from body fat percentage, not from the scale's muscle field.
       const proteinTarget = calculateProteinTarget(
         profile?.protein_target_g ?? null,
-        latest?.muscle_kg ?? null
+        latest?.weight_kg ?? null,
+        latest?.body_fat_pct ?? null
       );
 
       if (cancelled) return;
@@ -194,7 +196,7 @@ export function OverviewPanel() {
         todayKcal,
         todayProtein,
         calorieTargetKcal: calorieTarget?.targetKcal ?? null,
-        proteinTargetG: proteinTarget?.grams ?? null,
+        proteinTargetLabel: proteinTargetLabel(proteinTarget),
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
@@ -236,10 +238,14 @@ export function OverviewPanel() {
       <Section id="body.food" title="Food" href="/body/food">
         <View style={styles.figures}>
           <SpotlightTarget id="overview.calories">
-            <Figure value={String(Math.round(data.todayKcal))} unit="kcal" of={data.calorieTargetKcal} />
+            <Figure
+              value={String(Math.round(data.todayKcal))}
+              unit="kcal"
+              of={data.calorieTargetKcal != null ? String(Math.round(data.calorieTargetKcal)) : null}
+            />
           </SpotlightTarget>
           <SpotlightTarget id="overview.protein">
-            <Figure value={String(Math.round(data.todayProtein))} unit="g protein" of={data.proteinTargetG} />
+            <Figure value={String(Math.round(data.todayProtein))} unit="g protein" of={data.proteinTargetLabel} />
           </SpotlightTarget>
         </View>
       </Section>
@@ -351,7 +357,9 @@ function Figure({
 }: {
   value: string;
   unit?: string;
-  of?: number | null;
+  // A label rather than a number: a calculated protein target is a span
+  // ("81-97"), and only a target someone chose themselves is a single figure.
+  of?: string | null;
   note?: string | null;
 }) {
   return (
@@ -359,7 +367,7 @@ function Figure({
       <ThemedText type="title">{value}</ThemedText>
       {unit ? (
         <ThemedText type="small" themeColor="textSecondary">
-          {of != null ? `${unit} of ${Math.round(of)}` : unit}
+          {of != null ? `${unit} of ${of}` : unit}
         </ThemedText>
       ) : null}
       {note ? (

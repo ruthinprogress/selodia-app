@@ -18,8 +18,7 @@ import {
   calculateTDEE,
   normalizeHeight,
   normalizeWeight,
-  proteinRangeGrams,
-  proteinTargetGrams,
+  proteinTarget,
 } from '../../lib/body-metrics';
 import {
   formatActivityEcho,
@@ -474,10 +473,12 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('body_measurements')
         .insert({ user_id: user.id, weight_kg: w, measured_at: new Date().toISOString() });
+      // Body fat percentage, not muscle_kg: the target is derived from lean
+      // body mass now, and muscle_kg is not standardised across scales.
       const { data: mm } = await supabase
         .from('body_measurements')
-        .select('muscle_kg')
-        .not('muscle_kg', 'is', null)
+        .select('body_fat_pct')
+        .not('body_fat_pct', 'is', null)
         .order('measured_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -487,8 +488,11 @@ export async function POST(request: NextRequest) {
         .from('user_profile')
         .select('protein_target_g')
         .maybeSingle();
-      const target = proteinTargetGrams(prof?.protein_target_g ?? null, mm?.muscle_kg ?? null);
-      const range = proteinRangeGrams(w);
+      const computed = proteinTarget(prof?.protein_target_g ?? null, w, mm?.body_fat_pct ?? null);
+      // The two shapes the rest of this block already expects: a single number
+      // when they have chosen one, a span when the app is the one suggesting.
+      const target = computed?.kind === 'manual' ? computed.grams : null;
+      const range = computed?.kind === 'range' ? { low: computed.low, high: computed.high } : null;
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
       const { data: todayFood } = await supabase
