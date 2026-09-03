@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { coverageFor } from './activity-weights';
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Coerce the model's log-time activity classification (build items 27 + 33) to a
@@ -82,7 +84,14 @@ export async function logActivityFromText(
   );
   if (loggable.length === 0) return [];
 
-  const rowsToInsert = loggable.map((activity: ParsedActivity) => ({
+  const rowsToInsert = loggable.map((activity: ParsedActivity) => {
+    // Health Flower coverage, resolved once here rather than on every render of
+    // the Overview. Null when the activity is not in the weighting table, and
+    // the six columns stay null together: a partially classified row would be
+    // worse than an unclassified one, because the flower would count the
+    // dimensions it found and silently treat the rest as zero.
+    const cover = coverageFor(activity.activity_type);
+    return {
     user_id: userId,
     happened_at: finalHappenedAt,
     activity_type: activity.activity_type,
@@ -99,7 +108,14 @@ export async function logActivityFromText(
     notes: activity.notes,
     intensity: coerceIntensity(activity.intensity),
     eccentric_load: coerceEccentricLoad(activity.eccentric_load),
-  }));
+    cover_strength: cover?.strength ?? null,
+    cover_cardio: cover?.cardio ?? null,
+    cover_flexibility: cover?.flexibility ?? null,
+    cover_balance: cover?.balance ?? null,
+    cover_bone: cover?.bone ?? null,
+    cover_recovery: cover?.recovery ?? null,
+    };
+  });
 
   const { data, error } = await supabase.from('activity_logs').insert(rowsToInsert).select();
   if (error) throw new Error('activity_logs insert failed: ' + error.message);
