@@ -109,6 +109,41 @@ Read the saved file back and report the sheet names, the new label row and its r
 - **If the file is open in Excel, the save fails** with `PermissionError`. Build to a staging copy first, swap it in after, and never force-close Excel to take the lock. Losing someone's unsaved work to finish your own task is not a trade that is yours to make.
 - **No Excel Table objects.** A Table cannot carry interior label or blank rows, and its fixed range fights appending at the bottom. Plain formatted ranges, with the header row frozen.
 
+**4. Append this session to the build log.**
+
+`H:\My Drive\Selodia App Project Master Folder\Build Specs\Selodia-Build-Log.docx`
+
+If the file does not exist, create it with a table of contents at the top. Append in this shape, and update the table of contents afterwards:
+
+```
+Session [N] · [Date] · [Location] · [Start time] · [Tools: Claude / Claude Code / both]
+Toggl session: — Ruth fills in
+
+[One to three paragraphs.]
+```
+
+**Prose, not a list.** This is the one artefact in the close-out that is written rather than tabulated, and the difference is the point: the workbook records *what* and *why* in cells, and this records what it was actually like. Past tense, specific, narrative. Written at the level of detail that would be useful to a build-diary article a year from now, by which time nobody remembers why any of it happened.
+
+Name real things. Real commit hashes, real decisions, real moments. **If something went wrong and got fixed, say so** — including when Claude Code caused it. A build diary that only records the parts that went well is a marketing document, and it is worthless for the thing a diary is for. The Chrome processes killed twice on 2026-09-02 belong in it exactly as much as the asset pack that shipped the same day.
+
+Direct and frank, no padding. Do not pad a quiet session into three paragraphs; one honest paragraph is a better record than three inflated ones.
+
+Leave the Toggl line as written, with the em-dash placeholder. Ruth fills that in by hand, and a guessed duration in that slot is worse than a blank one.
+
+**5. Session details are required, and are checked BEFORE any of the above runs.**
+
+Despite its number, this is the gate on the whole ceremony rather than its last step. Four things must be known:
+
+- Session number
+- Location
+- Start time
+- Tools used (Claude / Claude Code / both)
+
+**If any are missing, ask, and do not start the ceremony until they are answered.** None of the four is inferable. The session number in particular has already been ambiguous once, on 2026-09-04, when a session opened as "session 35" with 35 and 36 both already logged — and a wrong number in a running log is worse than a delayed close-out, because every later entry inherits it.
+
+The Toggl session number is the exception: optional, and Ruth fills it in manually.
+
+
 
 ---
 
