@@ -456,7 +456,30 @@ Targets are overrideable (like protein) and recompute as BMR/TDEE and bodyweight
 Equivalent rule: a **surplus (+150–200 kcal)** applies whenever *either* focus wants growth (Fat = increase, or Fat = maintain + Muscle = increase) and never stacks; a **deficit (~0.5%/wk)** applies only when Fat = reduce **and** Muscle ≠ increase; **everything else is maintenance** — including **recomposition** (Fat = reduce + Muscle = increase), which resolves to ≈ maintenance, *not* a real deficit. Protein scales up with a muscle-increase focus and stays high in any deficit to protect lean mass. The recomposition caveat holds in how it's surfaced: slow, simultaneous, and conditional — most achievable in beginners / returning trainees / higher-body-fat individuals, and never promised for older or perimenopausal women (see Fat Focus above), so it is framed as "slow simultaneous change," never a guarantee.
 
 ## Protein Targets
-Calculated from muscle mass × 2.2g (lean body mass from scales, not total bodyweight) — more accurate than bodyweight-based formulas, especially in a deficit. Overrideable always. Displayed per meal as well as daily total.
+Calculated from **lean body mass derived from body fat percentage**, not from the scale's own "muscle mass" figure. Overrideable always. Displayed per meal as well as daily total.
+
+**Why body fat percentage is the input (decided 2026-09-03).** It is the most consistently defined output across scale brands. `muscle_kg` is not standardised: some manufacturers report skeletal muscle mass under that label, some lean body mass, some fat-free mass. Three scales can therefore disagree by several kilograms on the same body, and a formula keyed to it produces a target that depends on which scale someone happens to own.
+
+**The formula.**
+
+`body_fat_pct` is stored as a **percentage, e.g. `26.4`, not `0.264`** — verified against the live `body_measurements` table. **The formula must divide by 100.** Without it, `weight × (1 - 26.4)` returns roughly **−1,396 kg**, so this is a correctness requirement rather than a style note.
+
+*Where `body_fat_pct` is known:*
+```
+LBM            = body_weight_kg × (1 - body_fat_pct / 100)
+protein target = LBM × 2.0  to  LBM × 2.4   (g/day)
+```
+
+*Where it is not:*
+```
+protein target = body_weight_kg × 1.6  to  body_weight_kg × 2.0   (g/day)
+```
+
+**The two paths must stay comparable, and this is checked rather than assumed.** At 55 kg and 26.4% body fat: LBM 40.5 kg gives **81-97 g**, and the fallback gives **88-110 g**. The ranges overlap and the midpoints sit about 10% apart. **Acquiring a smart scale must never cause a significant jump or drop in someone's target** — better data producing a visibly lower number would read as a penalty for measuring, and would undermine the reason for measuring at all. Any future change to either multiplier is checked against the other before it ships.
+
+**`proteinRange(weightKg)` already implements the fallback path** and is used by onboarding. The LBM path uses the same function structure so onboarding and the target calculation cannot drift; the two must not disagree about the same person.
+
+**Retired: `muscle_kg × 2.2` (2026-09-03).** It read lean mass off a non-standardised field, and the 2.2 multiplier was never sourced. See [R4] and [R5] for what the new range rests on, and the population caveat that comes with it.
 
 **Protein quality flagging:** collagen is always flagged as an incomplete protein source; plant proteins are flagged with a complementary suggestion (e.g. lentils paired with rice or dairy); animal proteins need no flag. If more than half of a day's protein comes from incomplete sources, a day-level nudge suggests a complementary source and a buffered target (100-105g rather than 95g).
 
@@ -1309,6 +1332,12 @@ Supports fat distribution being driven by sex steroids, intrinsic adipocyte diff
 
 [R3] Achamrah N, Colange G, Delay J, et al. Comparison of body composition assessment by DXA and BIA according to the body mass index: A retrospective study on 3655 measures. PLoS One. 2018;13(7):e0200465. doi: 10.1371/journal.pone.0200465
 n=3,655 measures. Finds BIA and DXA interchangeable **at population level only**; concordance at the individual level is lacking irrespective of BMI. Supports removing the ±3-5% figure: no peer-reviewed source establishes it as a validated individual margin, and this one points the other way. Section: onboarding technical copy, bioimpedance notes (Part Seven, step 9).
+
+[R4] Jäger R, Kerksick CM, Campbell BI, et al. International Society of Sports Nutrition Position Stand: protein and exercise. J Int Soc Sports Nutr. 2017;14:20. doi: 10.1186/s12970-017-0177-8
+Supports the two bands the target range sits between: **1.4-2.0 g/kg bodyweight** for most exercising individuals, and **2.3-3.1 g/kg/day** to maximise lean-mass retention in resistance-trained subjects during hypocaloric periods. `LBM × 2.0-2.4` is a defensible middle ground rather than a figure the position stand states directly. Section: Protein Targets, Part Eight.
+
+[R5] Helms ER, Zinn C, Rowlands DS, Brown SR. A Systematic Review of Dietary Protein During Caloric Restriction in Resistance Trained Lean Athletes: A Case for Higher Intakes. Int J Sport Nutr Exerc Metab. 2014;24(2):127-138. doi: 10.1123/ijsnem.2013-0054
+Supports **lean body mass as the correct denominator** for a protein target, which is the reason this calculation moved off bodyweight and off `muscle_kg`. **Population caveat, for expert review:** the review covers lean, resistance-trained athletes in caloric restriction (six studies, males ≤23% and females ≤35% body fat). Generalising it to a broader 40+ population is a limitation, not a settled point. Section: Protein Targets, Part Eight.
 
 ---
 
