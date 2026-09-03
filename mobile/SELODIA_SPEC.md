@@ -633,10 +633,11 @@ Supports: Cardio dimension definition; WHO classification of cardiovascular endu
 [3] Letton ME, et al. Classical Ballet for Women Aged Over 50 Years: Investigating Balance, Strength, and Range of Motion. Res Q Exerc Sport. 2024;95(1):171-182. doi: 10.1080/02701367.2023.2169236
 Supports: Flexibility dimension; ballet weightings for balance and flexibility. Section: Activity weighting table.
 
-[4] Anderson A, Rochelle L. Ballet and how it can improve neuromuscular function with age. J Neurophysiol. 2024. doi: 10.1152/jn.00514.2024
+[4] Berg D, Hamernik W, Anderson A, Rochelle L, Blake B. Ballet and how it can improve neuromuscular function with age. J Neurophysiol. 2025;133(3):760-762. doi: 10.1152/jn.00514.2024
+*(Corrected 2026-09-03 against Crossref. Previously credited to "Anderson A, Rochelle L" — the third and fourth of five authors — and dated 2024, which is the year in the DOI suffix rather than the publication date. Note for the expert review: this is a three-page item, so it reads as a commentary rather than primary research, and it is currently the only support offered for the Balance dimension definition.)*
 Supports: Balance dimension definition; fall prevention importance at 40+; ballet balance weightings. Section: Health Flower dimensions; activity table.
 
-[5] Ng CA, et al. Effects of Moderate- to High-Impact Exercise Training on Bone Structure Across the Lifespan: A Systematic Review and Meta-Analysis of Randomized Controlled Trials. J Bone Miner Res. 2023;38(11):1612. doi: 10.1002/jbmr.4899
+[5] Ng CA, et al. Effects of Moderate- to High-Impact Exercise Training on Bone Structure Across the Lifespan: A Systematic Review and Meta-Analysis of Randomized Controlled Trials. J Bone Miner Res. 2023;38(11):1612-1634. doi: 10.1002/jbmr.4899
 Supports: Bone loading dimension; running and impact exercise bone density weightings. Section: Activity weighting table.
 
 [6] Csala B, Szemerszky R, Kormendi J, Koteles F, Boros S. Is Weekly Frequency of Yoga Practice Sufficient? Physiological Effects of Hatha Yoga Among Healthy Novice Women. Front Public Health. 2021;9:702793. doi: 10.3389/fpubh.2021.702793
@@ -645,7 +646,7 @@ Supports: Yoga weightings for balance, flexibility, core strength; recovery dime
 [7] Abrahin O, et al. Swimming and cycling do not cause positive effects on bone mineral density: a systematic review. Rev Bras Reumatol. 2016;56(4):345-351. doi: 10.1016/j.rbre.2016.02.013
 Supports: Low bone loading for swimming and cycling. Body literacy note. Section: Key notes; activity table.
 
-[8] Letton ME, et al. Classical Ballet for Women Aged Over 50 Years: Investigating Balance, Strength, and Range of Motion. Res Q Exerc Sport. 2024;95(1):171-182. doi: 10.1080/02701367.2023.2169236
+[8] Letton ME, et al. Res Q Exerc Sport. 2024;95(1):171-182. (see [3])
 Supports: Ballet strength and balance weightings. High physiological demands of ballet. Section: Activity table; key notes.
 
 [9] Csala B, et al. Front Public Health. 2021;9:702793. (see [6])
