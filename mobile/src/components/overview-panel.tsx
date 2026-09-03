@@ -1,5 +1,5 @@
-import { router, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HydrationQuickTap } from '@/components/hydration-quick-tap';
@@ -89,8 +89,20 @@ export function OverviewPanel() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
 
-  useEffect(() => {
-    (async () => {
+  // Refetches on FOCUS, not only on mount. Overview is the root of the Body
+  // stack, so it stays mounted while Food, Measurements and Activity are pushed
+  // on top of it and popped back off. A mount-only fetch therefore reported
+  // whatever was true when the tab was first opened: a meal logged afterwards
+  // showed up on the Food screen, which is pushed fresh every visit and reloads
+  // itself after its own quick-log bar, while Overview went on saying zero.
+  //
+  // `loading` is never set back to true here. It guards the first paint only;
+  // flipping it on every return would blink the whole screen away for a refresh
+  // that usually changes one number.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
       const dayStart = startOfToday();
 
       // RLS scopes every read to the signed-in user.
@@ -159,6 +171,7 @@ export function OverviewPanel() {
         latest?.muscle_kg ?? null
       );
 
+      if (cancelled) return;
       setData({
         hasMeasurement: latest != null,
         personalLine: isTrueDayOne ? PERSONAL_LINE_DAY_ONE : pickDailyPersonalLine(),
@@ -186,8 +199,12 @@ export function OverviewPanel() {
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
       });
       setLoading(false);
-    })();
-  }, []);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   if (loading || !data) {
     return (
@@ -230,7 +247,16 @@ export function OverviewPanel() {
         <SpotlightTarget id="overview.stats">
           <View style={styles.figures}>
             <Figure value={fmt(data.weight.value, 'kg')} note={data.hasMeasurement ? data.weight.delta : 'No readings yet'} />
-            <Figure value={fmt(data.muscle.value, 'kg')} unit="muscle" note={data.hasMeasurement ? data.muscle.delta : null} />
+            {/* Hidden rather than dashed, for the same reason as body fat below:
+                a scale that only weighs never supplies it, and "—" under a
+                "muscle" label reads as a reading that failed. */}
+            {data.muscle.value != null && data.muscle.value > 0 ? (
+              <Figure
+                value={fmt(data.muscle.value, 'kg')}
+                unit="muscle"
+                note={data.muscle.delta}
+              />
+            ) : null}
             {/* Omitted entirely without a bioimpedance reading. Plenty of scales
                 weigh and nothing more, and a dash where a percentage should be
                 reads as a missing measurement rather than a scale that never
