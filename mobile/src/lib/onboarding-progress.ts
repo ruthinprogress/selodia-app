@@ -22,7 +22,14 @@ export type OnboardingScreen = {
 };
 
 export const ONBOARDING_SCREENS: OnboardingScreen[] = [
-  { route: 'consent', label: 'Before we start' },
+  // 'Before we start' until 2026-09-03, when it started competing with the
+  // screen's own heading. Consent is the only onboarding screen that is a form
+  // rather than a conversation, so it is the only one carrying a heading of its
+  // own - and once that heading became "Welcome to Selodia", the header read
+  // "Getting to know you", then "Before we start", then a third greeting. This
+  // label now names the step in the same voice as its siblings and leaves the
+  // welcoming to the heading.
+  { route: 'consent', label: 'Your data' },
   { route: 'account', label: 'Your account' },
   { route: 'intro', label: 'Hello' },
   { route: 'equipment', label: 'What you have' },
