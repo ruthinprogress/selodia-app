@@ -9,7 +9,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
 import { supabase } from '@/lib/supabase';
-import { toLocalDateKey } from '@/lib/week';
+import { formatLogDate } from '@/lib/week';
 
 // The Activity segment (Part Five / Part Eight).
 //
@@ -156,7 +156,7 @@ export function ActivityView() {
                   {r.activity_type ?? 'Activity'}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {toLocalDateKey(new Date(r.happened_at))}
+                  {formatLogDate(new Date(r.happened_at))}
                   {r.duration_min != null ? ` · ${Math.round(r.duration_min)} min` : ''}
                   {r.kcal_burned != null ? ` · ${Math.round(r.kcal_burned)} kcal` : ''}
                 </ThemedText>

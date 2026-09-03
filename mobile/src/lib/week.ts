@@ -20,6 +20,42 @@ export function toLocalDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// British short months, written out rather than delegated to Intl. September is
+// "Sept", which is the form this app uses and is NOT what
+// toLocaleDateString('en-GB') returns ("Sep"). Hermes on Android also ships a
+// variable ICU build, so Intl month names are not guaranteed to be identical on
+// every device, and a date on a person's own log is not where you want to find
+// that out.
+const SHORT_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec',
+];
+
+// A logged entry's date AS A PERSON WOULD SAY IT: "Today", "Yesterday",
+// "3 Sept", and "3 Sept 2025" once the year has stopped being obvious.
+//
+// THIS IS NOT toLocalDateKey, AND THAT IS THE WHOLE POINT. That one builds the
+// YYYY-MM-DD key the weekly views group by. It was being rendered directly into
+// the Activity list, so the app told someone they had been for a run on
+// "2026-09-03" - a database key shown to a human being. The two functions sit
+// together so the next person reaching for a date meets both at once and picks
+// the one they actually meant.
+//
+// The day difference is measured between two local midnights and rounded, not
+// divided exactly: a DST boundary makes a calendar day 23 or 25 hours long, and
+// rounding keeps "Yesterday" correct on both of those mornings.
+export function formatLogDate(d: Date, now: Date = new Date()): string {
+  const day = localMidnight(d);
+  const today = localMidnight(now);
+  const daysAgo = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+
+  if (daysAgo === 0) return 'Today';
+  if (daysAgo === 1) return 'Yesterday';
+
+  const spoken = `${day.getDate()} ${SHORT_MONTHS[day.getMonth()]}`;
+  return day.getFullYear() === today.getFullYear() ? spoken : `${spoken} ${day.getFullYear()}`;
+}
+
 // Monday of the week containing `d`, at local midnight.
 export function weekStartFor(d: Date): Date {
   const start = localMidnight(d);

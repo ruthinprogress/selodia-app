@@ -101,7 +101,7 @@ export function FoodTodayView() {
               <View style={styles.labelCol}>
                 <ThemedText type="small">{entryLabel(row)}</ThemedText>
               </View>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="small" themeColor="textSecondary" style={styles.macros}>
                 {Math.round(row.kcal ?? 0)} kcal · {Math.round(row.protein_g ?? 0)}g
               </ThemedText>
               {/* The universal "view detail" affordance — icon only, never a
@@ -115,7 +115,7 @@ export function FoodTodayView() {
                     : `What's in ${entryLabel(row)}`
                 }
                 hitSlop={Spacing.two}
-                style={({ pressed }) => pressed && styles.pressed}
+                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
               >
                 {/* Neutral until a discussion exists against this entry, then
                     permanently changed — no third "unread" state, no fading
@@ -171,6 +171,21 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
     alignItems: 'flex-start',
+  },
+  // The macros used to be the one item in this row that could not give ground.
+  // flexShrink defaults to 0 in React Native, so once labelCol had shrunk to
+  // its floor, a wide reading ("1,234 kcal · 123g") kept its full single-line
+  // width and pushed the eye icon off the right edge of the card - the row's
+  // only control, gone, on exactly the entries with the biggest numbers. That
+  // is why it looked intermittent. Now it shrinks and wraps instead, which
+  // costs a line of height and loses nothing.
+  macros: {
+    flexShrink: 1,
+  },
+  // And the icon never shrinks, so it cannot be squeezed to nothing by the
+  // fix above.
+  iconButton: {
+    flexShrink: 0,
   },
   totalRow: {
     flexDirection: 'row',
