@@ -4,6 +4,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { MonthYearPicker } from '@/components/month-year-picker';
 import { PersonalMetricsView } from '@/components/personal-metrics-view';
+import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { ExportLink } from '@/components/data-export-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -109,6 +110,8 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           where a missing duration makes the calorie figure a fiction; a weight
           is complete the moment it is stated. */}
       <QuickLogBar kind="measurement" onLogged={() => setReloadKey((k) => k + 1)} />
+
+      <LogInChatHint tab="body" />
 
       {/* What the latest reading means. Anchored to the latest reading, not to
           the displayed week, so it stays put while you step back through

@@ -10,10 +10,16 @@ import { supabase } from '@/lib/supabase';
 // equally valid and dismisses them.
 //
 // WHY THESE FOUR, AND IN THIS ORDER. Three name the things the app actually does
-// - body, food, movement - and the fourth gives permission to ask what it is
-// rather than perform competence at it. That one goes last on purpose: leading
-// with "How does this work?" would frame the app as a thing to be learned before
-// it can be used, when in fact it is a conversation someone can simply start.
+// - body, food, movement - and the fourth gives permission to ask what the app
+// is for rather than perform competence at it. That one goes last on purpose:
+// leading with it would frame the app as a thing to be learned before it can be
+// used, when in fact it is a conversation someone can simply start.
+//
+// The fourth was "How does this work?" until 2026-09-04. "What can I log here?"
+// asks the same thing more concretely, and it is the question people actually
+// have on a first screen: not how does the machine work, but what am I allowed
+// to say to it. ask-unflump carries a matching instruction so the answer names
+// everything rather than only the thing the model happens to think of.
 //
 // THEY ARE SENT AS THE PERSON'S OWN WORDS, not as a command or a mode switch.
 // Tapping "Log what I've eaten" posts exactly that sentence into the thread and
@@ -24,7 +30,7 @@ export const CHAT_CHIPS = [
   'My body goals',
   "Log what I've eaten",
   'My activity and workouts',
-  'How does this work?',
+  'What can I log here?',
 ] as const;
 
 // SHOWN-ONCE, ON THE ACCOUNT. Mirrors hasSeenAlmanacIntro/markAlmanacIntroSeen

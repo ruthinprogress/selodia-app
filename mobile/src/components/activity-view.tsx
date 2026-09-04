@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { Tag } from '@/components/tag';
 import { ThemedText } from '@/components/themed-text';
@@ -123,6 +124,8 @@ export function ActivityView() {
     <ThemedView style={styles.wrap}>
       {/* Above the list, because it is the thing you came here to do. */}
       <QuickLogBar kind="activity" onLogged={() => setReloadKey((k) => k + 1)} />
+
+      <LogInChatHint tab="activity" />
 
       <ThemedText type="smallBold" style={styles.heading}>
         Recent activity

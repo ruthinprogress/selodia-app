@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -86,6 +87,8 @@ export function FoodTodayView() {
     <>
       {/* Above the day, because it is the thing you came here to do. */}
       <QuickLogBar kind="food" onLogged={() => setReloadKey((k) => k + 1)} />
+
+      <LogInChatHint tab="food" />
 
       <ThemedText type="smallBold">Today</ThemedText>
 

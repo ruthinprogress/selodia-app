@@ -18,5 +18,5 @@ export type AddSource = 'camera' | 'library';
 // (principle 8), so it arrives with that module rather than ahead of it.
 export const ADD_OPTIONS: { source: AddSource; label: string }[] = [
   { source: 'camera', label: 'Take a photo' },
-  { source: 'library', label: 'Choose from library' },
+  { source: 'library', label: 'Gallery' },
 ];

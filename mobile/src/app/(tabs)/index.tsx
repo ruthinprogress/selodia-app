@@ -12,6 +12,7 @@ import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ReminderOffer } from '@/components/reminder-offer';
 import { ResourceCard } from '@/components/resource-card';
 import { ChatLandingChips } from '@/components/chat-landing-chips';
+import { RotatingPlaceholder } from '@/components/rotating-placeholder';
 import { SaveConfirmation } from '@/components/save-confirmation';
 import { useSpotlight } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -100,6 +101,10 @@ export default function ChatScreen() {
   const [offerReminders, setOfferReminders] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  // Once the composer has been touched the hint stops cycling, and stays
+  // stopped for the session. Resuming on blur would be the same interruption a
+  // second time.
+  const [hintStopped, setHintStopped] = useState(false);
   // The first-time landing chips. Null while the checks are still running, so
   // nothing flashes on screen before it is known whether it belongs there.
   const [showChips, setShowChips] = useState<boolean | null>(null);
@@ -515,12 +520,22 @@ export default function ChatScreen() {
                 // for the message to be sent.
                 if (t.length > 0) dismissChips();
               }}
-              placeholder="Message…"
+              // The visible hint is RotatingPlaceholder, laid over this input:
+              // a native placeholder cannot be faded, so there is nothing to
+              // animate on it. Empty here, and an accessibilityLabel instead so
+              // the field still announces itself while the hint above it is
+              // hidden from screen readers.
+              placeholder=""
+              accessibilityLabel="Message"
+              onFocus={() => setHintStopped(true)}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
               multiline
               editable={!sending}
             />
+            {/* Only while there is nothing typed. A hint under real text would
+                be two overlapping lines. */}
+            {input.length === 0 ? <RotatingPlaceholder stopped={hintStopped} /> : null}
           </SpotlightTarget>
           <Pressable
             onPress={() => handleSend()}

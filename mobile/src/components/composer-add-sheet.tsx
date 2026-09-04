@@ -8,7 +8,7 @@ import { ADD_OPTIONS, type AddSource } from '@/lib/composer-add';
 
 // The composer's "+" action sheet (build item 10b, step 1).
 //
-// SOURCE-based, never type-based: Take a photo · Choose from library · Choose a
+// SOURCE-based, never type-based: Take a photo · Gallery · Choose a
 // file. It deliberately does not ask WHAT the person is photographing - a scale
 // readout, a plate of food and a treadmill display all come in the same way,
 // and the image is classified afterwards. Asking someone to categorise their
