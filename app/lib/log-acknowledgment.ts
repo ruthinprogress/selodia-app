@@ -59,6 +59,17 @@ export type ActivityFacts = RecentContext & {
     kcalBurned: number | null;
     source: string | null;
   }[];
+  // Present INSTEAD of entries when the photo was a whole-day tracker screen.
+  // Kept as its own field rather than a funny-looking entry so the block below
+  // cannot accidentally describe a day as a session.
+  dailySummary: {
+    date: string;
+    steps: number | null;
+    kcalBurned: number | null;
+    activeMinutes: number | null;
+    distanceKm: number | null;
+    source: string | null;
+  } | null;
 };
 
 const n0 = (v: number | null): string | null => (v == null ? null : String(Math.round(v)));
@@ -114,6 +125,30 @@ export function foodFactsBlock(f: FoodFacts): string {
 }
 
 export function activityFactsBlock(f: ActivityFacts): string {
+  // A DAY, NOT A SESSION, AND SAID SO IN WORDS. The whole bug this fixes was a
+  // day's total presented as a workout, so the acknowledgment has to be
+  // explicit: nothing was logged as an activity, and the burn figure covers
+  // everything the body did, including simply being alive.
+  if (f.dailySummary) {
+    const d = f.dailySummary;
+    const bits = [
+      n0(d.steps) && `${Number(d.steps).toLocaleString('en-GB')} steps`,
+      n0(d.activeMinutes) && `${n0(d.activeMinutes)} min active`,
+      n1(d.distanceKm) && `${n1(d.distanceKm)} km`,
+      n0(d.kcalBurned) && `${n0(d.kcalBurned)} kcal burned across the whole day`,
+    ].filter(Boolean);
+    return [
+      'Daily activity summary recorded (NOT a workout)',
+      '',
+      bits.join(' · '),
+      '',
+      'This is their whole day added up, not a session they did. Do not congratulate them on it as training, and do not call it a workout. No activity was logged.',
+      d.source ? `Counted by ${d.source}. Anything it wasn't on them for won't be in there.` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
   const lines = ['Activity logged', ''];
   for (const e of f.entries) {
     const bits = [

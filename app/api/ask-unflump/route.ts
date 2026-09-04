@@ -173,6 +173,7 @@ export async function POST(request: NextRequest) {
     { data: contextRows },
     { data: recentFood },
     { data: recentActivity },
+    { data: recentDailyBurn },
     { data: recentMeasurements },
     { data: healthContextRow },
     { data: lastPeriodRow },
@@ -220,6 +221,16 @@ export async function POST(request: NextRequest) {
       .select('happened_at, activity_type, duration_min, kcal_burned')
       .gte('happened_at', contextSince.toISOString())
       .order('happened_at', { ascending: false }),
+    // Whole-day tracker totals, kept in their own table and their own context
+    // line because they are not sessions. These used to arrive inside
+    // activity_logs as an activity called "Daily Summary", which read to the
+    // model as a single 1063 kcal workout and was narrated back to the person
+    // as one.
+    supabase
+      .from('daily_activity_summaries')
+      .select('date, steps, kcal_burned, active_minutes, distance_km')
+      .gte('date', contextSince.toISOString().slice(0, 10))
+      .order('date', { ascending: false }),
     supabase
       .from('body_measurements')
       .select('measured_at, weight_kg, body_fat_pct')
@@ -332,6 +343,23 @@ export async function POST(request: NextRequest) {
     ? recentActivity.map((a) => a.happened_at.slice(0, 10) + ': ' + a.activity_type + ' (' + a.duration_min + ' min, ' + a.kcal_burned + ' kcal)').join('\n')
     : 'No activity logged in the last 7 days.';
 
+  // Named as a whole day, every time, with the source of the figure attached.
+  // The wording is doing real work: "burned across the day" cannot be misread as
+  // a session the way a bare number beside a duration can.
+  const dailyBurnSummary = recentDailyBurn && recentDailyBurn.length > 0
+    ? recentDailyBurn
+        .map((d) => {
+          const bits = [
+            d.kcal_burned != null ? Math.round(d.kcal_burned) + ' kcal burned across the whole day' : null,
+            d.steps != null ? d.steps.toLocaleString('en-GB') + ' steps' : null,
+            d.active_minutes != null ? Math.round(d.active_minutes) + ' min active' : null,
+            d.distance_km != null ? d.distance_km + ' km' : null,
+          ].filter(Boolean);
+          return d.date + ': ' + bits.join(', ');
+        })
+        .join('\n')
+    : 'No daily tracker totals in this period.';
+
   const measurementSummary = recentMeasurements && recentMeasurements.length > 0
     ? recentMeasurements.map((m) => m.measured_at.slice(0, 10) + ': weight ' + m.weight_kg + 'kg, body fat ' + m.body_fat_pct + '%').join('\n')
     : 'No body measurements in the last 7 days.';
@@ -344,8 +372,11 @@ ${contextText}
 Here is their food log from the last 7 days:
 ${foodSummary}
 
-Here is their activity log from the last 7 days:
+Here is their activity log from the last 7 days - these are SESSIONS, things they set out and did:
 ${activitySummary}
+
+Here are their whole-day tracker totals, from a fitness app's daily summary screen. These are NOT sessions and must never be described as one: the calorie figure is everything their body used across a whole day of ordinary movement, not a workout they did. Treat it as background on how active a day was, and never congratulate someone on it as though it were training:
+${dailyBurnSummary}
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}

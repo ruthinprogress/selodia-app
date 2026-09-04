@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
+import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { supabase } from '@/lib/supabase';
 import { formatLogDate } from '@/lib/week';
 
@@ -35,6 +36,7 @@ type ActivityRow = {
   activity_type: string | null;
   duration_min: number | null;
   kcal_burned: number | null;
+  source: string | null;
   intensity: string | null;
   happened_at: string;
 };
@@ -70,7 +72,7 @@ export function ActivityView() {
       const [{ data: activity }, { data: profile }, { data: measurements }] = await Promise.all([
         supabase
           .from('activity_logs')
-          .select('id, activity_type, duration_min, kcal_burned, intensity, happened_at')
+          .select('id, activity_type, duration_min, kcal_burned, intensity, happened_at, source')
           .gte('happened_at', since)
           .order('happened_at', { ascending: false }),
         supabase
@@ -85,7 +87,10 @@ export function ActivityView() {
       ]);
       if (cancelled) return;
 
-      setRows((activity ?? []) as ActivityRow[]);
+      // Sessions only. A whole-day tracker total is not something the person
+      // did, and listing one here beside real workouts is what made a day's
+      // incidental walking read as a 1063 kcal session.
+      setRows(withoutDailySummaries((activity ?? []) as ActivityRow[]));
 
       const p = (profile ?? {}) as {
         date_of_birth?: string | null;

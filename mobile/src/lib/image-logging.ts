@@ -134,10 +134,14 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
       foodLogId = typeof saved?.id === 'string' ? saved.id : null;
       facts = await foodAckFacts(saved as never);
     } else {
-      const saved = await authedPost<{ entries: unknown[] }>('/api/parse-activity', {
-        images: [{ imageBase64: image.base64, mediaType: image.mediaType }],
-      });
-      facts = activityAckFacts((saved.entries ?? []) as never);
+      // `dailySummary` comes back INSTEAD of entries when the photo was a
+      // whole-day tracker screen: nothing was logged as an activity, and the
+      // acknowledgment has to say that rather than announce an empty log.
+      const saved = await authedPost<{ entries: unknown[]; dailySummary?: unknown }>(
+        '/api/parse-activity',
+        { images: [{ imageBase64: image.base64, mediaType: image.mediaType }] }
+      );
+      facts = activityAckFacts((saved.entries ?? []) as never, (saved.dailySummary ?? null) as never);
     }
   } catch {
     return { status: 'failed' };

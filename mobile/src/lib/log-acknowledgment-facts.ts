@@ -70,6 +70,14 @@ export type ActivityAckFacts = {
     kcalBurned: number | null;
     source: string | null;
   }[];
+  dailySummary: {
+    date: string;
+    steps: number | null;
+    kcalBurned: number | null;
+    activeMinutes: number | null;
+    distanceKm: number | null;
+    source: string | null;
+  } | null;
 };
 
 type BodyRow = {
@@ -285,7 +293,19 @@ type ActivityRow = {
   source: string | null;
 };
 
-export function activityAckFacts(saved: ActivityRow[]): ActivityAckFacts {
+type DailySummaryRow = {
+  date: string;
+  steps: number | null;
+  kcal_burned: number | null;
+  active_minutes: number | null;
+  distance_km: number | null;
+  source: string | null;
+};
+
+export function activityAckFacts(
+  saved: ActivityRow[],
+  dailySummary?: DailySummaryRow | null
+): ActivityAckFacts {
   return {
     // As for food: no grounds for a comparison, so none may be claimed.
     recent: null,
@@ -295,5 +315,15 @@ export function activityAckFacts(saved: ActivityRow[]): ActivityAckFacts {
       kcalBurned: e.kcal_burned,
       source: e.source,
     })),
+    dailySummary: dailySummary
+      ? {
+          date: dailySummary.date,
+          steps: dailySummary.steps,
+          kcalBurned: dailySummary.kcal_burned,
+          activeMinutes: dailySummary.active_minutes,
+          distanceKm: dailySummary.distance_km,
+          source: dailySummary.source,
+        }
+      : null,
   };
 }

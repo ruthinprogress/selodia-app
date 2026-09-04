@@ -11,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
+import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
 import { HealthFlower } from '@/components/health-flower';
 import { hydrationLabel, hydrationToday } from '@/lib/hydration';
@@ -131,7 +132,10 @@ export function OverviewPanel() {
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
           supabase
             .from('activity_logs')
-            .select('duration_min')
+            // activity_type and source are not displayed here - they are read
+            // only to exclude whole-day tracker totals, whose "active minutes"
+            // are a day of incidental movement rather than time spent training.
+            .select('duration_min, activity_type, source')
             .gte('happened_at', dayStart),
           supabase.from('hydration_logs').select('ml, happened_at').gte('happened_at', dayStart),
         ]);
@@ -172,7 +176,12 @@ export function OverviewPanel() {
         0
       );
 
-      const acts = (activity ?? []) as { duration_min: number | null }[];
+      // Sessions only. A daily summary's "active minutes" is a whole day of
+      // walking about added up, so counting it here would tell someone they had
+      // trained for 42 minutes on a day they did no training at all.
+      const acts = withoutDailySummaries(
+        (activity ?? []) as { duration_min: number | null; activity_type: string | null; source: string | null }[]
+      );
 
       // The day-one line belongs to someone with nothing logged AT ALL, not to
       // someone who simply has not weighed. Today's rows cannot answer that, so

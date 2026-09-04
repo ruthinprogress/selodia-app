@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// THE PIPELINE ITSELF, imported rather than called over HTTP.
+//
+// This used to fetch https://api.selodia.app/api/ask-unflump - its own public
+// URL, for a file three directories away. Measured, that hop cost about 1.4s of
+// a 4.4s spoken turn: TLS, edge routing, and a SECOND serverless invocation
+// that could cold-start on its own. The give-away was the spread across
+// identical calls, 5090/4277/3848ms, which is what cold starts look like.
+//
+// Importing the handler keeps every line of it in the path - the safety
+// classifier, the escalation state machine, logging, corrections, the allergy
+// block, the Almanac flow - because it IS the same function, just reached
+// without leaving the process.
+import { POST as askUnflump } from '../../../api/ask-unflump/route';
+
 // The custom-LLM adapter ElevenLabs talks to.
 //
 // WHY IT EXISTS. ElevenLabs Agents can select Claude directly in their
@@ -123,21 +137,26 @@ export async function POST(request: NextRequest) {
   const id = `chatcmpl-${crypto.randomUUID()}`;
   const created = Math.floor(Date.now() / 1000);
 
-  // Straight back to the same route the Chat composer posts to. Same origin, so
-  // this stays one deployment with no second base URL to keep in step.
+  // The exact same handler the Chat composer reaches, invoked in-process.
+  //
+  // It reads only two things off the request - the JSON body and the
+  // authorization header - so a constructed NextRequest carries everything it
+  // needs. Checked rather than assumed: request.json() is its only use of the
+  // object beyond getSupabaseForRequest reading that header.
   let reply: string;
   try {
-    const res = await fetch(new URL('/api/ask-unflump', request.url), {
+    const inner = new NextRequest(new URL('/api/ask-unflump', request.url), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      // `voice: true` is what lets the pipeline defer the food/activity parse
-      // to after the response. It changes nothing about the reply or the safety
-      // classification - only which work has to finish before we can speak.
+      // `voice: true` lets the pipeline defer the food/activity parse to
+      // after(). It changes nothing about the reply or the safety
+      // classification - only which work must finish before we can speak.
       body: JSON.stringify({ message: utterance, voice: true }),
     });
+    const res = await askUnflump(inner);
 
     if (res.status === 401) {
       console.log('VOICE ADAPTER: pipeline rejected the token');

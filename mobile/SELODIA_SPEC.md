@@ -603,6 +603,20 @@ The "10-13 kcal/kg/day" figure is the resting metabolic rate of skeletal muscle 
 
 **No BMR/muscle trend chart — abandoned, not deferred (2026-08-15).** An earlier mockup pencilled in a BMR/muscle trend chart "pending a charting library." It is now dropped for a substantive reason, recorded here so it is not reopened as an option later. The muscle-mass→BMR mechanism (~10-13 kcal/kg/day) is too small to chart meaningfully on any timescale that would feel encouraging — even a real, *measured* BMR trend over months reads as a near-flat line, which would directly undercut the app's own honest prose framing of this very fact (the explainer above). TDEE was considered as an alternative chart subject and ruled out too: TDEE's activity component doesn't move meaningfully from gentle or moderate activity (yoga, easy cycling), even done regularly — only sustained resistance training over months produces a real shift, and that shift is driven by the same small muscle-mass mechanism, accumulating slowly. A 2020 systematic review (22 studies) found resistance training measurably raises resting metabolic rate over time, while aerobic exercise alone does not [Resources: resistance training & RMR]. The honest prose explainer carries this understanding correctly; a chart would misrepresent it as either flat/discouraging or falsely dramatic. (This is also why intensity, not activity type or frequency, is what the Activity Intensity indicator captures — see below.)
 
+## Daily Activity Data
+
+**A whole day is not a session, and the schema now says so (2026-09-04).** Daily burn read from a Samsung Health daily summary screenshot is stored in **`daily_activity_summaries`** (date, steps, kcal_burned, active_minutes, distance_km, source; one row per user per day), **not `activity_logs`**.
+
+This was a real bug, not a tidy-up. The screenshot parse had always identified the two Samsung screens correctly — daily summary versus single workout — and then packaged the daily summary as an activity anyway: `activity_type` "Daily Summary", `kcal_burned` = the whole day's burn. So 1063 kcal of ordinary walking about became a row indistinguishable from a session, and everything downstream read it as one — Selodia narrated it back as a workout, and the Activity list showed it beside real training. **Two such rows existed in production** (31 July, 4 September) and were migrated into the new table and deleted from `activity_logs`.
+
+Worth recording because it nearly stayed hidden: the Health Flower was *already* immune, because `coverageFor("Daily Summary")` returns null and `health-flower.ts` explicitly documents why a daily summary "gives an unknown amount". The reasoning existed and was correct — it simply was not followed upstream to the insert. A defence in one consumer is not a fix.
+
+**Context-only for MVP.** The daily burn figure is visible to Selodía in conversation and on the Activity screen. It **does not affect the calorie target.** The calorie target stays anchored to the onboarding multiplier via `resolveTDEE` (BMR × declared activity level).
+
+**TDEE integration with observed daily burn is explicitly parked as a future feature.** Parked rather than forgotten, and for a stated reason: TDEE feeds `calculateCalorieTarget` directly, so wiring an observed burn into it would move a person's daily calorie goal day to day on the word of a watch. That may well be right, and it is a product decision about how much authority a tracker gets over someone's target — not a plumbing change to make in passing.
+
+**The language matters at every surface.** The prompt block, the acknowledgment, and the Activity screen all name it as a whole day rather than a session, and the acknowledgment says outright that no activity was logged. "1063 kcal burned across the whole day" cannot be misread the way a bare number beside a duration can — which is exactly how the original bug read to both the model and the person.
+
 ## Body Measurement Tracking
 Weight, body fat %, muscle mass, and basal metabolism from smart scales; thigh and waist periodically; cycle day logged alongside automatically once cycle tracking is enabled. Supports fully flexible, user-defined custom metrics beyond the fixed fields — any user can track any personally meaningful point, not limited to a preset menu.
 
@@ -1557,6 +1571,22 @@ Two ways to use it, and the choice was a real one:
 A was chosen because it keeps the safety boundary in the database rather than moving it into application code. The cost is real and stated: a short-lived Supabase access token transits ElevenLabs' infrastructure.
 
 **Latency is the known risk of this path.** `ask-unflump` runs claude-sonnet-5 over a large prompt — recent food, activity, measurements, health context, the full safety block. That is built for a chat window, not a spoken turn, and the adapter inherits it. The Haiku 4.5 recommendation above is about latency, and it does not apply once the request routes through our own pipeline. Measure a real spoken turn before assuming this is usable.
+
+### Latency: measured, and not yet good enough
+
+**Measured 4 September, on the real chain: ~4.4 seconds.** That is utterance-to-reply. The measurement harness runs the agent in `text_only` mode, so the figure covers everything up to the words being ready and does **not** include ElevenLabs' TTS start — true utterance-to-audio is therefore slightly worse than 4.4s, not better. Treat 4.4s as the floor of what was measured, not the ceiling of what a person experiences.
+
+**Acceptable for MVP, and not permanently acceptable.** What this ships for is hands-free logging — saying what you ate with your hands in the sink — not real-time conversation. A four-second pause is tolerable when you are dictating a fact. It is not tolerable when you are talking something through, which is the mode Part Eighteen exists for.
+
+**Target: under 3 seconds before App Store submission.**
+
+**What has already been taken out.** Three optimisations were implemented and measured on 4 September, moving the pipeline from 4997ms to 3039ms: (A) defer the food/activity parse to `after()` so it runs after the response rather than before it (~900ms); (B) drop `APP_STRUCTURE_PROMPT_BLOCK` from voice turns, since nobody asks a voice assistant where a button is; (C) trim recent context from 7 days to 3. B and C together saved ~1060ms. **The safety block was untouched by all three**, and stays untouched by anything in this section — latency is never bought from Part Twelve.
+
+**The remaining known cost is the adapter's self-call.** The adapter at `/v1/chat/completions` reaches `ask-unflump` over HTTP to its own public URL, paying TLS, edge routing, and a second serverless invocation that can cold-start independently — for a file three directories away. Measured, that hop is the entire gap between the pipeline's 3039ms and the adapter's 4405ms: **~1366ms**. The give-away was the spread across identical calls, 5090 / 4277 / 3848ms, which is what cold starts look like. Removing it should land a spoken turn near 3.1s — *at* the target rather than comfortably inside it, so this hop alone probably does not close the gap. The next lever after it is the model choice already recorded above, not more plumbing.
+
+**Status, 4 September.** The fix is written — the adapter imports `ask-unflump`'s `POST` handler and calls it in-process, same function, no network hop — but it is **not committed, not deployed, and not re-measured**. Production still carries the hop and still measures ~4.4s, which is why the headline figure above is stated as current rather than historical. The ~3.1s is a prediction; it stands as a prediction until a deployed spoken turn says otherwise.
+
+**One thing to verify on that deploy rather than assume:** the pipeline defers work with `after()`, and registered inside a nested call that callback now attaches to the *adapter's* request scope rather than its own. It should still fire — the adapter is a live request scope, which is what `after()` needs — but confirm the food row actually lands before treating the direct call as proven.
 
 ### The voice, and the agent it lives on
 
