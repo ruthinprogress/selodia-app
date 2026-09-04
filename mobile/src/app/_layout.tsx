@@ -12,6 +12,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { SpotlightOverlay } from '@/components/spotlight-overlay';
 import { SpotlightProvider } from '@/components/spotlight-provider';
+import { VoiceProvider } from '@/components/voice-provider';
 import { Colors } from '@/constants/theme';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 
@@ -90,6 +91,15 @@ export default function RootLayout() {
           without an edge-to-edge layout to match shifts every screen up by the
           status bar height, and nothing here asks for that. */}
       <KeyboardProvider>
+      {/* Above the Stack for the same reason the spotlight provider is: a voice
+          session has to survive navigation. Somebody talking while they move to
+          the Body tab should not have the conversation torn down by the move,
+          and a provider inside Chat would unmount with the screen.
+
+          Mounting it starts nothing - no socket, no microphone, no audio
+          session. All of that lives in startSession(), which only a deliberate
+          long-press reaches, so voice stays off by default. */}
+      <VoiceProvider>
       {/* The spotlight provider wraps the whole Stack, not a single screen
           (build item 23). A request made in Chat has to survive the navigation
           to Settings so the destination can highlight on arrival - state living
@@ -118,6 +128,7 @@ export default function RootLayout() {
       {/* Last, so its Modal sits above every screen the Stack renders. */}
       <SpotlightOverlay />
       </SpotlightProvider>
+      </VoiceProvider>
       </KeyboardProvider>
     </ThemeProvider>
   );

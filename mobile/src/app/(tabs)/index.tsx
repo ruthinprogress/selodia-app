@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
+import { VoiceControl } from '@/components/voice-control';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { FoodBreakdownTable } from '@/components/food-breakdown-table';
@@ -537,6 +538,17 @@ export default function ChatScreen() {
                 be two overlapping lines. */}
             {input.length === 0 ? <RotatingPlaceholder stopped={hintStopped} /> : null}
           </SpotlightTarget>
+          {/* Between the input and Send, which is where Claude and ChatGPT
+              both put it (Part Eighteen: "same position as Claude and
+              ChatGPT"). Send stays rightmost because it is the destructive-ish
+              one to hit by accident - it commits text - and moving a control
+              somebody already has muscle memory for is a cost with no benefit.
+
+              Renders nothing on web; see voice-control.web.tsx. */}
+          <VoiceControl
+            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now() })}
+            disabled={sending}
+          />
           <Pressable
             onPress={() => handleSend()}
             // Empty input previously did nothing at all - no message, no re-ask,

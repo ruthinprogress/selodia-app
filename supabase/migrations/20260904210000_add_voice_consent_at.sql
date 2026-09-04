@@ -1,0 +1,13 @@
+-- Voice is OFF BY DEFAULT, and this column is what makes that true.
+--
+-- Part Eighteen: the first time somebody uses the mic they get a plain
+-- explanation that their voice goes to ElevenLabs, and only then the OS
+-- permission dialog. Null means never consented, which is every existing row
+-- and every new one - there is no default and no backfill, deliberately.
+--
+-- A TIMESTAMP RATHER THAN A BOOLEAN, per the cheap-optionality rule in the
+-- development principles: a timestamp can always be read as present/absent, so
+-- it answers "have they consented" exactly as well as a boolean while also
+-- answering "when", which is the question that matters if the wording of the
+-- notice ever changes and consent has to be re-sought from a date.
+alter table user_profile add column voice_consent_at timestamptz;
