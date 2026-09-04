@@ -20,6 +20,20 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "expo-web-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "mobile",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8082"
+      ],
+      "port": 8082
     }
   ]
 }

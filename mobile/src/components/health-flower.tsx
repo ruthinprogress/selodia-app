@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
-import Svg, { Ellipse, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Text as SvgText } from 'react-native-svg';
 
 import { BrandFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -60,6 +60,21 @@ const MIN_VISIBLE_RY = 5;
 // two things meeting rather than one covering the other, which is the whole
 // visual argument of the centre.
 const PETAL_OPACITY = 0.72;
+
+// THE SEED SITS ON A CREAM DISC, and the mark on it is terracotta.
+//
+// The first version used assets/images/mark.png, which is CREAM on transparent
+// - the app-icon mark, drawn to sit on a dark or terracotta ground. At the
+// flower centre it lands on six overlapping pastel petals, and rendering it
+// showed exactly what that means: the seed came out a pale ghost rather than an
+// arrival. This is the moment the whole feature builds to, so it cannot be the
+// faintest thing on the screen.
+//
+// Terracotta on cream is the treatment the pitch document already uses, so the
+// two stay one object rather than drifting. The disc is what makes it legible;
+// the mark is what makes it the brand.
+const SEED_DISC_R = 21;
+const SEED_MARK_R = 17;
 
 function petalFor(coverage: number): { rx: number; ry: number; cy: number } | null {
   if (!Number.isFinite(coverage) || coverage <= 0) return null;
@@ -141,7 +156,7 @@ export function HealthFlower({
 
   const seedScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.09] });
   const seedOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.95, 0.62] });
-  const seedPx = size * (44 / BOX);
+  const seedPx = size * ((SEED_MARK_R * 2) / BOX);
 
   return (
     <View style={[styles.wrap, { width: size, height: size }]}>
@@ -164,6 +179,14 @@ export function HealthFlower({
             />
           );
         })}
+
+        {/* The cream ground for the seed, drawn inside the SVG so it sits above
+            the petals and below the mark. Only when bloomed: an empty disc on
+            an unfinished week would be a hole where the seed is going to be,
+            which is a promise the flower does not make. */}
+        {bloomed && (
+          <Circle cx={CENTRE} cy={CENTRE} r={SEED_DISC_R} fill={theme.background} opacity={0.94} />
+        )}
 
         {DIMENSIONS.map((d) => {
           const pos = LABEL_POS[d];
@@ -193,7 +216,7 @@ export function HealthFlower({
              an ES import of a .png has no type declaration here (expo-env.d.ts
              is generated and not ours to edit), so require is the form that
              actually resolves. Same call the splash and loading icons make. */
-          source={require('@/assets/images/mark.png')}
+          source={require('@/assets/images/mark-terracotta.png')}
           accessibilityLabel="All six dimensions covered this week"
           style={[
             styles.seed,
