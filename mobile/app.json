@@ -12,6 +12,9 @@
       "icon": {
         "light": "./assets/images/icon-light.png",
         "dark": "./assets/images/icon-dark.png"
+      },
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Selodía uses your microphone to let you log food, activity and body data hands-free."
       }
     },
     "android": {
@@ -79,7 +82,8 @@
           }
         }
       ],
-      "expo-image"
+      "expo-image",
+      "@livekit/react-native-expo-plugin"
     ],
     "experiments": {
       "typedRoutes": true,

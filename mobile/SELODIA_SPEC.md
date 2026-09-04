@@ -1517,9 +1517,9 @@ Supports the DOMS phenomenon and its cause: eccentric activity induces micro-inj
 
 # PART EIGHTEEN: VOICE FEATURE — CONVERSATIONAL VOICE MODE
 
-> **STATUS: Scoped and decided 1 September 2026. Research pass complete and the architectural gate closed on 4 September 2026 — see "Custom LLM: decided" below. Server-side build begun 4 September; mobile UI not started.**
+> **STATUS: Scoped and decided 1 September 2026. Research pass complete and the architectural gate closed on 4 September 2026 — see "Custom LLM: decided" below. Server side built 4 September (adapter, session route, agent configured, latency measured). Mobile foundation laid 4 September — SDK and native dependencies installed, config plugin and microphone permission added. Mobile UI not started.**
 >
-> Recorded as a complete design brief so nothing is lost or re-derived. Nothing here is built.
+> Recorded as a complete design brief so nothing is lost or re-derived. The interaction model, visual states, session management, privacy and onboarding sections below are still design only — none of that is built.
 
 ## What it is
 
@@ -1594,11 +1594,15 @@ A was chosen because it keeps the safety boundary in the database rather than mo
 
 Worth recording how it was actually found: the agent was still on Charlotte (`cjVigY5q...`) when it was first inspected on 4 September, despite being believed otherwise, and Freya existed only as `ELEVENLABS_VOICE_ID` in the environment. Reading the agent settled it. The agent config is the source of truth for the voice; the environment variable is what set it.
 
-**The agent's full configuration, applied 4 September** and verified by re-reading it afterwards: name Selodía, `llm` = `custom-llm` pointing at `https://api.selodia.app/v1/chat/completions`, `model_id` `selodia`, Freya's voice, `enable_auth` true, and the opening line "Good to have you here. You can talk to me or type, whatever feels most natural."
+**The agent's full configuration, applied 4 September** and verified by re-reading it afterwards: name Selodía, `llm` = `custom-llm` pointing at `https://api.selodia.app/v1`, `model_id` `selodia`, Freya's voice, `enable_auth` true, and the opening line "Good to have you here. You can talk to me or type, whatever feels most natural."
 
-`enable_auth` being on is the reason a session route exists at all: a bare agent ID no longer opens a conversation, so every session needs a signed URL minted server-side. Before it was enabled, anyone holding the agent ID could have started a conversation on the account.
+**`custom_llm.url` is the BASE, not the full path — corrected 2026-09-04.** This line previously recorded `https://api.selodia.app/v1/chat/completions`, which is wrong and was one of the four sequential blockers that cost most of a session. **ElevenLabs appends `/chat/completions` itself**, so giving it the full path produces `…/v1/chat/completions/chat/completions`, which 404s. The failure is nastier than an ordinary 404 because the request never reaches our route: there is no function log, nothing in Vercel, and the only symptom is a conversation that does nothing. Verified against the live agent on 4 September — it holds `https://api.selodia.app/v1`, and the spec, not the agent, was the stale copy.
 
-**Identity does not travel with the signed URL.** `get-signed-url` takes an `agent_id` and nothing else. Per-conversation data lives in `extra_body`, part of ConversationInitiationData, which the CLIENT sets when it opens the WebSocket - not whoever minted the URL. So the app supplies its own Supabase access token there, and the adapter reads it back out. Two separate proofs of identity: one to get the URL, one to speak.
+`enable_auth` being on is the reason a session route exists at all: a bare agent ID no longer opens a conversation, so every session needs a credential minted server-side. Before it was enabled, anyone holding the agent ID could have started a conversation on the account.
+
+**Which credential depends on the transport, and the phone needs the other one (2026-09-04).** `/api/voice/session` originally minted a **signed URL** from `get-signed-url`, which is correct for a WebSocket client. The React Native SDK is **LiveKit WebRTC** — the WebSocket path needs `AudioContext` and `AudioWorkletNode`, which React Native does not have — and it refuses rather than degrading: passing `signedUrl` throws outright. WebRTC sessions authenticate with a **conversation token** from `/v1/convai/conversation/token`, so the route now returns `{ token, conversation_id, agent_id }`. The signed-URL version was not a mistake; it was right for the harness that measured latency over WebSocket, and simply does not carry to a phone. The auth check, the `no-store` header, and the never-log rule are unchanged.
+
+**Identity does not travel with the session credential.** The token endpoint takes an `agent_id` and nothing else. Per-conversation data lives in `extra_body`, part of ConversationInitiationData, which the CLIENT sets when it opens the WebSocket - not whoever minted the URL. So the app supplies its own Supabase access token there, and the adapter reads it back out. Two separate proofs of identity: one to get the URL, one to speak.
 
 ## Interaction model
 
@@ -1653,12 +1657,22 @@ Four chips beneath, mic icon pulsing gently below. Users can complete the entire
 - Data export flags voice-logged entries.
 - Same pattern as photo logging.
 
-## Research pass required before building
+## The mobile SDK, and what it settles
 
-- Audit ElevenLabs British female voice options, shortlist 2–3 for Ruth to audition.
-- Confirm ElevenLabs Conversational AI supports Claude as the LLM (not forcing their own model).
+**`@elevenlabs/react-native` is the implementation, and there is no lighter alternative.** Checked on npm 4 September: version 1.2.26, published that same day, described as the SDK for the Agents Platform. It is not a text-to-speech wrapper — it re-exports the full conversation API (`ConversationProvider`, `useConversationControls`, `useConversationStatus`, `useConversationInput`, `useConversationMode`) and handles the transport, the microphone, playback, and **turn detection** (`onVadScore`, `onInterruption`), which is what the interaction model below assumes when it says ElevenLabs handles turn-taking.
+
+Two fields the design depends on exist by name, and were confirmed in the shipped types rather than assumed: **`customLlmExtraBody`**, which serialises to `custom_llm_extra_body` on the session-initiation event and is exactly what carries the Supabase access token to our adapter; and **`overrides.conversation.textOnly`**, the override the latency harness needed.
+
+**Hand-rolling WebSocket plus audio I/O was considered and is not viable.** React Native has no Web Audio API, so it would mean writing microphone capture, PCM framing, playback and silence detection by hand. The SDK exists precisely because that is not a weekend's work.
+
+**Native module implications — answered: EAS build, not EAS Update.** The SDK pulls in `@livekit/react-native` and `@livekit/react-native-webrtc`, both native. Voice therefore joins the native rebuild batch alongside `expo-image-picker`, `expo-notifications` and the Almanac animation library. Expo Go cannot run it; development builds are required, which is already how this project builds. `@livekit/react-native-expo-plugin` supplies the Expo config plugin, and `NSMicrophoneUsageDescription` had to be added to `ios.infoPlist`, which was empty — Android already carried `RECORD_AUDIO`.
+
+## Research pass — remaining
+
+- Audit ElevenLabs British female voice options, shortlist 2–3 for Ruth to audition. *(Partly overtaken: Freya is set on the agent and is the working choice.)*
+- ~~Confirm ElevenLabs Conversational AI supports Claude as the LLM~~ — **done 1 September**, and superseded anyway by the custom-LLM decision, which routes through our own pipeline rather than any model ElevenLabs selects.
 - Pricing at expected usage (short daily check-ins, 2–5 mins per session).
-- Native module implications — EAS build or EAS Update?
+- ~~Native module implications — EAS build or EAS Update?~~ — **answered above: EAS build.**
 
 ## Not yet decided
 
