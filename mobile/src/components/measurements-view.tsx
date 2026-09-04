@@ -4,6 +4,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { MonthYearPicker } from '@/components/month-year-picker';
 import { PersonalMetricsView } from '@/components/personal-metrics-view';
+import { QuickLogBar } from '@/components/quick-log-bar';
 import { ExportLink } from '@/components/data-export-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThenAndNowTable } from '@/components/then-and-now';
@@ -59,6 +60,8 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<MeasurementRow[]>([]);
+  // Bumped when something lands, so a reading logged here appears here.
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Stable primitive dep: a fresh Date each render would refire the effect.
   const weekKey = toLocalDateKey(weekStart);
@@ -88,13 +91,25 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
     };
     // weekKey is derived from weekStart; weekStart is intentionally not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekKey]);
+  }, [weekKey, reloadKey]);
 
   const dayRows = useMemo(() => buildWeekRows(daysOfWeek(weekStart), rows), [weekKey, rows]); // eslint-disable-line react-hooks/exhaustive-deps
   const anyReading = hasAnyReading(dayRows);
 
   return (
     <ThemedView style={styles.container}>
+      {/* Logging from the screen you are already looking at, the same bar the
+          Food and Activity tabs carry and behind it the same single pipeline:
+          text goes to ask-unflump exactly as the Chat composer's does. There is
+          no measurement parser here and no measurement route - the conversation
+          does the work, and a reading logged from this bar is indistinguishable
+          downstream from one typed in Chat.
+
+          No duration sheet on this one. That gate is specific to activity,
+          where a missing duration makes the calorie figure a fiction; a weight
+          is complete the moment it is stated. */}
+      <QuickLogBar kind="measurement" onLogged={() => setReloadKey((k) => k + 1)} />
+
       {/* What the latest reading means. Anchored to the latest reading, not to
           the displayed week, so it stays put while you step back through
           history - it is a statement about now, not about the week on screen. */}

@@ -40,7 +40,7 @@ export function QuickLogBar({
   kind,
   onLogged,
 }: {
-  kind: 'food' | 'activity';
+  kind: 'food' | 'activity' | 'measurement';
   // Fired after anything lands, so the view above can re-read itself. The point
   // of logging here is seeing it appear here.
   onLogged: () => void;
@@ -59,7 +59,11 @@ export function QuickLogBar({
   const [pendingActivity, setPendingActivity] = useState<string | null>(null);
 
   const placeholder =
-    kind === 'food' ? 'What did you eat?' : 'What did you do?';
+    kind === 'food'
+      ? 'What did you eat?'
+      : kind === 'activity'
+        ? 'What did you do?'
+        : 'Log a measurement...';
 
   // The gate in front of sending, not a second way to send.
   //

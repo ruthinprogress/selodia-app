@@ -42,6 +42,11 @@ export default function BodyLayout() {
       <Stack.Screen name="food" options={{ title: 'Food' }} />
       <Stack.Screen name="measurements" options={{ title: 'Measurements' }} />
       <Stack.Screen name="activity" options={{ title: 'Activity' }} />
+      {/* One screen for all six dimensions. No title: the screen is a full
+          bleed of that dimension's own colour with its name set large inside,
+          so a header would say the same word twice in two type sizes. The back
+          affordance is the swipe and the tab press, as everywhere else here. */}
+      <Stack.Screen name="[dimension]" options={{ headerTitle: '', headerTransparent: true }} />
     </Stack>
   );
 }

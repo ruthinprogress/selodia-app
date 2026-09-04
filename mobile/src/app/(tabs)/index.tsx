@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -51,6 +51,20 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const FALLBACK_ERROR = "Something went wrong on my end. Mind trying that again?";
 const NOT_SIGNED_IN_ERROR = "You're not signed in. Please sign in and try again.";
 
+// Same thread, message for message? Compared on the fields that are actually
+// rendered, so a re-signed image URL - which changes on every fetch - does not
+// register as a change and scroll the view.
+function sameThread(a: Message[], b: Message[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].role !== b[i].role) return false;
+    if (a[i].content !== b[i].content) return false;
+    if ((a[i].imagePath ?? null) !== (b[i].imagePath ?? null)) return false;
+    if ((a[i].foodLogId ?? null) !== (b[i].foodLogId ?? null)) return false;
+  }
+  return true;
+}
+
 export default function ChatScreen() {
   const router = useRouter();
   // Destructured here rather than read as chatScroll.ref inside the JSX:
@@ -90,32 +104,80 @@ export default function ChatScreen() {
   // nothing flashes on screen before it is known whether it belongs there.
   const [showChips, setShowChips] = useState<boolean | null>(null);
 
+  // Live values for the focus guard below, held in refs so the effect does not
+  // re-subscribe on every keystroke. Written in effects, read only inside
+  // callbacks - never during render.
+  const sendingRef = useRef(false);
+  const inputRef = useRef('');
+  useEffect(() => {
+    sendingRef.current = sending;
+  }, [sending]);
+  useEffect(() => {
+    inputRef.current = input;
+  }, [input]);
+
+  const loadThread = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('role, content, image_path, food_log_id')
+      .eq('source', 'chat')
+      .order('created_at', { ascending: true });
+    if (error || !data) return;
+
+    const rows: Message[] = data.map((m) => ({
+      role: m.role,
+      content: m.content,
+      imagePath: m.image_path ?? null,
+      foodLogId: m.food_log_id ?? null,
+    }));
+    // One batched signing call for the whole thread rather than one per
+    // message. A path that fails to sign just renders without its image, so a
+    // broken object can never cost the person their history.
+    const urls = await signCardImageUrls(
+      rows.map((r) => r.imagePath).filter((v): v is string => typeof v === 'string')
+    );
+    const next = attachImageUrls(rows, urls);
+
+    // Returns the PREVIOUS array unchanged when nothing moved. React then bails
+    // out of the re-render, which is the whole reason the scroll stays put: a
+    // new array of equivalent objects still re-renders, still fires
+    // onContentSizeChange, and that is what jumps the view to the bottom.
+    setMessages((prev) => (sameThread(prev, next) ? prev : next));
+  }, []);
+
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('role, content, image_path, food_log_id')
-        .eq('source', 'chat')
-        .order('created_at', { ascending: true });
-
-      if (!error && data) {
-        const rows: Message[] = data.map((m) => ({
-          role: m.role,
-          content: m.content,
-          imagePath: m.image_path ?? null,
-          foodLogId: m.food_log_id ?? null,
-        }));
-        // One batched signing call for the whole thread rather than one per
-        // message. A path that fails to sign just renders without its image,
-        // so a broken object can never cost the person their history.
-        const urls = await signCardImageUrls(
-          rows.map((r) => r.imagePath).filter((v): v is string => typeof v === 'string')
-        );
-        setMessages(attachImageUrls(rows, urls));
-      }
+      await loadThread();
       setLoadingHistory(false);
     })();
-  }, []);
+  }, [loadThread]);
+
+  // RE-READ THE THREAD WHENEVER CHAT COMES INTO VIEW.
+  //
+  // The Chat tab stays mounted in the tab navigator, so the mount-only load
+  // above ran once at app start and never again. Anything logged from the Food
+  // or Activity QuickLogBar wrote both turns correctly, with source 'chat', and
+  // then sat invisible until the app was restarted. The data was never lost;
+  // this screen simply never asked for it a second time.
+  //
+  // THREE THINGS IT MUST NOT DO, and each is guarded rather than hoped for:
+  //
+  //   1. Clobber an in-flight message. While `sending` is true the reply has
+  //      not been written yet, and refetching would replace the optimistic user
+  //      turn with a thread that does not contain it - the message would vanish
+  //      from under them mid-send.
+  //   2. Interrupt someone mid-sentence. Text in the composer means they are
+  //      using this screen right now, and a thread that reshuffles under a
+  //      half-typed message is worse than one that is briefly stale.
+  //   3. Jump the scroll. Handled in loadThread by returning the previous state
+  //      when nothing changed, which is the common case by far.
+  useFocusEffect(
+    useCallback(() => {
+      if (sendingRef.current) return;
+      if (inputRef.current.trim().length > 0) return;
+      void loadThread();
+    }, [loadThread])
+  );
 
   // WHETHER THE LANDING CHIPS BELONG ON SCREEN, re-checked every time Chat comes
   // into focus.

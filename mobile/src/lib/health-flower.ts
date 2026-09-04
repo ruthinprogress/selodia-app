@@ -51,6 +51,27 @@ export const DIMENSION_COLOUR: Record<Dimension, string> = {
   recovery: '#A89BAE',
 };
 
+// The "Explore this" button on each detail screen, and nothing else.
+//
+// The detail screen's own background is the TRUE petal colour with CHARCOAL
+// text on it, because cream on these pastels fails badly: measured, the six run
+// 1.79:1 to 2.59:1, which misses even the 3.0 allowed for large text. Charcoal
+// on the same unmodified colours runs 4.91:1 to 7.12:1. So the colour stays
+// exactly the petal's and the text changes, rather than the reverse.
+//
+// The button is the one place cream is used, so it needs a ground dark enough
+// to carry it. These are each petal darkened until cream clears 5.5:1 - margin
+// over the 4.5 threshold rather than sitting on it, because this app already
+// rejected 4.39:1 as too low for a 40+ reader.
+export const DIMENSION_DEEP: Record<Dimension, string> = {
+  strength: '#895544',
+  cardio: '#596553',
+  flexibility: '#795B4B',
+  balance: '#4B675E',
+  bone: '#715E49',
+  recovery: '#675F6B',
+};
+
 export const DIMENSION_LABEL: Record<Dimension, string> = {
   strength: 'Strength',
   cardio: 'Cardio',
@@ -61,6 +82,32 @@ export const DIMENSION_LABEL: Record<Dimension, string> = {
 };
 
 export const WEEKLY_TARGET = 200;
+
+// Valid-or-null, never valid-or-guess: this comes off a URL segment, and an
+// unrecognised value must not fall through to a default that quietly shows
+// somebody the wrong dimension's week.
+export function coerceDimension(v: unknown): Dimension | null {
+  return typeof v === 'string' && (DIMENSIONS as string[]).includes(v) ? (v as Dimension) : null;
+}
+
+// The column a dimension's contribution lives in. Exported because the detail
+// screen filters on it and must not re-derive the mapping.
+export const COVER_COLUMN: Record<Dimension, string> = {
+  strength: 'cover_strength',
+  cardio: 'cover_cardio',
+  flexibility: 'cover_flexibility',
+  balance: 'cover_balance',
+  bone: 'cover_bone',
+  recovery: 'cover_recovery',
+};
+
+// What the detail screen says when a dimension has nothing in it this week.
+// Ruth's wording. It states the fact and stops: no prompt to do more, no
+// encouragement, nothing that turns an empty week into a task. "That's useful
+// to know too" is the whole argument of the app in six words.
+export function emptyDimensionLine(d: Dimension): string {
+  return `Nothing this week for ${DIMENSION_LABEL[d].toLowerCase()}. That's useful to know too.`;
+}
 
 // One activity row as the flower needs it. Every field nullable because every
 // column is: a row written before the coverage migration has six nulls, and so

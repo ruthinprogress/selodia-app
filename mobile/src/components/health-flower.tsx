@@ -94,12 +94,32 @@ const LABEL_POS: Record<Dimension, { x: number; y: number; anchor: 'start' | 'mi
   recovery: { x: 42, y: 70, anchor: 'end' },
 };
 
+// Where each dimension's touch target sits, and how big it is.
+//
+// SIX 44pt TARGETS CANNOT FIT AROUND A SMALL CIRCLE. At the petals' own radius
+// the spacing between neighbours is about 32pt, so 44pt targets would overlap
+// and a tap between two would be a coin toss. Pushed out to 55 units the
+// spacing is 50pt, which fits a 49pt target with room to spare.
+//
+// That radius does two jobs at once: the circle spans radius 28 to 82, which
+// covers the outer half of a full petal, the whole of a small one, AND the
+// category label sitting at about 80. One target per dimension serves the petal
+// and its label together, which is why no second row of labels was added.
+//
+// CRITICALLY, THESE ARE DRAWN REGARDLESS OF COVERAGE. A dimension at 0% has no
+// petal, and that is exactly the dimension somebody is most likely to want to
+// look at. The target is there even when the drawing is not.
+const HIT_RADIUS_FROM_CENTRE = 55;
+const HIT_R = 27;
+
 export function HealthFlower({
   coverage,
   size = 220,
+  onSelectDimension,
 }: {
   coverage: FlowerCoverage;
   size?: number;
+  onSelectDimension?: (d: Dimension) => void;
 }) {
   const theme = useTheme();
   const bloomed = allDimensionsFull(coverage);
@@ -204,6 +224,21 @@ export function HealthFlower({
             </SvgText>
           );
         })}
+        {/* Touch targets, drawn last so they sit above everything and take the
+            tap. Transparent rather than opacity 0: a zero-opacity fill still
+            paints, and this must never tint the petal underneath it. */}
+        {onSelectDimension &&
+          DIMENSIONS.map((d, i) => (
+            <Circle
+              key={`hit-${d}`}
+              cx={CENTRE}
+              cy={CENTRE - HIT_RADIUS_FROM_CENTRE}
+              r={HIT_R}
+              fill="transparent"
+              onPress={() => onSelectDimension(d)}
+              transform={`rotate(${i * 60} ${CENTRE} ${CENTRE})`}
+            />
+          ))}
       </Svg>
 
       {/* The seed, and only when every dimension is genuinely full. Laid over

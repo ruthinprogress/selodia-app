@@ -14,6 +14,7 @@ import { resolveTDEE } from '@/lib/body-metrics';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
 import { HealthFlower } from '@/components/health-flower';
 import { hydrationLabel, hydrationToday } from '@/lib/hydration';
+import { formatLogDate, toLocalDateKey } from '@/lib/week';
 import {
   findWeekAgoReading,
   formatWeeklyDelta,
@@ -45,6 +46,10 @@ import { supabase } from '@/lib/supabase';
 type Metric = { value: number | null; delta: string | null };
 type OverviewData = {
   hasMeasurement: boolean;
+  // When the newest of the three body figures was taken. Null when there are no
+  // readings at all. The three can come from different days, so this is the
+  // latest of them rather than a date that is true of all three.
+  bodyAsOf: string | null;
   personalLine: string;
   weight: Metric;
   muscle: Metric;
@@ -133,6 +138,30 @@ export function OverviewPanel() {
 
       const rows = (measurements ?? []) as MeasurementRow[];
       const latest = rows[0] ?? null;
+
+      // THE LAST KNOWN VALUE FOR EACH FIELD, NOT THE LAST ROW'S (2026-09-04).
+      //
+      // Rows are ordered newest first, and a row can carry one reading without
+      // the others: a scale that only weighs writes weight_kg and leaves body
+      // fat null. Reading all three off rows[0] therefore showed dashes for
+      // numbers the app already had - Ruth's 3 Sept row has a body fat and no
+      // weight, so the card said "-" while 55 kg sat one row down.
+      //
+      // Each field now finds its own most recent non-null value. The
+      // consequence, and it is a real one: the three figures can come from
+      // different days, which is why the date beneath is the date of the
+      // NEWEST of them and is labelled as the latest reading rather than as
+      // the date of all three.
+      const lastWith = <K extends keyof MeasurementRow>(key: K) =>
+        rows.find((r) => r[key] != null) ?? null;
+      const wRow = lastWith('weight_kg');
+      const mRow = lastWith('muscle_kg');
+      const fRow = lastWith('body_fat_pct');
+      const bodyAsOf = [wRow, mRow, fRow]
+        .filter((r): r is MeasurementRow => r != null)
+        .map((r) => r.measured_at)
+        .sort()
+        .pop() ?? null;
       const weekAgo = latest ? findWeekAgoReading(rows, latest.measured_at) : null;
       const refGap = latest && weekAgo ? gapDays(latest.measured_at, weekAgo.measured_at) : null;
 
@@ -181,18 +210,19 @@ export function OverviewPanel() {
       setData({
         hasMeasurement: latest != null,
         personalLine: isTrueDayOne ? PERSONAL_LINE_DAY_ONE : pickDailyPersonalLine(),
+        bodyAsOf,
         weight: {
-          value: latest?.weight_kg ?? null,
-          delta: formatWeeklyDelta(weeklyDelta(latest?.weight_kg ?? null, weekAgo?.weight_kg ?? null), refGap),
+          value: wRow?.weight_kg ?? null,
+          delta: formatWeeklyDelta(weeklyDelta(wRow?.weight_kg ?? null, weekAgo?.weight_kg ?? null), refGap),
         },
         muscle: {
-          value: latest?.muscle_kg ?? null,
-          delta: formatWeeklyDelta(weeklyDelta(latest?.muscle_kg ?? null, weekAgo?.muscle_kg ?? null), refGap),
+          value: mRow?.muscle_kg ?? null,
+          delta: formatWeeklyDelta(weeklyDelta(mRow?.muscle_kg ?? null, weekAgo?.muscle_kg ?? null), refGap),
         },
         bodyFat: {
-          value: latest?.body_fat_pct ?? null,
+          value: fRow?.body_fat_pct ?? null,
           delta: formatWeeklyDelta(
-            weeklyDelta(latest?.body_fat_pct ?? null, weekAgo?.body_fat_pct ?? null),
+            weeklyDelta(fRow?.body_fat_pct ?? null, weekAgo?.body_fat_pct ?? null),
             refGap
           ),
         },
@@ -238,63 +268,107 @@ export function OverviewPanel() {
         </ThemedText>
       </ThemedView>
 
-      <Section id="body.food" title="Food" href="/body/food">
-        <View style={styles.figures}>
-          <SpotlightTarget id="overview.calories">
-            <Figure
-              value={String(Math.round(data.todayKcal))}
-              unit="kcal"
-              of={data.calorieTargetKcal != null ? String(Math.round(data.calorieTargetKcal)) : null}
-            />
-          </SpotlightTarget>
-          <SpotlightTarget id="overview.protein">
-            <Figure value={String(Math.round(data.todayProtein))} unit="g protein" of={data.proteinTargetLabel} />
-          </SpotlightTarget>
-        </View>
-      </Section>
+      {/* THREE SQUARES, ONE ROW. Replaces three stacked full-width cards
+          (2026-09-04). The screen does not scroll, so vertical space is the
+          scarcest thing on it: the old cards spent about 270px saying what
+          these say in about 110, and the flower could not fit underneath them.
+          Equal width, equal height, so the row reads as one object rather than
+          three competing ones. */}
+      <View style={styles.squareRow}>
+        <Square id="body.food" title="Food" href="/body/food">
+          {data.todayKcal === 0 && data.todayProtein === 0 ? (
+            /* One line rather than two zeros stacked. Nothing was logged, and
+               two separate noughts make more of that than it deserves. */
+            <ThemedText type="small" themeColor="textSecondary">
+              0 kcal · 0g
+            </ThemedText>
+          ) : (
+            <>
+              <SpotlightTarget id="overview.calories">
+                <Stat value={String(Math.round(data.todayKcal))} unit="kcal" big />
+              </SpotlightTarget>
+              <SpotlightTarget id="overview.protein">
+                <Stat value={String(Math.round(data.todayProtein))} unit="g protein" />
+              </SpotlightTarget>
+            </>
+          )}
+        </Square>
 
-      <Section id="body.measurements" title="Body" href="/body/measurements">
-        <SpotlightTarget id="overview.stats">
-          <View style={styles.figures}>
-            <Figure value={fmt(data.weight.value, 'kg')} note={data.hasMeasurement ? data.weight.delta : 'No readings yet'} />
-            {/* Hidden rather than dashed, for the same reason as body fat below:
-                a scale that only weighs never supplies it, and "—" under a
-                "muscle" label reads as a reading that failed. */}
-            {data.muscle.value != null && data.muscle.value > 0 ? (
-              <Figure
-                value={fmt(data.muscle.value, 'kg')}
-                unit="muscle"
-                note={data.muscle.delta}
-              />
-            ) : null}
-            {/* Omitted entirely without a bioimpedance reading. Plenty of scales
-                weigh and nothing more, and a dash where a percentage should be
-                reads as a missing measurement rather than a scale that never
-                takes it. */}
-            {data.bodyFat.value != null && data.bodyFat.value > 0 ? (
-              <Figure
-                value={`${round1(data.bodyFat.value)}%`}
-                unit="body fat"
-                note={data.bodyFat.delta}
-              />
-            ) : null}
-          </View>
-        </SpotlightTarget>
-      </Section>
+        {/* ALL THREE ALWAYS SHOW, dashed where the latest reading did not carry
+            that value (2026-09-04, Ruth's call).
 
-      <Section id="body.activity" title="Activity" href="/body/activity">
-        <ThemedText type="smallBold">
-          {data.activityCount === 0
-            ? 'Nothing logged yet'
-            : `${data.activityCount} ${data.activityCount === 1 ? 'session' : 'sessions'}, ${data.activityMinutes} min`}
-        </ThemedText>
-      </Section>
+            This reverses an earlier decision, and the earlier reasoning is kept
+            visible rather than deleted: muscle and body fat used to be omitted
+            entirely without a bioimpedance reading, because plenty of scales
+            weigh and nothing more, and a dash under "muscle" can read as a
+            reading that FAILED rather than one the scale never takes. The
+            counter-argument won: a card that changes shape depending on which
+            fields exist is harder to scan than one with three fixed slots, and
+            a dash is honest about the gap rather than hiding it.
+
+            METRIC ONLY, FOR NOW. kg straight from the column. The unit
+            preference toggle - metric, imperial, stones - is a spec build item
+            (Part One, Internationalisation), and when it lands these values
+            must pass through a conversion utility before display rather than
+            being formatted here. One place converts; this place renders. */}
+        <Square id="body.measurements" title="Body" href="/body/measurements">
+          <SpotlightTarget id="overview.stats">
+            {data.bodyAsOf == null ? (
+              /* Nothing has ever been recorded. ONE dash, not three: three
+                 says three separate readings failed, when in fact none has
+                 been taken. */
+              <ThemedText type="small" themeColor="textSecondary">
+                {'—'}
+              </ThemedText>
+            ) : (
+              <>
+                <Stat value={fmt(data.weight.value, '')} unit="kg" />
+                <Stat value={fmt(data.muscle.value, '')} unit="kg muscle" />
+                <Stat
+                  value={data.bodyFat.value != null ? `${round1(data.bodyFat.value)}` : '—'}
+                  unit="% body fat"
+                />
+                {/* Only when the reading is not from today. A date on today's
+                    own numbers is noise; a date on Tuesday's is the difference
+                    between a current reading and an old one. */}
+                {!isToday(data.bodyAsOf) ? (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.asOf}>
+                    {formatLogDate(new Date(data.bodyAsOf))}
+                  </ThemedText>
+                ) : null}
+              </>
+            )}
+          </SpotlightTarget>
+        </Square>
+
+        {/* Steps are specified for this square and are NOT here, because
+            nothing in the app reads them yet: step-permission.ts asks for the
+            permission and no code ever calls getStepCount or readRecords. A
+            zero would be a claim that someone had not moved. */}
+        <Square id="body.activity" title="Activity" href="/body/activity">
+          {data.activityCount === 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Nothing logged yet
+            </ThemedText>
+          ) : (
+            <>
+              <Stat
+                value={String(data.activityCount)}
+                unit={data.activityCount === 1 ? 'session' : 'sessions'}
+              />
+              <Stat value={String(data.activityMinutes)} unit="min" />
+            </>
+          )}
+        </Square>
+      </View>
 
       {/* Hydration has no header because it is not a view to go into. It is the
-          one thing on this screen you can DO, so it sits inline as an action. */}
+          one thing on this screen you can DO, so it sits inline as an action -
+          now a single strip rather than a card, for the same reason the squares
+          replaced the tall sections. */}
       <SpotlightTarget id="overview.water">
         <ThemedView type="backgroundElement" style={styles.hydration}>
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hydrationLabel}>
             {hydrationLabel(data.hydrationMl)}
           </ThemedText>
           <HydrationQuickTap
@@ -316,9 +390,22 @@ export function OverviewPanel() {
           holds its height either way, so nothing below it moves when the data
           lands. */}
       <View style={styles.weekSection}>
-        <ThemedText type="title">This week</ThemedText>
+        {/* Smaller than "Today" (2026-09-04). At title size it dominated the
+            lower half of the screen; at subtitle it still reads as the second
+            section without shouting over the flower it introduces. */}
+        <ThemedText type="subtitle">This week</ThemedText>
         <View style={styles.flowerWrap}>
-          {flower.coverage && <HealthFlower coverage={flower.coverage} size={FLOWER_SIZE} />}
+          {flower.coverage && (
+            <HealthFlower
+              coverage={flower.coverage}
+              size={FLOWER_SIZE}
+              // Typed-routes form: the pathname is the file, the segment is a
+              // param. Building the string by hand would not typecheck.
+              onSelectDimension={(d) =>
+                router.push({ pathname: '/body/[dimension]', params: { dimension: d } })
+              }
+            />
+          )}
         </View>
       </View>
     </View>
@@ -328,7 +415,10 @@ export function OverviewPanel() {
 // The heading is the link. Wrapped in its spotlight target so "where do I see my
 // food" can pulse the heading that goes there, which is the first time an
 // Overview element has had a real destination to point at.
-function Section({
+// One of the three squares. The label and the chevron sit on one line at the
+// top, the numbers beneath, and the whole thing is the link - a separate "see
+// more" control would be a second thing to explain.
+function Square({
   id,
   title,
   href,
@@ -340,14 +430,8 @@ function Section({
   children: React.ReactNode;
 }) {
   const theme = useTheme();
-
-  // The card ground is the ELEVATED CREAM element surface, not brand sand.
-  // theme.ts records why: charcoal on sand is comfortable at 9.99:1, but the
-  // secondary text these cards carry - units, week deltas - drops to 4.08:1 on
-  // it, under the AA floor. Every figure here has a secondary line beneath it,
-  // so sand would put the small grey text below AA on all three cards at once.
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" style={styles.square}>
       <SpotlightTarget id={id} onActivate={() => router.push(href)}>
         <Pressable
           onPress={() => router.push(href)}
@@ -356,48 +440,40 @@ function Section({
           style={({ pressed }) => pressed && styles.pressed}
         >
           <View style={styles.headerRow}>
-            <ThemedText type="smallBold">{title}</ThemedText>
-            {/* accentDeep, not accent. Full-strength terracotta on a sand card
-                is 2.43:1, under even the 3:1 floor a non-text control needs;
-                the deeper tone is 4.40:1 and reads as the same terracotta. */}
-            <Ionicons name="chevron-forward" size={22} color={theme.accentDeep} />
+            <ThemedText type="small" themeColor="textSecondary">
+              {title}
+            </ThemedText>
+            {/* accentDeep, not accent. Full-strength terracotta on sand is
+                2.43:1, under even the 3:1 a non-text control needs; the deeper
+                tone is 4.76:1 and reads as the same terracotta. */}
+            <Ionicons name="chevron-forward" size={16} color={theme.accentDeep} />
           </View>
         </Pressable>
       </SpotlightTarget>
-      {children}
+      <View style={styles.squareBody}>{children}</View>
     </ThemedView>
   );
 }
 
-function Figure({
-  value,
-  unit,
-  of,
-  note,
-}: {
-  value: string;
-  unit?: string;
-  // A label rather than a number: a calculated protein target is a span
-  // ("81-97"), and only a target someone chose themselves is a single figure.
-  of?: string | null;
-  note?: string | null;
-}) {
+// A number and its unit on one line. Compact by necessity: three of these have
+// to sit inside a square about a third of the screen wide.
+function Stat({ value, unit, big }: { value: string; unit: string; big?: boolean }) {
   return (
-    <View style={styles.figure}>
-      <ThemedText type="title">{value}</ThemedText>
-      {unit ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {of != null ? `${unit} of ${of}` : unit}
-        </ThemedText>
-      ) : null}
-      {note ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {note}
-        </ThemedText>
-      ) : null}
+    <View style={styles.stat}>
+      <ThemedText type="smallBold" style={big ? styles.statValueBig : styles.statValue}>
+        {value}
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.statUnit} numberOfLines={1}>
+        {unit}
+      </ThemedText>
     </View>
   );
 }
+
+// Same calendar day in LOCAL time, which is the only comparison that means
+// anything to somebody looking at their own day.
+const isToday = (iso: string): boolean =>
+  toLocalDateKey(new Date(iso)) === toLocalDateKey(new Date());
 
 const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${round1(v)}${unit}`);
 
@@ -417,7 +493,48 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    gap: Spacing.four,
+    // Tightened from Spacing.four (2026-09-04). Six children means five gaps,
+    // and 24 apiece was 120px of a 591px budget on a screen that cannot
+    // scroll. 16 buys back 40px, which is most of a flower.
+    gap: Spacing.three,
+  },
+  squareRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  square: {
+    flex: 1,
+    // Equal width comes from flex; equal HEIGHT has to be said, or a square
+    // with two numbers would sit shorter than one with three and the row would
+    // read as three things instead of one.
+    minHeight: 104,
+    borderRadius: Spacing.three,
+    padding: Spacing.two,
+    gap: Spacing.one,
+  },
+  squareBody: {
+    gap: Spacing.half,
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+  },
+  statValue: {
+    fontSize: 15,
+  },
+  statValueBig: {
+    fontSize: 22,
+  },
+  asOf: {
+    fontSize: 10,
+    marginTop: Spacing.half,
+  },
+  statUnit: {
+    fontSize: 11,
+    // Shrinks before the number does. In a square a third of the screen wide,
+    // "% body fat" is the part that can afford to be clipped; the figure is not.
+    flexShrink: 1,
   },
   personalLine: {
     borderLeftWidth: 2,
@@ -442,10 +559,19 @@ const styles = StyleSheet.create({
   figure: {
     minWidth: 0,
   },
+  // A strip, not a card. One line: the reading on the left, the taps on the
+  // right, everything on one baseline.
   hydration: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderRadius: Spacing.three,
-    padding: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
     gap: Spacing.two,
+  },
+  hydrationLabel: {
+    flexShrink: 1,
   },
   pressed: {
     opacity: 0.7,
