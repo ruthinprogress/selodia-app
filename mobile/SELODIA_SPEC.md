@@ -1558,11 +1558,17 @@ A was chosen because it keeps the safety boundary in the database rather than mo
 
 **Latency is the known risk of this path.** `ask-unflump` runs claude-sonnet-5 over a large prompt — recent food, activity, measurements, health context, the full safety block. That is built for a chat window, not a spoken turn, and the adapter inherits it. The Haiku 4.5 recommendation above is about latency, and it does not apply once the request routes through our own pipeline. Measure a real spoken turn before assuming this is usable.
 
-### The voice must be set explicitly
+### The voice, and the agent it lives on
 
-The agent's dashboard default is **Charlotte**. Selodía's voice is **Freya Selodía**, held as `ELEVENLABS_VOICE_ID`, and it has to be passed per conversation rather than relied on from the agent.
+**Freya Selodía is set directly on the agent** (`conversation_config.tts.voice_id`), so no per-conversation override is needed and none is sent. An earlier draft of this section warned that overrides are silently dropped unless enabled in the agent's security settings - true, but no longer relevant, because the voice is now the agent's own rather than something imposed per call.
 
-**This requires a dashboard change that cannot be made from code:** per-conversation overrides are ignored unless they are enabled in the agent's **security settings**. With them off, `conversation_config_override.tts.voice_id` is silently dropped and the conversation speaks as Charlotte with no error anywhere. Check the toggle before concluding the override does not work.
+Worth recording how it was actually found: the agent was still on Charlotte (`cjVigY5q...`) when it was first inspected on 4 September, despite being believed otherwise, and Freya existed only as `ELEVENLABS_VOICE_ID` in the environment. Reading the agent settled it. The agent config is the source of truth for the voice; the environment variable is what set it.
+
+**The agent's full configuration, applied 4 September** and verified by re-reading it afterwards: name Selodía, `llm` = `custom-llm` pointing at `https://api.selodia.app/v1/chat/completions`, `model_id` `selodia`, Freya's voice, `enable_auth` true, and the opening line "Good to have you here. You can talk to me or type, whatever feels most natural."
+
+`enable_auth` being on is the reason a session route exists at all: a bare agent ID no longer opens a conversation, so every session needs a signed URL minted server-side. Before it was enabled, anyone holding the agent ID could have started a conversation on the account.
+
+**Identity does not travel with the signed URL.** `get-signed-url` takes an `agent_id` and nothing else. Per-conversation data lives in `extra_body`, part of ConversationInitiationData, which the CLIENT sets when it opens the WebSocket - not whoever minted the URL. So the app supplies its own Supabase access token there, and the adapter reads it back out. Two separate proofs of identity: one to get the URL, one to speak.
 
 ## Interaction model
 
