@@ -47,6 +47,14 @@ The distinction she drew is the whole of it. Configuration evidence says what *s
 
 This is adjacent to "will not decide on authority she cannot check," but it is pointed at proof rather than reasoning: not *explain it until I can evaluate it*, but *that is the wrong kind of proof for a thing this hard to undo*. It also runs in her own direction, not only outward — she carries unfinished work forward as Queued or Outstanding rather than letting a close-out record only what went well.
 
+**Accepts a substandard state on purpose, and writes the expiry condition into the record at the same moment.** Told that a spoken turn measured ~4.4 seconds, she neither waved it through nor stopped to fix it. She dictated a spec note that did four things at once: stated the number, stated why it is tolerable *for this specific use* (“the use case is logging hands-free, not real-time conversation”), stated flatly that it is **“not permanently acceptable”**, and attached a figure to a named future event — *“under 3s before App Store submission.”* (4 September 2026.)
+
+The move is the fourth part. A known-imperfect state that is merely accepted becomes permanent by default, because nothing in the record ever says when it stopped being acceptable — and the person best placed to notice is the one who accepted it, at the moment they accept it, when the reasoning is still fresh and free to write down. Binding it to App Store submission rather than a date is what gives it teeth: a date slips quietly, a gate does not.
+
+Note what she did *not* do, which is the other half. She did not let the compromise expand to cover adjacent things: the same session’s optimisation work carried a standing instruction that **“the safety block stays untouched”**, repeated unprompted across three separate rounds of latency work. So the tolerance is scoped as tightly as the acceptance — this number, for this reason, until this event, and nothing else moves.
+
+Adjacent to “attaches the abort condition to the authorisation,” and pointed differently. That pattern governs work whose *soundness* is uncertain, and names what would make it wrong. This one governs work already known to be below standard, and names what would make it no longer tolerable. Both are the same underlying instinct — write the limit down while writing it down is still cheap.
+
 ## How this gets built
 
 At natural session-close points, add any new decision moment that reveals a genuine pattern — not every decision, only ones that add real signal about how Ruth thinks, distinct from the specific product or process choice itself.
