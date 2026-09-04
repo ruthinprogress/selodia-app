@@ -133,7 +133,10 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ message: utterance }),
+      // `voice: true` is what lets the pipeline defer the food/activity parse
+      // to after the response. It changes nothing about the reply or the safety
+      // classification - only which work has to finish before we can speak.
+      body: JSON.stringify({ message: utterance, voice: true }),
     });
 
     if (res.status === 401) {

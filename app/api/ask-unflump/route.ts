@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK } from '../../lib/app-structure';
@@ -68,8 +68,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { message, cardImageBase64, cardMediaType, entryId, entryType } =
+  const { message, cardImageBase64, cardMediaType, entryId, entryType, voice } =
     await request.json();
+  // A spoken turn, routed in by the custom-LLM adapter. It changes nothing about
+  // what is said or what safety runs - only WHEN the parse happens. See the
+  // logging branch below.
+  const isVoice = voice === true;
   console.log('CHAT REQUEST RECEIVED:', message);
 
   // "Ask about this" (item 30): the tapped entry's card rides this turn as an
@@ -718,8 +722,32 @@ ${SAFETY_PROMPT_BLOCK}`;
     }
   }
 
+  // THE PARSE IS A SECOND MODEL CALL, AND ON A SPOKEN TURN IT IS NOT ON THE
+  // CRITICAL PATH.
+  //
+  // A logging turn runs Sonnet for the reply and then a separate Haiku call to
+  // parse the food or activity. In text that is fine - the toast and the
+  // itemised table both need the parsed row before the response is useful. In
+  // VOICE nothing needs it: there is no toast, no table, and the spoken answer
+  // is already written. Measured end to end at ~5s against an ElevenLabs
+  // cascade timeout of 4s, so removing a whole model call from the wait is the
+  // single biggest thing available.
+  //
+  // `after` rather than a bare floating promise: on serverless the function can
+  // be frozen the moment the response is sent, so a fire-and-forget parse would
+  // simply never finish. after() is the platform's supported way to keep it
+  // alive, and it still runs if the response errored.
+  //
+  // WHAT THIS COSTS, stated plainly: on a voice turn the app no longer knows
+  // whether the parse succeeded before it answers, so it cannot tell the person
+  // it failed. The honesty note is therefore suppressed for deferred turns
+  // rather than left to claim "that didn't save" about something still saving.
+  // A voice log that genuinely fails is now silent. That is a real regression
+  // in honesty, accepted only because the alternative is voice not working.
+  let deferredLog = false;
+
   if (result.logIntent === 'food' || result.logIntent === 'activity') {
-    try {
+    const runLog = async () => {
       if (result.logIntent === 'food') {
         const entry = await logFoodFromText(supabase, user.id, message);
         saved = { kind: 'food', summary: foodSaveSummary(entry) };
@@ -761,8 +789,26 @@ ${SAFETY_PROMPT_BLOCK}`;
           correctionNote = needDurationNote();
         }
       }
-    } catch (err) {
-      console.log('ASK-UNFLUMP SILENT LOG FAILED:', err instanceof Error ? err.message : err);
+    };
+
+    if (isVoice) {
+      deferredLog = true;
+      after(async () => {
+        try {
+          await runLog();
+        } catch (err) {
+          console.log(
+            'ASK-UNFLUMP DEFERRED LOG FAILED:',
+            err instanceof Error ? err.message : err
+          );
+        }
+      });
+    } else {
+      try {
+        await runLog();
+      } catch (err) {
+        console.log('ASK-UNFLUMP SILENT LOG FAILED:', err instanceof Error ? err.message : err);
+      }
     }
   }
 
@@ -869,7 +915,11 @@ ${SAFETY_PROMPT_BLOCK}`;
   // can explain WHY nothing happened rather than merely reporting that nothing
   // did. The honesty note is the fallback for every turn that had no correction
   // in it at all.
-  const honestyNote = correctionNote === null ? unsavedNote(attempt) : null;
+  // Suppressed on a deferred turn: the parse has not run yet, so "that didn't
+  // save" would be a statement about something still in progress - the exact
+  // false claim this note exists to prevent, pointing the other way.
+  const honestyNote =
+    correctionNote === null && !deferredLog ? unsavedNote(attempt) : null;
 
   const trailingLines = [correctionNote, honestyNote].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
