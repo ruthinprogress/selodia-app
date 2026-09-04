@@ -1503,7 +1503,7 @@ Supports the DOMS phenomenon and its cause: eccentric activity induces micro-inj
 
 # PART EIGHTEEN: VOICE FEATURE — CONVERSATIONAL VOICE MODE
 
-> **STATUS: Scoped and decided 1 September 2026. Research pass required before any build work. Dedicated build session needed with device testing time built in.**
+> **STATUS: Scoped and decided 1 September 2026. Research pass complete and the architectural gate closed on 4 September 2026 — see "Custom LLM: decided" below. Server-side build begun 4 September; mobile UI not started.**
 >
 > Recorded as a complete design brief so nothing is lost or re-derived. Nothing here is built.
 
@@ -1528,7 +1528,7 @@ The tap/long-press split is what makes one mic icon carry both without a mode pi
 - **ElevenLabs Conversational AI** — voice layer, STT, TTS, session management.
 - **Claude** — existing LLM pipeline, unchanged.
 - ElevenLabs handles STT + TTS, Claude handles the thinking. The existing Anthropic pipeline stays as the brain; ElevenLabs is the voice layer only.
-- **Apply for the ElevenLabs Startup Grant before building** — 33M characters free for 12 months, rolling application, decisions within a week. Apply from hello@selodia.app.
+- **ElevenLabs Startup Grant — APPLIED 3 September 2026** from hello@selodia.app. 33M characters free for 12 months, rolling application, decisions within a week. Outcome pending; the build does not wait on it, but usage before a decision is billable at standard rates.
 
 ### Claude compatibility — CONFIRMED against the ElevenLabs docs, 1 September 2026
 
@@ -1543,7 +1543,26 @@ The tap/long-press split is what makes one mic icon carry both without a mode pi
 - **Dashboard-selected Claude** is the simple path — but the agent then calls Claude *directly*, which means **the app's own `ask-unflump` route does not run**. Everything that route carries goes with it: the safety classifier and its escalation state machine, the classify tool, food/activity/measurement logging, corrections, the allergy prompt block, the Almanac save flow. A voice conversation on this path is not the same product as a text one.
 - **Custom LLM** points ElevenLabs at an HTTPS endpoint of ours. It requires an **OpenAI-compatible shape** (`/v1/chat/completions` or `/v1/responses`), so it would mean an adapter route in front of the existing pipeline rather than pointing straight at `ask-unflump`. That is real work, and it is what preserves "the existing Anthropic pipeline stays as the brain".
 
-**This is now the open question in place of the one just closed.** Part Twelve's safety branching is not optional, and a voice mode that quietly bypasses it would be the most consequential regression this app could ship. Resolve which path before any build.
+### Custom LLM: decided 4 September 2026
+
+**Custom LLM, not dashboard-selected Claude.** Part Twelve's safety branching is not optional, and a voice mode that quietly bypassed it would be the most consequential regression this app could ship. Dashboard-selected Claude would have done exactly that: the agent calls Claude directly, `ask-unflump` never runs, and the safety classifier, the escalation state machine, food/activity/measurement logging, corrections, the allergy block and the Almanac flow all go with it. A voice conversation would not have been the same product as a text one.
+
+**How identity reaches the adapter, confirmed against the ElevenLabs docs on 4 September.** Their platform sends OpenAI-compatible requests to `/v1/chat/completions`, expects Server-Sent Events back, and carries per-conversation data in a single field: `elevenlabs_extra_body`, populated from `ConversationInitiationData.extra_body` when the app opens the session. **Authentication is agent-level, not conversation-level** — there is no per-conversation header — so the identity has to travel in that body field or not at all.
+
+Two ways to use it, and the choice was a real one:
+
+- **A (chosen).** The app passes the person's own Supabase access token through `extra_body`. The adapter forwards it as the `Authorization` header to the existing pipeline, which authenticates exactly as it does for a typed message. **RLS stays in the enforcement path**, which is the whole point.
+- **B (rejected).** Mint a short-lived token of our own, verify it in the adapter, then act through `SUPABASE_SERVICE_ROLE_KEY`. ElevenLabs never sees a Supabase credential — but the adapter then runs as service role and **bypasses RLS entirely**, so every query would have to scope itself by `user_id` correctly, forever, and one missed filter is a cross-user data leak.
+
+A was chosen because it keeps the safety boundary in the database rather than moving it into application code. The cost is real and stated: a short-lived Supabase access token transits ElevenLabs' infrastructure.
+
+**Latency is the known risk of this path.** `ask-unflump` runs claude-sonnet-5 over a large prompt — recent food, activity, measurements, health context, the full safety block. That is built for a chat window, not a spoken turn, and the adapter inherits it. The Haiku 4.5 recommendation above is about latency, and it does not apply once the request routes through our own pipeline. Measure a real spoken turn before assuming this is usable.
+
+### The voice must be set explicitly
+
+The agent's dashboard default is **Charlotte**. Selodía's voice is **Freya Selodía**, held as `ELEVENLABS_VOICE_ID`, and it has to be passed per conversation rather than relied on from the agent.
+
+**This requires a dashboard change that cannot be made from code:** per-conversation overrides are ignored unless they are enabled in the agent's **security settings**. With them off, `conversation_config_override.tts.voice_id` is silently dropped and the conversation speaks as Charlotte with no error anywhere. Check the toggle before concluding the override does not work.
 
 ## Interaction model
 
