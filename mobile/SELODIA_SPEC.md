@@ -1650,6 +1650,30 @@ Intro step — pulse highlight on the mic icon. Copy:
 
 Four chips beneath, mic icon pulsing gently below. Users can complete the entire onboarding by voice. **No pressure toward voice — a genuine equal choice.**
 
+## Spoken Orientation (Onboarding)
+
+**Session 39, 6 September 2026. Status: concept confirmed, scripts drafted, preliminary recordings made. Not final. Capture only — no build items from this until the onboarding flow is formally scoped.**
+
+**The problem this solves:** text-based onboarding conflates two different jobs — explaining Selodía's philosophy (the "why") and walking someone through setup admin. Separating them via a short spoken orientation lets the philosophy land first, without the admin crowding it out. A calm, brand-aligned voice introduction also establishes the app's tone before the person has formed habits around it, which increases the chance they persist through the habit-forming window.
+
+**What was decided:**
+
+- A short spoken orientation (~90 seconds) plays during or immediately after onboarding, in Freya's voice.
+- The script is **non-personified** — the app does not introduce itself as a character or give the voice a name. **Freya is an internal voice profile label, never surfaced to users.**
+- The orientation explains what Selodía *does* and how to think about it, not how to use the UI.
+- Tone: calm, direct, not promotional.
+
+**Two preliminary recordings**, dated 6 September 2026, in `Build Specs/Elevenlabs/` under the Selodía App Project Master Folder:
+
+- `Selodia Orientation Script - Freya 2026-09-06.mp3` — the spoken orientation draft (~70 seconds).
+- `Selodia Pitch for Matty - Freya 2026-09-06.mp3` — a plain-language pitch for informal market research, **not an in-app asset**.
+
+Both are preliminary. Neither is a final production recording. **Do not treat these as approved assets.**
+
+**Not yet decided:** trigger point (first launch only, post-consent, post-first-log); skip behaviour; whether the orientation is replayable from settings.
+
+*Consistent with what is already built, not a new rule: the agent's own opening line ("Good to have you here. You can talk to me or type, whatever feels most natural") already names nobody, and `ask-unflump`'s system prompt carries a standing instruction never to refer to itself by name. The non-personification decision above extends that to the orientation rather than introducing a different convention for it.*
+
 ## Thread behaviour
 
 - All voice transcribed into the thread identically to typed messages.
@@ -1679,3 +1703,33 @@ Two fields the design depends on exist by name, and were confirmed in the shippe
 - **Exact voice** — female neutral British is the default preference, final choice after auditioning.
 - **Whether users can change voice preference in settings** — future feature, not MVP.
 - **Exact trigger phrases for voice commands** — needs testing to feel natural.
+
+---
+
+# LONG-HORIZON IDEAS
+
+*Capture-only. Nothing in this section is scoped, planned, or a roadmap item, and nothing here should be turned into a build item, a task, or a reference in build planning. It exists so that ideas raised in passing are not lost and do not have to be re-derived later. Distinct from **NOT CURRENTLY IN SCOPE**, which holds things deliberately parked out of the current build — these are further out than that.*
+
+## Selodía hardware / wearable
+
+**Raised 5 September 2026. Status: speculative, far future. Not scoped, not a roadmap item.**
+
+The current fitness watch market splits into two failing categories for Selodía's target demographic: capable but visually masculine-coded and bulky (doesn't fit ballet, fitted clothing, or non-workout contexts), or aesthetically pleasing but stripped of real functionality (no NFC, no streaming sync, less accurate HR). No current product closes both gaps. This mirrors the exact underserved-user logic Selodía already addresses in software.
+
+**Functional requirements if this were ever pursued:**
+
+- Accurate GPS for runs, replacing phone dependency
+- Local music storage plus streaming service sync (not offline MP3 only)
+- NFC contactless payment (genuine hardware)
+- Reliable HR tracking for resistance training and dance, not only steady-state cardio
+
+**Aesthetic / wearability requirements:**
+
+- Must not read as sports tech — slim, minimal, no bulky default strap-and-case
+- Must work for activities with fitted or open-back clothing where a wrist device would show or interfere
+- Implies either a genuinely unobtrusive wrist form factor or a ring/alternative companion option
+
+**Positioning:** an extension of Selodía's anti-gamification, considered-design principle into hardware.
+
+**Hardware is a fundamentally different scope and cost structure. Do not reference this in any build planning.**
+
