@@ -1542,7 +1542,11 @@ The tap/long-press split is what makes one mic icon carry both without a mode pi
 - **ElevenLabs Conversational AI** — voice layer, STT, TTS, session management.
 - **Claude** — existing LLM pipeline, unchanged.
 - ElevenLabs handles STT + TTS, Claude handles the thinking. The existing Anthropic pipeline stays as the brain; ElevenLabs is the voice layer only.
-- **ElevenLabs Startup Grant — APPLIED 3 September 2026** from hello@selodia.app. 33M characters free for 12 months, rolling application, decisions within a week. Outcome pending; the build does not wait on it, but usage before a decision is billable at standard rates.
+- **ElevenLabs Startup Grant — ACCEPTED 7 September 2026.** Applied 3 September from hello@selodia.app; accepted four days later. **33,000,000 credits, valid 12 months (expires approximately September 2027).** It **replaces the Creator plan subscription — no monthly fee during the grant period**, so the voice layer costs nothing to run until then.
+
+    **The unit-economics concern is resolved for the full beta period and beyond.** That concern was real and is worth naming now it is answered: voice was the one part of this product with a per-use cost that scales with engagement, which is the opposite shape to everything else here — an app whose whole proposition is daily use cannot have its most distinctive feature get more expensive the better it works. For twelve months it does not.
+
+    **What the grant does not do is remove the deadline.** It converts a cost problem into a dated one: the meter starts again around September 2027, and by then the question is whether voice usage at real scale is affordable at standard rates. That is a question for the pricing model, not for the build, and it does not gate anything now.
 
 ### Claude compatibility — CONFIRMED against the ElevenLabs docs, 1 September 2026
 
