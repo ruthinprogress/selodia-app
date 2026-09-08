@@ -109,7 +109,31 @@ Read the saved file back and report the sheet names, the new label row and its r
 - **If the file is open in Excel, the save fails** with `PermissionError`. Build to a staging copy first, swap it in after, and never force-close Excel to take the lock. Losing someone's unsaved work to finish your own task is not a trade that is yours to make.
 - **No Excel Table objects.** A Table cannot carry interior label or blank rows, and its fixed range fights appending at the bottom. Plain formatted ranges, with the header row frozen.
 
-**4. Append this session to the build log.**
+**4. Render the readable copies.**
+
+```
+python scripts/render_docs.py
+```
+
+**Ruth cannot read `.md`.** That is a fact about her setup, not a preference, so the markdown in the repo is a source format she has no way to open — and until 2026-09-08 the 52,000-word build specification was, in her own words, a document she no longer knew the contents of. This step is what closes that gap, and it runs **after** the Drive sync in step 3, because it renders from the markdown that step just wrote.
+
+It produces four things, none of them into `Claude Code Working Build Specs/`:
+
+| Output | Where |
+|---|---|
+| `Selodia Build Specification.docx` | `Build Specs/` |
+| `Selodia Build Specification.html` | `Build Specs/` |
+| One `.docx` per build-log article, named `YYYY-MM-DD Title.docx` | `Build Specs/Branding/Marketing Articles and Copy/` |
+
+**Not into the five-document folder, deliberately.** That folder holds exactly five files and step 1 verifies all five byte-identical against the repo; a sixth breaks that check. Derived renderings live one level up.
+
+**Every output stamps the commit it came from.** That is the point rather than a flourish: this project's most persistent documentation defect is a status claim that was true when written and silently stopped being true — nine were found and fixed on 2026-09-08 alone — and "which version am I holding" is the question that catches it. A rendering with no provenance would reproduce the exact failure it exists to help with.
+
+**Word's Navigation Pane is what makes the .docx usable**, and it works only because the script writes real `Heading 1/2/3` styles rather than bold text that looks like a heading. If a future change ever makes headings *look* right but stop being styles, the contents tree silently empties and the document becomes 180 pages of scrolling.
+
+**If the Drive folder is unreachable the script writes nothing and says so**, rather than failing halfway — the same remote-session caveat as step 3.
+
+**5. Append this session to the build log.**
 
 `H:\My Drive\Selodia App Project Master Folder\Build Specs\Selodia-Build-Log.docx`
 
@@ -130,7 +154,7 @@ Direct and frank, no padding. Do not pad a quiet session into three paragraphs; 
 
 Leave the Toggl line as written, with the em-dash placeholder. Ruth fills that in by hand, and a guessed duration in that slot is worse than a blank one.
 
-**5. Session details are required, and are checked BEFORE any of the above runs.**
+**6. Session details are required, and are checked BEFORE any of the above runs.**
 
 Despite its number, this is the gate on the whole ceremony rather than its last step. Four things must be known:
 

@@ -1,0 +1,406 @@
+<title>Selodía Build Specification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* The project's own locked palette (Part Fifteen), not a new one:
+   cream F7F3EA · sand E9D6C2 · terracotta C97458 · accentDeep 874C3A
+   · forest 37584A · charcoal 2D2B28.
+
+   The dark theme deliberately does NOT use the app's terracotta-ground
+   inversion. That inversion was built, contrast-verified, and then withdrawn
+   on 2026-09-03 for reading heavy and brown — and this is a document meant to
+   be read at length, which is the case it failed hardest. A warm near-black
+   instead, with the accent lifted so it still carries on a dark ground. */
+:root {
+  --ground: #F7F3EA;
+  --raised: #F1EADC;
+  --sunk: #E9D6C2;
+  --rule: #DFD4C2;
+  --rule-soft: #EAE1D2;
+  --ink: #2D2B28;
+  --ink-soft: #5F574D;
+  --ink-faint: #8A8075;
+  --accent: #C97458;
+  --accent-ink: #874C3A;
+  --forest: #37584A;
+  --mark-bg: #F6D9A8;
+  --mark-ink: #2D2B28;
+  --shadow: 0 1px 2px rgba(45,43,40,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #211D1A;
+    --raised: #2A2521;
+    --sunk: #332C26;
+    --rule: #3D352E;
+    --rule-soft: #2F2925;
+    --ink: #EDE6DA;
+    --ink-soft: #BFB4A5;
+    --ink-faint: #8E8478;
+    --accent: #E09A7E;
+    --accent-ink: #EFB79C;
+    --forest: #9CBFAE;
+    --mark-bg: #6B5327;
+    --mark-ink: #FFF6E6;
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #211D1A;
+  --raised: #2A2521;
+  --sunk: #332C26;
+  --rule: #3D352E;
+  --rule-soft: #2F2925;
+  --ink: #EDE6DA;
+  --ink-soft: #BFB4A5;
+  --ink-faint: #8E8478;
+  --accent: #E09A7E;
+  --accent-ink: #EFB79C;
+  --forest: #9CBFAE;
+  --mark-bg: #6B5327;
+  --mark-ink: #FFF6E6;
+  --shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 17px;
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: 310px minmax(0,1fr); min-height: 100vh; }
+
+.side {
+  border-right: 1px solid var(--rule);
+  background: var(--raised);
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+}
+.brand {
+  padding: 22px 22px 14px;
+  border-bottom: 1px solid var(--rule-soft);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.brand h1 {
+  font-family: Comfortaa, "Trebuchet MS", sans-serif;
+  font-weight: 300; font-size: 25px; letter-spacing: -.01em;
+  margin: 0; color: var(--ink);
+}
+.brand .cat {
+  font-family: Comfortaa, "Trebuchet MS", sans-serif;
+  font-weight: 400; font-size: 11.5px; color: var(--forest); margin: 0;
+}
+/* Provenance, because this document's own recurring defect is stale status.
+   Which commit a copy came from is the fact that would have caught every one. */
+.prov {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px; color: var(--ink-faint);
+  padding: 9px 22px; border-bottom: 1px solid var(--rule-soft);
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+  font-variant-numeric: tabular-nums;
+}
+.find { padding: 13px 18px 11px; border-bottom: 1px solid var(--rule-soft); }
+.find input {
+  width: 100%; padding: 8px 11px; border-radius: 7px;
+  border: 1px solid var(--rule); background: var(--ground); color: var(--ink);
+  font-family: inherit; font-size: 14px;
+}
+.find input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.findbar {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-faint);
+  min-height: 22px;
+}
+.findbar button {
+  border: 1px solid var(--rule); background: var(--ground); color: var(--ink-soft);
+  border-radius: 6px; padding: 2px 9px; cursor: pointer; font: inherit;
+}
+.findbar button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-ink); }
+.findbar button:disabled { opacity: .4; cursor: default; }
+
+nav { overflow-y: auto; padding: 10px 0 40px; flex: 1; }
+nav a {
+  display: block; text-decoration: none; color: var(--ink-soft);
+  font-family: Comfortaa, "Trebuchet MS", sans-serif;
+  border-left: 2px solid transparent;
+}
+nav a.lvl1 {
+  font-size: 12px; font-weight: 700; letter-spacing: .055em; text-transform: uppercase;
+  color: var(--ink); padding: 13px 20px 5px; line-height: 1.35;
+}
+nav a.lvl2 { font-size: 13px; font-weight: 400; padding: 4px 20px 4px 30px; line-height: 1.4; }
+nav a:hover { color: var(--accent-ink); background: var(--rule-soft); }
+nav a.on { border-left-color: var(--accent); color: var(--accent-ink); background: var(--rule-soft); }
+nav a.hide { display: none; }
+nav .none { padding: 14px 20px; font-size: 13px; color: var(--ink-faint); font-family: inherit; }
+
+.sidetoggle {
+  display: none; position: fixed; z-index: 30; left: 12px; top: 12px;
+  border: 1px solid var(--rule); background: var(--raised); color: var(--ink);
+  border-radius: 8px; padding: 7px 13px; cursor: pointer;
+  font-family: Comfortaa, sans-serif; font-size: 13px; box-shadow: var(--shadow);
+}
+
+/* ---------- document ---------- */
+main { padding: 46px 46px 200px; }
+.doc { max-width: 72ch; margin: 0 auto; }
+.loading { color: var(--ink-faint); font-style: italic; }
+
+.doc h1, .doc h2, .doc h3, .doc h4 {
+  font-family: Comfortaa, "Trebuchet MS", sans-serif;
+  text-wrap: balance; scroll-margin-top: 20px;
+}
+.doc h1 {
+  font-weight: 700; font-size: 25px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--accent-ink); margin: 68px 0 4px; padding-bottom: 9px;
+  border-bottom: 2px solid var(--accent); line-height: 1.3;
+}
+.doc h1:first-child { margin-top: 0; }
+.doc h2 {
+  font-weight: 500; font-size: 22px; color: var(--forest);
+  margin: 46px 0 2px; line-height: 1.35;
+}
+.doc h3 { font-weight: 500; font-size: 17.5px; color: var(--ink); margin: 32px 0 2px; }
+.doc h4 { font-weight: 500; font-size: 15px; color: var(--ink-soft); margin: 24px 0 2px; }
+.doc p { margin: 14px 0; }
+.doc li { margin: 7px 0; }
+.doc ul, .doc ol { padding-left: 24px; }
+.doc a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.doc strong { font-weight: 600; }
+.doc hr { border: 0; border-top: 1px solid var(--rule); margin: 40px 0; }
+
+.doc code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .845em; background: var(--sunk); color: var(--ink);
+  padding: 1px 5px; border-radius: 4px;
+}
+.doc pre {
+  background: var(--sunk); padding: 15px 17px; border-radius: 9px;
+  overflow-x: auto; border: 1px solid var(--rule);
+}
+.doc pre code { background: none; padding: 0; font-size: 13px; line-height: 1.55; }
+
+/* Blockquotes carry the STATUS blocks and the corrections — the passages most
+   worth finding, so they get the accent rule rather than a generic tint. */
+.doc blockquote {
+  margin: 20px 0; padding: 3px 20px; border-left: 3px solid var(--accent);
+  background: var(--raised); border-radius: 0 8px 8px 0; color: var(--ink-soft);
+}
+.doc blockquote strong { color: var(--ink); }
+
+.tablewrap { overflow-x: auto; margin: 20px 0; }
+.doc table {
+  border-collapse: collapse; width: 100%; font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+}
+.doc th, .doc td {
+  border: 1px solid var(--rule); padding: 8px 11px; text-align: left; vertical-align: top;
+}
+.doc th {
+  background: var(--sunk); font-family: Comfortaa, sans-serif;
+  font-weight: 500; font-size: 13px;
+}
+
+mark { background: var(--mark-bg); color: var(--mark-ink); border-radius: 2px; padding: 0 1px; }
+mark.cur { outline: 2px solid var(--accent); }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .side {
+    position: fixed; z-index: 25; width: 300px; left: 0; top: 0;
+    transform: translateX(-100%); transition: transform .18s ease;
+    box-shadow: 0 0 30px rgba(0,0,0,.15);
+  }
+  .side.open { transform: none; }
+  .sidetoggle { display: block; }
+  main { padding: 62px 20px 160px; }
+}
+@media (prefers-reduced-motion: reduce) { .side { transition: none; } }
+</style>
+
+<button class="sidetoggle" id="toggle" aria-label="Toggle contents">Contents</button>
+
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="brand">
+      <h1>selodía</h1>
+      <p class="cat">Build specification &middot; a body literacy app for women 40+</p>
+    </div>
+    <div class="prov">
+      <span>__COMMIT__</span><span>__KB__ KB</span><span>__WORDS__ words</span><span>__PARTS__ parts</span>
+    </div>
+    <div class="find">
+      <input id="q" type="search" placeholder="Search the spec&hellip;" autocomplete="off" spellcheck="false">
+      <div class="findbar">
+        <span id="count"></span>
+        <button id="prev" disabled>&uarr;</button>
+        <button id="next" disabled>&darr;</button>
+      </div>
+    </div>
+    <nav id="toc"></nav>
+  </aside>
+
+  <main>
+    <div class="doc" id="doc"><p class="loading">Rendering the specification&hellip;</p></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.6/marked.min.js"></script>
+<script id="payload" type="application/octet-stream">__PAYLOAD__</script>
+<script>
+(function () {
+  var doc = document.getElementById('doc');
+
+  // TextDecoder rather than a plain atob->string: the spec is full of accented
+  // characters (Selodía itself), and atob alone mangles every one of them.
+  var raw = document.getElementById('payload').textContent.trim();
+  var bin = atob(raw);
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  var md = new TextDecoder('utf-8').decode(bytes);
+
+  marked.setOptions({ gfm: true, breaks: false });
+  doc.innerHTML = marked.parse(md);
+
+  // Tables scroll inside their own container so the page never scrolls sideways.
+  doc.querySelectorAll('table').forEach(function (t) {
+    var w = document.createElement('div');
+    w.className = 'tablewrap';
+    t.parentNode.insertBefore(w, t);
+    w.appendChild(t);
+  });
+
+  // ---- contents -----------------------------------------------------------
+  var toc = document.getElementById('toc');
+  var heads = [].slice.call(doc.querySelectorAll('h1, h2'));
+  var used = {};
+  heads.forEach(function (h, i) {
+    var slug = (h.textContent || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'h';
+    if (used[slug]) { slug += '-' + i; }
+    used[slug] = 1;
+    h.id = slug;
+    var a = document.createElement('a');
+    a.href = '#' + slug;
+    a.textContent = h.textContent;
+    a.className = h.tagName === 'H1' ? 'lvl1' : 'lvl2';
+    a.dataset.for = slug;
+    toc.appendChild(a);
+  });
+  var links = [].slice.call(toc.querySelectorAll('a'));
+  var empty = document.createElement('p');
+  empty.className = 'none';
+  empty.textContent = 'No section titles match.';
+  empty.style.display = 'none';
+  toc.appendChild(empty);
+
+  // ---- scroll spy ---------------------------------------------------------
+  var byId = {};
+  links.forEach(function (a) { byId[a.dataset.for] = a; });
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      links.forEach(function (a) { a.classList.remove('on'); });
+      var a = byId[e.target.id];
+      if (a) {
+        a.classList.add('on');
+        var r = a.getBoundingClientRect(), n = toc.getBoundingClientRect();
+        if (r.top < n.top || r.bottom > n.bottom) a.scrollIntoView({ block: 'center' });
+      }
+    });
+  }, { rootMargin: '0px 0px -78% 0px' });
+  heads.forEach(function (h) { spy.observe(h); });
+
+  // ---- search -------------------------------------------------------------
+  // Two jobs from one box: filter the contents list, and find every occurrence
+  // in the document. The recurring question with this spec is "where does it
+  // say X", and the contents alone cannot answer that.
+  var q = document.getElementById('q');
+  var countEl = document.getElementById('count');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var marks = [], cur = -1, timer = null;
+
+  function clearMarks() {
+    marks.forEach(function (m) {
+      var p = m.parentNode;
+      p.replaceChild(document.createTextNode(m.textContent), m);
+      p.normalize();
+    });
+    marks = []; cur = -1;
+  }
+
+  function run(term) {
+    clearMarks();
+    var t = term.trim();
+
+    links.forEach(function (a) {
+      a.classList.toggle('hide', t.length > 0 && a.textContent.toLowerCase().indexOf(t.toLowerCase()) === -1);
+    });
+    empty.style.display = (t && links.every(function (a) { return a.classList.contains('hide'); })) ? 'block' : 'none';
+
+    if (t.length < 2) {
+      countEl.textContent = '';
+      prevBtn.disabled = nextBtn.disabled = true;
+      return;
+    }
+
+    var needle = t.toLowerCase();
+    var walker = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT, null);
+    var targets = [], n;
+    while ((n = walker.nextNode())) {
+      if (n.nodeValue.toLowerCase().indexOf(needle) !== -1) targets.push(n);
+    }
+    targets.forEach(function (node) {
+      var text = node.nodeValue, low = text.toLowerCase(), frag = document.createDocumentFragment();
+      var at = 0, hit;
+      while ((hit = low.indexOf(needle, at)) !== -1) {
+        if (hit > at) frag.appendChild(document.createTextNode(text.slice(at, hit)));
+        var m = document.createElement('mark');
+        m.textContent = text.slice(hit, hit + needle.length);
+        frag.appendChild(m);
+        marks.push(m);
+        at = hit + needle.length;
+      }
+      if (at < text.length) frag.appendChild(document.createTextNode(text.slice(at)));
+      node.parentNode.replaceChild(frag, node);
+    });
+
+    countEl.textContent = marks.length ? '1 of ' + marks.length : 'no matches';
+    prevBtn.disabled = nextBtn.disabled = marks.length === 0;
+    if (marks.length) { cur = -1; step(1); }
+  }
+
+  function step(dir) {
+    if (!marks.length) return;
+    if (cur >= 0 && marks[cur]) marks[cur].classList.remove('cur');
+    cur = (cur + dir + marks.length) % marks.length;
+    marks[cur].classList.add('cur');
+    marks[cur].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    countEl.textContent = (cur + 1) + ' of ' + marks.length;
+  }
+
+  q.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { run(q.value); }, 180);
+  });
+  q.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); }
+    if (e.key === 'Escape') { q.value = ''; run(''); }
+  });
+  nextBtn.addEventListener('click', function () { step(1); });
+  prevBtn.addEventListener('click', function () { step(-1); });
+
+  // ---- small screens ------------------------------------------------------
+  var side = document.getElementById('side');
+  document.getElementById('toggle').addEventListener('click', function () { side.classList.toggle('open'); });
+  toc.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A' && window.innerWidth <= 900) side.classList.remove('open');
+  });
+})();
+</script>
