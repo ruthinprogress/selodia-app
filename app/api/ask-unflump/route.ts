@@ -7,7 +7,7 @@ import { getSupabaseForRequest } from '../../lib/supabase';
 // fourth-wall rule already forbids narrating the interface, and it was the
 // single largest block of prompt that a spoken exchange cannot use. Text turns
 // keep it in full.
-import { APP_STRUCTURE_PROMPT_BLOCK } from '../../lib/app-structure';
+import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import {
   CLASSIFY_TOOL_NAME,
@@ -403,7 +403,7 @@ WHAT CAN BE LOGGED HERE. If somebody asks what they can log, what this is for, o
 
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
-${isVoice ? '' : APP_STRUCTURE_PROMPT_BLOCK}
+${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}
 
 ${SAFETY_PROMPT_BLOCK}`;
 
