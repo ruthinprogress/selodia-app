@@ -15,6 +15,10 @@
 
 # next.js
 /.next/
+# Anchored to the root until 2026-09-09, when a `next build` run with the working
+# directory set to mobile/ produced a whole Next build tree inside the Expo app
+# and it went into a commit. Unanchored, so it cannot happen from any directory.
+.next/
 /out/
 
 # production
