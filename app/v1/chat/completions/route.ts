@@ -131,6 +131,19 @@ function isSilence(utterance: string): boolean {
 // find and delete - and until the delete UI exists, cannot.
 const DEDUP_WINDOW_MS = 15_000;
 
+// How long a turn may take before the person deserves to hear something.
+//
+// An ordinary spoken turn measures about 3 seconds, so this sits above that
+// and below the point where silence reads as a dropped call. Building a
+// workout plan measures 13-15s and will always cross it; logging a meal
+// never will, and nobody hears a holding line for their toast.
+const HOLDING_AFTER_MS = 4_000;
+
+// Deliberately not "Let me think about that" - which invites a pause and
+// then sounds odd when the answer was already ready - and deliberately not
+// an apology. It says work is happening, in her own register.
+const HOLDING_LINE = 'Let me put that together for you.';
+
 
 const enc = new TextEncoder();
 
@@ -248,65 +261,81 @@ export async function POST(request: NextRequest) {
     console.log('VOICE ADAPTER: dedup check failed, continuing -', err instanceof Error ? err.message : err);
   }
 
-  // The exact same handler the Chat composer reaches, invoked in-process.
+  // OPEN THE RESPONSE FIRST, THEN FILL IT IN.
   //
-  // It reads only two things off the request - the JSON body and the
-  // authorization header - so a constructed NextRequest carries everything it
-  // needs. Checked rather than assumed: request.json() is its only use of the
-  // object beyond getSupabaseForRequest reading that header.
-  let reply: string;
-  try {
-    const inner = new NextRequest(new URL('/api/ask-unflump', request.url), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      // `voice: true` lets the pipeline defer the food/activity parse to
-      // after(). It changes nothing about the reply or the safety
-      // classification - only which work must finish before we can speak.
-      body: JSON.stringify({ message: utterance, voice: true }),
-    });
-    const res = await askUnflump(inner);
-
-    if (res.status === 401) {
-      console.log('VOICE ADAPTER: pipeline rejected the token');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if (!res.ok) {
-      console.log('VOICE ADAPTER: pipeline returned', res.status);
-      // Spoken aloud, so it has to be a sentence rather than a status code. It
-      // says only what is true - something failed - and never claims anything
-      // was or was not saved, because at this point we do not know.
-      reply = 'Something went wrong just then. Could you say that again?';
-    } else {
-      const data = (await res.json()) as { reply?: string };
-      reply =
-        typeof data.reply === 'string' && data.reply.trim().length > 0
-          ? data.reply.trim()
-          : 'Sorry, I did not catch that.';
-    }
-  } catch (err) {
-    console.log('VOICE ADAPTER: pipeline threw', err instanceof Error ? err.message : err);
-    reply = 'Something went wrong just then. Could you say that again?';
-  }
-
-  // Non-streaming is not what ElevenLabs asks for, but an OpenAI-compatible
-  // endpoint that only speaks SSE is not OpenAI-compatible, and a caller that
-  // sends stream:false deserves an answer rather than a broken stream.
-  if (body.stream === false) {
-    return NextResponse.json({
-      id,
-      object: 'chat.completion',
-      created,
-      model,
-      choices: [{ index: 0, message: { role: 'assistant', content: reply }, finish_reason: 'stop' }],
-    });
-  }
-
+  // Until 2026-09-09 this awaited the entire pipeline before returning a byte,
+  // so time-to-first-byte WAS total generation time. Measured, a workout plan
+  // takes 13-15 seconds to generate; the agent's cascade timeout maxes out at
+  // 15. That shape cannot be made reliable by raising a timeout - there is no
+  // headroom left to raise it into - so the response has to start sooner.
+  //
+  // The stream is returned immediately and does its waiting inside itself. The
+  // holding line goes out at once, which both starts the clock on something
+  // real and gives the person a spoken acknowledgement instead of fifteen
+  // seconds of a conversation apparently having died.
+  //
+  // A HOLDING LINE IS ONLY SENT WHEN THE WAIT EARNS ONE. Most turns answer in
+  // about three seconds, and "one moment" in front of a three-second reply is
+  // worse than silence - it doubles the talking to say nothing. So it fires on
+  // a timer: if the pipeline has not answered within HOLDING_AFTER_MS, the
+  // person hears it; if it has, they never know it existed.
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       controller.enqueue(sseChunk(id, created, model, { role: 'assistant' }, null));
+
+      let spokeHolding = false;
+      const holding = setTimeout(() => {
+        spokeHolding = true;
+        controller.enqueue(
+          sseChunk(id, created, model, { content: HOLDING_LINE }, null)
+        );
+      }, HOLDING_AFTER_MS);
+
+      let reply: string;
+      try {
+        const inner = new NextRequest(new URL('/api/ask-unflump', request.url), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          // `voice: true` lets the pipeline defer the food/activity parse to
+          // after(). It changes nothing about the reply or the safety
+          // classification - only which work must finish before we can speak.
+          body: JSON.stringify({ message: utterance, voice: true }),
+        });
+        const res = await askUnflump(inner);
+
+        if (res.status === 401) {
+          console.log('VOICE ADAPTER: pipeline rejected the token');
+          reply = 'I could not reach your account just then. Could you try that again?';
+        } else if (!res.ok) {
+          console.log('VOICE ADAPTER: pipeline returned', res.status);
+          // Spoken aloud, so it has to be a sentence rather than a status code.
+          // It says only what is true - something failed - and never claims
+          // anything was or was not saved, because at this point we do not know.
+          reply = 'Something went wrong just then. Could you say that again?';
+        } else {
+          const data = (await res.json()) as { reply?: string };
+          reply =
+            typeof data.reply === 'string' && data.reply.trim().length > 0
+              ? data.reply.trim()
+              : 'Sorry, I did not catch that.';
+        }
+      } catch (err) {
+        console.log('VOICE ADAPTER: pipeline threw', err instanceof Error ? err.message : err);
+        reply = 'Something went wrong just then. Could you say that again?';
+      } finally {
+        clearTimeout(holding);
+      }
+
+      // The holding line was already spoken, so the reply follows on from it
+      // rather than restarting. Without this the person hears "Let me put that
+      // together" and then a sentence that begins as though nothing was said.
+      if (spokeHolding) {
+        controller.enqueue(sseChunk(id, created, model, { content: ' ' }, null));
+      }
+
       for (const piece of speakableChunks(reply)) {
         controller.enqueue(sseChunk(id, created, model, { content: piece }, null));
       }
@@ -315,6 +344,40 @@ export async function POST(request: NextRequest) {
       controller.close();
     },
   });
+
+  // Non-streaming is not what ElevenLabs asks for, but an OpenAI-compatible
+  // endpoint that only speaks SSE is not OpenAI-compatible. A caller that sends
+  // stream:false has to wait for the whole thing regardless - there is nothing
+  // to stream into - so it takes the plain path below.
+  if (body.stream === false) {
+    const res = await askUnflump(
+      new NextRequest(new URL('/api/ask-unflump', request.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: utterance, voice: true }),
+      })
+    );
+    const data = res.ok ? ((await res.json()) as { reply?: string }) : {};
+    return NextResponse.json({
+      id,
+      object: 'chat.completion',
+      created,
+      model,
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content:
+              typeof data.reply === 'string' && data.reply.trim()
+                ? data.reply.trim()
+                : 'Something went wrong just then. Could you say that again?',
+          },
+          finish_reason: 'stop',
+        },
+      ],
+    });
+  }
 
   return new Response(stream, {
     headers: {
