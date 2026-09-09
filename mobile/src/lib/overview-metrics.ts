@@ -3,6 +3,10 @@
 // cleanly (no React/RN imports).
 
 export type MeasurementRow = {
+  // Optional because most consumers select only the metrics. The reading card
+  // needs it to look up that row's persisted interpretation note (item 29), so
+  // the query that feeds the card asks for it and the others do not.
+  id?: string;
   measured_at: string;
   weight_kg: number | null;
   body_fat_pct: number | null;

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
+import { ReadingCard } from '@/components/reading-card';
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { MonthYearPicker } from '@/components/month-year-picker';
 import { PersonalMetricsView } from '@/components/personal-metrics-view';
@@ -59,6 +62,9 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [weekStart, setWeekStart] = useState<Date>(initialWeekStart ?? currentWeekStart());
   // Never persistent: it opens only when someone reaches for it (Part Five).
   const [pickerOpen, setPickerOpen] = useState(false);
+  // The reading whose card is open, or null. Held here rather than in the row so
+  // only one card can ever be open, and closing returns focus to the same week.
+  const [openRow, setOpenRow] = useState<DayRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<MeasurementRow[]>([]);
   // Bumped when something lands, so a reading logged here appears here.
@@ -78,7 +84,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
       // RLS scopes the read to the signed-in user - no explicit user_id filter.
       const { data } = await supabase
         .from('body_measurements')
-        .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
+        .select('id, measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
         .gte('measured_at', from.toISOString())
         .lt('measured_at', endISO)
         .order('measured_at', { ascending: false });
@@ -117,6 +123,14 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           the displayed week, so it stays put while you step back through
           history - it is a statement about now, not about the week on screen. */}
       <ReadingInterpretationNote />
+
+      {openRow ? (
+        <ReadingCard
+          reading={openRow.reading ?? null}
+          dateLabel={dayLabel(openRow.date)}
+          onClose={() => setOpenRow(null)}
+        />
+      ) : null}
 
       <SpotlightTarget id="measurements.week">
       <ThemedView style={styles.weekBar}>
@@ -162,7 +176,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           </ThemedView>
 
           {dayRows.map((r) => (
-            <DayLine key={r.dayKey} row={r} />
+            <DayLine key={r.dayKey} row={r} onOpen={() => setOpenRow(r)} />
           ))}
         </ThemedView>
       )}
@@ -226,7 +240,13 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   );
 }
 
-function DayLine({ row }: { row: DayRow }) {
+function DayLine({ row, onOpen }: { row: DayRow; onOpen: () => void }) {
+  const theme = useTheme();
+  // A day with no reading has nothing to open. Rendering the affordance anyway
+  // would be a control that does nothing on most rows of a sparse week, which is
+  // the dead control principle 8 rules out - so the space is held and left empty.
+  const openable = !!row.reading?.id;
+
   return (
     <ThemedView style={styles.dayRow}>
       <ThemedText type="small" style={styles.dayCell}>
@@ -235,6 +255,19 @@ function DayLine({ row }: { row: DayRow }) {
       <MetricCell value={row.reading?.weight_kg ?? null} pct={row.weightPct} />
       <MetricCell value={row.reading?.body_fat_pct ?? null} pct={row.bodyFatPct} />
       <MetricCell value={row.reading?.muscle_kg ?? null} pct={row.musclePct} />
+      {openable ? (
+        <Pressable
+          onPress={onOpen}
+          accessibilityRole="button"
+          accessibilityLabel={`About ${dayLabel(row.date)}'s reading`}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.eye, pressed && styles.pressed]}
+        >
+          <Ionicons name="eye-outline" size={16} color={theme.textSecondary} />
+        </Pressable>
+      ) : (
+        <ThemedView style={styles.eye} />
+      )}
     </ThemedView>
   );
 }
@@ -314,6 +347,8 @@ const styles = StyleSheet.create({
   dayCell: {
     flex: 1.2,
   },
+  // A fixed-width column so rows with a reading and rows without still line up.
+  eye: { width: 24, alignItems: 'center', justifyContent: 'center' },
   metricCell: {
     flex: 1,
     alignItems: 'flex-end',
