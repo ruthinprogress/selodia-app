@@ -46,6 +46,7 @@ import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
+import { buildDayStatePrompt, loadDayState } from '../../lib/daily-targets';
 import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
@@ -273,7 +274,10 @@ export async function POST(request: NextRequest) {
     // standing instruction below.
     supabase
       .from('user_profile')
-      .select('height_cm, unsafe_goal_flagged_at')
+      .select(
+        'height_cm, unsafe_goal_flagged_at, date_of_birth, biological_sex, ' +
+          'activity_level, fat_focus_state, muscle_focus_state, protein_target_g'
+      )
       .maybeSingle(),
     // Not a { data } shape - loadAllergies returns the rows directly. Positional
     // destructuring above, so it stays last.
@@ -355,6 +359,24 @@ export async function POST(request: NextRequest) {
     ? `YESTERDAY, FOR CONTEXT: ${mediating}. If they mention this morning's reading or how they feel about their body today, bring this in BEFORE they have a chance to read a higher number as fat gained - it is water and food settling, and it passes. Say it once, warmly, as context rather than as reassurance they asked for. Never suggest eating less today to compensate; the opposite - eating normally when hungry is what stops the swing. If they do not raise it, do not raise it either.`
     : '';
 
+  const profile = profileRow as {
+    height_cm: number | null;
+    unsafe_goal_flagged_at: string | null;
+    date_of_birth: string | null;
+    biological_sex: string | null;
+    activity_level: string | null;
+    fat_focus_state: string | null;
+    muscle_focus_state: string | null;
+    protein_target_g: number | null;
+  } | null;
+
+  // Item 22's foundation. Server-local midnight, matching daily-roundup exactly,
+  // so "today" means the same day here as it does in the roundup - two different
+  // day boundaries in one app would eventually disagree in front of somebody.
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayState = await loadDayState(supabase, profile, dayStart.toISOString());
+
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => f.happened_at.slice(0, 10) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
@@ -400,6 +422,7 @@ ${contextText}
 
 Here is their food log from the last 7 days:
 ${foodSummary}
+${buildDayStatePrompt(dayState)}
 
 Here is their activity log from the last 7 days - these are SESSIONS, things they set out and did:
 ${activitySummary}
@@ -421,6 +444,16 @@ SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved pla
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
+
+SUGGESTING SOMETHING TO EAT (build item 22). When somebody asks what to have - at home, out, ordering in, staring at a fridge - answer it properly, using TODAY SO FAR above so the suggestion actually fits their day rather than being generic advice.
+
+Say the number only when it earns its place. "You've got about 700 left, so something substantial is fine" is useful. Reciting a macro budget at somebody deciding on dinner is the tracker-app register this app exists to avoid, and most of the time the number should shape WHAT YOU SUGGEST without being said out loud at all.
+
+Suggest, never prescribe. Two or three real options in a sentence or two, the way a friend answers - not a numbered meal plan, not a macro table, and never a single correct answer handed down. If they have said what they fancy or where they are, work from that; if they have not, ask one light question rather than guessing at a cuisine.
+
+NO FOOD IS GOOD OR BAD and nothing is a treat, a cheat, a reward or something to earn or make up for. If what they want does not fit the numbers especially well, that is fine and usually not worth mentioning - a day is not a budget to balance to zero, and somebody who wanted chips and got a lecture will simply stop asking.
+
+If there is no calorie target above, suggest from what they have logged, the time of day and what they have told you, and do not mention targets at all. Never invent a number, and never say what a target "would be".
 
 A SYMPTOM IS A RESULT, SO READ WHAT CAUSED IT BEFORE ANSWERING. When the person mentions a physical symptom - an ache, soreness, stiffness, fatigue, low energy, bloating, poor sleep, feeling heavy or off - go and read the LOGGED ACTIVITY AND FOOD ABOVE FOR THE PREVIOUS ONE TO TWO DAYS before you say anything about it, and answer from what is actually there.
 
@@ -448,7 +481,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   // coaching toward the number two days later, having forgotten it said it
   // would not. `goalSafetyPrompt` returns '' when there is nothing to say, which
   // is almost always.
-  const profile = profileRow as { height_cm: number | null; unsafe_goal_flagged_at: string | null } | null;
+
   const contextualSystemPrompt =
     SYSTEM_PROMPT +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +

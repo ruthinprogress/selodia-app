@@ -13,6 +13,14 @@
 //    (fat=reduce + muscle=increase), which resolves to ≈maintenance with the
 //    isRecomposition flag set so the UI frames it as slow simultaneous change.
 
+// MIRRORED SERVER-SIDE since 2026-09-09, in `app/lib/daily-targets.ts`, because
+// the chat pipeline needs the same target to answer "what should I have?" (item
+// 22). There is no shared package across the Next/Expo boundary, so the rule is
+// written twice - and this project has already had a three-way duplication drift
+// while a comment claimed a parity test was keeping it honest. `npx tsx
+// scripts/probe-target-parity.mjs` is that test, and it exists: 315 combinations,
+// both implementations, fails on any disagreement. Change one, run it, change both.
+
 export type FocusState = 'reduce' | 'maintain' | 'increase';
 export type CalorieTargetMode = 'deficit' | 'maintenance' | 'surplus';
 
