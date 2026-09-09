@@ -33,7 +33,22 @@
 
 **When a status claim genuinely has to sit in prose** — because the surrounding reasoning is incomprehensible without it — write what it *was* and mark it as history rather than as the present: *"the last recorded successful build **at that time** was 2026-08-09"*. A sentence in the past tense cannot go stale.
 
-**Deliberately not automated yet.** Seven or eight of the nine were mechanically checkable — does `app.json` declare the permission, does the component file exist, what does `information_schema.tables` return, what did `eas build:list` say — so a close-out checker is buildable and may well be worth building. It is being held back on purpose: the rule above costs nothing and might be sufficient on its own, and a script written before we know that would be tooling built to compensate for a convention nobody tried. Revisit if drift recurs after this rule is in force.
+**Automated on 2026-09-09, because the revisit condition fired.** The paragraph that stood here held the tooling back on purpose — *"the rule above costs nothing and might be sufficient on its own… Revisit if drift recurs after this rule is in force."* The rule went in on 8 September. On the 9th, **five** more status claims were found false: the hydration quick-tap marked unbuilt in two places while it had eight real rows in the database, conversational personal-metric correction marked unbuilt twelve days after it shipped, item 35 marked unbuilt with both its tables carrying rows, and the Weekly Roundup described as having "no weekly route" beside a 243-line route file. The convention was in force and the drift recurred anyway, so this is the revisit it asked for rather than a decision being overridden.
+
+```
+python scripts/closeout_check.py
+```
+
+**The first version guessed, and was wrong four times out of four.** It looked for a not-built claim, found any file, table or route named nearby, and flagged a contradiction if that thing existed. Every one of its four hits was false — *"no such test"* matched the source file rather than a test, a claim about the unbuilt Almanac **screen** matched the `almanac_entries` table, and this document's own history of the nine stale claims matched the spec's filename. **Proximity cannot recover which artefact a sentence is about.** A checker that cries wolf on its first run is one nobody runs twice, so the guessing was removed rather than tuned.
+
+**What it does instead, in two halves.**
+
+- **The inventory, always.** Every status claim across the six documents on one scannable page, with line numbers. It asserts nothing about correctness — it puts the claims in front of someone who knows the app, which is precisely how the hydration one was caught. Roughly thirty claims today; a minute to scan.
+- **Verified claims, opt-in and exact.** A claim can name what would disprove it, inline: `<!-- verify: table hydration_logs -->`, `<!-- verify: file src/x.tsx -->`, `<!-- verify: route /api/weekly-roundup -->`. The checker tests that one thing, with no inference, so **false positives are structurally impossible**. Markers get added as claims are written; coverage grows without anyone retrofitting 52,000 words in an afternoon.
+
+It also does the mechanical half of ceremony step 1 — working tree, push state, and the five Drive documents byte-identical — which was being done by hand each time.
+
+**A claim already written as history is skipped**, honouring the escape hatch above: a sentence in the past tense cannot go stale, so the tool must not nag about one. **This does not replace the convention.** Status still belongs in Part Sixteen; the check is a net under it, not permission to scatter claims again.
 
 ---
 
