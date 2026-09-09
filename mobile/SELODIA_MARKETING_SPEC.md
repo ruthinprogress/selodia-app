@@ -123,7 +123,28 @@ Instagram is the primary channel.
 
 ---
 
-## 8. What Selodía never says or does
+## 8. Articles and long-form
+
+Long-form writing is a separate channel from Instagram and follows the same voice rules, at length. Substack is the intended home.
+
+**Four articles are written and filed**, in Drive under `Build Specs/Branding & Assets/Marketing Articles and Copy/`, named by date:
+
+- `2026-09-02 From Junk App to Junk App — Building Selodía`
+- `2026-09-03 The Flower Didn't Come From Nowhere`
+- `2026-09-04 The Hardest Part Was the Four Seconds`
+- `2026-09-09 What My Legs Were Trying to Tell Me`
+
+The running index is the **Article Log**, a Google Doc in the same folder. It is the record of what exists, what is drafted and what is planned; this section is not a second copy of it and will go stale if it tries to be.
+
+**A dedicated article preparation session is planned — a separate chat, not yet run.** Its scope: work through the Article Log from the beginning, bring every piece up to date, and prepare the set for Substack publication.
+
+*This is a forward reference, not a status claim.* Nothing in this section should be read as saying that work has happened. When the session runs, what it decides — the publication order, the Substack cadence, whatever house style long-form needs beyond section 4 — is what belongs here afterwards. Until then this paragraph exists so the plan is findable from the spec rather than remembered.
+
+**One thing for that session to resolve on the way past:** two of the four articles exist only as Markdown, which Ruth cannot read. The convention is Word, named by date. Whichever session touches them next should render the pair, rather than leaving it to be noticed a third time.
+
+---
+
+## 9. What Selodía never says or does
 
 The negative space matters as much as the rest. Most of these are the difference between this product and every other one in the category.
 
@@ -139,7 +160,7 @@ The negative space matters as much as the rest. Most of these are the difference
 
 ---
 
-## 9. Expert review programme
+## 10. Expert review programme
 
 Selodía's activity weighting system — which determines how each logged activity contributes to the six health dimensions in the Health Flower — has been built from peer-reviewed research but requires expert validation before public launch.
 
@@ -166,7 +187,7 @@ Note: `SELODIA_SPEC.md` Part Eight states explicitly that specific weightings mu
 
 ---
 
-## 10. Canonical references
+## 11. Canonical references
 
 When a question comes up about how Selodía actually looks or sounds in public, these are the two places to go and look. They are the brand as it currently exists, not as it was specified, and where they disagree with a description in this document, they win.
 
@@ -182,6 +203,6 @@ The reference for voice in public, for the bio, and for how posts are composed. 
 
 ---
 
-*Last updated: 2 September 2026*
+*Last updated: 9 September 2026*
 
 *Build spec reference: `SELODIA_SPEC.md` Part Fifteen (visual identity), `SELODIA_LANGUAGE_RULES.md` (voice and safety language).*
