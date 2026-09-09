@@ -8,7 +8,7 @@ rather than hand-edited.
 
 WHAT IT PRODUCES, all into the Drive folder:
 
-  Build Specs/*.docx                             all FIVE working documents
+  Build Specs/Spec Documents (Word)/*.docx       all SIX working documents
   Branding/Marketing Articles and Copy/*.docx    one per build-log article
 
 Each .docx opens on a REAL CONTENTS PAGE of clickable internal links, not just
@@ -21,11 +21,12 @@ It was written when Word was not yet on the table, and once all five documents
 rendered as Word it was a second format of one document — the exact duplication
 that rots quietly while nobody is looking at it.
 
-ALL FIVE, not just the specification. The first version of this script rendered
-only the spec, because that was the document being asked about — leaving the
-workflow, the language rules, the decision patterns and the safety architecture
-as markdown Ruth still could not open. Four unreadable documents is the same
-defect as five; the count was never the point.
+EVERY working document, not just the specification. The first version rendered
+only the spec, because that was the one being asked about — leaving four others
+as markdown Ruth still could not open, including the language rules the whole
+safety architecture is built from. Four unreadable documents is the same defect
+as five; the count was never the point. The brand and marketing spec joined on
+09-09 for the same reason, having been readable by nobody since it was written.
 
 RUN IT AT SESSION CLOSE-OUT, after the Drive sync and before the final push
 (WORKFLOW.md, Automated close-out). A stale rendering of a document whose
@@ -63,10 +64,19 @@ except ImportError:
 REPO = Path(__file__).resolve().parents[1]
 MOBILE = REPO / "mobile"
 
-# The five working documents, each with the subtitle its cover carries. Repo
-# and Drive names differ deliberately (WORKFLOW.md, "Note the filenames still
+# The working documents, each with the subtitle its cover carries. Repo and
+# Drive names differ deliberately (WORKFLOW.md, "Note the filenames still
 # differ"), and the Word name is a third form again — a title, not a filename,
 # because this is the copy meant to be read rather than synced.
+#
+# SELODIA_MARKETING_SPEC.md joined on 2026-09-09. It had been living only in
+# Drive, under Branding, so it was version-controlled nowhere and rendered
+# never. Its markdown is now in the repo like the other five; the Branding
+# copy is archived rather than deleted, because deleting the only source of a
+# document to tidy up its output is not a trade worth making.
+#
+# ADDING A SEVENTH: put it here. That is the whole change — the contents
+# page, the styles and the close-out step all follow from this table.
 DOCUMENTS = [
     ("SELODIA_SPEC.md", "Selodia Build Specification",
      "Build Specification", "What the product is and how it works"),
@@ -78,6 +88,8 @@ DOCUMENTS = [
      "Safety State Machine", "Engineering design for the distress classification"),
     ("DECISION_PATTERNS.md", "Selodia Decision Patterns",
      "Ruth's Decision Patterns", "Observed patterns in how the decisions actually get made"),
+    ("SELODIA_MARKETING_SPEC.md", "Selodia Brand and Marketing Spec",
+     "Brand & Marketing Spec", "For designers, copywriters and collaborators"),
 ]
 
 # The synced Drive folder. A remotely-executed session has no H: drive at all
@@ -85,6 +97,14 @@ DOCUMENTS = [
 # than assumed — the ceremony must say plainly that it could not write, never
 # appear to succeed.
 DRIVE = Path(r"H:\My Drive\Selodia App Project Master Folder\Build Specs")
+
+# The Word copies go in their own folder rather than loose in Build Specs,
+# where they sat among the close-out workbook and the build log and were hard
+# to pick out (Ruth, 2026-09-09: "I want them to live inside the build spec
+# folder, not loose"). Deliberately NOT inside `Claude Code Working Build
+# Specs`: that folder runs one file per document, and a .docx beside its own
+# .md is exactly the duplication that rule prevents.
+WORD = DRIVE / "Spec Documents (Word)"
 ARTICLES = DRIVE / "Branding" / "Marketing Articles and Copy"
 
 # Part Fifteen's locked palette.
@@ -386,7 +406,7 @@ def render_docx(source: Path, out_name: str, subtitle: str, blurb: str,
             doc.element.body.remove(par._p)
             doc.element.body.insert(insert_at + offset, par._p)
 
-    out = DRIVE / f"{out_name}.docx"
+    out = WORD / f"{out_name}.docx"
     doc.save(out)
     return out
 
@@ -462,6 +482,7 @@ def main() -> int:
         print("  reporting a sync that did not happen.")
         return 1
 
+    WORD.mkdir(parents=True, exist_ok=True)
     commit = commit_hash()
     print(f"  commit {commit}")
     for filename, out_name, subtitle, blurb in DOCUMENTS:

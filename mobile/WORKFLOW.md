@@ -5,6 +5,7 @@
 
 ## The Three Documents, and Where They Live
 - **SELODIA_SPEC.md** — the current, authoritative, present-tense build specification. Lives in the repo at `mobile/SELODIA_SPEC.md`. Claude Code is the sole editor.
+- **SELODIA_MARKETING_SPEC.md** — the brand and marketing spec: a human-facing document for designers, copywriters and collaborators. **Moved into the repo 2026-09-09**, having lived only in Drive under `Branding/Marketing Articles and Copy/` — version-controlled nowhere, rendered never, and readable by nobody since it was written. The Drive original is **archived, not deleted**: it was the only copy until the moment it was committed, and deleting the sole source of a document to tidy up its output is not a trade worth making. It is **not** synced to the five-document Drive folder; it reaches Ruth as Word like everything else.
 - **SELODIA_LANGUAGE_RULES.md** — the MI-grounded safety-boundary language rules. Lives in the repo at `mobile/SELODIA_LANGUAGE_RULES.md`. Referenced by the spec, not duplicated into it. Claude Code is the sole editor.
 - **WORKFLOW.md** (this document) — process and collaboration knowledge. Lives in the repo at `mobile/WORKFLOW.md`.
 
@@ -139,18 +140,18 @@ python scripts/render_docs.py
 
 **Ruth cannot read `.md`.** That is a fact about her setup, not a preference, so the markdown in the repo is a source format she has no way to open — and until 2026-09-08 the 52,000-word build specification was, in her own words, a document she no longer knew the contents of. This step is what closes that gap, and it runs **after** the Drive sync in step 3, because it renders from the markdown that step just wrote.
 
-It renders **all five** working documents, not just the specification, plus the articles — none of them into `Claude Code Working Build Specs/`:
+It renders **all six** working documents, plus the articles:
 
 | Output | Where |
 |---|---|
-| `Selodia Build Specification.docx` | `Build Specs/` |
-| `Selodia Workflow.docx` | `Build Specs/` |
-| `Selodia MI Language Rules.docx` | `Build Specs/` |
-| `Selodia Safety Architecture.docx` | `Build Specs/` |
-| `Selodia Decision Patterns.docx` | `Build Specs/` |
+| Six `.docx`, one per working document | `Build Specs/Spec Documents (Word)/` |
 | One `.docx` per build-log article, named `YYYY-MM-DD Title.docx` | `Build Specs/Branding/Marketing Articles and Copy/` |
 
-**All five, and the reason it is worth stating.** The first version of this step rendered the specification alone, because that was the document being asked about — which left four documents Ruth still could not open, including the language rules the whole safety architecture is built from. Four unreadable documents is the same defect as five. If a sixth working document is ever added, it goes in the `DOCUMENTS` table at the top of the script, not into a follow-up.
+**Their own folder, not loose in `Build Specs/`** (2026-09-09). They sat at the top level for a day, mixed in among the close-out workbook, the build log and five subfolders, and were genuinely hard to pick out.
+
+**Deliberately NOT inside `Claude Code Working Build Specs/`.** That folder runs one file per document, and a `.docx` sitting beside its own `.md` is exactly the duplication that rule exists to prevent.
+
+**Every working document, and the reason it is worth stating.** The first version of this step rendered the specification alone, because that was the one being asked about — leaving four Ruth still could not open, including the language rules the whole safety architecture is built from. The brand and marketing spec joined on 09-09 for the same reason, having been readable by nobody since it was written. **A seventh document goes in the `DOCUMENTS` table at the top of the script** — that is the whole change, since the contents page, the styles and this step all follow from that table.
 
 **Not into the five-document folder, deliberately.** That folder holds exactly five files and step 1 verifies all five byte-identical against the repo; a sixth breaks that check. Derived renderings live one level up.
 
