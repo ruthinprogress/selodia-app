@@ -83,7 +83,8 @@
         }
       ],
       "expo-image",
-      "@livekit/react-native-expo-plugin"
+      "@livekit/react-native-expo-plugin",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,
