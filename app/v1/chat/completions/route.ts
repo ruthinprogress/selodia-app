@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // block, the Almanac flow - because it IS the same function, just reached
 // without leaving the process.
 import { POST as askUnflump } from '../../../api/ask-unflump/route';
+import { getSupabaseForRequest } from '../../../lib/supabase';
 
 // The custom-LLM adapter ElevenLabs talks to.
 //
@@ -95,6 +96,42 @@ function speakableChunks(reply: string): string[] {
   return parts.filter((p) => p.trim().length > 0);
 }
 
+// Silence is not a turn.
+//
+// FOUND ON DEVICE, 2026-09-09. With the microphone publishing an empty track,
+// ElevenLabs' transcriber rendered the silence as "..." and handed each one to
+// us as a genuine user message. The agent answered all of them: 33 turns in
+// four minutes, Freya gently checking in on a person who had not said a word,
+// and sixteen full Claude calls billed for it.
+//
+// The mic fault was separate and is fixed. This is not: any room with enough
+// background noise to trip the voice-activity detector produces the same empty
+// transcript, so the guard belongs here whatever the microphone is doing.
+//
+// Punctuation-only rather than a fixed list of strings: "...", "…", ".", "?"
+// and any combination are all the same non-utterance, and matching on the
+// absence of letters and digits catches the ones nobody thought to enumerate.
+// Deliberately NOT a length check - "no" and "ok" are two characters and are
+// real answers.
+function isSilence(utterance: string): boolean {
+  return !/[\p{L}\p{N}]/u.test(utterance);
+}
+
+// How long an identical utterance counts as the same one.
+//
+// Measured, not guessed: on 2026-09-09 the same sentence arrived four times
+// across 6.4 seconds - at +0.4s, +2.0s and +6.4s - and each ran a full
+// pipeline turn and wrote its own food row. Fifteen seconds covers that with
+// room to spare.
+//
+// THE TRADE IS REAL AND WORTH STATING. Somebody genuinely saying "yes" twice
+// inside fifteen seconds gets the second one swallowed. The costs are not
+// symmetrical: an unanswered repeat is fixed by speaking again, while a
+// duplicate log is a wrong number in someone's day that they then have to
+// find and delete - and until the delete UI exists, cannot.
+const DEDUP_WINDOW_MS = 15_000;
+
+
 const enc = new TextEncoder();
 
 function sseChunk(id: string, created: number, model: string, delta: object, finish: string | null) {
@@ -107,6 +144,30 @@ function sseChunk(id: string, created: number, model: string, delta: object, fin
       choices: [{ index: 0, delta, finish_reason: finish }],
     })}\n\n`
   );
+}
+
+// A well-formed completion carrying nothing to say.
+//
+// An empty assistant message is valid OpenAI shape, so the agent speaks
+// nothing and the conversation stays open - which is the right outcome both
+// for silence and for a repeat that has already been answered.
+function silentCompletion(id: string, created: number, model: string): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(sseChunk(id, created, model, { role: 'assistant' }, null));
+      controller.enqueue(sseChunk(id, created, model, { content: '' }, null));
+      controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
+      controller.enqueue(enc.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -136,6 +197,56 @@ export async function POST(request: NextRequest) {
   const model = typeof body.model === 'string' ? body.model : 'selodia';
   const id = `chatcmpl-${crypto.randomUUID()}`;
   const created = Math.floor(Date.now() / 1000);
+
+  // Answer silence with silence. An empty assistant message is a valid,
+  // well-formed completion, so the agent simply has nothing to speak and the
+  // conversation stays open - which is what someone who has not spoken yet
+  // wants. Returned BEFORE the pipeline, so a non-utterance costs no model
+  // call, writes no chat_messages row, and cannot leave a "..." in the thread.
+  if (isSilence(utterance)) {
+    console.log('VOICE ADAPTER: empty utterance, answering with silence');
+    return silentCompletion(id, created, model);
+  }
+
+  // THE SAME SENTENCE TWICE IS ONE TURN.
+  //
+  // Found on device 2026-09-09: one spoken sentence produced FOUR identical
+  // requests within 6.4 seconds, and because nothing here knew it had just
+  // seen that utterance, each ran the whole pipeline - four Claude calls,
+  // four food rows, four slightly different calorie estimates for one slice
+  // of toast. The person had spoken once.
+  //
+  // The check reads chat_messages rather than any cache of our own, because
+  // the pipeline writes the user turn BEFORE it calls the model - so the
+  // second request can already see the first, even when the two land on
+  // different serverless instances. An in-process Map would have worked for
+  // the warm case and quietly failed for the cold one.
+  //
+  // RLS scopes the read to this person automatically; the token is the same
+  // one the pipeline will authenticate with a moment later.
+  try {
+    const seen = new NextRequest(new URL('/api/ask-unflump', request.url), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const { data: duplicate } = await getSupabaseForRequest(seen)
+      .from('chat_messages')
+      .select('id')
+      .eq('role', 'user')
+      .eq('content', utterance)
+      .gte('created_at', new Date(Date.now() - DEDUP_WINDOW_MS).toISOString())
+      .limit(1)
+      .maybeSingle();
+    if (duplicate) {
+      console.log('VOICE ADAPTER: duplicate utterance within window, answering with silence');
+      return silentCompletion(id, created, model);
+    }
+  } catch (err) {
+    // FAIL OPEN, deliberately. If the check itself breaks, the worst outcome
+    // is the duplicate we already had; refusing to answer because a guard
+    // could not run would turn a logging bug into a mute assistant.
+    console.log('VOICE ADAPTER: dedup check failed, continuing -', err instanceof Error ? err.message : err);
+  }
 
   // The exact same handler the Chat composer reaches, invoked in-process.
   //
