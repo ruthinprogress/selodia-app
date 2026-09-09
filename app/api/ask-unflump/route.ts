@@ -11,6 +11,7 @@ import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-s
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import {
   CLASSIFY_TOOL_NAME,
+  RESOURCES,
   SAFETY_PROMPT_BLOCK,
   applySafetyStateMachine,
   buildClassifyTool,
@@ -44,6 +45,7 @@ import {
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
+import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
 import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
@@ -183,6 +185,7 @@ export async function POST(request: NextRequest) {
     { data: healthContextRow },
     { data: lastPeriodRow },
     { data: yesterdaySummary },
+    { data: profileRow },
     disclosedAllergies,
   ] = await Promise.all([
     supabase
@@ -259,6 +262,13 @@ export async function POST(request: NextRequest) {
       .not('mediating_factor', 'is', null)
       .order('summary_date', { ascending: false })
       .limit(1)
+      .maybeSingle(),
+    // Item 43. Height to assess a stated goal against, and whether an unsafe one
+    // has already been raised - which decides both the one-time resource and the
+    // standing instruction below.
+    supabase
+      .from('user_profile')
+      .select('height_cm, unsafe_goal_flagged_at')
       .maybeSingle(),
     // Not a { data } shape - loadAllergies returns the rows directly. Positional
     // destructuring above, so it stays last.
@@ -412,8 +422,17 @@ ${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}
 
 ${SAFETY_PROMPT_BLOCK}`;
 
+  // Item 43. The standing instruction, for every turn AFTER an unsafe goal was
+  // raised. It exists because the exchange itself scrolls out of the history
+  // window within a few turns, and without this the app drifts back into
+  // coaching toward the number two days later, having forgotten it said it
+  // would not. `goalSafetyPrompt` returns '' when there is nothing to say, which
+  // is almost always.
+  const profile = profileRow as { height_cm: number | null; unsafe_goal_flagged_at: string | null } | null;
   const contextualSystemPrompt =
-    SYSTEM_PROMPT + buildContextualAdditions(previousEscalationStep, previousRevisitCount);
+    SYSTEM_PROMPT +
+    buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
+    goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at);
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
     // The spotlight (build item 23). Free-form on the wire, validated below
@@ -471,6 +490,18 @@ ${SAFETY_PROMPT_BLOCK}`;
       enum: ['update', 'delete'],
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
+    },
+    statedGoalWeightKg: {
+      type: 'number',
+      description:
+        'Set ONLY when the person states a bodyweight they are AIMING FOR, in kilograms, '
+        + 'converting from stones/pounds if that is how they said it (e.g. "I want to get '
+        + 'down to 8 stone" is 50.8). This is the goal, never a weight they have just '
+        + 'measured - a reading goes to logIntent \'measurement\' instead. Report the number '
+        + 'they said and nothing else: do NOT judge whether it is sensible, healthy or '
+        + 'achievable, and do not adjust it. The app assesses it against their height '
+        + 'deterministically and will tell you what to do. Leave unset if no goal weight was '
+        + 'stated, or if they only mentioned one vaguely without a figure.',
     },
     suggestsFood: {
       type: 'boolean',
@@ -607,6 +638,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     correctionAction?: string;
     correctionScope?: string;
     suggestsFood?: boolean;
+    statedGoalWeightKg?: number;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -1077,6 +1109,73 @@ ${SAFETY_PROMPT_BLOCK}`;
   const honestyNote =
     correctionNote === null && !deferredLog ? unsavedNote(attempt) : null;
 
+  // UNSAFE-GOAL HANDLING (item 43, Part Twelve's Cross-Cutting Safety Principle).
+  //
+  // The model reported a number; the arithmetic decides. See goal-safety.ts for
+  // why the judgement is deterministic rather than a prompt instruction.
+  //
+  // REGENERATING THE REPLY IS THE AWKWARD PART AND IS UNAVOIDABLE. The model
+  // wrote its answer before anything here knew the goal was unsafe, so that
+  // answer may already be coaching toward the number - which is the exact harm.
+  // A canned replacement would be safe and cold; the spec asks for kind, and
+  // kind has to be written in context. So the turn is re-run with the
+  // instruction included, and ONLY the reply text is taken from it: everything
+  // else the first call decided - what was logged, corrected, saved - is
+  // untouched by the goal and must not be recomputed.
+  //
+  // The second call costs a full turn's latency, on the rare turn where somebody
+  // states a goal below a safe range. That is the right place to spend it.
+  let goalSafeReply = replyText;
+  let goalResourceCard: typeof resourceCard = null;
+  const goalAssessment = assessGoalWeight(result.statedGoalWeightKg, profile?.height_cm);
+
+  if (goalAssessment.verdict === 'unsafe') {
+    console.log('UNSAFE GOAL: stated goal sits below a safe range for their height');
+    try {
+      const reconsidered = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: 2000,
+        system: contextualSystemPrompt + goalSafetyPrompt(goalAssessment, null),
+        messages,
+        tools: [tool],
+        tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
+      });
+      const block = reconsidered.content.find((b) => b.type === 'tool_use');
+      const redone = block && block.type === 'tool_use' ? (block.input as { reply?: string }) : null;
+      if (reconsidered.stop_reason !== 'max_tokens' && redone?.reply?.trim()) {
+        goalSafeReply = redone.reply.trim();
+      }
+    } catch (err) {
+      // FAILS CLOSED, unlike the allergy gate's fourth layer. If the rewrite
+      // cannot happen the original reply cannot go out, because the thing we
+      // could not check is whether it coaches toward a dangerous number.
+      console.log('UNSAFE GOAL: rewrite failed, using the plain refusal —', err);
+      goalSafeReply =
+        "That's not a number I'm able to help you aim for. I'm still here for " +
+        'everything else though - log away as normal and ask me anything.';
+    }
+
+    if (shouldOfferResource(goalAssessment, profile?.unsafe_goal_flagged_at)) {
+      goalResourceCard = {
+        title: RESOURCES.Beat.name,
+        description:
+          'Support and information around food, weight and body image, for anyone who wants it.',
+        org: RESOURCES.Beat.name,
+        url: RESOURCES.Beat.url,
+      };
+    }
+
+    // Stamped whether or not a card went out, because the stamp also governs the
+    // standing instruction on later turns. Non-blocking: a failed write must not
+    // cost the person their reply.
+    if (!profile?.unsafe_goal_flagged_at) {
+      const { error: stampError } = await supabase
+        .from('user_profile')
+        .upsert({ user_id: user.id, unsafe_goal_flagged_at: new Date().toISOString() });
+      if (stampError) console.log('UNSAFE GOAL: stamp failed —', stampError.message);
+    }
+  }
+
   // THE ALLERGY FILTER GATE (item 42, part c). Runs on what the model actually
   // said, not on what it was told - the prompt block in allergies.ts is
   // awareness and says so itself, and a long session can truncate it away.
@@ -1089,14 +1188,14 @@ ${SAFETY_PROMPT_BLOCK}`;
   // Costs nothing for anybody with no declared allergies, which is most people.
   const gate = await runAllergyGate(
     anthropic,
-    replyText,
+    goalSafeReply,
     disclosedAllergies,
     result.suggestsFood === true
   );
   // The correction and honesty notes survive a block: they are statements about
   // what the app DID with their data, still true and still owed to them, and
   // dropping them would trade one honesty problem for another.
-  const safeReplyText = gate.safe ? replyText : blockedSuggestionMessage(gate.allergen);
+  const safeReplyText = gate.safe ? goalSafeReply : blockedSuggestionMessage(gate.allergen);
 
   const trailingLines = [correctionNote, honestyNote].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
@@ -1149,7 +1248,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     navigationTarget,
     savedContext,
     savedAlmanac,
-    resourceCard,
+    resourceCard: resourceCard ?? goalResourceCard,
     healthGuidanceApplied,
     saved,
     foodLogId: breakdownFoodLogId,
