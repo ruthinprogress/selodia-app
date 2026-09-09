@@ -8,9 +8,24 @@ rather than hand-edited.
 
 WHAT IT PRODUCES, all into the Drive folder:
 
-  Build Specs/Selodia Build Specification.docx   the spec, Word
-  Build Specs/Selodia Build Specification.html   the spec, browser reader
+  Build Specs/*.docx                             all FIVE working documents
   Branding/Marketing Articles and Copy/*.docx    one per build-log article
+
+Each .docx opens on a REAL CONTENTS PAGE of clickable internal links, not just
+Word's Navigation Pane. The pane is a side panel someone has to know to switch
+on (View > Navigation Pane); a contents page is simply there when the document
+opens. Both work, and only one of them works without being told about it.
+
+An HTML reader was built alongside these on 2026-09-08 and REMOVED on 09-09.
+It was written when Word was not yet on the table, and once all five documents
+rendered as Word it was a second format of one document — the exact duplication
+that rots quietly while nobody is looking at it.
+
+ALL FIVE, not just the specification. The first version of this script rendered
+only the spec, because that was the document being asked about — leaving the
+workflow, the language rules, the decision patterns and the safety architecture
+as markdown Ruth still could not open. Four unreadable documents is the same
+defect as five; the count was never the point.
 
 RUN IT AT SESSION CLOSE-OUT, after the Drive sync and before the final push
 (WORKFLOW.md, Automated close-out). A stale rendering of a document whose
@@ -29,7 +44,6 @@ a sixth file in it breaks that check. Derived renderings go one level up.
 
 from __future__ import annotations
 
-import base64
 import re
 import subprocess
 import sys
@@ -37,14 +51,34 @@ from pathlib import Path
 
 try:
     from docx import Document
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.enum.text import WD_BREAK
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches, Pt, RGBColor
 except ImportError:
     sys.exit("render_docs: python-docx is not installed.  pip install python-docx")
 
 REPO = Path(__file__).resolve().parents[1]
-SPEC = REPO / "mobile" / "SELODIA_SPEC.md"
+MOBILE = REPO / "mobile"
+
+# The five working documents, each with the subtitle its cover carries. Repo
+# and Drive names differ deliberately (WORKFLOW.md, "Note the filenames still
+# differ"), and the Word name is a third form again — a title, not a filename,
+# because this is the copy meant to be read rather than synced.
+DOCUMENTS = [
+    ("SELODIA_SPEC.md", "Selodia Build Specification",
+     "Build Specification", "What the product is and how it works"),
+    ("WORKFLOW.md", "Selodia Workflow",
+     "Workflow & Collaboration Process", "How Ruth, Claude and Claude Code actually work together"),
+    ("SELODIA_LANGUAGE_RULES.md", "Selodia MI Language Rules",
+     "Language Rules: Emotionally Open Moments", "The MI-grounded safety-boundary language"),
+    ("SAFETY_ARCHITECTURE.md", "Selodia Safety Architecture",
+     "Safety State Machine", "Engineering design for the distress classification"),
+    ("DECISION_PATTERNS.md", "Selodia Decision Patterns",
+     "Ruth's Decision Patterns", "Observed patterns in how the decisions actually get made"),
+]
 
 # The synced Drive folder. A remotely-executed session has no H: drive at all
 # (WORKFLOW.md, "Where the session is EXECUTING"), so this is checked rather
@@ -128,6 +162,52 @@ def base_styles(doc, body_pt: float = 10.5) -> None:
         st.paragraph_format.keep_with_next = True
 
 
+def _bookmark(paragraph, name: str, bid: int) -> None:
+    """Mark a heading so a contents link can point at it."""
+    start = OxmlElement("w:bookmarkStart")
+    start.set(qn("w:id"), str(bid))
+    start.set(qn("w:name"), name)
+    end = OxmlElement("w:bookmarkEnd")
+    end.set(qn("w:id"), str(bid))
+    paragraph._p.insert(0, start)
+    paragraph._p.append(end)
+
+
+def _link(paragraph, text: str, anchor: str, size: float,
+          colour: RGBColor, bold: bool = False) -> None:
+    """An internal hyperlink to a bookmark, built as raw XML.
+
+    python-docx has no API for this. Deliberately NOT a TOC field: a field
+    renders as "Right-click to update" until someone does, and prints page
+    numbers that are wrong the moment anything reflows. A list of live links
+    is correct the instant the file is written and needs nothing from the
+    reader.
+    """
+    h = OxmlElement("w:hyperlink")
+    h.set(qn("w:anchor"), anchor)
+    run = OxmlElement("w:r")
+    rpr = OxmlElement("w:rPr")
+    rfonts = OxmlElement("w:rFonts")
+    rfonts.set(qn("w:ascii"), BODY_FACE)
+    rfonts.set(qn("w:hAnsi"), BODY_FACE)
+    rpr.append(rfonts)
+    if bold:
+        rpr.append(OxmlElement("w:b"))
+    col = OxmlElement("w:color")
+    col.set(qn("w:val"), str(colour))
+    rpr.append(col)
+    sz = OxmlElement("w:sz")
+    sz.set(qn("w:val"), str(int(size * 2)))  # half-points
+    rpr.append(sz)
+    run.append(rpr)
+    t = OxmlElement("w:t")
+    t.text = text
+    t.set(qn("xml:space"), "preserve")
+    run.append(t)
+    h.append(run)
+    paragraph._p.append(h)
+
+
 def centred(doc, text, size, colour, italic=False):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -142,10 +222,15 @@ def _is_table_row(line: str) -> bool:
     return line.startswith("|") and line.endswith("|")
 
 
-def markdown_body(doc, md: str) -> None:
-    """Headings, paragraphs, lists, tables, quotes and fenced code into Word."""
+def markdown_body(doc, md: str, headings=None) -> None:
+    """Headings, paragraphs, lists, tables, quotes and fenced code into Word.
+
+    When `headings` is given, every H1 and H2 is bookmarked and recorded, so
+    the contents page can link straight to it.
+    """
     lines = md.replace("\r\n", "\n").split("\n")
     i, in_code, code_buf = 0, False, []
+    bid = 100
 
     while i < len(lines):
         line = lines[i].rstrip()
@@ -173,7 +258,13 @@ def markdown_body(doc, md: str) -> None:
 
         if line.startswith("#"):
             level = len(line) - len(line.lstrip("#"))
-            doc.add_heading(line.lstrip("#").strip().replace("**", ""), min(level, 4))
+            text = line.lstrip("#").strip().replace("**", "")
+            par = doc.add_heading(text, min(level, 4))
+            if headings is not None and level <= 2:
+                bid += 1
+                anchor = "sec%d" % bid
+                _bookmark(par, anchor, bid)
+                headings.append((level, text, anchor))
             i += 1
             continue
 
@@ -232,19 +323,20 @@ def markdown_body(doc, md: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# 1. the spec, as Word
+# 1. the five working documents, as Word
 # --------------------------------------------------------------------------
 
-def render_spec_docx(commit: str) -> Path:
-    md = SPEC.read_text(encoding="utf-8")
+def render_docx(source: Path, out_name: str, subtitle: str, blurb: str,
+                commit: str) -> Path:
+    md = source.read_text(encoding="utf-8")
     doc = Document()
     base_styles(doc)
     for s in doc.sections:
         s.left_margin = s.right_margin = Inches(1.0)
 
     centred(doc, "selodía", 34, CHARCOAL)
-    centred(doc, "Build Specification", 16, TERRACOTTA)
-    centred(doc, "A body literacy app for women 40+", 10.5, FOREST, italic=True)
+    centred(doc, subtitle, 16, TERRACOTTA)
+    centred(doc, blurb, 10.5, FOREST, italic=True)
     # The commit stamp is the point, not the flourish: this document's own
     # recurring defect is stale status, and "which version is this" is the
     # question that catches it.
@@ -254,38 +346,53 @@ def render_spec_docx(commit: str) -> Path:
             9, GREY, italic=True)
     doc.add_page_break()
 
-    markdown_body(doc, md)
-    out = DRIVE / "Selodia Build Specification.docx"
+    # Where the contents page has to land: straight after the cover's page
+    # break, before a single line of the document itself.
+    insert_at = len(doc.element.body)
+
+    headings = []
+    markdown_body(doc, md, headings)
+
+    if headings:
+        made = []
+        h = doc.add_paragraph()
+        r = h.add_run("Contents")
+        r.font.size = Pt(15)
+        r.bold = True
+        r.font.color.rgb = FOREST
+        h.paragraph_format.space_after = Pt(10)
+        made.append(h)
+
+        for level, text, anchor in headings:
+            par = doc.add_paragraph()
+            par.paragraph_format.space_after = Pt(2 if level == 2 else 6)
+            par.paragraph_format.space_before = Pt(8 if level == 1 else 0)
+            if level == 2:
+                par.paragraph_format.left_indent = Inches(0.28)
+            _link(par, text, anchor,
+                  size=11 if level == 1 else 10,
+                  colour=TERRACOTTA if level == 1 else CHARCOAL,
+                  bold=level == 1)
+            made.append(par)
+
+        brk = doc.add_paragraph()
+        brk.add_run().add_break(WD_BREAK.PAGE)
+        made.append(brk)
+
+        # Built at the end because the anchors do not exist until the body
+        # has been written, then moved to the front. Reinserting in order
+        # keeps the contents reading top to bottom rather than reversed.
+        for offset, par in enumerate(made):
+            doc.element.body.remove(par._p)
+            doc.element.body.insert(insert_at + offset, par._p)
+
+    out = DRIVE / f"{out_name}.docx"
     doc.save(out)
     return out
 
 
 # --------------------------------------------------------------------------
-# 2. the spec, as a self-contained browser reader
-# --------------------------------------------------------------------------
-
-READER_TEMPLATE = (Path(__file__).resolve().parent / "spec_reader_template.html")
-
-
-def render_spec_html(commit: str) -> Path:
-    md = SPEC.read_text(encoding="utf-8")
-    # Base64 rather than inlining the text: the spec is full of angle brackets,
-    # backticks and accented characters, and encoding sidesteps every escaping
-    # question at once instead of handling them one at a time.
-    payload = base64.b64encode(md.encode("utf-8")).decode("ascii")
-    html = (READER_TEMPLATE.read_text(encoding="utf-8")
-            .replace("__PAYLOAD__", payload)
-            .replace("__COMMIT__", commit)
-            .replace("__KB__", f"{len(md.encode('utf-8')) / 1024:.0f}")
-            .replace("__WORDS__", f"{len(md.split()):,}")
-            .replace("__PARTS__", str(md.count("\n# "))))
-    out = DRIVE / "Selodia Build Specification.html"
-    out.write_text(html, encoding="utf-8", newline="")
-    return out
-
-
-# --------------------------------------------------------------------------
-# 3. the build-log articles, as Word, named by date
+# 2. the build-log articles, as Word, named by date
 # --------------------------------------------------------------------------
 
 def render_articles() -> list[Path]:
@@ -357,8 +464,12 @@ def main() -> int:
 
     commit = commit_hash()
     print(f"  commit {commit}")
-    print(f"    {render_spec_docx(commit).name}")
-    print(f"    {render_spec_html(commit).name}")
+    for filename, out_name, subtitle, blurb in DOCUMENTS:
+        source = MOBILE / filename
+        if not source.is_file():
+            print(f"    MISSING, not rendered: {filename}")
+            continue
+        print(f"    {render_docx(source, out_name, subtitle, blurb, commit).name}")
     for p in render_articles():
         print(f"    {p.name}")
     return 0

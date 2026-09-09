@@ -117,19 +117,32 @@ python scripts/render_docs.py
 
 **Ruth cannot read `.md`.** That is a fact about her setup, not a preference, so the markdown in the repo is a source format she has no way to open — and until 2026-09-08 the 52,000-word build specification was, in her own words, a document she no longer knew the contents of. This step is what closes that gap, and it runs **after** the Drive sync in step 3, because it renders from the markdown that step just wrote.
 
-It produces four things, none of them into `Claude Code Working Build Specs/`:
+It renders **all five** working documents, not just the specification, plus the articles — none of them into `Claude Code Working Build Specs/`:
 
 | Output | Where |
 |---|---|
 | `Selodia Build Specification.docx` | `Build Specs/` |
-| `Selodia Build Specification.html` | `Build Specs/` |
+| `Selodia Workflow.docx` | `Build Specs/` |
+| `Selodia MI Language Rules.docx` | `Build Specs/` |
+| `Selodia Safety Architecture.docx` | `Build Specs/` |
+| `Selodia Decision Patterns.docx` | `Build Specs/` |
 | One `.docx` per build-log article, named `YYYY-MM-DD Title.docx` | `Build Specs/Branding/Marketing Articles and Copy/` |
+
+**All five, and the reason it is worth stating.** The first version of this step rendered the specification alone, because that was the document being asked about — which left four documents Ruth still could not open, including the language rules the whole safety architecture is built from. Four unreadable documents is the same defect as five. If a sixth working document is ever added, it goes in the `DOCUMENTS` table at the top of the script, not into a follow-up.
 
 **Not into the five-document folder, deliberately.** That folder holds exactly five files and step 1 verifies all five byte-identical against the repo; a sixth breaks that check. Derived renderings live one level up.
 
 **Every output stamps the commit it came from.** That is the point rather than a flourish: this project's most persistent documentation defect is a status claim that was true when written and silently stopped being true — nine were found and fixed on 2026-09-08 alone — and "which version am I holding" is the question that catches it. A rendering with no provenance would reproduce the exact failure it exists to help with.
 
-**Word's Navigation Pane is what makes the .docx usable**, and it works only because the script writes real `Heading 1/2/3` styles rather than bold text that looks like a heading. If a future change ever makes headings *look* right but stop being styles, the contents tree silently empties and the document becomes 180 pages of scrolling.
+**Each file opens on a real contents page** of clickable internal links — not Word's Navigation Pane, which is a side panel someone has to know to switch on. Both work; only one of them works without being told about it.
+
+**The contents page cannot go stale, and that is the whole design.** It is not maintained — it is rebuilt from the document's own headings on the same pass that writes the body, so a new section appears in the contents the first time it is rendered and a deleted one disappears. There is no second list to keep in step, which is the failure this project has hit repeatedly everywhere else.
+
+**It is deliberately not a Word TOC field.** A field renders as "Right-click to update" until somebody does, and prints page numbers that are wrong the moment anything reflows. Live links are correct the instant the file is written and ask nothing of the reader.
+
+**Both the contents page and the Navigation Pane rest on real `Heading 1/2/3` styles.** If a future change makes headings merely *look* right — bold text at a larger size — the links stop being generated and the pane silently empties, with no error to notice.
+
+**A thin contents page means a flat source document, not a broken render.** `DECISION_PATTERNS.md` yields three entries because its patterns are bold paragraphs rather than headings. That is worth fixing in the markdown if the patterns are ever wanted as an index.
 
 **If the Drive folder is unreachable the script writes nothing and says so**, rather than failing halfway — the same remote-session caveat as step 3.
 
