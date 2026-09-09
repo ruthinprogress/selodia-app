@@ -20,3 +20,15 @@ export function getSupabaseForRequest(request: NextRequest) {
     global: { headers: authHeader ? { Authorization: authHeader } : {} },
   });
 }
+
+// The service role bypasses RLS, so it is used for exactly one thing: minting
+// signed URLs for the private movement-demos bucket. That bucket has no storage
+// policy for end users at all - deliberately, because Exercise Animatic's licence
+// (ToS 8.4) forbids allowing end users to download or extract the files, and a
+// bucket the client cannot address is the strongest form of that. The key never
+// leaves the server and never reaches the mobile app.
+export function getSupabaseServiceRole() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
+  return createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+}
