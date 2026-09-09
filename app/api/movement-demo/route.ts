@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest, getSupabaseServiceRole } from '../../lib/supabase';
-import { toJoinKey } from '../../lib/movement-demos';
+import { resolveDemoRef } from '../../lib/movement-demos';
 
 // Hand the app a playable URL for one movement demonstration.
 //
@@ -20,12 +20,12 @@ const SIGNED_URL_TTL_SECONDS = 300;
 export async function GET(request: NextRequest) {
   // `ref` is a join_key already resolved when the plan was saved, and is what a
   // plan written after 2026-09-09 sends. `exercise` is the raw name, used by
-  // plans saved before demoRef existed. Both end up as the same lookup - the
-  // difference is only whether the normalising happened here or at save time.
-  const ref = request.nextUrl.searchParams.get('ref');
-  const name = request.nextUrl.searchParams.get('exercise');
-  const joinKey = ref?.trim() ? toJoinKey(ref) : name?.trim() ? toJoinKey(name) : null;
-  if (!joinKey) {
+  // plans saved before demoRef existed. A ref is taken as given; a name goes
+  // through the same SQL resolver the save path uses, so the two can never
+  // disagree about which clip a name means.
+  const ref = request.nextUrl.searchParams.get('ref')?.trim();
+  const name = request.nextUrl.searchParams.get('exercise')?.trim();
+  if (!ref && !name) {
     return NextResponse.json({ error: 'ref or exercise is required' }, { status: 400 });
   }
 
@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth?.user) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  const joinKey = ref ?? (await resolveDemoRef(supabase, name!));
+  if (!joinKey) {
+    return NextResponse.json({ demo: null }, { status: 200 });
   }
 
   const { data: asset, error: lookupError } = await supabase
