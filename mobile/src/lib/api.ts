@@ -9,6 +9,44 @@ import { supabase } from '@/lib/supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
+// A failed call carries its status, so callers can tell the difference between
+// "the server said no" and "there was no server".
+//
+// Added 2026-09-09 after item 36 shipped without it. The movement demo renders
+// nothing when a movement has no clip, which is correct - but the route had not
+// been deployed, so every call 404ed and every exercise looked like a coverage
+// gap. A silent feature and an unreachable one were indistinguishable, on the
+// phone and in the logs. They are different problems and now they read as
+// different problems.
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly path: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+
+  static async from(path: string, response: Response): Promise<ApiError> {
+    let detail = '';
+    try {
+      detail = (await response.text()).slice(0, 200);
+    } catch {
+      // A body that cannot be read must not replace the status, which is the
+      // part that actually says what went wrong.
+    }
+    return new ApiError(`${path} failed (${response.status}): ${detail}`, response.status, path);
+  }
+
+  // 404 on one of our own routes never means "not found" in the domain sense -
+  // every route answers with a 200 and a null when it has nothing. It means the
+  // route is not there: an undeployed build, or a path that no longer exists.
+  get isNotDeployed(): boolean {
+    return this.status === 404;
+  }
+}
+
 export async function authedPost<T = unknown>(
   path: string,
   body: Record<string, unknown>
@@ -30,8 +68,7 @@ export async function authedPost<T = unknown>(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`${path} failed (${response.status}): ${text}`);
+    throw await ApiError.from(path, response);
   }
   return response.json() as Promise<T>;
 }
@@ -56,8 +93,7 @@ export async function authedGet<T = unknown>(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`${path} failed (${response.status}): ${text}`);
+    throw await ApiError.from(path, response);
   }
   return response.json() as Promise<T>;
 }

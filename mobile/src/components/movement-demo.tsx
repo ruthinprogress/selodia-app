@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { authedGet } from '@/lib/api';
+import { ApiError, authedGet } from '@/lib/api';
 
 // The movement demonstration (build item 36) — the licensed animation for one
 // exercise, shown inside the exercise detail beneath its safety note.
@@ -59,14 +59,32 @@ export function MovementDemo({
         demoRef ? { ref: demoRef } : { exercise: exerciseName }
       );
       if (!res.demo) {
+        // The ordinary case, and not worth a line in the log every time somebody
+        // opens a stretch. This is what a movement the library does not cover
+        // looks like, and it is expected to be common.
         setState('absent');
         return;
       }
       setDemo(res.demo);
       setState('ready');
-    } catch {
-      // Deliberately quiet. A demo failing to load is not worth an error message
-      // on top of a safety note somebody is about to act on.
+    } catch (err) {
+      // STILL SILENT FOR THE PERSON, LOUD IN THE LOG.
+      //
+      // Both outcomes render nothing - a demo failing to load is not worth an
+      // error message stacked on top of a safety note somebody is about to act
+      // on. But "this movement has no clip" and "I could not reach the server"
+      // are different problems, and on 2026-09-09 they were indistinguishable:
+      // the route had not been deployed, every call 404ed, and the whole feature
+      // looked like a coverage gap on a phone with nothing to say otherwise.
+      if (err instanceof ApiError && err.isNotDeployed) {
+        console.log(
+          `MOVEMENT DEMO: /api/movement-demo returned 404 - the route is not deployed. ` +
+            `Every exercise will look like it has no clip until it is.`
+        );
+      } else {
+        const detail = err instanceof ApiError ? `HTTP ${err.status}` : String(err);
+        console.log(`MOVEMENT DEMO: could not load "${exerciseName}" (${detail})`);
+      }
       setState('error');
     }
   }, [exerciseName, demoRef]);

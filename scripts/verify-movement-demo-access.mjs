@@ -59,3 +59,26 @@ const { data: shortLived } = await admin.storage
 await new Promise((r) => setTimeout(r, 2500));
 const stale = await fetch(shortLived.signedUrl);
 console.log(`  expired URL     -> ${stale.status} ${stale.status === 400 ? '(refused, correct)' : 'STILL SERVING - INVESTIGATE'}`);
+
+// 5. IS THE ROUTE ACTUALLY DEPLOYED?
+//
+// This check exists because everything above passed on 2026-09-09 while the
+// feature was completely dead on the phone. The bucket was right, the rows were
+// right, the signing was right - and /api/movement-demo had never been pushed,
+// so every call 404ed and the player, which correctly renders nothing when a
+// movement has no clip, rendered nothing for every movement.
+//
+// Storage being correct says nothing about the app being able to reach it. This
+// asks the question the four checks above cannot.
+//
+// Unauthenticated on purpose: a 401 is the CORRECT answer here and proves the
+// route is live and guarding itself. A 404 means it is not deployed.
+const base = process.env.API_BASE_URL || 'https://selodia.app';
+const probe = await fetch(`${base}/api/movement-demo?exercise=probe`);
+const verdict =
+  probe.status === 401
+    ? 'deployed and requires auth, correct'
+    : probe.status === 404
+      ? 'NOT DEPLOYED - the feature is dead on the phone, push and redeploy'
+      : `unexpected - expected 401, investigate`;
+console.log(`  route (${base}) -> ${probe.status} (${verdict})`);
