@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { MovementDemo } from '@/components/movement-demo';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedView } from '@/components/themed-view';
@@ -135,12 +136,15 @@ export function AlmanacDetail({
 // the "Before you start" safety note comes FIRST - it is the thing that matters
 // before someone loads a bar, not a footnote under the demo.
 //
-// The movement-demo animation belongs here next, and is deliberately absent:
-// item 36's assets do not exist yet, and an empty media slot would be exactly
-// the dead placeholder principle 8 rules out. "Ask about this" is likewise
-// held - it is the discuss-card mechanic, and an exercise is not currently a
-// valid discuss_entry_type (it lives inside a plan's JSONB rather than being a
-// row with an id). Both are recorded gaps, not oversights.
+// The movement-demo animation sits directly under that note (item 36, built
+// 2026-09-09). It renders NOTHING when the library has no asset for the
+// movement - not a placeholder and not an explanation - because the library
+// covers movement patterns rather than every named exercise, and item 46
+// handles that gap in conversation without ever naming the library's limits.
+//
+// "Ask about this" is still held: it is the discuss-card mechanic, and an
+// exercise is not a valid discuss_entry_type today (it lives inside a plan's
+// JSONB rather than being a row with an id). A recorded gap, not an oversight.
 function ExerciseDetail({
   exercise,
   planId,
@@ -183,6 +187,11 @@ function ExerciseDetail({
                 No safety note saved for this one yet.
               </ThemedText>
             )}
+
+            {/* Part Ten fixes this order: the safety note comes first,
+                because it is what matters before somebody loads a bar. The
+                demonstration follows it, never above it. */}
+            <MovementDemo exerciseName={exercise.name} />
 
             <WorkingWeightControl
               planId={planId}

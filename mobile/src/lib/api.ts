@@ -35,3 +35,29 @@ export async function authedPost<T = unknown>(
   }
   return response.json() as Promise<T>;
 }
+
+// The GET counterpart, added for /api/movement-demo (item 36). Same token
+// attach, same failure shape - it exists because a signed URL is a READ and
+// posting to fetch one would have been a lie about what the call does.
+export async function authedGet<T = unknown>(
+  path: string,
+  params: Record<string, string> = {}
+): Promise<T> {
+  if (!API_BASE_URL) throw new Error('Backend URL not configured');
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
+  const qs = new URLSearchParams(params).toString();
+  const response = await fetch(`${API_BASE_URL}${path}${qs ? `?${qs}` : ''}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`${path} failed (${response.status}): ${text}`);
+  }
+  return response.json() as Promise<T>;
+}

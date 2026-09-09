@@ -28,8 +28,11 @@ import { exerciseMetaLine, groupPlanExercises, shouldGroup } from '@/lib/workout
 // append-only history (slice E) — never a value stored on the plan, which is a
 // document and must not carry state the log owns.
 //
-// NOT here, deliberately: the movement-demo animation (item 36 — no assets
-// exist), which would be a dead control, exactly what principle 8 rules out.
+// NOT here, deliberately: the movement-demo animation. The assets exist as of
+// 2026-09-09, but a plan is a list to work through and 770 autoplaying loops
+// stacked down a page is a different screen from the one this is. The demo
+// lives one tap away, in the exercise detail behind the eye icon, under that
+// movement's safety note where Part Ten puts it.
 
 export function WorkoutPlanView({
   planId,
