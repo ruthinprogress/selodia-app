@@ -47,6 +47,15 @@ import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/al
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
 import { buildDayStatePrompt, loadDayState } from '../../lib/daily-targets';
+import {
+  applyPendingFocus,
+  clearPendingFocus,
+  coerceFocus,
+  focusAppliedNote,
+  pendingFocusPrompt,
+  readPending,
+  storePendingFocus,
+} from '../../lib/focus-states';
 import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
@@ -276,7 +285,8 @@ export async function POST(request: NextRequest) {
       .from('user_profile')
       .select(
         'height_cm, unsafe_goal_flagged_at, date_of_birth, biological_sex, ' +
-          'activity_level, fat_focus_state, muscle_focus_state, protein_target_g'
+          'activity_level, fat_focus_state, muscle_focus_state, protein_target_g, ' +
+          'pending_fat_focus, pending_muscle_focus, pending_focus_asked_at'
       )
       .maybeSingle(),
     // Not a { data } shape - loadAllergies returns the rows directly. Positional
@@ -368,7 +378,15 @@ export async function POST(request: NextRequest) {
     fat_focus_state: string | null;
     muscle_focus_state: string | null;
     protein_target_g: number | null;
+    pending_fat_focus: string | null;
+    pending_muscle_focus: string | null;
+    pending_focus_asked_at: string | null;
   } | null;
+
+  // An outstanding offer to change their Focus, if there is one. Read from the
+  // database rather than from the conversation, so a confirmation can never be
+  // applied against a proposal the model has misremembered.
+  const pendingFocus = readPending(profile);
 
   // Item 22's foundation. Server-local midnight, matching daily-roundup exactly,
   // so "today" means the same day here as it does in the roundup - two different
@@ -485,7 +503,8 @@ ${SAFETY_PROMPT_BLOCK}`;
   const contextualSystemPrompt =
     SYSTEM_PROMPT +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
-    goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at);
+    goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
+    pendingFocusPrompt(pendingFocus);
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
     // The spotlight (build item 23). Free-form on the wire, validated below
@@ -543,6 +562,36 @@ ${SAFETY_PROMPT_BLOCK}`;
       enum: ['update', 'delete'],
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
+    },
+    proposedFatFocus: {
+      type: 'string',
+      enum: ['reduce', 'maintain', 'increase'],
+      description:
+        'Set ONLY when they express a direction for their body composition that does not '
+        + 'match what the app already has, and you are OFFERING to set it - \'reduce\' for '
+        + 'wanting to lose fat, \'increase\' for wanting to gain weight, \'maintain\' for '
+        + 'wanting to hold steady. It changes what their daily calorie target is, so when '
+        + 'you set this you MUST ask them plainly in your reply whether to make the change, '
+        + 'in your own words and in one short question. Never state it as already done and '
+        + 'never quote a new number - the app applies it only after they agree, and tells '
+        + 'them itself. Leave unset for a passing remark, a feeling about their body, or '
+        + 'anything you are inferring rather than being told.',
+    },
+    proposedMuscleFocus: {
+      type: 'string',
+      enum: ['reduce', 'maintain', 'increase'],
+      description:
+        'The same, for muscle: \'increase\' for wanting to build, \'maintain\' to hold. '
+        + 'Set alongside proposedFatFocus when they describe both in one breath (\"lose a '
+        + 'bit of fat and get stronger\"), which is one question, not two.',
+    },
+    focusAnswer: {
+      type: 'string',
+      enum: ['yes', 'no'],
+      description:
+        'ONLY when the app has told you an offer is outstanding, and only when THIS message '
+        + 'actually answers it. Anything else - a new topic, a log, a different question - '
+        + 'is not an answer, so leave it unset. Never treat them moving on as a yes.',
     },
     statedGoalWeightKg: {
       type: 'number',
@@ -692,6 +741,9 @@ ${SAFETY_PROMPT_BLOCK}`;
     correctionScope?: string;
     suggestsFood?: boolean;
     statedGoalWeightKg?: number;
+    proposedFatFocus?: string;
+    proposedMuscleFocus?: string;
+    focusAnswer?: string;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -1162,6 +1214,36 @@ ${SAFETY_PROMPT_BLOCK}`;
   const honestyNote =
     correctionNote === null && !deferredLog ? unsavedNote(attempt) : null;
 
+  // FOCUS CAPTURE: infer, then confirm (2026-09-09).
+  //
+  // Order matters. An ANSWER to an outstanding offer is handled before a new
+  // proposal, so "yes, and actually make it muscle too" resolves the first
+  // question rather than being overwritten by the second.
+  let focusNote: string | null = null;
+  const answer = result.focusAnswer;
+
+  if (pendingFocus.askedAt && (answer === 'yes' || answer === 'no')) {
+    if (answer === 'yes') {
+      focusNote = focusAppliedNote(await applyPendingFocus(supabase, user.id, profile, pendingFocus));
+    } else {
+      // A no is not a maintain. It clears the offer and changes nothing, because
+      // declining a suggested deficit does not mean asking to hold steady.
+      await clearPendingFocus(supabase, user.id);
+    }
+  } else {
+    const proposedFat = coerceFocus(result.proposedFatFocus);
+    const proposedMuscle = coerceFocus(result.proposedMuscleFocus);
+    // Only store a proposal that would actually change something. Offering to
+    // set somebody to the state they are already in is a question with no
+    // consequence, and answering it would restart nothing and mean nothing.
+    const fatChanges = proposedFat && proposedFat !== profile?.fat_focus_state ? proposedFat : null;
+    const muscleChanges =
+      proposedMuscle && proposedMuscle !== profile?.muscle_focus_state ? proposedMuscle : null;
+    if (fatChanges || muscleChanges) {
+      await storePendingFocus(supabase, user.id, fatChanges, muscleChanges);
+    }
+  }
+
   // UNSAFE-GOAL HANDLING (item 43, Part Twelve's Cross-Cutting Safety Principle).
   //
   // The model reported a number; the arithmetic decides. See goal-safety.ts for
@@ -1250,7 +1332,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   // dropping them would trade one honesty problem for another.
   const safeReplyText = gate.safe ? goalSafeReply : blockedSuggestionMessage(gate.allergen);
 
-  const trailingLines = [correctionNote, honestyNote].filter(
+  const trailingLines = [correctionNote, focusNote, honestyNote].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
   const finalReply =
