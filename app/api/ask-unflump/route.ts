@@ -43,6 +43,7 @@ import {
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
+import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
@@ -471,6 +472,16 @@ ${SAFETY_PROMPT_BLOCK}`;
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
     },
+    suggestsFood: {
+      type: 'boolean',
+      description:
+        'Set true when your reply PROPOSES, RECOMMENDS OR OFFERS any food or drink - a meal '
+        + 'idea, a snack, something to try, an ingredient to add. Set false for everything '
+        + 'else, including when you are acknowledging or discussing food the person has '
+        + 'already eaten or is telling you about, which is not a suggestion. This decides '
+        + 'whether the app runs an allergy safety check over your reply, so err towards true '
+        + 'if you are unsure.',
+    },
     correctionScope: {
       type: 'string',
       enum: ['one', 'duplicates'],
@@ -595,6 +606,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     correctionKind?: string;
     correctionAction?: string;
     correctionScope?: string;
+    suggestsFood?: boolean;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -1065,11 +1077,34 @@ ${SAFETY_PROMPT_BLOCK}`;
   const honestyNote =
     correctionNote === null && !deferredLog ? unsavedNote(attempt) : null;
 
+  // THE ALLERGY FILTER GATE (item 42, part c). Runs on what the model actually
+  // said, not on what it was told - the prompt block in allergies.ts is
+  // awareness and says so itself, and a long session can truncate it away.
+  //
+  // Placed here, after every trailing note is decided but before any of it is
+  // shown or stored, so a blocked reply is never written to chat_messages. If
+  // it were stored, the next turn would read it back as context and the model
+  // would believe it had suggested the thing it was stopped from suggesting.
+  //
+  // Costs nothing for anybody with no declared allergies, which is most people.
+  const gate = await runAllergyGate(
+    anthropic,
+    replyText,
+    disclosedAllergies,
+    result.suggestsFood === true
+  );
+  // The correction and honesty notes survive a block: they are statements about
+  // what the app DID with their data, still true and still owed to them, and
+  // dropping them would trade one honesty problem for another.
+  const safeReplyText = gate.safe ? replyText : blockedSuggestionMessage(gate.allergen);
+
   const trailingLines = [correctionNote, honestyNote].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
   const finalReply =
-    trailingLines.length > 0 ? `${replyText}\n\n${trailingLines.join('\n\n')}` : replyText;
+    trailingLines.length > 0
+      ? `${safeReplyText}\n\n${trailingLines.join('\n\n')}`
+      : safeReplyText;
 
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,

@@ -5,19 +5,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // WHAT THIS IS: capture, storage and awareness — parts (a), (b) and (d) of the
 // item.
 //
-// WHAT THIS IS NOT, AND THE DISTINCTION IS THE POINT: part (c), "a genuine
-// filter check on every food suggestion path — an actual gate in the suggestion
-// path, not an instruction in a prompt asking the model to remember". That does
-// not exist, here or anywhere. Nothing in this file is a safety guarantee. The
-// prompt block below makes the model AWARE of a person's allergies inside a
-// session, which is useful and is not the same thing — the spec is explicit that
-// "prompt-level care is not a safety guarantee", precisely because a long
-// session can truncate context and a model can be talked around.
+// WHAT THIS IS NOT, AND THE DISTINCTION IS STILL THE POINT: part (c), the filter
+// check itself, lives in `allergy-gate.ts` and was built 2026-09-09. NOTHING IN
+// THIS FILE IS A SAFETY GUARANTEE and that has not changed. The prompt block
+// below makes the model AWARE of a person's allergies inside a session, which is
+// useful and is not the same thing — a long session can truncate it away and a
+// determined conversation can talk around it. It is layer 1 of four; the gate
+// runs afterwards, on what the model actually said.
 //
-// The gate is blocked on there being something structured to gate: the
-// Meal/Order Advisor is build item 22 and unbuilt, and today the app has no
-// food-suggestion path at all. Item 22 now carries a hard dependency in the spec
-// saying it cannot ship without this gate wired in.
+// This paragraph used to say the gate was blocked on the Meal/Order Advisor
+// (item 22) because "today the app has no food-suggestion path at all". That was
+// wrong, and the prompt block a few lines below is the proof: it says never
+// suggest an allergen "in anything you propose", an instruction that only exists
+// because proposing happens. There is no food-suggestion FEATURE, but Selodía
+// will answer "what should I have for dinner?" today. The risk was live while the
+// gate was deferred, so the gate shipped first and item 22 inherits it working.
 //
 // PERMANENCE IS STRUCTURAL. There is no delete, no update and no expiry in this
 // module, and there should never be one. Part Twelve: "once disclosed, an
