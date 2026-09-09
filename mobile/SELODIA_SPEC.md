@@ -1378,6 +1378,12 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 
     **The measured gain is small: 4 matches to 5 across a 22-name probe set.** That is the honest figure and it should not be dressed up. What it proves is that **the remaining gap is vocabulary, not formatting** — word order and plurals were never the main problem. Closing it needs curated aliases, decided by a person and written down, or more assets. Both are real work; neither is a rule change.
 
+    **Then the curated aliases turned up already written, by the vendor (2026-09-09).** The August cross-reference spreadsheet has a column nobody had read: **“Exact Female Exercise Animatic Library Name”**, filled in beside every movement Exercise Animatic said they carry. That is the vendor stating what their own clips are called — better evidence than anything inferable from names, and it needed no review. **103 of them are now in `movement_aliases`**, consulted by `resolve_movement_refs` only after exact and word-set matching fail, each row carrying its `source` so a vendor statement is never confused with a judgement call.
+
+    **Coverage against the 750-movement list went from 17 (2.3%) to 105 (14.0%)** — a sixfold increase for an afternoon's work, and it lands almost exactly on the **113** the vendor independently marked available. Two numbers now agree from different directions, which is the first time anything about this library's coverage has been corroborated rather than asserted.
+
+    **And that settles what the real gap is.** The naming problem is essentially solved; what remains is that **the library genuinely does not contain 86% of the movements Selodía wants**. No alias work touches that. It is assets, and it is item 49 — which also means item 49 is larger than “the mobility half” suggested when it was written.
+
     *(Minor, recorded so it is not rediscovered: one of the 770 join_keys carries a leaked `_female` suffix — `band spanish split squat_female`. A vendor filename oddity, one row, harmless because matching is exact.)*
 
     **What a saved plan looks like today**, from a real Almanac row written by voice on 2026-09-09: every exercise carries `"demoRef": null`. The model is doing the right thing — there is nothing to reference. That null is the whole of what is missing. Batches with the other native-additions rebuild. Not yet built.
