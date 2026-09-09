@@ -39,11 +39,38 @@ const OPENING_LINE =
 const TAPE_QUESTION = 'And do you have a tape measure?';
 const PERMISSION_INTRO =
   "One more thing. I can read your step count straight from your phone's health data, so movement counts without you having to log it. I'll ask your phone for permission next.";
-// Permission-result copy stays canned (D5): the fallback line is quoted verbatim
-// in the spec (Part Seven, step 4).
+// Permission-result copy stays canned (D5). One line per outcome, because they
+// are answers to different situations and until 2026-09-09 three of them shared
+// one line - so a phone with no health app at all was told it might own a watch
+// that does not sync, which answers a question nobody asked.
 const PERMISSION_GRANTED = 'Got it. Step tracking is connected.';
-const PERMISSION_FALLBACK =
+
+// DECLINED. Quoted verbatim in the spec (Part Seven, step 4) and unchanged: it
+// names a specific, real scenario rather than offering generic manual logging,
+// so somebody whose device does not sync recognises themselves in it.
+const PERMISSION_DECLINED =
   "No worries. Maybe you have a tracker that doesn't sync to your phone's health app, like some cheaper fitness watches. You can just tell me your step count from its own app directly, or send a screenshot.";
+
+// UNSUPPORTED. The phone has no health platform to read from, so there is no
+// decision the person made and nothing for them to reconsider. Saying so plainly
+// is shorter and truer than implying they might own the wrong watch.
+const PERMISSION_UNSUPPORTED =
+  "Your phone doesn't have a health app I can read steps from, so I'll leave that. Just tell me your step count whenever you want it counted, or send a screenshot.";
+
+// UNKNOWN, and iOS only. Apple will not tell an app whether read access was
+// allowed, so claiming it is connected might be a lie and claiming it failed
+// might also be one. This promises nothing and asks for nothing, which is the
+// only honest thing available - and the app quietly retries later, because
+// `unknown` is never stored as a decline.
+const PERMISSION_UNKNOWN =
+  "Asked. If your phone shares your steps, they'll start showing up on their own. If they haven't in a day or two, just tell me and we'll sort it.";
+
+const PERMISSION_MESSAGE: Record<StepPermissionResult, string> = {
+  granted: PERMISSION_GRANTED,
+  declined: PERMISSION_DECLINED,
+  unsupported: PERMISSION_UNSUPPORTED,
+  unknown: PERMISSION_UNKNOWN,
+};
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -144,7 +171,13 @@ export default function EquipmentScreen() {
       user_id: user.id,
       has_scales: hasScales,
       has_tape_measure: hasTapeMeasure,
-      steps_permission_declined: permission !== 'granted',
+      // ONLY A REAL DECLINE COUNTS AS ONE. This column exists to stop the app
+      // re-prompting somebody who already said no (Part Seven, step 4), so
+      // writing true for anything that merely is not a yes would silence a
+      // retry the person never refused. 'unknown' is the case that matters:
+      // iOS cannot tell us, and a guess would permanently suppress step
+      // tracking for somebody who had in fact allowed it.
+      steps_permission_declined: permission === 'declined' || permission === 'unsupported',
     });
     await advanceOnboardingStep(supabase, user.id, 'goals');
   }
@@ -154,7 +187,7 @@ export default function EquipmentScreen() {
     const result = await requestStepPermission();
     setMessages((prev) => [
       ...prev,
-      { role: 'assistant', content: result === 'granted' ? PERMISSION_GRANTED : PERMISSION_FALLBACK },
+      { role: 'assistant', content: PERMISSION_MESSAGE[result] },
     ]);
     await persistAnswers(result);
     setStep('done');
