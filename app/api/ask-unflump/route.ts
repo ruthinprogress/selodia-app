@@ -226,7 +226,12 @@ export async function POST(request: NextRequest) {
       .order('happened_at', { ascending: false }),
     supabase
       .from('activity_logs')
-      .select('happened_at, activity_type, duration_min, kcal_burned')
+      // eccentric_load and intensity joined the select on 2026-09-09. They were
+      // classified at log time (item 27) and then never read here, so the prompt
+      // could see THAT somebody trained but not whether it was the kind of
+      // training that makes legs hurt two days later - which is the whole
+      // question a symptom query is asking.
+      .select('happened_at, activity_type, duration_min, kcal_burned, eccentric_load, intensity')
       .gte('happened_at', contextSince.toISOString())
       .order('happened_at', { ascending: false }),
     // Whole-day tracker totals, kept in their own table and their own context
@@ -354,8 +359,17 @@ export async function POST(request: NextRequest) {
     ? recentFood.map((f) => f.happened_at.slice(0, 10) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
 
+  // Eccentric load is appended only when it was classified, so an older row with
+  // nulls reads as it always did rather than as 'eccentric load: null'.
   const activitySummary = recentActivity && recentActivity.length > 0
-    ? recentActivity.map((a) => a.happened_at.slice(0, 10) + ': ' + a.activity_type + ' (' + a.duration_min + ' min, ' + a.kcal_burned + ' kcal)').join('\n')
+    ? recentActivity.map((a) => {
+        const extras = [
+          a.intensity ? String(a.intensity) : null,
+          a.eccentric_load ? `${a.eccentric_load} eccentric load` : null,
+        ].filter(Boolean);
+        return a.happened_at.slice(0, 10) + ': ' + a.activity_type + ' (' + a.duration_min +
+          ' min, ' + a.kcal_burned + ' kcal' + (extras.length ? ', ' + extras.join(', ') : '') + ')';
+      }).join('\n')
     : 'No activity logged in the last 7 days.';
 
   // Named as a whole day, every time, with the source of the figure attached.
@@ -407,6 +421,12 @@ SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved pla
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
+
+A SYMPTOM IS A RESULT, SO READ WHAT CAUSED IT BEFORE ANSWERING. When the person mentions a physical symptom - an ache, soreness, stiffness, fatigue, low energy, bloating, poor sleep, feeling heavy or off - go and read the LOGGED ACTIVITY AND FOOD ABOVE FOR THE PREVIOUS ONE TO TWO DAYS before you say anything about it, and answer from what is actually there.
+
+Delayed soreness peaks 24-48 hours after the session that caused it, so yesterday matters more than today - and the entries carry intensity and eccentric load precisely because eccentric work is what produces it. If the log explains the symptom, say so specifically and name the session: "the 40kg deadlifts and 90 minutes of ballet yesterday" is an answer; "a heavier session in the last day or two" is the same sentence with the answer removed.
+
+If the log genuinely does not explain it, say that plainly and ask - never reach for a generic cause to fill the gap. Being told "nothing in your log obviously accounts for that" is useful; being told something vague that could be true of anybody is not, and the person cannot tell the difference between not being able to look and not bothering to.
 
 ONLY WHAT IS ACTUALLY THERE. Every specific in your reply has to come from what the person said in this conversation or from the logged data above. Do not supply details they did not give: not a distance, a pace, a route, a location, a weight, or how hard something felt. Someone who said "60mins" has not told you they went further than usual, so asking how the longer distance felt is a question about a run that does not exist - and what it teaches them is that the app is not really reading what they wrote. If a detail would be useful, ask for it; never assume it and never imply they mentioned it.
 
