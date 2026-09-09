@@ -506,7 +506,28 @@ ${SAFETY_PROMPT_BLOCK}`;
   try {
     response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 500,
+      // 500 UNTIL 2026-09-09, AND IT COULD NOT HOLD A WORKOUT PLAN.
+      //
+      // Found on device: asked to build a splits program and save it to the
+      // Almanac, the route failed five times running and answered "Something
+      // went wrong just then" to every one - including to "Can you end the
+      // session, please?". chat_messages tells the story plainly: six user rows
+      // and no assistant rows, because the user turn is written BEFORE this
+      // call and the reply after it, so the failure sits squarely in between.
+      //
+      // A plan comes back inside ONE tool block: programType, goal, then per
+      // exercise a name, group, sets, reps, eccentricLoad, intensity, and a
+      // safetyNote the prompt requires to name that movement's real failure
+      // modes rather than boilerplate. That is 100+ tokens an exercise, so six
+      // exercises exceeds 500 on almanacContent alone - before the spoken reply
+      // and the other fifteen classify fields. Every retry hit the same wall,
+      // which is why it failed identically five times rather than sometimes.
+      //
+      // RAISING THIS COSTS NOTHING ON AN ORDINARY TURN. max_tokens is a ceiling,
+      // not a reservation: a two-sentence reply still generates two sentences
+      // and stops. The latency note above concerns tokens READ, not tokens
+      // allowed, and is unaffected.
+      max_tokens: 2000,
       system: contextualSystemPrompt,
       messages,
       tools: [tool],
@@ -520,6 +541,23 @@ ${SAFETY_PROMPT_BLOCK}`;
   }
 
   if (pendingCard) await markCardImageSent(supabase, pendingCard.messageId);
+
+  // A TRUNCATED RESPONSE IS A BROKEN CALL, NOT A JUDGEMENT ABOUT THE INPUT.
+  //
+  // classify-image learned this the expensive way and wrote it down: at
+  // max_tokens the model stops mid-tool-block, the block is present but its
+  // input is half-written, and the cast below succeeds because a TypeScript
+  // cast checks nothing at runtime. The failure then surfaces somewhere else
+  // entirely, looking like anything but what it is. This route had no such
+  // check at all until 2026-09-09, which is why five identical failures in a
+  // row said only "Something went wrong just then".
+  if (response.stop_reason === 'max_tokens') {
+    console.log(
+      'ASK-UNFLUMP TRUNCATED: hit max_tokens before finishing the tool block.' +
+        ' Raise max_tokens; the reply and any save in this turn are lost.'
+    );
+    return NextResponse.json({ error: 'Response was cut short' }, { status: 500 });
+  }
 
   const toolUse = response.content.find((block) => block.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') {
