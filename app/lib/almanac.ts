@@ -80,6 +80,11 @@ export function prepareAlmanacEntry(input: AlmanacSaveInput): {
 // Persist a proposed Almanac save. Returns the stored row, or null when the
 // input isn't a real save or the insert fails - so the caller only ever confirms
 // a save that actually happened (the storage-honesty rule).
+// Item 36. Resolving a plan's exercises to their clips is a save-time step
+// rather than a render-time one, so the pipeline knows at authoring which
+// movements have no demonstration - which is what item 46 needs.
+import { resolveDemoRefs } from './movement-demos';
+
 export async function saveAlmanacEntry(
   supabase: SupabaseClient,
   userId: string,
@@ -87,6 +92,21 @@ export async function saveAlmanacEntry(
 ): Promise<AlmanacEntry | null> {
   const prepared = prepareAlmanacEntry(input);
   if (!prepared) return null;
+
+  // A plan's exercises get their demo references filled in here, in place,
+  // before the row is written. Best-effort by design: if the lookup fails the
+  // plan still saves and the player falls back to resolving by name when it
+  // renders, so a nice-to-have never costs somebody their programme.
+  const plan = looksLikeWorkoutPlan(prepared.content)
+    ? (prepared.content as unknown as WorkoutPlanContent)
+    : null;
+  if (plan) {
+    const refs = await resolveDemoRefs(supabase, plan.exercises.map((e) => e.name));
+    for (const exercise of plan.exercises) {
+      exercise.demoRef = refs.get(exercise.name) ?? null;
+    }
+  }
+
   const { data, error } = await supabase
     .from('almanac_entries')
     .insert({ user_id: userId, ...prepared })
@@ -135,7 +155,10 @@ export type PlanExercise = {
   // and feed the DOMS flag; without it that row lands null and never fires.
   eccentricLoad: EccentricLoad | null;
   intensity: PlanIntensity | null;
-  // Item 36. Null until movement-demo assets exist.
+  // Item 36. The `join_key` of this movement's demonstration clip, resolved at
+  // save time by exact name match, or null when the library has none - which
+  // is ordinary rather than a failure. Never guessed: see movement-demos.ts for
+  // why a near match is worse than no match.
   demoRef: string | null;
 };
 

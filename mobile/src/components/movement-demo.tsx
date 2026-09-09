@@ -38,16 +38,26 @@ type Demo = {
   movementPattern: string;
 };
 
-export function MovementDemo({ exerciseName }: { exerciseName: string }) {
+export function MovementDemo({
+  exerciseName,
+  demoRef,
+}: {
+  exerciseName: string;
+  // Resolved at save time and preferred when present. The name is kept as a
+  // fallback for plans saved before 2026-09-09, when every demoRef was null
+  // because there was nothing to point at - those plans still find their clip.
+  demoRef?: string | null;
+}) {
   const theme = useTheme();
   const [demo, setDemo] = useState<Demo | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'absent' | 'error'>('loading');
 
   const load = useCallback(async () => {
     try {
-      const res = await authedGet<{ demo: Demo | null }>('/api/movement-demo', {
-        exercise: exerciseName,
-      });
+      const res = await authedGet<{ demo: Demo | null }>(
+        '/api/movement-demo',
+        demoRef ? { ref: demoRef } : { exercise: exerciseName }
+      );
       if (!res.demo) {
         setState('absent');
         return;
@@ -59,7 +69,7 @@ export function MovementDemo({ exerciseName }: { exerciseName: string }) {
       // on top of a safety note somebody is about to act on.
       setState('error');
     }
-  }, [exerciseName]);
+  }, [exerciseName, demoRef]);
 
   useEffect(() => {
     let live = true;

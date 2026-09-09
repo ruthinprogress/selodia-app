@@ -191,7 +191,7 @@ function ExerciseDetail({
             {/* Part Ten fixes this order: the safety note comes first,
                 because it is what matters before somebody loads a bar. The
                 demonstration follows it, never above it. */}
-            <MovementDemo exerciseName={exercise.name} />
+            <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
 
             <WorkingWeightControl
               planId={planId}

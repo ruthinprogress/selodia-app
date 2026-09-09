@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest, getSupabaseServiceRole } from '../../lib/supabase';
+import { toJoinKey } from '../../lib/movement-demos';
 
 // Hand the app a playable URL for one movement demonstration.
 //
@@ -16,17 +17,16 @@ import { getSupabaseForRequest, getSupabaseServiceRole } from '../../lib/supabas
 // clip is about ten seconds long, so this is not a playback constraint.
 const SIGNED_URL_TTL_SECONDS = 300;
 
-// The manifest's join_key is lowercase with single spaces. Plans are written by a
-// language model, so what arrives is "Landmine Romanian Deadlift" or occasionally
-// "landmine  romanian deadlift ". Normalise both ends rather than hoping.
-function toJoinKey(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
 export async function GET(request: NextRequest) {
+  // `ref` is a join_key already resolved when the plan was saved, and is what a
+  // plan written after 2026-09-09 sends. `exercise` is the raw name, used by
+  // plans saved before demoRef existed. Both end up as the same lookup - the
+  // difference is only whether the normalising happened here or at save time.
+  const ref = request.nextUrl.searchParams.get('ref');
   const name = request.nextUrl.searchParams.get('exercise');
-  if (!name || !name.trim()) {
-    return NextResponse.json({ error: 'exercise is required' }, { status: 400 });
+  const joinKey = ref?.trim() ? toJoinKey(ref) : name?.trim() ? toJoinKey(name) : null;
+  if (!joinKey) {
+    return NextResponse.json({ error: 'ref or exercise is required' }, { status: 400 });
   }
 
   // Authenticate as the user, not as the service role. The service role appears
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   const { data: asset, error: lookupError } = await supabase
     .from('movement_assets')
     .select('join_key, clip, storage_path, muscle_group, primary_muscles, movement_pattern')
-    .eq('join_key', toJoinKey(name))
+    .eq('join_key', joinKey)
     .maybeSingle();
 
   if (lookupError) {

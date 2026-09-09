@@ -20,6 +20,11 @@ export type PlanExerciseView = {
   sets: number | null;
   reps: string | null;
   safetyNote: string | null;
+  // Item 36. The demonstration clip's key, resolved when the plan was saved.
+  // Null on plans written before the assets existed, and on any movement the
+  // library does not cover - the player treats both the same way, by showing
+  // nothing at all.
+  demoRef: string | null;
 };
 
 export type PlanView = {
@@ -101,6 +106,7 @@ export function readContent(content: unknown): ContentView {
           sets: posInt(x.sets),
           reps: str(x.reps),
           safetyNote: str(x.safetyNote),
+          demoRef: str(x.demoRef),
         };
       })
       .filter((x): x is PlanExerciseView => x !== null);
