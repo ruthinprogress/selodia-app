@@ -14,6 +14,28 @@
 
 ---
 
+## Where Status Goes, and Why Not in the Prose (set 2026-09-09)
+
+**Status claims do not belong in prose sections. Decisions and reasoning do.** This is the single convention that would have prevented the most expensive documentation failure this project has had.
+
+**The evidence, not an opinion.** On 8 September, nine claims in `SELODIA_SPEC.md` were found to be false — a table count wrong by ten, a domain described as unused that had been live for five days, a permission described as undeclared that was declared, a feature marked "not yet built" four days after it shipped, a divergence note describing a state corrected the following day, and a build-order block that contradicted the paragraph directly above it. Every one had been true when written.
+
+**Timestamping does not fix this, and we know because the spec already timestamps.** Almost every one of those nine carried a date — *"KNOWN DIVERGENCE, found 2026-09-02"*, *"flagged 2026-08-21"*, *"opened 2026-09-01"*. A date records **when a sentence was written**, never **whether it is still true**, and those are different facts. Only the second matters to whoever is reading. A date arguably makes it worse: *"verified 2026-09-02"* reads as checked, and it *was* checked, and then the code moved.
+
+**The rule:**
+
+- **Prose sections carry decisions, reasoning, and what was rejected.** *"Custom LLM, not dashboard-selected Claude, because dashboard Claude bypasses the safety classifier"* is true permanently. Reasoning cannot go stale — the decision was made for those reasons whatever happens next. This is the spec's real value and the thing that could not be reconstructed from the codebase.
+- **Status lives in Part Sixteen and nowhere else.** The spec already says Part Sixteen is authoritative for build status. **All nine stale claims were status sentences living somewhere else.** One place to check is a place that gets checked; nine places scattered through 52,000 words is nine places that do not.
+- **Timestamps stay on decisions.** *"Decided 4 September"* tells a future reader when the thinking happened and what the context was, which is genuinely useful and does not rot.
+
+**The test, when writing a sentence into any of these documents:** *could a commit make this false?* If yes, it is status — put it in Part Sixteen, or leave it out and let the code answer. If no, it is reasoning, and prose is exactly where it belongs.
+
+**When a status claim genuinely has to sit in prose** — because the surrounding reasoning is incomprehensible without it — write what it *was* and mark it as history rather than as the present: *"the last recorded successful build **at that time** was 2026-08-09"*. A sentence in the past tense cannot go stale.
+
+**Deliberately not automated yet.** Seven or eight of the nine were mechanically checkable — does `app.json` declare the permission, does the component file exist, what does `information_schema.tables` return, what did `eas build:list` say — so a close-out checker is buildable and may well be worth building. It is being held back on purpose: the rule above costs nothing and might be sufficient on its own, and a script written before we know that would be tooling built to compensate for a convention nobody tried. Revisit if drift recurs after this rule is in force.
+
+---
+
 ## The Three-Way Collaboration Loop
 The actual working methodology of this project is a repeating three-party loop, run one verified piece at a time:
 
