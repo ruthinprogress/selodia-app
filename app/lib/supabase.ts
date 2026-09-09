@@ -4,11 +4,17 @@ import type { NextRequest } from 'next/server';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Kept for edit-food/delete-food/edit-activity/delete-activity, which only
-// existed to support the now-retired web frontend and are unreachable dead
-// code as of its retirement. RLS means this client fails closed (empty
-// results/denied writes) rather than bypassing anything, so it's harmless -
-// not deleting those routes without discussing it first.
+// The sessionless client, for the one thing that genuinely has no session: the
+// public waitlist signup on the landing page, where the person filling the form
+// has no account yet. That is the correct use of an anon client rather than a
+// tolerated one.
+//
+// It used to also back edit-food/delete-food/edit-activity/delete-activity, and
+// this comment used to argue they were harmless because RLS fails them closed.
+// True, and beside the point - those routes were deleted on 2026-09-09 because
+// their SCHEMA was wrong, not their auth (see log-correction.ts). Anything that
+// acts on a person's own data belongs on getSupabaseForRequest below, so
+// auth.uid() resolves to them.
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // RLS is enabled on every table now - each request must forward its own

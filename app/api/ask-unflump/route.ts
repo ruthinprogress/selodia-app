@@ -29,10 +29,14 @@ import {
   personalSaveSummary,
 } from '../../lib/measurement-logging';
 import {
+  coerceCorrectionScope,
   correctionCutoff,
   deletionMessage,
+  duplicatesRemovedMessage,
+  DUPLICATE_MATCH_COLUMNS,
   nothingToCorrectMessage,
   resolveCorrection,
+  supportsDuplicateRemoval,
   TABLE_FOR,
   TIME_COLUMN_FOR,
   whichReadingMessage,
@@ -389,7 +393,7 @@ CLARIFYING A COMPOSITE: two kinds of composite dish are worth a light, single cl
 
 SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved plans, patterns, and insights - the things worth keeping within easy reach. A save is worth it only for (a) a real plan you've genuinely worked out together (a routine, a movement plan, a meal or drink plan) or (b) a genuine INSIGHT - a pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight/waist tending higher in the days before a period). It is NOT worth saving a plain result (a number the data already shows, like a 5-day trend) or a one-off observation (a contextual note that connects to nothing) - those stay in the conversation. **Confirm first, always:** when something save-worthy emerges, ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after the person agrees - never save without a yes, never save a passing remark. Use an open, natural word for almanacKind (e.g. "insight", "routine", "movement plan", "pattern"), a short almanacTitle, and almanacCategory only when a natural grouping exists. For an INSIGHT, put its rule in almanacContent as a condition and an expectation, e.g. {"condition": "the days before your period", "expectation": "weight and waist read a little higher"}, so it can inform how future readings are interpreted.\nFOR A WORKOUT OR MOVEMENT PLAN specifically, almanacContent takes this shape: {"programType": string, "goal": string, "exercises": [{"name": string, "group": string, "sets": number, "reps": string, "safetyNote": string, "eccentricLoad": "none"|"low"|"moderate"|"high", "intensity": "light"|"moderate"|"intense"}]}. Notes on each: **programType** describes the kind of program in your own words (e.g. "general strength", "rehab", "skill practice") - it decides how the plan is grouped, so be accurate rather than inventive. **group** is the grouping key and its meaning follows programType: a body area for general strength, the skill being learned for skill practice, and it can be omitted for rehab, which shows as a flat list. **reps** is a STRING so you can write what is actually true - "8-10", "30s", "AMRAP", "12 per side" - never round it to a bare number if that loses meaning. **sets and reps are decided per person and per goal from what you have discussed** - a rep range for building muscle is not the range for rehab or endurance - never a fixed default per exercise. **safetyNote is required for every exercise and must name the real common failure modes of that specific movement** - what actually goes wrong and what it feels like when it does - never generic boilerplate like "use good form" or "warm up first". **eccentricLoad** is how much eccentric (lengthening-under-load) work the movement involves, which is what drives delayed-onset soreness; **intensity** is its typical effort level. Set both from the movement itself. Do NOT put working weights or completed sessions in the plan - those are logged separately, and writing them here would overwrite the history that progressive overload depends on.
 
-CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask.
+CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
 
@@ -466,6 +470,19 @@ ${SAFETY_PROMPT_BLOCK}`;
       enum: ['update', 'delete'],
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
+    },
+    correctionScope: {
+      type: 'string',
+      enum: ['one', 'duplicates'],
+      description:
+        "Only alongside correctionAction 'delete'. Use 'duplicates' when they mean the "
+        + 'entry AND its copies rather than a single row - \"I logged that twice\", \"that '
+        + 'went in four times\", \"remove all of those\", \"delete the duplicates\". Use '
+        + "'one' when they mean a single entry, which is the ordinary case and the "
+        + 'default if you leave this unset. Judge what they meant rather than matching '
+        + 'phrases. Only food and activity support it; for a measurement or personal '
+        + 'metric the app removes one entry whatever this says, because somebody may '
+        + 'genuinely weigh themselves twice in a day.',
     },
     clarificationAsked: {
       type: 'string',
@@ -577,6 +594,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     logText?: string;
     correctionKind?: string;
     correctionAction?: string;
+    correctionScope?: string;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -637,9 +655,11 @@ ${SAFETY_PROMPT_BLOCK}`;
       // The most recent entry of that kind inside the window. Ordered by the
       // event time rather than created_at so "that last one" means the entry
       // they are looking at, not whichever row was written most recently.
+      // Selecting the whole row, not just the id: the duplicate match below
+      // compares against this row's own values, so it needs them.
       const { data: target } = await supabase
         .from(table)
-        .select('id')
+        .select('*')
         .eq('user_id', user.id)
         .gte(timeCol, correctionCutoff())
         .order(timeCol, { ascending: false })
@@ -658,8 +678,43 @@ ${SAFETY_PROMPT_BLOCK}`;
       if (!target && !findsItsOwnTarget) {
         correctionNote = nothingToCorrectMessage(correction.kind);
       } else if (correction.action === 'delete' && target) {
-        const { error } = await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
-        correctionNote = error ? null : deletionMessage(correction.kind);
+        // DUPLICATES GO TOGETHER, OR ONE GOES ALONE.
+        //
+        // The single-row path deleted the newest match, so clearing four copies
+        // took four instructions - and a person who miscounted deleted the real
+        // entry along with them. Here the target row defines what 'the same entry'
+        // means, and every row matching it inside the window goes at once.
+        //
+        // Matching is on the target's own values, never on anything parsed out of
+        // the message. Two identical meals really are a double-log; a re-parse of
+        // 'remove all of those' would be a guess about which meal was meant.
+        const scope = coerceCorrectionScope(result.correctionScope);
+        const matchOn = DUPLICATE_MATCH_COLUMNS[correction.kind];
+
+        let ids = [target.id];
+        if (scope === 'duplicates' && supportsDuplicateRemoval(correction.kind) && matchOn) {
+          let q = supabase
+            .from(table)
+            .select('id')
+            .eq('user_id', user.id)
+            .gte(timeCol, correctionCutoff());
+          // A null column has to be matched with `is`, not `eq` - a meal logged
+          // with no meal_label would otherwise match nothing and quietly fall back
+          // to deleting one row while claiming to have deleted several.
+          for (const col of matchOn) {
+            const value = (target as Record<string, unknown>)[col] ?? null;
+            q = value === null ? q.is(col, null) : q.eq(col, value);
+          }
+          const { data: copies } = await q;
+          if (copies && copies.length > 0) ids = copies.map((r) => r.id);
+        }
+
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .in('id', ids)
+          .eq('user_id', user.id);
+        correctionNote = error ? null : duplicatesRemovedMessage(correction.kind, ids.length);
         if (error) console.log('ASK-UNFLUMP DELETE FAILED:', error.message);
       } else if (correction.kind === 'personal_metric') {
         // Corrected by METRIC NAME, not by "the most recent row". Someone who
