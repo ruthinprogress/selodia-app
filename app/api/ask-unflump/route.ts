@@ -56,6 +56,16 @@ import {
   readPending,
   storePendingFocus,
 } from '../../lib/focus-states';
+import {
+  assessConsolidation,
+  CONSOLIDATION_OFFER_BLOCK,
+  declineConsolidation,
+  enterLiteMode,
+  isInLiteMode,
+  LITE_MODE_STANDING_BLOCK,
+  markConsolidationOffered,
+} from '../../lib/graduation';
+import { loadHabitWindow } from '../../lib/habit-window';
 import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
@@ -286,7 +296,8 @@ export async function POST(request: NextRequest) {
       .select(
         'height_cm, unsafe_goal_flagged_at, date_of_birth, biological_sex, ' +
           'activity_level, fat_focus_state, muscle_focus_state, protein_target_g, ' +
-          'pending_fat_focus, pending_muscle_focus, pending_focus_asked_at'
+          'pending_fat_focus, pending_muscle_focus, pending_focus_asked_at, ' +
+          'fat_focus_since, muscle_focus_since, consolidation_offered_at, lite_mode_since'
       )
       .maybeSingle(),
     // Not a { data } shape - loadAllergies returns the rows directly. Positional
@@ -381,12 +392,39 @@ export async function POST(request: NextRequest) {
     pending_fat_focus: string | null;
     pending_muscle_focus: string | null;
     pending_focus_asked_at: string | null;
+    fat_focus_since: string | null;
+    muscle_focus_since: string | null;
+    consolidation_offered_at: string | null;
+    lite_mode_since: string | null;
   } | null;
 
   // An outstanding offer to change their Focus, if there is one. Read from the
   // database rather than from the conversation, so a confirmation can never be
   // applied against a proposal the model has misremembered.
   const pendingFocus = readPending(profile);
+
+  // Part Eleven's consolidation offer (item 24). The habit window is a 63-day
+  // query, so it is only read once the free checks have passed - both states at
+  // maintain, both stamped, nine weeks elapsed, never asked before. On almost
+  // every turn this costs nothing at all.
+  const maybeConsolidating =
+    !profile?.consolidation_offered_at &&
+    !profile?.lite_mode_since &&
+    profile?.fat_focus_state === 'maintain' &&
+    profile?.muscle_focus_state === 'maintain' &&
+    !!profile?.fat_focus_since &&
+    !!profile?.muscle_focus_since;
+
+  const consolidation = maybeConsolidating
+    ? assessConsolidation({
+        fatFocus: profile?.fat_focus_state,
+        muscleFocus: profile?.muscle_focus_state,
+        fatSince: profile?.fat_focus_since,
+        muscleSince: profile?.muscle_focus_since,
+        offeredAt: profile?.consolidation_offered_at,
+        window: await loadHabitWindow(supabase),
+      })
+    : ({ eligible: false, reason: 'too-soon' } as const);
 
   // Item 22's foundation. Server-local midnight, matching daily-roundup exactly,
   // so "today" means the same day here as it does in the roundup - two different
@@ -504,7 +542,9 @@ ${SAFETY_PROMPT_BLOCK}`;
     SYSTEM_PROMPT +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
-    pendingFocusPrompt(pendingFocus);
+    pendingFocusPrompt(pendingFocus) +
+    (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +
+    (isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : '');
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
     // The spotlight (build item 23). Free-form on the wire, validated below
@@ -584,6 +624,16 @@ ${SAFETY_PROMPT_BLOCK}`;
         'The same, for muscle: \'increase\' for wanting to build, \'maintain\' to hold. '
         + 'Set alongside proposedFatFocus when they describe both in one breath (\"lose a '
         + 'bit of fat and get stronger\"), which is one question, not two.',
+    },
+    consolidationAnswer: {
+      type: 'string',
+      enum: ['solo', 'keep_logging'],
+      description:
+        'ONLY when the app has told you to make the consolidation offer, or told you they '
+        + 'are in lite mode, AND this message answers it. \'solo\' when they want to stop '
+        + 'logging for a while and see how it goes; \'keep_logging\' when they would rather '
+        + 'carry on. Leave unset for anything else, including changing the subject - that '
+        + 'is not an answer and must never be read as one.',
     },
     focusAnswer: {
       type: 'string',
@@ -744,6 +794,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     proposedFatFocus?: string;
     proposedMuscleFocus?: string;
     focusAnswer?: string;
+    consolidationAnswer?: string;
     clarificationAsked?: string;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
@@ -1242,6 +1293,19 @@ ${SAFETY_PROMPT_BLOCK}`;
     if (fatChanges || muscleChanges) {
       await storePendingFocus(supabase, user.id, fatChanges, muscleChanges);
     }
+  }
+
+  // The consolidation offer, and its answer.
+  //
+  // Recorded as asked on the turn it goes out, whatever the person then says -
+  // including nothing. Part Eleven asks once, and an offer to stop using the app
+  // that reappears until it is answered is not an offer.
+  if (consolidation.eligible) await markConsolidationOffered(supabase, user.id);
+
+  if (result.consolidationAnswer === 'solo') {
+    await enterLiteMode(supabase, user.id);
+  } else if (result.consolidationAnswer === 'keep_logging') {
+    await declineConsolidation(supabase, user.id);
   }
 
   // UNSAFE-GOAL HANDLING (item 43, Part Twelve's Cross-Cutting Safety Principle).
