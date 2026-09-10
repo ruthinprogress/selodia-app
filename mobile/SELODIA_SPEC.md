@@ -1522,6 +1522,44 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 ## Distribution
 
 
+
+### ElevenLabs Demo Day — a dated external commitment (added 2026-09-10)
+
+**Applications close 7 October 2026; the demo day is 21 October.** Selodía already holds an
+ElevenLabs startup grant (accepted 2026-09-07), and this is that programme's demo day for its
+top eleven recipients — judged by ElevenLabs' Field CTO, a Lightspeed partner and Replit's CTO,
+with the top three presenting at the ElevenLabs Summit in New York and cash prizes up to
+$33,000.
+
+**The application material lives in Drive at `Build Specs/Elevenlabs/ElevenLabs Demo Day
+Application 2026.docx`** — the written answers, the video plan, and the two claims that were
+corrected during drafting. It sits with the grant relationship rather than in the marketing
+folder, and is a standalone document rather than a rendered spec because it is time-boxed to
+one deadline.
+
+**IT IS RECORDED HERE BECAUSE IT CHANGES WHAT IS URGENT, and that is easy to miss while
+everything else points at the Play Store.** The submission video needs **60–90 seconds of
+screen recording with voice mode running well**. As of 2026-09-10 that is not a safe
+assumption: voice crashed mid-session on 09-09, utterance-to-audio latency measures **~4.4s
+against Part Eighteen's target of under 3s**, and an entire day was lost to dev-server
+connectivity before the app could be used at all.
+
+**What that actually requires is narrower than it sounds.** A demo does not need a finished
+product; it needs **one path that works beautifully every time** — open voice, say something
+real, get a good answer, watch it land in the app. That is achievable in four weeks, but it has
+to be **booked as work rather than assumed**, because the recording cannot happen until it is
+true. Voice reliability therefore competes with the Play Store work for October, and the two
+are not the same job.
+
+**Two claims were corrected while drafting, and both are worth keeping** because each was
+plausible enough to have gone in unchallenged. *"TDEE grows over months with muscle mass"* —
+`calculateTDEE` is BMR × an activity multiplier, genuinely recomputed from the latest reading
+but only following muscle mass when a bioimpedance scale supplies the BMR, which Ruth's own
+profile does not have. And *"refining voice mode's behaviour across screen navigation"* — voice
+**deliberately never navigates**, because `VOICE_CONDUCT_BLOCK` forbids referring to any control
+at all when the person may not be looking at their phone. The design constraint is the better
+story; the original wording invited a question with no good answer.
+
 ### Google Play submission — the route, the reasoning, and the steps (2026-09-10)
 
 > **The working material lives in `SELODIA_STORE_SUBMISSION.md`** (rendered as *Selodia Store Submission*), not here. That document holds the Data Safety answers, the app-content declarations, the listing copy and a progress table — operational things to sit beside the Play Console with. **This section holds the reasoning**, which does not go stale, and the step order. The split is deliberate: store forms inside a 52,000-word specification would make it worse at both jobs.
