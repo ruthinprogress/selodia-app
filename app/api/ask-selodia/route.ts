@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
     .select('id')
     .maybeSingle();
   if (userInsertError) {
-    console.log('ASK-UNFLUMP USER TURN INSERT FAILED:', userInsertError.message);
+    console.log('ASK-SELODIA USER TURN INSERT FAILED:', userInsertError.message);
   }
 
   // HOW FAR BACK THE CONTEXT REACHES. Seven days when typing, three when
@@ -764,7 +764,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   // row said only "Something went wrong just then".
   if (response.stop_reason === 'max_tokens') {
     console.log(
-      'ASK-UNFLUMP TRUNCATED: hit max_tokens before finishing the tool block.' +
+      'ASK-SELODIA TRUNCATED: hit max_tokens before finishing the tool block.' +
         ' Raise max_tokens; the reply and any save in this turn are lost.'
     );
     return NextResponse.json({ error: 'Response was cut short' }, { status: 500 });
@@ -821,7 +821,7 @@ ${SAFETY_PROMPT_BLOCK}`;
         discuss_entry_type: resolvedTag?.entryType ?? null,
       })
       .eq('id', userRow.id);
-    if (tagFixError) console.log('ASK-UNFLUMP TAG CORRECTION FAILED:', tagFixError.message);
+    if (tagFixError) console.log('ASK-SELODIA TAG CORRECTION FAILED:', tagFixError.message);
   }
 
   const { replyText, nextEscalationStep, resourceCard, nextRevisitCount, nextClassification } =
@@ -915,7 +915,7 @@ ${SAFETY_PROMPT_BLOCK}`;
           .in('id', ids)
           .eq('user_id', user.id);
         correctionNote = error ? null : duplicatesRemovedMessage(correction.kind, ids.length);
-        if (error) console.log('ASK-UNFLUMP DELETE FAILED:', error.message);
+        if (error) console.log('ASK-SELODIA DELETE FAILED:', error.message);
       } else if (correction.kind === 'personal_metric') {
         // Corrected by METRIC NAME, not by "the most recent row". Someone who
         // logged a waist and a thigh a minute apart and says "no, the waist was
@@ -1019,7 +1019,7 @@ ${SAFETY_PROMPT_BLOCK}`;
       // own. If none matched, nothing was touched and nothing is claimed - the
       // honesty note below is then the only thing that speaks, which is correct.
     } catch (err) {
-      console.log('ASK-UNFLUMP CORRECTION FAILED:', err instanceof Error ? err.message : err);
+      console.log('ASK-SELODIA CORRECTION FAILED:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1047,7 +1047,7 @@ ${SAFETY_PROMPT_BLOCK}`;
         saved = { kind: 'measurement', summary: personalSaveSummary(personal) };
       }
     } catch (err) {
-      console.log('ASK-UNFLUMP MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);
+      console.log('ASK-SELODIA MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1062,7 +1062,7 @@ ${SAFETY_PROMPT_BLOCK}`;
         attempt.landed.push('water');
       }
     } catch (err) {
-      console.log('ASK-UNFLUMP HYDRATION LOG FAILED:', err instanceof Error ? err.message : err);
+      console.log('ASK-SELODIA HYDRATION LOG FAILED:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -1142,7 +1142,7 @@ ${SAFETY_PROMPT_BLOCK}`;
           await runLog();
         } catch (err) {
           console.log(
-            'ASK-UNFLUMP DEFERRED LOG FAILED:',
+            'ASK-SELODIA DEFERRED LOG FAILED:',
             err instanceof Error ? err.message : err
           );
         }
@@ -1151,7 +1151,7 @@ ${SAFETY_PROMPT_BLOCK}`;
       try {
         await runLog();
       } catch (err) {
-        console.log('ASK-UNFLUMP SILENT LOG FAILED:', err instanceof Error ? err.message : err);
+        console.log('ASK-SELODIA SILENT LOG FAILED:', err instanceof Error ? err.message : err);
       }
     }
   }
@@ -1186,7 +1186,7 @@ ${SAFETY_PROMPT_BLOCK}`;
           .eq('id', pending.id);
         saved = { kind: 'food', summary: foodSaveSummary(updated) };
       } catch (err) {
-        console.log('ASK-UNFLUMP CLARIFICATION RESOLVE FAILED:', err instanceof Error ? err.message : err);
+        console.log('ASK-SELODIA CLARIFICATION RESOLVE FAILED:', err instanceof Error ? err.message : err);
       }
     }
   }
@@ -1422,7 +1422,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     food_log_id: breakdownFoodLogId,
   });
   if (insertError) {
-    console.log('ASK-UNFLUMP ASSISTANT TURN INSERT FAILED:', insertError.message);
+    console.log('ASK-SELODIA ASSISTANT TURN INSERT FAILED:', insertError.message);
   }
 
   // Only surface the disclaimer when the model flagged health-informed guidance
@@ -1439,7 +1439,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     ? result.navigationTarget
     : null;
   if (result.navigationTarget && !navigationTarget) {
-    console.log('ASK-UNFLUMP DROPPED UNKNOWN SPOTLIGHT TARGET:', result.navigationTarget);
+    console.log('ASK-SELODIA DROPPED UNKNOWN SPOTLIGHT TARGET:', result.navigationTarget);
   }
 
   return NextResponse.json({

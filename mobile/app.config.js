@@ -23,11 +23,19 @@
 //     answering `selodia://` is ambiguous. The dev build answers
 //     `selodiadev://` instead.
 //
-// WHAT DELIBERATELY DOES NOT CHANGE: `owner`, `slug` and `extra.eas.projectId`.
-// Those identify the EAS PROJECT, not the app, and both variants belong to the
-// same project - that is what lets one `eas update` reach whichever build is on a
-// given channel. Changing them would fork the project, which is the opposite of
-// the intent.
+// WHAT DELIBERATELY DOES NOT CHANGE BETWEEN VARIANTS: `owner`, `slug` and
+// `extra.eas.projectId`. Those identify the EAS PROJECT, not the app, and both
+// variants belong to the same project - that is what lets one `eas update` reach
+// whichever build is on a given channel.
+//
+// "CHANGING THEM WOULD FORK THE PROJECT" - that was too broad, corrected
+// 2026-09-10. It is true of `projectId` and only of `projectId`. That UUID is the
+// canonical identity: `updates.url` is `u.expo.dev/<projectId>`, and credentials,
+// channels and build history all hang off it. `owner` and `slug` are NAMES, and
+// renaming the account or project in the Expo dashboard and updating them here to
+// match is safe precisely because the UUID does not move. Worth being accurate
+// about, because the overstatement was being read as a reason to leave `unflump`
+// on the dashboard permanently, which was never the intent.
 //
 // PUSH CREDENTIALS ARE BOUND TO A PACKAGE NAME, so the dev variant needs its own
 // - but far less of its own than this comment first claimed. Resolved 2026-09-10:
