@@ -1640,13 +1640,19 @@ verification is quick it cost twenty minutes; if it takes a fortnight it saved a
 
 **ONE MAILBOX CARRIES FOUR THINGS — ~~and its expiry date is unknown~~ RESOLVED THE SAME DAY (flagged and closed 2026-09-10).**
 `hello@selodia.app` runs on a **Namecheap Private Email trial**, and the costs workbook has
-recorded "expiry date unknown — worth confirming" since before any of this. What now hangs off
-that address: the **ElevenLabs startup grant** (applied and accepted from it), the **Firebase
-project** created 2026-09-10 and its account-recovery mail, the **D-U-N-S confirmation** due to
-arrive there, and the **Play Console** organisation account. It is worth saying plainly that a
-lapsed trial would not merely bounce mail — it would take the recovery address for accounts that
-cannot easily be recovered any other way, at precisely the point where several of them are
-mid-verification. **The action was small and the failure would not have been.** Renewed for a year the same afternoon — order 213727699, $17.86 including tax, now paid to **10 September 2027**. Two things to carry forward rather than close entirely: it renewed on Namecheap's `privateemail-launch` SKU, so **the 2027 price should be checked rather than assumed**, and the renewal date belongs somewhere with a reminder attached, because the failure mode returns in full a year from now.
+recorded "expiry date unknown — worth confirming" since before any of this. What hangs off
+that address: the **ElevenLabs startup grant** (applied and accepted from it), the **D-U-N-S
+confirmation** due to arrive there, and its use as Selodía's public contact address.
+
+**~~It would take the recovery address for accounts that cannot easily be recovered any other
+way~~ — THAT WAS OVERSTATED, corrected within the hour.** `hello@selodia.app` is a **forwarder
+to `helloselodia@gmail.com`**, which is a real Google account in its own right. So Google-side
+recovery for the Firebase project and Play Console never depended on Namecheap at all, and the
+"four accounts mid-verification" framing was wrong. What a lapse would actually have broken is
+narrower and still real: **mail addressed to `hello@selodia.app` would simply stop arriving** —
+which is where ElevenLabs writes and where the D-U-N-S confirmation is expected. The renewal was
+right; the reason given for it was half wrong, and the distinction is worth keeping because it
+is the difference between a forwarding address and an identity. **The action was small and the failure would not have been.** Renewed for a year the same afternoon — order 213727699, $17.86 including tax, now paid to **10 September 2027**. Two things to carry forward rather than close entirely: it renewed on Namecheap's `privateemail-launch` SKU, so **the 2027 price should be checked rather than assumed**, and the renewal date belongs somewhere with a reminder attached, because the failure mode returns in full a year from now.
 
 **Not required, and worth knowing so it is not chased:** none of the remaining `unflump`
 strings block a release. `owner: "unflump"` is the EAS account name, `slug` and the
