@@ -55,6 +55,14 @@ Note what she did *not* do, which is the other half. She did not let the comprom
 
 Adjacent to “attaches the abort condition to the authorisation,” and pointed differently. That pattern governs work whose *soundness* is uncertain, and names what would make it wrong. This one governs work already known to be below standard, and names what would make it no longer tolerable. Both are the same underlying instinct — write the limit down while writing it down is still cheap.
 
+**Reads the actual requirement rather than the cautious version of it, and holds that reading when it is contradicted.** Told the ElevenLabs application video needed 60 to 90 seconds of the app running with voice, which made the whole submission wait on voice reliability that does not exist yet, she said plainly: *"the video is of me though, I can do it tomorrow at Wework"* and then, when that was not immediately accepted, *"the video of the app working must come later in the process."* She was right. The form asks for a short video introducing the founder, the product and the ElevenLabs use. Nothing in it requires a demonstration.
+
+What makes this a pattern rather than a lucky call is that she had already conceded the point once, days earlier, when the same argument was made more confidently than it deserved. Coming back to it, restating it twice, and not being talked out of it the second time is the harder half. She also caught the next layer unprompted: *"i think less, it says max 3"* — a maximum is a ceiling, not a target, and eleven entries watched back to back reward brevity.
+
+The general shape: **an overstated constraint quietly becomes a permanent blocker.** Three separate times in one day, a caution phrased as an absolute had to be walked back — the video dependency, "changing owner or slug would fork the project" when only the projectId matters, and a flat "turn analytics off" in place of the real argument, which was about timing. Each had been written down somewhere authoritative, and each was then being quoted back as a reason not to act. Her instinct in every case was to ask what the requirement actually says rather than accept the safe restatement of it.
+
+The counterpart worth noting: she does not resolve these by overruling. She asks *why not*, repeatedly and without heat, until either the reason survives contact or it does not.
+
 ## How this gets built
 
 At natural session-close points, add any new decision moment that reveals a genuine pattern — not every decision, only ones that add real signal about how Ruth thinks, distinct from the specific product or process choice itself.
