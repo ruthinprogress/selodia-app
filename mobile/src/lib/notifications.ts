@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
@@ -98,7 +99,27 @@ export async function registerPushToken(userId: string): Promise<string | null> 
     if (!granted) return null;
 
     await ensureAndroidChannel();
-    const { data: token } = await Notifications.getExpoPushTokenAsync();
+
+    // THE projectId IS REQUIRED, and omitting it is why this never worked.
+    //
+    // Called bare, `getExpoPushTokenAsync()` throws in any build that is not Expo
+    // Go - which is every build this app has ever shipped. The catch below then
+    // logged "non-fatal" and returned null, so the failure was completely silent:
+    // `push_tokens` held ZERO rows on 2026-09-10, not none since the package
+    // rename but none ever, while `reminder_settings` had real rows from people
+    // who had said yes to reminders they were never going to receive.
+    //
+    // Read from the resolved config rather than hardcoded, so the dev variant and
+    // the store build each report their own project without a second constant to
+    // keep in step.
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    if (!projectId) {
+      console.log('push registration: no EAS projectId in the resolved config');
+      return null;
+    }
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
     if (!token) return null;
 
     // One row per DEVICE. onConflict on the token means a reinstall that hands
