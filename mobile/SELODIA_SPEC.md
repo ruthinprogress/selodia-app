@@ -1520,6 +1520,32 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 **Built as its own dedicated piece (2026-08-14) — MI guided-discovery for the activity step (Part Seven, step 11).** The Motivational-Interviewing Evocation flow — the open, evocative questions that let a person reach any insight about enjoyment sustaining movement *themselves*, never stated by Unflump — was deliberately kept out of the phase-4 onboarding build and given its own focused pass, as conversation-design work of the same weight and sensitivity as the safety language (`SELODIA_LANGUAGE_RULES.md`). Now shipped in `ACTIVITY_ROLE` (`app/api/onboarding-chat/route.ts`): the three-stage evocation with branching and an escape hatch; a route-enforced `readyToReflectLevel` gate so the deterministic level-reflection can never pre-empt the discovery; the person's stored goal injected so the stage-3 connection can be specific; and the hard rule that the joy-and-adherence research is never spoken aloud. Supersedes the "to be built with them" note at Part Seven, step 11.
 
 ## Distribution
+
+### Store readiness — added 2026-09-10
+
+Everything below is admin rather than engineering, and every item was found by reading the config rather than by planning a release. That is the point of writing it down now: none of it is hard, and all of it is the kind of thing discovered in the week somebody is trying to ship.
+
+**DONE 2026-09-10 — the app's permanent identity.** The Android package was `com.unflump.mobile` and is now **`app.selodia`**, the reverse-DNS of the domain actually owned. This was a one-way door: the package is the app's identity on Google Play, and changing it after publishing does not rename the app, it publishes a *different* one that existing installs never upgrade to. The app had called itself Selodía for three weeks while Android would have called it unflump forever. The deep-link `scheme` went with it, `mobile` → `selodia` — and the note in Part Three calling the scheme harmless “because it carries no brand name” missed the real risk, which is that `mobile://` is claimable by any app on the device.
+
+Two consequences, both real:
+
+- **Sign-in needs `selodia://` AND `selodia://**` in Supabase's Redirect URLs allow-list.** `makeRedirectUri()` derives from the scheme, and the list is dashboard-only with no tool access — `account.tsx` had already documented that. The wildcard is the one that matters, because the resolved URI can carry a trailing path.
+- **Push credentials in EAS are bound to the old package** and need regenerating for `app.selodia`. There is no local `google-services.json`, so this is EAS-side. **Untested since the rename.**
+
+**DONE 2026-09-10 — the privacy policy**, live and unlinked at **selodia.app/privacy**. Google Play requires the URL before an app can be uploaded to **any** track, including a hidden internal test, and the bar is higher for health data. Written from the 23 real tables and the four real third-party calls rather than a template, so the cycle dates, voice transcripts, food photographs and the app's own written observations are all named — a policy that quietly omits the awkward categories is worse than none. **Three claims are deliberately cautious and need settling before public launch:** ElevenLabs' retention settings for this account; whether the Companies House entity is the data controller rather than Ruth personally (which changes the name and adds an ICO registration line); and whether the 30-day backup figure matches the actual Supabase plan.
+
+**NOT AN ISSUE, corrected on the day it was raised.** `versionCode` needs nothing: `appVersionSource` is `"remote"` with `autoIncrement` on the production profile, so EAS increments it server-side. It was listed as a gap in error.
+
+**STILL OUTSTANDING, and the individual-versus-organisation question should be decided first because it sets the timeline:**
+
+- **Google Play Console account, $25 one-off.** **A personal/individual account must run a closed test with at least 12 testers for 14 continuous days before it can apply for production access. An organisation account is exempt.** There is a Companies House folder in Drive, so if a limited company exists, registering as an organisation removes a fortnight from the critical path. Decide this before opening the account, because it is not a setting that can be flipped afterwards.
+- **Store listing assets:** icon, feature graphic, screenshots, short and full description, content rating questionnaire, and the Data Safety declaration — which for this app must match the privacy policy category for category.
+- **An `ios.bundleIdentifier` is not set at all.** Nothing needs it until an iOS build, but it should be `app.selodia` to match, and it is cheaper to set now than to notice later.
+
+**The app can be on the store and invisible.** Internal testing (up to 100 testers, by email, near-instant) and closed testing are not publicly listed or discoverable — only open testing and production are. So “on the Play Store” and “public” are separate decisions, and the founder-led testing structure above fits inside the internal track without exposing anything.
+
+**What changes about development afterwards, and it is less than it sounds.** `EAS Update` keeps working exactly as it does now: JS and TSX changes still reach a phone over the air with no review. What changes is that **native module additions need a new build and a Play review**, so the existing discipline about not stacking unverified native modules stops being a preference and starts being a release constraint.
+
 Testing does not need to wait for the full build. Once real authentication (step 5), the auth-state sync listener (step 6), and real onboarding conversation (step 7) are wired, and itemized food breakdown is working natively (roughly through Phase 1, step 11), a build can be shared directly via Expo's internal distribution, with no app store review required. App store submission (Apple, $99/year; Google, $25 one-time) is deferred until genuinely ready for wider public distribution, handled through Expo's EAS Submit.
 
 **Testing structure — decided 2026-08-23, replacing the earlier two-wave plan.** There is no informal "friends round." Testing is **founder-led rigorous use plus one external tester**, and then straight to a **genuine public beta** — no intermediate soft launch.
