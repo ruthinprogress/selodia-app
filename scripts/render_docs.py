@@ -90,6 +90,11 @@ DOCUMENTS = [
      "Ruth's Decision Patterns", "Observed patterns in how the decisions actually get made"),
     ("SELODIA_MARKETING_SPEC.md", "Selodia Brand and Marketing Spec",
      "Brand & Marketing Spec", "For designers, copywriters and collaborators"),
+    # Joined 2026-09-10. Operational rather than conceptual - the thing Ruth sits
+    # beside the Play Console with, kept out of the specification because store
+    # forms and listing copy would make a 52,000-word document worse at both jobs.
+    ("SELODIA_STORE_SUBMISSION.md", "Selodia Store Submission",
+     "Google Play Submission", "Data Safety answers, listing copy and the steps"),
 ]
 
 # The synced Drive folder. A remotely-executed session has no H: drive at all

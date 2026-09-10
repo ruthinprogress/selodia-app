@@ -1524,6 +1524,8 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 
 ### Google Play submission — the route, the reasoning, and the steps (2026-09-10)
 
+> **The working material lives in `SELODIA_STORE_SUBMISSION.md`** (rendered as *Selodia Store Submission*), not here. That document holds the Data Safety answers, the app-content declarations, the listing copy and a progress table — operational things to sit beside the Play Console with. **This section holds the reasoning**, which does not go stale, and the step order. The split is deliberate: store forms inside a 52,000-word specification would make it worse at both jobs.
+
 Written down because it was explained once in conversation and would otherwise be
 re-derived from memory. The reasoning is the part that does not go stale; the checklist
 below it is status and belongs here rather than anywhere else.
