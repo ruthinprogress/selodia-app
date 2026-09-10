@@ -105,7 +105,15 @@ Two sentences, each set as its own block. The full stop between them is delibera
 
 ## 7. Social media
 
-Instagram is the primary channel.
+~~Instagram is the primary channel.~~ **Corrected 2026-09-10: Substack is the primary channel; Instagram is secondary and occasional.** Instagram is posted to when something meaningfully changes — a real milestone such as launch — and **not on a cadence**. There is no posting schedule to keep up with, and falling quiet between milestones is the intended behaviour rather than neglect.
+
+**Two reasons, and the second is the more important one.**
+
+**Workload realism.** A regular Instagram cadence is a standing commitment that competes directly with building the product, and a channel maintained resentfully reads as one. Long-form on Substack is where the writing actually wants to live (Section 8), so that is where the effort goes.
+
+**Not wanting Instagram's algorithm doing the growth.** The platform surfaces accounts to people through its own suggestion machinery, and that machinery does not respect the boundary its settings appear to offer: an acquaintance was surfaced to Ruth by Instagram's own suggestions **with every relevant setting turned off**. For an app whose subject is women's bodies, being algorithmically pushed at people — or pushing itself at them — is the wrong shape of growth entirely. Substack's growth is somebody choosing to subscribe, which is the same relationship the product itself is built on.
+
+The profile and post rules below still stand for the posts that do happen.
 
 - **Profile:** @selodia.app
 - **Bio (confirmed):**
@@ -139,6 +147,16 @@ The running index is the **Article Log**, a Google Doc in the same folder. It is
 **A dedicated article preparation session is planned — a separate chat, not yet run.** Its scope: work through the Article Log from the beginning, bring every piece up to date, and prepare the set for Substack publication.
 
 *This is a forward reference, not a status claim.* Nothing in this section should be read as saying that work has happened. When the session runs, what it decides — the publication order, the Substack cadence, whatever house style long-form needs beyond section 4 — is what belongs here afterwards. Until then this paragraph exists so the plan is findable from the spec rather than remembered.
+
+**Four decisions about the publication itself, recorded 2026-09-10.**
+
+**Published under Ruth's own name, not a Selodía-branded account.** The writing only works as a person's voice — it is a build diary of somebody making something, and a company masthead would undercut the whole approach by turning first-person honesty into content marketing. **Selodía is the recurring subject, not the publication identity.**
+
+**It continues indefinitely after launch.** The article sequence is the origin story, not the lifespan of the publication. Post-launch it becomes an ongoing thing at a lighter cadence rather than something that stops once the app ships — which also means it should not be written as though it has an ending.
+
+**Email is the default and primary delivery.** The Substack app is optional: subscribing and reading both work fully through a browser and an inbox, with no app required. This is not a detail — it directly answers the *“not everyone wants another app”* concern in this audience, and any copy inviting people to subscribe should never imply an app is needed.
+
+**The Selodía waitlist and the Substack subscriber list are separate by default, and must not be merged without explicit opt-in consent.** UK GDPR applies: someone who gave an email address to be told when an app launches has not consented to a newsletter, and the reverse holds too. Any future integration needs **its own unticked-by-default checkbox on each side** — never an automatic import, and never a pre-ticked box, which is not consent.
 
 **One thing for that session to resolve on the way past:** two of the four articles exist only as Markdown, which Ruth cannot read. The convention is Word, named by date. Whichever session touches them next should render the pair, rather than leaving it to be noticed a third time.
 
