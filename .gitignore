@@ -45,3 +45,13 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Firebase service account keys - the FCM V1 push credential.
+#
+# NOT the same thing as google-services.json, which carries only public
+# identifiers and IS committed. This is a private key that can send push
+# notifications to every Selodia install, so it lives on EAS's servers and on
+# Ruth's disk, and never in the repo. Named by Firebase as
+# <project>-firebase-adminsdk-<hash>.json.
+*firebase-adminsdk*.json
+google-service-account*.json
