@@ -107,7 +107,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
     <ThemedView style={styles.container}>
       {/* Logging from the screen you are already looking at, the same bar the
           Food and Activity tabs carry and behind it the same single pipeline:
-          text goes to ask-unflump exactly as the Chat composer's does. There is
+          text goes to ask-selodia exactly as the Chat composer's does. There is
           no measurement parser here and no measurement route - the conversation
           does the work, and a reading logged from this bar is indistinguishable
           downstream from one typed in Chat.

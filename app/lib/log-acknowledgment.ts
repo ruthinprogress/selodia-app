@@ -1,10 +1,10 @@
 // The conversational acknowledgment after a photo log (build item 10b, step 4).
 //
 // WHY THIS EXISTS. The parse-* routes save data and return the row; they were
-// never designed to say anything. The warm reply lives only in ask-unflump, on
+// never designed to say anything. The warm reply lives only in ask-selodia, on
 // the text path. So a photo log saved silently - a save toast and nothing else.
 //
-// WHY IT IS NOT A "FUNCTIONAL RECEIPT". ask-unflump's prompt forbids writing a
+// WHY IT IS NOT A "FUNCTIONAL RECEIPT". ask-selodia's prompt forbids writing a
 // "Logged: ..." line, because on the TEXT path the person has just spoken and
 // the reply belongs to what they said; the toast carries the facts separately.
 // A photo has no utterance to reply to. There is nothing to respond to except

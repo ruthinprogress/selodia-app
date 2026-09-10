@@ -18,14 +18,14 @@ import { supabase } from '@/lib/supabase';
 // The fourth was "How does this work?" until 2026-09-04. "What can I log here?"
 // asks the same thing more concretely, and it is the question people actually
 // have on a first screen: not how does the machine work, but what am I allowed
-// to say to it. ask-unflump carries a matching instruction so the answer names
+// to say to it. ask-selodia carries a matching instruction so the answer names
 // everything rather than only the thing the model happens to think of.
 //
 // THEY ARE SENT AS THE PERSON'S OWN WORDS, not as a command or a mode switch.
 // Tapping "Log what I've eaten" posts exactly that sentence into the thread and
 // Selodia answers it like any other opening line. Nothing about the chip path is
 // special downstream, which is why there is no chip-specific branch anywhere in
-// ask-unflump: a tap is a shortcut past typing, not a different kind of message.
+// ask-selodia: a tap is a shortcut past typing, not a different kind of message.
 export const CHAT_CHIPS = [
   'My body goals',
   "Log what I've eaten",

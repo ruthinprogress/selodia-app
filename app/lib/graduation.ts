@@ -10,7 +10,7 @@ import { HABIT_WINDOW_DAYS, type HabitWindow } from './habit-window';
 // WHAT MAKES THIS DIFFERENT FROM EVERY OTHER TRIGGER IN THE APP. It asks somebody
 // whether they still need the app. Part Two, principle: "the purpose is to help
 // someone understand their own patterns well enough to build real behaviour
-// change, then need Unflump less over time." So the failure mode here is not a
+// change, then need Selodía less over time." So the failure mode here is not a
 // missed trigger, it is an offer made too eagerly or repeated - either of which
 // turns a genuine question into a performance of one.
 //

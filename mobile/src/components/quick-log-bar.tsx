@@ -19,13 +19,13 @@ import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging
 // declines to do it — someone looking at today's meals, noticing one is missing,
 // had to leave the screen that showed them the gap in order to fill it.
 //
-// NOTHING NEW BEHIND IT. Text goes to `ask-unflump`, exactly as the Chat
+// NOTHING NEW BEHIND IT. Text goes to `ask-selodia`, exactly as the Chat
 // composer's does, and photos go through `classifyAndLog`, exactly as the Chat
 // composer's do. There is no food-tab parser and no activity-tab route: one
 // pipeline, reached from a second place. That is the whole design, and it is why
 // a meal logged here is indistinguishable downstream from one logged in Chat.
 //
-// THE THREAD STAYS COMPLETE. `ask-unflump` writes both turns itself, and
+// THE THREAD STAYS COMPLETE. `ask-selodia` writes both turns itself, and
 // `classifyAndLog` now persists its acknowledgment (see lib/log-turn.ts), so
 // whatever is logged here is in the conversation when the person next opens it.
 // They simply did not have to go there to do it.
@@ -93,7 +93,7 @@ export function QuickLogBar({
       // The same route the Chat composer posts to, which also writes both turns
       // to the thread — so this costs nothing extra to keep history complete.
       const data = await authedPost<{ saved?: { summary?: string }; reply?: string }>(
-        '/api/ask-unflump',
+        '/api/ask-selodia',
         { message: trimmed }
       );
       // "Saved." is only true when something actually saved. Activity now waits

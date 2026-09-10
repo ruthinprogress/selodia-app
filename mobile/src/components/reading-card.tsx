@@ -19,7 +19,7 @@ import type { MeasurementRow } from '@/lib/overview-metrics';
 // 'body_measurement' — so the writer and the only viewer did not overlap at all.
 //
 // WHAT MAKES THE NOTE WORTH SHOWING is precisely that it is NOT recomputed. It is
-// what Unflump said about this reading on the day it was taken, kept as a diary
+// what Selodía said about this reading on the day it was taken, kept as a diary
 // record. `food-breakdown-card.tsx` says the same thing from the other side: it
 // deliberately has no note section because "computing one live here would
 // contradict exactly what item 29 exists to guarantee". This reads the stored

@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
   // BELOW THE THRESHOLD there is no attempt at a roundup. The spec asks instead
   // how logging has been going - and the branch on THAT answer (ordinary
   // friction versus something more concerning) belongs to the safety classifier
-  // in ask-unflump, not here. This only asks the question.
+  // in ask-selodia, not here. This only asks the question.
   if (gate.kind === 'ask_how_its_going') {
     const question =
       'How have you been finding the logging this week? No wrong answer. I just want to know how it has actually felt.';

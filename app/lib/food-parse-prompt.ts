@@ -1,6 +1,6 @@
 // Single source of truth for the food-parse model contract (build item 28).
 // Both parse paths compose their own path-specific framing around these shared
-// pieces: the text logger (food-logging.ts, also used by ask-unflump) and the
+// pieces: the text logger (food-logging.ts, also used by ask-selodia) and the
 // image path (parse-food/route.ts). Previously the JSON schema, the
 // classification rules, the ParsedItem type, and the protein_source validator
 // were duplicated across both, so adding a field (e.g. sodium_mg) meant editing

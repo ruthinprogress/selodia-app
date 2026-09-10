@@ -2,9 +2,9 @@ import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 
 // The five distress tiers are the shared core of the safety-boundary
 // system, used by every emotionally-open touchpoint (onboarding-chat,
-// ask-unflump, and any future one) - grounded in SELODIA_LANGUAGE_RULES.md.
+// ask-selodia, and any future one) - grounded in SELODIA_LANGUAGE_RULES.md.
 // Each route adds its own non-distress classification(s) on top (e.g.
-// onboarding-chat's clear_goal/ambiguous_goal, ask-unflump's neutral).
+// onboarding-chat's clear_goal/ambiguous_goal, ask-selodia's neutral).
 export const DISTRESS_TIERS = [
   'ordinary_discouragement',
   'ambiguous_distress',

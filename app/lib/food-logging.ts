@@ -41,9 +41,9 @@ export function buildFoodLogFields(macros: ParsedMacros) {
 
 // Shared text-only food logging: extract macros via Haiku, insert into
 // food_logs, return the stored row. Used by parse-food's text path AND by the
-// chat handler (ask-unflump) for silent in-conversation logging. Throws on
+// chat handler (ask-selodia) for silent in-conversation logging. Throws on
 // extraction/parse/insert failure so each caller decides how to surface it -
-// parse-food returns 500; ask-unflump appends no confirmation (the
+// parse-food returns 500; ask-selodia appends no confirmation (the
 // storage-failure rule: never claim it saved when it did not). Image-based
 // food logging stays in parse-food; it is deliberately out of the chat path.
 // Writes the itemised components for a food log. Best-effort: the aggregate log

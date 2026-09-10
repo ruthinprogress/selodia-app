@@ -13,7 +13,7 @@
 // So this is deterministic code, not a prompt rule - the same split the safety
 // state machine draws (SAFETY_ARCHITECTURE.md §1): the model writes the reply,
 // the app states what actually happened to the data. It mirrors the correction
-// note already appended in ask-unflump for a deletion, and for the same reason:
+// note already appended in ask-selodia for a deletion, and for the same reason:
 // a fact about someone's stored data is the app's to state, never the model's
 // to promise.
 //

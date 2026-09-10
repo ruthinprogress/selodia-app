@@ -176,7 +176,7 @@ export function messageForResult(result: ImageLogResult): string | null {
   switch (result.status) {
     case 'logged':
       // Reversed 2026-08-26. This returned null on the reasoning that a reply
-      // would be the functional receipt ask-unflump's prompt forbids. That rule
+      // would be the functional receipt ask-selodia's prompt forbids. That rule
       // is about the TEXT path, where the person has just spoken and the reply
       // belongs to what they said. A photo has no utterance to reply to, so
       // silence here is not restraint - it is a log that vanishes into a toast.

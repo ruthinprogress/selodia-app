@@ -31,7 +31,7 @@ import { supabase } from '@/lib/supabase';
 //
 // UNDO IS PART OF THE FEATURE, not a nicety. A one-tap write needs a one-tap
 // reversal, and hydration has no other route back: `resolveCorrection` in
-// ask-unflump covers food, activity, measurement and personal_metric — there is
+// ask-selodia covers food, activity, measurement and personal_metric — there is
 // no conversational path to unpick a drink. Without undo here, a mis-tap would
 // be permanent, so the undo removes the row this component just inserted, by id,
 // and never anything else.

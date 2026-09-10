@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // THE PIPELINE ITSELF, imported rather than called over HTTP.
 //
-// This used to fetch https://api.selodia.app/api/ask-unflump - its own public
+// This used to fetch https://api.selodia.app/api/ask-selodia - its own public
 // URL, for a file three directories away. Measured, that hop cost about 1.4s of
 // a 4.4s spoken turn: TLS, edge routing, and a SECOND serverless invocation
 // that could cold-start on its own. The give-away was the spread across
@@ -12,14 +12,14 @@ import { NextRequest, NextResponse } from 'next/server';
 // classifier, the escalation state machine, logging, corrections, the allergy
 // block, the Almanac flow - because it IS the same function, just reached
 // without leaving the process.
-import { POST as askUnflump } from '../../../api/ask-unflump/route';
+import { POST as askSelodia } from '../../../api/ask-selodia/route';
 import { getSupabaseForRequest } from '../../../lib/supabase';
 
 // The custom-LLM adapter ElevenLabs talks to.
 //
 // WHY IT EXISTS. ElevenLabs Agents can select Claude directly in their
 // dashboard, which is far simpler and was rejected: on that path the agent
-// calls Claude itself and `ask-unflump` never runs. Everything that route
+// calls Claude itself and `ask-selodia` never runs. Everything that route
 // carries would go with it - the safety classifier and its escalation state
 // machine, food/activity/measurement logging, corrections, the allergy block,
 // the Almanac flow. A spoken conversation would not be the same product as a
@@ -70,7 +70,7 @@ function textOf(content: ChatMessage['content']): string {
   return '';
 }
 
-// The utterance is the LAST user message, not the whole array. ask-unflump
+// The utterance is the LAST user message, not the whole array. ask-selodia
 // loads its own history from the database and builds its own context, so
 // replaying ElevenLabs' transcript into it would duplicate the conversation
 // rather than continue it.
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
   // RLS scopes the read to this person automatically; the token is the same
   // one the pipeline will authenticate with a moment later.
   try {
-    const seen = new NextRequest(new URL('/api/ask-unflump', request.url), {
+    const seen = new NextRequest(new URL('/api/ask-selodia', request.url), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
 
       let reply: string;
       try {
-        const inner = new NextRequest(new URL('/api/ask-unflump', request.url), {
+        const inner = new NextRequest(new URL('/api/ask-selodia', request.url), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -339,7 +339,7 @@ export async function POST(request: NextRequest) {
           // classification - only which work must finish before we can speak.
           body: JSON.stringify({ message: utterance, voice: true }),
         });
-        const res = await askUnflump(inner);
+        const res = await askSelodia(inner);
 
         if (res.status === 401) {
           console.log('VOICE ADAPTER: pipeline rejected the token');
@@ -385,8 +385,8 @@ export async function POST(request: NextRequest) {
   // stream:false has to wait for the whole thing regardless - there is nothing
   // to stream into - so it takes the plain path below.
   if (body.stream === false) {
-    const res = await askUnflump(
-      new NextRequest(new URL('/api/ask-unflump', request.url), {
+    const res = await askSelodia(
+      new NextRequest(new URL('/api/ask-selodia', request.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: utterance, voice: true }),

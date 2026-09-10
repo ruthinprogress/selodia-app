@@ -5,7 +5,7 @@ import { calculateBMR, calculateTDEE, proteinTarget, type ProteinTarget } from '
 //
 // THE GAP THIS CLOSES, and it is wider than the Meal Advisor. Until 2026-09-09
 // the chat prompt carried the food ALREADY LOGGED and no target of any kind -
-// `protein_target_g` appeared in `ask-unflump` exactly zero times. So Selodía
+// `protein_target_g` appeared in `ask-selodia` exactly zero times. So Selodía
 // could see what somebody had eaten and had no idea whether it was a lot or a
 // little for them. Item 22 asks for "choices given remaining daily targets",
 // which is not buildable at all while the remaining targets are invisible; and

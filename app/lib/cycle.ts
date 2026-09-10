@@ -1,4 +1,4 @@
-// Server-side mirror of the cycle-phase computation, for ask-unflump's context
+// Server-side mirror of the cycle-phase computation, for ask-selodia's context
 // injection (SELODIA_SPEC.md, Part Thirteen: every conversation loads cycle
 // phase). This deliberately duplicates the phase logic in mobile/src/lib/cycle.ts
 // — the Next backend and the Expo client can't share a lib across the runtime
@@ -39,7 +39,7 @@ export function computeCycleDayAndPhase(
   return { cycleDay: diff + 1, phase: phaseForCycleDay(diff + 1) };
 }
 
-// The cycle-context block injected into ask-unflump's system prompt. Empty string
+// The cycle-context block injected into ask-selodia's system prompt. Empty string
 // when no period has been logged, so the block simply doesn't appear.
 export function buildCycleContextPrompt(lastPeriodStart: string | null): string {
   if (!lastPeriodStart) return '';

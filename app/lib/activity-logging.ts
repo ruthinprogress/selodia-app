@@ -72,7 +72,7 @@ export async function logActivityFromText(
     finalHappenedAt = parsed.detected_date + 'T' + timeOnly;
   }
 
-  // The prompt in ask-unflump is supposed to withhold logIntent 'activity'
+  // The prompt in ask-selodia is supposed to withhold logIntent 'activity'
   // until a duration is known, and the parse prompt above is supposed to return
   // null rather than invent one. This is the third check, because the first two
   // are both model behaviour and this one is not: a row with no duration is a

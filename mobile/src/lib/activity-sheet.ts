@@ -7,7 +7,7 @@
 // text box: they type a word, get asked how long, type a number. The sheet asks
 // for the two things the log actually needs, once, with taps.
 //
-// IT DOES NOT LOG. Everything here ends as a sentence posted to ask-unflump,
+// IT DOES NOT LOG. Everything here ends as a sentence posted to ask-selodia,
 // exactly like the Chat composer. One pipeline, reached from a second place -
 // the same rule the QuickLogBar was built under. Nothing on the Activity tab
 // writes to activity_logs directly, so a session logged here is indistinguishable
@@ -76,7 +76,7 @@ export function isValidKm(n: number): boolean {
   return Number.isFinite(n) && n >= MIN_KM && n <= MAX_KM;
 }
 
-// Turns the taps back into a sentence for ask-unflump to parse.
+// Turns the taps back into a sentence for ask-selodia to parse.
 //
 // A sentence rather than a payload BECAUSE the pipeline is the point: the same
 // route, the same parser, the same thread. It does mean the numbers the person

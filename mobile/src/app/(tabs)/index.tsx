@@ -359,14 +359,14 @@ export default function ChatScreen() {
 
     try {
       // Every chat message goes through the single safety-first handler
-      // (ask-unflump / B-merged-single). It classifies safety AND log intent,
+      // (ask-selodia / B-merged-single). It classifies safety AND log intent,
       // stores any food/activity silently, and returns the safety-governed
       // reply - so a message can never be routed straight to a bare "Logged:"
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
       const { reply, resourceCard, healthGuidanceApplied, saved, foodLogId, navigationTarget } =
-        await authedFetch('/api/ask-unflump', {
+        await authedFetch('/api/ask-selodia', {
           message: trimmed,
         });
       setMessages((prev) => [
