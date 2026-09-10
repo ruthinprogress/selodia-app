@@ -1521,6 +1521,78 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 
 ## Distribution
 
+
+### Google Play submission — the route, the reasoning, and the steps (2026-09-10)
+
+Written down because it was explained once in conversation and would otherwise be
+re-derived from memory. The reasoning is the part that does not go stale; the checklist
+below it is status and belongs here rather than anywhere else.
+
+**THE ACCOUNT IS SELODÍA LTD, and that decision is worth more than it looks.** Google
+requires a **personal** developer account created after late 2023 to run a closed test with
+**at least 12 testers for 14 continuous days** before it may even apply for production
+access. **Organisation accounts are exempt.** Registering as Selodía Ltd therefore removes a
+fortnight from the critical path, and it is not a setting that can be changed after the
+account exists.
+
+**The cost of that exemption is verification, and it is the only genuine blocker.** An
+organisation account must be verified by Google — company details, and typically a **D-U-N-S
+number**. Obtaining a D-U-N-S is free but can take up to around 30 days; verification itself
+takes days even when one already exists. **Nothing about this is under our control, which is
+precisely why it should be started before it is needed** rather than when the app is ready.
+Everything else on this page is hours of work; this is the part measured in days.
+
+**"On the Play Store" and "public" are separate decisions.** Four tracks exist: internal
+testing (up to 100 testers by email, not publicly listed), closed testing (invite-only,
+reviewed), open testing (a discoverable public beta), and production. **Internal and closed
+are invisible** — nobody browsing Play can find the app, testers install through a link, and
+promotion to production is a deliberate act. So there is no risk in being on the store early,
+and the founder-led testing structure fits inside the internal track without exposing
+anything.
+
+**What development looks like afterwards, which is less disruptive than it sounds.** Server
+changes — API routes, prompts, safety rules, migrations — deploy on `git push` and are live in
+a minute, entirely untouched by the store. JS and TSX changes go over the air via `EAS
+Update`, no review, minutes. **Only a native module addition needs a new build and a Play
+review**, typically hours. The standing rule about not stacking unverified native modules
+therefore stops being good practice and becomes a release constraint.
+
+**Debugging changes shape, and there is a fix for it.** A store build has no Metro and no live
+logs, so diagnosis becomes what the person describes plus the database plus server logs —
+which is how four of the five bugs found on 2026-09-10 were actually found. A store build and
+a dev build share a package name, so installing one removes the other. **App variants solve
+this**: a debug build published as `app.selodia.dev` with its own name installs *alongside*
+the real app, from the same single codebase — two builds, never two copies, so they cannot
+drift. Roughly twenty minutes of config, and it belongs before the first store upload rather
+than after.
+
+**The preview APK is not an alternative to any of this.** A standalone `preview` build has the
+JS bundled inside it, needs no Metro or tunnel, installs from a link, and still receives `EAS
+Update` pushes. It exists so that testing is not held hostage to account verification. If
+verification is quick it cost twenty minutes; if it takes a fortnight it saved a fortnight.
+
+**Steps, in order. The first is the long pole and everything else can happen while it runs.**
+
+| # | Step | Who | Notes |
+|---|---|---|---|
+| 1 | Register the Play Console account as **Selodía Ltd**, pay the $25 one-off | Ruth | Claude never handles account creation or sign-in. Choose **organisation**, not personal — this is irreversible and is what avoids the 12-tester rule. |
+| 2 | Obtain a **D-U-N-S number** if Selodía Ltd has none | Ruth | Free, up to ~30 days. Start immediately; nothing else here is on the critical path. |
+| 3 | Complete Google's verification | Ruth | Days, even with a D-U-N-S in hand. |
+| 4 | App Content declarations: content rating questionnaire, **Data Safety**, target audience, ads declaration | Ruth, with Claude drafting | Required before **any** release including a hidden internal test. The Data Safety answers must match `selodia.app/privacy` category for category — that policy was written from the real tables, so the two can be made to agree exactly. |
+| 5 | Store listing: app name, short and full description, icon, feature graphic, **at least two phone screenshots** | Claude drafts copy; Ruth supplies or approves imagery | The listing name is set here and is independent of `android.package`. |
+| 6 | Build an **AAB** from the `production` profile and upload to **internal testing** | Claude | `appVersionSource` is already `remote` with `autoIncrement`, so `versionCode` needs nothing. |
+| 7 | Add testers by email, install through the opt-in link | Ruth | Up to 100. Nothing is publicly visible at this point. |
+| 8 | Set up the **`app.selodia.dev` variant** so a debuggable build can sit alongside the store one | Claude | Before the first upload rather than after. |
+| 9 | Regenerate **FCM push credentials** for `app.selodia` | Claude | They are bound to the old package after the 2026-09-10 rename and are untested since. |
+| 10 | Promote to production when ready | Ruth | A deliberate decision, not a consequence of anything above. |
+
+**Not required, and worth knowing so it is not chased:** none of the remaining `unflump`
+strings block a release. `owner: "unflump"` is the EAS account name, `slug` and the
+`package.json` name are internal identifiers, and `/api/ask-unflump` is a route name. **None
+is visible to a user**, and the Play listing name is set in the console independently of all
+of them. The user-facing identity — app name, `android.package`, deep-link scheme — was
+completed on 2026-09-10.
+
 ### Store readiness — added 2026-09-10
 
 Everything below is admin rather than engineering, and every item was found by reading the config rather than by planning a release. That is the point of writing it down now: none of it is hard, and all of it is the kind of thing discovered in the week somebody is trying to ship.
