@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "app.selodia",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#C97458",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

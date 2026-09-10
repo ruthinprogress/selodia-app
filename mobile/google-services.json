@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "509596862443",
+    "project_id": "selodia-app",
+    "storage_bucket": "selodia-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509596862443:android:c78c934ad32df88a6f7bae",
+        "android_client_info": {
+          "package_name": "app.selodia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5dgroK4Z7jM-A6wQM5YP8k-zvmMBsyEM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509596862443:android:fbf438f7dd39bcdd6f7bae",
+        "android_client_info": {
+          "package_name": "app.selodia.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5dgroK4Z7jM-A6wQM5YP8k-zvmMBsyEM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -29,9 +29,18 @@
 // given channel. Changing them would fork the project, which is the opposite of
 // the intent.
 //
-// A DEV BUILD NEEDS ITS OWN FCM CREDENTIALS, because push credentials are bound
-// to a package name. Until those exist for `app.selodia.dev`, everything works on
-// the dev variant except notifications.
+// PUSH CREDENTIALS ARE BOUND TO A PACKAGE NAME, so the dev variant needs its own
+// - but far less of its own than this comment first claimed. Resolved 2026-09-10:
+// the Firebase project `selodia-app` has BOTH packages registered as Android apps,
+// and a single `google-services.json` downloaded after registering both carries a
+// `client` entry for each. So `android.googleServicesFile` is set once in
+// `app.json` and reaches this variant through the `...config.android` spread below
+// - there is nothing variant-specific to add here, and nothing to keep in sync.
+//
+// What IS still per-package is the EAS side: the FCM V1 service account key has to
+// be attached to `app.selodia` and `app.selodia.dev` separately in the Expo
+// dashboard. Same key file both times, since it is issued per Firebase PROJECT
+// rather than per app.
 
 const IS_DEV = process.env.APP_VARIANT === 'development';
 
