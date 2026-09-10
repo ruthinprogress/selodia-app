@@ -1638,7 +1638,7 @@ verification is quick it cost twenty minutes; if it takes a fortnight it saved a
 | 9 | Set up **FCM push credentials** for `app.selodia` and `app.selodia.dev` | Ruth in the consoles, Claude wires the repo | ~~Regenerate — they are bound to the old package after the rename~~ **that was wrong, corrected 2026-09-10: there were no credentials to regenerate.** No Firebase project existed, no `google-services.json` was ever in the repo, and no `googleServicesFile` was ever set — which is the other half of why push has never once worked, alongside the missing `projectId` fixed on 09-09. Firebase project created 2026-09-10 under `hello@selodia.app`, **with Google Analytics declined — see item 50.** |
 | 10 | Promote to production when ready | Ruth | A deliberate decision, not a consequence of anything above. |
 
-**ONE MAILBOX NOW CARRIES FOUR THINGS, AND ITS EXPIRY DATE IS UNKNOWN (flagged 2026-09-10).**
+**ONE MAILBOX CARRIES FOUR THINGS — ~~and its expiry date is unknown~~ RESOLVED THE SAME DAY (flagged and closed 2026-09-10).**
 `hello@selodia.app` runs on a **Namecheap Private Email trial**, and the costs workbook has
 recorded "expiry date unknown — worth confirming" since before any of this. What now hangs off
 that address: the **ElevenLabs startup grant** (applied and accepted from it), the **Firebase
@@ -1646,8 +1646,7 @@ project** created 2026-09-10 and its account-recovery mail, the **D-U-N-S confir
 arrive there, and the **Play Console** organisation account. It is worth saying plainly that a
 lapsed trial would not merely bounce mail — it would take the recovery address for accounts that
 cannot easily be recovered any other way, at precisely the point where several of them are
-mid-verification. **The action is small and the failure is not: find the expiry in Namecheap,
-put it on a card, and convert the trial to paid before it lapses.**
+mid-verification. **The action was small and the failure would not have been.** Renewed for a year the same afternoon — order 213727699, $17.86 including tax, now paid to **10 September 2027**. Two things to carry forward rather than close entirely: it renewed on Namecheap's `privateemail-launch` SKU, so **the 2027 price should be checked rather than assumed**, and the renewal date belongs somewhere with a reminder attached, because the failure mode returns in full a year from now.
 
 **Not required, and worth knowing so it is not chased:** none of the remaining `unflump`
 strings block a release. `owner: "unflump"` is the EAS account name, `slug` and the
