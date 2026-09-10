@@ -69,6 +69,7 @@ export default function RootLayout() {
   // Auth-state listener + route guard (step 6): gates (tabs) behind a session
   // and resumes an unfinished user at their onboarding step. Called before the
   // early return, because a hook cannot sit behind a condition.
+  console.log('[BOOT] RootLayout render, fontsLoaded =', fontsLoaded);
   useAuthGuard();
 
   // Light unconditionally: the app is light-only from 2026-09-03, and handing

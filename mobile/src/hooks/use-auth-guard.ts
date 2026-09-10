@@ -67,6 +67,8 @@ export function useAuthGuard(): { ready: boolean } {
   useEffect(() => {
     // Wait until both the session check and the root navigator are ready;
     // redirecting before navigation mounts throws.
+    console.log('[BOOT] guard: ready =', ready, ' navKey =', navState?.key ?? 'NONE',
+      ' session =', session ? 'yes' : 'no');
     if (!ready || !navState?.key) return;
 
     const group = segments[0];
@@ -83,6 +85,7 @@ export function useAuthGuard(): { ready: boolean } {
     const onAuthEntry = inOnboarding && (screen === 'consent' || screen === 'account');
 
     if (!session) {
+      console.log('[BOOT] no session; inApp =', inApp, ' -> redirecting =', inApp);
       if (inApp) router.replace('/onboarding/consent');
       return;
     }

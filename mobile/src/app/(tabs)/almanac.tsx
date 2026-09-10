@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,7 +42,20 @@ export default function AlmanacScreen() {
   // who dismissed it months ago.
   const [showIntro, setShowIntro] = useState(false);
 
-  useEffect(() => {
+  // REFETCHES ON FOCUS, not only on mount, and the distinction matters here in a
+  // way it does not for Food, Measurements or Activity. Those are PUSHED onto the
+  // Body stack, so they remount on every visit and a mount-only fetch is correct.
+  // The Almanac is a TAB: it mounts once and stays mounted for the life of the
+  // app, so an entry saved from Chat afterwards never appeared until the whole
+  // app was reloaded. Found on device 2026-09-10, and the entry was in the
+  // database the whole time - it was the list that was stale, which is the worst
+  // version of this because it reads as the save having silently failed.
+  //
+  // `loading` is deliberately not reset on a refocus, matching overview-panel:
+  // it guards the first paint, and flipping it on every return would blink the
+  // whole list away to reload something that usually has not changed.
+  useFocusEffect(
+    useCallback(() => {
     let cancelled = false;
     (async () => {
       // RLS scopes this to the signed-in user, so no explicit user_id filter.
@@ -73,7 +86,8 @@ export default function AlmanacScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+    }, [])
+  );
 
   // Hidden immediately, persisted in the background. The card must never sit
   // there waiting on a write to finish - and if the write fails the only cost
