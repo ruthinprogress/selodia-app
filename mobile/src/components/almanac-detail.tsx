@@ -159,6 +159,7 @@ function ExerciseDetail({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  const [weightsOpen, setWeightsOpen] = useState(false);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal>
@@ -193,12 +194,45 @@ function ExerciseDetail({
                 demonstration follows it, never above it. */}
             <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
 
-            <WorkingWeightControl
-              planId={planId}
-              exerciseName={exercise.name}
-              currentKg={currentKg}
-              onLogged={onLogged}
-            />
+            {/* BEHIND A TOGGLE UNTIL THERE IS A WEIGHT (Ruth, 2026-09-10).
+                Found on device: a sumo squat and a side-lying leg lift both
+                showed a stepper reading 0 kg, a slider whose fill was zero
+                width and so looked like an empty bar, and a "Log this weight"
+                button - three controls for a load that does not exist. That is
+                what principle 8 rules out.
+
+                Not removed for bodyweight movements, though, which was the
+                first instinct: Ruth's reaction to the control was that it
+                "felt like something I could work towards". Hiding it entirely
+                would take that away, and the app cannot reliably tell which
+                movements are loadable anyway - a plan carries no equipment
+                field, and guessing from the name is the same class of
+                inference the movement matching already refuses to make.
+
+                So it is offered rather than presented. Once a weight exists
+                the control opens on its own, because at that point it is a
+                record rather than an invitation. */}
+            {currentKg != null || weightsOpen ? (
+              <WorkingWeightControl
+                planId={planId}
+                exerciseName={exercise.name}
+                currentKg={currentKg}
+                onLogged={onLogged}
+              />
+            ) : (
+              <Pressable
+                onPress={() => setWeightsOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Add weights to this exercise"
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedView type="backgroundElement" style={styles.addWeights}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Add weights
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
+            )}
           </ScrollView>
 
           <View style={styles.actions}>
@@ -293,6 +327,12 @@ function Label({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
+  addWeights: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.one,
+    alignItems: 'center',
+  },
   backdrop: {
     position: 'absolute',
     top: 0,

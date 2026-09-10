@@ -145,6 +145,34 @@ const HOLDING_AFTER_MS = 4_000;
 const HOLDING_LINE = 'Let me put that together for you.';
 
 
+// IS THIS THE SAME TURN, SAID AGAIN?
+//
+// The guard was an exact string match until 2026-09-10, when a real session
+// produced two answers three seconds apart. What Ruth actually did was say a
+// sentence, get no immediate response, and say it again with "Hello?" on the
+// end. Two different strings; the same turn; two replies.
+//
+// So an utterance where one is a PREFIX of the other counts as a repeat. That
+// covers both directions: speech-to-text finalising a longer transcript over a
+// shorter one, and a person restating themselves with something appended.
+//
+// THE LENGTH FLOOR IS THE WHOLE SAFETY OF THIS. "no" is a prefix of "no
+// thanks", "not for me" and "nothing yet", and swallowing a real answer
+// because a similar short word was said ten seconds ago would be far worse
+// than the duplicate this prevents. Below the floor, only an exact match
+// counts - which is exactly the behaviour that existed before.
+const RESTATEMENT_MIN_CHARS = 12;
+
+function looksLikeRestatement(a: string, b: string): boolean {
+  const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
+  const x = norm(a);
+  const y = norm(b);
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  if (short.length < RESTATEMENT_MIN_CHARS) return false;
+  return long.startsWith(short);
+}
+
 const enc = new TextEncoder();
 
 function sseChunk(id: string, created: number, model: string, delta: object, finish: string | null) {
@@ -242,16 +270,23 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });
-    const { data: duplicate } = await getSupabaseForRequest(seen)
+    // Fetches the window's turns rather than asking the database to match,
+    // because prefix comparison after normalising whitespace and case is not
+    // something a column filter can express. The window is fifteen seconds, so
+    // this is a handful of short rows.
+    const { data: recent } = await getSupabaseForRequest(seen)
       .from('chat_messages')
-      .select('id')
+      .select('content')
       .eq('role', 'user')
-      .eq('content', utterance)
       .gte('created_at', new Date(Date.now() - DEDUP_WINDOW_MS).toISOString())
-      .limit(1)
-      .maybeSingle();
-    if (duplicate) {
-      console.log('VOICE ADAPTER: duplicate utterance within window, answering with silence');
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const repeat = (recent ?? []).find((r) =>
+      looksLikeRestatement(String(r.content ?? ''), utterance)
+    );
+    if (repeat) {
+      console.log('VOICE ADAPTER: restatement of a turn already answered, replying with silence');
       return silentCompletion(id, created, model);
     }
   } catch (err) {
