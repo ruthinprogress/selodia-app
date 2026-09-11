@@ -289,6 +289,18 @@ Standing exception to the skip-visual-verification default: any component whose 
 
 ---
 
+## Save visuals to Drive immediately (standing rule, set 2026-09-11)
+
+Any visual asset generated in a Claude chat (SVG, HTML mockup, illustration, diagram) must be saved to Google Drive immediately after approval. Default location: `Selodia App Project Master Folder > Build Specs > Branding & Assets > Visual Assets`. Do not assume Claude chat artifacts persist between sessions. They do not. This applies to Health Flower designs, UI mockups, logo concepts, and any other visual work.
+
+- **What to save:** the source (SVG or HTML) and a rendered PNG, so it can be both edited and simply looked at. Dated filenames, `YYYY-MM-DD Description.ext`, the same convention as mockups below.
+- **Who saves it:** a Claude Code session writes it straight into the synced Drive folder. A claude.ai chat saves it through the Drive connector, or hands Ruth the file to save herself before the chat moves on. Either way it happens at approval, not at close-out.
+- **Folder name:** Ruth's instruction named it `Branding > Visual Assets`. There is no top-level Branding folder; the brand folder is `Build Specs/Branding & Assets`, where the Logo Asset Pack already lives, so Visual Assets sits inside it.
+
+**Why:** the daintier Health Flower mockup Ruth remembers from early September was drawn in a claude.ai chat and is gone. claude.ai lost it, and nothing in the repo, Drive, the artifacts or any Claude Code session holds a copy. On 2026-09-11 the deck needed it and it had to be redrawn from description. The code-built versions survived only because they were committed.
+
+---
+
 ## Project Setup Lessons (For Any Future Project, Not Just This One)
 - **Set up dedicated accounts (email, and any tooling accounts) for a new project from day one**, not retrofitted later once things are already tangled with personal accounts. This was raised explicitly as something to insist on earlier next time, even if it creates minor friction upfront.
 - **A specific test/beta account should be treated as a real, ongoing account**, not a disposable throwaway — worth choosing something usable long-term rather than something to be deleted right after.
@@ -298,7 +310,7 @@ Standing exception to the skip-visual-verification default: any component whose 
 ## Where Other Things Live
 - **Checklist, Decisions Log, session logs, Glossary** — Google Sheet, "Unflump App Builder Mastersheet."
 - **Competitor research (Milo, Lila, etc.)** — kept separate from the build spec entirely, since it's strategic/positioning context for Ruth, not something Claude Code needs to build the app.
-- **Branding/visual design exploration** — its own separate Drive folder (`…/Build Specs/Branding`), not part of the technical spec. Mockup HTML/image files use **dated filenames** (e.g. `unflump-all-screens_YYYY-MM-DD.html`). Two distinct tiers govern their lifecycle — "preserve real milestones, discard noise," the same principle already applied to the V3-V8 spec history:
+- **Branding/visual design exploration** — its own separate Drive folder (`…/Build Specs/Branding & Assets`), not part of the technical spec. Approved visuals go in its `Visual Assets` subfolder the moment they are approved (see "Save visuals to Drive immediately"). Mockup HTML/image files use **dated filenames** (e.g. `unflump-all-screens_YYYY-MM-DD.html`). Two distinct tiers govern their lifecycle — "preserve real milestones, discard noise," the same principle already applied to the V3-V8 spec history:
   - **Tier 1 — same-day iterations (the design chat's own live workflow).** While iterating toward a decision within a single session/day, each new draft **trashes its immediate predecessor directly — no archiving**. These are drafts on the way to a decision, not meaningful history. This trashing is the *design chat's* live workflow; **Claude Code never performs it.**
   - **Tier 2 — a day's confirmed final (Claude Code's role).** Once a day's work concludes and a version is confirmed as that day's final result, it becomes the new current reference, and the **previous day's** final version (not the intermediate same-day drafts — those are already gone) is **moved to the `Selodia archive` folder** (`…/Selodia App Project Master Folder/Selodia archive`). Claude Code moves prior confirmed-day versions to the archive when a new one is confirmed — but **never trashes anything itself.**
   - **Claude Code's role, in sum:** it may *view* anything in the Branding folder for context; it *archives* prior confirmed-day finals when a new day's final is confirmed; it never deletes/trashes. (No contradiction with the "never dated copies" rule above: that governs the separate *Claude Code Working Build Specs* folder; this governs the *Branding* folder. End state is the same in spirit — one current reference, real milestones preserved in the archive, same-day noise discarded.)
