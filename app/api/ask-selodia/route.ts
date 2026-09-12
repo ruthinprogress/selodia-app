@@ -57,6 +57,16 @@ import {
   storePendingFocus,
 } from '../../lib/focus-states';
 import {
+  clearPendingSave,
+  coerceProposal,
+  commitSave,
+  pendingSavePrompt,
+  prepareNote,
+  readPendingSave,
+  saveAppliedNote,
+  storePendingSave,
+} from '../../lib/pending-save';
+import {
   assessConsolidation,
   CONSOLIDATION_OFFER_BLOCK,
   declineConsolidation,
@@ -297,7 +307,8 @@ export async function POST(request: NextRequest) {
         'height_cm, unsafe_goal_flagged_at, date_of_birth, biological_sex, ' +
           'activity_level, fat_focus_state, muscle_focus_state, protein_target_g, ' +
           'pending_fat_focus, pending_muscle_focus, pending_focus_asked_at, ' +
-          'fat_focus_since, muscle_focus_since, consolidation_offered_at, lite_mode_since'
+          'fat_focus_since, muscle_focus_since, consolidation_offered_at, lite_mode_since, ' +
+          'pending_save, pending_save_asked_at'
       )
       .maybeSingle(),
     // Not a { data } shape - loadAllergies returns the rows directly. Positional
@@ -396,12 +407,17 @@ export async function POST(request: NextRequest) {
     muscle_focus_since: string | null;
     consolidation_offered_at: string | null;
     lite_mode_since: string | null;
+    pending_save: unknown;
+    pending_save_asked_at: string | null;
   } | null;
 
   // An outstanding offer to change their Focus, if there is one. Read from the
   // database rather than from the conversation, so a confirmation can never be
   // applied against a proposal the model has misremembered.
   const pendingFocus = readPending(profile);
+  // Insights slice 2: an offer to keep something, stored rather than
+  // remembered. See pending-save.ts.
+  const pendingSave = readPendingSave(profile);
 
   // Part Eleven's consolidation offer (item 24). The habit window is a 63-day
   // query, so it is only read once the free checks have passed - both states at
@@ -495,7 +511,7 @@ NUTRIENT DEPTH (passive, occasional): protein and calories miss things that can 
 
 CLARIFYING A COMPOSITE: two kinds of composite dish are worth a light, single clarifying question when the person did NOT already specify the details. (1) A consistent-ratio dish (lasagne) where ONE variable materially changes the macros - the type of meat, the portion of a set dish: ask about that one variable. (2) A high-variability dish (shakshuka, a full English) whose make-up really varies: ask about the KEY items and quantities in ONE question ("A full English - roughly how many eggs and rashers of bacon? I'll assume a typical spread otherwise"), never item by item across turns. Either way, ask just once, gently, and always offer an easy way out ("...or I'll just go with a typical one, no worries either way"). It is logged immediately with a sensible default regardless, so this is a light confirmation, never a gate or a demand - and you never chase items they leave out: a typical portion fills anything unmentioned. Set clarificationAsked to a short name for what you asked about. Do this ONLY for those two cases: never for a simple or branded item, and never for a multi-component meal (those are just broken into their parts). Never nag, never re-ask. When a later message answers your clarification, set clarificationResolved to the full enriched food description combining the original dish with everything they said (e.g. "beef lasagne", or "full English with 2 fried eggs and 3 rashers of bacon"); the app re-reads it and quietly updates the stored entry, so don't restate macros.
 
-SAVING TO THE ALMANAC: the Almanac is the person's living reference of saved plans, patterns, and insights - the things worth keeping within easy reach. A save is worth it only for (a) a real plan you've genuinely worked out together (a routine, a movement plan, a meal or drink plan) or (b) a genuine INSIGHT - a pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight/waist tending higher in the days before a period). It is NOT worth saving a plain result (a number the data already shows, like a 5-day trend) or a one-off observation (a contextual note that connects to nothing) - those stay in the conversation. **Confirm first, always:** when something save-worthy emerges, ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after the person agrees - never save without a yes, never save a passing remark. Use an open, natural word for almanacKind (e.g. "insight", "routine", "movement plan", "pattern"), a short almanacTitle, and almanacCategory only when a natural grouping exists. For an INSIGHT, put its rule in almanacContent as a condition and an expectation, e.g. {"condition": "the days before your period", "expectation": "weight and waist read a little higher"}, so it can inform how future readings are interpreted.\nFOR A WORKOUT OR MOVEMENT PLAN specifically, almanacContent takes this shape: {"programType": string, "goal": string, "exercises": [{"name": string, "group": string, "sets": number, "reps": string, "safetyNote": string, "eccentricLoad": "none"|"low"|"moderate"|"high", "intensity": "light"|"moderate"|"intense"}]}. Notes on each: **programType** describes the kind of program in your own words (e.g. "general strength", "rehab", "skill practice") - it decides how the plan is grouped, so be accurate rather than inventive. **group** is the grouping key and its meaning follows programType: a body area for general strength, the skill being learned for skill practice, and it can be omitted for rehab, which shows as a flat list. **reps** is a STRING so you can write what is actually true - "8-10", "30s", "AMRAP", "12 per side" - never round it to a bare number if that loses meaning. **sets and reps are decided per person and per goal from what you have discussed** - a rep range for building muscle is not the range for rehab or endurance - never a fixed default per exercise. **safetyNote is required for every exercise and must name the real common failure modes of that specific movement** - what actually goes wrong and what it feels like when it does - never generic boilerplate like "use good form" or "warm up first". **eccentricLoad** is how much eccentric (lengthening-under-load) work the movement involves, which is what drives delayed-onset soreness; **intensity** is its typical effort level. Set both from the movement itself. Do NOT put working weights or completed sessions in the plan - those are logged separately, and writing them here would overwrite the history that progressive overload depends on.
+SAVING TO THE ALMANAC: the Almanac keeps what the person agrees is worth keeping. There are two ways in, and they work differently.\n(1) INSIGHTS, SYMPTOMS AND NOTES go through an OFFER that the app stores. When one of these moments comes up, answer what they actually said first, then ask in one short, plain question whether to keep it ("Want me to keep that in your Almanac?") and set proposedSave with its type, a short title and its content. Never save it yourself and never say it is saved: the app keeps it only if they say yes, and tells them so itself. A SYMPTOM is a physical observation in their own words - pain, soreness, stiffness, fatigue, bloating, hay fever, poor sleep - worth offering when it is specific and physical, not every passing "I'm tired". Answer it first by the symptom rule below, then offer, with their words in content as {"summary": ...}. An INSIGHT is a genuine pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight and waist tending higher in the days before a period); its rule goes in content as {"condition": ..., "expectation": ...}. A plain result (a number the data already shows, like a 5-day trend) or a one-off observation that connects to nothing is not an insight and is never offered. A NOTE is anything they explicitly ask you to note or log as a note ("log a note: I feel really good today"). There is no offer for a note, because asking is the yes: set noteText to their words exactly as they said them, never rewritten or embellished, and do not say it is saved. Offer one thing at a time, never the same thing twice, and never turn a passing remark into an offer. Whatever is kept is observed, not graded: a title or summary describes what they said and never praises, warns or scores it.\n(2) PLANS you have genuinely worked out together (a routine, a movement plan, a meal or drink plan) are still saved the older way. **Confirm first, always:** ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after they agree - never without a yes. Use an open, natural word for almanacKind (e.g. "routine", "movement plan"), a short almanacTitle, and almanacCategory only when a natural grouping exists. Never use almanacKind for an insight, a symptom or a note.\nFOR A WORKOUT OR MOVEMENT PLAN specifically, almanacContent takes this shape: {"programType": string, "goal": string, "exercises": [{"name": string, "group": string, "sets": number, "reps": string, "safetyNote": string, "eccentricLoad": "none"|"low"|"moderate"|"high", "intensity": "light"|"moderate"|"intense"}]}. Notes on each: **programType** describes the kind of program in your own words (e.g. "general strength", "rehab", "skill practice") - it decides how the plan is grouped, so be accurate rather than inventive. **group** is the grouping key and its meaning follows programType: a body area for general strength, the skill being learned for skill practice, and it can be omitted for rehab, which shows as a flat list. **reps** is a STRING so you can write what is actually true - "8-10", "30s", "AMRAP", "12 per side" - never round it to a bare number if that loses meaning. **sets and reps are decided per person and per goal from what you have discussed** - a rep range for building muscle is not the range for rehab or endurance - never a fixed default per exercise. **safetyNote is required for every exercise and must name the real common failure modes of that specific movement** - what actually goes wrong and what it feels like when it does - never generic boilerplate like "use good form" or "warm up first". **eccentricLoad** is how much eccentric (lengthening-under-load) work the movement involves, which is what drives delayed-onset soreness; **intensity** is its typical effort level. Set both from the movement itself. Do NOT put working weights or completed sessions in the plan - those are logged separately, and writing them here would overwrite the history that progressive overload depends on.
 
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
@@ -543,6 +559,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
     pendingFocusPrompt(pendingFocus) +
+    pendingSavePrompt(pendingSave) +
     (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +
     (isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : '');
 
@@ -693,10 +710,30 @@ ${SAFETY_PROMPT_BLOCK}`;
       description:
         "Set true ONLY when the conversation was about a specific logged entry (a card was shown earlier) and this message has genuinely moved on to an unrelated subject. A follow-up question about the same entry, or a natural tangent still rooted in it, is NOT a move. Leave unset when in doubt - the tag continues by default.",
     },
+    proposedSave: {
+      type: 'object',
+      description:
+        'Set ONLY when, in this reply, you are OFFERING to keep an insight or a symptom in their Almanac and have asked them in plain words whether to keep it. '
+        + '{"type": "symptom" or "insight", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}}. '
+        + 'The app stores the offer and saves it only if they say yes. Never for a plan, a passing remark, a plain result or a one-off observation, and never while an earlier offer is still waiting.',
+    },
+    saveAnswer: {
+      type: 'string',
+      enum: ['yes', 'no'],
+      description:
+        'ONLY when the app has told you an offer to keep something is outstanding, and only when THIS message actually answers it. '
+        + 'Anything else - a new topic, a log, a different question - is not an answer, so leave it unset. Never treat them moving on as a yes.',
+    },
+    noteText: {
+      type: 'string',
+      description:
+        'Set ONLY when they explicitly ask you to note, log or keep something as a note ("log a note: I feel really good today"). '
+        + 'Their words exactly as they said them, minus the instruction itself: never rewritten, summarised or embellished. Asking is the yes, so there is no offer.',
+    },
     almanacKind: {
       type: 'string',
       description:
-        'Only when saving a genuinely save-worthy Almanac item AND the person has AGREED to save it (confirm first): an open, natural word for the kind (e.g. "insight", "routine", "movement plan", "pattern"). Never without agreement; never for a plain result or one-off observation.',
+        'Only for a PLAN you have worked out together (a routine, a movement plan, a meal or drink plan), and only after the person has AGREED to save it: an open, natural word for the kind (e.g. "routine", "movement plan"). Never for an insight, a symptom or a note - those go through proposedSave or noteText. Never without agreement.',
     },
     almanacTitle: {
       type: 'string',
@@ -800,6 +837,9 @@ ${SAFETY_PROMPT_BLOCK}`;
     discussTopicEnded?: boolean;
     navigationTarget?: string;
     allergiesDisclosed?: string[];
+    proposedSave?: unknown;
+    saveAnswer?: string;
+    noteText?: string;
     almanacKind?: string;
     almanacTitle?: string;
     almanacCategory?: string;
@@ -1224,7 +1264,16 @@ ${SAFETY_PROMPT_BLOCK}`;
   // mirroring the [REMEMBER] write above. saveAlmanacEntry returns null on a
   // non-save or a failed insert, so we never claim a save that didn't happen.
   let savedAlmanac: { kind: string; title: string } | null = null;
-  if (result.almanacKind && result.almanacTitle) {
+  // The older emit-after-agreement path now serves PLANS ONLY. An insight,
+  // symptom or note arriving here skipped the stored offer, so it is refused
+  // rather than saved: the offer is the only way those types get in.
+  const insightsKind = ['insight', 'symptom', 'note', 'roundup'].includes(
+    (result.almanacKind ?? '').trim().toLowerCase()
+  );
+  if (insightsKind) {
+    console.log('ASK-SELODIA REFUSED A DIRECT INSIGHTS SAVE:', result.almanacKind);
+  }
+  if (result.almanacKind && result.almanacTitle && !insightsKind) {
     const entry = await saveAlmanacEntry(supabase, user.id, {
       kind: result.almanacKind,
       title: result.almanacTitle,
@@ -1232,6 +1281,35 @@ ${SAFETY_PROMPT_BLOCK}`;
       content: result.almanacContent,
     });
     if (entry) savedAlmanac = { kind: entry.kind, title: entry.title };
+  }
+
+  // THE CONVERSATIONAL SAVE (Insights slice 2, 2026-09-12). See pending-save.ts.
+  //
+  // Order matters, as with Focus: an ANSWER to an outstanding offer is settled
+  // before anything new, so "yes, and note that I slept badly" keeps the first
+  // thing rather than losing it to the second.
+  let saveNote: string | null = null;
+  if (pendingSave.proposal && (result.saveAnswer === 'yes' || result.saveAnswer === 'no')) {
+    if (result.saveAnswer === 'yes') {
+      const kept = await commitSave(supabase, user.id, pendingSave.proposal);
+      saveNote = saveAppliedNote(kept, true);
+      if (kept) savedAlmanac = kept;
+    }
+    // Cleared either way. A failed save is said plainly and not left pending,
+    // or the next turn would ask about an offer she has already said yes to.
+    await clearPendingSave(supabase, user.id);
+  } else {
+    // A note she ASKED for is kept on the spot: the request is the yes.
+    const note = prepareNote(result.noteText);
+    if (note) {
+      const kept = await commitSave(supabase, user.id, note);
+      saveNote = saveAppliedNote(kept, true);
+      if (kept) savedAlmanac = kept;
+    } else if (!pendingSave.proposal) {
+      // A new offer is stored only when none is waiting: one question at a time.
+      const proposal = coerceProposal(result.proposedSave);
+      if (proposal) await storePendingSave(supabase, user.id, proposal);
+    }
   }
 
   // A deletion is stated by the app, not by the model. The prompt tells it not
@@ -1396,7 +1474,7 @@ ${SAFETY_PROMPT_BLOCK}`;
   // dropping them would trade one honesty problem for another.
   const safeReplyText = gate.safe ? goalSafeReply : blockedSuggestionMessage(gate.allergen);
 
-  const trailingLines = [correctionNote, focusNote, honestyNote].filter(
+  const trailingLines = [correctionNote, focusNote, saveNote, honestyNote].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
   const finalReply =

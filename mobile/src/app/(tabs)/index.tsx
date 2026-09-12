@@ -365,7 +365,7 @@ export default function ChatScreen() {
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved, foodLogId, navigationTarget } =
+      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
         });
@@ -376,6 +376,11 @@ export default function ChatScreen() {
       if (saved?.summary) {
         setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
         if (await shouldOfferReminders()) setOfferReminders(true);
+      } else if (savedAlmanac?.title) {
+        // An Almanac save showed no confirmation at all until 2026-09-12: the
+        // server reported it and this screen never read it. The reply's own
+        // line says where it went; the pill says that it happened.
+        setSaveToast((prev) => ({ summary: savedAlmanac.title, nonce: (prev?.nonce ?? 0) + 1 }));
       }
 
       // The spotlight (build item 23). Requested AFTER the reply is on screen,

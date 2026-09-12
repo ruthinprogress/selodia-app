@@ -1114,6 +1114,15 @@ The roundup analytics view shows:
 
 **The flower's new bloom ships in the same slice** (see the Health Flower build status in Part Eight).
 
+**Slice 2, saving through chat, built 2026-09-12. NOT YET VERIFIED ON A DEVICE.** Symptoms and insights are OFFERED and kept only on a yes; a note she asks for is kept on the spot, because asking is the yes (Ruth's Insights answers 1 and 5). `app/lib/pending-save.ts` holds the offer in two new `user_profile` columns, `pending_save` and `pending_save_asked_at` (migration `pending_save_offer`, version 20260912195602, also saved in the repo's migrations folder). The model reports whether the answer was yes; the app saves exactly what was offered, clears the offer either way, and writes the confirmation line itself, so a failed save is said plainly and never claimed. An offer lives 48 hours, and nothing new is offered while one is waiting. It is built once for Me and Movement to reuse. `scripts/probe-pending-save.mjs` covers the edges in 37 checks.
+
+- **The older save path now serves plans only.** An insight, symptom or note arriving through `almanacKind` skipped the offer, so the route refuses it and logs it. Plans still save the older way until the Movement build replaces it.
+- **Voice is covered.** The voice route hands every utterance to the same chat route, so a spoken symptom gets the same offer and a spoken yes keeps it.
+- **The phone now confirms Almanac saves.** Until this slice the server reported an Almanac save and the chat screen never read it, so a saved plan or insight showed no confirmation at all. It now shows the same pill as a log.
+- **Symptoms are offered after the symptom rule, never instead of it.** The chat reads the last 24 to 48 hours and answers first; the offer comes after.
+- **Known and left:** the confirmation pill is filled in the charcoal-family grey that Part Fifteen's rule forbids. Recorded for Ruth, not changed in this slice.
+- **New app wording, awaiting Ruth's approval:** "Kept in your Almanac, under Insights, as a symptom." (or an insight, or a note), and if the save fails, "That didn't save to your Almanac just now. Ask me again and I'll try once more."
+
 ## ALMANAC — ME TAB (design brief, 2026-09-12)
 
 *Design brief for Code. Part of the Almanac redesign. Ruth's text, verbatim.*
