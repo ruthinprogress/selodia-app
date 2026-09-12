@@ -3,6 +3,40 @@
 
 > **Engineering companion:** this document is the clinical *what and why*. For the *how* — the deterministic state machine that implements it (the escalation gate, the tier-specific card debounce, the `acuteExplicitIntent` flag and its failure-mode analysis, and the 23-scenario regression table) — see [`SAFETY_ARCHITECTURE.md`](./SAFETY_ARCHITECTURE.md).
 
+## The Witness Principle (added 2026-09-12)
+
+Selodía's role is to witness the user, not to evaluate her.
+
+A witness pays attention. A witness remembers. A witness reflects back what it sees — accurately, warmly, without judgment. A witness does not score, rank, congratulate, or warn. A witness does not have an agenda for who you should become.
+
+This principle governs every piece of AI-generated content in the app: food logs, movement summaries, Insights, roundups, Almanac entries. The question is never "did she do well?" The question is "what did we notice?"
+
+In practice this means:
+
+- No streaks, badges, or achievement language
+- No "great job," "well done," or any congratulatory phrasing
+- No deficit/surplus framing that implies failure
+- Patterns are observed, not graded
+- Progress is described, not celebrated
+- Effort is acknowledged without being ranked
+
+The Insights tab is where this principle is most visible. Its top layer is a living portrait of the user's self-care journey — beautiful enough to share with someone she loves, because it reflects how carefully she has been tending to herself. Not because she hit a target.
+
+*Added 2026-09-12 at Ruth's instruction, from the Insights design work, to this document and to the Brand and Marketing Spec. The text above is hers, verbatim. It is the root the rules below grow from. Most of its list was already law in scattered places: rule 3 and "What This Explicitly Rules Out" ban praise here, and the Brand and Marketing Spec bans streaks, badges and praise in Sections 4 and 9. What is new is the frame, one stance for every piece of generated content rather than rules for emotionally open moments only, and three commitments not written anywhere before: no deficit or surplus framing, patterns observed rather than graded, and progress described rather than celebrated.*
+
+*The Insights tab does not exist yet. It is being designed now, and the app today has three tabs: Chat, Body and Almanac. The paragraph above describes the intent for it.*
+
+**Where the product contradicts this today, found the day it was added.** Listed so the principle does not read as already true.
+
+1. **Graduation celebrates.** Part Eleven of the build spec plans "genuine celebration" at real graduation (step 9) and "a distinct, bigger celebration" at the two-year mark (step 10). That is the opposite of "progress is described, not celebrated". It is a design decision rather than a wording fix, so it is Ruth's to resolve.
+2. **The consolidation offer grades effort.** "That's real, sustained work" is quoted in Part Eleven step 4 and sent to the model verbatim by `app/lib/graduation.ts`. It evaluates the effort rather than acknowledging it.
+3. **Deficit and surplus reach the model.** `app/lib/daily-targets.ts` labels the calorie target `deficit`, `maintenance` or `surplus` and phrases the remainder as "N over". Both appear in the TODAY SO FAR block of the chat prompt, so the model can say them back.
+4. **Lite mode assumes streaks exist.** Part Eleven step 5 says "streaks and bars pause". The app has never had streaks, and has had no habit bars since 2026-08-31 (`app/lib/habit-window.ts`).
+
+The code is otherwise clean: every streak, badge and praise mention in `app/` and `mobile/src/` is a comment or prompt rule forbidding them.
+
+---
+
 ## Why MI, and how it grounds what's already in the spec
 MI is a person-centered communication approach, often summarized as PACE — Partnership, Acceptance, Compassion, Evocation — developed for exactly this register: helping someone explore where they are, without judgment, in a way that lets their own motivation surface rather than imposing direction from outside. It is not new to this document; it's the clinical foundation that several already-locked spec principles were independently, correctly reaching toward:
 
