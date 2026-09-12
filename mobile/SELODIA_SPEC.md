@@ -859,6 +859,8 @@ Coverage per dimension is the sum of weighted contributions across all sessions 
 
 # PART NINE: PERSISTENT CONTEXT, THEME EXTRACTION, AND THE DAILY/WEEKLY ROUNDUPS
 
+> **ROUNDUPS ARE ON HOLD (2026-09-12)** pending a dedicated Almanac design session. Roundups will land in the Almanac as weekly entries, and what follows in this Part predates that decision. Read Part Fourteen, Daily Roundup Trigger, before building anything here.
+
 ## Persistent Context
 Every conversation starts with full context already loaded — history, patterns, cycle phase, recent training, targets, things mentioned weeks ago. The user never re-explains themselves. This accumulated context cannot be replicated by switching apps or starting a new chat, and it is the product's actual defensible advantage.
 
@@ -1160,6 +1162,8 @@ Behind all three sat a design gap. The offer appears once, ever, which is correc
 See Part Nine for the full mechanism — the evening checkpoint branches between the reminder, the invitational roundup prompt, or silence, depending on that day's logging state.
 
 **NOT WIRED. Corrected 2026-09-12.** `app/api/daily-roundup` and `app/api/weekly-roundup` exist, but **nothing has ever called either of them.** No app code has ever contained a call, there is no cron (no `vercel.json`, no `pg_cron`), and `daily_summaries` holds **zero rows, ever**. The weekly roundup reads a week of daily summaries, so it has never run either. The evening checkpoint that should trigger them is unbuilt. So is the sender: tokens are registered "because the roundups DO need server-initiated delivery", but no code anywhere sends a remote push. Several places record the Daily Roundup as built. By this spec's own definition of built, "exists and is wired in", it is not.
+
+**ON HOLD, by decision (2026-09-12). Do not build the roundup trigger from this Part or from Part Nine as written.** Ruth: the current spec is too thin, and the app has evolved significantly since early scoping. A dedicated Almanac design session comes first, to specify properly what a roundup should look like. One thing is already decided: **roundups land in the Almanac as weekly entries.** The existing routes post into `chat_messages`, so they may not survive that design in their current shape. Detail follows that session.
 
 ## Weekly Roundup Trigger
 See Part Nine — event-based, chained onto Sunday's Daily Roundup close-out, gated by the 5-of-7-days minimum threshold.
