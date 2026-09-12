@@ -962,7 +962,7 @@ Do not build or extend any Almanac feature until the Movement and Me briefs are 
 
 The weekly roundup (currently unbuilt despite being marked as built in the spec) feeds into Insights as a Roundup-tagged entry. It also generates the living portrait layer at the top of Insights. Do not build the roundup until the Insights brief has been reviewed and confirmed.
 
-*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is CONFIRMED too, and for Me it supersedes this note's line that the user writes and edits the document: the AI drafts from conversation and she confirms (Ruth, 2026-09-12). Whether the same holds for Movement is for its brief. The Movement brief is written and under review (after the Me answers below). With all three briefs written, building can begin once Movement is confirmed.*
+*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is CONFIRMED too, and for Me it supersedes this note's line that the user writes and edits the document: the AI drafts from conversation and she confirms (Ruth, 2026-09-12). Whether the same holds for Movement is for its brief. The Movement brief is written and under review (after the Me answers below). With all three briefs written, building can begin once Movement is confirmed. **Build order, decided by Ruth on 2026-09-12: Insights first, once Movement is confirmed.***
 
 ## ALMANAC — INSIGHTS TAB (design brief, 2026-09-12)
 
