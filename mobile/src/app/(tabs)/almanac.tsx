@@ -1,98 +1,99 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AlmanacCategoryView } from '@/components/almanac-category-view';
+import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacIntro } from '@/components/almanac-intro';
-import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacList } from '@/components/almanac-list';
+import { AlmanacTabs } from '@/components/almanac-tabs';
+import { InsightsLog } from '@/components/insights-log';
+import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { entriesInCategory } from '@/lib/almanac-category';
 import { hasSeenAlmanacIntro, markAlmanacIntroSeen } from '@/lib/almanac-intro';
-import { groupAlmanacEntries, type AlmanacEntryRow, type AlmanacGroup } from '@/lib/almanac-list';
+import { splitByTab, type AlmanacRow, type AlmanacTab } from '@/lib/insights';
 import { supabase } from '@/lib/supabase';
 
-// The Almanac destination (build item 15, UI slices 1-2): the empty state and
-// the entry list. The detail view is slice 3.
+// The Almanac, redesigned (build spec, Part Ten, 2026-09-12): three views of one
+// destination - Insights, Movement and Me - chosen by a switch at the top.
+//
+// THIS IS INSIGHTS SLICE 1: the screen. Insights shows the living portrait and
+// the log. Movement shows the saved plans exactly as they have always worked,
+// so a plan in use is never more than a tap away while the full Movement tab
+// (My Week, My Plans by goal, My Rules) waits its turn. Me is empty until the
+// conversational save for Me exists.
+//
+// The old single list grouped by category is gone, and the category page with
+// it: categories were the previous design's way to organise, and the three
+// views replace them.
 //
 // Only ACTIVE entries are fetched. A stale or pending-reconfirmation entry is
-// not current reference material, and showing one as though it were would
-// undercut the re-confirmation rule the lifecycle exists for (Part Ten).
+// not current reference material (the previous design's lifecycle rule, still
+// held by the table).
+
+// App copy awaiting Ruth's approval (2026-09-12). Shown on the two views that
+// can be empty, beneath the Almanac's shoot illustration.
+export const MOVEMENT_EMPTY_HEADING = 'No plans yet';
+export const MOVEMENT_EMPTY_BODY =
+  "Tell me in chat what you'd like to work towards, and we'll build a plan for it. It lives here once you've said yes to keeping it.";
+export const ME_EMPTY_HEADING = 'Nothing here yet';
+export const ME_EMPTY_BODY =
+  "When you settle on something in chat, like a supplement, a skincare routine or a weekly call, I'll offer to keep it here with the reason why.";
+
 export default function AlmanacScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [groups, setGroups] = useState<AlmanacGroup[]>([]);
-  const [entryCount, setEntryCount] = useState(0);
-  const [entries, setEntries] = useState<DetailEntry[]>([]);
   const scrollRef = useRef<ScrollView>(null);
+  const [tab, setTab] = useState<AlmanacTab>('insights');
+  const [rows, setRows] = useState<AlmanacRow[]>([]);
+  // Guards the first paint only. Not reset on a refocus: flipping it on every
+  // return would blink the views away to reload something that has usually not
+  // changed.
+  const [loaded, setLoaded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  // The category page is a filtered view of what is already loaded, not a
-  // second fetch - the rows are in memory, and refetching would make an
-  // emergent field look like a route (Part Ten).
-  const [rows, setRows] = useState<AlmanacEntryRow[]>([]);
-  const [category, setCategory] = useState<string | null>(null);
   // Starts false so the card can never flash before the stored flag is read.
-  // The wrong default here would show the orientation for one frame to someone
-  // who dismissed it months ago.
   const [showIntro, setShowIntro] = useState(false);
 
-  // REFETCHES ON FOCUS, not only on mount, and the distinction matters here in a
-  // way it does not for Food, Measurements or Activity. Those are PUSHED onto the
-  // Body stack, so they remount on every visit and a mount-only fetch is correct.
-  // The Almanac is a TAB: it mounts once and stays mounted for the life of the
-  // app, so an entry saved from Chat afterwards never appeared until the whole
-  // app was reloaded. Found on device 2026-09-10, and the entry was in the
-  // database the whole time - it was the list that was stale, which is the worst
-  // version of this because it reads as the save having silently failed.
-  //
-  // `loading` is deliberately not reset on a refocus, matching overview-panel:
-  // it guards the first paint, and flipping it on every return would blink the
-  // whole list away to reload something that usually has not changed.
+  // REFETCHES ON FOCUS, not only on mount. The Almanac is a TAB: it mounts once
+  // and stays mounted, so an entry saved from Chat afterwards never appeared
+  // until the app was reloaded. Found on device 2026-09-10, when the entry was
+  // in the database the whole time.
   useFocusEffect(
     useCallback(() => {
-    let cancelled = false;
-    (async () => {
-      // RLS scopes this to the signed-in user, so no explicit user_id filter.
-      // Only active entries: a stale or pending-reconfirmation entry is not
-      // something to browse as current reference (Part Ten, staleness).
-      const { data, error } = await supabase
-        .from('almanac_entries')
-        .select('id, kind, title, category, content, updated_at')
-        .eq('status', 'active')
-        .order('updated_at', { ascending: false });
-      // Orientation state lives on the account (user_profile.almanac_intro_seen_at),
-      // so it follows the person rather than the device. RLS scopes the read.
-      const seen = await hasSeenAlmanacIntro();
+      let cancelled = false;
+      (async () => {
+        // RLS scopes this to the signed-in user, so no explicit user_id filter.
+        const { data, error } = await supabase
+          .from('almanac_entries')
+          .select('id, kind, title, category, content, created_at, updated_at')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+        const seen = await hasSeenAlmanacIntro();
 
-      if (!cancelled) {
-        setShowIntro(!seen);
-        // On error, fall through to the empty state rather than an error
-        // screen: a warm "nothing here yet" is a far better wrong answer than
-        // a failure message on a tab someone just tapped.
-        const rows = (error ? [] : (data ?? [])) as unknown as AlmanacEntryRow[];
-        setEntryCount(rows.length);
-        setRows(rows);
-        setGroups(groupAlmanacEntries(rows));
-        setEntries(rows as unknown as DetailEntry[]);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+        if (!cancelled) {
+          setShowIntro(!seen);
+          // On error, fall through to the empty views rather than an error
+          // screen: a warm "nothing here yet" is a far better wrong answer than
+          // a failure message on a tab someone just tapped.
+          setRows((error ? [] : (data ?? [])) as unknown as AlmanacRow[]);
+          setLoaded(true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }, [])
   );
 
-  // Hidden immediately, persisted in the background. The card must never sit
-  // there waiting on a write to finish - and if the write fails the only cost
-  // is that the orientation appears once more, which almanac-intro.ts accepts
-  // deliberately.
+  const byTab = splitByTab(rows);
+  const openEntry: DetailEntry | null = rows.find((r) => r.id === openId) ?? null;
+
+  // Hidden immediately, persisted in the background: the card must never wait
+  // on a write, and a failed write only means it appears once more.
   const dismissIntro = () => {
     setShowIntro(false);
     void markAlmanacIntroSeen();
@@ -101,57 +102,60 @@ export default function AlmanacScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={[styles.content, entryCount === 0 && styles.centred]}
-        >
-        <SpotlightScroll scrollRef={scrollRef}>
-          <ThemedText type="title">Almanac</ThemedText>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+          <SpotlightScroll scrollRef={scrollRef}>
+            <ThemedText type="title">Almanac</ThemedText>
 
-          {loading ? (
-            // Deliberately not a spinner: the count returns in milliseconds, and
-            // a spinner would flash. Blank reads as calm; a flash reads as jank.
-            <ThemedView style={styles.spacer} />
-          ) : entryCount === 0 ? (
-            // The introduction sits ABOVE the empty state rather than replacing
-            // it: one says what this place is, the other says why it is empty
-            // and when it fills. Neither does the other's job.
-            <>
-              {showIntro && <AlmanacIntro onDismiss={dismissIntro} />}
-              <AlmanacEmptyState />
-            </>
-          ) : category ? (
-            // The entries of one category, which is what "where are my saved
-            // plans" wants once someone has opened a category (item 23).
-            <SpotlightTarget id="almanac.entries">
-              <AlmanacCategoryView
-                category={category}
-                entries={entriesInCategory(rows, category)}
-                onOpen={setOpenId}
-                onBack={() => setCategory(null)}
-              />
+            <SpotlightTarget id="almanac.tabs">
+              <AlmanacTabs value={tab} onChange={setTab} />
             </SpotlightTarget>
-          ) : (
-            <>
-              {showIntro && <AlmanacIntro onDismiss={dismissIntro} />}
-              {/* The grouping itself - the default Almanac view. Not wrapped
-                  when the Almanac is empty: there is nothing to point at, and a
-                  ring around an empty-state illustration would answer the
-                  question with a picture of why there is no answer. */}
-              <SpotlightTarget id="almanac.categories">
-                <AlmanacList groups={groups} onOpen={setOpenId} onOpenCategory={setCategory} />
+
+            {showIntro && <AlmanacIntro onDismiss={dismissIntro} />}
+
+            {tab === 'insights' && (
+              <>
+                <InsightsPortrait />
+                {loaded && byTab.insights.length > 0 && (
+                  <SpotlightTarget id="almanac.insights">
+                    <InsightsLog rows={byTab.insights} onOpen={setOpenId} />
+                  </SpotlightTarget>
+                )}
+              </>
+            )}
+
+            {tab === 'movement' && loaded && (
+              <SpotlightTarget id="almanac.movement">
+                {byTab.movement.length > 0 ? (
+                  // The saved plans as they have always listed: one row each,
+                  // opening the plan with its exercises, weights and demos.
+                  <AlmanacList
+                    groups={[{ category: null, entries: byTab.movement }]}
+                    onOpen={setOpenId}
+                  />
+                ) : (
+                  <AlmanacEmptyState heading={MOVEMENT_EMPTY_HEADING} body={MOVEMENT_EMPTY_BODY} />
+                )}
               </SpotlightTarget>
-            </>
-          )}
-        </SpotlightScroll>
+            )}
+
+            {tab === 'me' && loaded && (
+              <SpotlightTarget id="almanac.me">
+                {byTab.me.length > 0 ? (
+                  <AlmanacList groups={[{ category: null, entries: byTab.me }]} onOpen={setOpenId} />
+                ) : (
+                  <AlmanacEmptyState heading={ME_EMPTY_HEADING} body={ME_EMPTY_BODY} />
+                )}
+              </SpotlightTarget>
+            )}
+          </SpotlightScroll>
         </ScrollView>
 
         <AlmanacDetail
-          entry={entries.find((e) => e.id === openId) ?? null}
+          entry={openEntry}
           onClose={() => setOpenId(null)}
-          // Editing is conversational, always (Part Ten): this hands the entry
-          // to Chat with the opening line already written, rather than opening
-          // any form. Selodia stays the only writer.
+          // Editing is conversational, always: this hands the entry to Chat with
+          // the opening line already written, rather than opening any form.
+          // Selodia stays the only writer.
           onEdit={(entry) => {
             setOpenId(null);
             router.push({
@@ -178,8 +182,4 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexGrow: 1,
   },
-  centred: {
-    justifyContent: 'center',
-  },
-  spacer: { height: Spacing.four },
 });

@@ -822,6 +822,7 @@ Weighting table: complete, 30 activities.
 Citation pass: complete.
 Expert review: pending — to be published as part of Selodía public launch.
 Build status: **BUILT, phases 1-4, 3-4 September 2026** (corrected 2026-09-08; this line still read "not yet built" four days after it shipped). `mobile/src/lib/health-flower.ts` holds the coverage maths — `WEEKLY_TARGET = 200`, `coverageFromRows`, `allDimensionsFull` — and `mobile/src/components/health-flower.tsx` draws the six petals in `react-native-svg`, growing from the tip inward, with no petal rendered at 0%. Petal tap-through and the six small category labels beneath are built; the Seed Mark breathes when all six petals meet at the centre.
+**Bloom changed 2026-09-12 to the design Ruth approved on 11 September**, confirmed as the flower's "render bug" in the Insights answers. Full petals are 10 by 38 with the tip 72 from the centre, so they run past it and overlap like a Venn diagram instead of only touching; petal opacity is 0.5; and at full bloom the seed is the cream mark on a translucent terracotta disc. Colours are unchanged. Labels moved out with the tips but keep the app's textSecondary at 9pt, because the deck's lighter grey fails AA on cream. NOT YET VERIFIED ON A DEVICE.
 Known gap carried forward: **7 of 22 logged activity rows are unclassified**, because `coverageFor()` matches the table exactly and most free-text activity names never will. Null is deliberately not zero — an unclassified row contributes to no dimension rather than counting as a real zero — so the flower under-reports rather than lying. The AI classifier that closes this is the same log-time-classification approach used for `eccentric_load` and `intensity`.
 Full build brief: see Health Flower — Build Brief section below.
 
@@ -1099,6 +1100,19 @@ The roundup analytics view shows:
 **Code's recommendations, confirmed:** witness statements are static, not animated; the portrait scrolls with the page rather than sticking; export is a PDF through the share sheet, not a link.
 
 **The flower render bug is the bloom not matching the design approved on 11 September** (petals overlapping at the centre; the approved files are in `Build Specs/Branding & Assets/Visual Assets/`, dated 2026-09-11). It is fixed as part of the Insights build, and the fix applies wherever the flower renders, the Body dashboard included.
+
+### Insights build status
+
+**Slice 1, the screen, built 2026-09-12. NOT YET VERIFIED ON A DEVICE.** The Almanac becomes three views chosen by a switch at the top (`almanac-tabs.tsx`). Insights shows the living portrait (`insights-portrait.tsx`: this week's flower at 230, then the new-user prompt in Ruth's words) and the log (`insights-log.tsx`: cards with type, date, title and first line, newest first, with pills). Movement lists the saved plans exactly as they worked before, so a plan in use stays one tap away until the full Movement tab is built. Me shows an empty state. Entries are sorted into views and types by `lib/insights.ts`: plans by the shape of their content, as always, and the four Insights types by `kind`, the one deliberately closed set in the Almanac, with anything unrecognised falling to Insight rather than being dropped. The old category list and category page are removed. The chat's description of the Almanac (`app-structure.ts`) and the spotlight targets (`almanac.tabs`, `almanac.insights`, `almanac.movement`, `almanac.me`) changed in the same pass, so the chat never points at the old list.
+
+**Readings of the brief, recorded so they are not mistaken for oversights:**
+
+- **No log until the first entry.** The brief says a new user "sees only All". With nothing saved, an "All" pill filtering nothing would be a control with nothing behind it (principle 8), so the log appears with the first entry and the portrait's prompt covers the empty time.
+- **Tapping a pill filters only.** Opening that type's analytics is slice 4.
+- **A card opens the existing entry detail** rather than expanding in place; the detail already renders every content shape.
+- **Movement and Me empty-state wording is awaiting Ruth's approval**, as new copy in the app.
+
+**The flower's new bloom ships in the same slice** (see the Health Flower build status in Part Eight).
 
 ## ALMANAC — ME TAB (design brief, 2026-09-12)
 

@@ -57,17 +57,27 @@ function Shoot() {
   );
 }
 
-export function AlmanacEmptyState() {
+// Takes its words as props since the Almanac redesign (2026-09-12): the same
+// shoot now says why Movement or Me is empty, each in its own words, rather than
+// one sentence standing for the whole Almanac. The defaults are the original
+// copy, so any caller that passes nothing gets exactly what it always did.
+export function AlmanacEmptyState({
+  heading = ALMANAC_EMPTY_HEADING,
+  body = ALMANAC_EMPTY_BODY,
+}: {
+  heading?: string;
+  body?: string;
+} = {}) {
   return (
     <View style={styles.wrap} accessibilityRole="summary">
       <Shoot />
 
       <ThemedText type="smallBold" style={styles.heading}>
-        {ALMANAC_EMPTY_HEADING}
+        {heading}
       </ThemedText>
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-        {ALMANAC_EMPTY_BODY}
+        {body}
       </ThemedText>
     </View>
   );

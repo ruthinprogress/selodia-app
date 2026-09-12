@@ -34,8 +34,10 @@ export const SPOTLIGHT_IDS = [
   'food.entries',
   'measurements.week',
   'measurements.export',
-  'almanac.categories',
-  'almanac.entries',
+  'almanac.tabs',
+  'almanac.insights',
+  'almanac.movement',
+  'almanac.me',
   'settings.export',
   'settings.delete',
 ] as const;

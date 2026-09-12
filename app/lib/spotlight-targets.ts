@@ -45,8 +45,10 @@ export const SPOTLIGHT_TARGETS = {
   'food.entries': "today's food entries, where tapping one opens its breakdown",
   'measurements.week': 'the week stepper on Measurements, for moving between weeks',
   'measurements.export': 'the link to your data at the foot of Measurements',
-  'almanac.categories': 'the Almanac entries grouped by category - the default Almanac view',
-  'almanac.entries': 'the entries inside an opened Almanac category',
+  'almanac.tabs': 'the Insights, Movement and Me switch at the top of the Almanac',
+  'almanac.insights': "the saved insights, symptoms and notes on the Almanac's Insights view, with their filter pills",
+  'almanac.movement': "the saved workout plans on the Almanac's Movement view",
+  'almanac.me': "the Almanac's Me view, which holds the self-care decisions they have asked to keep",
   'settings.export': 'the data export in Settings, "Prepare my data"',
   'settings.delete': 'the delete-my-account control in Settings',
 } as const;
