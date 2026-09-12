@@ -962,7 +962,7 @@ Do not build or extend any Almanac feature until the Movement and Me briefs are 
 
 The weekly roundup (currently unbuilt despite being marked as built in the spec) feeds into Insights as a Roundup-tagged entry. It also generates the living portrait layer at the top of Insights. Do not build the roundup until the Insights brief has been reviewed and confirmed.
 
-*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Movement and Me briefs are not yet written, so under this note's own rule nothing in the Almanac is built or extended yet.*
+*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Me brief is written (after the Insights review below); the Movement brief is not yet, so under this note's own rule nothing in the Almanac is built or extended yet.*
 
 ## ALMANAC — INSIGHTS TAB (design brief, 2026-09-12)
 
@@ -1083,6 +1083,123 @@ The roundup analytics view shows:
 - **Scroll, not sticky.** A sticky portrait above a growing log would take half a phone screen from the part the person actually reads.
 - **Export: PDF, generated on the phone, sent through the share sheet.** A GP or physio expects a document, and one PDF path serves both the clinician and the full-picture modes. **Not a shareable link:** a link means hosting health data at a URL, which is a privacy liability the rest of this app avoids. Needs `expo-print` and `expo-sharing`, so a build.
 - **Per-domain visualisation:** waiting on the follow-up brief.
+
+## ALMANAC — ME TAB (design brief, 2026-09-12)
+
+*Design brief for Code. Part of the Almanac redesign. Ruth's text, verbatim.*
+
+### Purpose
+
+Me is the user's personal protocol — the stable reference for how she is supposed to be living. Not a log of what happened, not live data. The distilled, accumulated knowledge of what works for her body, her mind, her relationships. She returns to it when she's drifted and needs to re-anchor, or when she needs to remind herself of the full picture before making a decision.
+
+It builds itself through conversation. She never fills in a form. Items emerge from Chat when something is settled on — a supplement decided, a self-care commitment made, a pattern resolved into a decision. Selodía recognises the moment and offers to make it permanent.
+
+### Screen structure
+
+A scrollable reference document, organised by section. Clean, readable, dark aesthetic consistent with the rest of the app.
+
+Sections (not fixed — new sections can be created as needed):
+
+- Nutrition — targets, approach, any dietary decisions made (e.g. reducing saturated fat, LDL management)
+- Supplements — each supplement as a card with status
+- Skincare — AM and PM protocols
+- Wellbeing — mental/emotional maintenance, meditation, anything in this domain
+- Relationships — recurring commitments (weekly call with a friend, etc.)
+- Any other section that emerges from conversation
+
+Sections are created automatically when the first item in that domain is added. The user never creates a section manually.
+
+### Card structure
+
+Each item in Me is a card with two layers:
+
+**Surface (always visible):**
+
+- Item name
+- Status (where relevant) — Taking ✓ / Ordered ✓ / Dietary source / As needed / Active / Paused
+- Section label
+
+**Tap to expand:**
+
+- Why it was added — drafted by the AI from the conversation in which it was decided, confirmed by the user
+- When it was added
+- Any relevant context (e.g. "Added after LDL came back at 3.5 mmol/L, December 2025. Supports cholesterol management alongside dietary omega 3.")
+
+The explanation exists because these are the boring-but-important things. Easy to deprioritise without the why. The card holds the reasoning so the user doesn't have to remember it.
+
+### How items are added
+
+Items are never added manually. They emerge from Chat.
+
+The trigger is a decision moment — when a conversation moves from exploration to settled conclusion. Examples:
+
+- "My mood dips in winter, what could I do?" → conversation unfolds → Vitamin D3 is settled on → Selodía offers to add it to Me with the why from the conversation
+- "I want to start having a weekly call with Fee" → Selodía offers to add it under Relationships
+- Supplement ordered, dietary change made, self-care commitment established — any of these trigger the offer
+
+When the trigger fires, Selodía says something like: "Want me to add this to your Me tab?" User says yes. Card is created, explanation drafted from conversation context, status set automatically where applicable.
+
+The AI recognises decision moments the same way it recognises insight-tier observations for the Almanac. Same pattern, different destination.
+
+### Updating items
+
+Items evolve. Status changes. Decisions get revised. New information arrives.
+
+Update triggers work the same way as add triggers — through conversation. "I've stopped taking magnesium, it wasn't helping" → Selodía updates the card status to Paused, notes the date and reason in the expanded view.
+
+Nothing is deleted unless the user explicitly asks. Paused items remain visible — the history is useful. A paused supplement with a reason is more informative than a blank space.
+
+### Export
+
+Me tab is exportable as a clean reference document — suitable to:
+
+- Print and stick somewhere visible
+- Share with a carer, partner, or family member
+- Hand to a new clinician as a "this is how I operate" overview
+
+Export includes all sections, all cards, expanded explanations. Clean formatting, no app chrome.
+
+One-tap export from the Me tab.
+
+### What Me is not
+
+- Not a checklist. Nothing gets ticked.
+- Not a tracker. No streaks, no completion rates.
+- Not a settings page. It lives in the Almanac because it is self-knowledge, not configuration.
+- Not static. It grows and evolves as the user does.
+
+### Relationship to Chat and Insights
+
+Me is downstream of Chat — decisions made in conversation become permanent cards here. Insights is also downstream of Chat — observations and patterns get saved there. The difference: Insights is timestamped and accumulates. Me is living and gets updated in place.
+
+Together they form the user's complete self-knowledge base: what she's noticed over time (Insights) and what she's decided about herself (Me).
+
+## ME BRIEF — REVIEW FROM CODE (2026-09-12)
+
+*Written by Claude Code, not part of Ruth's brief. Same purpose as the Insights review: what was checked against the real app, and what needs Ruth's decision before the brief is confirmed.*
+
+**Checked against what exists today.**
+
+- **Storage fits what exists.** `almanac_entries` already has an open `kind`, an emergent `category` (Me's sections) and JSONB `content`, which can hold the why, the context and a dated history of changes. Me's statuses (Taking, Ordered, Dietary source, As needed, Active, Paused) do not fit the existing `status` column, which only allows `active`, `stale` and `pending_reconfirmation`; they belong in the content, or that constraint gets widened. No new data pipeline.
+- **The add-and-update pattern already exists.** Focus capture (built 9 September) infers from conversation, asks, and stores the offer rather than trusting the model to remember it. Me's decision-moment offer is the same shape, and fits the standing rule that the model reports and the app decides. This is where the real AI work is: recognising a decision moment and drafting the why. Storage is the simple part.
+- **Supplements have no safety guidance anywhere.** Zero mentions in the Language Rules, the Safety Architecture or the chat prompt. The brief assumes conversations that settle on a supplement ("Vitamin D3 is settled on").
+- **Exact lab values.** Part Twelve deliberately captures health markers as statuses rather than lab numbers, "so the app never computes a clinical threshold itself". A card quoting the person's own words ("LDL came back at 3.5 mmol/L") does not break that, provided the app never interprets the number.
+- **Nutrition targets already exist** in the app: the protein target in the profile, and the calorie target computed from the Focus states.
+
+**Decisions needed before confirmation.**
+
+1. **Light, not dark.** The brief says "dark aesthetic consistent with the rest of the app". The app has been light-only since 3 September, and Part Fifteen records Ruth's rule of 10 September: the brand is light, and charcoal is only ever text. Assumed to be a slip; confirm.
+2. **Who writes Me: the structural note or this brief?** The note says Movement and Me are documents "the user writes and edits", with "no complex AI". This brief says items are "never added manually", arrive only through chat, and have their why drafted by the AI. Which is the rule for Me? Either way, can she correct a card directly (a wrong date, a line in the why), or only by telling the chat?
+3. **Supplement conversations need rules before supplement cards exist.** Proposed for Ruth to confirm or change: Selodía records what she has decided and why; it does not recommend doses; and where her health context, anything she has said about medication, or pregnancy or breastfeeding is relevant, it suggests checking with a GP or pharmacist before starting something new. That belongs in the Safety Architecture and the Language Rules, not only here.
+4. **Nutrition targets: show the real ones, do not copy them.** Recommended: the Nutrition section shows the targets the app already holds, so there is one number rather than a card that drifts from the profile. Same principle as reading training history in Insights rather than copying it.
+5. **The ticks.** "Taking ✓" and "Ordered ✓" sit oddly beside "Not a checklist. Nothing gets ticked." Suggested: the words alone.
+6. **Exact values in a card.** Fine to quote her own words, on one condition: the app never interprets the number ("that's high"), in the card or in chat. Confirm.
+
+**What this brief answers for the Insights review.**
+
+- **Insights decision 1 (does saving need a yes):** for Me the answer is explicit, "Want me to add this to your Me tab?" A natural answer for Insights too, if the two should behave alike.
+- **Insights decision 2 (deletion):** for Me, nothing is deleted unless she asks, and paused items stay visible. So per-item deletion exists here, on request.
+- **Export:** the PDF-through-the-share-sheet path recommended for Insights serves Me's one-tap export too. Build it once.
 
 ## PREVIOUS ALMANAC DESIGN (superseded 2026-09-12, kept as history)
 
