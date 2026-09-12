@@ -187,11 +187,25 @@ function sseChunk(id: string, created: number, model: string, delta: object, fin
   );
 }
 
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache, no-transform',
+  Connection: 'keep-alive',
+};
+
+// Spoken aloud when a turn cannot be answered. It says only what is true -
+// something failed - and never claims anything was or was not saved.
+const SAY_AGAIN = 'Something went wrong just then. Could you say that again?';
+
 // A well-formed completion carrying nothing to say.
 //
-// An empty assistant message is valid OpenAI shape, so the agent speaks
-// nothing and the conversation stays open - which is the right outcome both
-// for silence and for a repeat that has already been answered.
+// An empty assistant message is valid OpenAI shape, and it was believed to
+// leave the conversation open with nothing spoken. FOUND ON DEVICE 2026-09-12:
+// that is not what ElevenLabs does with it. Answering a real utterance with
+// this ended three calls in one evening, each logged as "Brain returned no
+// response". It now answers silence only, and whether a "..." answered this way
+// also ends the call is unverified - the agent's skip_turn tool is the likely
+// proper answer, and needs an agent change rather than a code one.
 function silentCompletion(id: string, created: number, model: string): Response {
   const stream = new ReadableStream({
     start(controller) {
@@ -202,13 +216,96 @@ function silentCompletion(id: string, created: number, model: string): Response 
       controller.close();
     },
   });
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
+  return new Response(stream, { headers: SSE_HEADERS });
+}
+
+// A spoken turn: open the response at once, fill it in when the words exist.
+//
+// OPEN THE RESPONSE FIRST. Until 2026-09-09 the adapter awaited the entire
+// pipeline before returning a byte, so time-to-first-byte WAS total generation
+// time. A workout plan takes 13-15 seconds to generate and the agent's cascade
+// timeout maxes out at 15, so the response has to start sooner. The stream is
+// returned immediately and does its waiting inside itself.
+//
+// A HOLDING LINE IS ONLY SENT WHEN THE WAIT EARNS ONE. Most turns answer in
+// about three seconds, and "one moment" in front of a three-second reply is
+// worse than silence. So it fires on a timer: if the words are not ready within
+// HOLDING_AFTER_MS, the person hears it; if they are, they never know it existed.
+//
+// NEVER EMPTY. Whatever `produce` returns or throws, something is spoken,
+// because an empty answer ends the call (see silentCompletion).
+function spokenCompletion(
+  id: string,
+  created: number,
+  model: string,
+  produce: () => Promise<string>
+): Response {
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(sseChunk(id, created, model, { role: 'assistant' }, null));
+
+      let spokeHolding = false;
+      const holding = setTimeout(() => {
+        spokeHolding = true;
+        controller.enqueue(sseChunk(id, created, model, { content: HOLDING_LINE }, null));
+      }, HOLDING_AFTER_MS);
+
+      let reply: string;
+      try {
+        reply = (await produce()).trim();
+      } catch (err) {
+        console.log('VOICE ADAPTER: pipeline threw', err instanceof Error ? err.message : err);
+        reply = SAY_AGAIN;
+      } finally {
+        clearTimeout(holding);
+      }
+      if (!reply) reply = SAY_AGAIN;
+
+      // The holding line was already spoken, so the reply follows on from it
+      // rather than restarting. Without this the person hears "Let me put that
+      // together" and then a sentence that begins as though nothing was said.
+      if (spokeHolding) {
+        controller.enqueue(sseChunk(id, created, model, { content: ' ' }, null));
+      }
+
+      for (const piece of speakableChunks(reply)) {
+        controller.enqueue(sseChunk(id, created, model, { content: piece }, null));
+      }
+      controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
+      controller.enqueue(enc.encode('data: [DONE]\n\n'));
+      controller.close();
     },
   });
+  return new Response(stream, { headers: SSE_HEADERS });
+}
+
+// How long a restatement waits for the answer to the turn it restates. That
+// turn may still be in the pipeline when the restatement arrives - "Yes,
+// please." took nine seconds to answer on 2026-09-12 - and a workout plan can
+// take fifteen. The holding line covers the wait after four.
+const REPLAY_WAIT_MS = 20_000;
+const REPLAY_POLL_MS = 750;
+
+type Db = ReturnType<typeof getSupabaseForRequest>;
+
+// The answer the pipeline wrote after a given user turn, once it exists.
+// Read from chat_messages because the pipeline writes its reply there, so this
+// works whichever serverless instance ran the original turn.
+async function answerAfter(db: Db, since: string): Promise<string | null> {
+  const deadline = Date.now() + REPLAY_WAIT_MS;
+  do {
+    const { data } = await db
+      .from('chat_messages')
+      .select('content')
+      .eq('role', 'assistant')
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const text = data?.[0]?.content;
+    if (typeof text === 'string' && text.trim()) return text.trim();
+    await new Promise((resolve) => setTimeout(resolve, REPLAY_POLL_MS));
+  } while (Date.now() < deadline);
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -265,18 +362,36 @@ export async function POST(request: NextRequest) {
   //
   // RLS scopes the read to this person automatically; the token is the same
   // one the pipeline will authenticate with a moment later.
+  //
+  // A RESTATEMENT IS ANSWERED WITH THE ANSWER ALREADY GIVEN, NOT WITH SILENCE
+  // (2026-09-12). Silence ended three calls on a real phone in one evening, and
+  // what arrived was not a repeat at all. Ruth paused mid-sentence; ElevenLabs
+  // sent the first half ("Yes, please."), then, when she carried on, dropped
+  // that answer unspoken and sent the whole sentence ("Yes, please. Yes, save
+  // it, please."). The half is a prefix of the whole, so the guard answered the
+  // whole with nothing, and ElevenLabs hung up. The routine was saved and the
+  // reply was written; she heard none of it.
+  //
+  // So the answer to the turn being restated is spoken instead, waiting for it
+  // if that turn is still in the pipeline. The pipeline still runs once - one
+  // Claude call, one log - and what she hears is exactly what the thread
+  // records as said. The cost: the half-sentence is what got answered, so
+  // anything added after the pause is not in the reply. Saying it again is a
+  // new turn, and the model was otherwise going to answer an unheard reply.
+  let restated: { db: Db; since: string } | null = null;
   try {
     const seen = new NextRequest(new URL('/api/ask-selodia', request.url), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });
+    const db = getSupabaseForRequest(seen);
     // Fetches the window's turns rather than asking the database to match,
     // because prefix comparison after normalising whitespace and case is not
     // something a column filter can express. The window is fifteen seconds, so
     // this is a handful of short rows.
-    const { data: recent } = await getSupabaseForRequest(seen)
+    const { data: recent } = await db
       .from('chat_messages')
-      .select('content')
+      .select('content, created_at')
       .eq('role', 'user')
       .gte('created_at', new Date(Date.now() - DEDUP_WINDOW_MS).toISOString())
       .order('created_at', { ascending: false })
@@ -285,10 +400,7 @@ export async function POST(request: NextRequest) {
     const repeat = (recent ?? []).find((r) =>
       looksLikeRestatement(String(r.content ?? ''), utterance)
     );
-    if (repeat) {
-      console.log('VOICE ADAPTER: restatement of a turn already answered, replying with silence');
-      return silentCompletion(id, created, model);
-    }
+    if (repeat) restated = { db, since: String(repeat.created_at) };
   } catch (err) {
     // FAIL OPEN, deliberately. If the check itself breaks, the worst outcome
     // is the duplicate we already had; refusing to answer because a guard
@@ -296,102 +408,34 @@ export async function POST(request: NextRequest) {
     console.log('VOICE ADAPTER: dedup check failed, continuing -', err instanceof Error ? err.message : err);
   }
 
-  // OPEN THE RESPONSE FIRST, THEN FILL IT IN.
-  //
-  // Until 2026-09-09 this awaited the entire pipeline before returning a byte,
-  // so time-to-first-byte WAS total generation time. Measured, a workout plan
-  // takes 13-15 seconds to generate; the agent's cascade timeout maxes out at
-  // 15. That shape cannot be made reliable by raising a timeout - there is no
-  // headroom left to raise it into - so the response has to start sooner.
-  //
-  // The stream is returned immediately and does its waiting inside itself. The
-  // holding line goes out at once, which both starts the clock on something
-  // real and gives the person a spoken acknowledgement instead of fifteen
-  // seconds of a conversation apparently having died.
-  //
-  // A HOLDING LINE IS ONLY SENT WHEN THE WAIT EARNS ONE. Most turns answer in
-  // about three seconds, and "one moment" in front of a three-second reply is
-  // worse than silence - it doubles the talking to say nothing. So it fires on
-  // a timer: if the pipeline has not answered within HOLDING_AFTER_MS, the
-  // person hears it; if it has, they never know it existed.
-  const stream = new ReadableStream({
-    async start(controller) {
-      controller.enqueue(sseChunk(id, created, model, { role: 'assistant' }, null));
+  if (restated) {
+    console.log('VOICE ADAPTER: restatement of a turn already taken, replaying its answer');
+    const { db, since } = restated;
+    return spokenCompletion(id, created, model, async () => (await answerAfter(db, since)) ?? SAY_AGAIN);
+  }
 
-      let spokeHolding = false;
-      const holding = setTimeout(() => {
-        spokeHolding = true;
-        controller.enqueue(
-          sseChunk(id, created, model, { content: HOLDING_LINE }, null)
-        );
-      }, HOLDING_AFTER_MS);
-
-      let reply: string;
-      try {
-        const inner = new NextRequest(new URL('/api/ask-selodia', request.url), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          // `voice: true` lets the pipeline defer the food/activity parse to
-          // after(). It changes nothing about the reply or the safety
-          // classification - only which work must finish before we can speak.
-          body: JSON.stringify({ message: utterance, voice: true }),
-        });
-        const res = await askSelodia(inner);
-
-        if (res.status === 401) {
-          console.log('VOICE ADAPTER: pipeline rejected the token');
-          reply = 'I could not reach your account just then. Could you try that again?';
-        } else if (!res.ok) {
-          console.log('VOICE ADAPTER: pipeline returned', res.status);
-          // Spoken aloud, so it has to be a sentence rather than a status code.
-          // It says only what is true - something failed - and never claims
-          // anything was or was not saved, because at this point we do not know.
-          reply = 'Something went wrong just then. Could you say that again?';
-        } else {
-          const data = (await res.json()) as { reply?: string };
-          reply =
-            typeof data.reply === 'string' && data.reply.trim().length > 0
-              ? data.reply.trim()
-              : 'Sorry, I did not catch that.';
-        }
-      } catch (err) {
-        console.log('VOICE ADAPTER: pipeline threw', err instanceof Error ? err.message : err);
-        reply = 'Something went wrong just then. Could you say that again?';
-      } finally {
-        clearTimeout(holding);
-      }
-
-      // The holding line was already spoken, so the reply follows on from it
-      // rather than restarting. Without this the person hears "Let me put that
-      // together" and then a sentence that begins as though nothing was said.
-      if (spokeHolding) {
-        controller.enqueue(sseChunk(id, created, model, { content: ' ' }, null));
-      }
-
-      for (const piece of speakableChunks(reply)) {
-        controller.enqueue(sseChunk(id, created, model, { content: piece }, null));
-      }
-      controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
-      controller.enqueue(enc.encode('data: [DONE]\n\n'));
-      controller.close();
-    },
-  });
-
-  // Non-streaming is not what ElevenLabs asks for, but an OpenAI-compatible
-  // endpoint that only speaks SSE is not OpenAI-compatible. A caller that sends
-  // stream:false has to wait for the whole thing regardless - there is nothing
-  // to stream into - so it takes the plain path below.
-  if (body.stream === false) {
-    const res = await askSelodia(
+  // One turn through the pipeline. `voice: true` lets it defer the
+  // food/activity parse to after(). It changes nothing about the reply or the
+  // safety classification - only which work must finish before we can speak.
+  const ask = () =>
+    askSelodia(
       new NextRequest(new URL('/api/ask-selodia', request.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: utterance, voice: true }),
       })
     );
+
+  // Non-streaming is not what ElevenLabs asks for, but an OpenAI-compatible
+  // endpoint that only speaks SSE is not OpenAI-compatible. A caller that sends
+  // stream:false has to wait for the whole thing regardless - there is nothing
+  // to stream into - so it takes the plain path.
+  //
+  // CHECKED BEFORE THE STREAM IS BUILT. A ReadableStream's start() runs the
+  // moment it is constructed, and until 2026-09-12 the stream was built first,
+  // so a stream:false caller ran the pipeline twice.
+  if (body.stream === false) {
+    const res = await ask();
     const data = res.ok ? ((await res.json()) as { reply?: string }) : {};
     return NextResponse.json({
       id,
@@ -403,10 +447,7 @@ export async function POST(request: NextRequest) {
           index: 0,
           message: {
             role: 'assistant',
-            content:
-              typeof data.reply === 'string' && data.reply.trim()
-                ? data.reply.trim()
-                : 'Something went wrong just then. Could you say that again?',
+            content: typeof data.reply === 'string' && data.reply.trim() ? data.reply.trim() : SAY_AGAIN,
           },
           finish_reason: 'stop',
         },
@@ -414,11 +455,19 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-    },
+  return spokenCompletion(id, created, model, async () => {
+    const res = await ask();
+    if (res.status === 401) {
+      console.log('VOICE ADAPTER: pipeline rejected the token');
+      return 'I could not reach your account just then. Could you try that again?';
+    }
+    if (!res.ok) {
+      console.log('VOICE ADAPTER: pipeline returned', res.status);
+      return SAY_AGAIN;
+    }
+    const data = (await res.json()) as { reply?: string };
+    return typeof data.reply === 'string' && data.reply.trim().length > 0
+      ? data.reply
+      : 'Sorry, I did not catch that.';
   });
 }
