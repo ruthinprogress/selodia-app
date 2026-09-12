@@ -115,5 +115,5 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | 7 | AAB from the `production` profile, upload to internal testing | Claude | Waiting on 1–6 |
 | 8 | Add testers by email | Ruth | — |
 | 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Config done 10 Sept (`app.config.js`, 5ca248c). **No dev-variant build has run yet**, so its FCM credentials entry cannot exist yet either |
-| 10 | Set up FCM push credentials for `app.selodia` | Ruth in the consoles, Claude the repo | Firebase project `selodia-app`, `google-services.json` and the EAS key all done 10 Sept. **Push is still unproven:** preview build `d6267bbb` is the only build that carries the config, and it has not been installed. (The old wording, "regenerate", was wrong: there were never any credentials to regenerate.) |
+| 10 | Set up FCM push credentials for `app.selodia` | Ruth in the consoles, Claude the repo | Firebase project `selodia-app`, `google-services.json` and the EAS key all done 10 Sept. **Push verified on a device on 12 Sept**, preview build `1291e191`: token saved, test push delivered and seen. It needed a code fix as well as the setup (`3732881`). (The old wording, "regenerate", was wrong: there were never any credentials to regenerate.) |
 | 11 | Promote to production | Ruth | A separate, deliberate decision |
