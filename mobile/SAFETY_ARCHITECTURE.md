@@ -178,3 +178,20 @@ Keep the harness in sync with this table. When adding a tier, an escalation step
 
 - **Classification is still the model's judgment.** The anchoring prompt ("classify the *current* message, not the conversation's mood") reduces, but cannot eliminate, the model over-weighting a distress-heavy history window. The debounce is the deterministic backstop that keeps a *misclassification* from producing a spurious *card*; the two are defense-in-depth, not one fix.
 - **This is not a clinically validated deployment.** As the language-rules doc states, grounding specific wording in the C-SSRS grounds the *wording*, not the whole system in this context. This architecture makes the mechanism reliable and predictable; it does not make Unflump a crisis service.
+
+---
+
+## 9. Supplements: record, never prescribe (added 2026-09-12)
+
+**The rule, confirmed by Ruth on 2026-09-12:** Selodía records what the person has decided about a supplement and why. It never suggests a dose. When health conditions, medication or pregnancy are relevant, it prompts her to check with a GP or pharmacist before starting something new.
+
+- **Records, does not recommend.** A supplement reaches the Me tab only as a decision she has made in conversation (build spec, Part Ten, the Me brief). The card holds her reasoning. Selodía's part is to remember it accurately.
+- **No doses, ever.** Not a number, not a range, not "most people take". A dose is a clinical instruction, and Selodía is not a medical service.
+- **The GP or pharmacist prompt** is due when the app already knows, or has just been told, something that makes it relevant: a condition in her health context, a medication she has mentioned, or pregnancy. It is an offer, not a directive, in line with the Language Rules (autonomy stays with the person).
+- **It never evaluates.** The same stance as exact values on a Me card: record, do not interpret.
+
+**Why it is here.** Until 2026-09-12 no document said anything about supplements, while the Me brief assumes conversations that settle on one ("Vitamin D3 is settled on"). The gap was found in Code's review of the Me brief.
+
+**Status: a rule, not yet enforced.** Nothing in the chat prompt carries it yet, and the chat has no supplement guidance of any kind today. It has to land as a prompt rule before the Me tab's supplement cards are built. Recommended, following §1's split: the model reports what was said, and the code decides whether the GP or pharmacist prompt is due, from the health context it already holds.
+
+*Code's note, for Ruth to confirm: breastfeeding belongs beside pregnancy for the same reason, since what she takes can reach the baby. Not added to the rule without her say-so.*

@@ -962,7 +962,7 @@ Do not build or extend any Almanac feature until the Movement and Me briefs are 
 
 The weekly roundup (currently unbuilt despite being marked as built in the spec) feeds into Insights as a Roundup-tagged entry. It also generates the living portrait layer at the top of Insights. Do not build the roundup until the Insights brief has been reviewed and confirmed.
 
-*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is written and waiting on six decisions. The Movement brief is not yet written, so under this note's own rule nothing in the Almanac is built or extended yet.*
+*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is CONFIRMED too, and for Me it supersedes this note's line that the user writes and edits the document: the AI drafts from conversation and she confirms (Ruth, 2026-09-12). Whether the same holds for Movement is for its brief. The Movement brief is not yet written, so under this note's own rule nothing in the Almanac is built or extended yet.*
 
 ## ALMANAC — INSIGHTS TAB (design brief, 2026-09-12)
 
@@ -1216,6 +1216,15 @@ Together they form the user's complete self-knowledge base: what she's noticed o
 - **Insights decision 1 (does saving need a yes):** for Me the answer is explicit, "Want me to add this to your Me tab?" A natural answer for Insights too, if the two should behave alike.
 - **Insights decision 2 (deletion):** for Me, nothing is deleted unless she asks, and paused items stay visible. So per-item deletion exists here, on request.
 - **Export:** the PDF-through-the-share-sheet path recommended for Insights serves Me's one-tap export too. Build it once.
+
+### Ruth's answers, 2026-09-12. ME BRIEF CONFIRMED.
+
+1. **Light, not dark.** A slip in the design chat. Light throughout; charcoal is text only.
+2. **The AI drafts from conversation, and she confirms.** That is the rule for Me, and it supersedes the structural note's "the user writes and edits", which was written before this had been thought through. Corrections also go through chat: "The date on my Vitamin D card is wrong, it should be January." Selodía fixes it.
+3. **Supplements: record, never prescribe.** Selodía records what she has decided and why, never suggests a dose, and prompts a check with a GP or pharmacist when health conditions, medication or pregnancy are relevant. Added to the Safety Architecture as §9.
+4. **Nutrition shows the targets the app already holds**, not a copy. One source of truth, no drift.
+5. **No ticks. Status in words only:** Taking, Ordered, Dietary source, As needed, Paused. *The brief's sixth status, Active, is not in this list. It is the natural status for commitments such as a weekly call, where "Taking" makes no sense, so it is kept pending Ruth's confirmation rather than dropped.*
+6. **Exact values are quoted, never interpreted.** Her own words can appear on a card. The app never says "that's high" or "that's concerning". It records; it does not evaluate.
 
 ## PREVIOUS ALMANAC DESIGN (superseded 2026-09-12, kept as history)
 
