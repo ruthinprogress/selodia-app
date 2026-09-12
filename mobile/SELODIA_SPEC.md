@@ -865,7 +865,7 @@ Coverage per dimension is the sum of weighted contributions across all sessions 
 
 # PART NINE: PERSISTENT CONTEXT, THEME EXTRACTION, AND THE DAILY/WEEKLY ROUNDUPS
 
-> **ROUNDUPS ARE ON HOLD (2026-09-12)** pending a dedicated Almanac design session. Roundups will land in the Almanac as weekly entries, and what follows in this Part predates that decision. Read Part Fourteen, Daily Roundup Trigger, before building anything here. **Update, the same day:** the Almanac redesign (Part Ten) now defines where roundups go. A weekly, Sunday-evening roundup saved to Insights as a Roundup-tagged entry, which also feeds the living portrait at the top of Insights. Do not build it until the Insights brief has been reviewed and confirmed.
+> **ROUNDUPS ARE ON HOLD (2026-09-12)** pending a dedicated Almanac design session. Roundups will land in the Almanac as weekly entries, and what follows in this Part predates that decision. Read Part Fourteen, Daily Roundup Trigger, before building anything here. **Update, the same day:** the Almanac redesign (Part Ten) now defines where roundups go. A weekly, Sunday-evening roundup saved to Insights as a Roundup-tagged entry, which also feeds the living portrait at the top of Insights. Do not build it until the Insights brief has been reviewed and confirmed. **Later the same day: the Insights brief is confirmed, and the daily roundup is dropped. Sunday evening only.**
 
 ## Persistent Context
 Every conversation starts with full context already loaded — history, patterns, cycle phase, recent training, targets, things mentioned weeks ago. The user never re-explains themselves. This accumulated context cannot be replicated by switching apps or starting a new chat, and it is the product's actual defensible advantage.
@@ -962,7 +962,7 @@ Do not build or extend any Almanac feature until the Movement and Me briefs are 
 
 The weekly roundup (currently unbuilt despite being marked as built in the spec) feeds into Insights as a Roundup-tagged entry. It also generates the living portrait layer at the top of Insights. Do not build the roundup until the Insights brief has been reviewed and confirmed.
 
-*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Me brief is written (after the Insights review below); the Movement brief is not yet, so under this note's own rule nothing in the Almanac is built or extended yet.*
+*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is written and waiting on six decisions. The Movement brief is not yet written, so under this note's own rule nothing in the Almanac is built or extended yet.*
 
 ## ALMANAC — INSIGHTS TAB (design brief, 2026-09-12)
 
@@ -1083,6 +1083,22 @@ The roundup analytics view shows:
 - **Scroll, not sticky.** A sticky portrait above a growing log would take half a phone screen from the part the person actually reads.
 - **Export: PDF, generated on the phone, sent through the share sheet.** A GP or physio expects a document, and one PDF path serves both the clinician and the full-picture modes. **Not a shareable link:** a link means hosting health data at a URL, which is a privacy liability the rest of this app avoids. Needs `expo-print` and `expo-sharing`, so a build.
 - **Per-domain visualisation:** waiting on the follow-up brief.
+
+### Ruth's answers, 2026-09-12. INSIGHTS BRIEF CONFIRMED.
+
+*Recorded from Ruth's reply to the seven decisions above. With these the Insights brief is reviewed and confirmed, which lifts the structural note's hold on the roundup. The note's other rule still stands: nothing in the Almanac is built until the Movement brief exists, and Me is built once its own six decisions are answered.*
+
+1. **Saving insights and symptoms: through conversation.** Selodía recognises the moment and offers to save, and she confirms. Not automatic, and not a manual tap on a raw entry. The same pattern as Me.
+2. **Deletion.** A single entry logged by mistake can be removed. Account deletion wipes everything, as the law requires.
+3. **The daily roundup is dropped. Sunday evening only.** Consequences for the build: the `daily-roundup` route and the `daily_summaries` table have never run and are now obsolete. The existing `weekly-roundup` route reads a week of daily summaries, so it has to be rewritten to read the week directly. The evening checkpoint in Part Fourteen keeps the daily reminder and loses its roundup branch.
+4. **Analytics inside Insights cover only what lives in Insights:** Roundups, Symptoms, Insights and Notes. Movement analytics open from the Movement tab, and food analytics from the food log. This supersedes the brief's heading "Domain analytics (Symptoms, Movement, Food, Insights)".
+5. **Notes are logged through Chat.** "Log a note — I feel really good today." Selodía saves it tagged as Note. No text box in Insights.
+6. **The existing plans move into Movement as editable documents.** Not a clean start: they were built, so they are kept. The Movement brief will say how.
+7. **The empty portrait is a gentle prompt**, never a blank screen and never invented data. Ruth's example wording: "We're just getting started. Log a few weeks and we'll start to see your picture emerge."
+
+**Code's recommendations, confirmed:** witness statements are static, not animated; the portrait scrolls with the page rather than sticking; export is a PDF through the share sheet, not a link.
+
+**The flower render bug is the bloom not matching the design approved on 11 September** (petals overlapping at the centre; the approved files are in `Build Specs/Branding & Assets/Visual Assets/`, dated 2026-09-11). It is fixed as part of the Insights build, and the fix applies wherever the flower renders, the Body dashboard included.
 
 ## ALMANAC — ME TAB (design brief, 2026-09-12)
 
@@ -1433,7 +1449,7 @@ See Part Nine for the full mechanism — the evening checkpoint branches between
 
 **NOT WIRED. Corrected 2026-09-12.** `app/api/daily-roundup` and `app/api/weekly-roundup` exist, but **nothing has ever called either of them.** No app code has ever contained a call, there is no cron (no `vercel.json`, no `pg_cron`), and `daily_summaries` holds **zero rows, ever**. The weekly roundup reads a week of daily summaries, so it has never run either. The evening checkpoint that should trigger them is unbuilt. So is the sender: tokens are registered "because the roundups DO need server-initiated delivery", but no code anywhere sends a remote push. Several places record the Daily Roundup as built. By this spec's own definition of built, "exists and is wired in", it is not.
 
-**ON HOLD, by decision (2026-09-12). Do not build the roundup trigger from this Part or from Part Nine as written.** Ruth: the current spec is too thin, and the app has evolved significantly since early scoping. A dedicated Almanac design session comes first, to specify properly what a roundup should look like. One thing is already decided: **roundups land in the Almanac as weekly entries.** The existing routes post into `chat_messages`, so they may not survive that design in their current shape. Detail follows that session. **The session has now happened: see Part Ten, the Almanac redesign and the Insights brief.**
+**ON HOLD, by decision (2026-09-12). Do not build the roundup trigger from this Part or from Part Nine as written.** Ruth: the current spec is too thin, and the app has evolved significantly since early scoping. A dedicated Almanac design session comes first, to specify properly what a roundup should look like. One thing is already decided: **roundups land in the Almanac as weekly entries.** The existing routes post into `chat_messages`, so they may not survive that design in their current shape. Detail follows that session. **The session has now happened: see Part Ten, the Almanac redesign and the Insights brief.** **The daily roundup is dropped (Ruth, 2026-09-12); the weekly roundup runs on Sunday evening only.** The evening checkpoint keeps the daily reminder and loses its roundup-prompt branch.
 
 ## Weekly Roundup Trigger
 See Part Nine — event-based, chained onto Sunday's Daily Roundup close-out, gated by the 5-of-7-days minimum threshold.
