@@ -36,8 +36,8 @@ import { supabase } from '@/lib/supabase';
 // not current reference material (the previous design's lifecycle rule, still
 // held by the table).
 
-// App copy awaiting Ruth's approval (2026-09-12). Shown on the two views that
-// can be empty, beneath the Almanac's shoot illustration.
+// App copy approved by Ruth, 2026-09-12. Shown on the two views that can be
+// empty, beneath the Almanac's shoot illustration.
 export const MOVEMENT_EMPTY_HEADING = 'No plans yet';
 export const MOVEMENT_EMPTY_BODY =
   "Tell me in chat what you'd like to work towards, and we'll build a plan for it. It lives here once you've said yes to keeping it.";
