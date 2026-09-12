@@ -112,12 +112,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { message, cardImageBase64, cardMediaType, entryId, entryType, voice } =
+  const { message, cardImageBase64, cardMediaType, entryId, entryType, voice, supersedes } =
     await request.json();
   // A spoken turn, routed in by the custom-LLM adapter. It changes nothing about
   // what is said or what safety runs - only WHEN the parse happens. See the
   // logging branch below.
   const isVoice = voice === true;
+  // A SUPERSEDED VOICE TURN (2026-09-12). The adapter's word that this message
+  // is the whole of what the person said: they paused, the first part was
+  // answered, and they carried on talking before hearing it. Carries when that
+  // first part was said. Voice only - a typed message is never split this way.
+  const supersededSince =
+    isVoice && typeof supersedes === 'string' && Number.isFinite(Date.parse(supersedes))
+      ? supersedes
+      : null;
   console.log('CHAT REQUEST RECEIVED:', message);
 
   // "Ask about this" (item 30): the tapped entry's card rides this turn as an
@@ -418,7 +426,18 @@ export async function POST(request: NextRequest) {
   const pendingFocus = readPending(profile);
   // Insights slice 2: an offer to keep something, stored rather than
   // remembered. See pending-save.ts.
-  const pendingSave = readPendingSave(profile);
+  let pendingSave = readPendingSave(profile);
+  // An offer made in a reply she never heard was never asked. Dropped and
+  // cleared, so her whole sentence cannot be read as an answer to it; the
+  // model can make it again if it still fits.
+  if (
+    supersededSince &&
+    pendingSave.askedAt &&
+    Date.parse(pendingSave.askedAt) >= Date.parse(supersededSince)
+  ) {
+    pendingSave = { proposal: null, askedAt: null };
+    await clearPendingSave(supabase, user.id);
+  }
 
   // Part Eleven's consolidation offer (item 24). The habit window is a 63-day
   // query, so it is only read once the free checks have passed - both states at
@@ -555,12 +574,25 @@ ${SAFETY_PROMPT_BLOCK}`;
   // would not. `goalSafetyPrompt` returns '' when there is nothing to say, which
   // is almost always.
 
+  // A spoken conversation, said so, because the model cannot otherwise tell -
+  // and it needs to know in order to end the call when asked (2026-09-12: on a
+  // real phone, "Can you close the chat?" got a goodbye and an open call).
+  const VOICE_SESSION_BLOCK = `
+
+THIS IS A SPOKEN CONVERSATION. They are talking to you and hearing your reply read aloud. When they ask to stop, close or end it, ask to switch back to text, or clearly say goodbye, set endVoiceSession: your reply is then a short, warm goodbye with no question in it, and the call closes after it. Never end it on your own initiative or mid-thought; if you are unsure they meant to finish, leave it unset and carry on.`;
+
+  const SUPERSEDED_TURN_BLOCK = `
+
+THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first part of what they were saying, and they carried on talking before they heard that answer - so they never heard it. The message below is everything they said. Answer the whole of it as though your previous reply had not been given, without referring to it or repeating it. Anything your previous reply already logged, saved or corrected is already done: do not log, save or correct the same thing again.`;
+
   const contextualSystemPrompt =
     SYSTEM_PROMPT +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
     pendingFocusPrompt(pendingFocus) +
     pendingSavePrompt(pendingSave) +
+    (isVoice ? VOICE_SESSION_BLOCK : '') +
+    (supersededSince ? SUPERSEDED_TURN_BLOCK : '') +
     (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +
     (isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : '');
 
@@ -572,6 +604,13 @@ ${SAFETY_PROMPT_BLOCK}`;
       type: 'string',
       description:
         'Only when the person is looking for something in the app. The exact id of the element to highlight, from the list in the app-structure block. Omit entirely otherwise, and never invent an id.',
+    },
+    // Voice only (2026-09-12). The adapter speaks the reply, then closes the
+    // call with the agent's end_call tool.
+    endVoiceSession: {
+      type: 'boolean',
+      description:
+        'Spoken conversations only. Set true ONLY when, in THIS message, the person asks to stop, close or end the conversation, asks to switch back to text, or clearly says goodbye. Your reply is then their goodbye. Never on your own initiative, never mid-thought, and leave it unset when unsure.',
     },
     // Captured CONVERSATIONALLY, wherever it comes up - Part Twelve is explicit
     // that there is never a form or a dedicated screen, and that "an allergy
@@ -837,6 +876,7 @@ ${SAFETY_PROMPT_BLOCK}`;
     clarificationResolved?: string;
     discussTopicEnded?: boolean;
     navigationTarget?: string;
+    endVoiceSession?: boolean;
     allergiesDisclosed?: string[];
     proposedSave?: unknown;
     saveAnswer?: string;
@@ -1535,5 +1575,8 @@ ${SAFETY_PROMPT_BLOCK}`;
     healthGuidanceApplied,
     saved,
     foodLogId: breakdownFoodLogId,
+    // Voice only: they asked to end the call. The adapter says the reply and
+    // then hangs up. Always false for a typed message.
+    endVoiceSession: isVoice && result.endVoiceSession === true,
   });
 }

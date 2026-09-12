@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // without leaving the process.
 import { POST as askSelodia } from '../../../api/ask-selodia/route';
 import { getSupabaseForRequest } from '../../../lib/supabase';
+import { offeredTools, wasHeard, words } from '../../../lib/voice-turns';
 
 // The custom-LLM adapter ElevenLabs talks to.
 //
@@ -117,19 +118,13 @@ function isSilence(utterance: string): boolean {
   return !/[\p{L}\p{N}]/u.test(utterance);
 }
 
-// How long an identical utterance counts as the same one.
+// How long after a turn a new request can still be that turn, sent again.
 //
-// Measured, not guessed: on 2026-09-09 the same sentence arrived four times
-// across 6.4 seconds - at +0.4s, +2.0s and +6.4s - and each ran a full
-// pipeline turn and wrote its own food row. Fifteen seconds covers that with
-// room to spare.
-//
-// THE TRADE IS REAL AND WORTH STATING. Somebody genuinely saying "yes" twice
-// inside fifteen seconds gets the second one swallowed. The costs are not
-// symmetrical: an unanswered repeat is fixed by speaking again, while a
-// duplicate log is a wrong number in someone's day that they then have to
-// find and delete - and until the delete UI exists, cannot.
-const DEDUP_WINDOW_MS = 15_000;
+// ElevenLabs sends a turn when it judges she has finished, and sends it again,
+// longer, if she carries on. On 2026-09-12 that gap reached 14 seconds, which
+// left the old fifteen-second window no room. A longer window costs nothing for
+// a turn whose answer she heard, because that is never treated as the same turn.
+const SUPERSEDE_WINDOW_MS = 30_000;
 
 // How long a turn may take before the person deserves to hear something.
 //
@@ -143,35 +138,6 @@ const HOLDING_AFTER_MS = 4_000;
 // then sounds odd when the answer was already ready - and deliberately not
 // an apology. It says work is happening, in her own register.
 const HOLDING_LINE = 'Let me put that together for you.';
-
-
-// IS THIS THE SAME TURN, SAID AGAIN?
-//
-// The guard was an exact string match until 2026-09-10, when a real session
-// produced two answers three seconds apart. What Ruth actually did was say a
-// sentence, get no immediate response, and say it again with "Hello?" on the
-// end. Two different strings; the same turn; two replies.
-//
-// So an utterance where one is a PREFIX of the other counts as a repeat. That
-// covers both directions: speech-to-text finalising a longer transcript over a
-// shorter one, and a person restating themselves with something appended.
-//
-// THE LENGTH FLOOR IS THE WHOLE SAFETY OF THIS. "no" is a prefix of "no
-// thanks", "not for me" and "nothing yet", and swallowing a real answer
-// because a similar short word was said ten seconds ago would be far worse
-// than the duplicate this prevents. Below the floor, only an exact match
-// counts - which is exactly the behaviour that existed before.
-const RESTATEMENT_MIN_CHARS = 12;
-
-function looksLikeRestatement(a: string, b: string): boolean {
-  const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
-  const x = norm(a);
-  const y = norm(b);
-  if (x === y) return true;
-  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
-  if (short.length < RESTATEMENT_MIN_CHARS) return false;
-  return long.startsWith(short);
-}
 
 const enc = new TextEncoder();
 
@@ -187,6 +153,21 @@ function sseChunk(id: string, created: number, model: string, delta: object, fin
   );
 }
 
+// A call to one of the agent's system tools, in the OpenAI streaming shape.
+function toolCallChunk(id: string, created: number, model: string, name: string) {
+  return sseChunk(
+    id,
+    created,
+    model,
+    {
+      tool_calls: [
+        { index: 0, id: `call_${crypto.randomUUID()}`, type: 'function', function: { name, arguments: '{}' } },
+      ],
+    },
+    null
+  );
+}
+
 const SSE_HEADERS = {
   'Content-Type': 'text/event-stream',
   'Cache-Control': 'no-cache, no-transform',
@@ -197,27 +178,35 @@ const SSE_HEADERS = {
 // something failed - and never claims anything was or was not saved.
 const SAY_AGAIN = 'Something went wrong just then. Could you say that again?';
 
-// A well-formed completion carrying nothing to say.
+// Nothing to answer: stay quiet and keep listening.
 //
-// An empty assistant message is valid OpenAI shape, and it was believed to
-// leave the conversation open with nothing spoken. FOUND ON DEVICE 2026-09-12:
-// that is not what ElevenLabs does with it. Answering a real utterance with
-// this ended three calls in one evening, each logged as "Brain returned no
-// response". It now answers silence only, and whether a "..." answered this way
-// also ends the call is unverified - the agent's skip_turn tool is the likely
-// proper answer, and needs an agent change rather than a code one.
-function silentCompletion(id: string, created: number, model: string): Response {
+// An empty completion was believed to do this, and does not. ElevenLabs treats
+// an empty answer as a failed generation and ends the call - found on device
+// 2026-09-12, when a "..." after "See you later" ended a six-minute call as a
+// failure, and three earlier calls ended the same way mid-conversation. The
+// agent's skip_turn tool is the real way to say nothing; it was added to the
+// agent that evening. If a request ever arrives without it offered, the empty
+// completion is the fallback, known to be imperfect.
+function listenCompletion(id: string, created: number, model: string, canSkip: boolean): Response {
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(sseChunk(id, created, model, { role: 'assistant' }, null));
-      controller.enqueue(sseChunk(id, created, model, { content: '' }, null));
-      controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
+      if (canSkip) {
+        controller.enqueue(toolCallChunk(id, created, model, 'skip_turn'));
+        controller.enqueue(sseChunk(id, created, model, {}, 'tool_calls'));
+      } else {
+        controller.enqueue(sseChunk(id, created, model, { content: '' }, null));
+        controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
+      }
       controller.enqueue(enc.encode('data: [DONE]\n\n'));
       controller.close();
     },
   });
   return new Response(stream, { headers: SSE_HEADERS });
 }
+
+// What a turn says, and whether the call ends after it.
+type Spoken = { text: string; endCall?: boolean };
 
 // A spoken turn: open the response at once, fill it in when the words exist.
 //
@@ -233,12 +222,18 @@ function silentCompletion(id: string, created: number, model: string): Response 
 // HOLDING_AFTER_MS, the person hears it; if they are, they never know it existed.
 //
 // NEVER EMPTY. Whatever `produce` returns or throws, something is spoken,
-// because an empty answer ends the call (see silentCompletion).
+// because an empty answer ends the call (see listenCompletion).
+//
+// THE CALL ENDS AFTER THE GOODBYE, when she asked for that (2026-09-12: "Can you
+// close the chat?" got a goodbye and a call that stayed open). The reply is
+// streamed first and the agent's end_call tool called after it, and only when
+// ElevenLabs offered that tool on this request.
 function spokenCompletion(
   id: string,
   created: number,
   model: string,
-  produce: () => Promise<string>
+  canEnd: boolean,
+  produce: () => Promise<Spoken>
 ): Response {
   const stream = new ReadableStream({
     async start(controller) {
@@ -250,16 +245,16 @@ function spokenCompletion(
         controller.enqueue(sseChunk(id, created, model, { content: HOLDING_LINE }, null));
       }, HOLDING_AFTER_MS);
 
-      let reply: string;
+      let spoken: Spoken;
       try {
-        reply = (await produce()).trim();
+        spoken = await produce();
       } catch (err) {
         console.log('VOICE ADAPTER: pipeline threw', err instanceof Error ? err.message : err);
-        reply = SAY_AGAIN;
+        spoken = { text: SAY_AGAIN };
       } finally {
         clearTimeout(holding);
       }
-      if (!reply) reply = SAY_AGAIN;
+      const reply = spoken.text.trim() || SAY_AGAIN;
 
       // The holding line was already spoken, so the reply follows on from it
       // rather than restarting. Without this the person hears "Let me put that
@@ -271,7 +266,12 @@ function spokenCompletion(
       for (const piece of speakableChunks(reply)) {
         controller.enqueue(sseChunk(id, created, model, { content: piece }, null));
       }
-      controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
+      if (spoken.endCall && canEnd) {
+        controller.enqueue(toolCallChunk(id, created, model, 'end_call'));
+        controller.enqueue(sseChunk(id, created, model, {}, 'tool_calls'));
+      } else {
+        controller.enqueue(sseChunk(id, created, model, {}, 'stop'));
+      }
       controller.enqueue(enc.encode('data: [DONE]\n\n'));
       controller.close();
     },
@@ -279,11 +279,14 @@ function spokenCompletion(
   return new Response(stream, { headers: SSE_HEADERS });
 }
 
-// How long a restatement waits for the answer to the turn it restates. That
-// turn may still be in the pipeline when the restatement arrives - "Yes,
-// please." took nine seconds to answer on 2026-09-12 - and a workout plan can
-// take fifteen. The holding line covers the wait after four.
+// How long the same words sent again wait for the answer already being written.
+// "Yes, please." took nine seconds to answer on 2026-09-12, and a workout plan
+// can take fifteen. The holding line covers the wait after four.
 const REPLAY_WAIT_MS = 20_000;
+// How long a continued turn waits for the half-answered one to finish before
+// running, so that turn's logs and saves are already in the thread the model
+// reads. Shorter than a replay, because the whole pipeline still runs after it.
+const SUPERSEDE_WAIT_MS = 10_000;
 const REPLAY_POLL_MS = 750;
 
 type Db = ReturnType<typeof getSupabaseForRequest>;
@@ -291,8 +294,8 @@ type Db = ReturnType<typeof getSupabaseForRequest>;
 // The answer the pipeline wrote after a given user turn, once it exists.
 // Read from chat_messages because the pipeline writes its reply there, so this
 // works whichever serverless instance ran the original turn.
-async function answerAfter(db: Db, since: string): Promise<string | null> {
-  const deadline = Date.now() + REPLAY_WAIT_MS;
+async function answerAfter(db: Db, since: string, waitMs: number): Promise<string | null> {
+  const deadline = Date.now() + waitMs;
   do {
     const { data } = await db
       .from('chat_messages')
@@ -336,95 +339,140 @@ export async function POST(request: NextRequest) {
   const id = `chatcmpl-${crypto.randomUUID()}`;
   const created = Math.floor(Date.now() / 1000);
 
-  // Answer silence with silence. An empty assistant message is a valid,
-  // well-formed completion, so the agent simply has nothing to speak and the
-  // conversation stays open - which is what someone who has not spoken yet
-  // wants. Returned BEFORE the pipeline, so a non-utterance costs no model
-  // call, writes no chat_messages row, and cannot leave a "..." in the thread.
+  // The system tools ElevenLabs offered on this request.
+  const tools = offeredTools(body.tools);
+  const canEnd = tools.has('end_call');
+
+  // Silence is answered by listening. Returned BEFORE the pipeline, so a
+  // non-utterance costs no model call, writes no chat_messages row, and cannot
+  // leave a "..." in the thread.
   if (isSilence(utterance)) {
-    console.log('VOICE ADAPTER: empty utterance, answering with silence');
-    return silentCompletion(id, created, model);
+    console.log('VOICE ADAPTER: empty utterance, listening');
+    return listenCompletion(id, created, model, tools.has('skip_turn'));
   }
 
-  // THE SAME SENTENCE TWICE IS ONE TURN.
+  // IS THIS A TURN ALREADY TAKEN, SENT AGAIN?
   //
-  // Found on device 2026-09-09: one spoken sentence produced FOUR identical
-  // requests within 6.4 seconds, and because nothing here knew it had just
-  // seen that utterance, each ran the whole pipeline - four Claude calls,
-  // four food rows, four slightly different calorie estimates for one slice
-  // of toast. The person had spoken once.
+  // Each version of this guard was right about something:
+  // - 2026-09-09: one sentence arrived four times in 6.4 seconds and each ran
+  //   the whole pipeline - four Claude calls and four food rows for one slice
+  //   of toast. An exact-match guard answered the repeats with silence.
+  // - 2026-09-10: a restatement with "Hello?" on the end got two replies, so the
+  //   guard learned to match prefixes.
+  // - 2026-09-12: an empty answer turned out to end the call, and replaying the
+  //   first half's answer turned out to drop what she said after the pause -
+  //   "What is a Baker's cyst?" was never answered, and a "yes, save it" only
+  //   survived because a comma defeated the prefix match.
   //
-  // The check reads chat_messages rather than any cache of our own, because
-  // the pipeline writes the user turn BEFORE it calls the model - so the
-  // second request can already see the first, even when the two land on
-  // different serverless instances. An in-process Map would have worked for
-  // the warm case and quietly failed for the cold one.
+  // WHAT DECIDES IT NOW is not the words but whether she heard the answer.
+  // ElevenLabs sends the conversation as it actually happened with every
+  // request. If the most recent turn in the thread got an answer she heard,
+  // this is a new turn. If that answer is still being written, or was written
+  // and never spoken because she carried on talking, this request is that same
+  // turn again - usually longer.
   //
-  // RLS scopes the read to this person automatically; the token is the same
-  // one the pipeline will authenticate with a moment later.
+  // - The same words again: the answer already being written is the answer, so
+  //   it is replayed and the pipeline runs once.
+  // - More words: the whole sentence is answered, once the first run has
+  //   finished, and the pipeline is told its first answer went unheard so it
+  //   does not log or save the same thing twice. That instruction is the
+  //   remaining risk - a model can still repeat a log - and it is taken because
+  //   losing what she said is worse.
   //
-  // A RESTATEMENT IS ANSWERED WITH THE ANSWER ALREADY GIVEN, NOT WITH SILENCE
-  // (2026-09-12). Silence ended three calls on a real phone in one evening, and
-  // what arrived was not a repeat at all. Ruth paused mid-sentence; ElevenLabs
-  // sent the first half ("Yes, please."), then, when she carried on, dropped
-  // that answer unspoken and sent the whole sentence ("Yes, please. Yes, save
-  // it, please."). The half is a prefix of the whole, so the guard answered the
-  // whole with nothing, and ElevenLabs hung up. The routine was saved and the
-  // reply was written; she heard none of it.
+  // The check reads chat_messages rather than any cache of our own, because the
+  // pipeline writes the user turn BEFORE it calls the model, so a second request
+  // sees the first even on a different serverless instance. RLS scopes the read
+  // to this person; the token is the one the pipeline authenticates with next.
   //
-  // So the answer to the turn being restated is spoken instead, waiting for it
-  // if that turn is still in the pipeline. The pipeline still runs once - one
-  // Claude call, one log - and what she hears is exactly what the thread
-  // records as said. The cost: the half-sentence is what got answered, so
-  // anything added after the pause is not in the reply. Saying it again is a
-  // new turn, and the model was otherwise going to answer an unheard reply.
-  let restated: { db: Db; since: string } | null = null;
+  // KNOWN EDGE: a typed message sent within the window just before a call
+  // starts has an answer ElevenLabs never saw, so the first spoken turn is
+  // treated as continuing it. The cost is one line in the prompt telling the
+  // model its last answer went unheard.
+  let prior: { db: Db; since: string; sameWords: boolean } | null = null;
   try {
     const seen = new NextRequest(new URL('/api/ask-selodia', request.url), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });
     const db = getSupabaseForRequest(seen);
-    // Fetches the window's turns rather than asking the database to match,
-    // because prefix comparison after normalising whitespace and case is not
-    // something a column filter can express. The window is fifteen seconds, so
-    // this is a handful of short rows.
     const { data: recent } = await db
       .from('chat_messages')
       .select('content, created_at')
       .eq('role', 'user')
-      .gte('created_at', new Date(Date.now() - DEDUP_WINDOW_MS).toISOString())
+      .gte('created_at', new Date(Date.now() - SUPERSEDE_WINDOW_MS).toISOString())
       .order('created_at', { ascending: false })
-      .limit(5);
-
-    const repeat = (recent ?? []).find((r) =>
-      looksLikeRestatement(String(r.content ?? ''), utterance)
-    );
-    if (repeat) restated = { db, since: String(repeat.created_at) };
+      .limit(1);
+    const last = recent?.[0];
+    if (last) {
+      const since = String(last.created_at);
+      const { data: after } = await db
+        .from('chat_messages')
+        .select('content')
+        .eq('role', 'assistant')
+        .gt('created_at', since)
+        .order('created_at', { ascending: true })
+        .limit(1);
+      const answer = after?.[0]?.content;
+      const spokenReplies = Array.isArray(body.messages)
+        ? (body.messages as ChatMessage[])
+            .filter((m) => m?.role === 'assistant')
+            .map((m) => textOf(m.content))
+        : [];
+      if (!(typeof answer === 'string' && wasHeard(answer, spokenReplies))) {
+        prior = { db, since, sameWords: words(String(last.content ?? '')) === words(utterance) };
+      }
+    }
   } catch (err) {
     // FAIL OPEN, deliberately. If the check itself breaks, the worst outcome
-    // is the duplicate we already had; refusing to answer because a guard
-    // could not run would turn a logging bug into a mute assistant.
-    console.log('VOICE ADAPTER: dedup check failed, continuing -', err instanceof Error ? err.message : err);
-  }
-
-  if (restated) {
-    console.log('VOICE ADAPTER: restatement of a turn already taken, replaying its answer');
-    const { db, since } = restated;
-    return spokenCompletion(id, created, model, async () => (await answerAfter(db, since)) ?? SAY_AGAIN);
+    // is a duplicate turn; refusing to answer because a guard could not run
+    // would turn a logging bug into a mute assistant.
+    console.log('VOICE ADAPTER: turn check failed, continuing -', err instanceof Error ? err.message : err);
   }
 
   // One turn through the pipeline. `voice: true` lets it defer the
   // food/activity parse to after(). It changes nothing about the reply or the
   // safety classification - only which work must finish before we can speak.
-  const ask = () =>
+  // `supersedes` tells it this message continues a half-answered one.
+  const ask = (supersedes?: string) =>
     askSelodia(
       new NextRequest(new URL('/api/ask-selodia', request.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: utterance, voice: true }),
+        body: JSON.stringify({ message: utterance, voice: true, ...(supersedes ? { supersedes } : {}) }),
       })
     );
+
+  const spokenFrom = async (res: Response): Promise<Spoken> => {
+    if (res.status === 401) {
+      console.log('VOICE ADAPTER: pipeline rejected the token');
+      return { text: 'I could not reach your account just then. Could you try that again?' };
+    }
+    if (!res.ok) {
+      console.log('VOICE ADAPTER: pipeline returned', res.status);
+      return { text: SAY_AGAIN };
+    }
+    const data = (await res.json()) as { reply?: string; endVoiceSession?: boolean };
+    const text =
+      typeof data.reply === 'string' && data.reply.trim().length > 0
+        ? data.reply
+        : 'Sorry, I did not catch that.';
+    return { text, endCall: data.endVoiceSession === true };
+  };
+
+  if (prior) {
+    const { db, since, sameWords } = prior;
+    if (sameWords) {
+      console.log('VOICE ADAPTER: the same turn sent again, replaying its answer');
+      return spokenCompletion(id, created, model, false, async () => ({
+        text: (await answerAfter(db, since, REPLAY_WAIT_MS)) ?? SAY_AGAIN,
+      }));
+    }
+    console.log('VOICE ADAPTER: a turn continued after a pause, answering all of it');
+    return spokenCompletion(id, created, model, canEnd, async () => {
+      await answerAfter(db, since, SUPERSEDE_WAIT_MS);
+      return spokenFrom(await ask(since));
+    });
+  }
 
   // Non-streaming is not what ElevenLabs asks for, but an OpenAI-compatible
   // endpoint that only speaks SSE is not OpenAI-compatible. A caller that sends
@@ -455,19 +503,5 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return spokenCompletion(id, created, model, async () => {
-    const res = await ask();
-    if (res.status === 401) {
-      console.log('VOICE ADAPTER: pipeline rejected the token');
-      return 'I could not reach your account just then. Could you try that again?';
-    }
-    if (!res.ok) {
-      console.log('VOICE ADAPTER: pipeline returned', res.status);
-      return SAY_AGAIN;
-    }
-    const data = (await res.json()) as { reply?: string };
-    return typeof data.reply === 'string' && data.reply.trim().length > 0
-      ? data.reply
-      : 'Sorry, I did not catch that.';
-  });
+  return spokenCompletion(id, created, model, canEnd, async () => spokenFrom(await ask()));
 }
