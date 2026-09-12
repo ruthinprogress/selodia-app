@@ -199,7 +199,7 @@ Once app-store distribution is the primary channel, these domains' role shifts t
 
 **Not yet built at all (rewritten 2026-08-31, then corrected twice the same day as items on it shipped — this list goes stale faster than any other line in the document, so trust Part Sixteen over it):** navigation Layer 2, the Graduation moment and pause-mechanism trigger logic, conversational substitution for movements, and the Almanac lifecycle mechanism. **Partial:** allergies (capture, storage and awareness built; the filter gate is not). **Held rather than outstanding:** extraction uncertainty, which was built, tested and deliberately removed before shipping. See the status reconciliation under Part Sixteen, Phase 1, which is authoritative.
 
-**Built since the previous version of this line, which claimed otherwise:** the Almanac *screen* (UI slices 1-3), the **Daily** Roundup and its theme extraction, push-notification scheduling and the reminder flow, and the **Measurements and Activity segments**. Fat Focus / Muscle Focus now reaches beyond schema (`calorie-target.ts`, surfaced in `overview-panel.tsx`).
+**Built since the previous version of this line, which claimed otherwise:** the Almanac *screen* (UI slices 1-3), ~~the **Daily** Roundup and its theme extraction,~~ the Daily Roundup's route and theme extraction (**built but never wired: nothing has ever called it**, corrected 2026-09-12, see Part Fourteen), push-notification scheduling and the reminder flow, and the **Measurements and Activity segments**. Fat Focus / Muscle Focus now reaches beyond schema (`calorie-target.ts`, surfaced in `overview-panel.tsx`).
 
 *One caveat on push notifications:* the JS is built, but `expo-notifications` is a native module added on 27 August, so nothing schedules on a device until a new native build ships. Built, and inert until then — the two are not the same claim.
 
@@ -1150,8 +1150,16 @@ A genuine, honest **same-day wellbeing** nudge — and unlike the abandoned BMR/
 >
 > Would you like to keep the daily reminders going, or do you feel ready to try without them?"
 
+**THE REMINDER FLOW ACTED ONCE AND NEVER AGAIN. Fixed 2026-09-12 (`3732881`), NOT YET VERIFIED ON A DEVICE.** `push_tokens` had held zero rows, ever, and the causes were three. Two were fixed on 10 September: the missing EAS `projectId`, and no Firebase config at all. The third would have survived both. On Android 13 and later the permission prompt does not appear until a notification channel exists, and registration asked first and created the channel afterwards. So the prompt never showed, permission came back not granted, and registration returned null silently.
+
+Behind all three sat a design gap. The offer appears once, ever, which is correct. But it was also the **only** code path that registered a token or scheduled a reminder. Ruth said yes on 2 September on a broken build: the yes was stored, the offer never returned, and nothing acted on it again. Reminders are scheduled locally, so uninstalling the old package on 10 September wiped them, and from then on she received none despite having asked for them.
+
+**The rule now: the offer is asked once, ever, and the answer is acted on at every launch.** `restoreReminders` re-registers the token and re-applies the schedule for anyone whose stored choice is enabled, and never overrides a no. A reinstall on Android loses notification permission, so the system prompt is allowed **once per install**, from launch, and never again on that install if refused (agreed with Ruth, 2026-09-12). This is a deliberate exception to "permission at the first log". It honours a yes already given; it does not ask for trust that has not been earned.
+
 ## Daily Roundup Trigger
 See Part Nine for the full mechanism — the evening checkpoint branches between the reminder, the invitational roundup prompt, or silence, depending on that day's logging state.
+
+**NOT WIRED. Corrected 2026-09-12.** `app/api/daily-roundup` and `app/api/weekly-roundup` exist, but **nothing has ever called either of them.** No app code has ever contained a call, there is no cron (no `vercel.json`, no `pg_cron`), and `daily_summaries` holds **zero rows, ever**. The weekly roundup reads a week of daily summaries, so it has never run either. The evening checkpoint that should trigger them is unbuilt. So is the sender: tokens are registered "because the roundups DO need server-initiated delivery", but no code anywhere sends a remote push. Several places record the Daily Roundup as built. By this spec's own definition of built, "exists and is wired in", it is not.
 
 ## Weekly Roundup Trigger
 See Part Nine — event-based, chained onto Sunday's Daily Roundup close-out, gated by the 5-of-7-days minimum threshold.
