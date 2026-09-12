@@ -865,7 +865,7 @@ Coverage per dimension is the sum of weighted contributions across all sessions 
 
 # PART NINE: PERSISTENT CONTEXT, THEME EXTRACTION, AND THE DAILY/WEEKLY ROUNDUPS
 
-> **ROUNDUPS ARE ON HOLD (2026-09-12)** pending a dedicated Almanac design session. Roundups will land in the Almanac as weekly entries, and what follows in this Part predates that decision. Read Part Fourteen, Daily Roundup Trigger, before building anything here.
+> **ROUNDUPS ARE ON HOLD (2026-09-12)** pending a dedicated Almanac design session. Roundups will land in the Almanac as weekly entries, and what follows in this Part predates that decision. Read Part Fourteen, Daily Roundup Trigger, before building anything here. **Update, the same day:** the Almanac redesign (Part Ten) now defines where roundups go. A weekly, Sunday-evening roundup saved to Insights as a Roundup-tagged entry, which also feeds the living portrait at the top of Insights. Do not build it until the Insights brief has been reviewed and confirmed.
 
 ## Persistent Context
 Every conversation starts with full context already loaded — history, patterns, cycle phase, recent training, targets, things mentioned weeks ago. The user never re-explains themselves. This accumulated context cannot be replicated by switching apps or starting a new chat, and it is the product's actual defensible advantage.
@@ -943,6 +943,149 @@ This reuses two mechanisms already built, not new infrastructure. The Daily Roun
 ---
 
 # PART TEN: THE ALMANAC
+
+> **SUPERSEDED 2026-09-12.** The Almanac has been redesigned. Read the ALMANAC REDESIGN note and the INSIGHTS brief directly below before any Almanac work. Everything in this Part after them is the PREVIOUS design, kept as history. Do not build from it.
+
+## ALMANAC REDESIGN — STRUCTURAL NOTE FOR CODE (2026-09-12)
+
+**Read before any Almanac work. Supersedes all previous Almanac spec.**
+
+The Almanac has been redesigned from scratch. The previous spec described a single journal-style feed of timestamped entries. That is replaced by a three-tab structure:
+
+- **Insights** — detailed brief above. The journal/observation/roundup layer. Already partially built but needs significant redesign.
+- **Movement** — training protocol, constraints, skills goals. Not yet built.
+- **Me** — full self-care protocol (nutrition, supplements, skincare, mental/emotional maintenance, recurring self-care commitments). Not yet built.
+
+Movement and Me are structured editable documents, not AI-generated feeds. The user writes and edits them. No complex AI or new data pipelines required. Relatively simple to build, high value.
+
+Do not build or extend any Almanac feature until the Movement and Me briefs are written. Insights brief is above and is ready to build against.
+
+The weekly roundup (currently unbuilt despite being marked as built in the spec) feeds into Insights as a Roundup-tagged entry. It also generates the living portrait layer at the top of Insights. Do not build the roundup until the Insights brief has been reviewed and confirmed.
+
+*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Movement and Me briefs are not yet written, so under this note's own rule nothing in the Almanac is built or extended yet.*
+
+## ALMANAC — INSIGHTS TAB (design brief, 2026-09-12)
+
+*Design brief for Code. Part of the Almanac redesign. Ruth's text, verbatim.*
+
+### Purpose
+
+Insights is where Selodía witnesses the user over time. It is not a journal, not a log, not a dashboard. It is a living record of what the app has noticed — patterns, themes, symptoms, observations, weekly syntheses — held permanently and reflected back in a way that evokes pride in the practice of self-care, not achievement of targets.
+
+The guiding principle: Selodía witnesses. It does not judge, score, or congratulate.
+
+### Screen structure
+
+The Insights screen has two layers:
+
+**Layer 1 — The Living Portrait (top of screen)**
+
+- The health flower, large, centred. More generous with space than on the body dashboard — this is a reflective space.
+- Below the flower: 2–3 witness statements. Warm, specific, observational. Spotify-wrapped in tone — "You've moved your body 4 times a week for 6 weeks." "Your energy and your sleep track together more than anything else." Never congratulatory, never scoring.
+- The statements cover the past 6 weeks. The date range is shown — "the last 6 weeks" — so the reflection period is explicit.
+- This layer updates every Sunday evening when the weekly roundup runs. It is a synthesis of the most recent roundup entries, not just the latest week.
+- The portrait should feel like opening a letter to yourself. Beautiful enough to screenshot and send to someone you love.
+
+**Layer 2 — The Log (below the portrait)**
+
+- All entries, ever. Permanent. Never deleted.
+- Most recent first.
+- Each entry is a card: title, date, entry type tag, first line of content. Tap to expand and read in full.
+- Cards feel considered, not clinical. Visual treatment consistent with the app's overall aesthetic.
+- A soft divider separates Layer 1 from the log.
+
+### Entry types
+
+All of the following are Insights entries, tagged automatically by the AI on save. The user never manually tags anything:
+
+- **Roundup** — weekly Sunday evening synthesis
+- **Symptom** — physical observation (pain, fatigue, bloating, hay fever, etc.)
+- **Insight** — saved from Chat when an insight-tier observation is detected (per the existing result/observation/insight ladder — only insight tier qualifies)
+- **Note** — one-off observation, manually logged
+
+Training history (actual exercise done) is also stored in Insights — this makes it available for clinical export alongside symptoms.
+
+### Pill filters
+
+At the top of the log, a row of filter pills:
+
+All · Roundups · Symptoms · Insights · Notes
+
+Rules:
+
+- Pills only appear when that category has content. A new user sees only "All" until entries accumulate.
+- Tapping a pill does two things: (1) filters the card log to that type, (2) opens a domain analytics view for that category.
+- Exception: see Roundup analytics below, which has its own distinct view.
+
+### Domain analytics (Symptoms, Movement, Food, Insights)
+
+Accessed by tapping the relevant pill. Each domain analytics view contains:
+
+1. A date range selector — default last 6 weeks, adjustable
+2. A visualisation — simple, readable, not a chart dump. Appropriate to the domain (e.g. symptom frequency over time, movement consistency, food pattern). Design to be specified per domain in a follow-up brief.
+3. An AI-generated summary — witness-toned synthesis of the selected period. What was noticed. How things shifted. Not scored.
+4. An export option — two modes:
+   - Symptoms / training history for clinician — clean, clinical format suitable for GP or physio. Includes symptom log + actual training history for the selected period.
+   - Full picture — all domains, suitable for personal reference or sharing with a carer/family member. Printable format.
+
+### Roundup analytics (separate view)
+
+Roundups are already syntheses — summarising them again risks being meta. The value in roundup analytics is longitudinal: theme tracking over time.
+
+The roundup analytics view shows:
+
+- Recurring themes across roundups — what topics kept appearing, when they peaked, when they faded, what replaced them
+- Visualised as a timeline with labelled phases, not a chart. Simple, readable, narrative.
+- Example of what this surfaces: "Physical symptoms dominated July–August (hay fever, leg pain). From September the dominant theme shifted to autonomy and environment (snacking patterns, work/childcare load, lack of solitude)." The app holds this thread. The user couldn't see it from inside any single week.
+- This view is also exportable — useful for longitudinal clinical conversations or personal reflection.
+
+### Emotional design notes
+
+- The living portrait at the top should evoke pride in the journey, not pride in hitting targets. The user should want to share it with a close friend or partner — not because she achieved something, but because it's beautiful and it reflects how carefully she has been tending to herself.
+- Witness language throughout. See THE WITNESS PRINCIPLE (MI Language Rules + Brand and Marketing Spec) for full guidance.
+- Nothing in Insights is ever framed as success or failure. Patterns are observed. Themes are noted. The arc is held.
+- The flower renders here as it does on the body dashboard. Current render bug needs fixing as part of this build.
+
+### Open questions for Code
+
+- Exact visual treatment of witness statements (typography, spacing, whether they animate or are static)
+- Per-domain visualisation design (to be specified in follow-up)
+- Whether the living portrait layer scrolls with the page or is sticky at top
+- Export format — PDF, plain text, or shareable link
+
+## INSIGHTS BRIEF — REVIEW FROM CODE (2026-09-12)
+
+*Written by Claude Code, not part of Ruth's brief. The note above says the roundup waits until this brief "has been reviewed and confirmed": this is the review. Nothing here changes the brief; it records what was checked against the real app and what needs Ruth's decision before confirmation.*
+
+**Checked against what exists today.**
+
+- **"Already partially built" is partly true.** The Almanac tab exists as a list of saved entries grouped by an emergent category, with detail views and workout plans. Nothing shaped like Insights exists: no portrait, no pills, no analytics. Ruth's account holds four entries: two movement plans, one routine, one insight.
+- **The result/observation/insight ladder is real** as a spec rule (Part Five, Result vs Observation vs Insight) and as guidance in the chat prompt's Almanac-saving block. It is not in code, which is fine for how it is used.
+- **Nothing captures symptoms today.** No table, no entry kind. Symptom entries are new.
+- **Training history already lives in three tables:** `activity_logs`, `workout_completion_log` and `workout_weight_log`. Recommendation: Insights and its exports read from those rather than copying training into Insights, so there is one record, not two that drift.
+- **Neither roundup has ever run** (Part Fourteen, Daily Roundup Trigger). There is also no scheduler of any kind and no code that sends a remote push, so "every Sunday evening" needs a server-side scheduled job. Small, but it is new infrastructure.
+- **No export building blocks are installed**: no `expo-print`, `expo-sharing`, `expo-file-system` or `react-native-view-shot`. PDF export means new native modules and a new build.
+- **No flower render bug is recorded anywhere.** The only known flower issue is the app's bloom not matching the design approved on 11 September (petals overlapping at the centre). Ruth to confirm whether that is the bug meant.
+
+**Decisions needed before confirmation.**
+
+1. **Does an insight still need the person's yes?** Today nothing reaches the Almanac unless the person taps Save on an insight card. The brief says entries are tagged automatically on save, which fits either way; what it does not say is whether saving itself is still asked. Same question for symptoms.
+2. **"Permanent. Never deleted."** Within the app, understood. But account deletion and UK GDPR erasure must still remove everything, as they do today. Confirm it means no per-entry delete rather than immune to deletion. Separately: can someone remove a single entry logged by mistake?
+3. **Is the daily roundup dropped?** The brief names only the weekly Sunday roundup. The old design built each weekly roundup out of seven daily ones.
+4. **Pills and domains do not line up.** The pills are All, Roundups, Symptoms, Insights and Notes, but domain analytics lists Symptoms, Movement, Food and Insights. Movement and Food have no pill inside Insights. Where are their analytics opened from?
+5. **How is a Note "manually logged"?** By telling the chat, or through a text box in Insights? A text box would be the first manual entry path into the Almanac.
+6. **What happens to the existing plans?** The two movement plans and the routine were built by the AI in chat. The note says Movement is a user-written document, not an AI feed. Migrate them into Movement as editable documents, or start clean?
+7. **The portrait's empty state.** A new user has no roundups, so Layer 1 has nothing to say. The brief specifies pills appearing only with content, but not what the portrait shows before there is any.
+
+**Recommendations on the brief's open questions.**
+
+- **Witness statements: static, not animated.** Motion reads as reward, which is the register the principle rules out. The flower keeps whatever gentle motion it already has.
+- **Scroll, not sticky.** A sticky portrait above a growing log would take half a phone screen from the part the person actually reads.
+- **Export: PDF, generated on the phone, sent through the share sheet.** A GP or physio expects a document, and one PDF path serves both the clinician and the full-picture modes. **Not a shareable link:** a link means hosting health data at a URL, which is a privacy liability the rest of this app avoids. Needs `expo-print` and `expo-sharing`, so a build.
+- **Per-domain visualisation:** waiting on the follow-up brief.
+
+## PREVIOUS ALMANAC DESIGN (superseded 2026-09-12, kept as history)
+
 
 A living, practical reference — not a static profile page — that grows entirely from real conversations and holds goals, personal plans, and anything the user wants kept within easy reach.
 
@@ -1173,7 +1316,7 @@ See Part Nine for the full mechanism — the evening checkpoint branches between
 
 **NOT WIRED. Corrected 2026-09-12.** `app/api/daily-roundup` and `app/api/weekly-roundup` exist, but **nothing has ever called either of them.** No app code has ever contained a call, there is no cron (no `vercel.json`, no `pg_cron`), and `daily_summaries` holds **zero rows, ever**. The weekly roundup reads a week of daily summaries, so it has never run either. The evening checkpoint that should trigger them is unbuilt. So is the sender: tokens are registered "because the roundups DO need server-initiated delivery", but no code anywhere sends a remote push. Several places record the Daily Roundup as built. By this spec's own definition of built, "exists and is wired in", it is not.
 
-**ON HOLD, by decision (2026-09-12). Do not build the roundup trigger from this Part or from Part Nine as written.** Ruth: the current spec is too thin, and the app has evolved significantly since early scoping. A dedicated Almanac design session comes first, to specify properly what a roundup should look like. One thing is already decided: **roundups land in the Almanac as weekly entries.** The existing routes post into `chat_messages`, so they may not survive that design in their current shape. Detail follows that session.
+**ON HOLD, by decision (2026-09-12). Do not build the roundup trigger from this Part or from Part Nine as written.** Ruth: the current spec is too thin, and the app has evolved significantly since early scoping. A dedicated Almanac design session comes first, to specify properly what a roundup should look like. One thing is already decided: **roundups land in the Almanac as weekly entries.** The existing routes post into `chat_messages`, so they may not survive that design in their current shape. Detail follows that session. **The session has now happened: see Part Ten, the Almanac redesign and the Insights brief.**
 
 ## Weekly Roundup Trigger
 See Part Nine — event-based, chained onto Sunday's Daily Roundup close-out, gated by the 5-of-7-days minimum threshold.
@@ -1378,7 +1521,7 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 12. Protein quality flagging UI — needs itemized breakdown (step 11). **Built 2026-08-14:** `protein_source` classified at parse (log + per-item, principle 13's log-time classification); the day-level nudge (>½ incomplete → complementary pairing + buffered target) on the Overview protein card (the "Body" tab), pure logic node-tested. Per-item flags (collagen/plant) ride item 13's breakdown display using the captured source.
 13. The "What's In Here" discuss-card — the **read-only breakdown view**. **Built 2026-08-21:** `food-breakdown-card.tsx` is deliberately **host-agnostic** (it takes a `food_logs.id` and nothing else), opened from an eye icon and rendered in RN's built-in `Modal` — no native dependency, so it ships over EAS Update rather than joining the native batch. It shows the itemised `food_items` content with quantities, the four macros, the shared confidence Tag, and **item 12's per-item protein flags** (collagen "incomplete", plant "pair it", via `perItemProteinFlag`). The new shared **Tag component** (`tag.tsx`) lands here too — one component, two contexts, with item 33's `intensity` strings already fitting so the Activity segment can pass its stored value straight in. **Two edge cases are designed for, not discovered:** a `simple` log has no `food_items` rows by design, and a pre-item-11/12 log has none plus a null `protein_source` — both fall back to the log's own description and macros rather than rendering an empty ingredient list. **Deliberately absent:** the sand factual-note card and the sage insight card (Detail Views parts 3 and 4) and the **"Ask about this" button** — all three need items 29/30, and rendering the button now would be a dead control (principle 8). 20 node tests over the pure logic; tsc/eslint clean.
 14. Data confidence bars (9-week habit bars) and the catch-up mechanism.
-15. The Almanac. **Data-layer design settled 2026-08-17 (scoping only, not built) — the plan-as-content / progress-as-logs pattern from item 35, generalized:**
+15. The Almanac. **[SUPERSEDED 2026-09-12 by the Almanac redesign in Part Ten. Do not build from this item. The `almanac_entries` table it describes is real and live, and is what the redesign builds on or migrates from.]** **Data-layer design settled 2026-08-17 (scoping only, not built) — the plan-as-content / progress-as-logs pattern from item 35, generalized:**
     - **One flexible `almanac_entries` table**, not per-type tables — sufficient because anything queryable/time-series lives *outside* the entry (see logs below). Columns: `id, user_id, kind, title, category, content` (JSONB), lifecycle metadata (`status`, instance count, last-confirmed), `created_at, updated_at`. Entries are LLM-authored documents, displayed as-is.
     - **`kind` is open text, not a closed enum** (Part Two principle 13 — same reasoning as the DOMS keyword-list correction): new entry kinds emerge from conversation.
     - **`category` is an emergent field on the entry, never a first-class table** (consistent with no-dead-pages — a "category page" like Workouts is a filtered view over entries that carry that category, not a pre-built section).
