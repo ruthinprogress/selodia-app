@@ -130,18 +130,41 @@ If THIS message answers it, set saveAnswer to 'yes' or 'no'. Treat a clear agree
 Do not raise it again yourself, do not rephrase the offer, do not make a new offer while this one is waiting, and never treat them moving on as agreement. Never say you have saved anything: if they say yes, the app saves it and tells them itself.`;
 }
 
-/** Record an offer and when it was made. Saves nothing. */
+// THE APP ASKS THE QUESTION, NOT THE MODEL (2026-09-12, Ruth approved the
+// wording). On the first voice test the model stored an offer and never spoke
+// the question, so an offer sat waiting for an answer to something she was
+// never asked - and a later yes to anything could have been read as its
+// answer. The question is now the app's own line, like the confirmation, and
+// is only added when the offer was actually stored.
+export const SAVE_OFFER_QUESTION = 'Want me to keep that in your Almanac?';
+
+/**
+ * The offer line to add after the reply, or null when the reply already asks
+ * about the Almanac. The model is told not to ask; if it does anyway, adding the
+ * app's line would ask twice. Deliberately narrow - only a question that names
+ * the Almanac counts - because a wrong match would leave a stored offer unasked,
+ * which is the very thing this exists to prevent.
+ */
+export function offerQuestion(reply: string): string | null {
+  return /almanac[^.!?\n]*\?/i.test(reply) ? null : SAVE_OFFER_QUESTION;
+}
+
+/**
+ * Record an offer and when it was made. Saves nothing. Returns whether it was
+ * stored, because the question is only asked about an offer that exists.
+ */
 export async function storePendingSave(
   supabase: SupabaseClient,
   userId: string,
   proposal: ProposedSave
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await supabase.from('user_profile').upsert({
     user_id: userId,
     pending_save: proposal,
     pending_save_asked_at: new Date().toISOString(),
   });
   if (error) console.log('PENDING SAVE: could not store the offer —', error.message);
+  return !error;
 }
 
 export async function clearPendingSave(supabase: SupabaseClient, userId: string): Promise<void> {

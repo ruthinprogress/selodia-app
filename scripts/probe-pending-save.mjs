@@ -7,8 +7,10 @@
 //   npx tsx scripts/probe-pending-save.mjs
 
 import {
+  SAVE_OFFER_QUESTION,
   coerceProposal,
   coerceSaveType,
+  offerQuestion,
   pendingSavePrompt,
   prepareNote,
   readPendingSave,
@@ -78,7 +80,15 @@ const ok = saveAppliedNote({ kind: 'symptom', title: 'x' }, true);
 check('saved: says where it went', /Almanac, under Insights/.test(ok), true);
 check('  names the type', /as a symptom/.test(ok), true);
 check('failed: says so, never claims it', /didn't save/.test(saveAppliedNote(null, true)), true);
-check('no em dashes in anything she reads', [ok, saveAppliedNote(null, true)].some((s) => s.includes('—')), false);
+check('no em dashes in anything she reads', [ok, saveAppliedNote(null, true), SAVE_OFFER_QUESTION].some((s) => s.includes('—')), false);
+
+console.log('\n  THE APP ASKS THE OFFER, ONCE\n');
+check('a plain reply gets the question', offerQuestion('Ballet asks a lot of your hips.'), SAVE_OFFER_QUESTION);
+check('  and it is a question', SAVE_OFFER_QUESTION.endsWith('?'), true);
+check('the model already asked: not asked twice', offerQuestion('That tracks. Want me to keep that in your Almanac?'), null);
+check('  whatever its wording', offerQuestion('Shall I save this to your almanac for you?'), null);
+check('the Almanac named, but not asked: still asked', offerQuestion('Your plan is in your Almanac. How did it go?'), SAVE_OFFER_QUESTION);
+check('an unrelated question does not suppress it', offerQuestion('Is it easing within a day or two?'), SAVE_OFFER_QUESTION);
 
 console.log(`\n  ${pass} passed, ${fail} failed\n`);
 process.exit(fail > 0 ? 1 : 0);
