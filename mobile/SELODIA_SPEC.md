@@ -2489,6 +2489,8 @@ When the user seems to be wrapping up: *"Would you like to close the voice sessi
 
 Pause is especially important for driving / hands-free use — a voice command to pause matters more than a button in that context.
 
+**The screen stays on while a session is open (2026-09-12).** On Ruth's phone the screen timed out mid-conversation and cut the session off: Android backgrounds the app when the screen sleeps, and the microphone goes with it. Nobody touches the screen while talking, so the ordinary timeout is the wrong clock for a conversation. `voice-control.tsx` now holds a keep-awake lock from connecting until the session ends, released by unmounting so no path can leave the phone unable to sleep. `expo-keep-awake` was already in the build as part of Expo; it is now a direct dependency too, and the fix shipped as an update, not a build. **Not covered:** pressing the power button still locks the phone and still ends the session. Keeping the microphone through a lock needs an Android foreground service, which is a native build, decided when voice is picked up again.
+
 ## Privacy and opt-in
 
 - **Off by default.**
