@@ -56,7 +56,9 @@ export function ReminderOffer({ onDone }: { onDone: () => void }) {
             }
           } catch {
             // Reminders are unavailable on this build. The preference is saved
-            // either way, so a later build honours it without re-asking.
+            // either way, and restoreReminders (run at every launch) acts on it
+            // in a later build without re-asking. Until 2026-09-12 this comment
+            // made that promise and nothing kept it.
           }
         }
       }

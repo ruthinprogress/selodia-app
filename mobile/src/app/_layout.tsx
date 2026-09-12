@@ -15,6 +15,7 @@ import { SpotlightProvider } from '@/components/spotlight-provider';
 import { VoiceProvider } from '@/components/voice-provider';
 import { Colors } from '@/constants/theme';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
+import { useReminderRestore } from '@/hooks/use-reminder-restore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -71,6 +72,10 @@ export default function RootLayout() {
   // early return, because a hook cannot sit behind a condition.
   console.log('[BOOT] RootLayout render, fontsLoaded =', fontsLoaded);
   useAuthGuard();
+
+  // Acts on a reminder yes already given, on this device - the only place a
+  // reinstall gets its reminders back (2026-09-12).
+  useReminderRestore();
 
   // Light unconditionally: the app is light-only from 2026-09-03, and handing
   // react-navigation a dark theme while every screen paints cream would give

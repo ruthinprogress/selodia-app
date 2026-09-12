@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
 import { nextFireTime } from '@/lib/quiet-hours';
+import { loadReminderSettings } from '@/lib/reminder-settings';
 import { supabase } from '@/lib/supabase';
 
 // Push delivery (Part Fourteen).
@@ -84,21 +86,40 @@ async function ensureAndroidChannel() {
   });
 }
 
+// Permission, with the Android channel created FIRST.
+//
+// THE ORDER IS THE FIX (2026-09-12). On Android 13 and later the system prompt
+// "will not appear until at least one notification channel is created" (Expo 57
+// docs). This used to ask first and create the channel afterwards, so on any
+// recent phone the prompt never showed, permission came back not granted, and
+// registration returned null without a word. That is the third independent
+// reason push never worked, and the one that would have survived the other two
+// being fixed.
+//
+// `mayPrompt: false` checks without asking. That is how the launch-time restore
+// honours a yes already given without ever becoming a nag.
+async function ensurePermission(
+  Notifications: NotificationsModule,
+  mayPrompt: boolean
+): Promise<boolean> {
+  await ensureAndroidChannel();
+  const existing = await Notifications.getPermissionsAsync();
+  if (existing.granted) return true;
+  if (!mayPrompt || !existing.canAskAgain) return false;
+  return (await Notifications.requestPermissionsAsync()).granted;
+}
+
 // Registers this device for server-initiated delivery (the roundups). Returns
 // null when permission is refused or when running somewhere without push, and
 // never throws - a failure here must never break the log that triggered it.
-export async function registerPushToken(userId: string): Promise<string | null> {
+export async function registerPushToken(
+  userId: string,
+  { mayPrompt = true }: { mayPrompt?: boolean } = {}
+): Promise<string | null> {
   try {
     const Notifications = await loadNotifications();
     if (!Notifications) return null;
-    const existing = await Notifications.getPermissionsAsync();
-    let granted = existing.granted;
-    if (!granted && existing.canAskAgain) {
-      granted = (await Notifications.requestPermissionsAsync()).granted;
-    }
-    if (!granted) return null;
-
-    await ensureAndroidChannel();
+    if (!(await ensurePermission(Notifications, mayPrompt))) return null;
 
     // THE projectId IS REQUIRED, and omitting it is why this never worked.
     //
@@ -182,5 +203,44 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
     }
   } catch (err) {
     console.log('reminder scheduling failed (non-fatal):', err instanceof Error ? err.message : err);
+  }
+}
+
+// Brings THIS DEVICE back in line with a reminder choice already made.
+//
+// WHY IT EXISTS (2026-09-12). The offer card asks once, ever, and it was the only
+// thing that registered a token or scheduled a reminder. So a yes given on a build
+// where push was broken was recorded, never asked again, and never acted on again.
+// And because reminders are scheduled locally, uninstalling the old package on
+// 2026-09-10 wiped them. Ruth had said yes to 2pm and 8pm and received nothing
+// after that. reminder-offer.tsx promised "a later build honours it without
+// re-asking"; nothing did. This is what does.
+//
+// Runs once per launch for a signed-in person whose stored choice is enabled.
+// It never shows the offer again and never overrides a no.
+//
+// THE OS PERMISSION PROMPT IS ALLOWED ONCE PER INSTALL, and only here. A reinstall
+// on Android loses notification permission, so honouring the yes means asking the
+// OS once (agreed with Ruth, 2026-09-12). If they refuse, that is the answer for
+// this install and launch never asks again. Granting it later in system settings
+// is still picked up on the next launch, because the check without prompting
+// runs every time.
+const PROMPTED_KEY = 'selodia.reminders.permission-prompted';
+
+export async function restoreReminders(userId: string): Promise<void> {
+  try {
+    const settings = await loadReminderSettings();
+    if (!settings?.enabled) return;
+    const Notifications = await loadNotifications();
+    if (!Notifications) return;
+
+    const prompted = (await AsyncStorage.getItem(PROMPTED_KEY)) !== null;
+    if (!prompted) await AsyncStorage.setItem(PROMPTED_KEY, new Date().toISOString());
+    if (!(await ensurePermission(Notifications, !prompted))) return;
+
+    await registerPushToken(userId, { mayPrompt: false });
+    await applyReminderSchedule(settings.times);
+  } catch (err) {
+    console.log('reminder restore failed (non-fatal):', err instanceof Error ? err.message : err);
   }
 }
