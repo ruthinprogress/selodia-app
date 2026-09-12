@@ -107,13 +107,13 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | # | Step | Owner | Status |
 |---|---|---|---|
 | 1 | Play Console account as Selodía Ltd, $25 | Ruth | Not started |
-| 2 | D-U-N-S number — **look it up before applying**, D&B may already have issued one | Ruth | Not started |
+| 2 | D-U-N-S number — **look it up before applying**, D&B may already have issued one | Ruth | Requested 10 Sept. Up to 30 days; the confirmation goes to hello@selodia.app |
 | 3 | Google verification | Ruth | Blocked on 1–2 |
 | 4 | App content declarations | Ruth, from §2 | Drafted |
 | 5 | Store listing copy | Ruth approves §3 | Drafted |
 | 6 | Icon, feature graphic, screenshots | Ruth | Not started |
 | 7 | AAB from the `production` profile, upload to internal testing | Claude | Waiting on 1–6 |
 | 8 | Add testers by email | Ruth | — |
-| 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Not started |
-| 10 | Regenerate FCM push credentials for `app.selodia` | Claude | **Untested since the rename** |
+| 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Config done 10 Sept (`app.config.js`, 5ca248c). **No dev-variant build has run yet**, so its FCM credentials entry cannot exist yet either |
+| 10 | Set up FCM push credentials for `app.selodia` | Ruth in the consoles, Claude the repo | Firebase project `selodia-app`, `google-services.json` and the EAS key all done 10 Sept. **Push is still unproven:** preview build `d6267bbb` is the only build that carries the config, and it has not been installed. (The old wording, "regenerate", was wrong: there were never any credentials to regenerate.) |
 | 11 | Promote to production | Ruth | A separate, deliberate decision |
