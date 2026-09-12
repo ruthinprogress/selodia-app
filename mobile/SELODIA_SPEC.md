@@ -962,7 +962,7 @@ Do not build or extend any Almanac feature until the Movement and Me briefs are 
 
 The weekly roundup (currently unbuilt despite being marked as built in the spec) feeds into Insights as a Roundup-tagged entry. It also generates the living portrait layer at the top of Insights. Do not build the roundup until the Insights brief has been reviewed and confirmed.
 
-*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is CONFIRMED too, and for Me it supersedes this note's line that the user writes and edits the document: the AI drafts from conversation and she confirms (Ruth, 2026-09-12). Whether the same holds for Movement is for its brief. The Movement brief is not yet written, so under this note's own rule nothing in the Almanac is built or extended yet.*
+*Ruth's text, verbatim. The Insights brief it calls "above" is the next section of this document. Status on 2026-09-12: the Insights brief is reviewed and CONFIRMED (Ruth's answers follow its review). The Me brief is CONFIRMED too, and for Me it supersedes this note's line that the user writes and edits the document: the AI drafts from conversation and she confirms (Ruth, 2026-09-12). Whether the same holds for Movement is for its brief. The Movement brief is written and under review (after the Me answers below). With all three briefs written, building can begin once Movement is confirmed.*
 
 ## ALMANAC — INSIGHTS TAB (design brief, 2026-09-12)
 
@@ -1225,6 +1225,166 @@ Together they form the user's complete self-knowledge base: what she's noticed o
 4. **Nutrition shows the targets the app already holds**, not a copy. One source of truth, no drift.
 5. **No ticks. Status in words only:** Taking, Ordered, Dietary source, As needed, Paused. *The brief's sixth status, Active, is not in this list. It is the natural status for commitments such as a weekly call, where "Taking" makes no sense, so it is kept pending Ruth's confirmation rather than dropped.*
 6. **Exact values are quoted, never interpreted.** Her own words can appear on a card. The app never says "that's high" or "that's concerning". It records; it does not evaluate.
+
+## ALMANAC — MOVEMENT TAB (design brief, 2026-09-12)
+
+*Design brief for Code. Part of the Almanac redesign. Ruth's text, verbatim.*
+
+### Purpose
+
+Movement is the user's stable training reference. Not a tracker, not a log of what was done. A north star — this is what feeling good in my body looks like. She returns to it when life has pulled her off course and she needs to remember her baseline. The witness principle applies: nothing is marked missed, no streaks, no completion rates.
+
+### Screen structure
+
+Three sections, scrollable:
+
+1. My Week — the baseline
+2. My Plans — saved workouts by goal
+3. My Rules — clinical constraints
+
+### Section 1: My Week
+
+A visual representation of the user's healthy movement baseline. Not a schedule to execute, not a checklist. A picture of what her week looks like when she's taking care of herself.
+
+Two slot types:
+
+- **Class** — named, fixed or flexible day/time, fixed content. User shows up, the plan is the class. Examples: ballet, rocket yoga.
+- **Session** — named by purpose (strength, mobility, cardio), filled by a plan from My Plans when the time comes.
+
+Fixed classes are pre-populated in the week view. Flexible classes have a day/time that varies — user places them week to week.
+
+The week view is glanceable. Beautiful. Not a grid of boxes to tick. Designed to make the user feel oriented, not managed.
+
+**How My Week is set up:**
+
+Through Chat. "I do ballet on Tuesdays at 6pm, it's fixed." "I try to do a strength session twice a week but the days vary." Selodía builds the week view from the conversation. User confirms.
+
+My Week can be updated through Chat as the user's routine evolves.
+
+### Section 2: My Plans
+
+A saved library of workouts, organised by goal.
+
+**Goals:**
+
+- User-defined, not fixed taxonomy
+- Goals come and go as focus shifts
+- No preset list is offered — the user states a goal in free text
+
+**Creating a plan:**
+
+Goal-first, through Chat. The flow:
+
+1. User states a goal in free text ("I want to work toward a pull-up" / "I want to get my splits")
+2. Selodía gives an intelligent brief first — best approach, realistic frequency, what to expect, honest pushback if the user's assumptions need adjusting. Example: "For splits, short daily sessions of 10–15 minutes are more effective than one longer weekly session. Want me to build you a daily routine?"
+3. User confirms or adjusts
+4. Selodía generates the plan, tailored to the user's constraints from My Rules (automatically applied — user does not need to re-explain)
+5. Selodía offers to save: "Want me to save this as Splits — daily 10 min under your Movement plans?" User says yes. Done. No typing required.
+
+**Navigating plans:**
+
+- Goals listed on screen
+- Tap a goal → saved workouts under it
+- Tap a workout → execution view with progressive weight tracking (already built in Selodía — carry forward as-is)
+
+**Existing plans:**
+
+The user's two existing workout plans and routine, created in Chat, are moved into My Plans as editable documents. Do not start clean.
+
+**Updating plans:**
+
+Plans include progressive weight tracking (already built). Plans can be updated through Chat — "add a Romanian deadlift progression to my strength plan." Selodía updates and confirms.
+
+### Section 3: My Rules
+
+The user's permanent clinical constraints. Plain language. No medical jargon.
+
+**Purpose:**
+
+- Personal reference — what she should and shouldn't do
+- Shareable with a new PT, physio, or clinician without explanation. Hand the phone over, they read it, they understand.
+
+**Structure:**
+
+Two lists, plain and scannable:
+
+- **Never** — movements and loads that are contraindicated (e.g. heavy deadlifts, loaded squats, hip flexor dominant work, heavy Valsalva/bearing down)
+- **Always** — standing priorities every session (e.g. glute max and hamstring focus, upper body, low pelvic load, PMO rehab movements)
+
+Plus a brief context note at the top — diagnosis in plain English, who advised this, when.
+
+**How Rules are populated:**
+
+Via uploaded clinical documents — GP letters, physio discharge notes, consultant reports. User uploads a PDF, AI extracts the relevant constraints in plain language, user confirms or adjusts. No medical jargon retained unless the user wants it.
+
+New letters can be uploaded at any time as the situation evolves. Old rules persist unless the user removes them. History of uploaded letters kept — useful if a new clinician asks what a previous consultant advised.
+
+Handwritten letters: not supported for now. NHS letters are typed. Edge case deferred.
+
+**Export:**
+
+One-tap export from My Rules — clean, plain language summary suitable to share directly with a clinician. No app chrome, no data outside the rules section.
+
+### What Movement is not
+
+- Not a tracker. Sessions are not marked done or missed.
+- Not a log. What was actually done lives in Insights (training history), not here.
+- Not prescriptive. My Week is a baseline, not a programme to execute perfectly.
+- Not static. Goals change, plans evolve, rules update as clinical picture changes.
+
+### Relationship to other features
+
+- My Rules inform every workout plan the AI generates — constraints are applied automatically, user never re-explains
+- My Plans execution view feeds training history into Insights
+- My Week is aspirational context for the weekly roundup — "this is what she's aiming for" informs how the AI interprets what actually happened
+
+## MOVEMENT BRIEF — REVIEW FROM CODE (2026-09-12)
+
+*Written by Claude Code, not part of Ruth's brief. Same purpose as the Insights and Me reviews: what was checked against the real app, and what needs Ruth's decision before the brief is confirmed.*
+
+*Ruth's personal HTML reference ("Ruth's Plan") arrived as nine screenshots on 2026-09-12. It is to be used for information architecture and layout logic only, never for colours, typography or visual treatment, which follow the Selodía brand. It holds her own clinical and supplement details, so it is recorded here as structure only: none of its content is copied into this document. What it shows is summarised at the end of this review.*
+
+**Checked against what exists today.**
+
+- **It follows Me's rule.** My Week, plans and updates are all set up through chat: the AI drafts and she confirms. So for Movement too, the structural note's "the user writes and edits" is superseded by the brief.
+- **The execution view is built, with progressive weight tracking** (`workout-plan-view.tsx`, `workout_weight_log`). It also has a checkbox per exercise that writes an append-only completion row through `/api/log-workout-completion`. That is how "what was actually done" is recorded today, and it is what "My Plans execution view feeds training history into Insights" relies on.
+- **Two of the three existing plans are test data.** "[seeded test] Posterior-chain plan" and "[seeded test] Evening wind-down" were seeded on 24 August to exercise the screens. Only "Inner Thigh Toning Routine" (10 September) was built in chat. The posterior-chain plan also carries a standing correction from 19 August: posterior-chain work was never a product requirement. And Evening wind-down is a wind-down routine, which reads as Me (Wellbeing) rather than Movement.
+- **The app cannot pick a document.** Only `expo-image-picker` is installed. Uploading a PDF needs `expo-document-picker`, a native module, so a new build.
+- **Uploaded clinical letters are a new category of data, and two documents currently say otherwise.** The Data Safety draft lists "files and docs" as not collected, and the privacy policy names messages and food photographs as what Anthropic processes. Both must change before My Rules ships. Letters also carry far more than the constraints: NHS numbers, addresses, clinicians' names.
+- **Enforcing constraints has a pattern already.** The allergy gate (`app/lib/allergy-gate.ts`, 9 September) checks what the model proposes against the person's allergies in code rather than trusting the prompt. Applying My Rules to generated plans is the same problem with a higher stake: a contraindicated movement is an injury risk.
+- **There are no movement analytics in this brief**, although the Insights answers route movement analytics to the Movement tab.
+
+**Decisions needed before confirmation.**
+
+1. **Which plans move?** Recommended: only Inner Thigh Toning Routine moves into My Plans, and the two seeded test entries are removed. If Ruth wants Evening wind-down kept, it belongs in Me, under Wellbeing. And which goal does Inner Thigh Toning sit under? Goals are hers, in her own words.
+2. **The execution ticks.** "Sessions are not marked done or missed", but the execution view ticks exercises as she does them, and that is how training history reaches Insights. Recommended: keep the ticks as recording what was done inside a session, and never show done or missed anywhere else, above all not in My Week.
+3. **My Rules enforced in code, not only in the prompt.** Recommended: every generated or updated plan is checked against the Never list before it is shown, the way the allergy gate works, with the prompt rule as the first layer rather than the only one.
+4. **Keeping the letters.** The brief keeps a history of uploaded letters. Recommended: hold them in private storage (the pattern already used for photos), deletable on request and wiped with the account, and extract only the constraints into My Rules. Confirm that keeping the full letters is wanted, given everything else they contain.
+5. **Photos of letters.** The brief supports typed PDFs and defers handwriting. Many typed NHS letters exist only on paper, and a photo of a typed letter reads as well as a PDF; photo picking already exists. Recommended: accept a PDF or a photo.
+6. **Where do movement analytics live?** The Insights answers send them to the Movement tab, and this brief has no place for them.
+7. **"Flexible classes: user places them week to week."** Through chat, like everything else, or directly on the week view? Directly would make it the first thing in the Almanac edited by hand.
+8. **My Week and the roundup.** Recommended as a hard rule: the roundup can describe what happened alongside the baseline, but never as missed, behind or short of it. That is the Witness Principle, applied to the one place a baseline invites a score.
+
+**From Ruth's reference document: information architecture only.**
+
+*Her reference has seven sections: Week, Gym, Park, Skills, Rules, After and Plan. Mapped onto the redesign:*
+
+- **Week** maps to My Week, and its shape is worth keeping: a list, not a calendar. Each row is an activity, a one-line purpose and a cadence on the right ("1×/week, 1.5 hrs"; "daily, ~8k avg"; "when possible"). The purpose line ties each movement to why it matters, which is the orientation the brief asks for.
+- **Gym and Park** map to My Plans: sessions done exercise by exercise, each with sets and reps, a short cue and a tick.
+- **Skills** ("the joy track") is a progression ladder in three tiers, Now, Next and Goal, each skill with a target and what it needs first. The structural note lists skills goals for Movement; the brief has no place for a progression.
+- **Rules** matches My Rules closely: a plain-language context box naming the condition and who advised, then Never and Always lists.
+- **After** holds a standing post-session routine and a set of daily movement goals. Neither has a home in the brief.
+- **Plan** maps onto Me, not Movement: nutrition targets, supplements, and AM and PM skincare. It confirms the Me status vocabulary: Taking, Ordered, a dietary source, and "have it, if needed" for As needed.
+
+*Layout logic to carry: each section opens with a small label, a title and a one-line subtitle; rows put the name on the left and the value on the right, with light dividers; cards carry a small status badge; later tiers of a progression are dimmed rather than hidden; a context callout sits above the lists it explains. Not carried: the dark ground and green accent, because the brand is light, and the red cross and green tick on Never and Always, which read as verdicts.*
+
+**Further decisions it raises.**
+
+9. **My Week: a cadence list or a calendar?** Her own reference is a cadence list. The brief describes slots with days and times, and classes placed week to week. Recommended: her shape, a cadence list with a purpose line, with a day and time shown only where a class really is fixed. That also answers decision 7, since nothing would need placing by hand.
+10. **Plans by goal, or also by place?** Her reference groups sessions by where they happen (gym, park). The brief groups plans by goal only. Both, or goal only?
+11. **Where does the joy track live?** Recommended: a goal in My Plans can carry a ladder like hers, with Now, Next and Goal tiers and what each step needs first, so the progression sits with the plans that build it.
+12. **Where do the after-session routine and the daily movement goals go?** Recommended: daily cadences join My Week, where her own reference already lists walking and running; the after-session routine becomes an Always rule attached to the sessions it follows. One caution: a walking baseline measured in steps is one the app cannot currently see, because step tracking has never read a step (Part Four).
+13. **In-session counters.** Her Gym and Park pages show "1 of 8 done" with a progress bar. The brief and the Witness Principle both rule out completion rates. Recommended: the per-exercise tick stays, because it records what was done, and the counter and progress bar do not come across.
 
 ## PREVIOUS ALMANAC DESIGN (superseded 2026-09-12, kept as history)
 
