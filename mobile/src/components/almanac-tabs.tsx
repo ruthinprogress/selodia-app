@@ -46,8 +46,14 @@ export function AlmanacTabs({
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
           >
             <View style={[styles.segment, selected && { backgroundColor: theme.background }]}>
+              {/* ONE TYPE FOR BOTH STATES, only the colour changes. Found on
+                  device 2026-09-12: switching the chosen label from the system
+                  face to Comfortaa made Android keep the narrower measurement,
+                  so "Insights" drew as "Insigh". Selection is shown by the
+                  cream segment and the darker text, never by a font change. */}
               <ThemedText
-                type={selected ? 'smallBold' : 'small'}
+                type="smallBold"
+                numberOfLines={1}
                 style={{ color: selected ? theme.text : theme.textSecondary }}
               >
                 {t.label}
@@ -60,17 +66,22 @@ export function AlmanacTabs({
   );
 }
 
+// EXACT RADII, half of each height, rather than 999. Found on device 2026-09-12:
+// the chosen segment drew with square corners that poked outside the rounded
+// track. A segment is 36 tall (8 + 20 + 8), so 18; the track adds 3 each side, so
+// 21. And the track clips, so nothing inside it can ever show past its edge.
 const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
-    borderRadius: 999,
+    borderRadius: 21,
     padding: 3,
     gap: 2,
+    overflow: 'hidden',
   },
   tab: { flex: 1 },
   segment: {
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 18,
     alignItems: 'center',
   },
   pressed: { opacity: 0.7 },

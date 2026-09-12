@@ -59,9 +59,17 @@ export function InsightsPortrait() {
           <HealthFlower coverage={flower.coverage} size={PORTRAIT_FLOWER_SIZE} />
         )}
       </View>
-      <ThemedText themeColor="textSecondary" style={styles.statement}>
-        {PORTRAIT_EMPTY}
-      </ThemedText>
+      {/* THE WIDTH LIMIT SITS ON A WRAPPER, NOT ON THE TEXT. Found on device
+          2026-09-12: with maxWidth and centring on the Text itself, Android
+          measured Comfortaa short by a line and dropped "picture emerge." off
+          the end of Ruth's sentence. The wrapper holds the width, the text
+          fills it, and the line height has a little room for Comfortaa's tall
+          letters. */}
+      <View style={styles.statementWrap}>
+        <ThemedText themeColor="textSecondary" style={styles.statement}>
+          {PORTRAIT_EMPTY}
+        </ThemedText>
+      </View>
     </View>
   );
 }
@@ -77,9 +85,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statement: {
-    textAlign: 'center',
-    lineHeight: 24,
+  statementWrap: {
+    width: '100%',
     maxWidth: 320,
+  },
+  statement: {
+    width: '100%',
+    textAlign: 'center',
+    lineHeight: 26,
   },
 });

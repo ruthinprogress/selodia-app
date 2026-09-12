@@ -157,7 +157,7 @@ export function WorkingWeightControl({
         onResponderGrant={(e) => onTouch(e.nativeEvent.locationX)}
         onResponderMove={(e) => onTouch(e.nativeEvent.locationX)}
       >
-        <View style={[styles.fill, { width: `${fraction * 100}%`, backgroundColor: theme.textSecondary }]} />
+        <View style={[styles.fill, { width: `${fraction * 100}%`, backgroundColor: theme.accent }]} />
       </View>
 
       {error && (
