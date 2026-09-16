@@ -21,12 +21,22 @@ import { supabase } from '@/lib/supabase';
 // next time the app opens. The alternative - an error on launch about a weekly
 // reflection - would be worse than the missing reflection.
 
+// ONE ASK AT A TIME, AND ONE PER WEEK PER LAUNCH.
+//
+// FOUND ON DEVICE 2026-09-16: six roundups for the same week, and six copies in
+// her chat, inside eight seconds. This hook fires from two places (the session
+// read and the auth listener) and the root layout mounted more than once, so
+// several asks ran at once - and each one checked "does this week have a
+// roundup?" and got "no" before any of the others had written one.
+//
+// The marker is now set BEFORE the check rather than after it, and the run
+// itself is single-flight: a second caller awaits the first rather than racing
+// it. The database holds the real guarantee (one roundup per week per person);
+// this just stops the app asking six times to find that out.
 let askedFor: string | null = null;
+let inFlight: Promise<void> | null = null;
 
-async function runWeeklyRoundup(): Promise<void> {
-  const weekEnding = weekEndingFor();
-  if (askedFor === weekEnding) return;
-
+async function askForRoundup(weekEnding: string): Promise<void> {
   const { data, error } = await supabase
     .from('almanac_entries')
     .select('kind, content')
@@ -35,11 +45,20 @@ async function runWeeklyRoundup(): Promise<void> {
   // On a read failure, do nothing: asking the server to write a roundup because
   // we could not check for one is how a week gets two.
   if (error) return;
-  askedFor = weekEnding;
   if (hasRoundupFor((data ?? []) as { kind: string; content: unknown }[], weekEnding)) return;
 
   const { authedPost } = await import('@/lib/api');
   await authedPost('/api/weekly-roundup', { weekEnding });
+}
+
+async function runWeeklyRoundup(): Promise<void> {
+  const weekEnding = weekEndingFor();
+  if (askedFor === weekEnding) return inFlight ?? undefined;
+  askedFor = weekEnding;
+  inFlight = askForRoundup(weekEnding).finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
 }
 
 export function useWeeklyRoundup() {

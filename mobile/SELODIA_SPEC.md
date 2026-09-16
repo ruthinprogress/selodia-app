@@ -913,6 +913,20 @@ One design gap, two symptoms: the food parse contract had no way to say which da
 
 **The first fix was not enough, and the second attempt is what found why.** Ruth retyped the same seven days and got nothing again, this time reported honestly ("that didn't save for some reason") rather than claimed. `scripts/repro-food-parse.mjs` runs the exact parse on the exact message: it stopped at **max_tokens, exactly 2000 output tokens, mid-JSON**, so `JSON.parse` threw. The model had understood every day down to Sunday's "Teabags and potatoes"; it could not close the brackets. Two changes: a multi-entry parse now leaves `items` empty and sets `breakdown_type` "simple" (a catch-up never shows an itemised table, so the breakdown was paid for and never seen, and it is the bulk of the tokens), and the ceiling for the entries path is 8000. Re-run at that ceiling, the same message returns all seven days on the right dates, 2307 output tokens with items included. **Still unverified on a device:** the whole path end to end, from her phone.
 
+### EVERY LOG IS NAVIGABLE (Ruth, 2026-09-16)
+
+Said while looking for the seven days she had just caught up, and finding nothing: the food view shows the CURRENT week, her entries were on 7 to 13 September, and there was no way to go and look. Her words: *"all logs should be navigable"*, and *"i should be able to look back at previous weeks and even see entries in more details and select them to discuss further in chat"*.
+
+Three requirements, and they apply to every log, not only food:
+
+1. **Step back through past weeks.** Not just this week, and not only by asking in chat.
+2. **Open an entry in detail.** What was in it, not just its headline number.
+3. **Select an entry and carry on about it in chat**, which is the discuss-card path (build item 30) reached from the log rather than only from the moment of logging.
+
+**What already exists, so this is smaller than it sounds.** `food-week-view.tsx` is addressed entirely by `weekStart` and never reads "today" itself - it was built to be stepped, and nothing steps it. `food-breakdown-card.tsx` is the read-only detail card, host-agnostic, taking a `food_logs.id` and nothing else, and `week.ts` already computes the week windows and labels. **What is missing:** the stepping control, an entry-level entry point from a log row, and the hand-off into chat from there.
+
+**Not yet scheduled.** Recorded here at the moment it was asked for, rather than folded into the Insights slice that was in flight.
+
 **Order:** a brief warm opening, grounding data (weekly totals, this week's delta), interpretation woven in (personal context from the week's stored daily summaries, plus any relevant physiological context), a thematic/narrative observation, a trajectory/ETA estimate if the data genuinely supports one, then a closing checkpoint using genuinely open phrasing.
 
 **Confidence placement:** attached locally to the specific number it affects (e.g. next to a TDEE estimate: "based on 5 of 7 days logged, so take this as indicative"), never a blanket disclaimer at the top. This is also how missing days are handled in any weekly calculation — excluded from the number, not estimated as zero, with the confidence note stating honestly how many of the 7 days the calculation actually rests on.

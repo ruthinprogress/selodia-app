@@ -328,9 +328,12 @@ export async function POST(req: NextRequest) {
     'GROUNDING DATA. Each figure already carries its own confidence note where one applies. Use those notes next to the number they belong to, never as a disclaimer at the top.',
     fig('Average daily calories across logged days', avgKcal, ' kcal'),
     fig('Average daily protein across logged days', avgProtein, 'g'),
+    // THE COUNT, STATED. "Fewer than two readings" was read by the model as "one
+    // reading" in two of six roundups on 2026-09-16, when there were none at
+    // all. A number cannot be rounded into a claim about her week.
     delta
       ? `Weight: ${delta.first.value}kg on ${delta.first.date} to ${delta.last.value}kg on ${delta.last.date} (${delta.change >= 0 ? '+' : ''}${delta.change}kg across ${delta.readingCount} readings)`
-      : 'Weight: fewer than two readings this week, so there is no movement to describe',
+      : `Weight: ${readings.length === 0 ? 'NO readings were logged at all this week' : 'exactly ONE reading was logged this week, which is a position rather than a change'}. Say that plainly if you mention it, and never state or imply a different number.`,
     '',
     mayStateTrajectory
       ? 'TRAJECTORY: you may describe a direction this week. Stay tentative - it is one week.'
@@ -429,7 +432,32 @@ Do not invent numbers. If a figure above says there is not enough logged to say,
       statements,
     }),
   });
-  if (!entry) console.log('WEEKLY ROUNDUP: the Almanac entry did not save for week', weekEnding);
+
+  // LOST THE RACE, AND THAT IS FINE. The check at the top of this route cannot
+  // be atomic, and on 2026-09-16 six simultaneous asks all passed it and wrote
+  // six roundups. A unique index now refuses the second write, so a failed save
+  // here might mean the week already has its roundup - in which case this turn
+  // says nothing and posts nothing, rather than putting a second copy of the
+  // week into her chat.
+  if (!entry) {
+    const { data: raced } = await supabase
+      .from('almanac_entries')
+      .select('id, content, created_at')
+      .eq('kind', 'roundup')
+      .eq('content->>__weekEnding', weekEnding)
+      .limit(1);
+    if (raced && raced.length > 0) {
+      const row = raced[0] as RoundupRow;
+      console.log('WEEKLY ROUNDUP: another request wrote this week first', weekEnding);
+      return NextResponse.json({
+        action: 'already_done',
+        weekEnding,
+        entryId: row.id,
+        statements: statementsOf(row),
+      });
+    }
+    console.log('WEEKLY ROUNDUP: the Almanac entry did not save for week', weekEnding);
+  }
 
   // Persisted into the thread like any other turn, so it is there next week and
   // the model can see what it already said (Ruth, 2026-09-16: Almanac and chat).
