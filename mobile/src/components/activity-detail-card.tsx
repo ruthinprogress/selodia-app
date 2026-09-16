@@ -99,6 +99,8 @@ export function ActivityDetailCard({
                     prefill: `About my "${title}" session: `,
                     discussId: activity.id,
                     discussType: 'activity',
+                    // Sends, rather than filling the box - see food-breakdown-card.
+                    askNow: '1',
                   },
                 });
               }}

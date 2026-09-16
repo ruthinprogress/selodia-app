@@ -107,7 +107,14 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     padding: 3,
     gap: 2,
-    overflow: 'hidden',
+    // NO CLIP (2026-09-16, fourth attempt - "on the M shows"). Padding and
+    // flexShrink were not enough because this line is the thing doing the
+    // cutting: Android measures the label in the system face and draws it in
+    // Comfortaa, so the drawn word is wider than the box it was given, and
+    // overflow:'hidden' turned that overhang into a chopped word. It was
+    // belt-and-braces to begin with - the exact radii above are what stopped the
+    // chosen segment poking out, and they still do. A word that overhangs its
+    // segment by a pixel is invisible; a word cut to "M" is not.
   },
   tab: { flex: 1 },
   label: {

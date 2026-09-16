@@ -127,6 +127,8 @@ export function ReadingCard({ reading, dateLabel, onClose }: Props) {
                       prefill: `About my reading from ${dateLabel}: `,
                       discussId: reading.id,
                       discussType: 'measurement',
+                      // Sends, rather than filling the box - see food-breakdown-card.
+                      askNow: '1',
                     },
                   });
                 }}

@@ -198,6 +198,13 @@ export function FoodBreakdownCard({
                         prefill: `About my "${label}" log: `,
                         discussId: foodLogId ?? '',
                         discussType: 'food',
+                        // WITHOUT THIS THE BUTTON ONLY FILLS THE BOX (2026-09-16).
+                        // Chat auto-sends only on askNow === '1', and not one of
+                        // the three cards was sending it - so "Ask about this"
+                        // opened Chat, dropped a half-sentence into the composer
+                        // and stopped. Ruth, three times: "nothing happens at
+                        // all". The flag is what makes the name true.
+                        askNow: '1',
                       },
                     });
                   }}
