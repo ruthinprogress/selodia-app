@@ -107,6 +107,24 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     padding: 3,
     gap: 2,
+    // SIZED BY ITS CONTENT, AND CENTRED (fifth attempt, 2026-09-16).
+    //
+    // The four before this all treated the cut-off words as a text problem -
+    // drop numberOfLines, restore the type, add padding, remove the clip - and
+    // all four failed, because the row was never the right width to begin with.
+    // Her fifth screenshot shows it plainly: the chosen segment hangs off the
+    // right-hand end of the track. Three tabs at flex:1 were being asked to
+    // divide a fixed width into thirds, and Yoga will not shrink a text node
+    // below its own min-content, so the thirds overflowed and the overhang got
+    // cut wherever a rounded background ended.
+    //
+    // So the direction of the constraint is reversed. The labels decide how wide
+    // their segments are, the segments decide how wide the track is, and the
+    // track centres itself in whatever room the screen has. A label cannot be
+    // wider than a segment that is defined as "this label plus its padding" -
+    // not because the measurement is right, but because no measurement can make
+    // it wrong.
+    alignSelf: 'center',
     // NO CLIP (2026-09-16, fourth attempt - "on the M shows"). Padding and
     // flexShrink were not enough because this line is the thing doing the
     // cutting: Android measures the label in the system face and draws it in
@@ -116,16 +134,18 @@ const styles = StyleSheet.create({
     // chosen segment poking out, and they still do. A word that overhangs its
     // segment by a pixel is invisible; a word cut to "M" is not.
   },
-  tab: { flex: 1 },
+  // NO flex: 1. That was the whole fault - see the track above.
+  tab: { flexShrink: 0 },
   label: {
     textAlign: 'center',
   },
   segment: {
     paddingVertical: 8,
-    // The room a mis-measured label needs. Without it the label starts at the
-    // segment's own edge, so being a few pixels wide than measured puts it
-    // straight into the track's clip.
-    paddingHorizontal: 6,
+    // Generous now that padding is what sets the segment's width rather than
+    // what is left over inside a third of the screen. Three labels at this
+    // padding come to well under the width of a phone, so the track still reads
+    // as one pill rather than a strip that fills the screen edge to edge.
+    paddingHorizontal: 18,
     borderRadius: 18,
     alignItems: 'center',
   },

@@ -70,6 +70,11 @@ function sameThread(a: Message[], b: Message[]): boolean {
     if (a[i].content !== b[i].content) return false;
     if ((a[i].imagePath ?? null) !== (b[i].imagePath ?? null)) return false;
     if ((a[i].foodLogId ?? null) !== (b[i].foodLogId ?? null)) return false;
+    // The entry card counts as rendered content too (2026-09-16). Without this
+    // line a reload that changes only a session or reading card is judged "no
+    // change", React bails out, and the card never appears - the same class of
+    // bug as the one below it, which this comparison already guards against.
+    if ((a[i].entry?.id ?? null) !== (b[i].entry?.id ?? null)) return false;
   }
   return true;
 }
@@ -190,17 +195,46 @@ export default function ChatScreen() {
   const loadThread = useCallback(async () => {
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('role, content, image_path, food_log_id')
+      .select('role, content, image_path, food_log_id, discuss_entry_id, discuss_entry_type')
       .eq('source', 'chat')
       .order('created_at', { ascending: true });
     if (error || !data) return;
 
-    const rows: Message[] = data.map((m) => ({
-      role: m.role,
-      content: m.content,
-      imagePath: m.image_path ?? null,
-      foodLogId: m.food_log_id ?? null,
-    }));
+    // THE CARD HAS TO SURVIVE A RELOAD (Ruth, 2026-09-16: "Table didnt come up").
+    //
+    // It drew correctly on the turn that sent it and then vanished, and the
+    // reason is this function: the card lived only in the in-memory message, and
+    // this read - which runs every time Chat comes back into view, including on
+    // the way back from the Food log where "Ask about this" is tapped - replaced
+    // those messages with database rows that had no idea an entry was involved.
+    // food_log_id is null on an ask turn; the entry is recorded in
+    // discuss_entry_id, which this never asked for.
+    //
+    // ONLY THE TURN THAT OPENED THE DISCUSSION GETS THE CARD. The tag deliberately
+    // rides every message from the posting turn forward, so attaching a card
+    // wherever a tag appears would stack the same table under every reply in the
+    // conversation. The opening turn is the one where the tag first differs from
+    // the message before it, which is exactly the turn the live path draws it on.
+    let previousTag: string | null = null;
+    const rows: Message[] = data.map((m) => {
+      const tagId = (m.discuss_entry_id as string | null) ?? null;
+      const tagType = m.discuss_entry_type as string | null;
+      const opensDiscussion = m.role === 'user' && tagId !== null && tagId !== previousTag;
+      previousTag = tagId;
+      return {
+        role: m.role,
+        content: m.content,
+        imagePath: m.image_path ?? null,
+        // A food log's own table still wins: that is the turn that LOGGED it,
+        // and it is named whether or not anybody asked about it.
+        foodLogId:
+          m.food_log_id ?? (opensDiscussion && tagType === 'food' ? tagId : null),
+        entry:
+          opensDiscussion && (tagType === 'activity' || tagType === 'measurement')
+            ? { type: tagType, id: tagId }
+            : null,
+      };
+    });
     // One batched signing call for the whole thread rather than one per
     // message. A path that fails to sign just renders without its image, so a
     // broken object can never cost the person their history.
