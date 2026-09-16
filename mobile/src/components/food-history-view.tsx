@@ -18,6 +18,7 @@ import {
   toLocalDateKey,
   weekLabel,
   weekRange,
+  weekStartFor,
 } from '@/lib/week';
 
 // The food log, week by week (Ruth, 2026-09-16).
@@ -41,6 +42,36 @@ import {
 export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const theme = useTheme();
   const [weekStart, setWeekStart] = useState<Date>(() => initialWeekStart ?? currentWeekStart());
+
+  // IT OPENS ON THE LAST WEEK THAT HAS ANYTHING IN IT (2026-09-16, within an
+  // hour of shipping). Ruth opened this screen and reported "there is nothing at
+  // all in Food log" - correctly, because it opened on THIS week, and the seven
+  // days she had just caught up were in the week before. Seven rows of "Nothing
+  // logged" is indistinguishable from a screen that failed to load, and a
+  // history view that opens on an empty week asks the person to guess that the
+  // arrows are worth pressing.
+  //
+  // Only when no week was asked for: a link into a particular week is an
+  // instruction, and must not be overridden by where the data happens to be.
+  useEffect(() => {
+    if (initialWeekStart) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('food_logs')
+        .select('happened_at')
+        .order('happened_at', { ascending: false })
+        .limit(1);
+      const latest = data?.[0]?.happened_at;
+      if (cancelled || typeof latest !== 'string') return;
+      const week = weekStartFor(new Date(latest));
+      // Never forward: if the newest entry is in this week, this week is right.
+      if (toLocalDateKey(week) !== toLocalDateKey(currentWeekStart())) setWeekStart(week);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialWeekStart]);
   const [rows, setRows] = useState<FoodLogSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);

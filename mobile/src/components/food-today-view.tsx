@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { loadEntriesWithDiscussion } from '@/lib/discuss-state';
 import { entryLabel, sumDay, weeklyAverage, type FoodLogSummary } from '@/lib/food-today';
 import { supabase } from '@/lib/supabase';
-import { toLocalDateKey, weekRange } from '@/lib/week';
+import { currentWeekStart, toLocalDateKey, weekRange } from '@/lib/week';
 
 // The Food segment (SELODIA_SPEC.md, The Food Segment): a TODAY'S-LOG view, not
 // a browsable week. Today's entries as rows, today's total, and a single
@@ -56,7 +56,13 @@ export function FoodTodayView() {
       startOfDay.setHours(0, 0, 0, 0);
       // One read covers both: this week's rows give the average, and today's
       // subset gives the log. RLS scopes it to the signed-in user.
-      const { startISO, endISO } = weekRange(new Date());
+      //
+      // currentWeekStart(), NOT new Date() (fixed 2026-09-16). weekRange takes a
+      // week START and does not snap to one, so passing "now" asked for today
+      // plus the next six days - a window mostly in the future. The average
+      // underneath today's log has therefore been computed over the wrong seven
+      // days since it was built, and read as missing whenever today was empty.
+      const { startISO, endISO } = weekRange(currentWeekStart());
       const { data } = await supabase
         .from('food_logs')
         .select('id, happened_at, meal_label, raw_text, kcal, protein_g')
