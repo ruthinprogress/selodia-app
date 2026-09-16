@@ -108,7 +108,9 @@ export default function ChatScreen() {
   const [pendingTag, setPendingTag] = useState<{ entryId: string; entryType: string } | null>(null);
   // Set during render, acted on in an effect below: sending from the render body
   // would be a side effect in a render pass.
-  const [autoAsk, setAutoAsk] = useState<string | null>(null);
+  const [autoAsk, setAutoAsk] = useState<{ text: string; tag: { entryId: string; entryType: string } } | null>(
+    null
+  );
   if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
     setLastPrefill(prefill);
     const tag =
@@ -123,7 +125,7 @@ export default function ChatScreen() {
     // message went, there was nothing to show. A button named "Ask about this"
     // that silently waits for a second, undisclosed action is the fault -
     // opening a conversation is what it says it does.
-    if (askNow === '1' && tag) setAutoAsk(prefill);
+    if (askNow === '1' && tag) setAutoAsk({ text: prefill, tag });
     else if (input.length === 0) setInput(prefill);
   }
   const [sending, setSending] = useState(false);
@@ -157,9 +159,11 @@ export default function ChatScreen() {
   // same params does nothing.
   const sentAskRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoAsk || sentAskRef.current === autoAsk) return;
-    sentAskRef.current = autoAsk;
-    void handleSend(autoAsk);
+    if (!autoAsk || sentAskRef.current === autoAsk.text) return;
+    sentAskRef.current = autoAsk.text;
+    // The tag goes WITH the text. Reading it from state here is the race that
+    // left the entry card off her turn while the request carried the tag.
+    void handleSend(autoAsk.text, autoAsk.tag);
     // handleSend is redefined every render; depending on it would re-run this
     // on every keystroke. autoAsk is the trigger, and the ref is the guard.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,9 +403,17 @@ export default function ChatScreen() {
     void handleSend(text);
   }
 
-  async function handleSend(override?: string) {
+  async function handleSend(override?: string, tagOverride?: { entryId: string; entryType: string }) {
     const trimmed = (override ?? input).trim();
     if (!trimmed || sending) return;
+    // THE TAG IS PASSED, NOT READ BACK (2026-09-16). "Ask about this" sets the
+    // tag and the auto-send in one render pass, and the effect that sends fires
+    // before that state has committed - so the turn was built with a null tag
+    // while the REQUEST, assembled later in the same call, carried it. Ruth saw
+    // exactly that split: a correctly tagged message on the server, and no card
+    // above it in the thread. Handing the tag in removes the race rather than
+    // ordering around it.
+    const tag = tagOverride ?? pendingTag;
     // Only clear the field when the field is what was sent. A chip tap must not
     // wipe something half-typed - though in practice typing has already
     // dismissed the chips by then.
@@ -417,10 +429,10 @@ export default function ChatScreen() {
       {
         role: 'user',
         content: trimmed,
-        foodLogId: pendingTag?.entryType === 'food' ? pendingTag.entryId : null,
+        foodLogId: tag?.entryType === 'food' ? tag.entryId : null,
         entry:
-          pendingTag && (pendingTag.entryType === 'activity' || pendingTag.entryType === 'measurement')
-            ? { type: pendingTag.entryType, id: pendingTag.entryId }
+          tag && (tag.entryType === 'activity' || tag.entryType === 'measurement')
+            ? { type: tag.entryType, id: tag.entryId }
             : null,
       },
     ]);
@@ -439,7 +451,7 @@ export default function ChatScreen() {
           message: trimmed,
           // Present only on the turn that opens a discussion about an entry.
           // The server validates the type and ignores anything it does not know.
-          ...(pendingTag ? { entryId: pendingTag.entryId, entryType: pendingTag.entryType } : {}),
+          ...(tag ? { entryId: tag.entryId, entryType: tag.entryType } : {}),
         });
       // Cleared whatever the reply was: the question has been asked, and the
       // thread's own tag carries the conversation from here.

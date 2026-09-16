@@ -89,6 +89,13 @@ const SEED_DISC_R = 12;
 const SEED_DISC_OPACITY = 0.38;
 const SEED_MARK_R = 8;
 
+// THE TIP RING. The radius the petals grow to - 72 from the centre, the same
+// number TIP_Y is derived from, so the ring and the tips cannot drift apart.
+// Sage, which this palette holds as a line-and-fill colour and never as text,
+// and faint: it is the ground the flower sits on, not a mark on it.
+const TIP_RING_R = 72;
+const RING_OPACITY = 0.55;
+
 function petalFor(coverage: number): { rx: number; ry: number; cy: number } | null {
   if (!Number.isFinite(coverage) || coverage <= 0) return null;
   const pct = Math.min(100, coverage) / 100;
@@ -222,19 +229,42 @@ export function HealthFlower({
           );
         })}
 
+        {/* THE RING: where the petal tips will reach (Ruth, 2026-09-16).
+            One continuous hairline at the tip radius, with no segments, no
+            ticks and nothing per-dimension - so it cannot be read as six slots
+            waiting to be filled. That is the line between a horizon and a
+            scorecard, and it is the same line the no-outlines rule draws.
+            Behind everything, so a petal always covers it rather than sitting
+            in it. */}
+        <Circle
+          cx={CENTRE}
+          cy={CENTRE}
+          r={TIP_RING_R}
+          fill="none"
+          stroke={theme.sage}
+          strokeWidth={1}
+          opacity={RING_OPACITY}
+        />
+
         {/* The terracotta ground for the seed, drawn inside the SVG so it sits
-            above the petals and below the mark. Only when bloomed: an empty disc
-            on an unfinished week would be a hole where the seed is going to be,
-            which is a promise the flower does not make. */}
-        {bloomed && (
-          <Circle
-            cx={CENTRE}
-            cy={CENTRE}
-            r={SEED_DISC_R}
-            fill={theme.accent}
-            opacity={SEED_DISC_OPACITY}
-          />
-        )}
+            above the petals and below the mark.
+
+            FROM DAY ONE, not only at full bloom (Ruth, 2026-09-16: it "looks
+            like it's broken unless it got data to populate it"). At zero
+            coverage no petal renders, so the old rule left six labels around
+            empty space - a drawing with its subject missing, which is the first
+            thing a new user ever sees. The seed is the brand's own image for
+            "not yet", and it is what the Almanac's shoot illustration already
+            says. The earlier reasoning - that a disc on an unfinished week is "a
+            hole where the seed is going to be" - was written when the seed was
+            the reward for a full week; the reward is now the bloom around it. */}
+        <Circle
+          cx={CENTRE}
+          cy={CENTRE}
+          r={SEED_DISC_R}
+          fill={theme.accent}
+          opacity={SEED_DISC_OPACITY}
+        />
 
         {DIMENSIONS.map((d) => {
           const pos = LABEL_POS[d];
@@ -269,32 +299,41 @@ export function HealthFlower({
           ))}
       </Svg>
 
-      {/* The seed, and only when every dimension is genuinely full. Laid over
-          the SVG rather than inside it so the breathing can run on the native
-          driver, and because the mark is a brand asset that should not be
-          redrawn as SVG primitives here and left to drift from the real one. */}
-      {bloomed && (
-        <Animated.Image
+      {/* The seed mark, now drawn always. Laid over the SVG rather than inside
+          it so the breathing can run on the native driver, and because the mark
+          is a brand asset that should not be redrawn as SVG primitives here and
+          left to drift from the real one.
+
+          THE BREATHING STILL BELONGS TO THE BLOOM. `bloomed` gates the
+          animation, not the drawing: an empty flower shows a still seed, and
+          only a full week makes it breathe. A pulse at somebody who has logged
+          nothing would be the app asking for something, which is the opposite
+          of what this screen is for. */}
+      <Animated.Image
           /* eslint-disable-next-line @typescript-eslint/no-require-imports --
              an ES import of a .png has no type declaration here (expo-env.d.ts
              is generated and not ours to edit), so require is the form that
              actually resolves. Same call the splash and loading icons make. */
-          source={require('@/assets/images/mark.png')}
-          accessibilityLabel="All six dimensions covered this week"
-          style={[
-            styles.seed,
-            {
-              width: seedPx,
-              height: seedPx,
-              marginLeft: -seedPx / 2,
-              marginTop: -seedPx / 2,
-              opacity: reduceMotion ? 0.95 : seedOpacity,
-              transform: reduceMotion ? [] : [{ scale: seedScale }],
-            },
-          ]}
-          resizeMode="contain"
-        />
-      )}
+        source={require('@/assets/images/mark.png')}
+        // The label follows the drawing, not the asset: the seed means "all six
+        // covered" only when it is, and says nothing the rest of the time
+        // rather than announcing a week that has not happened.
+        accessibilityLabel={bloomed ? 'All six dimensions covered this week' : undefined}
+        accessibilityElementsHidden={!bloomed}
+        importantForAccessibility={bloomed ? 'yes' : 'no-hide-descendants'}
+        style={[
+          styles.seed,
+          {
+            width: seedPx,
+            height: seedPx,
+            marginLeft: -seedPx / 2,
+            marginTop: -seedPx / 2,
+            opacity: reduceMotion || !bloomed ? 0.95 : seedOpacity,
+            transform: reduceMotion || !bloomed ? [] : [{ scale: seedScale }],
+          },
+        ]}
+        resizeMode="contain"
+      />
     </View>
   );
 }

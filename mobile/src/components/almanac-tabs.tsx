@@ -66,8 +66,13 @@ export function AlmanacTabs({
                   text keep its own width and refuse to shrink means a wrong
                   measurement costs a few pixels of padding rather than the
                   word itself. */}
+              {/* AND THE TYPE STAYS (2026-09-16, second attempt). Dropping
+                  `type` in the fix above sent the label to the default style -
+                  Comfortaa regular at 16px rather than 14 - which is wider
+                  still, so "Me" then clipped to "M". The type is what keeps it
+                  at 14px, and the segment below now has room either side. */}
               <ThemedText
-                adjustsFontSizeToFit={false}
+                type="smallBold"
                 ellipsizeMode="clip"
                 style={[styles.label, { color: selected ? theme.text : theme.textSecondary }]}
               >

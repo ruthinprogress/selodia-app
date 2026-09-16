@@ -959,6 +959,26 @@ Three requirements, and they apply to every log, not only food:
 
 **BACK TO TODAY, on every page that can travel (Ruth, 2026-09-16).** *"The scroll back on food log has no way back to Today. It needs every page to have a 'back to today' button."* Added to the food log, the activity log and the Measurements week table. It matters most on Measurements, where the month picker can land you in March in one tap and stepping home from there is twenty presses. Shown only when away from the current week: on it, the control would do nothing, which principle 8 forbids.
 
+### THE FLOWER WITH NOTHING IN IT (Ruth, 2026-09-16)
+
+*"It looks like it's broken unless it got data to populate it. I love the design of it, so what can be done to resolve this without ruining the beautiful design."* At zero coverage every petal returned null and the seed only drew at full bloom, so a new user's first sight of the flower was **six labels around empty space**: a drawing with its subject missing. It was flagged twice before and neither of us pressed it until she met it herself.
+
+Three options were mocked at the shipped geometry - same viewBox, tip radius, label positions, palette, real mark - and sent to her as `scratchpad/flower-empty-state-options.html`, including a part-way week and a full bloom as controls, because the question was never whether the empty state improves but whether the fix quietly turns the flower into a gauge once real data arrives. **Ruth chose 1 and 2 together:** *"it's the best option for now. We can refine later if needed, but it resolves blank screen issue."*
+
+- **The seed, from day one.** The cream mark on its terracotta disc now draws always, rather than only when every dimension is full. It is the brand's own image for "not yet" and it is what the Almanac's shoot illustration already says, so nothing new had to be invented. The earlier rule - that a disc on an unfinished week is "a hole where the seed is going to be" - was written when the seed WAS the reward; the reward is now the bloom around it.
+- **The breathing still belongs to the bloom.** `bloomed` gates the animation, not the drawing: an empty flower shows a still seed, and only a full week makes it breathe. A pulse at somebody who has logged nothing would be the app asking for something. The accessibility label follows the same line - it claims "all six dimensions covered" only when that is true, and is hidden otherwise.
+- **A sage hairline where the tips will reach**, at radius 72, drawn behind everything so a petal always covers it. One continuous circle: no segments, no ticks, nothing per-dimension. **That is the line between a horizon and a scorecard**, and it is the same line the no-outlines rule draws - an outline shows what you failed to do before it shows what you did.
+
+### THE OVERVIEW MAY SCROLL NOW (2026-09-16)
+
+The rule was explicit and good: *"this screen is specified not to scroll... anything that will not fit here belongs in a detail screen"*, and it held for six weeks, surviving two rounds of tightening (gaps cut from 24 to 16, the flower from 220 to 200). What retired it was "What you burn" being asked for on this screen: a seventh child on a fixed flex view does not overflow gracefully, it simply sits below the fold unreachable, which is exactly what Ruth reported - *"Overview there but no burn at the bottom"*. The choice was to refuse her the panel, shrink something else on a screen already cut twice, or let it scroll. **A glance that CAN scroll is still a glance**, and everything that was above the fold still is.
+
+### Three fixes in the same round
+
+- **The Me tab, twice.** `numberOfLines={1}` replaced the whole label with an ellipsis, because Android measures this text in the system face while drawing it in Comfortaa - the same mismatch that drew "Insights" as "Insigh" on 12 September. **The shortest label failed hardest: there is nothing to trim, so everything goes.** The first fix then dropped the `type` prop, sending the label to the default 16px, and it clipped to "M". Truncation is gone and the type is back.
+- **"Ask about this" now asks.** It filled the composer and waited; Ruth reported three times that tapping it did nothing, because the entry card rides on her own turn and no turn had been sent. A button with that name should not need a second, undisclosed action.
+- **The tag is passed, not read back.** The card still did not draw on the first attempt: the tag and the auto-send are set in one render pass, and the effect that sends fires before that state commits - so the turn was built untagged while the REQUEST, assembled later in the same call, carried the tag. Her evidence was exactly that split: a correctly tagged message on the server, no card in the thread. The tag now travels with the text.
+
 **Not yet scheduled.** Recorded here at the moment it was asked for, rather than folded into the Insights slice that was in flight.
 
 **Order:** a brief warm opening, grounding data (weekly totals, this week's delta), interpretation woven in (personal context from the week's stored daily summaries, plus any relevant physiological context), a thematic/narrative observation, a trajectory/ETA estimate if the data genuinely supports one, then a closing checkpoint using genuinely open phrasing.
