@@ -26,9 +26,9 @@ import { useTheme } from '@/hooks/use-theme';
 // moved inside the box. A hint that gets cut off teaches the wrong thing about
 // the field twice over - it looks broken, and it stops naming the third option.
 const HINTS = [
-  'Log food, activity or data...',
-  'Send a photo, or describe it...',
-  'Type anything, or + for a photo...',
+  'Log food or activity...',
+  'Send a photo...',
+  'Type anything...',
 ];
 
 const EVERY_MS = 4000;

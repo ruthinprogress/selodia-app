@@ -281,16 +281,51 @@ export type DiscussTag = { entryId: string; entryType: DiscussEntryType } | null
 // if the model never declares an end, one entry's history slowly absorbs the
 // whole conversation. That is a known, monitorable risk (count consecutive
 // messages sharing one entry id), not an oversight.
+// TWO THINGS END A DISCUSSION BESIDES THE MODEL SAYING SO (2026-09-16).
+//
+// The "stuck tag" above stopped being theoretical the day it was written.
+// Ruth tapped "Ask about this" on a 7 September pizza, and the tag then rode
+// every message for the next two hours: a bare "Hi" forty-eight minutes later,
+// and a message logging two entirely new meals. The thread drew that pizza's
+// card above a Turkish-leftovers catch-up, and she read it as the catch-up
+// having been filed in the previous week. The model never set discussTopicEnded
+// once - not on the greeting, not on the new log - so continue-by-default
+// continued, exactly as designed and entirely wrongly.
+//
+// LOGGING SOMETHING NEW ENDS IT. Not a judgment call: the person has just put a
+// different entry into the app, so whatever the conversation was about, it is
+// now about this. This is the signal the model was being asked to infer and
+// failing to - and it is already sitting on the classify result.
+//
+// A LONG GAP ENDS IT. The original note argued a clock cannot tell a
+// twenty-minute pause from a change of subject, and that is true - so the
+// threshold is not set anywhere near twenty minutes. Three quarters of an hour
+// later, "Hi" is a new conversation by any reading, and treating it as a
+// follow-up about a pizza is not a close call.
+const STALE_AFTER_MINUTES = 45;
+
 export function resolveDiscussTag(input: {
   posted: DiscussTag;
   previous: DiscussTag;
   topicEnded: boolean;
+  // Minutes between the previous tagged message and now, when it can be known.
+  minutesSincePrevious?: number | null;
+  // This turn put a new entry in the log.
+  loggedSomethingNew?: boolean;
 }): DiscussTag {
   // Posting a card starts that entry's discussion outright. It outranks an
   // end-of-topic declaration: the declaration is about the message the person
   // just sent, while the posting is a deliberate act of changing the subject TO
   // this entry.
   if (input.posted) return input.posted;
-  if (input.previous && !input.topicEnded) return input.previous;
-  return null;
+  if (!input.previous) return null;
+  if (input.loggedSomethingNew) return null;
+  if (
+    typeof input.minutesSincePrevious === 'number' &&
+    input.minutesSincePrevious > STALE_AFTER_MINUTES
+  ) {
+    return null;
+  }
+  if (input.topicEnded) return null;
+  return input.previous;
 }

@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
   // is genuinely the previous message rather than the one being written now.
   const { data: prevTagRow } = await supabase
     .from('chat_messages')
-    .select('discuss_entry_id, discuss_entry_type')
+    .select('discuss_entry_id, discuss_entry_type, created_at')
     .eq('user_id', user.id)
     .eq('source', 'chat')
     .not('discuss_entry_id', 'is', null)
@@ -165,13 +165,27 @@ export async function POST(request: NextRequest) {
         }
       : null;
 
+  // How long the discussion has been sitting idle. Null when there is no
+  // previous tag or its timestamp is unreadable, which resolveDiscussTag treats
+  // as "unknown" rather than "fresh".
+  const minutesSincePrevious = (() => {
+    const at = prevTagRow?.created_at;
+    if (typeof at !== 'string') return null;
+    const then = new Date(at).getTime();
+    if (isNaN(then)) return null;
+    return (Date.now() - then) / 60_000;
+  })();
+
   // Insert optimistically under continue-by-default. The model's verdict on
   // whether the topic has moved on arrives with the reply, so this is corrected
   // below rather than blocking the turn on a call that hasn't happened yet.
+  // The gap is knowable NOW, though, so a stale discussion is dropped before the
+  // turn is written rather than being written and corrected.
   const provisionalTag = resolveDiscussTag({
     posted: postedTag,
     previous: previousTag,
     topicEnded: false,
+    minutesSincePrevious,
   });
 
   const { data: userRow, error: userInsertError } = await supabase
@@ -910,6 +924,13 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
     posted: postedTag,
     previous: previousTag,
     topicEnded: result.discussTopicEnded === true,
+    minutesSincePrevious,
+    // Putting a new entry in the log IS the change of subject. The model was
+    // being asked to notice that and declare it, and never did - on the turn
+    // that logged two new meals it left discussTopicEnded unset, so a pizza
+    // from the week before stayed attached to it.
+    loggedSomethingNew:
+      typeof result.logIntent === 'string' && result.logIntent !== 'none',
   });
   if (userRow?.id && resolvedTag?.entryId !== provisionalTag?.entryId) {
     const { error: tagFixError } = await supabase

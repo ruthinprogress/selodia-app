@@ -117,7 +117,14 @@ export default function ChatScreen() {
       typeof discussId === 'string' && discussId.length > 0 && typeof discussType === 'string'
         ? { entryId: discussId, entryType: discussType }
         : null;
-    setPendingTag(tag);
+    // ONLY WHEN THE TAP IS GOING TO SEND (2026-09-16). Set unconditionally
+    // until now, so a prefill that does NOT send - the Almanac's "Update this",
+    // or "Ask about this" before askNow existed - left a tag sitting in state
+    // waiting for whatever got typed next. Ruth tapped it on a 7 September
+    // pizza, saw nothing happen, then typed a two-day food catch-up, and the
+    // pizza's card attached itself to that. A tag with no message behind it is
+    // not a pending question, it is a trap for the next one.
+    setPendingTag(askNow === '1' ? tag : null);
     // "ASK ABOUT THIS" SENDS; the Almanac's "Update this" still fills the box.
     //
     // It filled the box until 2026-09-16 and Ruth reported three times that
