@@ -130,6 +130,23 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
         />
       </View>
 
+      {/* The way home, same as the food log: stepping back six weeks otherwise
+          costs six presses to return, and the arrows give no sense of how far
+          from this week you have gone. Only when away from it. */}
+      {!isCurrentWeek && (
+        <Pressable
+          onPress={() => setWeekStart(currentWeekStart())}
+          accessibilityRole="button"
+          accessibilityLabel="Back to today"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.backToToday, pressed && styles.pressed]}
+        >
+          <ThemedText type="small" themeColor="accentDeep">
+            Back to today
+          </ThemedText>
+        </Pressable>
+      )}
+
       {loading ? (
         <ThemedText type="small" themeColor="textSecondary">
           …
@@ -221,6 +238,9 @@ const styles = StyleSheet.create({
   step: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.two,
+  },
+  backToToday: {
+    alignSelf: 'center',
   },
   dayCard: {
     borderRadius: Spacing.three,

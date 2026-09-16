@@ -158,6 +158,25 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
       </ThemedView>
       </SpotlightTarget>
 
+      {/* BACK TO TODAY (Ruth, 2026-09-16: "It needs every page to have a back to
+          today button"). It matters most here, because the month picker above
+          can land you in March in one tap and stepping home from there is
+          twenty presses. Only when away from this week - on it, the control
+          would do nothing. */}
+      {!isPresent && (
+        <Pressable
+          onPress={() => setWeekStart(currentWeekStart())}
+          accessibilityRole="button"
+          accessibilityLabel="Back to today"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.backToToday, pressed && styles.pressed]}
+        >
+          <ThemedText type="small" themeColor="accentDeep">
+            Back to today
+          </ThemedText>
+        </Pressable>
+      )}
+
       {loading ? (
         <ThemedText type="small" themeColor="textSecondary">
           …
@@ -317,6 +336,9 @@ function StepButton({
 }
 
 const styles = StyleSheet.create({
+  backToToday: {
+    alignSelf: 'center',
+  },
   container: {
     gap: Spacing.three,
   },

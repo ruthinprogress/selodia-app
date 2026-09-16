@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -107,6 +108,38 @@ export function ReadingCard({ reading, dateLabel, onClose }: Props) {
           </ScrollView>
 
           <View style={styles.actions}>
+            {/* ASK ABOUT THIS (2026-09-16). Held back since this card was
+                written, on the grounds that a control with nothing behind it is
+                what principle 8 forbids. There is something behind it now, and
+                Ruth's rule is that every detail card has the same way into
+                chat: the reading's id and type ride over, and ask-selodia tags
+                that turn with them.
+
+                Only when the reading has an id - the card is also opened for a
+                day with no reading, and there is nothing to ask about then. */}
+            {reading?.id ? (
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  router.push({
+                    pathname: '/',
+                    params: {
+                      prefill: `About my reading from ${dateLabel}: `,
+                      discussId: reading.id,
+                      discussType: 'measurement',
+                    },
+                  });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Ask about this"
+                hitSlop={Spacing.two}
+                style={({ pressed }) => [styles.ask, pressed && styles.pressed]}
+              >
+                <ThemedText type="smallBold" themeColor="accentDeep">
+                  Ask about this
+                </ThemedText>
+              </Pressable>
+            ) : null}
             <Pressable onPress={onClose} style={({ pressed }) => pressed && styles.pressed}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.close}>
                 Close
@@ -135,7 +168,17 @@ const styles = StyleSheet.create({
   },
   note: { padding: Spacing.two, borderRadius: Spacing.one, gap: Spacing.half },
   noteLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
-  actions: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, alignItems: 'flex-end' },
+  // Two controls now, so the row runs edge to edge: Ask about this is the way
+  // ON from the card and sits left, Close is the way out and stays where it has
+  // always been.
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
+  ask: { paddingVertical: Spacing.one },
   close: { paddingVertical: Spacing.one },
   pressed: { opacity: 0.6 },
 });

@@ -8,6 +8,7 @@ import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { VoiceControl } from '@/components/voice-control';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
+import { EntrySummaryCard, type SummaryEntryType } from '@/components/entry-summary-card';
 import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ReminderOffer } from '@/components/reminder-offer';
@@ -40,6 +41,10 @@ type Message = {
   // the REFERENCE; the table itself is read from food_items at render time, so
   // it always shows what was stored rather than what the reply said.
   foodLogId?: string | null;
+  // A session or a reading this turn is ABOUT ("Ask about this", 2026-09-16).
+  // Food is not carried here: it has the richer itemised table above, and two
+  // components drawing one entry differently is how they drift.
+  entry?: { type: SummaryEntryType; id: string } | null;
   // A discuss-card image posted into the thread (build item 30). imagePath is
   // the stored object; imageUri is its short-lived signed URL, since the bucket
   // is private. Only history carries these today — the "Ask about this" button
@@ -382,6 +387,10 @@ export default function ChatScreen() {
         role: 'user',
         content: trimmed,
         foodLogId: pendingTag?.entryType === 'food' ? pendingTag.entryId : null,
+        entry:
+          pendingTag && (pendingTag.entryType === 'activity' || pendingTag.entryType === 'measurement')
+            ? { type: pendingTag.entryType, id: pendingTag.entryId }
+            : null,
       },
     ]);
     setSending(true);
@@ -512,6 +521,10 @@ export default function ChatScreen() {
               {m.foodLogId && (
                 <FoodBreakdownTable foodLogId={m.foodLogId} naming={m.role === 'user'} />
               )}
+              {/* A session or a reading has no items and so no table. It gets a
+                  summary card instead, so "Ask about this" shows its subject
+                  whatever kind of entry it was asked about. */}
+              {m.entry && <EntrySummaryCard entryType={m.entry.type} entryId={m.entry.id} />}
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}

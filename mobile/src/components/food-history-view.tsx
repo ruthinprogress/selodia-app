@@ -147,6 +147,26 @@ export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date 
         />
       </View>
 
+      {/* BACK TO TODAY (Ruth, 2026-09-16: "the scroll back on food log has no way
+          back to Today. It needs every page to have a back to today button").
+          Stepping back six weeks otherwise means six presses to return, and the
+          arrow gives no clue how far from home you are. Shown only when you are
+          away from this week: on this week it would do nothing, and a control
+          that does nothing is what principle 8 forbids. */}
+      {!isCurrentWeek && (
+        <Pressable
+          onPress={() => setWeekStart(currentWeekStart())}
+          accessibilityRole="button"
+          accessibilityLabel="Back to today"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.backToToday, pressed && styles.pressed]}
+        >
+          <ThemedText type="small" themeColor="accentDeep">
+            Back to today
+          </ThemedText>
+        </Pressable>
+      )}
+
       {loading ? (
         <ThemedText type="small" themeColor="textSecondary">
           …
@@ -254,6 +274,9 @@ const styles = StyleSheet.create({
   step: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.two,
+  },
+  backToToday: {
+    alignSelf: 'center',
   },
   dayCard: {
     borderRadius: Spacing.three,
