@@ -25,6 +25,7 @@ import {
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
 import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
+import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 import { WhatYouBurn, type BurnFigures } from '@/components/what-you-burn';
 
@@ -66,6 +67,11 @@ type OverviewData = {
   proteinTargetLabel: string | null;
   activityCount: number;
   activityMinutes: number;
+  // Today's steps from the phone's own health platform, or null when it has no
+  // answer - a refusal, a phone without one, or a genuinely quiet morning that
+  // cannot be told apart from either. Null renders nothing; it is never a zero,
+  // because a zero is a claim that somebody has not moved.
+  steps: number | null;
   hydrationMl: number;
   // BMR and TDEE for the "What you burn" panel. Null when there is not enough
   // to compute them, which the panel says by showing nothing rather than a
@@ -121,8 +127,19 @@ export function OverviewPanel() {
       const dayStart = startOfToday();
 
       // RLS scopes every read to the signed-in user.
-      const [{ data: measurements }, { data: profileRow }, { data: foods }, { data: activity }, { data: drinks }] =
-        await Promise.all([
+      // syncTodaySteps joins the batch rather than following it: it reads the
+      // phone's health platform, which is slower than any of these queries and
+      // depends on none of them. It also WRITES the day's total on the way
+      // through, so the figure survives into the roundups and the Activity
+      // screen rather than existing only for as long as this screen is open.
+      const [
+        { data: measurements },
+        { data: profileRow },
+        { data: foods },
+        { data: activity },
+        { data: drinks },
+        stepsToday,
+      ] = await Promise.all([
           supabase
             .from('body_measurements')
             .select('measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
@@ -143,6 +160,7 @@ export function OverviewPanel() {
             .select('duration_min, activity_type, source')
             .gte('happened_at', dayStart),
           supabase.from('hydration_logs').select('ml, happened_at').gte('happened_at', dayStart),
+          syncTodaySteps(),
         ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
@@ -246,6 +264,7 @@ export function OverviewPanel() {
         proteinTargetLabel: proteinTargetLabel(proteinTarget),
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
+        steps: stepsToday,
         burn: tdee
           ? {
               bmr: tdee.bmrKcal,
@@ -377,22 +396,40 @@ export function OverviewPanel() {
           </SpotlightTarget>
         </Square>
 
-        {/* Steps are specified for this square and are NOT here, because
-            nothing in the app reads them yet: step-permission.ts asks for the
-            permission and no code ever calls getStepCount or readRecords. A
-            zero would be a claim that someone had not moved. */}
+        {/* STEPS ARRIVE HERE (2026-09-16). This square carried a comment saying
+            steps were specified for it and deliberately absent, because nothing
+            in the app read one - true since the permission was first asked for.
+            lib/steps.ts reads them now.
+
+            "NOTHING LOGGED YET" NOW HAS TO ACCOUNT FOR THEM. It was true while
+            sessions were the only thing this square could know about. Beside
+            four thousand steps it would be false, and falser than a blank: the
+            person HAS moved, the app can see it, and it would be telling them
+            otherwise. So the empty state belongs to a day with no sessions AND
+            no step figure, which is also exactly the day when there is genuinely
+            nothing to say.
+
+            A null step count draws nothing at all rather than a zero. See
+            lib/steps.ts: a refusal, a phone with no health platform, and a quiet
+            morning are indistinguishable, and a zero would pick the one reading
+            that accuses somebody of not moving. */}
         <Square id="body.activity" title="Activity" href="/body/activity">
-          {data.activityCount === 0 ? (
+          {data.activityCount === 0 && data.steps == null ? (
             <ThemedText type="small" themeColor="textSecondary">
               Nothing logged yet
             </ThemedText>
           ) : (
             <>
-              <Stat
-                value={String(data.activityCount)}
-                unit={data.activityCount === 1 ? 'session' : 'sessions'}
-              />
-              <Stat value={String(data.activityMinutes)} unit="min" />
+              {data.steps != null && <Stat value={formatSteps(data.steps)} unit="steps" />}
+              {data.activityCount > 0 && (
+                <>
+                  <Stat
+                    value={String(data.activityCount)}
+                    unit={data.activityCount === 1 ? 'session' : 'sessions'}
+                  />
+                  <Stat value={String(data.activityMinutes)} unit="min" />
+                </>
+              )}
             </>
           )}
         </Square>

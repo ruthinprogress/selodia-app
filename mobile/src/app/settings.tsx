@@ -7,6 +7,7 @@ import { AccountDeletion } from '@/components/account-deletion';
 import { BuildVersion } from '@/components/build-version';
 import { DataExport } from '@/components/data-export';
 import { SpotlightScroll } from '@/components/spotlight-provider';
+import { StepTracking } from '@/components/step-tracking';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -98,6 +99,14 @@ export default function SettingsScreen() {
               </ThemedView>
             </Pressable>
           </ThemedView>
+
+          {/* THE ONE QUESTION ONBOARDING ASKS THAT NOBODY CAN ANSWER TWICE
+              (2026-09-16). The step permission is requested once, during setup,
+              and until now there was no way to change that answer - so a decline,
+              or the false decline the 9 September defect produced, was permanent.
+              That is not a preference toggle the product did not ask for; it is
+              the missing half of a question it already asks. */}
+          <StepTracking />
 
           {/* Entry point one of the two Part Five requires. */}
           <SpotlightTarget id="settings.export">
