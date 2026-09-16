@@ -34,6 +34,20 @@ import { shouldOfferReminders } from '@/lib/reminder-settings';
 import { hasSeenChatChips, markChatChipsSeen } from '@/lib/chat-chips';
 import { supabase } from '@/lib/supabase';
 
+// What "Ask about this" carries across: which entry, and what the detail card
+// already had on screen for it. The seed is optional everywhere - a thread
+// reloaded from the database has no seed, and the cards read their own entry
+// back exactly as they always did.
+export type DiscussSeed = {
+  title?: string | null;
+  when?: string | null;
+  detail?: string | null;
+  kcal?: number | null;
+  protein?: number | null;
+} | null;
+
+type DiscussTag = { entryId: string; entryType: string; seed?: DiscussSeed };
+
 type Message = {
   role: 'user' | 'assistant';
   content: string;
@@ -47,6 +61,10 @@ type Message = {
   // Food is not carried here: it has the richer itemised table above, and two
   // components drawing one entry differently is how they drift.
   entry?: { type: SummaryEntryType; id: string } | null;
+  // Rides with the turn that opened the discussion, so its card draws at once.
+  // Absent on every reloaded turn, which is correct: by then the read is the
+  // only source, and it is the one that was always authoritative.
+  seed?: DiscussSeed;
   // A discuss-card image posted into the thread (build item 30). imagePath is
   // the stored object; imageUri is its short-lived signed URL, since the bucket
   // is private. Only history carries these today — the "Ask about this" button
@@ -105,24 +123,62 @@ export default function ChatScreen() {
   // only: ask-selodia writes it onto that turn and then carries the thread's tag
   // forward itself, so holding it here for later turns would be a second source
   // of truth for the same fact.
-  const { prefill, discussId, discussType, askNow } = useLocalSearchParams<{
+  // seed* CARRY WHAT THE DETAIL CARD ALREADY HAD ON SCREEN (2026-09-16). The
+  // cards in the thread each read their own entry back, and drew nothing until
+  // that read returned - so Ruth's reply, which travels on a separate request,
+  // regularly arrived first and the card appeared afterwards: "it comes in after
+  // a long time but the text comes in first for a good while". The sheet she
+  // tapped was displaying these exact values, so they ride across with the tap.
+  // Every card still does its own read and still overwrites them; the seed only
+  // governs the first frame, which is the frame that was empty.
+  const {
+    prefill,
+    discussId,
+    discussType,
+    askNow,
+    seedTitle,
+    seedWhen,
+    seedDetail,
+    seedKcal,
+    seedProtein,
+  } = useLocalSearchParams<{
     prefill?: string;
     discussId?: string;
     discussType?: string;
     askNow?: string;
+    seedTitle?: string;
+    seedWhen?: string;
+    seedDetail?: string;
+    seedKcal?: string;
+    seedProtein?: string;
   }>();
   const [lastPrefill, setLastPrefill] = useState<string | null>(null);
-  const [pendingTag, setPendingTag] = useState<{ entryId: string; entryType: string } | null>(null);
+  const [pendingTag, setPendingTag] = useState<DiscussTag | null>(null);
   // Set during render, acted on in an effect below: sending from the render body
   // would be a side effect in a render pass.
-  const [autoAsk, setAutoAsk] = useState<{ text: string; tag: { entryId: string; entryType: string } } | null>(
-    null
-  );
+  const [autoAsk, setAutoAsk] = useState<{ text: string; tag: DiscussTag } | null>(null);
   if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
     setLastPrefill(prefill);
-    const tag =
+    // Router params arrive as strings, so the two numbers are parsed here rather
+    // than at the point of use. An unparseable one becomes null and the card
+    // simply waits for its read, which is the behaviour this replaced.
+    const num = (v: unknown): number | null => {
+      const n = typeof v === 'string' && v.length > 0 ? Number(v) : NaN;
+      return Number.isFinite(n) ? n : null;
+    };
+    const tag: DiscussTag | null =
       typeof discussId === 'string' && discussId.length > 0 && typeof discussType === 'string'
-        ? { entryId: discussId, entryType: discussType }
+        ? {
+            entryId: discussId,
+            entryType: discussType,
+            seed: {
+              title: typeof seedTitle === 'string' && seedTitle.length > 0 ? seedTitle : null,
+              when: typeof seedWhen === 'string' && seedWhen.length > 0 ? seedWhen : null,
+              detail: typeof seedDetail === 'string' && seedDetail.length > 0 ? seedDetail : null,
+              kcal: num(seedKcal),
+              protein: num(seedProtein),
+            },
+          }
         : null;
     // ONLY WHEN THE TAP IS GOING TO SEND (2026-09-16). Set unconditionally
     // until now, so a prefill that does NOT send - the Almanac's "Update this",
@@ -446,7 +502,7 @@ export default function ChatScreen() {
     void handleSend(text);
   }
 
-  async function handleSend(override?: string, tagOverride?: { entryId: string; entryType: string }) {
+  async function handleSend(override?: string, tagOverride?: DiscussTag) {
     const trimmed = (override ?? input).trim();
     if (!trimmed || sending) return;
     // THE TAG IS PASSED, NOT READ BACK (2026-09-16). "Ask about this" sets the
@@ -477,6 +533,10 @@ export default function ChatScreen() {
           tag && (tag.entryType === 'activity' || tag.entryType === 'measurement')
             ? { type: tag.entryType, id: tag.entryId }
             : null,
+        // Only on this turn, and only in memory. The reloaded thread has no
+        // seed and does not need one: by then the card's own read is the single
+        // source, which it always was.
+        seed: tag?.seed ?? null,
       },
     ]);
     setSending(true);
@@ -605,12 +665,35 @@ export default function ChatScreen() {
                   there is no itemised breakdown to draw; on an assistant turn it
                   is the thing just logged, and the reply has already said so. */}
               {m.foodLogId && (
-                <FoodBreakdownTable foodLogId={m.foodLogId} naming={m.role === 'user'} />
+                <FoodBreakdownTable
+                  foodLogId={m.foodLogId}
+                  naming={m.role === 'user'}
+                  seed={
+                    m.seed
+                      ? {
+                          label: m.seed.title,
+                          when: m.seed.when,
+                          kcal: m.seed.kcal,
+                          protein: m.seed.protein,
+                        }
+                      : null
+                  }
+                />
               )}
               {/* A session or a reading has no items and so no table. It gets a
                   summary card instead, so "Ask about this" shows its subject
                   whatever kind of entry it was asked about. */}
-              {m.entry && <EntrySummaryCard entryType={m.entry.type} entryId={m.entry.id} />}
+              {m.entry && (
+                <EntrySummaryCard
+                  entryType={m.entry.type}
+                  entryId={m.entry.id}
+                  seed={
+                    m.seed
+                      ? { title: m.seed.title, detail: m.seed.detail, when: m.seed.when }
+                      : null
+                  }
+                />
+              )}
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}

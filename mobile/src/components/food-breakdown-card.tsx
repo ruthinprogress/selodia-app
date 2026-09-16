@@ -29,6 +29,9 @@ import { supabase } from '@/lib/supabase';
 type FoodLog = {
   meal_label: string | null;
   raw_text: string | null;
+  // Not shown on this card. Read so the chat card it hands off to can head
+  // itself with the right date from the first frame.
+  happened_at: string | null;
   kcal: number | null;
   protein_g: number | null;
   carbs_g: number | null;
@@ -71,7 +74,10 @@ export function FoodBreakdownCard({
         supabase
           .from('food_logs')
           .select(
-            'meal_label, raw_text, kcal, protein_g, carbs_g, fat_g, breakdown_type, protein_source'
+            // happened_at is not displayed on this card - it is read so the
+            // chat card it hands off to can head itself with the right date
+            // immediately rather than waiting for its own lookup.
+            'meal_label, raw_text, happened_at, kcal, protein_g, carbs_g, fat_g, breakdown_type, protein_source'
           )
           .eq('id', foodLogId)
           .maybeSingle(),
@@ -198,6 +204,14 @@ export function FoodBreakdownCard({
                         prefill: `About my "${label}" log: `,
                         discussId: foodLogId ?? '',
                         discussType: 'food',
+                        // The entry's own words, date and totals, already loaded
+                        // into this sheet and now handed across so the chat card
+                        // draws immediately instead of after two reads. The live
+                        // read still overwrites all of it.
+                        seedTitle: label,
+                        seedWhen: log.happened_at ?? '',
+                        seedKcal: log.kcal != null ? String(log.kcal) : '',
+                        seedProtein: log.protein_g != null ? String(log.protein_g) : '',
                         // WITHOUT THIS THE BUTTON ONLY FILLS THE BOX (2026-09-16).
                         // Chat auto-sends only on askNow === '1', and not one of
                         // the three cards was sending it - so "Ask about this"

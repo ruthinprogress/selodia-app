@@ -43,12 +43,35 @@ export function FoodBreakdownTable({
   // there is no itemised breakdown to draw, so the thread always shows what is
   // being discussed. Off everywhere else, where the reply itself already says.
   naming = false,
+  // WHAT THE APP ALREADY KNEW WHEN THE BUTTON WAS PRESSED (Ruth, 2026-09-16:
+  // "It comes in after a long time but the text comes in first for a good
+  // while"). This drew nothing at all until two reads came back, so the reply -
+  // which travels on a completely separate request - regularly won the race, and
+  // the card arrived afterwards like an afterthought.
+  //
+  // The detail sheet she tapped had the entry's words, date and totals on screen
+  // in front of her. Handing those across means the card draws in the same frame
+  // as her own message. The live read still runs and still overwrites this: the
+  // database remains the source of truth, and the seed governs only the first
+  // moment, which is the moment that was empty.
+  seed,
 }: {
   foodLogId: string;
   naming?: boolean;
+  seed?: { label?: string | null; when?: string | null; kcal?: number | null; protein?: number | null } | null;
 }) {
   const theme = useTheme();
-  const [log, setLog] = useState<FoodLog | null>(null);
+  const [log, setLog] = useState<FoodLog | null>(
+    seed
+      ? {
+          meal_label: null,
+          raw_text: seed.label ?? null,
+          happened_at: seed.when ?? null,
+          kcal: seed.kcal ?? null,
+          protein_g: seed.protein ?? null,
+        }
+      : null
+  );
   const [items, setItems] = useState<BreakdownItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -97,7 +120,11 @@ export function FoodBreakdownTable({
     log?.raw_text ?? null
   );
 
-  if (!loaded) return null;
+  // A seed is enough to draw: `log` is already populated on the first render
+  // when one was handed over, and the itemised rows fill in behind it. Without
+  // one this still waits, which is right - an assistant turn that just logged
+  // food has nothing to show early and no reason to reserve space.
+  if (!loaded && !log) return null;
   if (items.length === 0) {
     // AND IT CARRIES THE FIGURES, NOT JUST THE NAME (2026-09-16, same hour).
     // The first version of this was a bare grey line, which is how "Monday 7

@@ -101,6 +101,23 @@ export function ActivityDetailCard({
                     discussType: 'activity',
                     // Sends, rather than filling the box - see food-breakdown-card.
                     askNow: '1',
+                    // WHAT IS ALREADY ON SCREEN, handed across so the card in
+                    // chat draws in the same frame as her message rather than
+                    // after its own read comes back. This card reads nothing
+                    // itself, so every one of these is a value the caller was
+                    // already holding. See food-breakdown-table.tsx for why.
+                    seedTitle: title,
+                    seedWhen: activity.happened_at,
+                    seedDetail: [
+                      activity.duration_min != null
+                        ? `${Math.round(activity.duration_min)} min`
+                        : null,
+                      activity.kcal_burned != null
+                        ? `${Math.round(activity.kcal_burned)} kcal`
+                        : null,
+                    ]
+                      .filter((p): p is string => p !== null)
+                      .join(' · '),
                   },
                 });
               }}

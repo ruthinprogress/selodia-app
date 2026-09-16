@@ -35,14 +35,28 @@ const round = (v: number | null | undefined, unit: string): string | null =>
 export function EntrySummaryCard({
   entryType,
   entryId,
+  // WHAT THE DETAIL CARD ALREADY HAD (Ruth, 2026-09-16: "It comes in after a
+  // long time but the text comes in first for a good while"). This drew nothing
+  // until its read returned, so the reply - a separate request entirely - won
+  // the race and the card arrived afterwards. The sheet she tapped was showing
+  // these very values, so they travel with the tap and the card draws in the
+  // same frame as her message. The read still runs and still overwrites them.
+  seed,
 }: {
   entryType: SummaryEntryType;
   entryId: string;
+  seed?: { title?: string | null; detail?: string | null; when?: string | null } | null;
 }) {
   const theme = useTheme();
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
+  const [summary, setSummary] = useState<Summary | null>(
+    seed?.title
+      ? {
+          title: seed.title,
+          detail: seed.detail && seed.detail.length > 0 ? seed.detail : null,
+          when: seed.when ? formatLogDate(new Date(seed.when)) : null,
+        }
+      : null
+  );
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -64,6 +78,12 @@ export function EntrySummaryCard({
             detail: parts.length > 0 ? parts.join(' · ') : null,
             when: data.happened_at ? formatLogDate(new Date(data.happened_at)) : null,
           });
+        } else {
+          // The row has gone. Cleared rather than left standing on the seed:
+          // an entry deleted after it was asked about should take its card with
+          // it, which is the silence this component has always kept when it had
+          // nothing of its own to draw.
+          setSummary(null);
         }
       } else {
         const { data } = await supabase
@@ -83,16 +103,20 @@ export function EntrySummaryCard({
             detail: parts.length > 0 ? parts.join(' · ') : null,
             when: data.measured_at ? formatLogDate(new Date(data.measured_at)) : null,
           });
+        } else {
+          setSummary(null);
         }
       }
-      if (!cancelled) setLoaded(true);
     })();
     return () => {
       cancelled = true;
     };
   }, [entryType, entryId]);
 
-  if (!loaded || !summary) return null;
+  // A seed is enough to draw. Without one this still waits for the read, and a
+  // row that has genuinely gone clears the seed above rather than leaving a card
+  // standing for an entry that no longer exists.
+  if (!summary) return null;
 
   return (
     <ThemedView

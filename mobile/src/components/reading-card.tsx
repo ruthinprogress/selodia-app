@@ -129,6 +129,11 @@ export function ReadingCard({ reading, dateLabel, onClose }: Props) {
                       discussType: 'measurement',
                       // Sends, rather than filling the box - see food-breakdown-card.
                       askNow: '1',
+                      // Already on screen, so handed across rather than fetched
+                      // again a second later. See food-breakdown-table.tsx.
+                      seedTitle: 'Reading',
+                      seedWhen: reading.measured_at,
+                      seedDetail: metrics.map(([, v]) => v).join(' · '),
                     },
                   });
                 }}
