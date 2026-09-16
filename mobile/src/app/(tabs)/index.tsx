@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import { ChatBubble } from '@/components/chat-bubble';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { VoiceControl } from '@/components/voice-control';
@@ -674,17 +676,19 @@ export default function ChatScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                {/* A word on the field's own surface, not a filled pill: inside
-                    the box a second block of colour would read as a separate
-                    object again, which is the thing being fixed. */}
-                <ThemedText
-                  type="smallBold"
-                  themeColor={
-                    sending || input.trim().length === 0 ? 'textSecondary' : 'accentDeep'
+                {/* AN ARROW, NOT THE WORD (Ruth, 2026-09-16: "we don't need the
+                    word Send, just use an arrow up"). The word was costing the
+                    field about sixty pixels of writing space, which is why the
+                    hint had to be trimmed twice this morning, and it was the
+                    thing Android kept drawing as "Sen". An arrow cannot be
+                    clipped into a different word. */}
+                <Ionicons
+                  name="arrow-up"
+                  size={20}
+                  color={
+                    sending || input.trim().length === 0 ? theme.textSecondary : theme.accentDeep
                   }
-                >
-                  Send
-                </ThemedText>
+                />
               </Pressable>
             </ThemedView>
           </SpotlightTarget>
@@ -767,7 +771,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
-    maxHeight: 100,
+    // ROOM TO SEE WHAT YOU ARE WRITING (Ruth, 2026-09-16: "allow the text box to
+    // expand with the text so the writer is not blind when typing a long
+    // message"). 100 held about four lines before it started scrolling under
+    // itself - fine for "pizza and chips", useless for a week of catch-up, which
+    // is exactly the message this app asks people to type. It still has a
+    // ceiling: a composer that grows without limit eats the conversation it
+    // belongs to.
+    maxHeight: 220,
   },
   // Padded generously rather than sized: a fixed width is what clipped this to
   // "Sen" on the phone, and text that sets its own width cannot be cut off.

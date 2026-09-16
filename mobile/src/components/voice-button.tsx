@@ -1,9 +1,9 @@
 import { Pressable, StyleSheet } from 'react-native';
 
-import { Ionicons } from '@expo/vector-icons';
 import { useConversation } from '@elevenlabs/react-native';
 
 import { ThemedView } from '@/components/themed-view';
+import { VoiceWaveIcon } from '@/components/voice-wave-icon';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -66,8 +66,13 @@ export function VoiceButton({ onRequestStart, disabled = false }: VoiceButtonPro
       style={({ pressed }) => pressed && styles.pressed}
     >
       <ThemedView type="backgroundElement" style={[styles.button, disabled && styles.disabled]}>
-        <Ionicons
-          name="mic"
+        {/* SOUND BARS, NOT A MIC (Ruth, 2026-09-16). The mic is being kept for
+            the voice NOTE, which needs a recorder and therefore a native build;
+            this control is the live conversation, and the two must not wear the
+            same face. She rejected every telephone option outright - "A gave me
+            anxiety that the app might call someone" - which is the right
+            instinct: nobody is being rung up. */}
+        <VoiceWaveIcon
           size={18}
           // Sage while a session is live, so the composer still says so if the
           // person navigates away from the voice screen. Grey otherwise.
