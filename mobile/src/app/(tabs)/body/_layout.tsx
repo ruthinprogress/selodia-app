@@ -40,6 +40,9 @@ export default function BodyLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="food" options={{ title: 'Food' }} />
+      {/* The browsable log, one level in from Food (2026-09-16). Titled for
+          what it holds rather than for the tab it hangs off. */}
+      <Stack.Screen name="food-history" options={{ title: 'Food log' }} />
       <Stack.Screen name="measurements" options={{ title: 'Measurements' }} />
       <Stack.Screen name="activity" options={{ title: 'Activity' }} />
       {/* One screen for all six dimensions. No title: the screen is a full

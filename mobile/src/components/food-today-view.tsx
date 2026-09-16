@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -151,6 +152,21 @@ export function FoodTodayView() {
           {avg.daysLogged < 7 ? ` · ${avg.daysLogged} of 7 days logged` : ''}
         </ThemedText>
       )}
+
+      {/* The way back through the weeks (2026-09-16). Seven days caught up in
+          chat landed in last week, and this view only ever shows today, so
+          there was nowhere to go and look at them. */}
+      <Pressable
+        onPress={() => router.push('/body/food-history')}
+        accessibilityRole="button"
+        accessibilityLabel="Earlier weeks"
+        hitSlop={Spacing.two}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <ThemedText type="small" themeColor="accentDeep">
+          Earlier weeks
+        </ThemedText>
+      </Pressable>
 
       <FoodBreakdownCard foodLogId={openId} onClose={() => setOpenId(null)} />
     </>
