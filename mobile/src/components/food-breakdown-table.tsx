@@ -29,7 +29,18 @@ import { supabase } from '@/lib/supabase';
 
 type FoodLog = { meal_label: string | null; happened_at: string | null };
 
-export function FoodBreakdownTable({ foodLogId }: { foodLogId: string }) {
+export function FoodBreakdownTable({
+  foodLogId,
+  // NAMING THE ENTRY IS THE POINT OF THE TURN, not a decoration on it. Set when
+  // this table belongs to a turn that is ABOUT the entry ("Ask about this")
+  // rather than to one that just logged it: the heading then renders even when
+  // there is no itemised breakdown to draw, so the thread always shows what is
+  // being discussed. Off everywhere else, where the reply itself already says.
+  naming = false,
+}: {
+  foodLogId: string;
+  naming?: boolean;
+}) {
   const theme = useTheme();
   const [log, setLog] = useState<FoodLog | null>(null);
   const [items, setItems] = useState<BreakdownItem[]>([]);
@@ -64,12 +75,28 @@ export function FoodBreakdownTable({ foodLogId }: { foodLogId: string }) {
   // Two real cases produce no rows and neither is an error: a 'simple' log (an
   // apple, a branded yoghurt) is never itemised by design, and a log predating
   // item 11 was written before food_items existed. A one-row table teaches
-  // nothing, so the turn simply renders as an ordinary reply - the same reason
+  // nothing, so the turn renders as an ordinary reply - the same reason
   // principle 8 forbids empty sections.
-  if (!loaded || items.length === 0) return null;
+  //
+  // EXCEPT WHEN THE TURN IS ABOUT THAT ENTRY (2026-09-16). "Ask about this"
+  // carries an entry into chat, and Ruth's report was that nothing showed what
+  // was being discussed. For an unitemised entry there is no table to draw, so
+  // `naming` renders the one thing that is always true and always needed: which
+  // entry this is. Without it, asking about an apple would look exactly like
+  // asking about nothing, which is the complaint that produced this.
+  // Computed before the early returns, because the no-items case needs it too.
+  const heading = breakdownHeading(log?.happened_at ?? null, log?.meal_label ?? null);
+
+  if (!loaded) return null;
+  if (items.length === 0) {
+    return naming && heading.length > 0 ? (
+      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.naming}>
+        {heading}
+      </ThemedText>
+    ) : null;
+  }
 
   const rows = buildBreakdownRows(items);
-  const heading = breakdownHeading(log?.happened_at ?? null, log?.meal_label ?? null);
   // Assessed over the WHOLE meal, not per item. Mapping a per-item flag into a
   // sentence is what told Ruth to add dairy to a breakfast containing yoghurt:
   // a flag scoped to one item silently becomes a claim about the meal once it
@@ -186,5 +213,11 @@ const styles = StyleSheet.create({
   },
   commentary: {
     paddingHorizontal: Spacing.one,
+  },
+  // The bare naming line, when there is no table under it. Indented to sit with
+  // the turn it belongs to rather than floating at the thread's edge.
+  naming: {
+    paddingHorizontal: Spacing.one,
+    alignSelf: 'flex-start',
   },
 });

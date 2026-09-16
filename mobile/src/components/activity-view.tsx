@@ -1,5 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
@@ -132,9 +134,24 @@ export function ActivityView() {
 
       <LogInChatHint tab="activity" />
 
-      <ThemedText type="smallBold" style={styles.heading}>
-        Recent activity
-      </ThemedText>
+      {/* The way back through the weeks, in both shapes Ruth asked for on the
+          Food tab (2026-09-16): an arrow beside the heading, where a thumb
+          goes, and the explicit link below the list. Both unconditional - the
+          way back must be there whether or not this fortnight has anything in
+          it - and both going to the same screen. One of the two comes out once
+          she knows which she uses. */}
+      <View style={styles.headingRow}>
+        <Pressable
+          onPress={() => router.push('/body/activity-history')}
+          accessibilityRole="button"
+          accessibilityLabel="Earlier weeks"
+          hitSlop={Spacing.three}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
+        </Pressable>
+        <ThemedText type="smallBold">Recent activity</ThemedText>
+      </View>
 
       {rows.length === 0 ? (
         <ThemedView type="backgroundElement" style={styles.empty} accessibilityRole="summary">
@@ -176,6 +193,18 @@ export function ActivityView() {
           ))}
         </ThemedView>
       )}
+
+      <Pressable
+        onPress={() => router.push('/body/activity-history')}
+        accessibilityRole="button"
+        accessibilityLabel="Earlier weeks"
+        hitSlop={Spacing.two}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <ThemedText type="small" themeColor="accentDeep" style={styles.heading}>
+          Earlier weeks
+        </ThemedText>
+      </Pressable>
 
       <ThemedText type="smallBold" style={styles.heading}>
         What you burn
@@ -226,6 +255,14 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
   heading: { paddingHorizontal: Spacing.one, marginTop: Spacing.four },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.one,
+    marginTop: Spacing.four,
+  },
+  pressed: { opacity: 0.6 },
   card: {
     borderRadius: Spacing.three,
     borderWidth: StyleSheet.hairlineWidth,

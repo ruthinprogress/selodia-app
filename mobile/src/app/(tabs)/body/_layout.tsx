@@ -45,6 +45,8 @@ export default function BodyLayout() {
       <Stack.Screen name="food-history" options={{ title: 'Food log' }} />
       <Stack.Screen name="measurements" options={{ title: 'Measurements' }} />
       <Stack.Screen name="activity" options={{ title: 'Activity' }} />
+      {/* Activity's own browsable log (2026-09-16), the food one's sibling. */}
+      <Stack.Screen name="activity-history" options={{ title: 'Activity log' }} />
       {/* One screen for all six dimensions. No title: the screen is a full
           bleed of that dimension's own colour with its name set large inside,
           so a header would say the same word twice in two type sizes. The back

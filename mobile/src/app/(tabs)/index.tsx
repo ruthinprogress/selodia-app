@@ -370,7 +370,20 @@ export default function ChatScreen() {
     // wipe something half-typed - though in practice typing has already
     // dismissed the chips by then.
     if (override === undefined) setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
+    // THE THREAD SHOWS WHAT IS BEING DISCUSSED (Ruth, 2026-09-16: "it did land
+    // in chat but no card appeared to let the user and chat know what is being
+    // discussed"). The entry rides on the user's own turn, so the question and
+    // the thing it is about sit together, and the table is read live from
+    // food_items rather than posted as a picture of a card - a screenshot is a
+    // second copy of the same facts, and it is the copy that goes stale.
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content: trimmed,
+        foodLogId: pendingTag?.entryType === 'food' ? pendingTag.entryId : null,
+      },
+    ]);
     setSending(true);
 
     try {
@@ -493,7 +506,12 @@ export default function ChatScreen() {
                   {m.content}
                 </ChatBubble>
               )}
-              {m.foodLogId && <FoodBreakdownTable foodLogId={m.foodLogId} />}
+              {/* On HER turn the entry is the subject, so it is named even when
+                  there is no itemised breakdown to draw; on an assistant turn it
+                  is the thing just logged, and the reply has already said so. */}
+              {m.foodLogId && (
+                <FoodBreakdownTable foodLogId={m.foodLogId} naming={m.role === 'user'} />
+              )}
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}
