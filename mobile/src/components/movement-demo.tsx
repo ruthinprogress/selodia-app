@@ -1,6 +1,6 @@
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -120,8 +120,28 @@ export function MovementDemo({
     p.play();
   });
 
-  // Nothing to show, and nothing to say about it.
-  if (state === 'absent' || state === 'error') return null;
+  // NOTHING TO SHOW IS NOT THE SAME AS COULD NOT SHOW IT (Ruth, 2026-09-16:
+  // "the actual videos are not loading fast enough... it's very hit and miss if
+  // they load at all, so it's genuinely hard to know what's missing or just
+  // didn't load").
+  //
+  // These were one silence, and collapsing them cost her the ability to read her
+  // own app - she could not tell a gap in the library from a failed fetch, which
+  // made the whole feature feel unreliable even where it works. Tested against
+  // her Full-Body plan the same afternoon: three clips that exist all played,
+  // and the two movements with no asset correctly showed nothing. The feature
+  // was working; the reporting was not.
+  //
+  // 'absent' STAYS SILENT, and must. The library covers movement patterns rather
+  // than every named exercise, a miss is ordinary, and item 46 handles the gap
+  // in conversation without ever referencing the library's limits. A caption
+  // saying "no video for this" would break that rule from the screen most likely
+  // to be read.
+  //
+  // 'error' IS A DIFFERENT FACT: this movement HAS a clip and the app could not
+  // fetch it. That is worth saying, and worth offering to retry, because it is
+  // the person's connection or ours - not a limit of what exists.
+  if (state === 'absent') return null;
 
   return (
     <View style={styles.wrap}>
@@ -139,6 +159,23 @@ export function MovementDemo({
       >
         {state === 'loading' ? (
           <ActivityIndicator color={theme.textSecondary} />
+        ) : state === 'error' ? (
+          // In-world and actionable. It does not mention the server, the route
+          // or the library - only that this one did not arrive, and that it can
+          // be asked for again.
+          <Pressable
+            onPress={() => {
+              setState('loading');
+              void load();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading this demonstration"
+            style={styles.retry}
+          >
+            <ThemedText type="small" themeColor="textSecondary" style={styles.retryText}>
+              That one didn&apos;t come through. Tap to try again.
+            </ThemedText>
+          </Pressable>
         ) : (
           <VideoView
             player={player}
@@ -174,4 +211,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   video: { width: '100%', height: '100%' },
+  // Fills the slot so the whole empty frame is the target, rather than asking
+  // somebody to hit a line of small grey text.
+  retry: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+  },
+  retryText: { textAlign: 'center' },
 });
