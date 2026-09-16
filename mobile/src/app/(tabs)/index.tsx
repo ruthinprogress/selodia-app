@@ -87,11 +87,27 @@ export default function ChatScreen() {
   // prefill arriving later, and setState-in-effect is both disallowed and an
   // extra render. This is React's sanctioned shape for reacting to a changed
   // prop. Never overwrites something already typed.
-  const { prefill } = useLocalSearchParams<{ prefill?: string }>();
+  //
+  // "Ask about this" arrives the same way, carrying WHICH entry is being asked
+  // about (build item 30, built 2026-09-16). The tag rides on the next message
+  // only: ask-selodia writes it onto that turn and then carries the thread's tag
+  // forward itself, so holding it here for later turns would be a second source
+  // of truth for the same fact.
+  const { prefill, discussId, discussType } = useLocalSearchParams<{
+    prefill?: string;
+    discussId?: string;
+    discussType?: string;
+  }>();
   const [lastPrefill, setLastPrefill] = useState<string | null>(null);
+  const [pendingTag, setPendingTag] = useState<{ entryId: string; entryType: string } | null>(null);
   if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
     setLastPrefill(prefill);
     if (input.length === 0) setInput(prefill);
+    setPendingTag(
+      typeof discussId === 'string' && discussId.length > 0 && typeof discussType === 'string'
+        ? { entryId: discussId, entryType: discussType }
+        : null
+    );
   }
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -368,7 +384,13 @@ export default function ChatScreen() {
       const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
+          // Present only on the turn that opens a discussion about an entry.
+          // The server validates the type and ignores anything it does not know.
+          ...(pendingTag ? { entryId: pendingTag.entryId, entryType: pendingTag.entryType } : {}),
         });
+      // Cleared whatever the reply was: the question has been asked, and the
+      // thread's own tag carries the conversation from here.
+      setPendingTag(null);
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId },

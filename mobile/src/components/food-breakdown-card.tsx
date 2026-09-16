@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -170,6 +171,43 @@ export function FoodBreakdownCard({
                   <Macro label="Carbs" value={g(log.carbs_g)} />
                   <Macro label="Fat" value={g(log.fat_g)} />
                 </ThemedView>
+
+                {/* ASK ABOUT THIS (build item 30's interactive half), built
+                    2026-09-16 on Ruth's ask: "select them to discuss further in
+                    chat". It was held back on this card, the reading card and
+                    the Almanac's exercise detail because a control with nothing
+                    behind it is what principle 8 forbids. There is something
+                    behind it now: the entry's id and type ride to Chat, and
+                    ask-selodia tags the turn with them, which is what makes a
+                    single entry's Q&A findable in a scrolled thread later.
+
+                    NOT the card image. Item 30 also describes posting a picture
+                    of this card into the thread; that needs a view capture
+                    library nobody has installed, so it stays unbuilt rather than
+                    half-built. The hand-off carries the entry's name in the
+                    composer, which is what makes the question answerable. */}
+                <Pressable
+                  onPress={() => {
+                    const label = log.meal_label ?? log.raw_text ?? 'this entry';
+                    onClose();
+                    router.push({
+                      pathname: '/',
+                      params: {
+                        prefill: `About my "${label}" log: `,
+                        discussId: foodLogId ?? '',
+                        discussType: 'food',
+                      },
+                    });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ask about this"
+                  hitSlop={Spacing.two}
+                  style={({ pressed }) => [styles.ask, pressed && styles.pressed]}
+                >
+                  <ThemedText type="smallBold" themeColor="accentDeep">
+                    Ask about this
+                  </ThemedText>
+                </Pressable>
               </ScrollView>
             )}
           </ThemedView>
@@ -252,5 +290,15 @@ const styles = StyleSheet.create({
   },
   macroLabel: {
     fontSize: 11,
+  },
+  // Aligned with the card's content rather than centred: it is an offer, not a
+  // call to action, and a full-width button here would read as the point of the
+  // card rather than a way on from it.
+  ask: {
+    alignSelf: 'flex-start',
+    paddingVertical: Spacing.one,
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });
