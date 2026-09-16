@@ -24,9 +24,20 @@ import { useTheme } from '@/hooks/use-theme';
 // copies of the same three answers is how they drift apart, and the one that
 // drifts is always the one nobody is looking at.
 
-// Her wording, exactly: the semicolon and the order are hers.
-export const WHAT_YOU_BURN_SUMMARY =
-  'What you burn; BMR, TDEE and muscle mass relationship explained.';
+// A TITLE AND A SUBTITLE, NOT ONE SENTENCE (Ruth, 2026-09-16): "It should be
+// Title: What You Burn. Then subtitle: BMR, TDEE and muscle mass relationship
+// explained." The semicolon that joined them is gone, because the line break
+// now does the work it was doing. Sentence case is kept, which is what every
+// other heading in the app uses, and no trailing colon - a colon announcing a
+// subtitle that already sits on its own line beneath it says nothing twice.
+export const WHAT_YOU_BURN_TITLE = 'What you burn';
+export const WHAT_YOU_BURN_SUBTITLE = 'BMR, TDEE and muscle mass relationship explained.';
+
+// ONE SENTENCE FOR THE SCREEN READER. The control is a single button, and a
+// reader announcing a title and then a fragment would split one label into two
+// halves that arrive separately. Composed from the two above rather than typed
+// again, so the spoken label cannot drift from the printed one.
+export const WHAT_YOU_BURN_SUMMARY = `${WHAT_YOU_BURN_TITLE}. ${WHAT_YOU_BURN_SUBTITLE}`;
 
 export const BMR_EXPLAINER = [
   {
@@ -59,9 +70,12 @@ export function WhatYouBurn({ figures }: { figures: BurnFigures }) {
         hitSlop={Spacing.two}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
-        <ThemedText type="small" themeColor="textSecondary" style={styles.summary}>
-          {WHAT_YOU_BURN_SUMMARY}
-        </ThemedText>
+        <View style={styles.summary}>
+          <ThemedText type="smallBold">{WHAT_YOU_BURN_TITLE}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {WHAT_YOU_BURN_SUBTITLE}
+          </ThemedText>
+        </View>
         <Ionicons
           name={open ? 'chevron-up' : 'chevron-down'}
           size={16}
@@ -129,8 +143,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  // Takes the slack so the chevron keeps its place at the right edge.
-  summary: { flexShrink: 1 },
+  // Takes the slack so the chevron keeps its place at the right edge. Now a
+  // column of two lines rather than one Text, so the gap is what separates the
+  // title from the line explaining it.
+  summary: { flexShrink: 1, gap: Spacing.half },
   body: { gap: Spacing.two, paddingTop: Spacing.two },
   numbers: { flexDirection: 'row', gap: Spacing.six },
   figure: { gap: Spacing.half },
