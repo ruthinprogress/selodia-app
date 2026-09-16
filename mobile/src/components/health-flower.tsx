@@ -229,13 +229,19 @@ export function HealthFlower({
           );
         })}
 
-        {/* THE RING: where the petal tips will reach (Ruth, 2026-09-16).
-            One continuous hairline at the tip radius, with no segments, no
-            ticks and nothing per-dimension - so it cannot be read as six slots
-            waiting to be filled. That is the line between a horizon and a
-            scorecard, and it is the same line the no-outlines rule draws.
-            Behind everything, so a petal always covers it rather than sitting
-            in it. */}
+        {/* THE RING: where every petal STARTS (Ruth, 2026-09-16).
+
+            It was added as a horizon, with the worry that it might read as a
+            target once real petals appeared. Ruth settled that: "the petals
+            move from the outside in, so actually they are a starting point,
+            not a target". The tip is pinned at this radius and the oval grows
+            INWARD, so a gauge's logic is inverted here - a gauge fills toward
+            its edge, and this one empties away from it. A circle every petal
+            moves off cannot be a thing to fill.
+
+            One continuous hairline, no segments and no ticks, so there is
+            nothing per-dimension to read as an unfilled slot either. Behind
+            everything, so a petal always covers it rather than sitting in it. */}
         <Circle
           cx={CENTRE}
           cy={CENTRE}
