@@ -29,10 +29,14 @@ export { DEFAULT_REMINDER_TIMES, loadReminderSettings, shouldOfferReminders } fr
 
 const REMINDER_CHANNEL = 'reminders';
 
-// When the Sunday roundup invitation fires, local time. After the hour that
-// makes a week complete (ROUNDUP_HOUR in lib/roundup.ts), so tapping it never
-// asks for a roundup of a week that is still running.
-const ROUNDUP_INVITE_HOUR = 19;
+// When the Sunday roundup invitation fires, local time.
+//
+// NINE, not seven or eight (Ruth, 2026-09-16): "7pm is too early, people eat
+// dinner late". Eight would have collided with her own 20:00 daily reminder and
+// put two notifications on the screen together, so the two are kept an hour
+// apart. Comfortably after the hour that makes a week complete (ROUNDUP_HOUR in
+// lib/roundup.ts), so tapping it never asks for a roundup of a running week.
+const ROUNDUP_INVITE_HOUR = 21;
 
 // Is expo-notifications' NATIVE side actually in this binary?
 //
