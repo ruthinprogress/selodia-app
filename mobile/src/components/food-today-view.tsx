@@ -97,7 +97,24 @@ export function FoodTodayView() {
 
       <LogInChatHint tab="food" />
 
-      <ThemedText type="smallBold">Today</ThemedText>
+      {/* TWO WAYS BACK, ON PURPOSE, FOR NOW (Ruth, 2026-09-16). An arrow beside
+          the heading is what every other app puts there and what a thumb reaches
+          for; the "Earlier weeks" link below is explicit and unmissable. She
+          asked for both so she can live with them and see which one she actually
+          uses. One of them comes out once that is known - a screen with two
+          controls doing the same thing is a decision left unmade. */}
+      <View style={styles.todayHeader}>
+        <Pressable
+          onPress={() => router.push('/body/food-history')}
+          accessibilityRole="button"
+          accessibilityLabel="Earlier weeks"
+          hitSlop={Spacing.three}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
+        </Pressable>
+        <ThemedText type="smallBold">Today</ThemedText>
+      </View>
 
       {today.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -182,6 +199,11 @@ export function FoodTodayView() {
 const toLocalDateKey_ = (iso: string) => toLocalDateKey(new Date(iso));
 
 const styles = StyleSheet.create({
+  todayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
   card: {
     borderRadius: Spacing.three,
     padding: Spacing.three,
