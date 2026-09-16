@@ -38,6 +38,29 @@ export type ImageLogResult =
       message: string | null;
       foodLogId?: string | null;
     }
+  // A READING ALREADY EXISTS FOR THAT DAY, and nothing was saved.
+  //
+  // parse-body-measurement has detected this since it was written: it looks for
+  // a reading on the same day and returns {duplicate: true} rather than writing
+  // a second one. Nothing ever read that answer. The response was handed
+  // straight to bodyAckFacts as though it were a saved row, and with no
+  // measured_at and no weight on it the acknowledgment came out as "Today ·
+  // weigh-in logged / Weight not readable", followed by interpretation prose
+  // about a reading that had never been taken. Ruth, 2026-09-16: "It was just a
+  // duplicate - just could have said that, what it said was weird."
+  //
+  // The existing row rides along so the message can name what already stands,
+  // rather than reporting an absence.
+  | {
+      status: 'duplicate';
+      kind: 'body_measurement';
+      existing: {
+        measured_at?: string | null;
+        weight_kg?: number | null;
+        body_fat_pct?: number | null;
+        muscle_kg?: number | null;
+      } | null;
+    }
   | { status: 'unclear' }
   | { status: 'cancelled' }
   | { status: 'denied'; source: AddSource }
@@ -121,10 +144,34 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
   let foodLogId: string | null = null;
   try {
     if (kind === 'body_measurement') {
-      const saved = await authedPost<Record<string, never>>('/api/parse-body-measurement', {
+      // Typed for what the route ACTUALLY returns. It has three shapes - a
+      // saved row, a replaced row, and a duplicate refusal - and this was
+      // declared as Record<string, never>, which types away the very field that
+      // needed reading.
+      const saved = await authedPost<{
+        duplicate?: boolean;
+        existingEntry?: {
+          measured_at?: string | null;
+          weight_kg?: number | null;
+          body_fat_pct?: number | null;
+          muscle_kg?: number | null;
+        };
+      }>('/api/parse-body-measurement', {
         imageBase64: image.base64,
         mediaType: image.mediaType,
       });
+
+      // Nothing was written, so there is nothing to acknowledge. Composing an
+      // acknowledgment from this response is what produced a weigh-in report
+      // for a weigh-in that never happened.
+      if (saved?.duplicate === true) {
+        return {
+          status: 'duplicate',
+          kind: 'body_measurement',
+          existing: saved.existingEntry ?? null,
+        };
+      }
+
       facts = await bodyAckFacts(saved as never);
     } else if (kind === 'food') {
       // parse-food returns the inserted food_logs row, so the id is already here.
@@ -182,6 +229,15 @@ export function messageForResult(result: ImageLogResult): string | null {
       // silence here is not restraint - it is a log that vanishes into a toast.
       // See app/lib/log-acknowledgment.ts for the full reasoning.
       return result.message;
+    case 'duplicate': {
+      // Short, and it names what stands rather than what did not happen. The
+      // reading is already there; that is the whole of the news.
+      const w = result.existing?.weight_kg;
+      const figure = typeof w === 'number' ? `${Math.round(w * 10) / 10} kg` : null;
+      return figure
+        ? `You've already got today's reading logged, at ${figure}. I've left it as it is.`
+        : "You've already got a reading logged for today, so I've left it as it is.";
+    }
     case 'unclear':
       return "I couldn't quite make that out. Want to just tell me what it was instead?";
     case 'too_large':
