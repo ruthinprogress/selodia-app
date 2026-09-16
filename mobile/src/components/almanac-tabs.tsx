@@ -71,9 +71,20 @@ export function AlmanacTabs({
                   Comfortaa regular at 16px rather than 14 - which is wider
                   still, so "Me" then clipped to "M". The type is what keeps it
                   at 14px, and the segment below now has room either side. */}
+              {/* AND STILL "Insight", "Moveme", "M" (2026-09-16, third look, from
+                  her debugging screenshots). Removing the truncation was not
+                  enough because the truncation was never the only cutter: the
+                  TRACK clips. It sets overflow:'hidden' to keep the chosen
+                  segment's corners inside its own radius, and a label pinned at
+                  flexShrink:0 in a segment with no side padding overflows into
+                  exactly that clip. Android measuring in the system face and
+                  drawing in Comfortaa is what makes it overflow; overflow:hidden
+                  is what makes the overflow a chopped word.
+                  So: room either side, and permission to shrink. Wrapping to a
+                  second line would now be the worst case, and a wrapped word is
+                  still a word. */}
               <ThemedText
                 type="smallBold"
-                ellipsizeMode="clip"
                 style={[styles.label, { color: selected ? theme.text : theme.textSecondary }]}
               >
                 {t.label}
@@ -99,15 +110,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tab: { flex: 1 },
-  // Never shrinks, never wraps. The segment is centred and roomy; a label that
-  // cannot be squeezed cannot be replaced by an ellipsis, whatever Android
-  // measures it as.
   label: {
-    flexShrink: 0,
     textAlign: 'center',
   },
   segment: {
     paddingVertical: 8,
+    // The room a mis-measured label needs. Without it the label starts at the
+    // segment's own edge, so being a few pixels wide than measured puts it
+    // straight into the track's clip.
+    paddingHorizontal: 6,
     borderRadius: 18,
     alignItems: 'center',
   },

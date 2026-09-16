@@ -35,10 +35,21 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-// "Saturday 16 May — Breakfast", or just the date when the meal is unlabelled.
-// The date comes from the log's own happened_at, not from today: a meal logged
-// late ("that was yesterday's lunch") must head the day it happened.
-export function breakdownHeading(happenedAt: string | null, mealLabel: string | null): string {
+// "Saturday 16 May · pizza and chips", or just the date when there is nothing
+// to name. The date comes from the log's own happened_at, not from today: a meal
+// logged late ("that was yesterday's lunch") must head the day it happened.
+//
+// THE FOOD NAMES THE ENTRY, NOT THE CATEGORY (2026-09-16). This read "Monday 7
+// September · Dinner" in the thread, and Ruth's answer was that it could not be
+// discussed: "what could be discussed about 'dinner' - it's not specific enough
+// to add any value". The same flip as entryLabel, for the same reason - the
+// category is inferred, the words are hers. mealLabel is kept as the fallback so
+// a photo log still heads with something true.
+export function breakdownHeading(
+  happenedAt: string | null,
+  mealLabel: string | null,
+  rawText?: string | null
+): string {
   const parts: string[] = [];
   if (happenedAt) {
     const d = new Date(happenedAt);
@@ -46,8 +57,9 @@ export function breakdownHeading(happenedAt: string | null, mealLabel: string | 
       parts.push(`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`);
     }
   }
-  const label = mealLabel?.trim();
-  if (label) parts.push(label);
+  const raw = rawText?.trim();
+  const named = raw ? (raw.length > 60 ? `${raw.slice(0, 57)}…` : raw) : mealLabel?.trim();
+  if (named) parts.push(named);
   return parts.join(' · ');
 }
 

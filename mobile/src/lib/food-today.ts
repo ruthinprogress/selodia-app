@@ -54,13 +54,22 @@ export function weeklyAverage(
   };
 }
 
-// A row's display label. meal_label is the parsed name; raw_text is what the
-// person actually typed. Falling back to their own words beats a generic
-// "Entry" — it is still recognisably theirs.
+// A row's display label: WHAT WAS EATEN, not what the parse decided to call it.
+//
+// FLIPPED 2026-09-16, after a week of catch-up logs came back labelled Dinner,
+// Dinner, Dinner. Ruth: "All the items in the food log are randomly assigned
+// categories which are not accurate or useful, meaning it's hard to see at a
+// glance what you've eaten, better to have the actual food listed too."
+//
+// meal_label is inferred - the model guesses a category from time-of-day clues
+// that a typed catch-up does not contain. raw_text is her own words for that
+// entry, and it is the one part of a log that cannot be wrong. So the words
+// lead and the category survives only as a fallback for rows that have none: a
+// photo log, or an entry from before raw_text was kept.
 export function entryLabel(row: Pick<FoodLogSummary, 'meal_label' | 'raw_text'>): string {
-  const label = row.meal_label?.trim();
-  if (label) return label;
   const raw = row.raw_text?.trim();
   if (raw) return raw.length > 60 ? `${raw.slice(0, 57)}…` : raw;
+  const label = row.meal_label?.trim();
+  if (label) return label;
   return 'Entry';
 }

@@ -81,6 +81,7 @@ import { isSpotlightTarget } from '../../lib/spotlight-targets';
 import {
   isCardMediaType,
   isDiscussEntryType,
+  loadDiscussEntryFacts,
   loadPendingCardImage,
   markCardImageSent,
   resolveDiscussTag,
@@ -587,12 +588,26 @@ THIS IS A SPOKEN CONVERSATION. They are talking to you and hearing your reply re
 
 THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first part of what they were saying, and they carried on talking before they heard that answer - so they never heard it. The message below is everything they said. Answer the whole of it as though your previous reply had not been given, without referring to it or repeating it. Anything your previous reply already logged, saved or corrected is already done: do not log, save or correct the same thing again.`;
 
+  // THE ENTRY UNDER DISCUSSION, IN WORDS THE MODEL CAN READ (2026-09-16).
+  //
+  // Ruth tapped "Ask about this" on a dinner log and got a reply about her knee.
+  // The tag was correct on the message the whole time - it was never shown to
+  // the model, only stored. Built from the provisional tag rather than the
+  // resolved one because the resolved tag arrives with the reply, and this has
+  // to be in the prompt that PRODUCES the reply.
+  //
+  // Follows the tag's own lifetime, so a follow-up question two turns later
+  // still knows what "it" is - that is the whole point of a tag that persists
+  // until the model says the topic moved on.
+  const discussedEntry = await loadDiscussEntryFacts(supabase, provisionalTag);
+
   const contextualSystemPrompt =
     SYSTEM_PROMPT +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
     pendingFocusPrompt(pendingFocus) +
     pendingSavePrompt(pendingSave) +
+    (discussedEntry ? `\n\n${discussedEntry}` : '') +
     (isVoice ? VOICE_SESSION_BLOCK : '') +
     (supersededSince ? SUPERSEDED_TURN_BLOCK : '') +
     (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +

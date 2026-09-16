@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
@@ -612,61 +612,88 @@ export default function ChatScreen() {
           {/* No onActivate: there is nothing to "press" on a text field, and
               stealing focus behind a closing overlay would put a keyboard up
               that nobody asked for. Dismissing leaves it there to tap. */}
+          {/* SEND BELONGS TO THE BOX (Ruth, 2026-09-16: "The Send button is to
+              the right of the mic, looks weird and unconnected to chat box,
+              needs moving to the chatbox. The mic needs to be on the right").
+              Send now sits INSIDE the field's own surface, so the control and
+              the text it commits are visibly one object, and the mic takes the
+              outside-right position on its own. */}
           <SpotlightTarget id="chat.composer" style={styles.composerTarget}>
-            <TextInput
-              value={input}
-              onChangeText={(t) => {
-                setInput(t);
-                // Typing freely is itself an answer to the offer, so the chips
-                // get out of the way on the first character rather than waiting
-                // for the message to be sent.
-                if (t.length > 0) dismissChips();
-              }}
-              // The visible hint is RotatingPlaceholder, laid over this input:
-              // a native placeholder cannot be faded, so there is nothing to
-              // animate on it. Empty here, and an accessibilityLabel instead so
-              // the field still announces itself while the hint above it is
-              // hidden from screen readers.
-              placeholder=""
-              accessibilityLabel="Message"
-              onFocus={() => setHintStopped(true)}
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-              multiline
-              editable={!sending}
-            />
-            {/* Only while there is nothing typed. A hint under real text would
-                be two overlapping lines. */}
-            {input.length === 0 ? <RotatingPlaceholder stopped={hintStopped} /> : null}
+            <ThemedView type="backgroundElement" style={styles.box}>
+              {/* The hint is absolutely positioned against THIS wrapper rather
+                  than the whole box, so it cannot run underneath Send. */}
+              <View style={styles.inputWrap}>
+                <TextInput
+                  value={input}
+                  onChangeText={(t) => {
+                    setInput(t);
+                    // Typing freely is itself an answer to the offer, so the
+                    // chips get out of the way on the first character rather
+                    // than waiting for the message to be sent.
+                    if (t.length > 0) dismissChips();
+                  }}
+                  // The visible hint is RotatingPlaceholder, laid over this
+                  // input: a native placeholder cannot be faded, so there is
+                  // nothing to animate on it. Empty here, and an
+                  // accessibilityLabel instead so the field still announces
+                  // itself while the hint above it is hidden from readers.
+                  placeholder=""
+                  accessibilityLabel="Message"
+                  onFocus={() => setHintStopped(true)}
+                  placeholderTextColor={theme.textSecondary}
+                  // The surface belongs to the box around it, not the field.
+                  style={[styles.input, { color: theme.text }]}
+                  multiline
+                  editable={!sending}
+                />
+                {/* Only while there is nothing typed. A hint under real text
+                    would be two overlapping lines. */}
+                {input.length === 0 ? <RotatingPlaceholder stopped={hintStopped} /> : null}
+              </View>
+              <Pressable
+                onPress={() => handleSend()}
+                // Empty input previously did nothing at all - no message, no
+                // re-ask, nothing - so Send looked pressable and behaved dead.
+                // Disabling it lets the control state the truth instead of
+                // failing silently. A "please type something" nag would be the
+                // other option and is worse: scolding someone for a tap that
+                // should never have been offered.
+                disabled={sending || input.trim().length === 0}
+                accessibilityRole="button"
+                accessibilityLabel="Send"
+                style={({ pressed }) => [
+                  styles.sendInline,
+                  (sending || input.trim().length === 0) && styles.sendDisabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {/* A word on the field's own surface, not a filled pill: inside
+                    the box a second block of colour would read as a separate
+                    object again, which is the thing being fixed. */}
+                <ThemedText
+                  type="smallBold"
+                  themeColor={
+                    sending || input.trim().length === 0 ? 'textSecondary' : 'accentDeep'
+                  }
+                >
+                  Send
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
           </SpotlightTarget>
-          {/* Between the input and Send, which is where Claude and ChatGPT
-              both put it (Part Eighteen: "same position as Claude and
-              ChatGPT"). Send stays rightmost because it is the destructive-ish
-              one to hit by accident - it commits text - and moving a control
-              somebody already has muscle memory for is a cost with no benefit.
+          {/* RIGHTMOST, ON ITS OWN (Ruth, 2026-09-16: "The mic needs to be on
+              the right"). It sat between the field and Send until now, which
+              put two unrelated controls in a row outside the box and made
+              neither of them look like it belonged to anything. Send went
+              inside the field; the mic keeps the outside edge, where a
+              press-and-hold voice note can also live once there is a recorder
+              to build it on.
 
               Renders nothing on web; see voice-control.web.tsx. */}
           <VoiceControl
             onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now() })}
             disabled={sending}
           />
-          <Pressable
-            onPress={() => handleSend()}
-            // Empty input previously did nothing at all - no message, no re-ask,
-            // nothing - so Send looked pressable and behaved dead. Disabling it
-            // lets the control state the truth instead of failing silently. A
-            // "please type something" nag would be the other option and is worse:
-            // scolding someone for a tap that should never have been offered.
-            disabled={sending || input.trim().length === 0}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedView
-              type="backgroundSelected"
-              style={[styles.sendButton, (sending || input.trim().length === 0) && styles.sendDisabled]}
-            >
-              <ThemedText type="smallBold">Send</ThemedText>
-            </ThemedView>
-          </Pressable>
         </ThemedView>
 
         <SaveConfirmation summary={saveToast?.summary ?? null} nonce={saveToast?.nonce ?? 0} />
@@ -717,17 +744,30 @@ const styles = StyleSheet.create({
   // The wrapper takes the flex the input used to, so wrapping it does not
   // collapse the composer to its content width.
   composerTarget: { flex: 1 },
+  // The field and Send as ONE surface. Rounded and coloured here rather than on
+  // the input, so the word sits on the same shape the text does.
+  box: {
+    flexDirection: 'row',
+    // Grows downward with the text: Send stays level with the last line rather
+    // than floating beside a tall field.
+    alignItems: 'flex-end',
+    borderRadius: Spacing.three,
+  },
+  inputWrap: {
+    flex: 1,
+  },
   input: {
     flex: 1,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
     maxHeight: 100,
   },
-  sendButton: {
+  // Padded generously rather than sized: a fixed width is what clipped this to
+  // "Sen" on the phone, and text that sets its own width cannot be cut off.
+  sendInline: {
     paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    justifyContent: 'center',
   },
   sendDisabled: {
     opacity: 0.4,

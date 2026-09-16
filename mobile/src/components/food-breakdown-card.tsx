@@ -122,7 +122,9 @@ export function FoodBreakdownCard({
               <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.headerRow}>
                   <ThemedText type="smallBold" style={styles.title}>
-                    {log.meal_label ?? log.raw_text ?? 'This entry'}
+                    {/* Her words first, the inferred category only if there are
+                        none - see entryLabel for why (2026-09-16). */}
+                    {log.raw_text ?? log.meal_label ?? 'This entry'}
                   </ThemedText>
                 </View>
 
@@ -188,7 +190,7 @@ export function FoodBreakdownCard({
                     composer, which is what makes the question answerable. */}
                 <Pressable
                   onPress={() => {
-                    const label = log.meal_label ?? log.raw_text ?? 'this entry';
+                    const label = log.raw_text ?? log.meal_label ?? 'this entry';
                     onClose();
                     router.push({
                       pathname: '/',

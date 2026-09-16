@@ -47,6 +47,10 @@ const instruction =
   'Return one object in "entries" per MEAL: split a message that describes several meals or several days into separate entries, and never merge two days into one. ' +
   'If an entry names a day - "Monday", "Mon 7th", "yesterday", "last Tuesday" - work out the actual date and return it as detected_date in ISO format (e.g. "2026-09-07"). A named day without a year means the most recent one that has already happened, never a future date. Return null for detected_date when no day is given, and the entry will be logged as today. ' +
   'Put the person\'s own words for that entry in entry_text. ' +
+  // Kept in step with app/lib/food-logging.ts by hand, which is the point of
+  // this script: it must run the prompt the route actually sends. Itemisation
+  // came back on 2026-09-16 and this is what re-measures the cost of it.
+  'ITEMISE EVERY ENTRY, however many there are: fill items with the real components of each meal. Keep it to what was actually described - around six items at most - rather than splitting a dish into ingredients nobody mentioned. ' +
   'IF THE TEXT DESCRIBES NO FOOD AT ALL - a question, a complaint that something did not save, a comment about logging - return {"entries": []}. Never invent a meal to fill the gap, and never treat a remark about the log as a meal. ' +
   'Estimate the macros for each entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: ' +
   FOOD_PARSE_ENTRIES_SCHEMA +

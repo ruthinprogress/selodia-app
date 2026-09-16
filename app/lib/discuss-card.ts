@@ -133,6 +133,137 @@ export async function markCardImageSent(supabase: SupabaseClient, messageId: str
   if (error) console.log('DISCUSS CARD FLAG UPDATE FAILED:', error.message);
 }
 
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function when(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+const num = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null;
+
+const part = (v: unknown, unit: string): string | null => {
+  const n = num(v);
+  return n == null ? null : `${n}${unit}`;
+};
+
+// WHAT THE ENTRY ACTUALLY SAYS, for the model (2026-09-16).
+//
+// THE GAP THIS CLOSES. "Ask about this" has always tagged the turn with the
+// entry's id and type - and that tag was pure bookkeeping, used to pull one
+// entry's Q&A back out of a scrolled thread. Nothing ever put the entry's
+// CONTENTS in front of the model. Item 30's design says the card travels as an
+// image, but the phone has never captured one (no view-capture library is
+// installed), so the seam above has sat unused and the model has been answering
+// questions about an entry it could not see. Ruth, on the food card: "it did
+// not appear or get acknowledged" - two faults wearing one coat. The card was
+// the app's half; this is the other.
+//
+// TEXT, NOT A PICTURE, and read from the same tables the card draws from, so
+// the two cannot disagree about what was eaten. When the view-capture library
+// arrives the image can join this; it does not replace it, because an image
+// cannot be searched, summed or quoted back.
+//
+// Returns null for a missing row rather than inventing a placeholder: an entry
+// deleted after the question was asked leaves the question standing on its own,
+// which is the same honesty the card itself keeps.
+export async function loadDiscussEntryFacts(
+  supabase: SupabaseClient,
+  tag: DiscussTag
+): Promise<string | null> {
+  if (!tag) return null;
+  const lead = 'THE ENTRY THEY ARE ASKING ABOUT. They tapped "Ask about this" on it, so it is on screen in front of them and this exchange is about it. Speak about THIS entry, by name, unless they plainly change the subject.';
+
+  if (tag.entryType === 'food') {
+    const [{ data: log }, { data: items }] = await Promise.all([
+      supabase
+        .from('food_logs')
+        .select('raw_text, meal_label, happened_at, kcal, protein_g, carbs_g, fat_g')
+        .eq('id', tag.entryId)
+        .maybeSingle(),
+      supabase
+        .from('food_items')
+        .select('name, quantity, kcal, protein_g')
+        .eq('food_log_id', tag.entryId)
+        .order('created_at', { ascending: true }),
+    ]);
+    if (!log) return null;
+
+    // Her own words name it, not the inferred category - the same flip the log
+    // views took the same day, and for the same reason: "what could be
+    // discussed about 'dinner' - it's not specific enough to add any value".
+    const named = (log.raw_text as string | null)?.trim() || (log.meal_label as string | null)?.trim() || 'a meal';
+    const totals = [
+      part(log.kcal, ' kcal'),
+      part(log.protein_g, 'g protein'),
+      part(log.carbs_g, 'g carbs'),
+      part(log.fat_g, 'g fat'),
+    ].filter((p): p is string => p !== null);
+
+    const lines = (items ?? []).map((it) => {
+      const qty = (it.quantity as string | null)?.trim();
+      const macros = [part(it.kcal, ' kcal'), part(it.protein_g, 'g protein')].filter(
+        (p): p is string => p !== null
+      );
+      return `- ${String(it.name ?? 'item').trim()}${qty ? ` (${qty})` : ''}${
+        macros.length > 0 ? `: ${macros.join(', ')}` : ''
+      }`;
+    });
+
+    return [
+      lead,
+      `Food logged ${when(log.happened_at as string | null)}: "${named}".`,
+      totals.length > 0 ? `Totals: ${totals.join(', ')}.` : 'No macros were recorded for it.',
+      lines.length > 0
+        ? `What was in it:\n${lines.join('\n')}`
+        : 'It was logged as one item, with no itemised breakdown - so do not refer to items it does not have.',
+    ].join('\n');
+  }
+
+  if (tag.entryType === 'activity') {
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('activity_type, duration_min, kcal_burned, happened_at')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    const detail = [part(data.duration_min, ' min'), part(data.kcal_burned, ' kcal burned')].filter(
+      (p): p is string => p !== null
+    );
+    return [
+      lead,
+      `Activity logged ${when(data.happened_at as string | null)}: ${
+        (data.activity_type as string | null)?.trim() || 'a session'
+      }.`,
+      detail.length > 0 ? `${detail.join(', ')}.` : 'No duration or burn was recorded for it.',
+    ].join('\n');
+  }
+
+  const { data } = await supabase
+    .from('body_measurements')
+    .select('weight_kg, body_fat_pct, muscle_kg, measured_at')
+    .eq('id', tag.entryId)
+    .maybeSingle();
+  if (!data) return null;
+  const detail = [
+    part(data.weight_kg, ' kg'),
+    part(data.body_fat_pct, '% body fat'),
+    part(data.muscle_kg, ' kg muscle'),
+  ].filter((p): p is string => p !== null);
+  return [
+    lead,
+    `Body reading taken ${when(data.measured_at as string | null)}.`,
+    detail.length > 0 ? `${detail.join(', ')}.` : 'No values were recorded on it.',
+  ].join('\n');
+}
+
 export type DiscussTag = { entryId: string; entryType: DiscussEntryType } | null;
 
 // Which entry (if any) the current turn belongs to.

@@ -21,10 +21,14 @@ import { useTheme } from '@/hooks/use-theme';
 // REDUCED MOTION HOLDS IT ON THE FIRST HINT rather than removing it. The hint
 // is the useful part; the cycling is only how the others get a turn.
 
+// SHORT ENOUGH TO FIT THE FIELD THEY SIT IN. These read as "Log food, acti…" on
+// a real phone on 2026-09-16, and the field got narrower the same day when Send
+// moved inside the box. A hint that gets cut off teaches the wrong thing about
+// the field twice over - it looks broken, and it stops naming the third option.
 const HINTS = [
-  'Log food, activity, or body data...',
-  'Send a photo or describe it...',
-  'Type anything, or use + for a photo...',
+  'Log food, activity or data...',
+  'Send a photo, or describe it...',
+  'Type anything, or + for a photo...',
 ];
 
 const EVERY_MS = 4000;

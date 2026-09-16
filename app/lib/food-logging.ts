@@ -163,7 +163,7 @@ export async function logFoodFromText(
       'Return one object in "entries" per MEAL: split a message that describes several meals or several days into separate entries, and never merge two days into one. ' +
       'If an entry names a day - "Monday", "Mon 7th", "yesterday", "last Tuesday" - work out the actual date and return it as detected_date in ISO format (e.g. "2026-09-07"). A named day without a year means the most recent one that has already happened, never a future date. Return null for detected_date when no day is given, and the entry will be logged as today. ' +
       'Put the person\'s own words for that entry in entry_text. ' +
-      'WHEN THERE IS MORE THAN ONE ENTRY, leave items empty and set breakdown_type to "simple" for every entry. A catch-up of several days shows no itemised table - only a single meal does - so the breakdown would be paid for and never seen, and it is what makes a seven-day reply too long to finish. Itemise only when you are returning exactly one entry. ' +
+      'ITEMISE EVERY ENTRY, however many there are: fill items with the real components of each meal. Keep it to what was actually described - around six items at most - rather than splitting a dish into ingredients nobody mentioned. ' +
       'IF THE TEXT DESCRIBES NO FOOD AT ALL - a question, a complaint that something did not save, a comment about logging - return {"entries": []}. Never invent a meal to fill the gap, and never treat a remark about the log as a meal. ' +
       'Estimate the macros for each entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: ' +
       FOOD_PARSE_ENTRIES_SCHEMA +
@@ -177,9 +177,17 @@ export async function logFoodFromText(
   // ran to exactly 2000 output tokens, stopped on max_tokens mid-JSON, and the
   // parse threw - which the route honestly reported as "that didn't save", with
   // no way for anyone to see why. The model had understood every day; it simply
-  // could not close the brackets. Suppressing per-entry items above brings a
-  // week back to about 700 tokens, and this ceiling means a fortnight of
-  // catch-up cannot hit it either.
+  // could not close the brackets.
+  //
+  // THE FIRST FIX WAS THE WRONG HALF. Suppressing per-entry items brought a
+  // week back to about 700 tokens and it did stop the truncation - but the cost
+  // landed the same day: seven rows went in with no food_items, so every one of
+  // them showed as "Dinner" with nothing beneath it, and Ruth's verdict was
+  // that there was nothing there to discuss. The ceiling is what buys the room,
+  // not the missing breakdown. Re-measured with items back on and the same
+  // seven-day message (scripts/repro-food-parse.mjs 8000): 2,316 output tokens,
+  // stop_reason end_turn, seven entries itemised. That is under a third of the
+  // cap, so a fortnight of catch-up still finishes its sentence.
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: updateLogId ? 500 : 8000,

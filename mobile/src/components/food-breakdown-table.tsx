@@ -27,7 +27,13 @@ import { supabase } from '@/lib/supabase';
 // this one arrives unbidden in the thread, so it is quieter - no confidence tag,
 // no macro grid, just the rows, the total, and one line underneath.
 
-type FoodLog = { meal_label: string | null; happened_at: string | null };
+type FoodLog = {
+  meal_label: string | null;
+  raw_text: string | null;
+  happened_at: string | null;
+  kcal: number | null;
+  protein_g: number | null;
+};
 
 export function FoodBreakdownTable({
   foodLogId,
@@ -53,7 +59,7 @@ export function FoodBreakdownTable({
       const [{ data: logRow }, { data: itemRows }] = await Promise.all([
         supabase
           .from('food_logs')
-          .select('meal_label, happened_at')
+          .select('meal_label, raw_text, happened_at, kcal, protein_g')
           .eq('id', foodLogId)
           .maybeSingle(),
         supabase
@@ -85,15 +91,44 @@ export function FoodBreakdownTable({
   // entry this is. Without it, asking about an apple would look exactly like
   // asking about nothing, which is the complaint that produced this.
   // Computed before the early returns, because the no-items case needs it too.
-  const heading = breakdownHeading(log?.happened_at ?? null, log?.meal_label ?? null);
+  const heading = breakdownHeading(
+    log?.happened_at ?? null,
+    log?.meal_label ?? null,
+    log?.raw_text ?? null
+  );
 
   if (!loaded) return null;
   if (items.length === 0) {
-    return naming && heading.length > 0 ? (
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.naming}>
-        {heading}
-      </ThemedText>
-    ) : null;
+    // AND IT CARRIES THE FIGURES, NOT JUST THE NAME (2026-09-16, same hour).
+    // The first version of this was a bare grey line, which is how "Monday 7
+    // September · Dinner" ended up in the thread with nothing under it. Ruth:
+    // "in the card that's transferred it would need to take the full breakdown
+    // for discussion. Otherwise what could be discussed."
+    //
+    // An unitemised log has no parts to list, but it always has its own words
+    // and its own totals, and those ARE its breakdown - the same two facts the
+    // detail card falls back to. Drawn as a card rather than a line so it reads
+    // as a thing brought into the conversation.
+    if (!naming || heading.length === 0) return null;
+    const totals = [
+      log?.kcal != null ? `${Math.round(log.kcal)} kcal` : null,
+      log?.protein_g != null ? `${Math.round(log.protein_g)}g protein` : null,
+    ].filter((p): p is string => p !== null);
+    return (
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.namingCard, { borderColor: theme.backgroundSelected }]}
+        accessibilityRole="summary"
+        accessibilityLabel={`About ${heading}${totals.length > 0 ? `, ${totals.join(', ')}` : ''}`}
+      >
+        <ThemedText type="smallBold">{heading}</ThemedText>
+        {totals.length > 0 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {totals.join(' · ')}
+          </ThemedText>
+        )}
+      </ThemedView>
+    );
   }
 
   const rows = buildBreakdownRows(items);
@@ -214,10 +249,16 @@ const styles = StyleSheet.create({
   commentary: {
     paddingHorizontal: Spacing.one,
   },
-  // The bare naming line, when there is no table under it. Indented to sit with
-  // the turn it belongs to rather than floating at the thread's edge.
-  naming: {
-    paddingHorizontal: Spacing.one,
+  // The entry named with its own totals, when there are no items to table.
+  // Matches EntrySummaryCard's shape exactly: an entry carried into chat looks
+  // the same whether it was food, a session or a reading.
+  namingCard: {
+    borderRadius: Spacing.three,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.half,
     alignSelf: 'flex-start',
+    maxWidth: '95%',
   },
 });

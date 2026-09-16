@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { entryLabel } from '@/lib/food-today';
 import { supabase } from '@/lib/supabase';
 import { dayLabel, daysOfWeek, toLocalDateKey, weekLabel, weekRange } from '@/lib/week';
 
@@ -23,6 +24,9 @@ type FoodLogRow = {
   id: string;
   happened_at: string;
   meal_label: string | null;
+  // What she actually typed, which is what names the row - shared with the
+  // other two log views through entryLabel (2026-09-16).
+  raw_text: string | null;
   kcal: number | null;
   protein_g: number | null;
 };
@@ -41,7 +45,7 @@ export function FoodWeekView({ weekStart }: { weekStart: Date }) {
       // RLS scopes the read to the signed-in user — no explicit user_id filter.
       const { data } = await supabase
         .from('food_logs')
-        .select('id, happened_at, meal_label, kcal, protein_g')
+        .select('id, happened_at, meal_label, raw_text, kcal, protein_g')
         .gte('happened_at', startISO)
         .lt('happened_at', endISO)
         .order('happened_at', { ascending: true });
@@ -95,7 +99,7 @@ export function FoodWeekView({ weekStart }: { weekStart: Date }) {
                 entries.map((e) => (
                   <ThemedView key={e.id} style={styles.entryRow}>
                     <ThemedText type="small" style={styles.entryLabel}>
-                      {e.meal_label ?? 'Food'}
+                      {entryLabel(e)}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {macroLine(e)}
