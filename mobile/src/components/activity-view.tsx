@@ -10,7 +10,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { resolveTDEE } from '@/lib/body-metrics';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { supabase } from '@/lib/supabase';
 import { formatLogDate } from '@/lib/week';
@@ -43,25 +42,13 @@ type ActivityRow = {
   happened_at: string;
 };
 
-export const BMR_EXPLAINER = [
-  {
-    q: "What's basal metabolic rate (BMR)?",
-    a: 'What your body burns just staying alive at complete rest: breathing, heartbeat, organ function, cell repair. The energy cost of simply existing, before you’ve moved a muscle.',
-  },
-  {
-    q: "What's total daily energy expenditure (TDEE)?",
-    a: 'Your BMR plus everything else: walking, training, digesting food, even fidgeting. TDEE is always higher than BMR; it’s BMR with your whole day layered on top.',
-  },
-  {
-    q: 'Does building muscle raise your BMR?',
-    a: 'Yes, but modestly. Research puts it at roughly 10-13 kcal a day for every kilogram of muscle gained.',
-  },
-];
+// BMR_EXPLAINER moved to components/what-you-burn.tsx on 2026-09-16, with the
+// panel itself. It is not re-exported from here: a second name for the same
+// three answers is how two copies start.
 
 export function ActivityView() {
   const theme = useTheme();
   const [rows, setRows] = useState<ActivityRow[]>([]);
-  const [tdee, setTdee] = useState<{ bmr: number | null; tdee: number | null; estimated: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   // See food-today-view: the quick-log bar bumps this so the list re-reads.
   const [reloadKey, setReloadKey] = useState(0);
@@ -71,53 +58,21 @@ export function ActivityView() {
     (async () => {
       const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString();
       // RLS scopes every read to the signed-in user.
-      const [{ data: activity }, { data: profile }, { data: measurements }] = await Promise.all([
-        supabase
-          .from('activity_logs')
-          .select('id, activity_type, duration_min, kcal_burned, intensity, happened_at, source')
-          .gte('happened_at', since)
-          .order('happened_at', { ascending: false }),
-        supabase
-          .from('user_profile')
-          .select('date_of_birth, biological_sex, activity_level, height_cm')
-          .maybeSingle(),
-        supabase
-          .from('body_measurements')
-          .select('weight_kg, bmr')
-          .order('measured_at', { ascending: false })
-          .limit(1),
-      ]);
+      // ONE READ NOW. The profile and body_measurements reads that sat here fed
+      // the BMR/TDEE panel, and that panel moved to the Overview on 2026-09-16.
+      // They moved with it rather than being fetched twice on two screens - the
+      // Overview already makes the same resolveTDEE call for its calorie target.
+      const { data: activity } = await supabase
+        .from('activity_logs')
+        .select('id, activity_type, duration_min, kcal_burned, intensity, happened_at, source')
+        .gte('happened_at', since)
+        .order('happened_at', { ascending: false });
       if (cancelled) return;
 
       // Sessions only. A whole-day tracker total is not something the person
       // did, and listing one here beside real workouts is what made a day's
       // incidental walking read as a 1063 kcal session.
       setRows(withoutDailySummaries((activity ?? []) as ActivityRow[]));
-
-      const p = (profile ?? {}) as {
-        date_of_birth?: string | null;
-        biological_sex?: string | null;
-        activity_level?: string | null;
-        height_cm?: number | null;
-      };
-      const latest = ((measurements ?? []) as { weight_kg: number | null; bmr: number | null }[])[0] ?? null;
-      const resolved = resolveTDEE({
-        scaleBmr: latest?.bmr ?? null,
-        weightKg: latest?.weight_kg ?? null,
-        heightCm: p.height_cm ?? null,
-        dateOfBirth: p.date_of_birth ?? null,
-        biologicalSex: p.biological_sex ?? null,
-        activityLevel: p.activity_level ?? null,
-      });
-      setTdee(
-        resolved
-          ? {
-              bmr: resolved.bmrKcal,
-              tdee: resolved.tdeeKcal,
-              estimated: resolved.bmrSource === 'estimated_bmr',
-            }
-          : null
-      );
       setLoading(false);
     })();
     return () => {
@@ -206,49 +161,13 @@ export function ActivityView() {
         </ThemedText>
       </Pressable>
 
-      <ThemedText type="smallBold" style={styles.heading}>
-        What you burn
-      </ThemedText>
-
-      <ThemedView type="backgroundElement" style={styles.card}>
-        {tdee?.bmr != null || tdee?.tdee != null ? (
-          <View style={styles.numbers}>
-            <Stat label="BMR" value={tdee.bmr} />
-            <Stat label="TDEE" value={tdee.tdee} />
-          </View>
-        ) : null}
-
-        {/* Said plainly rather than hidden: an estimate and a scale reading are
-            not the same thing, and the person should know which she is looking
-            at before she reasons from it. */}
-        {tdee?.estimated ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-            Estimated from your height, age and weight. A scale that reads BMR directly gives a
-            closer figure.
-          </ThemedText>
-        ) : null}
-
-        {BMR_EXPLAINER.map((item) => (
-          <View key={item.q} style={styles.explainerItem}>
-            <ThemedText type="smallBold">{item.q}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {item.a}
-            </ThemedText>
-          </View>
-        ))}
-      </ThemedView>
+      {/* "What you burn" MOVED TO THE OVERVIEW on 2026-09-16: Ruth said it was
+          too hidden down here, and it now sits minimised on the screen she
+          actually lands on. It is not duplicated here on purpose - two copies
+          of the same three answers is how they drift apart, and the one that
+          drifts is always the one nobody is looking at. See
+          components/what-you-burn.tsx. */}
     </ThemedView>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | null }) {
-  return (
-    <View style={styles.stat}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{value != null ? `${Math.round(value)} kcal` : '—'}</ThemedText>
-    </View>
   );
 }
 

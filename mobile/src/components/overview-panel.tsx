@@ -26,6 +26,7 @@ import {
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
 import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { supabase } from '@/lib/supabase';
+import { WhatYouBurn, type BurnFigures } from '@/components/what-you-burn';
 
 // The Body tab's landing screen (rewritten 2026-09-03).
 //
@@ -66,6 +67,10 @@ type OverviewData = {
   activityCount: number;
   activityMinutes: number;
   hydrationMl: number;
+  // BMR and TDEE for the "What you burn" panel. Null when there is not enough
+  // to compute them, which the panel says by showing nothing rather than a
+  // dash: an estimate nobody can make is not a figure with a gap in it.
+  burn: BurnFigures;
 };
 
 type ProfileRow = {
@@ -241,6 +246,13 @@ export function OverviewPanel() {
         proteinTargetLabel: proteinTargetLabel(proteinTarget),
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
+        burn: tdee
+          ? {
+              bmr: tdee.bmrKcal,
+              tdee: tdee.tdeeKcal,
+              estimated: tdee.bmrSource === 'estimated_bmr',
+            }
+          : null,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
       });
       setLoading(false);
@@ -254,18 +266,33 @@ export function OverviewPanel() {
   if (loading || !data) {
     return (
       <View style={styles.screen}>
-        <ThemedText type="title">Today</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {todayLabel()}
-        </ThemedText>
+        {/* The same two lines as the loaded screen, so the heading does not
+            change size or wording when the data arrives. */}
+        <ThemedText type="title">Overview</ThemedText>
+        <View>
+          <ThemedText type="subtitle">Today</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {todayLabel()}
+          </ThemedText>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.screen}>
+      {/* OVERVIEW IS THE PAGE; TODAY IS A SECTION OF IT (Ruth, 2026-09-16:
+          "Perhaps it can have a title saying overview and make Today less
+          giant"). The stack deliberately gives this screen no header, on the
+          grounds that a screen labelled "Overview" above a self-evident
+          overview explains itself - but that reasoning assumed "Today" was the
+          page. It is not: "This week" sits below it at equal weight, and
+          "What you burn" now sits below that. Naming the page and demoting
+          Today to a section is what the screen actually is. */}
+      <ThemedText type="title">Overview</ThemedText>
+
       <View>
-        <ThemedText type="title">Today</ThemedText>
+        <ThemedText type="subtitle">Today</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {todayLabel()}
         </ThemedText>
@@ -417,6 +444,13 @@ export function OverviewPanel() {
           )}
         </View>
       </View>
+
+      {/* Moved here from the foot of Activity, where Ruth said it was too
+          hidden. Collapsed it is one row, which is all this screen can spare -
+          see the no-scroll note above. The figures come from the resolveTDEE
+          call this screen already makes for the calorie target, so nothing is
+          computed twice. */}
+      <WhatYouBurn figures={data.burn} />
     </View>
   );
 }

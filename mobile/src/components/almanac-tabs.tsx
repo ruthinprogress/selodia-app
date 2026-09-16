@@ -51,10 +51,25 @@ export function AlmanacTabs({
                   face to Comfortaa made Android keep the narrower measurement,
                   so "Insights" drew as "Insigh". Selection is shown by the
                   cream segment and the darker text, never by a font change. */}
+              {/* NO TRUNCATION, AT ALL (2026-09-16). Ruth reported the Me tab
+                  "just shows as three dots", twice. numberOfLines={1} was doing
+                  that: when Android measures this text wider than the space it
+                  is given - which it does here, measuring in the system face
+                  while drawing in Comfortaa, the same mismatch that drew
+                  "Insights" as "Insigh" on 12 September - it replaces the whole
+                  label with an ellipsis. On a two-letter word that is absurd,
+                  and it is why the shortest label failed hardest: there is
+                  nothing to trim, so everything goes.
+
+                  A label is never worth truncating here. There are three of
+                  them, all short, and the longest is "Movement". Letting the
+                  text keep its own width and refuse to shrink means a wrong
+                  measurement costs a few pixels of padding rather than the
+                  word itself. */}
               <ThemedText
-                type="smallBold"
-                numberOfLines={1}
-                style={{ color: selected ? theme.text : theme.textSecondary }}
+                adjustsFontSizeToFit={false}
+                ellipsizeMode="clip"
+                style={[styles.label, { color: selected ? theme.text : theme.textSecondary }]}
               >
                 {t.label}
               </ThemedText>
@@ -79,6 +94,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tab: { flex: 1 },
+  // Never shrinks, never wraps. The segment is centred and roomy; a label that
+  // cannot be squeezed cannot be replaced by an ellipsis, whatever Android
+  // measures it as.
+  label: {
+    flexShrink: 0,
+    textAlign: 'center',
+  },
   segment: {
     paddingVertical: 8,
     borderRadius: 18,

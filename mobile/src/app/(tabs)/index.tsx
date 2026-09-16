@@ -98,21 +98,33 @@ export default function ChatScreen() {
   // only: ask-selodia writes it onto that turn and then carries the thread's tag
   // forward itself, so holding it here for later turns would be a second source
   // of truth for the same fact.
-  const { prefill, discussId, discussType } = useLocalSearchParams<{
+  const { prefill, discussId, discussType, askNow } = useLocalSearchParams<{
     prefill?: string;
     discussId?: string;
     discussType?: string;
+    askNow?: string;
   }>();
   const [lastPrefill, setLastPrefill] = useState<string | null>(null);
   const [pendingTag, setPendingTag] = useState<{ entryId: string; entryType: string } | null>(null);
+  // Set during render, acted on in an effect below: sending from the render body
+  // would be a side effect in a render pass.
+  const [autoAsk, setAutoAsk] = useState<string | null>(null);
   if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
     setLastPrefill(prefill);
-    if (input.length === 0) setInput(prefill);
-    setPendingTag(
+    const tag =
       typeof discussId === 'string' && discussId.length > 0 && typeof discussType === 'string'
         ? { entryId: discussId, entryType: discussType }
-        : null
-    );
+        : null;
+    setPendingTag(tag);
+    // "ASK ABOUT THIS" SENDS; the Almanac's "Update this" still fills the box.
+    //
+    // It filled the box until 2026-09-16 and Ruth reported three times that
+    // tapping it produced nothing: the card rides on her own turn, so until the
+    // message went, there was nothing to show. A button named "Ask about this"
+    // that silently waits for a second, undisclosed action is the fault -
+    // opening a conversation is what it says it does.
+    if (askNow === '1' && tag) setAutoAsk(prefill);
+    else if (input.length === 0) setInput(prefill);
   }
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -134,6 +146,25 @@ export default function ChatScreen() {
   // Live values for the focus guard below, held in refs so the effect does not
   // re-subscribe on every keystroke. Written in effects, read only inside
   // callbacks - never during render.
+  // "Ask about this" asks, rather than waiting in the box.
+  //
+  // Sent from an effect because handleSend writes state and hits the network,
+  // neither of which belongs in a render pass. The guard is a REF, not a
+  // setState here: clearing state inside the effect that reads it is the
+  // set-state-in-effect pattern this project's lint refuses, and it refuses it
+  // for a good reason - the extra render it causes is invisible until it is
+  // a loop. The ref records what has already been sent, so a re-render with the
+  // same params does nothing.
+  const sentAskRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoAsk || sentAskRef.current === autoAsk) return;
+    sentAskRef.current = autoAsk;
+    void handleSend(autoAsk);
+    // handleSend is redefined every render; depending on it would re-run this
+    // on every keystroke. autoAsk is the trigger, and the ref is the guard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAsk]);
+
   const sendingRef = useRef(false);
   const inputRef = useRef('');
   useEffect(() => {
