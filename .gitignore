@@ -55,3 +55,10 @@ next-env.d.ts
 # <project>-firebase-adminsdk-<hash>.json.
 *firebase-adminsdk*.json
 google-service-account*.json
+
+# Generated things worth looking at twice and never worth committing: design
+# mockups, backups taken before a delete, one-off reports. The flower's
+# empty-state mockup (2026-09-16) is 486kb of HTML with the brand mark embedded,
+# which is exactly the kind of file that should be easy to make and impossible
+# to end up in history.
+scratchpad/
