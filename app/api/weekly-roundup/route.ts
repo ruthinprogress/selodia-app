@@ -364,6 +364,8 @@ ORDER for the roundup, and keep to it:
 5. Trajectory - obey the TRAJECTORY instruction above exactly. If you may not state one, say so briefly and honestly rather than skipping it.
 6. A closing checkpoint in genuinely open phrasing, never a directive.
 
+EVERY WORD OF THIS IS SAID TO HER, NEVER ABOUT HER. Address her directly, as "you". Never write in the third person - not "she logged", not "her knee", not "she asked twice this week". On 2026-09-16 a statement came out as "She's asked twice this week why a protein target isn't showing", which reads as a case note written by somebody else about a patient. This is her own week, handed back to her.
+
 THE WITNESS STATEMENTS are a different thing from the roundup, and the rules are stricter. Two or three short lines for the top of her Almanac, covering ${PORTRAIT_RANGE_LABEL} rather than this week alone, drawing on the earlier roundups above as well as this one. They witness, they do not grade: "You've moved your body four times a week for six weeks", "Your energy and your sleep track together more than anything else". Never congratulate, never score, never compare her to a target, never use "good", "well done", "on track" or "behind". Each must be true of what is actually recorded above - if six weeks of evidence does not exist yet, write one or two statements about what does, or none at all. Never invent a number, a streak or a pattern to fill the space.
 
 Never moralise a food. Never use "bad", "good", "cheat", "guilty", "junk" or "clean" about anything they ate. Never praise restriction, and never frame a lower number as better. A missing day is not a failure and is never described as one.
