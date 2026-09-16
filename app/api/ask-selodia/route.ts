@@ -537,6 +537,8 @@ CORRECTIONS: When the person is fixing or removing something they JUST logged ra
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
 
+CATCHING UP ON PAST DAYS. Somebody can hand you several days at once - "catch up my food log: Mon 7th pizza and chips, Tuesday 8th burger and beer, Weds 9th Turkish feast". Set logIntent 'food' and put all of it in logText, with the days as they said them; the app splits it into one entry per day and dates each one. Do not ask them to repeat it a day at a time, and do not say it is logged in a way that lists what you think went in - the app tells them what actually landed. The same holds for activity. If a day is genuinely ambiguous, log the rest and ask about that one.
+
 SUGGESTING SOMETHING TO EAT (build item 22). When somebody asks what to have - at home, out, ordering in, staring at a fridge - answer it properly, using TODAY SO FAR above so the suggestion actually fits their day rather than being generic advice.
 
 Say the number only when it earns its place. "You've got about 700 left, so something substantial is fine" is useful. Reciting a macro budget at somebody deciding on dinner is the tracker-app register this app exists to avoid, and most of the time the number should shape WHAT YOU SUGGEST without being said out loud at all.
@@ -641,12 +643,12 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
       type: 'string',
       enum: ['none', 'food', 'activity', 'measurement', 'hydration'],
       description:
-        "'food' if the message describes something eaten or drunk, 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText.",
+        "'food' ONLY when the message actually describes food or drink they consumed - a message ABOUT the log is not a meal (\"it's not gone into the log\", \"did that save?\", \"my log is empty\"), and gets an answer rather than an entry. 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText.",
     },
     logText: {
       type: 'string',
       description:
-        "Only alongside logIntent 'activity'. The COMPLETE description to store, assembled from the conversation - e.g. after \"I did a run\" then \"about 40 minutes\", send \"a 40 minute run\". Without this the app would store only the latest message, which on its own says \"about 40 minutes\" and describes no activity at all. Include the duration always, and anything else they said that belongs to the same session (intensity, terrain, how it felt). Omit it when the single message already contains everything.",
+        "Alongside logIntent 'activity' or 'food'. The COMPLETE description to store, assembled from the conversation and stripped of everything that is not the food or the session - e.g. after \"I did a run\" then \"about 40 minutes\", send \"a 40 minute run\"; for \"catch up my log: Mon 7th pizza and chips, Tuesday 8th burger\", send the days and their meals and nothing else. Without this the app stores the raw message, which is how a complaint about logging once became a meal. For activity include the duration always, and anything else belonging to the same session (intensity, terrain, how it felt). Omit it only when the message is already exactly the thing to store.",
     },
     correctionKind: {
       type: 'string',
@@ -1062,9 +1064,11 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
           attempt.landed.push('reading');
         }
       } else if (correction.kind === 'food' && target) {
-        const entry = await logFoodFromText(supabase, user.id, message, undefined, target.id);
-        saved = { kind: 'food', summary: foodSaveSummary(entry) };
-        attempt.landed.push('food');
+        const updated = await logFoodFromText(supabase, user.id, message, undefined, target.id);
+        if (updated.length > 0) {
+          saved = { kind: 'food', summary: foodSaveSummary(updated) };
+          attempt.landed.push('food');
+        }
       } else if (target) {
         // Activity has no in-place update path: logActivityFromText can split
         // one message into several rows, so "replace row X" is not well
@@ -1174,25 +1178,37 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
   if (result.logIntent === 'food' || result.logIntent === 'activity') {
     const runLog = async () => {
       if (result.logIntent === 'food') {
-        const entry = await logFoodFromText(supabase, user.id, message);
-        saved = { kind: 'food', summary: foodSaveSummary(entry) };
-        attempt.landed.push('food');
-        // The turn carries a REFERENCE to what it logged, so the client can
-        // render the itemised table from food_items rather than from anything
-        // the model wrote. See mobile/src/lib/food-breakdown-table.ts.
-        breakdownFoodLogId = entry.id;
-        // A new food log ends any prior clarification (that moment has passed);
-        // then pin this log's own question, if the model asked one (slice 2a).
-        await supabase
-          .from('food_logs')
-          .update({ clarification_pending: null })
-          .eq('user_id', user.id)
-          .not('clarification_pending', 'is', null);
-        if (result.clarificationAsked) {
+        // logText carries the food itself when the model has separated it from
+        // the rest of the message, exactly as it does for activity. Passing the
+        // raw message is how "It's not gone into the log" ended up stored as a
+        // meal on 2026-09-16.
+        const entries = await logFoodFromText(supabase, user.id, result.logText?.trim() || message);
+        // An empty result means the text held no food. Nothing is claimed: the
+        // honesty note below says so rather than the reply pretending.
+        if (entries.length > 0) {
+          saved = { kind: 'food', summary: foodSaveSummary(entries) };
+          attempt.landed.push('food');
+          // The turn carries a REFERENCE to what it logged, so the client can
+          // render the itemised table from food_items rather than from anything
+          // the model wrote. See mobile/src/lib/food-breakdown-table.ts.
+          //
+          // ONLY FOR A SINGLE MEAL. A catch-up of seven days has seven rows and
+          // no single table to show, and picking one of them would show that
+          // day's breakdown under a reply about the week.
+          breakdownFoodLogId = entries.length === 1 ? entries[0].id : null;
+          // A new food log ends any prior clarification (that moment has passed);
+          // then pin this log's own question, if the model asked one (slice 2a).
           await supabase
             .from('food_logs')
-            .update({ clarification_pending: result.clarificationAsked })
-            .eq('id', entry.id);
+            .update({ clarification_pending: null })
+            .eq('user_id', user.id)
+            .not('clarification_pending', 'is', null);
+          if (result.clarificationAsked && entries.length === 1) {
+            await supabase
+              .from('food_logs')
+              .update({ clarification_pending: result.clarificationAsked })
+              .eq('id', entries[0].id);
+          }
         }
       } else {
         // logText carries the description assembled across turns, so the answer

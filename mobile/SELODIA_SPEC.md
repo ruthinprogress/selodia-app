@@ -901,6 +901,18 @@ Stored daily summaries become the natural building blocks for the weekly roundup
 
 **"Full" day, defined:** at least one food-log entry exists that day, regardless of when during the day it was logged. Body measurements and activity are not held to this same daily standard, since neither is naturally meant to happen every single day. Retrospective catch-up entries count toward a day being logged.
 
+**That last sentence was not true until 2026-09-16.** Ruth typed a week of meals into chat to give the new Sunday roundup something to summarise: *"Catch up my food log: Mon 7th pizza and chips, Tuesday 8th burger, beer, salad with chicken..."* through to Sunday. **Nothing was written at all**, and the reply said all seven days had gone in. She said "It's not gone into the log", and **that sentence was then written into `food_logs` as a meal at 0 kcal**, because the chat route stored her raw message rather than the food, and nothing asked whether the text described any food.
+
+One design gap, two symptoms: the food parse contract had no way to say which day a meal belonged to, or that a message held more than one meal, so the text path could only ever produce a single row stamped now. Activity had solved both years of app-time earlier - it resolves "on Monday" to a date and splits "ballet then yoga" into separate rows - so food now takes the same shape:
+
+- `food-parse-prompt.ts` gains an ENTRIES envelope: one object per meal, each with its own `detected_date` and the person's own words for that entry. A named day without a year means the most recent one that has happened, never a future date.
+- `food-logging.ts` returns an ARRAY of stored rows, one per day, with the day from the parse and the time of day carried over - the day is what every weekly figure buckets by, and somebody catching up on Wednesday cannot say what time on Monday they ate. `buildFoodRows` is pure and probed by `scripts/probe-food-backfill.mjs` (19 checks).
+- **What is not food is not logged.** An entry with no items and no macros is dropped, the same guard activity has always had for a missing duration, and a parse that finds no food at all returns nothing. The route then claims nothing, and the honesty note says so.
+- The chat route passes `logText` for food as well as activity, so the model hands over the meal rather than the sentence around it, and `logIntent` now says plainly that a message about the log is not a meal.
+- The itemised breakdown table is attached only when a single meal was logged: a seven-day catch-up has no one table to show.
+
+**Not yet verified on a device:** that the parse resolves "Mon 7th" to the right date and splits a real seven-day message. The pure half is probed; the model's half is not, and cannot be from here.
+
 **Order:** a brief warm opening, grounding data (weekly totals, this week's delta), interpretation woven in (personal context from the week's stored daily summaries, plus any relevant physiological context), a thematic/narrative observation, a trajectory/ETA estimate if the data genuinely supports one, then a closing checkpoint using genuinely open phrasing.
 
 **Confidence placement:** attached locally to the specific number it affects (e.g. next to a TDEE estimate: "based on 5 of 7 days logged, so take this as indicative"), never a blanket disclaimer at the top. This is also how missing days are handled in any weekly calculation — excluded from the number, not estimated as zero, with the confidence note stating honestly how many of the 7 days the calculation actually rests on.

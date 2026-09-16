@@ -67,6 +67,37 @@ export const aminoProfile = (s: unknown): AminoProfileValue | null =>
 export const FOOD_PARSE_JSON_SCHEMA =
   '{"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null}], "meal_label": string, "confidence": "clear" or "uncertain"}';
 
+// ONE MESSAGE CAN BE SEVERAL DAYS OF FOOD (2026-09-16).
+//
+// "Catch up my food log: Mon 7th pizza and chips, Tuesday 8th burger..." wrote
+// nothing at all, and the reply said it had logged all seven days. The text path
+// could only ever produce ONE row, stamped now, because nothing in this contract
+// let the model say which day a meal belonged to or that there was more than
+// one. Part Nine has always counted retrospective catch-up entries toward a day
+// being logged, so the gap was in the parse, not the rule.
+//
+// Activity solved this long ago by resolving relative dates and splitting
+// multiple activities, so food now takes the same shape: an envelope of entries,
+// each carrying its own day and its own words.
+export type ParsedEntry = ParsedMacros & {
+  // The day this entry belongs to, ISO, or null for today.
+  detected_date?: string | null;
+  // The person's own words for THIS entry, so a row's raw_text is the meal
+  // rather than the whole seven-day message.
+  entry_text?: string;
+};
+
+export type ParsedFoodEntries = { entries?: ParsedEntry[] };
+
+// The per-entry shape: the single-log schema plus the two fields that make a
+// catch-up possible. Composed from the schema above rather than restated, so a
+// field added there is inherited here (the closing brace is replaced).
+export const FOOD_PARSE_ENTRY_SCHEMA =
+  FOOD_PARSE_JSON_SCHEMA.slice(0, -1) +
+  ', "detected_date": iso8601_date_string_or_null, "entry_text": string}';
+
+export const FOOD_PARSE_ENTRIES_SCHEMA = `{"entries": [${FOOD_PARSE_ENTRY_SCHEMA}]}`;
+
 // The classification rules over that schema (protein_source + breakdown_type),
 // identical for every path. meal_label and confidence guidance stay per-path
 // (they differ: typed text is always "clear"; a photo may be "uncertain"), as do
