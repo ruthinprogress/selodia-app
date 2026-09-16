@@ -163,6 +163,7 @@ export async function logFoodFromText(
       'Return one object in "entries" per MEAL: split a message that describes several meals or several days into separate entries, and never merge two days into one. ' +
       'If an entry names a day - "Monday", "Mon 7th", "yesterday", "last Tuesday" - work out the actual date and return it as detected_date in ISO format (e.g. "2026-09-07"). A named day without a year means the most recent one that has already happened, never a future date. Return null for detected_date when no day is given, and the entry will be logged as today. ' +
       'Put the person\'s own words for that entry in entry_text. ' +
+      'WHEN THERE IS MORE THAN ONE ENTRY, leave items empty and set breakdown_type to "simple" for every entry. A catch-up of several days shows no itemised table - only a single meal does - so the breakdown would be paid for and never seen, and it is what makes a seven-day reply too long to finish. Itemise only when you are returning exactly one entry. ' +
       'IF THE TEXT DESCRIBES NO FOOD AT ALL - a question, a complaint that something did not save, a comment about logging - return {"entries": []}. Never invent a meal to fill the gap, and never treat a remark about the log as a meal. ' +
       'Estimate the macros for each entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: ' +
       FOOD_PARSE_ENTRIES_SCHEMA +
@@ -172,9 +173,16 @@ export async function logFoodFromText(
       foodText +
       '"';
 
+  // ROOM TO FINISH THE SENTENCE. Measured on 2026-09-16: a seven-day catch-up
+  // ran to exactly 2000 output tokens, stopped on max_tokens mid-JSON, and the
+  // parse threw - which the route honestly reported as "that didn't save", with
+  // no way for anyone to see why. The model had understood every day; it simply
+  // could not close the brackets. Suppressing per-entry items above brings a
+  // week back to about 700 tokens, and this ceiling means a fortnight of
+  // catch-up cannot hit it either.
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
+    max_tokens: updateLogId ? 500 : 8000,
     messages: [{ role: 'user', content: instruction }],
   });
 
