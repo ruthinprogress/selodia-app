@@ -121,16 +121,19 @@ const styles = StyleSheet.create({
   userBubble: {
     alignSelf: 'flex-end',
   },
-  // Bottom-aligned: the mark sits with the last line of a long reply rather than
-  // floating at the top of a tall bubble.
+  // TOP-ALIGNED (Ruth's call, 2026-09-16, looking at it on the phone). It was
+  // bottom-aligned first, on the reasoning that the mark should sit with the last
+  // line. On a six-line reply that put it level with the end of a paragraph,
+  // detached from the text it belongs to. The eye starts at the first line, so
+  // the speaker's mark belongs there.
   assistantRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: Spacing.two,
   },
   // The row owns the alignment now, and the bubble may take what is left of it.
   assistantBubble: {
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
     flexShrink: 1,
   },
   avatar: {

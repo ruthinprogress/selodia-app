@@ -179,7 +179,15 @@ export async function loadDiscussEntryFacts(
   tag: DiscussTag
 ): Promise<string | null> {
   if (!tag) return null;
-  const lead = 'THE ENTRY THEY ARE ASKING ABOUT. They tapped "Ask about this" on it, so it is on screen in front of them and this exchange is about it. Speak about THIS entry, by name, unless they plainly change the subject.';
+  // DO NOT READ THE CARD BACK (Ruth, 2026-09-16, on the first reply this block
+  // ever produced: "I don't think it needs such a lengthy text acknowledgement -
+  // find a more punchy solution"). The reply recited every item and the total,
+  // directly beneath a table showing every item and the total. Handing the model
+  // the facts was right; it just had no idea the person could already see them.
+  const lead =
+    'THE ENTRY THEY ARE ASKING ABOUT. They tapped "Ask about this" on it, so its card is on screen DIRECTLY ABOVE your reply - itemised, with its totals. They can see all of it.\n' +
+    'So do not read it back. No list of what was in it, no totals, no recital of the date. One short line that shows you know which entry this is, then ask what they want to know about it. Two sentences at most, and shorter is better.\n' +
+    'The facts below are for ANSWERING, not for repeating.';
 
   if (tag.entryType === 'food') {
     const [{ data: log }, { data: items }] = await Promise.all([
@@ -200,14 +208,34 @@ export async function loadDiscussEntryFacts(
     // views took the same day, and for the same reason: "what could be
     // discussed about 'dinner' - it's not specific enough to add any value".
     const named = (log.raw_text as string | null)?.trim() || (log.meal_label as string | null)?.trim() || 'a meal';
-    const totals = [
-      part(log.kcal, ' kcal'),
-      part(log.protein_g, 'g protein'),
-      part(log.carbs_g, 'g carbs'),
-      part(log.fat_g, 'g fat'),
-    ].filter((p): p is string => p !== null);
 
-    const lines = (items ?? []).map((it) => {
+    // THE SAME TOTALS THE TABLE DRAWS, NOT THE LOG'S OWN (2026-09-16). The first
+    // reply this block produced said "18g protein" under a table whose total read
+    // ~16g. Both numbers were real: food_logs holds the parse's figure for the
+    // whole meal, and the table sums its items, and the two differ by a rounding
+    // step or two. food-breakdown-table.ts already refused that trade for exactly
+    // this reason - "a table whose total does not equal its own visible column is
+    // the one thing a reader will spot instantly" - and then the model was handed
+    // the other number and quoted it. When there are items, the sum of the items
+    // IS the total, here as well as there.
+    const rows = items ?? [];
+    const sum = (pick: (r: (typeof rows)[number]) => unknown): number | null => {
+      const vals = rows.map(pick).filter((v): v is number => typeof v === 'number');
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) : null;
+    };
+    const totals =
+      rows.length > 0
+        ? [part(sum((r) => r.kcal), ' kcal'), part(sum((r) => r.protein_g), 'g protein')].filter(
+            (p): p is string => p !== null
+          )
+        : [
+            part(log.kcal, ' kcal'),
+            part(log.protein_g, 'g protein'),
+            part(log.carbs_g, 'g carbs'),
+            part(log.fat_g, 'g fat'),
+          ].filter((p): p is string => p !== null);
+
+    const lines = rows.map((it) => {
       const qty = (it.quantity as string | null)?.trim();
       const macros = [part(it.kcal, ' kcal'), part(it.protein_g, 'g protein')].filter(
         (p): p is string => p !== null

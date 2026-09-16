@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountDeletion } from '@/components/account-deletion';
+import { BuildVersion } from '@/components/build-version';
 import { DataExport } from '@/components/data-export';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -108,6 +109,13 @@ export default function SettingsScreen() {
           <SpotlightTarget id="settings.delete">
             <AccountDeletion />
           </SpotlightTarget>
+
+          {/* Last, quiet, and not a setting - see build-version.tsx for why a
+              version line does not breach the rule this screen's own comment
+              sets. It is here because Settings is where every app keeps one,
+              and because it is reachable from anywhere without a tester needing
+              to be told a gesture. */}
+          <BuildVersion />
         </SpotlightScroll>
         </ScrollView>
       </SafeAreaView>
