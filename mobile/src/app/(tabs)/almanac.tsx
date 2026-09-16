@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { hasSeenAlmanacIntro, markAlmanacIntroSeen } from '@/lib/almanac-intro';
 import { splitByTab, type AlmanacRow, type AlmanacTab } from '@/lib/insights';
+import { portraitFrom } from '@/lib/roundup';
 import { supabase } from '@/lib/supabase';
 
 // The Almanac, redesigned (build spec, Part Ten, 2026-09-12): three views of one
@@ -90,6 +91,7 @@ export default function AlmanacScreen() {
   );
 
   const byTab = splitByTab(rows);
+  const portrait = portraitFrom(rows);
   const openEntry: DetailEntry | null = rows.find((r) => r.id === openId) ?? null;
 
   // Hidden immediately, persisted in the background: the card must never wait
@@ -114,7 +116,11 @@ export default function AlmanacScreen() {
 
             {tab === 'insights' && (
               <>
-                <InsightsPortrait />
+                {/* The witness statements are the newest roundup's, read from the
+                    entry itself, so they can never drift from the week that
+                    wrote them. No roundups yet means no statements, and the
+                    portrait says it is early rather than inventing a picture. */}
+                <InsightsPortrait statements={portrait.statements} range={portrait.range} />
                 {loaded && byTab.insights.length > 0 && (
                   <SpotlightTarget id="almanac.insights">
                     <InsightsLog rows={byTab.insights} onOpen={setOpenId} />

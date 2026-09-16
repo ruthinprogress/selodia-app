@@ -77,7 +77,16 @@ export function humanizeKey(key: string): string {
 }
 
 // Keys that are plumbing rather than content, and should never be shown.
-const HIDDEN_KEYS = new Set(['__seeded']);
+//
+// THE RULE IS THE PREFIX, not a list (2026-09-16). It began as one name,
+// `__seeded`, and the Sunday roundup needed four more: the week it covers, its
+// theme, and the witness statements the portrait reads. Those belong on the
+// entry, because they can then never drift from the week that produced them -
+// but a card showing "Statements: [...]" as a JSON dump would be exactly the
+// database-leaking-into-the-page failure this reader exists to prevent. So two
+// leading underscores mean plumbing, and every shape check below ignores them:
+// a roundup reads as a plain summary, which is what it is.
+const isHiddenKey = (key: string): boolean => key.startsWith('__');
 
 export function readContent(content: unknown): ContentView {
   if (content == null || typeof content !== 'object' || Array.isArray(content)) {
@@ -120,12 +129,12 @@ export function readContent(content: unknown): ContentView {
   }
 
   const summary = str(o.summary);
-  if (summary && Object.keys(o).filter((k) => !HIDDEN_KEYS.has(k)).length === 1) {
+  if (summary && Object.keys(o).filter((k) => !isHiddenKey(k)).length === 1) {
     return { shape: 'summary', text: summary };
   }
 
   const fields = Object.entries(o)
-    .filter(([k]) => !HIDDEN_KEYS.has(k))
+    .filter(([k]) => !isHiddenKey(k))
     .map(([k, v]) => ({
       label: humanizeKey(k),
       value:

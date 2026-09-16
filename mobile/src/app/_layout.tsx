@@ -16,6 +16,7 @@ import { VoiceProvider } from '@/components/voice-provider';
 import { Colors } from '@/constants/theme';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 import { useReminderRestore } from '@/hooks/use-reminder-restore';
+import { useWeeklyRoundup } from '@/hooks/use-weekly-roundup';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -76,6 +77,12 @@ export default function RootLayout() {
   // Acts on a reminder yes already given, on this device - the only place a
   // reinstall gets its reminders back (2026-09-12).
   useReminderRestore();
+
+  // Asks for the week's roundup if the most recent complete week has not had
+  // one. There is no scheduler and no remote push in this project, so the Sunday
+  // reminder invites her back and the roundup is written when she arrives
+  // (Ruth, 2026-09-16). Silent on failure; it tries again next launch.
+  useWeeklyRoundup();
 
   // Light unconditionally: the app is light-only from 2026-09-03, and handing
   // react-navigation a dark theme while every screen paints cream would give

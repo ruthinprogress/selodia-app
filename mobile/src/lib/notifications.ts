@@ -29,6 +29,11 @@ export { DEFAULT_REMINDER_TIMES, loadReminderSettings, shouldOfferReminders } fr
 
 const REMINDER_CHANNEL = 'reminders';
 
+// When the Sunday roundup invitation fires, local time. After the hour that
+// makes a week complete (ROUNDUP_HOUR in lib/roundup.ts), so tapping it never
+// asks for a roundup of a week that is still running.
+const ROUNDUP_INVITE_HOUR = 19;
+
 // Is expo-notifications' NATIVE side actually in this binary?
 //
 // requireOptionalNativeModule returns null instead of throwing, and lives in
@@ -201,6 +206,33 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
         },
       });
     }
+
+    // THE SUNDAY ROUNDUP INVITATION (Insights slice 3, 2026-09-16).
+    //
+    // The weekly roundup was specified as arriving on Sunday evening, and there
+    // is no scheduler and no remote push in this project to deliver one. Ruth's
+    // decision: a local Sunday reminder, with the roundup written when the app
+    // is opened. So this is an invitation rather than a delivery, and it says so
+    // - it never claims the roundup is already waiting.
+    //
+    // It rides on the same yes as the daily reminders, and is cancelled with
+    // them: somebody who said no to reminders gets this one no more than the
+    // others. After ROUNDUP_HOUR, so the week is complete by the time she taps.
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Selodía',
+        body: 'Ready to look back on the week?',
+        data: { destination: 'chat' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        // 1 is Sunday in expo-notifications' weekday numbering.
+        weekday: 1,
+        hour: ROUNDUP_INVITE_HOUR,
+        minute: 0,
+        channelId: REMINDER_CHANNEL,
+      },
+    });
   } catch (err) {
     console.log('reminder scheduling failed (non-fatal):', err instanceof Error ? err.message : err);
   }

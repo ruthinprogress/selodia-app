@@ -31,7 +31,14 @@ export const PORTRAIT_EMPTY =
 
 const PORTRAIT_FLOWER_SIZE = 230;
 
-export function InsightsPortrait() {
+export type InsightsPortraitProps = {
+  /** Written by the Sunday roundup, read from the newest roundup entry. */
+  statements?: string[];
+  /** The period they describe, as the roundup recorded it ("the last 6 weeks"). */
+  range?: string | null;
+};
+
+export function InsightsPortrait({ statements = [], range = null }: InsightsPortraitProps) {
   const flower = useHealthFlower();
   const { reload } = flower;
 
@@ -66,9 +73,26 @@ export function InsightsPortrait() {
           fills it, and the line height has a little room for Comfortaa's tall
           letters. */}
       <View style={styles.statementWrap}>
-        <ThemedText themeColor="textSecondary" style={styles.statement}>
-          {PORTRAIT_EMPTY}
-        </ThemedText>
+        {statements.length > 0 ? (
+          <>
+            {statements.map((line) => (
+              <ThemedText key={line} style={styles.statement}>
+                {line}
+              </ThemedText>
+            ))}
+            {/* The period is stated, so the reflection is never mistaken for
+                all of time or for this week alone (the brief asks for it). */}
+            {range && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.range}>
+                {range}
+              </ThemedText>
+            )}
+          </>
+        ) : (
+          <ThemedText themeColor="textSecondary" style={styles.statement}>
+            {PORTRAIT_EMPTY}
+          </ThemedText>
+        )}
       </View>
     </View>
   );
@@ -93,5 +117,12 @@ const styles = StyleSheet.create({
     width: '100%',
     textAlign: 'center',
     lineHeight: 26,
+  },
+  // The period the statements describe, quieter than the statements themselves:
+  // it is a label on the reflection, not part of it.
+  range: {
+    width: '100%',
+    textAlign: 'center',
+    marginTop: Spacing.two,
   },
 });
