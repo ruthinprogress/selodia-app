@@ -1,69 +1,115 @@
 // Connect the "Selodia Library Sync" Dropbox app, once.
 //
-// Run by Ruth in her own terminal, never by Claude: it asks for the app key and
-// secret, opens Dropbox's approval page, and swaps the code Dropbox shows for a
-// long-lived refresh token. All three are written to .env.local, which git
-// ignores. Nothing is printed except whether it worked.
+// Started by double-clicking connect-dropbox.cmd in the project folder. It opens
+// a small page in the browser, served only to this laptop (127.0.0.1), because
+// pasting into PowerShell did not work for Ruth and typing keys by hand is not
+// a reasonable ask. Everything is pasted into ordinary web boxes instead.
 //
-// The monthly library job then uses the refresh token to get a short-lived
-// access token each time it runs, so nobody has to log in again.
-//
-// Usage:  node scripts/dropbox-connect.mjs
+// The app key, secret and the resulting refresh token are written to .env.local,
+// which git ignores. Nothing is printed, logged or sent anywhere except to
+// Dropbox itself. Claude never runs this and never sees the values.
 
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
-import readline from 'node:readline/promises';
-import { stdin, stdout } from 'node:process';
 import { exec } from 'node:child_process';
 
-const rl = readline.createInterface({ input: stdin, output: stdout });
+const PORT = 53682;
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..');
+const ENV_PATH = path.join(ROOT, '.env.local');
 
-console.log('\n  Connect Selodia Library Sync to Dropbox\n');
-console.log('  Find these on the app\'s Settings tab at dropbox.com/developers/apps.');
-console.log('  Paste them here, in this terminal only. Never into a chat.\n');
+const page = (body) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect Dropbox</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #F7F2E9; color: #2D2B28; margin: 0; }
+  main { max-width: 560px; margin: 48px auto; padding: 0 20px; }
+  h1 { font-weight: 600; font-size: 26px; margin: 0 0 8px; }
+  p { line-height: 1.5; }
+  label { display: block; font-weight: 600; margin: 22px 0 6px; }
+  input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 12px; border: 1px solid #C9B9A6; border-radius: 10px; background: #fff; }
+  button, .btn { display: inline-block; margin-top: 22px; font-size: 16px; padding: 12px 20px; border: 0; border-radius: 10px; background: #C97458; color: #fff; cursor: pointer; text-decoration: none; }
+  .step { color: #7A6F63; font-size: 14px; margin-top: 4px; }
+  .ok { background: #D9E8DF; padding: 16px; border-radius: 10px; }
+  .bad { background: #F4D9D0; padding: 16px; border-radius: 10px; }
+</style></head><body><main>${body}</main></body></html>`;
 
-const appKey = (await rl.question('  App key: ')).trim();
-const appSecret = (await rl.question('  App secret: ')).trim();
-if (!appKey || !appSecret) {
-  console.log('\n  Both are needed. Nothing was saved.');
-  process.exit(1);
+const form = page(`
+<h1>Connect Dropbox</h1>
+<p>Paste into these boxes as normal. Nothing here leaves your laptop except to Dropbox.</p>
+<form method="post" action="/connect">
+  <label for="k">1. App key</label>
+  <div class="step">dropbox.com/developers/apps, Selodia Library Sync, Settings tab, "App key"</div>
+  <input id="k" name="key" autocomplete="off" required>
+
+  <label for="s">2. App secret</label>
+  <div class="step">Same page, "App secret", click Show first</div>
+  <input id="s" name="secret" autocomplete="off" required>
+
+  <label>3. Get the code</label>
+  <div class="step">Click this after filling in the app key. A Dropbox tab opens: click Continue, then Allow, then copy the code it shows.</div>
+  <a class="btn" href="#" onclick="var k=document.getElementById('k').value.trim(); if(!k){alert('Paste the app key first.');return false;} window.open('https://www.dropbox.com/oauth2/authorize?client_id='+encodeURIComponent(k)+'&response_type=code&token_access_type=offline','_blank'); return false;">Open Dropbox</a>
+
+  <label for="c">4. Code from Dropbox</label>
+  <input id="c" name="code" autocomplete="off" required>
+
+  <button type="submit">Connect</button>
+</form>`);
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (c) => (data += c));
+    req.on('end', () => resolve(new URLSearchParams(data)));
+  });
 }
 
-const authUrl =
-  'https://www.dropbox.com/oauth2/authorize' +
-  `?client_id=${encodeURIComponent(appKey)}` +
-  '&response_type=code&token_access_type=offline';
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(form);
+  }
+  if (req.method === 'POST' && req.url === '/connect') {
+    const body = await readBody(req);
+    const key = (body.get('key') ?? '').trim();
+    const secret = (body.get('secret') ?? '').trim();
+    const code = (body.get('code') ?? '').trim();
 
-console.log('\n  Opening Dropbox in your browser. Click Allow, then copy the code it shows.');
-console.log('  If nothing opens, paste this address into your browser:\n');
-console.log('  ' + authUrl + '\n');
-exec(`start "" "${authUrl}"`);
+    const r = await fetch('https://api.dropboxapi.com/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: 'Basic ' + Buffer.from(`${key}:${secret}`).toString('base64'),
+      },
+      body: new URLSearchParams({ code, grant_type: 'authorization_code' }),
+    }).catch(() => null);
+    const data = r ? await r.json().catch(() => ({})) : {};
 
-const code = (await rl.question('  Code from Dropbox: ')).trim();
-rl.close();
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    if (!r || !r.ok || !data.refresh_token) {
+      return res.end(page(`<h1>Not connected yet</h1>
+<p class="bad">Dropbox didn't accept that. The code only works once and expires after a few minutes, so this is usually just a stale code.</p>
+<a class="btn" href="/">Try again</a>`));
+    }
 
-const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    Authorization: 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64'),
-  },
-  body: new URLSearchParams({ code, grant_type: 'authorization_code' }),
+    const keep = fs.existsSync(ENV_PATH)
+      ? fs.readFileSync(ENV_PATH, 'utf8').split(/\r?\n/).filter((l) => !/^DROPBOX_(APP_KEY|APP_SECRET|REFRESH_TOKEN)=/.test(l))
+      : [];
+    while (keep.length && keep[keep.length - 1] === '') keep.pop();
+    keep.push(`DROPBOX_APP_KEY=${key}`, `DROPBOX_APP_SECRET=${secret}`, `DROPBOX_REFRESH_TOKEN=${data.refresh_token}`, '');
+    fs.writeFileSync(ENV_PATH, keep.join('\n'));
+
+    res.end(page(`<h1>Connected</h1>
+<p class="ok">Dropbox is connected and saved on this laptop. You can close this tab and the black window, and tell Claude it worked.</p>`));
+    setTimeout(() => process.exit(0), 500);
+    return;
+  }
+  res.writeHead(404);
+  res.end();
 });
-const data = await res.json().catch(() => ({}));
-if (!res.ok || !data.refresh_token) {
-  console.log(`\n  Dropbox said no (${res.status}). The code only works once and expires quickly.`);
-  console.log('  Run this again and use a fresh code. Nothing was saved.');
-  process.exit(1);
-}
 
-// Replace any earlier values rather than stacking duplicates.
-const envPath = path.join(process.cwd(), '.env.local');
-const keep = fs.existsSync(envPath)
-  ? fs.readFileSync(envPath, 'utf8').split(/\r?\n/).filter((l) => !/^DROPBOX_(APP_KEY|APP_SECRET|REFRESH_TOKEN)=/.test(l))
-  : [];
-while (keep.length && keep[keep.length - 1] === '') keep.pop();
-keep.push(`DROPBOX_APP_KEY=${appKey}`, `DROPBOX_APP_SECRET=${appSecret}`, `DROPBOX_REFRESH_TOKEN=${data.refresh_token}`, '');
-fs.writeFileSync(envPath, keep.join('\n'));
-
-console.log('\n  Connected. Saved to .env.local. You can close this window and tell Claude it worked.\n');
+server.listen(PORT, '127.0.0.1', () => {
+  console.log('\n  A page has opened in your browser. Follow the steps there.');
+  console.log('  Leave this window open until the page says Connected.\n');
+  exec(`start "" "http://127.0.0.1:${PORT}/"`);
+});
