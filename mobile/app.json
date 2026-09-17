@@ -52,6 +52,12 @@
       ],
       "@react-native-community/datetimepicker",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Selodía uses your microphone so you can record a voice note or talk to Selodía instead of typing."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Selodía uses your photos so you can log a meal or a scale reading by picture instead of typing it.",

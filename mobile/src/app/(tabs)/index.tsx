@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ChatBubble } from '@/components/chat-bubble';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { VoiceControl } from '@/components/voice-control';
+import { VoiceNoteButton } from '@/components/voice-note-button';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { EntrySummaryCard, type SummaryEntryType } from '@/components/entry-summary-card';
@@ -818,6 +819,20 @@ export default function ChatScreen() {
               to build it on.
 
               Renders nothing on web; see voice-control.web.tsx. */}
+          {/* THE MICROPHONE, THEN THE SOUND BARS (Ruth, 2026-09-16, restated
+              2026-09-17 when the mic had gone missing). Two controls with two
+              faces: the mic records a voice note into the box above, the bars
+              open a live conversation. The sound bars were built on the 16th
+              and the mic was not, which took away the only voice note there
+              was. Native only; both render nothing on web. */}
+          <VoiceNoteButton
+            onText={(text) => {
+              setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
+              dismissChips();
+            }}
+            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now() })}
+            disabled={sending}
+          />
           <VoiceControl
             onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now() })}
             disabled={sending}

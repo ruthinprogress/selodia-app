@@ -97,3 +97,32 @@ export async function authedGet<T = unknown>(
   }
   return response.json() as Promise<T>;
 }
+
+// A file upload to our own backend, same auth as authedPost. React Native's
+// FormData takes { uri, name, type } for a local file and streams it, so a voice
+// note never has to be read into memory as base64 first.
+export async function authedUpload<T = unknown>(
+  path: string,
+  file: { uri: string; name: string; type: string }
+): Promise<T> {
+  if (!API_BASE_URL) throw new Error('Backend URL not configured');
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
+  const form = new FormData();
+  form.append('file', file as unknown as Blob);
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: form,
+  });
+
+  if (!response.ok) {
+    throw await ApiError.from(path, response);
+  }
+  return response.json() as Promise<T>;
+}
