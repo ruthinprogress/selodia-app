@@ -1,3 +1,4 @@
+import { humanDate } from '@/lib/week';
 import { readContent } from '@/lib/almanac-content';
 import type { AlmanacEntryRow } from '@/lib/almanac-list';
 
@@ -102,13 +103,11 @@ export function previewLine(content: unknown): string | null {
   }
 }
 
-// "12 Sep", with the year only when it is not this one.
+// "12 Sept", with the year only when it is not this one. Through the app's own
+// formatter rather than Intl, so every date in the app reads the same way on
+// every phone (UI brief, Part 3).
 export function entryDateLabel(row: Pick<AlmanacRow, 'created_at'>, now: Date = new Date()): string {
   const d = new Date(row.created_at);
   if (!Number.isFinite(d.getTime())) return '';
-  const opts: Intl.DateTimeFormatOptions =
-    d.getFullYear() === now.getFullYear()
-      ? { day: 'numeric', month: 'short' }
-      : { day: 'numeric', month: 'short', year: 'numeric' };
-  return d.toLocaleDateString('en-GB', opts);
+  return humanDate(d, now);
 }

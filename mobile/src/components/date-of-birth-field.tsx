@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { humanDate } from '@/lib/week';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
@@ -22,7 +23,7 @@ export function DateOfBirthField({ value, onChange }: DateOfBirthFieldProps) {
       <Pressable onPress={() => setShowPicker(true)}>
         <ThemedView type="backgroundElement" style={styles.input}>
           <ThemedText themeColor={value ? 'text' : 'textSecondary'}>
-            {value ? value.toLocaleDateString() : 'Select date of birth'}
+            {value ? humanDate(value) : 'Select date of birth'}
           </ThemedText>
         </ThemedView>
       </Pressable>

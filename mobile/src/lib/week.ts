@@ -26,6 +26,8 @@ export function toLocalDateKey(d: Date): string {
 // variable ICU build, so Intl month names are not guaranteed to be identical on
 // every device, and a date on a person's own log is not where you want to find
 // that out.
+const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const SHORT_MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec',
@@ -118,7 +120,16 @@ export function parseWeekStartParam(v: string | undefined | null): Date | null {
 
 // Short day-section label, e.g. "Mon 11". Presentational; locale-formatted.
 export function dayLabel(d: Date): string {
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+  return `${SHORT_DAYS[d.getDay()]} ${d.getDate()}`;
+}
+
+// "17 Sept", with the year only when it is not this one. The app's one human
+// date (UI brief, Part 3: never ISO). Built by hand for the same reason
+// formatLogDate is: Hermes on Android ships a variable ICU build, so
+// toLocaleDateString can return a different string on a different phone.
+export function humanDate(d: Date, now: Date = new Date()): string {
+  const spoken = `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`;
+  return d.getFullYear() === now.getFullYear() ? spoken : `${spoken} ${d.getFullYear()}`;
 }
 
 // Week-range label for the view header, e.g. "11–17 Aug". Presentational.
@@ -126,8 +137,8 @@ export function weekLabel(weekStart: Date): string {
   const days = daysOfWeek(weekStart);
   const first = days[0];
   const last = days[6];
-  const dayNum = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric' });
-  const monthShort = (d: Date) => d.toLocaleDateString(undefined, { month: 'short' });
+  const dayNum = (d: Date) => String(d.getDate());
+  const monthShort = (d: Date) => SHORT_MONTHS[d.getMonth()];
   const sameMonth = first.getMonth() === last.getMonth();
   return sameMonth
     ? `${dayNum(first)}–${dayNum(last)} ${monthShort(last)}`

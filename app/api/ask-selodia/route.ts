@@ -103,6 +103,19 @@ const MODEL = 'claude-sonnet-5';
 const NON_DISTRESS_CLASSIFICATIONS = ['neutral'] as const;
 type Classification = (typeof NON_DISTRESS_CLASSIFICATIONS)[number] | import('../../lib/safety-classification').DistressTier;
 
+// EVERY DATE THE MODEL SEES IS THE DATE SHE WOULD SAY (UI brief, Part 3,
+// 2026-09-17: "All dates throughout the app - convert from ISO format to human
+// readable"). The context lines below used to carry 2026-09-14, and a model
+// given an ISO date writes an ISO date back into the conversation. Fixed here,
+// at the one place they are composed, rather than asked for in the prompt.
+const HUMAN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+function humanDate(value: string | null | undefined): string {
+  const d = new Date(String(value ?? ''));
+  if (!Number.isFinite(d.getTime())) return String(value ?? '');
+  const spoken = `${d.getDate()} ${HUMAN_MONTHS[d.getMonth()]}`;
+  return d.getFullYear() === new Date().getFullYear() ? spoken : `${spoken} ${d.getFullYear()}`;
+}
+
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseForRequest(request);
   const {
@@ -485,7 +498,7 @@ export async function POST(request: NextRequest) {
   const dayState = await loadDayState(supabase, profile, dayStart.toISOString());
 
   const foodSummary = recentFood && recentFood.length > 0
-    ? recentFood.map((f) => f.happened_at.slice(0, 10) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
+    ? recentFood.map((f) => humanDate(f.happened_at) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
 
   // Eccentric load is appended only when it was classified, so an older row with
@@ -496,7 +509,7 @@ export async function POST(request: NextRequest) {
           a.intensity ? String(a.intensity) : null,
           a.eccentric_load ? `${a.eccentric_load} eccentric load` : null,
         ].filter(Boolean);
-        return a.happened_at.slice(0, 10) + ': ' + a.activity_type + ' (' + a.duration_min +
+        return humanDate(a.happened_at) + ': ' + a.activity_type + ' (' + a.duration_min +
           ' min, ' + a.kcal_burned + ' kcal' + (extras.length ? ', ' + extras.join(', ') : '') + ')';
       }).join('\n')
     : 'No activity logged in the last 7 days.';
@@ -514,13 +527,13 @@ export async function POST(request: NextRequest) {
             d.active_minutes != null ? Math.round(d.active_minutes) + ' min active' : null,
             d.distance_km != null ? d.distance_km + ' km' : null,
           ].filter(Boolean);
-          return d.date + ': ' + bits.join(', ');
+          return humanDate(d.date) + ': ' + bits.join(', ');
         })
         .join('\n')
     : 'No daily tracker totals in this period.';
 
   const measurementSummary = recentMeasurements && recentMeasurements.length > 0
-    ? recentMeasurements.map((m) => m.measured_at.slice(0, 10) + ': weight ' + m.weight_kg + 'kg, body fat ' + m.body_fat_pct + '%').join('\n')
+    ? recentMeasurements.map((m) => humanDate(m.measured_at) + ': weight ' + m.weight_kg + 'kg, body fat ' + m.body_fat_pct + '%').join('\n')
     : 'No body measurements in the last 7 days.';
 
   const SYSTEM_PROMPT = `You are Selodía, a calm, grounded companion inside a food/fitness tracking app. You are NOT a coach, a cheerleader, or a report generator. Never refer to yourself by name in conversation: you introduced yourself once on the welcome screen, and the person knows where they are. Your tone is steady and validating, not peppy or upbeat - closer to a thoughtful friend who listens carefully than someone hyping the person up. Avoid exclamation marks, emojis, and enthusiastic language ("Ouch!", "amazing!", "love that"). Speak plainly and warmly instead. Never use bullet points, headers, or long structured breakdowns unless specifically asked for a list. One or two short paragraphs is usually enough. When relevant, naturally reference their recent logged activity or data and ask if anything needs adjusting - that instinct is good, just deliver it calmly rather than energetically. Classify most ordinary conversation (food, activity, logistics, general chat) as neutral.
