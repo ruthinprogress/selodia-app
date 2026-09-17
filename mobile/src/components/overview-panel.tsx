@@ -107,6 +107,7 @@ function startOfToday(): string {
 export function OverviewPanel() {
   const theme = useTheme();
   const flower = useHealthFlower();
+  const { reload: reloadFlower } = flower;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
 
@@ -123,6 +124,12 @@ export function OverviewPanel() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      // THE FLOWER REFRESHES WITH THE CARDS (2026-09-17). It has its own hook,
+      // which reads once on mount, and this effect never asked it to read again.
+      // So the week's petals stayed as they were when the Overview first opened:
+      // sessions logged afterwards appeared in the Activity card and not in the
+      // flower, which sat empty until the app was restarted.
+      reloadFlower();
       (async () => {
       const dayStart = startOfToday();
 
@@ -279,7 +286,7 @@ export function OverviewPanel() {
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [reloadFlower])
   );
 
   if (loading || !data) {
