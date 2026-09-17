@@ -98,12 +98,18 @@ export async function authedGet<T = unknown>(
   return response.json() as Promise<T>;
 }
 
-// A file upload to our own backend, same auth as authedPost. React Native's
-// FormData takes { uri, name, type } for a local file and streams it, so a voice
-// note never has to be read into memory as base64 first.
+// A file upload to our own backend, same auth as authedPost.
+//
+// THE FILE IS SENT AS A BLOB, NOT AS { uri, name, type } (2026-09-17). React
+// Native's old convention of appending a plain object with a file:// uri is
+// rejected by this runtime with "Unsupported FormDataPart implementation", and
+// the first voice note on a real phone failed exactly there. expo-file-system's
+// File implements Blob and streams from disk, so nothing is read into memory as
+// base64 on the way.
 export async function authedUpload<T = unknown>(
   path: string,
-  file: { uri: string; name: string; type: string }
+  file: Blob,
+  filename: string
 ): Promise<T> {
   if (!API_BASE_URL) throw new Error('Backend URL not configured');
 
@@ -113,7 +119,7 @@ export async function authedUpload<T = unknown>(
   if (!session) throw new Error('Not signed in');
 
   const form = new FormData();
-  form.append('file', file as unknown as Blob);
+  form.append('file', file, filename);
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',

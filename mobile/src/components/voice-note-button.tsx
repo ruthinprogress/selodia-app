@@ -4,6 +4,7 @@ import {
   setAudioModeAsync,
   useAudioRecorder,
 } from 'expo-audio';
+import { File } from 'expo-file-system';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
@@ -91,11 +92,11 @@ export function VoiceNoteButton({
       await setAudioModeAsync({ allowsRecording: false });
       const uri = recorder.uri;
       if (!uri) throw new Error('no recording file');
-      const { text } = await authedUpload<{ text: string }>('/api/transcribe', {
-        uri,
-        name: 'voice-note.m4a',
-        type: 'audio/m4a',
-      });
+      // expo-file-system's File IS a Blob, so FormData takes it directly. See
+      // authedUpload for why the old { uri, name, type } form cannot be used.
+      const recording = new File(uri);
+      if (!recording.exists || !recording.size) throw new Error('recording file is empty');
+      const { text } = await authedUpload<{ text: string }>('/api/transcribe', recording, 'voice-note.m4a');
       if (text) onText(text);
       else onNotice("I couldn't make out any words in that one.");
     } catch (err) {
