@@ -1,11 +1,13 @@
-# The Exercise Animatic library grows by itself (Ruth, 2026-09-17).
+# The Exercise Animatic library grows by itself (Ruth, 2026-09-17). Weekly since
+# the same day: the vendor releases most weeks, and a clip should not wait a month.
 # See scripts/monthly-animatic-sync.mjs for what each run does.
-name: Monthly Exercise Animatic sync
+name: Weekly Exercise Animatic sync
 
 on:
   schedule:
-    # 09:00 UTC on the 17th, the same day as the calendar reminder.
-    - cron: '0 9 17 * *'
+    # 09:00 UTC every Friday. The vendor's releases have landed Tuesday to
+    # Thursday, so Friday picks up that week's.
+    - cron: '0 9 * * 5'
   workflow_dispatch:
     inputs:
       dry_run:

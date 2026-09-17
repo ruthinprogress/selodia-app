@@ -1,4 +1,5 @@
-// The monthly Exercise Animatic job. Runs on the 17th from GitHub Actions
+// The weekly Exercise Animatic job (monthly until 2026-09-17, when Ruth moved it
+// to weekly). Runs every Friday from GitHub Actions
 // (.github/workflows/monthly-animatic-sync.yml), or by hand. Nobody has to touch
 // anything (Ruth, 2026-09-17: "The library should grow automatically every month
 // without me touching anything").
@@ -150,8 +151,8 @@ for (const f of vendor) {
   if (!b) added.push(rel);
   else if (b.size !== f.size) replaced.push(rel);
 }
-say(`## Exercise Animatic monthly sync, ${today}`);
-say(`Vendor library: ${vendor.length} files. New since last month: ${added.length}. Replaced by the vendor: ${replaced.length}.`);
+say(`## Exercise Animatic weekly sync, ${today}`);
+say(`Vendor library: ${vendor.length} files. New since the last run: ${added.length}. Replaced by the vendor: ${replaced.length}.`);
 
 if (dryRun) {
   say('Dry run: nothing copied, moved or processed.');
