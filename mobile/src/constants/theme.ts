@@ -134,6 +134,21 @@ export const BrandFont = {
   bold: 'Comfortaa_700Bold',
 } as const;
 
+// The serif display face, added 2026-09-17 for the UI redesign brief: "Serif
+// font for all large display headings - screen titles, dates, section headers",
+// with Comfortaa keeping body text, labels and data.
+//
+// Cormorant Garamond, and only at display sizes. It is a high-contrast garamond
+// with a small x-height, which is why it is beautiful at 32px and unreadable at
+// 13; the brief's hierarchy rule ("large things are large, small things are
+// small") is the same instruction from the other side. As with Comfortaa, each
+// weight is its own family name because React Native cannot synthesise one.
+export const DisplayFont = {
+  regular: 'CormorantGaramond_400Regular',
+  medium: 'CormorantGaramond_500Medium',
+  semibold: 'CormorantGaramond_600SemiBold',
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,
@@ -143,6 +158,11 @@ export const Spacing = {
   five: 32,
   six: 64,
 } as const;
+
+// One corner radius for every card surface (UI brief, 2026-09-17: "consistent
+// corner radius throughout"). 20 rather than 16: the brief asks for a soft,
+// paper-like feel, and at 16 a full-width card still reads as a panel.
+export const CardRadius = 20;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;

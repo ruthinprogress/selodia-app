@@ -7,7 +7,7 @@ import { HydrationQuickTap } from '@/components/hydration-quick-tap';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
@@ -73,6 +73,10 @@ type OverviewData = {
   // because a zero is a claim that somebody has not moved.
   steps: number | null;
   hydrationMl: number;
+  // Days since the last recorded period start, 1-based, or null when no cycle
+  // has ever been logged. Read, never inferred: a cycle day guessed from an
+  // average would be a number about somebody's body that nobody measured.
+  cycleDay: number | null;
   // BMR and TDEE for the "What you burn" panel. Null when there is not enough
   // to compute them, which the panel says by showing nothing rather than a
   // dash: an estimate nobody can make is not a figure with a gap in it.
@@ -94,8 +98,51 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
 const asFocus = (s: string | null): FocusState =>
   s === 'reduce' || s === 'increase' ? s : 'maintain';
 
-function todayLabel(): string {
-  return new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+// "Thursday 17 September", never 2026-09-17. Built by hand rather than through
+// toLocaleDateString for the same reason week.ts is: Hermes on Android ships a
+// variable ICU build, so the same call can return a different string on a
+// different phone, and this one is read every morning.
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function todayLabel(now: Date = new Date()): string {
+  return `${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+}
+
+// Morning, afternoon or evening, from the phone's own clock. No name unless one
+// can be read off the account: a greeting that guesses somebody's name wrongly
+// is worse than a greeting without one.
+function greeting(name: string | null, now: Date = new Date()): string {
+  const h = now.getHours();
+  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return name ? `${part}, ${name}` : part;
+}
+
+// The account holds no name field, and adding one would be a feature this pass
+// is explicitly not for. The email's own first part is what we have: "ruth" from
+// ruth.christianson@..., capitalised. Anything that does not look like a name -
+// digits, one letter - greets without one rather than guessing.
+// Day 1 is the day the period started, which is how a cycle is counted and how
+// she would say it out loud. Anything older than a long cycle is not shown at
+// all rather than counted up forever: "Day 96" says the log stopped, not where
+// she is.
+function cycleDayFrom(lastStart: string | null): number | null {
+  if (!lastStart) return null;
+  const start = new Date(`${lastStart}T00:00:00`);
+  if (isNaN(start.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
+  return day >= 1 && day <= 60 ? day : null;
+}
+
+function nameFromEmail(email: string | null | undefined): string | null {
+  const local = (email ?? '').split('@')[0]?.split(/[._-]/)[0] ?? '';
+  if (local.length < 2 || !/^[a-z]+$/i.test(local)) return null;
+  return local[0].toUpperCase() + local.slice(1).toLowerCase();
 }
 
 function startOfToday(): string {
@@ -105,11 +152,11 @@ function startOfToday(): string {
 }
 
 export function OverviewPanel() {
-  const theme = useTheme();
   const flower = useHealthFlower();
   const { reload: reloadFlower } = flower;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
+  const [name, setName] = useState<string | null>(null);
 
   // Refetches on FOCUS, not only on mount. Overview is the root of the Body
   // stack, so it stays mounted while Food, Measurements and Activity are pushed
@@ -146,6 +193,8 @@ export function OverviewPanel() {
         { data: activity },
         { data: drinks },
         stepsToday,
+        { data: lastPeriod },
+        { data: account },
       ] = await Promise.all([
           supabase
             .from('body_measurements')
@@ -168,6 +217,16 @@ export function OverviewPanel() {
             .gte('happened_at', dayStart),
           supabase.from('hydration_logs').select('ml, happened_at').gte('happened_at', dayStart),
           syncTodaySteps(),
+          // Cycle day for the Today screen (UI brief, Part 1). One row, the most
+          // recent period start; nothing is written and nothing is predicted.
+          supabase
+            .from('cycle_events')
+            .select('event_date')
+            .eq('event_type', 'period_start')
+            .order('event_date', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase.auth.getUser(),
         ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
@@ -280,7 +339,9 @@ export function OverviewPanel() {
             }
           : null,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
+        cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
       });
+      setName(nameFromEmail((account?.user as { email?: string } | null | undefined)?.email));
       setLoading(false);
       })();
       return () => {
@@ -292,11 +353,10 @@ export function OverviewPanel() {
   if (loading || !data) {
     return (
       <View style={styles.screen}>
-        {/* The same two lines as the loaded screen, so the heading does not
-            change size or wording when the data arrives. */}
-        <ThemedText type="title">Overview</ThemedText>
-        <View>
-          <ThemedText type="subtitle">Today</ThemedText>
+        {/* The same header as the loaded screen, so nothing moves or changes
+            size when the data arrives. */}
+        <View style={styles.header}>
+          <ThemedText type="display">{greeting(name)}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {todayLabel()}
           </ThemedText>
@@ -307,28 +367,28 @@ export function OverviewPanel() {
 
   return (
     <View style={styles.screen}>
-      {/* OVERVIEW IS THE PAGE; TODAY IS A SECTION OF IT (Ruth, 2026-09-16:
-          "Perhaps it can have a title saying overview and make Today less
-          giant"). The stack deliberately gives this screen no header, on the
-          grounds that a screen labelled "Overview" above a self-evident
-          overview explains itself - but that reasoning assumed "Today" was the
-          page. It is not: "This week" sits below it at equal weight, and
-          "What you burn" now sits below that. Naming the page and demoting
-          Today to a section is what the screen actually is. */}
-      <ThemedText type="title">Overview</ThemedText>
+      {/* THE SCREEN GREETS, IT DOES NOT LABEL ITSELF (UI brief, 2026-09-17).
+          "Overview" over an overview was a label on a page that explains itself;
+          the brief asks for "Good morning, Ruth" with the date, in serif, and
+          the tab beneath already says which screen this is. The date is written
+          out in full because it is the only place in the app that says which day
+          the numbers below belong to.
 
-      <View>
-        <ThemedText type="subtitle">Today</ThemedText>
+          The focus line sits under the greeting with no rule beside it and no
+          card around it. It is a quiet observation, not a notice: the border it
+          used to carry made it look like something the app wanted her to act
+          on. */}
+      <View style={styles.header}>
+        <ThemedText type="display">{greeting(name)}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {todayLabel()}
+          {data.cycleDay != null ? `  ·  Day ${data.cycleDay}` : ''}
         </ThemedText>
       </View>
 
-      <ThemedView style={[styles.personalLine, { borderLeftColor: theme.textSecondary }]}>
-        <ThemedText type="small" themeColor="textSecondary">
-          {data.personalLine}
-        </ThemedText>
-      </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.focusLine}>
+        {data.personalLine}
+      </ThemedText>
 
       {/* THREE SQUARES, ONE ROW. Replaces three stacked full-width cards
           (2026-09-04). The screen does not scroll, so vertical space is the
@@ -473,7 +533,7 @@ export function OverviewPanel() {
         {/* Smaller than "Today" (2026-09-04). At title size it dominated the
             lower half of the screen; at subtitle it still reads as the second
             section without shouting over the flower it introduces. */}
-        <ThemedText type="subtitle">This week</ThemedText>
+        <ThemedText type="sectionTitle">This week</ThemedText>
         <View style={styles.flowerWrap}>
           {flower.coverage && (
             <HealthFlower
@@ -594,9 +654,12 @@ const styles = StyleSheet.create({
     // Equal width comes from flex; equal HEIGHT has to be said, or a square
     // with two numbers would sit shorter than one with three and the row would
     // read as three things instead of one.
-    minHeight: 104,
-    borderRadius: Spacing.three,
-    padding: Spacing.two,
+    minHeight: 112,
+    // ONE RADIUS ON THIS SCREEN (UI brief): the squares, the water strip and
+    // "What you burn" all sit at CardRadius, so the row of cards reads as one
+    // material rather than three shapes.
+    borderRadius: CardRadius,
+    padding: Spacing.three,
     gap: Spacing.one,
   },
   squareBody: {
@@ -623,12 +686,15 @@ const styles = StyleSheet.create({
     // "% body fat" is the part that can afford to be clipped; the figure is not.
     flexShrink: 1,
   },
-  personalLine: {
-    borderLeftWidth: 2,
-    paddingLeft: Spacing.three,
+  header: {
+    gap: Spacing.half,
+  },
+  focusLine: {
+    // No rule, no card. See the header block above.
+    paddingRight: Spacing.four,
   },
   card: {
-    borderRadius: Spacing.three,
+    borderRadius: CardRadius,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -652,8 +718,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.two,
+    borderRadius: CardRadius,
+    paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     gap: Spacing.two,
   },

@@ -31,10 +31,15 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
+      {/* TODAY, NOT BODY (UI brief, 2026-09-17). The screen is a day, not a
+          body: it greets, dates itself, and carries food, movement, water, the
+          week's flower and what she burns. The brief's four-tab structure -
+          Chat, Log, Today, Almanac - lands over this pass; the Log tab and the
+          move of the history views into it follow the Today screen itself. */}
       <NativeTabs.Trigger name="body">
-        <NativeTabs.Trigger.Label hidden>Body</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label hidden>Today</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="body-outline" />}
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="today-outline" />}
         />
       </NativeTabs.Trigger>
 

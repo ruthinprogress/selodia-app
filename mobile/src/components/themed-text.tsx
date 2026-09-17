@@ -1,10 +1,20 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { BrandFont, Fonts, ThemeColor } from '@/constants/theme';
+import { BrandFont, DisplayFont, Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?:
+    | 'default'
+    | 'display'
+    | 'title'
+    | 'small'
+    | 'smallBold'
+    | 'subtitle'
+    | 'sectionTitle'
+    | 'link'
+    | 'linkPrimary'
+    | 'code';
   themeColor?: ThemeColor;
 };
 
@@ -16,10 +26,12 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
       style={[
         { color: theme[themeColor ?? 'text'] },
         type === 'default' && styles.default,
+        type === 'display' && styles.display,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
+        type === 'sectionTitle' && styles.sectionTitle,
         type === 'link' && styles.link,
         type === 'linkPrimary' && [styles.linkPrimary, { color: theme.link }],
         type === 'code' && styles.code,
@@ -50,6 +62,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontFamily: BrandFont.regular,
+  },
+  // THE SERIF PAIR (2026-09-17). display is a screen's own name, sectionTitle is
+  // a section within it. Both run larger than their Comfortaa equivalents
+  // because Cormorant's x-height is smaller: 36px of garamond sits at about the
+  // optical size of 30px of Comfortaa, so matching the numbers would quietly
+  // demote every heading in the app.
+  display: {
+    fontSize: 38,
+    lineHeight: 46,
+    fontFamily: DisplayFont.medium,
+  },
+  sectionTitle: {
+    fontSize: 26,
+    lineHeight: 34,
+    fontFamily: DisplayFont.medium,
   },
   // 48px until 2026-09-03, where it dominated every screen it opened. 32 is
   // still unmistakably the page's heading without being the whole page.

@@ -5,6 +5,11 @@ import {
   Comfortaa_700Bold,
   useFonts,
 } from '@expo-google-fonts/comfortaa';
+import {
+  CormorantGaramond_400Regular,
+  CormorantGaramond_500Medium,
+  CormorantGaramond_600SemiBold,
+} from '@expo-google-fonts/cormorant-garamond';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -62,6 +67,9 @@ export default function RootLayout() {
   // rendering behind it. Same no-reflow guarantee, without unmounting the
   // router to get it.
   const [fontsLoaded] = useFonts({
+    CormorantGaramond_400Regular,
+    CormorantGaramond_500Medium,
+    CormorantGaramond_600SemiBold,
     Comfortaa_400Regular,
     Comfortaa_500Medium,
     Comfortaa_600SemiBold,
