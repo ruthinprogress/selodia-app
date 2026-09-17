@@ -3,15 +3,16 @@ import { Stack } from 'expo-router';
 import { BrandFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-// The Body tab is a stack, not a switcher (2026-09-03).
+// The Today tab is a stack, not a switcher (2026-09-03; renamed from Body when
+// the UI brief's four tabs landed, 2026-09-17).
 //
 // It was one screen holding four views in local state, with a row of segment
 // pills across the top to move between them. The row did not fit a phone at
 // "Measurements" length and had to scroll sideways, which is how "Activity"
 // spent a while clipped off the right edge and looking unbuilt.
 //
-// Real routes buy the thing local state could not: pressing the Body tab while
-// already inside a detail screen pops back to Overview, which is what every
+// Real routes buy the thing local state could not: pressing the Today tab while
+// already inside a detail screen pops back to Today, which is what every
 // other app on the phone does and therefore what a thumb already expects. There
 // is nothing to implement for that - it is what a Stack inside a tab does.
 //
@@ -19,7 +20,7 @@ import { useTheme } from '@/hooks/use-theme';
 // "Overview" above a page that is self-evidently the overview is a label
 // explaining itself. The three detail screens do get one, because arriving
 // somewhere deserves a name and a way back that is not a tab press.
-export default function BodyLayout() {
+export default function TodayLayout() {
   const theme = useTheme();
 
   return (
@@ -39,14 +40,6 @@ export default function BodyLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="food" options={{ title: 'Food' }} />
-      {/* The browsable log, one level in from Food (2026-09-16). Titled for
-          what it holds rather than for the tab it hangs off. */}
-      <Stack.Screen name="food-history" options={{ title: 'Food log' }} />
-      <Stack.Screen name="measurements" options={{ title: 'Measurements' }} />
-      <Stack.Screen name="activity" options={{ title: 'Activity' }} />
-      {/* Activity's own browsable log (2026-09-16), the food one's sibling. */}
-      <Stack.Screen name="activity-history" options={{ title: 'Activity log' }} />
       {/* One screen for all six dimensions. No title: the screen is a full
           bleed of that dimension's own colour with its name set large inside,
           so a header would say the same word twice in two type sizes. The back

@@ -389,7 +389,7 @@ export function OverviewPanel() {
           Equal width, equal height, so the row reads as one object rather than
           three competing ones. */}
       <View style={styles.squareRow}>
-        <Square id="body.food" title="Food" href="/body/food">
+        <Square id="body.food" title="Food" href="/log?view=food">
           {data.todayKcal === 0 && data.todayProtein === 0 ? (
             /* One line rather than two zeros stacked. Nothing was logged, and
                two separate noughts make more of that than it deserves. */
@@ -425,7 +425,7 @@ export function OverviewPanel() {
             (Part One, Internationalisation), and when it lands these values
             must pass through a conversion utility before display rather than
             being formatted here. One place converts; this place renders. */}
-        <Square id="body.measurements" title="Body" href="/body/measurements">
+        <Square id="body.measurements" title="Body" href="/log?view=measurements">
           <SpotlightTarget id="overview.stats">
             {data.bodyAsOf == null ? (
               /* Nothing has ever been recorded. ONE dash, not three: three
@@ -472,7 +472,7 @@ export function OverviewPanel() {
             lib/steps.ts: a refusal, a phone with no health platform, and a quiet
             morning are indistinguishable, and a zero would pick the one reading
             that accuses somebody of not moving. */}
-        <Square id="body.activity" title="Activity" href="/body/activity">
+        <Square id="body.activity" title="Activity" href="/log?view=activity">
           {data.activityCount === 0 && data.steps == null ? (
             <ThemedText type="small" themeColor="textSecondary">
               Nothing logged yet
@@ -534,7 +534,7 @@ export function OverviewPanel() {
               // Typed-routes form: the pathname is the file, the segment is a
               // param. Building the string by hand would not typecheck.
               onSelectDimension={(d) =>
-                router.push({ pathname: '/body/[dimension]', params: { dimension: d } })
+                router.push({ pathname: '/today/[dimension]', params: { dimension: d } })
               }
             />
           )}

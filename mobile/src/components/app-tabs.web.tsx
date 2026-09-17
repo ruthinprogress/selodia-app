@@ -27,7 +27,7 @@ export default function AppTabs() {
             <TabButton iconName="chatbubble-ellipses-outline" />
           </TabTrigger>
           {/* Same order as the native bar: do, measure, understand. */}
-          <TabTrigger name="body" href="/body" asChild>
+          <TabTrigger name="today" href="/today" asChild>
             <TabButton iconName="body-outline" />
           </TabTrigger>
           <TabTrigger name="almanac" href="/almanac" asChild>

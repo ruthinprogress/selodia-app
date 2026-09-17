@@ -9,10 +9,10 @@ export default function AppTabs() {
   // after the app stopped.
   const colors = useTheme();
 
-  // Order is the user journey, left to right: do, then measure, then understand.
-  // Chat is where things are logged, Body is where they are measured, Almanac is
-  // where they are understood. Body sat third until 2026-09-03, which put the
-  // thing people open most often furthest from the thumb.
+  // Order is the user journey, left to right: talk, record, see the day, then
+  // understand it. Chat · Log · Today · Almanac, the four tabs the UI brief
+  // specifies (2026-09-17). Body was the middle tab until then and is now Today;
+  // its three history views became Log.
   return (
     <NativeTabs
       backgroundColor={colors.background}
@@ -31,12 +31,21 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
+      {/* LOG (UI brief, Part 1, 2026-09-17). Food, Activity and Measurements,
+          which were three routes inside the old Body tab. Second from the left
+          because logging is the thing done most often after talking. */}
+      <NativeTabs.Trigger name="log">
+        <NativeTabs.Trigger.Label hidden>Log</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="create-outline" />}
+        />
+      </NativeTabs.Trigger>
+
       {/* TODAY, NOT BODY (UI brief, 2026-09-17). The screen is a day, not a
-          body: it greets, dates itself, and carries food, movement, water, the
-          week's flower and what she burns. The brief's four-tab structure -
-          Chat, Log, Today, Almanac - lands over this pass; the Log tab and the
-          move of the history views into it follow the Today screen itself. */}
-      <NativeTabs.Trigger name="body">
+          body: it greets, dates itself, and carries today's figures, water, the
+          week's flower and what she burns. The history views it used to hold
+          have moved to Log. */}
+      <NativeTabs.Trigger name="today">
         <NativeTabs.Trigger.Label hidden>Today</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="today-outline" />}

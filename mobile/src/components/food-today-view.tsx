@@ -105,7 +105,7 @@ export function FoodTodayView() {
           controls doing the same thing is a decision left unmade. */}
       <View style={styles.todayHeader}>
         <Pressable
-          onPress={() => router.push('/body/food-history')}
+          onPress={() => router.push('/log/food-history')}
           accessibilityRole="button"
           accessibilityLabel="Earlier weeks"
           hitSlop={Spacing.three}
@@ -180,7 +180,7 @@ export function FoodTodayView() {
           chat landed in last week, and this view only ever shows today, so
           there was nowhere to go and look at them. */}
       <Pressable
-        onPress={() => router.push('/body/food-history')}
+        onPress={() => router.push('/log/food-history')}
         accessibilityRole="button"
         accessibilityLabel="Earlier weeks"
         hitSlop={Spacing.two}

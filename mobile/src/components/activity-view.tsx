@@ -97,7 +97,7 @@ export function ActivityView() {
           she knows which she uses. */}
       <View style={styles.headingRow}>
         <Pressable
-          onPress={() => router.push('/body/activity-history')}
+          onPress={() => router.push('/log/activity-history')}
           accessibilityRole="button"
           accessibilityLabel="Earlier weeks"
           hitSlop={Spacing.three}
@@ -150,7 +150,7 @@ export function ActivityView() {
       )}
 
       <Pressable
-        onPress={() => router.push('/body/activity-history')}
+        onPress={() => router.push('/log/activity-history')}
         accessibilityRole="button"
         accessibilityLabel="Earlier weeks"
         hitSlop={Spacing.two}
