@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
 import {
   ACK_VOICE,
+  activityModelNote,
   composeAcknowledgment,
   factsBlock,
   isEmptyAck,
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
   const block = factsBlock(kind, typed as never);
   const interpretation = kind === 'body_measurement' ? (typed.interpretation ?? null) : null;
   const proteinNote = kind === 'food' ? (typed.proteinNote ?? null) : null;
+  const modelNote = kind === 'activity' ? activityModelNote(typed) : null;
 
   // The facts block is what the person is looking at, so it is what the model
   // is shown - not the raw row. Anything not in the block is not on screen, and
@@ -63,6 +65,9 @@ export async function POST(request: NextRequest) {
     block,
     interpretation ? `\nThe app has also already told them, in these exact words:\n"${interpretation}"` : '',
     proteinNote ? `\nA protein-quality note is also being shown:\n"${proteinNote}"` : '',
+    // Context for the model that is NOT on their screen, kept out of the block
+    // above so it can never be displayed.
+    modelNote ? `\nNot shown to them, for you only: ${modelNote}` : '',
     // The ONLY grounds for a comparative claim. Absent when the caller has no
     // history to offer, and the voice guidance then forbids reaching for one.
     typed.recent ? `\nTheir recent history, the only basis you have for any comparison:\n${typed.recent}` : '',

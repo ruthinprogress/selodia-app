@@ -176,11 +176,12 @@ export async function syncTodaySteps(): Promise<number | null> {
 
     const { data: existing } = await supabase
       .from('daily_activity_summaries')
-      .select('kcal_burned, active_minutes, distance_km, source')
+      .select('kcal_burned, active_kcal, active_minutes, distance_km, source')
       .eq('date', dateKey)
       .maybeSingle();
     const prior = (existing ?? {}) as {
       kcal_burned?: number | null;
+      active_kcal?: number | null;
       active_minutes?: number | null;
       distance_km?: number | null;
       source?: string | null;
@@ -192,6 +193,7 @@ export async function syncTodaySteps(): Promise<number | null> {
         date: dateKey,
         steps,
         kcal_burned: prior.kcal_burned ?? null,
+        active_kcal: prior.active_kcal ?? null,
         active_minutes: prior.active_minutes ?? null,
         distance_km: prior.distance_km ?? null,
         // A row that already came from a photographed summary keeps saying so,

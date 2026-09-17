@@ -74,6 +74,7 @@ export type ActivityAckFacts = {
     date: string;
     steps: number | null;
     kcalBurned: number | null;
+    activeKcal: number | null;
     activeMinutes: number | null;
     distanceKm: number | null;
     source: string | null;
@@ -297,6 +298,7 @@ type DailySummaryRow = {
   date: string;
   steps: number | null;
   kcal_burned: number | null;
+  active_kcal?: number | null;
   active_minutes: number | null;
   distance_km: number | null;
   source: string | null;
@@ -320,6 +322,7 @@ export function activityAckFacts(
           date: dailySummary.date,
           steps: dailySummary.steps,
           kcalBurned: dailySummary.kcal_burned,
+          activeKcal: dailySummary.active_kcal ?? null,
           activeMinutes: dailySummary.active_minutes,
           distanceKm: dailySummary.distance_km,
           source: dailySummary.source,

@@ -66,6 +66,7 @@ export type ActivityFacts = RecentContext & {
     date: string;
     steps: number | null;
     kcalBurned: number | null;
+    activeKcal?: number | null;
     activeMinutes: number | null;
     distanceKm: number | null;
     source: string | null;
@@ -129,21 +130,30 @@ export function activityFactsBlock(f: ActivityFacts): string {
   // day's total presented as a workout, so the acknowledgment has to be
   // explicit: nothing was logged as an activity, and the burn figure covers
   // everything the body did, including simply being alive.
+  //
+  // THIS BLOCK IS SHOWN TO HER, WORD FOR WORD. It once carried the model's
+  // briefing ("Do not congratulate them...") and that text appeared on her
+  // Activity screen. Anything meant only for the model goes in
+  // activityModelNote below, never in here.
   if (f.dailySummary) {
     const d = f.dailySummary;
+    const kcal = n0(d.activeKcal ?? null)
+      ? `${n0(d.activeKcal ?? null)} kcal from moving`
+      : null;
     const bits = [
       n0(d.steps) && `${Number(d.steps).toLocaleString('en-GB')} steps`,
       n0(d.activeMinutes) && `${n0(d.activeMinutes)} min active`,
       n1(d.distanceKm) && `${n1(d.distanceKm)} km`,
-      n0(d.kcalBurned) && `${n0(d.kcalBurned)} kcal burned across the whole day`,
+      kcal,
     ].filter(Boolean);
     return [
-      'Daily activity summary recorded (NOT a workout)',
+      `${longDate(d.date)} · daily summary saved`,
       '',
       bits.join(' · '),
-      '',
-      'This is their whole day added up, not a session they did. Do not congratulate them on it as training, and do not call it a workout. No activity was logged.',
-      d.source ? `Counted by ${d.source}. Anything it wasn't on them for won't be in there.` : '',
+      // The whole-day figure is real, but it is mostly the body simply being
+      // alive. Shown second and labelled, so it cannot be read as exercise.
+      n0(d.kcalBurned) ? `${Number(Math.round(d.kcalBurned as number)).toLocaleString('en-GB')} kcal across the whole day, resting included` : '',
+      d.source ? `\nCounted by ${d.source}. Anything it wasn't on you for won't be in there.` : '',
     ]
       .filter(Boolean)
       .join('\n');
@@ -167,6 +177,12 @@ export function activityFactsBlock(f: ActivityFacts): string {
     lines.push('', `Counted by ${tracked.source}. Anything it wasn't on you for won't be in there.`);
   }
   return lines.join('\n');
+}
+
+// Briefing for the model only. Never composed into the message she sees.
+export function activityModelNote(f: ActivityFacts): string | null {
+  if (!f.dailySummary) return null;
+  return 'This is a whole day added up by a tracker, not a session they did. No activity was logged. Do not congratulate them on it as training and do not call it a workout.';
 }
 
 export function factsBlock(kind: AckKind, facts: BodyFacts | FoodFacts | ActivityFacts): string {

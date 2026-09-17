@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
     // as one.
     supabase
       .from('daily_activity_summaries')
-      .select('date, steps, kcal_burned, active_minutes, distance_km')
+      .select('date, steps, kcal_burned, active_kcal, active_minutes, distance_km')
       .gte('date', contextSince.toISOString().slice(0, 10))
       .order('date', { ascending: false }),
     supabase
@@ -508,7 +508,8 @@ export async function POST(request: NextRequest) {
     ? recentDailyBurn
         .map((d) => {
           const bits = [
-            d.kcal_burned != null ? Math.round(d.kcal_burned) + ' kcal burned across the whole day' : null,
+            d.active_kcal != null ? Math.round(d.active_kcal) + ' kcal from movement' : null,
+            d.kcal_burned != null ? Math.round(d.kcal_burned) + ' kcal burned across the whole day, resting included' : null,
             d.steps != null ? d.steps.toLocaleString('en-GB') + ' steps' : null,
             d.active_minutes != null ? Math.round(d.active_minutes) + ' min active' : null,
             d.distance_km != null ? d.distance_km + ' km' : null,

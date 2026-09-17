@@ -24,6 +24,26 @@ function num(v: unknown): number | null {
   return null;
 }
 
+// A tracker screen shows "Sat 14 Sep", not a year, and the model filled one in:
+// a summary photographed on 16 September 2026 was stored as 2024-09-14, where no
+// week view would ever find it. Nobody photographs a summary from last year, so
+// a date more than 60 days either side of when it was logged has had its year
+// guessed. Keep the day and month, take the year that puts it nearest the log.
+function plausibleSummaryDate(parsed: string, logDate: string): string {
+  const DAY = 86_400_000;
+  const logMs = Date.parse(logDate);
+  if (Math.abs(Date.parse(parsed) - logMs) <= 60 * DAY) return parsed;
+  const monthDay = parsed.slice(4);
+  const year = Number(logDate.slice(0, 4));
+  const candidates = [year - 1, year, year + 1]
+    .map((y) => `${y}${monthDay}`)
+    .filter((d) => !Number.isNaN(Date.parse(d)));
+  const nearest = candidates.sort(
+    (a, b) => Math.abs(Date.parse(a) - logMs) - Math.abs(Date.parse(b) - logMs)
+  )[0];
+  return nearest && Math.abs(Date.parse(nearest) - logMs) <= 60 * DAY ? nearest : logDate;
+}
+
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseForRequest(request);
   const {
@@ -76,7 +96,7 @@ export async function POST(request: NextRequest) {
   // was a free-text `source` string. Branching on prose the model writes is a
   // guess. An enum it must choose from is an answer.
   const textInstruction =
-    'This image is a screenshot from a fitness tracking app (e.g. Samsung Health). It could be either: (a) a DAILY SUMMARY screen showing total steps, active time, activity calories, total burnt calories, and distance for a whole day, or (b) a SPECIFIC WORKOUT screen showing one activity (e.g. a run) with details like distance, pace, duration, cadence. Identify which type this is. A DAILY SUMMARY IS NOT AN ACTIVITY. It is a whole day of incidental movement added up, not something the person did as a session, and it must never be described as one. If it is a daily summary, set kind to "daily_summary" and fill the "summary" object: steps, kcal_burned = the total burnt calories figure shown, active_minutes = the active time shown, distance_km = the distance shown converting miles to km if needed, and date as YYYY-MM-DD only if the screen actually states which day it is (null otherwise, and never guess). Use null for any figure the screen does not show, and leave "activities" as an empty array. If it is a specific workout, set kind to "workout", leave "summary" null, and respond with ONE activity object in "activities": activity_type = the activity name (e.g. "Running"), duration_min = its duration, kcal_burned = its calorie figure, notes = distance/pace/cadence/incline as a short readable summary. ' + (activityText ? 'The person also added this note: "' + activityText + '". ' : '') + 'Where the screen makes it evident, also set "intensity" ("light" | "moderate" | "intense") and "eccentric_load" ("none" | "low" | "moderate" | "high", meaning the eccentric muscle stress that drives next-day soreness, e.g. higher for hilly/downhill running); use null for either when the screen does not make it clear. Respond ONLY with valid JSON, no other text, in this exact format: {"kind": "daily_summary" | "workout", "summary": {"date": string_or_null, "steps": number_or_null, "kcal_burned": number_or_null, "active_minutes": number_or_null, "distance_km": number_or_null} | null, "activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null, "intensity": "light" | "moderate" | "intense" | null, "eccentric_load": "none" | "low" | "moderate" | "high" | null}], "source": "Samsung daily summary" or "Samsung workout screenshot"}'
+    'This image is a screenshot from a fitness tracking app (e.g. Samsung Health). It could be either: (a) a DAILY SUMMARY screen showing total steps, active time, activity calories, total burnt calories, and distance for a whole day, or (b) a SPECIFIC WORKOUT screen showing one activity (e.g. a run) with details like distance, pace, duration, cadence. Identify which type this is. A DAILY SUMMARY IS NOT AN ACTIVITY. It is a whole day of incidental movement added up, not something the person did as a session, and it must never be described as one. If it is a daily summary, set kind to "daily_summary" and fill the "summary" object: steps, kcal_burned = the TOTAL burnt calories figure shown (the whole day, resting included), active_kcal = the ACTIVITY calories figure shown (movement only - a separate, much smaller number; null if the screen does not show one, and never copy the total into it), active_minutes = the active time shown, distance_km = the distance shown converting miles to km if needed, and date as YYYY-MM-DD only if the screen actually states which day it is (null otherwise, and never guess). These screens usually show a day and month without a year: when no year is shown, the year is ' + new Date(happenedAt || Date.now()).getUTCFullYear() + '. Use null for any figure the screen does not show, and leave "activities" as an empty array. If it is a specific workout, set kind to "workout", leave "summary" null, and respond with ONE activity object in "activities": activity_type = the activity name (e.g. "Running"), duration_min = its duration, kcal_burned = its calorie figure, notes = distance/pace/cadence/incline as a short readable summary. ' + (activityText ? 'The person also added this note: "' + activityText + '". ' : '') + 'Where the screen makes it evident, also set "intensity" ("light" | "moderate" | "intense") and "eccentric_load" ("none" | "low" | "moderate" | "high", meaning the eccentric muscle stress that drives next-day soreness, e.g. higher for hilly/downhill running); use null for either when the screen does not make it clear. Respond ONLY with valid JSON, no other text, in this exact format: {"kind": "daily_summary" | "workout", "summary": {"date": string_or_null, "steps": number_or_null, "kcal_burned": number_or_null, "active_kcal": number_or_null, "active_minutes": number_or_null, "distance_km": number_or_null} | null, "activities": [{"activity_type": string, "duration_min": number, "kcal_burned": number, "notes": string_or_null, "intensity": "light" | "moderate" | "intense" | null, "eccentric_load": "none" | "low" | "moderate" | "high" | null}], "source": "Samsung daily summary" or "Samsung workout screenshot"}'
 
   content.push({
     type: 'text',
@@ -134,16 +154,25 @@ export async function POST(request: NextRequest) {
     // old shape - the figures are the same numbers, just in the wrong envelope.
     const legacy = (Array.isArray(parsed.activities) ? parsed.activities[0] : null) as ParsedActivity | null;
 
+    const logDate = new Date(happenedAt || new Date().toISOString()).toISOString().slice(0, 10);
     const summaryDate =
       typeof summary.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(summary.date)
-        ? summary.date
-        : new Date(happenedAt || new Date().toISOString()).toISOString().slice(0, 10);
+        ? plausibleSummaryDate(summary.date, logDate)
+        : logDate;
+
+    // Activity calories are a fraction of the day's total. A figure at or above
+    // the total is the total copied into the wrong field, and storing it would
+    // bring back exactly the bug this column exists to fix.
+    const total = num(summary.kcal_burned) ?? num(legacy?.kcal_burned);
+    const activeRaw = num(summary.active_kcal);
+    const active = activeRaw != null && (total == null || activeRaw < total) ? activeRaw : null;
 
     const row = {
       user_id: user.id,
       date: summaryDate,
       steps: num(summary.steps),
-      kcal_burned: num(summary.kcal_burned) ?? num(legacy?.kcal_burned),
+      kcal_burned: total,
+      active_kcal: active,
       active_minutes: num(summary.active_minutes) ?? num(legacy?.duration_min),
       distance_km: num(summary.distance_km),
       source: typeof parsed.source === 'string' ? parsed.source : 'Samsung daily summary',
