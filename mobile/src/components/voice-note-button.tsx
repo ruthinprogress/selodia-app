@@ -12,7 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { VoiceConsentSheet } from '@/components/voice-consent-sheet';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ApiError, authedUpload } from '@/lib/api';
+import { authedUpload } from '@/lib/api';
 import { logClientError } from '@/lib/client-error-log';
 import {
   MIC_BLOCKED_MESSAGE,
@@ -106,16 +106,7 @@ export function VoiceNoteButton({
       // settle which stage was failing. Best effort: a failed log must never
       // become a second failure on top of the first.
       void logClientError('voice_note', err);
-      // DIAGNOSTIC, TEMPORARY (2026-09-17). The first device test failed after
-      // recording and nothing on the phone said where. The stage and status go on
-      // screen until the cause is found, then this reverts to the plain line.
-      const reason =
-        err instanceof ApiError
-          ? `server ${err.status}${err.message.includes(': ') ? ' ' + err.message.split(': ').slice(1).join(': ').slice(0, 60) : ''}`
-          : err instanceof Error
-            ? err.message.slice(0, 80)
-            : String(err).slice(0, 80);
-      onNotice(`That voice note didn't come through. Try again, or type it. [${reason}]`);
+      onNotice("That voice note didn't come through. Try again, or type it.");
     } finally {
       setPhase('idle');
     }
