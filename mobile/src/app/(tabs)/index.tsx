@@ -201,7 +201,7 @@ export default function ChatScreen() {
   }
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
+  const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number; notice?: boolean } | null>(null);
   const [cyclePrompt, setCyclePrompt] = useState<'discover' | 'relog' | null>(null);
   // Shown once, after a log has actually happened - never on open, and never
   // before there is a reason to want it (Part Fourteen).
@@ -830,16 +830,20 @@ export default function ChatScreen() {
               setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
               dismissChips();
             }}
-            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now() })}
+            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
             disabled={sending}
           />
           <VoiceControl
-            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now() })}
+            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
             disabled={sending}
           />
         </ThemedView>
 
-        <SaveConfirmation summary={saveToast?.summary ?? null} nonce={saveToast?.nonce ?? 0} />
+        <SaveConfirmation
+          summary={saveToast?.summary ?? null}
+          nonce={saveToast?.nonce ?? 0}
+          notice={saveToast?.notice ?? false}
+        />
         <ComposerAddSheet
           visible={addOpen}
           onSelect={handleAdd}

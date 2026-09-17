@@ -10,7 +10,18 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 // fades out - a system confirmation the app shows, not something Selodia "said",
 // so it never competes with the emotional content of a reply. Trigger by
 // passing a new `nonce` (with the summary) on each save; it re-animates each time.
-export function SaveConfirmation({ summary, nonce }: { summary: string | null; nonce: number }) {
+// `notice` drops the "Saved" prefix. The same pill carries voice messages such as
+// "That voice note didn't come through", and prefixing a failure with a tick and
+// "Saved" said the opposite of what happened (seen on device, 2026-09-17).
+export function SaveConfirmation({
+  summary,
+  nonce,
+  notice = false,
+}: {
+  summary: string | null;
+  nonce: number;
+  notice?: boolean;
+}) {
   // useState with a lazy initialiser, not useRef(...).current and not useMemo.
   // React documents useMemo as a cache it MAY discard, and a discarded
   // Animated.Value would be replaced mid-animation by one nothing is driving -
@@ -36,7 +47,7 @@ export function SaveConfirmation({ summary, nonce }: { summary: string | null; n
     <Animated.View pointerEvents="none" style={[styles.wrap, { opacity }]}>
       <ThemedView type="textSecondary" style={styles.pill}>
         <ThemedText type="small" themeColor="background">
-          ✓ Saved · {summary}
+          {notice ? summary : `✓ Saved · ${summary}`}
         </ThemedText>
       </ThemedView>
     </Animated.View>

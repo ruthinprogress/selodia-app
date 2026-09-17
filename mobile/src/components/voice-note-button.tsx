@@ -11,7 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { VoiceConsentSheet } from '@/components/voice-consent-sheet';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { authedUpload } from '@/lib/api';
+import { ApiError, authedUpload } from '@/lib/api';
 import {
   MIC_BLOCKED_MESSAGE,
   MIC_DENIED_MESSAGE,
@@ -99,7 +99,16 @@ export function VoiceNoteButton({
       else onNotice("I couldn't make out any words in that one.");
     } catch (err) {
       console.log('VOICE NOTE FAILED:', err instanceof Error ? err.message : err);
-      onNotice("That voice note didn't come through. Try again, or type it.");
+      // DIAGNOSTIC, TEMPORARY (2026-09-17). The first device test failed after
+      // recording and nothing on the phone said where. The stage and status go on
+      // screen until the cause is found, then this reverts to the plain line.
+      const reason =
+        err instanceof ApiError
+          ? `server ${err.status}${err.message.includes(': ') ? ' ' + err.message.split(': ').slice(1).join(': ').slice(0, 60) : ''}`
+          : err instanceof Error
+            ? err.message.slice(0, 80)
+            : String(err).slice(0, 80);
+      onNotice(`That voice note didn't come through. Try again, or type it. [${reason}]`);
     } finally {
       setPhase('idle');
     }
