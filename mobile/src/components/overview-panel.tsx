@@ -92,6 +92,7 @@ type ProfileRow = {
   muscle_focus_state: string | null;
   has_scales: boolean | null;
   protein_target_g: number | null;
+  first_name: string | null;
 };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
@@ -121,10 +122,6 @@ function greeting(name: string | null, now: Date = new Date()): string {
   return name ? `${part}, ${name}` : part;
 }
 
-// The account holds no name field, and adding one would be a feature this pass
-// is explicitly not for. The email's own first part is what we have: "ruth" from
-// ruth.christianson@..., capitalised. Anything that does not look like a name -
-// digits, one letter - greets without one rather than guessing.
 // Day 1 is the day the period started, which is how a cycle is counted and how
 // she would say it out loud. Anything older than a long cycle is not shown at
 // all rather than counted up forever: "Day 96" says the log stopped, not where
@@ -137,12 +134,6 @@ function cycleDayFrom(lastStart: string | null): number | null {
   today.setHours(0, 0, 0, 0);
   const day = Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
   return day >= 1 && day <= 60 ? day : null;
-}
-
-function nameFromEmail(email: string | null | undefined): string | null {
-  const local = (email ?? '').split('@')[0]?.split(/[._-]/)[0] ?? '';
-  if (local.length < 2 || !/^[a-z]+$/i.test(local)) return null;
-  return local[0].toUpperCase() + local.slice(1).toLowerCase();
 }
 
 function startOfToday(): string {
@@ -194,7 +185,6 @@ export function OverviewPanel() {
         { data: drinks },
         stepsToday,
         { data: lastPeriod },
-        { data: account },
       ] = await Promise.all([
           supabase
             .from('body_measurements')
@@ -204,7 +194,7 @@ export function OverviewPanel() {
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -226,7 +216,6 @@ export function OverviewPanel() {
             .order('event_date', { ascending: false })
             .limit(1)
             .maybeSingle(),
-          supabase.auth.getUser(),
         ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
@@ -341,7 +330,10 @@ export function OverviewPanel() {
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
         cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
       });
-      setName(nameFromEmail((account?.user as { email?: string } | null | undefined)?.email));
+      // The stored name, and nothing else. It is asked for at sign-up and left
+      // null when somebody would rather not give one; the greeting then simply
+      // has no name in it.
+      setName(profile?.first_name?.trim() || null);
       setLoading(false);
       })();
       return () => {

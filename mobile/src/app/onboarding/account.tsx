@@ -37,12 +37,18 @@ async function createSessionFromUrl(url: string) {
 // (email confirmation off, or the Google path). When confirmation is
 // pending, signUp's metadata is the only viable carrier until a session
 // exists later (no auth-state listener yet to sync it on reauth).
-async function upsertProfile(userId: string, dob: Date | null, sex: BiologicalSex | null) {
-  if (!dob && !sex) return;
+async function upsertProfile(
+  userId: string,
+  dob: Date | null,
+  sex: BiologicalSex | null,
+  firstName: string | null
+) {
+  if (!dob && !sex && !firstName) return;
   await supabase.from('user_profile').upsert({
     user_id: userId,
     date_of_birth: dob ? dob.toISOString().slice(0, 10) : null,
     biological_sex: sex,
+    first_name: firstName,
   });
 }
 
@@ -51,6 +57,7 @@ export default function AccountScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [biologicalSex, setBiologicalSex] = useState<BiologicalSex | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +93,7 @@ export default function AccountScreen() {
 
       const session = await createSessionFromUrl(result.url);
       if (session) {
-        await upsertProfile(session.user.id, dateOfBirth, biologicalSex);
+        await upsertProfile(session.user.id, dateOfBirth, biologicalSex, firstName.trim() || null);
         // The auth guard (step 6) is the sole post-auth router: it resumes the
         // user at their onboarding step or sends a finished user to the app.
       } else {
@@ -160,13 +167,14 @@ export default function AccountScreen() {
           data: {
             date_of_birth: dateOfBirth ? dateOfBirth.toISOString().slice(0, 10) : null,
             biological_sex: biologicalSex,
+            first_name: firstName.trim() || null,
           },
         },
       });
       if (signUpError) throw signUpError;
 
       if (data.session) {
-        await upsertProfile(data.session.user.id, dateOfBirth, biologicalSex);
+        await upsertProfile(data.session.user.id, dateOfBirth, biologicalSex, firstName.trim() || null);
         // The auth guard (step 6) routes onward once the session is set.
       } else {
         setInfo('Check your email to confirm your account, then come back to continue.');
@@ -245,6 +253,18 @@ export default function AccountScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
+              />
+
+              {/* ASKED, NOT DERIVED (2026-09-17). Today greets by name, and the
+                  first version read one off the email address - a guess about
+                  somebody's name made from an account handle. Optional, and
+                  worded as a choice rather than a field to fill: nobody has to
+                  be called anything here. */}
+              <LabeledInput
+                label="What should Selodía call you? (optional)"
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
               />
 
               <DateOfBirthField value={dateOfBirth} onChange={setDateOfBirth} />
