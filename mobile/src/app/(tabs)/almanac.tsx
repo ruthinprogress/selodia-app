@@ -192,7 +192,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   // The switch is allowed past the page margin; see where it is used.
-  tabs: { marginHorizontal: -Spacing.three },
+  // The switch spans about 88% of the screen rather than the text column
+  // (2026-09-18). A page margin is for prose; a control this central to the
+  // screen looks like a standard mobile component when it is only as wide as
+  // its own words.
+  tabs: { marginHorizontal: -Spacing.two },
   content: {
     // Horizontal padding matches the Body screens at 24; vertical stays at 16.
     paddingHorizontal: PageInset.horizontal,
