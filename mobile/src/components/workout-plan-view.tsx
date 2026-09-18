@@ -77,6 +77,13 @@ export function WorkoutPlanView({
   const [saved, setSaved] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [note, setNote] = useState('');
+  // ANYTHING ELSE SHE DID, kept apart from what was different about the routine
+  // (Ruth, 2026-09-18: "sometimes I do some of a workout and just some other
+  // stuff that's not in it at all. So not necessarily an addition to a listed
+  // movement, not a change"). Box jumps belong to the session and to no movement
+  // in it; filing them under "what changed" would record real work as an
+  // amendment to something else.
+  const [extras, setExtras] = useState('');
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
 
   const stateOf = (name: string): MovementState => states[name] ?? 'todo';
@@ -99,6 +106,9 @@ export function WorkoutPlanView({
   function composedNote(): string {
     const parts: string[] = [];
     if (note.trim()) parts.push(note.trim());
+    // Named rather than merged, so a reader months later can tell the difference
+    // between "the squats were lighter" and "I also did box jumps".
+    if (extras.trim()) parts.push(`Also did: ${extras.trim()}`);
     if (changed.length) parts.push(`Changed: ${changed.map((x) => x.name).join(', ')}.`);
     if (skipped.length) parts.push(`Skipped: ${skipped.map((x) => x.name).join(', ')}.`);
     return parts.join(' ');
@@ -237,7 +247,9 @@ export function WorkoutPlanView({
           title={planTitle}
           lines={reviewLines}
           note={note}
-          onNoteText={(text) => setNote((n) => (n.trim() ? `${n.trim()} ${text}` : text))}
+          onNote={setNote}
+          extras={extras}
+          onExtras={setExtras}
           onNotice={setNoteNotice}
           notice={noteNotice}
           saving={saving}

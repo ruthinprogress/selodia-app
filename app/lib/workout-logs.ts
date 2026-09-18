@@ -78,7 +78,7 @@ export async function logWorkingWeight(
   return true;
 }
 
-function todayISODate(): string {
+export function todayISODate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
