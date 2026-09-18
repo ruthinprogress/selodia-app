@@ -159,6 +159,20 @@ export const Spacing = {
   six: 64,
 } as const;
 
+// THE MARGIN EVERY SCREEN KEEPS (Ruth, 2026-09-18: "there is not enough black
+// space border, it always feels squished up to the edges").
+//
+// Screens were on Spacing.four - 24 - which is the usual app margin and reads as
+// exactly that: an app. The brief asks for generous whitespace and a page from a
+// bound book, and a book's margin is the widest thing on the page after the type.
+// 32 either side, with the same at the top and more at the foot, where the tab
+// bar sits.
+export const PageInset = {
+  horizontal: 32,
+  top: 32,
+  bottom: 48,
+} as const;
+
 // One corner radius for every card surface (UI brief, 2026-09-17: "consistent
 // corner radius throughout"). 20 rather than 16: the brief asks for a soft,
 // paper-like feel, and at 16 a full-width card still reads as a panel.

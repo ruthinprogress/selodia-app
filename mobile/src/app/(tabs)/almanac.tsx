@@ -14,7 +14,7 @@ import { SpotlightScroll } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { hasSeenAlmanacIntro, markAlmanacIntroSeen } from '@/lib/almanac-intro';
 import { splitByTab, type AlmanacRow, type AlmanacTab } from '@/lib/insights';
 import { portraitFrom } from '@/lib/roundup';
@@ -180,8 +180,9 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   content: {
     // Horizontal padding matches the Body screens at 24; vertical stays at 16.
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
+    paddingHorizontal: PageInset.horizontal,
+    paddingTop: PageInset.top,
+    paddingBottom: PageInset.bottom,
     gap: Spacing.three,
     maxWidth: MaxContentWidth,
     width: '100%',

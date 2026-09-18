@@ -23,7 +23,7 @@ import { useSpotlight } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
@@ -871,8 +871,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    paddingHorizontal: PageInset.horizontal,
+    paddingTop: PageInset.top,
+    paddingBottom: PageInset.bottom,
     gap: Spacing.three,
   },
   messageGroup: {
@@ -882,7 +883,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: PageInset.horizontal,
     paddingBottom: Spacing.four,
     alignSelf: 'center',
     width: '100%',

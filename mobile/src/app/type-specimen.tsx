@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HealthFlower } from '@/components/health-flower';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BrandFont, CardRadius, Spacing } from '@/constants/theme';
+import { BrandFont, CardRadius, PageInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // TYPOGRAPHY, AS A SYSTEM (Ruth, 2026-09-18).
@@ -264,9 +264,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   safe: { flex: 1 },
   content: {
-    padding: Spacing.three,
+    paddingHorizontal: PageInset.horizontal,
+    paddingTop: PageInset.top,
+    paddingBottom: PageInset.bottom,
     gap: Spacing.two,
-    paddingBottom: Spacing.six,
   },
   chips: {
     flexDirection: 'row',

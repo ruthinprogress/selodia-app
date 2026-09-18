@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 
 // The shell every screen in the Body stack sits inside.
 //
@@ -39,8 +39,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    paddingHorizontal: PageInset.horizontal,
+    paddingTop: PageInset.top,
+    paddingBottom: PageInset.bottom,
     gap: Spacing.three,
   },
 });
