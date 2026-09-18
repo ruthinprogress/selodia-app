@@ -1960,6 +1960,51 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 
 # PART SIXTEEN: BUILD ORDER
 
+## The UI pass, 18 September 2026 — what was built
+
+*Recorded the same day. The typography decisions are in Part Fifteen; this is what the pass changed in the product.*
+
+### Movement stops being a workout list
+
+**Movement is a library of practices** (Ruth's brief with a ChatGPT mockup, 18 September): *"a growing library of ways a person has learned to care for their body"*. A gym programme, a yoga flow, a rehab plan and a breathing sequence all belong, so nothing in the Movement code may assume weights, reps or a gym. Each card says four things and no more: what it is called, what kind of practice it is, roughly how long it takes (~32 min — arithmetic, wearing a tilde, rounded to five minutes, never a promise), and when it was last done. No scores, no percentages, no praise. *"Last done 3 days ago"* is an observation; *"3 days since you last trained"* is a reproach wearing the same numbers.
+
+### A session records what happened, not whether the programme was completed
+
+The first build made the save footer appear only when every movement was ticked. **Ruth rejected it:** *"a user may choose to do less or more and there should be a way to reflect that as well as save it even if they only did one or two."* The revision that followed is the settled design:
+
+- **Each movement carries a state** — Completed, Modified or Skipped — cycled by tapping, rather than a binary tick.
+- **The footer, "Record today's movement", is always present.** Somebody who did two movements and stopped has done something worth writing down.
+- **Save opens a review sheet, "What happened today?"**, which states the facts of the session and asks for the rest **as a voice note** — because nobody types *"stopped because my knee hurt"* standing in a gym, and months later those notes are what let the Almanac notice the knee has come up three times.
+- **No percentages and no congratulation.** "Completed 5 of 7" is a count of what happened; "71%" is the same fact turned into a mark out of ten, and the sheet will not carry one.
+
+Working weights persist across sessions. The goal is *not* compliance with a predefined routine; it is an accurate record of what actually happened.
+
+### The exercise sheet
+
+Four things, in this order, and the order is the design: **Before you begin** (the exercise-specific safety note, never generic boilerplate — Part Ten fixed this ahead of the demonstration because it is what matters before somebody loads a bar), **the demonstration**, **the working weight**, and the way out.
+
+**The working-weight selector is now the largest thing on the sheet**: the number centred in the display serif at 46, with the minus and plus set well out to either side where a thumb goes, the slider beneath it, and **"Save working weight"** as a full pill. It was a 16px number in a row of small grey chips — the same size as every other line on the page — so the one thing a person comes to that sheet to change looked like a field on a settings form.
+
+**The number is still the text field**, which is the part of the 2026-08-21 decision that must not be lost: real equipment lands on odd values, and no increment chosen in advance can anticipate them. The slider gets you close; typing lands exactly.
+
+**Gentle historical context, never a scoreboard.** Under the slider: *"Last saved at 10 kg, three weeks ago. Before that, 8 kg."* Read from the append-only history the control writes to. No arrows, no "up from", no personal best, no streak — a working weight goes down in a deload week or after illness, and a control that scores it makes writing the honest number down feel like an admission.
+
+### The chat composer grows with the message
+
+Ruth, 18 September: *"there is an issue with the text typing box in chat. It doesn't expand with what user writes so it's impossible to follow your own thoughts."*
+
+**Why it never grew, because the cause is not obvious.** The field was one item in a row of four — the `+`, the field, the mic, the bars and Send all sharing one line — and a `TextInput` stretched with `flex` inside a row that sizes itself to its tallest child never reports a taller content height. A `maxHeight: 220` had been sitting in the stylesheet since 16 September and never once applied.
+
+**The composer is a column now**, modelled on the message box in Claude Code, which is what she sent a picture of: the field takes the full width on its own line, every control moves underneath it, and one surface holds both. Text grows downward to about nine lines and only then scrolls.
+
+### Every log row opens, and every entry can be removed
+
+**The eye.** `ActivityDetailCard` was built on 16 September and never given anything to open it, so activity was the one log you could read but not look into — which is what Ruth reported as *"the Movements log has lost the look closer eye entirely"*. The eye is now on the activity list and the activity week view, in the same place and at the same size as food and measurements.
+
+**Delete.** Per-entry delete was scoped on 12 September and never built. It lives **inside the entry's own card** — last, quiet, and asking once in plain words before it does anything, with the confirm as the destructive tap rather than the first one. RLS scopes the delete to the signed-in person's own row, and every card tells its list to re-read so a deleted entry leaves the screen instead of lingering.
+
+**Why deletion is allowed at all, given "permanent, never deleted".** That rule is about the app not quietly discarding somebody's history, not about trapping a mistake inside it. A meal logged twice, a weight typed wrong, a run that never happened: leaving those in is not honesty, it is a wrong record nobody can correct. Chat could already delete an entry by being asked; this is the same power, where the entry is.
+
 ## Pending: bug and design list, 18 September 2026
 
 **Held deliberately, and not actioned** (Ruth, 18 September: *"Do not action anything yet — the UI redesign pass is in progress and many of these will be addressed or superseded by it."*). Sixteen items from a testing pass on her own phone: fourteen bugs and two design changes. Source: `Selodia Bug List 18 Sept 2026` in Drive; screenshots in `Debugging screenshots/Bugs Pass 18th Sept`.

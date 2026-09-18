@@ -5,7 +5,7 @@ import { MovementDemo } from '@/components/movement-demo';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { CardRadius, PageInset, Spacing } from '@/constants/theme';
 import { WorkingWeightControl } from '@/components/working-weight-control';
 import { supabase } from '@/lib/supabase';
 import { WorkoutPlanView } from '@/components/workout-plan-view';
@@ -132,15 +132,18 @@ export function AlmanacDetail({
   );
 }
 
-// The exercise detail (build item 35, slice D). Part Ten fixes the order:
-// the "Before you start" safety note comes FIRST - it is the thing that matters
-// before someone loads a bar, not a footnote under the demo.
+// THE EXERCISE SHEET (build item 35 slice D, redrawn 2026-09-18 to Ruth's
+// Movement brief).
 //
-// The movement-demo animation sits directly under that note (item 36, built
-// 2026-09-09). It renders NOTHING when the library has no asset for the
-// movement - not a placeholder and not an explanation - because the library
-// covers movement patterns rather than every named exercise, and item 46
-// handles that gap in conversation without ever naming the library's limits.
+// FOUR THINGS, IN THIS ORDER, and the order is the design: what to watch for
+// before you begin, what the movement looks like, what you are lifting, and the
+// way out. Part Ten fixed the first two - the safety note comes FIRST, because
+// it is what matters before somebody loads a bar, not a footnote under the demo.
+//
+// The movement-demo animation renders NOTHING when the library has no asset for
+// the movement - not a placeholder and not an explanation - because the library
+// covers movement patterns rather than every named exercise, and item 46 handles
+// that gap in conversation without ever naming the library's limits.
 //
 // "Ask about this" is still held: it is the discuss-card mechanic, and an
 // exercise is not a valid discuss_entry_type today (it lives inside a plan's
@@ -161,6 +164,13 @@ function ExerciseDetail({
   const theme = useTheme();
   const [weightsOpen, setWeightsOpen] = useState(false);
 
+  // What the plan says about this movement, stated once under the name: the
+  // body area it belongs to, and the sets and reps decided in the conversation
+  // that built the plan. Never recomputed here - they are stored on the plan.
+  const meta = [exercise.group, exercise.sets && exercise.reps ? `${exercise.sets}×${exercise.reps}` : null]
+    .filter(Boolean)
+    .join('  ·  ');
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal>
       <Pressable
@@ -169,14 +179,21 @@ function ExerciseDetail({
         accessibilityLabel="Close"
       />
       <View style={styles.centre} pointerEvents="box-none">
-        <ThemedView style={styles.card}>
-          <ScrollView contentContainerStyle={styles.body}>
-            <ThemedText type="smallBold">{exercise.name}</ThemedText>
+        <ThemedView style={styles.sheet}>
+          <ScrollView contentContainerStyle={styles.sheetBody}>
+            {/* The movement names itself in the serif, as every other thing in
+                the app does since the typography was settled. */}
+            <ThemedText type="sectionTitle">{exercise.name}</ThemedText>
+            {meta.length > 0 && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {meta}
+              </ThemedText>
+            )}
 
             {exercise.safetyNote ? (
-              <ThemedView type="backgroundElement" style={styles.safety}>
+              <ThemedView type="backgroundElement" style={styles.beforeCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-                  Before you start
+                  Before you begin
                 </ThemedText>
                 <ThemedText type="small">{exercise.safetyNote}</ThemedText>
               </ThemedView>
@@ -189,17 +206,17 @@ function ExerciseDetail({
               </ThemedText>
             )}
 
-            {/* Part Ten fixes this order: the safety note comes first,
-                because it is what matters before somebody loads a bar. The
+            {/* Part Ten fixes this order: the safety note comes first, because
+                it is what matters before somebody loads a bar. The
                 demonstration follows it, never above it. */}
             <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
 
             {/* BEHIND A TOGGLE UNTIL THERE IS A WEIGHT (Ruth, 2026-09-10).
                 Found on device: a sumo squat and a side-lying leg lift both
                 showed a stepper reading 0 kg, a slider whose fill was zero
-                width and so looked like an empty bar, and a "Log this weight"
-                button - three controls for a load that does not exist. That is
-                what principle 8 rules out.
+                width and so looked like an empty bar, and a save button -
+                three controls for a load that does not exist. That is what
+                principle 8 rules out.
 
                 Not removed for bodyweight movements, though, which was the
                 first instinct: Ruth's reaction to the control was that it
@@ -235,7 +252,7 @@ function ExerciseDetail({
             )}
           </ScrollView>
 
-          <View style={styles.actions}>
+          <View style={styles.sheetActions}>
             <Pressable onPress={onClose} style={({ pressed }) => pressed && styles.pressed}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.close}>
                 Close
@@ -327,6 +344,17 @@ function Label({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
+  // THE EXERCISE SHEET's own surface, which is roomier than the entry card
+  // above it: one movement at a time, with the page inset the UI pass gave
+  // every other screen rather than the tight 16 the old sheet used.
+  sheet: { borderRadius: CardRadius, maxHeight: '86%', overflow: 'hidden' },
+  sheetBody: { padding: PageInset.horizontal, paddingBottom: Spacing.four, gap: Spacing.three },
+  sheetActions: {
+    paddingHorizontal: PageInset.horizontal,
+    paddingBottom: Spacing.four,
+    alignItems: 'flex-end',
+  },
+  beforeCard: { padding: Spacing.three, borderRadius: CardRadius, gap: Spacing.one },
   addWeights: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
@@ -364,11 +392,5 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
   },
   close: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
-  safety: {
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
-    gap: Spacing.half,
-    marginTop: Spacing.two,
-  },
   pressed: { opacity: 0.6 },
 });
