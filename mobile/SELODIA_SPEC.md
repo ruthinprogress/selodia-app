@@ -2003,6 +2003,34 @@ Ruth, 18 September: *"there is an issue with the text typing box in chat. It doe
 
 **Delete.** Per-entry delete was scoped on 12 September and never built. It lives **inside the entry's own card** — last, quiet, and asking once in plain words before it does anything, with the confirm as the destructive tap rather than the first one. RLS scopes the delete to the signed-in person's own row, and every card tells its list to re-read so a deleted entry leaves the screen instead of lingering.
 
+### Movement, refined: three kinds of information, and nothing counted against the plan
+
+*Ruth's refinement pass the same evening, after using the flow. It supersedes the wording settled earlier in the day.*
+
+**The routine is a guide, not a target.** Her words: *"the movement plan is not a checklist to complete and users should never feel they're being scored or judged against it. These are suggested movement practices based on what has worked previously. The app records what actually happened."*
+
+| Was | Is |
+|---|---|
+| Done | **Completed** |
+| Changed | **Adapted** |
+| Skipped | Skipped (unchanged, and never struck through) |
+| "2 done, 2 changed" | **"4 movements recorded"**, with "2 completed • 2 adapted" beneath it |
+
+**The plan's own length no longer appears anywhere in the flow.** Not "4 of 6", not "67%", not any phrasing that subtracts what happened from what was written down in advance. The count says how much movement was recorded; it never says how much of the plan was got through.
+
+**THREE KINDS OF INFORMATION, and the third had no home.** Planned movement completed, planned movement adapted, and **additional movement that was never in the routine** — *"I added 20 minutes of climbing", "I finished with ballet hip pulses"*. Until now that landed in the session note, which filed real movement as a remark about squats. It is now recorded **as movement**: its own row in the same session, named in her words, through the same completion path the plan's movements use.
+
+- **Unrated on purpose.** The plan's movements were classified for eccentric load and intensity when the plan was written; nothing has classified these. Guessing a load from the words "box jumps" would put an invention into the signal that decides whether somebody is warned about soreness.
+- **Not a second activity.** It happened inside the same hour, and a separate activity row would count that hour twice and invent a duration for movements nobody timed.
+- **Additional movement alone is enough to record a day.** Somebody who opened the routine, did none of it and went climbing has moved.
+- `splitAdditional` (mobile/src/lib/additional-movement.ts) breaks a sentence into movements on line breaks, semicolons and commas, and strips the way people speak — "added", "finished with" — without touching the numbers. Deliberately dull: anything cleverer starts inventing boundaries inside "hip pulses with leg in second, pushing up a medicine ball". 11 checks in `scripts/probe-additional-movement.mjs`.
+
+**Recording a saved routine by saying so.** *"There needs to be a way to just use live voice like 'I did the gym workout today but added some box jumps like 3 x 10'."* The model is given the person's saved plans by name; when they say they did one, the session is written from the plan's own movements through the same path the Save button uses — which moves the plan's history on and feeds the week's picture, neither of which an activity row built from a sentence can do. Two refusals hold it together: it **never guesses which routine** (a tie, or nothing in common, writes nothing and falls back to plain activity logging, because recording the wrong routine tells someone a session happened that did not), and a routine **already recorded today is left alone**. 13 checks in `scripts/probe-workout-session.mjs`.
+
+**The review sheet asks rather than collects.** *"The voice section shouldn't feel like another form to fill in."* It asks *"Anything you'd like to remember?"*, says *"Voice or typing is optional"* out loud, and shows the kind of thing people actually say — "Reduced the weight", "Shoulder felt sore today", "Finished with stretching" — which is how somebody learns that a sore shoulder belongs here as much as a changed weight does. **And both fields can be typed.** The first build offered voice only, on the reasoning that nobody types in a gym: true, and not a reason to make typing impossible.
+
+**Density: a magazine page, not an accessibility mode.** *"The current layout feels oversized. It almost feels like an accessibility mode designed for users with significant visual impairment."* Roughly a quarter came out of every measure in the flow — card padding 16→12, the gap between cards 8→6, heading-to-first-card 8→2, the footer 24→16, the state mark 26→24 — and secondary data (sets, reps, last weight, state) moved to a new **`detail` type, Manrope 12/17**, a step quieter than body text. The test to hold when this is revisited: *"This is beautifully designed"* rather than *"Everything is huge."*
+
 ### Nine dinners for one dinner, and the guard that stops it
 
 **18 September, evening.** Ruth described one dinner in a voice call and **nine `food_logs` rows** went in across 53 seconds, each carrying more of the same sentence — "73g boiled new potatoes", then "…with oxtail stew", then "…and 250g oxtail stew (homemade)", then the same words four more times. Her day read **5,137 kcal**. Her words: *"Something weird happened on logging food today, tins of duplicates."*
