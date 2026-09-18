@@ -1983,9 +1983,15 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 13. **Settings is only reachable from Chat.** It needs to be reachable from every screen.
 14. **The Body card truncates on Today:** "38.5 kg m…", "27.7 % bo…". The cards are too narrow for their contents.
 
-### Requested, not built
+### Requested, and built the same day
 
-17. **A water reminder at a set time** (Ruth, 18 September, asked twice in chat). Reminders today are daily prompts to log, at times she chooses in Settings. There is no custom or one-off reminder, and nothing that reminds about anything other than logging. Two halves to this: the feature is genuinely missing, and the app answered as though it had no reminders at all. The second half was fixed the same day by giving the chat prompt an accurate list of what the app can do, plus the standing rule that a request for something unbuilt is answered with what exists, what does not, and an offer to note it — never a flat refusal or a workaround offered in place of an answer. The feature itself is still open.
+17. **~~A water reminder at a set time~~ — built 18 September 2026.** Asked for twice in chat and refused twice, which was half true: the app had daily prompts to log and nothing else. It now has both kinds.
+
+    **How it works.** Somebody asks in their own words, typed or spoken: *"remind me to drink water at 9am"*. The chat turn carries `reminderAction`, the label in her phrasing, the time as HH:MM and a daily-or-weekly repeat; `custom_reminders` stores it; the phone schedules it as a local notification alongside the log reminders. Stopping one works the same way — *"stop reminding me about the water"* — and they are also listed in Settings with a Stop beside each.
+
+    **Three decisions worth keeping.** The notification says **her words back** and nothing else: no encouragement wrapped around it, no streak, nothing about how she is doing. The confirmation comes from **the phone, not the sentence**: the reply never claims a reminder is set, because the scheduling happens on the device and a reminder blocked by the OS is not a reminder — if notifications are off, the toast says exactly that instead. And a reminder she asked for **survives a no to the log reminders**: somebody can want nothing from the app and still want to be told to take their magnesium, so the two are stored and honoured separately.
+
+    **A reminder asked for during a voice call** is written by the server mid-conversation and scheduled when the call ends, because nothing on the phone is listening while she is talking.
 
 ### Design changes
 

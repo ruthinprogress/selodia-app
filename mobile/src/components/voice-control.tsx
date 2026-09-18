@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useConversation } from '@elevenlabs/react-native';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -6,6 +6,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { VoiceButton } from '@/components/voice-button';
 import { VoiceConsentSheet } from '@/components/voice-consent-sheet';
 import { VoiceSessionScreen } from '@/components/voice-session-screen';
+import { syncRemindersNow } from '@/lib/notifications';
 import { useVoiceStart } from '@/lib/use-voice-start';
 
 // The whole voice affordance behind one component: the mic, the consent sheet,
@@ -28,6 +29,18 @@ export function VoiceControl({
   // Read here rather than inside the screen so the screen stays a pure
   // rendering of a state it is handed, and can be looked at in isolation.
   const { status, mode, endSession } = useConversation();
+
+  // A REMINDER ASKED FOR MID-CALL IS SCHEDULED WHEN THE CALL ENDS (2026-09-18).
+  // The row is written by the server during the conversation, but the
+  // notification itself lives on this device, and nothing on the phone is
+  // listening while she is talking. So the moment the session closes, the phone
+  // catches up with whatever the conversation agreed to.
+  const wasLive = useRef(false);
+  useEffect(() => {
+    const live = status !== 'disconnected';
+    if (wasLive.current && !live) void syncRemindersNow();
+    wasLive.current = live;
+  }, [status]);
 
   // In an effect, not in render. Handing the message up during render would be
   // a side effect in a render pass - it would fire again on every re-render

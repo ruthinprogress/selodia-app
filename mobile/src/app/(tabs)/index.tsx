@@ -31,6 +31,8 @@ import type { AddSource } from '@/lib/composer-add';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
+import { reminderSummary } from '@/lib/custom-reminders';
+import { syncRemindersNow } from '@/lib/notifications';
 import { shouldOfferReminders } from '@/lib/reminder-settings';
 import { hasSeenChatChips, markChatChipsSeen } from '@/lib/chat-chips';
 import { supabase } from '@/lib/supabase';
@@ -550,7 +552,7 @@ export default function ChatScreen() {
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget } =
+      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget, reminder } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
           // Present only on the turn that opens a discussion about an entry.
@@ -564,6 +566,24 @@ export default function ChatScreen() {
         ...prev,
         { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId },
       ]);
+      // A REMINDER IS CONFIRMED BY THE PHONE, NOT BY THE SENTENCE (2026-09-18).
+      // The server stores it; the notification is scheduled here, on the device,
+      // and only once that has actually happened does anything say so. If the OS
+      // refuses notifications the toast says that instead - a reminder nobody
+      // gets is worse than one nobody asked for.
+      if (reminder) {
+        const ok = await syncRemindersNow();
+        const message =
+          reminder.action === 'created'
+            ? ok
+              ? `I'll remind you: ${reminderSummary({ label: reminder.label, at_time: reminder.atTime, weekday: reminder.weekday })}`
+              : "I've noted that, but notifications are switched off for Selodía on this phone, so it can't reach you yet."
+            : reminder.count > 0
+              ? `That reminder has stopped.`
+              : "I couldn't find a reminder like that.";
+        setSaveToast((prev) => ({ summary: message, nonce: (prev?.nonce ?? 0) + 1, notice: true }));
+      }
+
       if (saved?.summary) {
         setSaveToast((prev) => ({ summary: saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
         if (await shouldOfferReminders()) setOfferReminders(true);

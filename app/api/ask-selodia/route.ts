@@ -648,7 +648,7 @@ WHAT THIS APP CAN DO TODAY. Be accurate about this: claiming a feature that does
 - Showing it back: Today (the day's figures, water, the week's Health Flower, what you burn), the Log tab (Food, Activity, Measurements, with week-by-week history), and the Almanac (Insights, Movement plans, Me).
 - The Almanac keeps things worth remembering, saved deliberately from a conversation.
 - Movement plans with demonstration clips for most exercises.
-- Daily reminders to log, at times the person chooses, turned on or off in Settings. There is no custom or one-off reminder yet: no "remind me to drink water at 9am", no reminders about anything other than logging.
+- Reminders of two kinds. The app's own daily prompt to log, at times chosen in Settings. And any reminder the person asks for in their own words, at a time they name - "remind me to drink water at 9am", "nudge me to take my magnesium at half eight on Sundays" - which arrives saying their own words back. Ask for the time if they have not given one. They can stop one by saying so, or in Settings. Reminders are scheduled on the phone, so one asked for during a voice call is set when the call ends.
 - Weekly roundups, written on a Sunday evening into the Almanac.
 - Cycle tracking from a logged period start.
 
@@ -718,6 +718,33 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'string',
       description:
         "Alongside logIntent 'activity' or 'food'. The COMPLETE description to store, assembled from the conversation and stripped of everything that is not the food or the session - e.g. after \"I did a run\" then \"about 40 minutes\", send \"a 40 minute run\"; for \"catch up my log: Mon 7th pizza and chips, Tuesday 8th burger\", send the days and their meals and nothing else. Without this the app stores the raw message, which is how a complaint about logging once became a meal. For activity include the duration always, and anything else belonging to the same session (intensity, terrain, how it felt). Omit it only when the message is already exactly the thing to store.",
+    },
+    reminderAction: {
+      type: 'string',
+      enum: ['create', 'cancel'],
+      description:
+        "Set ONLY when the person is asking for a reminder or asking to stop one - \"remind me to drink water at 9am\", \"nudge me to take my magnesium at half eight\", \"stop reminding me about the water\". 'create' to set one up, 'cancel' to stop one they already have. Leave unset for anything else, including a general question about whether reminders exist. A reminder is not a log: leave logIntent 'none'.",
+    },
+    reminderLabel: {
+      type: 'string',
+      description:
+        "With reminderAction. What the reminder is FOR, in the person's own words and as few of them as possible: \"drink water\", \"take your magnesium\", \"stretch your hips\". It is read back to them on the notification, so write it as the reminder itself rather than as a description of one - never \"a reminder about water\". For 'cancel', the words that identify which one to stop.",
+    },
+    reminderTime: {
+      type: 'string',
+      description:
+        "With reminderAction 'create'. The local time as HH:MM on a 24-hour clock, from whatever they said: \"9am\" is 09:00, \"half eight\" is 08:30, \"in the evening\" is not a time - ask rather than guessing. Omit for 'cancel'.",
+    },
+    reminderRepeat: {
+      type: 'string',
+      enum: ['daily', 'weekly'],
+      description:
+        "With reminderAction 'create'. 'daily' unless they named a single day of the week. Default to 'daily' when they did not say.",
+    },
+    reminderWeekday: {
+      type: 'number',
+      description:
+        "With reminderRepeat 'weekly'. The day, 0 for Sunday through 6 for Saturday.",
     },
     correctionKind: {
       type: 'string',
@@ -934,6 +961,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     healthGuidanceApplied?: boolean;
     logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration';
     logText?: string;
+    reminderAction?: 'create' | 'cancel';
+    reminderLabel?: string;
+    reminderTime?: string;
+    reminderRepeat?: 'daily' | 'weekly';
+    reminderWeekday?: number;
     correctionKind?: string;
     correctionAction?: string;
     correctionScope?: string;
@@ -1001,6 +1033,53 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // headline summary, while this has to survive a PARTIAL landing - a weight
   // stored while a waist was not.
   const attempt: LogAttempt = { intent: result.logIntent ?? 'none', landed: [], missed: [] };
+  // REMINDERS SHE ASKED FOR (2026-09-18). "Remind me to drink water at 9am" was
+  // refused twice before this existed.
+  //
+  // The row is the record; the phone schedules it, because there is no server
+  // scheduler in this project and a local notification is what actually arrives.
+  // So the reply must never say it is set - the app confirms once the phone has
+  // actually scheduled it, exactly as a food log is confirmed by the app rather
+  // than by the sentence.
+  let reminderResult:
+    | { action: 'created'; label: string; atTime: string; weekday: number | null }
+    | { action: 'cancelled'; label: string; count: number }
+    | null = null;
+
+  if (result.reminderAction === 'create') {
+    const label = (result.reminderLabel ?? '').trim();
+    const atTime = (result.reminderTime ?? '').trim();
+    // No time, no reminder. The model is told to ask rather than guess, and this
+    // is the guard behind that: a reminder at a time nobody chose would arrive
+    // as a surprise and be indistinguishable from a bug.
+    if (label && /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(atTime)) {
+      const weekday =
+        result.reminderRepeat === 'weekly' && typeof result.reminderWeekday === 'number'
+          ? Math.max(0, Math.min(6, Math.round(result.reminderWeekday)))
+          : null;
+      const { error } = await supabase
+        .from('custom_reminders')
+        .insert({ user_id: user.id, label, at_time: atTime, weekday, source: isVoice ? 'voice' : 'chat' });
+      if (error) console.log('CUSTOM REMINDER INSERT FAILED:', error.message);
+      else reminderResult = { action: 'created', label, atTime, weekday };
+    }
+  } else if (result.reminderAction === 'cancel') {
+    const label = (result.reminderLabel ?? '').trim();
+    if (label) {
+      // Matched on the words rather than an id, because she cancels one the way
+      // she asked for it: "stop reminding me about the water". Only her own
+      // active ones, and never more than the ones that match.
+      const { data: stopped, error } = await supabase
+        .from('custom_reminders')
+        .update({ active: false })
+        .eq('active', true)
+        .ilike('label', `%${label.replace(/[%_]/g, '')}%`)
+        .select('id');
+      if (error) console.log('CUSTOM REMINDER CANCEL FAILED:', error.message);
+      else reminderResult = { action: 'cancelled', label, count: stopped?.length ?? 0 };
+    }
+  }
+
   let breakdownFoodLogId: string | null = null;
   // A correction or deletion of something just logged (build item 10d). Runs
   // BEFORE the logging branches so a corrected value can never also be stored
@@ -1667,6 +1746,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     healthGuidanceApplied,
     saved,
     foodLogId: breakdownFoodLogId,
+    // The phone schedules it and says so. Null unless this turn asked for one.
+    reminder: reminderResult,
     // Voice only: they asked to end the call. The adapter says the reply and
     // then hangs up. Always false for a typed message.
     endVoiceSession: isVoice && result.endVoiceSession === true,

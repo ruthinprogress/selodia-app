@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
+import { loadCustomReminders } from '@/lib/custom-reminders';
 import { nextFireTime } from '@/lib/quiet-hours';
 import { loadReminderSettings } from '@/lib/reminder-settings';
 import { supabase } from '@/lib/supabase';
@@ -188,7 +189,6 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
     const Notifications = await loadNotifications();
     if (!Notifications) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
-    if (times.length === 0) return;
     await ensureAndroidChannel();
 
     for (const hhmm of times) {
@@ -208,6 +208,42 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
           minute: fire.getMinutes(),
           channelId: REMINDER_CHANNEL,
         },
+      });
+    }
+
+    // HER OWN REMINDERS (2026-09-18). Scheduled here rather than anywhere else
+    // because this function cancels everything first: anything scheduled
+    // elsewhere would be wiped the next time the log reminders were applied.
+    //
+    // THE NOTIFICATION SAYS HER WORDS BACK. "Drink water" is what she asked to
+    // be reminded of, so that is what arrives - no encouragement wrapped around
+    // it, no streak, and nothing about how she is doing.
+    for (const r of await loadCustomReminders()) {
+      const [hour, minute] = r.at_time.split(':').map(Number);
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) continue;
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Selodía',
+          body: r.label,
+          data: { destination: 'chat' },
+        },
+        trigger:
+          r.weekday == null
+            ? {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour,
+                minute,
+                channelId: REMINDER_CHANNEL,
+              }
+            : {
+                type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+                // expo-notifications counts Sunday as 1; the column is 0-6 with
+                // Sunday at 0, matching Date.getDay().
+                weekday: r.weekday + 1,
+                hour,
+                minute,
+                channelId: REMINDER_CHANNEL,
+              },
       });
     }
 
@@ -263,10 +299,41 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
 // runs every time.
 const PROMPTED_KEY = 'selodia.reminders.permission-prompted';
 
+// Bring the phone in line with the reminders that now exist, right now.
+//
+// Called when somebody has just asked for one in chat (2026-09-18). It is the
+// only path that may prompt for notification permission outside launch and the
+// offer card, and that is deliberate: asking for a reminder IS asking to be
+// notified, so the prompt arrives at the one moment it explains itself.
+//
+// Returns whether the reminder will actually arrive, so the confirmation can
+// tell the truth: a reminder stored in the table but blocked by the OS is not a
+// reminder, and saying "that's set" would be a lie somebody only discovers at
+// 9am when nothing happens.
+export async function syncRemindersNow(): Promise<boolean> {
+  try {
+    const Notifications = await loadNotifications();
+    if (!Notifications) return false;
+    if (!(await ensurePermission(Notifications, true))) return false;
+    const settings = await loadReminderSettings();
+    await applyReminderSchedule(settings?.enabled ? settings.times : []);
+    return true;
+  } catch (err) {
+    console.log('reminder sync failed (non-fatal):', err instanceof Error ? err.message : err);
+    return false;
+  }
+}
+
 export async function restoreReminders(userId: string): Promise<void> {
   try {
     const settings = await loadReminderSettings();
-    if (!settings?.enabled) return;
+    // A REMINDER SHE ASKED FOR SURVIVES A NO TO THE LOG REMINDERS (2026-09-18).
+    // This used to return here on a no, which was right when the only
+    // reminders were the app's own. Her own reminders are a different
+    // agreement: somebody can want nothing from the app and still want to be
+    // told to take their magnesium.
+    const custom = await loadCustomReminders();
+    if (!settings?.enabled && custom.length === 0) return;
     const Notifications = await loadNotifications();
     if (!Notifications) return;
 
@@ -275,7 +342,7 @@ export async function restoreReminders(userId: string): Promise<void> {
     if (!(await ensurePermission(Notifications, !prompted))) return;
 
     await registerPushToken(userId, { mayPrompt: false });
-    await applyReminderSchedule(settings.times);
+    await applyReminderSchedule(settings?.enabled ? settings.times : []);
   } catch (err) {
     console.log('reminder restore failed (non-fatal):', err instanceof Error ? err.message : err);
   }

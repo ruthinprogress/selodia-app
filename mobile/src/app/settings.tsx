@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountDeletion } from '@/components/account-deletion';
 import { BuildVersion } from '@/components/build-version';
+import { CustomReminderList } from '@/components/custom-reminder-list';
 import { DataExport } from '@/components/data-export';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { StepTracking } from '@/components/step-tracking';
@@ -124,6 +125,8 @@ export default function SettingsScreen() {
               sets. It is here because Settings is where every app keeps one,
               and because it is reachable from anywhere without a tester needing
               to be told a gesture. */}
+          <CustomReminderList />
+
           <BuildVersion />
         </SpotlightScroll>
         </ScrollView>
