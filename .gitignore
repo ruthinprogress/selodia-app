@@ -62,3 +62,6 @@ google-service-account*.json
 # which is exactly the kind of file that should be easy to make and impossible
 # to end up in history.
 scratchpad/
+
+# An export of a food log is health data. Never in the repo.
+scripts/data/
