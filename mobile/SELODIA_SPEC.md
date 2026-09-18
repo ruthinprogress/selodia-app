@@ -1960,6 +1960,35 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 
 # PART SIXTEEN: BUILD ORDER
 
+## Pending: bug and design list, 18 September 2026
+
+**Held deliberately, and not actioned** (Ruth, 18 September: *"Do not action anything yet — the UI redesign pass is in progress and many of these will be addressed or superseded by it."*). Sixteen items from a testing pass on her own phone: fourteen bugs and two design changes. Source: `Selodia Bug List 18 Sept 2026` in Drive; screenshots in `Debugging screenshots/Bugs Pass 18th Sept`.
+
+**Her priorities once the UI pass is done:** the Me-tab save, "Ask about this" carrying its card, the fabricated context on the measurement screen, the micronutrient refusal, Settings reachable everywhere, tab labels, voice to headphones, flower petals tappable, and the insight trigger.
+
+### Bugs
+
+1. **The app does not know what it can do.** It told her there is no notification feature when one exists. The system prompt needs a current list of what the app actually does.
+2. **Composer placeholder.** "Log food or ..." needs revisiting; a point from the ChatGPT session has to be retrieved before deciding.
+3. **Save to the Me tab is broken.** A skincare routine saved into Insights instead of Me, twice. The Chat → Me pathway does not work.
+4. **The insight card has no hierarchy.** Title, category label and body all render at the same weight. Title large, category small and muted, body readable.
+5. **Flower petals are not tappable in the Almanac.** Tapping Strength or Cardio should show what fed that petal; it does nothing. *(The Today flower does have working targets — see Part Eight — so this is the Almanac copy of the control.)*
+6. **"Ask about this" does not carry the context card.** The eye on a food entry opens Chat with a generic "Sure, what would you like to know?". The data partly arrives (the model knows the meal) but the visible card does not.
+7. **Voice does not route to headphones.** Audio comes out of the phone speaker with headphones connected.
+8. **Photo logging inaccurate.** An omelette was read as a baked potato.
+9. **The insight trigger misfires.** It fires on surface symptom observations and misses genuinely analytical conversations. It needs better judgement about what is insight-worthy.
+10. **Micronutrients are refused rather than offered.** Asked about vitamins or minerals, the app says it cannot track that and stops. It should offer to start: *"I don't currently track micronutrients in detail, but if iron or vitamin C is something you want to monitor, I can start noting it. Want me to?"* Closing the door contradicts the proposition that anything can be brought here.
+11. **Fabricated context on the measurement screen.** A comment on a weight change invented reasons — "yesterday was salty", "you had a hard session a day or two ago" — with nothing logged to support either. The witness principle applies: reference only what is there, and never invent context to sound reassuring.
+12. **Tab labels still truncate:** "Foo", "Activit", "Measurement" in the Log tab. *(Reported after the shared tab strip landed, so the sixth rebuild has not fixed it either.)*
+13. **Settings is only reachable from Chat.** It needs to be reachable from every screen.
+14. **The Body card truncates on Today:** "38.5 kg m…", "27.7 % bo…". The cards are too narrow for their contents.
+
+### Design changes
+
+15. **The water tracker loses its words.** Replace "+ Add a drink" with a soft illustrated water icon, tappable to log. The concept narrows to water rather than drinks in general.
+16. **Exercise demonstrations change direction.** Away from decorative illustration and towards clean anatomical muscle-activation diagrams: scientific, informative, gender-neutral, and not dependent on the Exercise Animatic library. Needs its own sourcing solution, to be discussed separately. *(This is a strategic change: Part Eight's whole demonstration architecture, the weekly vendor sync and the 919-clip library are built on that library.)*
+
+
 **Already built, retained through the native pivot:** the Supabase database (`food_logs`, `body_measurements`, `activity_logs`, `chat_messages`) and the backend API routes (`parse-food`, `parse-activity`, `parse-body-measurement`, `ask-unflump`). *"Without changes" no longer holds (corrected 2026-08-21):* `food_logs` has since gained `sodium_mg`, `protein_source`, `breakdown_type` and `clarification_pending`; `activity_logs` gained `intensity` and `eccentric_load`; and `ask-unflump` gained health-context and cycle injection, nutrient-depth guidance, log-intent routing, and the Almanac save hook. The *routes* were retained; their contents have moved on.
 
 ## Phase 0: Platform Migration Foundation
