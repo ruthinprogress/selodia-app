@@ -9,6 +9,7 @@ import { AlmanacIntro } from '@/components/almanac-intro';
 import { AlmanacList } from '@/components/almanac-list';
 import { AlmanacTabs } from '@/components/almanac-tabs';
 import { InsightsLog } from '@/components/insights-log';
+import { MovementLibrary } from '@/components/movement-library';
 import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -132,12 +133,9 @@ export default function AlmanacScreen() {
             {tab === 'movement' && loaded && (
               <SpotlightTarget id="almanac.movement">
                 {byTab.movement.length > 0 ? (
-                  // The saved plans as they have always listed: one row each,
-                  // opening the plan with its exercises, weights and demos.
-                  <AlmanacList
-                    groups={[{ category: null, entries: byTab.movement }]}
-                    onOpen={setOpenId}
-                  />
+                  // A library of practices rather than a list of entries
+                  // (Ruth's brief, 2026-09-18). See movement-library.tsx.
+                  <MovementLibrary entries={byTab.movement} onOpen={setOpenId} />
                 ) : (
                   <AlmanacEmptyState heading={MOVEMENT_EMPTY_HEADING} body={MOVEMENT_EMPTY_BODY} />
                 )}
