@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { MeasurementIcon, measurementIcon } from '@/components/measurement-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -63,8 +64,11 @@ export function PersonalMetricsView() {
 
   return (
     <ThemedView style={styles.wrap}>
+      {/* "Everything else" said what this table was NOT (UI brief, Part 3, bug
+          4: "remove or replace with something clearer"). It holds what a tape
+          measure gives you, which is what it is now called. */}
       <ThemedText type="smallBold" style={styles.title}>
-        Everything else
+        Tape measure
       </ThemedText>
 
       {metrics.length === 0 ? (
@@ -104,9 +108,14 @@ export function PersonalMetricsView() {
                   { borderBottomColor: theme.backgroundSelected },
                 ]}
               >
-                <ThemedText type="small" style={styles.cellName} selectable>
-                  {m.name}
-                </ThemedText>
+                <View style={styles.nameCell}>
+                  {/* The outline says which measurement without a word: the same
+                      drawing each time, with the band where the tape goes. */}
+                  <MeasurementIcon kind={measurementIcon(m.name)} size={18} />
+                  <ThemedText type="small" style={styles.cellName} selectable>
+                    {m.name}
+                  </ThemedText>
+                </View>
                 <View style={styles.cellValue}>
                   <ThemedText type="smallBold" style={styles.right} selectable>
                     {formatValue(m.latest)}
@@ -152,8 +161,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     gap: Spacing.two,
   },
-  cellName: {
+  // The name sits beside its outline, and the pair takes the column.
+  nameCell: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cellName: {
+    flexShrink: 1,
   },
   cellValue: {
     width: 92,

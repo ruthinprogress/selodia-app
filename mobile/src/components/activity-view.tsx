@@ -6,12 +6,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { Tag } from '@/components/tag';
+import { ActivityIcon } from '@/components/activity-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { supabase } from '@/lib/supabase';
+import { activityIcon } from '@/lib/activity-icon';
 import { formatLogDate } from '@/lib/week';
 
 // The Activity segment (Part Five / Part Eight).
@@ -131,6 +133,9 @@ export function ActivityView() {
                 { borderBottomColor: theme.backgroundSelected },
               ]}
             >
+              {/* The movement, drawn (UI brief, Part 2). Hidden from screen
+                  readers: the activity's own name is right beside it. */}
+              <ActivityIcon kind={activityIcon(r.activity_type)} size={20} />
               <View style={styles.rowMain}>
                 <ThemedText type="small" selectable>
                   {r.activity_type ?? 'Activity'}

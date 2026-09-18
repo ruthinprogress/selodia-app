@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Tag } from '@/components/tag';
+import { ActivityIcon } from '@/components/activity-icon';
+import { activityIcon } from '@/lib/activity-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -173,6 +175,9 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
               ) : (
                 entries.map((r) => (
                   <View key={r.id} style={styles.row}>
+                    {/* Same mark as today's list, so a session looks the same
+                        wherever it is met. */}
+                    <ActivityIcon kind={activityIcon(r.activity_type)} size={18} />
                     <View style={styles.rowMain}>
                       <ThemedText type="small" selectable>
                         {r.activity_type ?? 'Activity'}
