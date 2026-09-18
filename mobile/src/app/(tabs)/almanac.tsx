@@ -12,6 +12,7 @@ import { InsightsLog } from '@/components/insights-log';
 import { MovementLibrary } from '@/components/movement-library';
 import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
+import { SectionIntro } from '@/components/section-intro';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -128,6 +129,11 @@ export default function AlmanacScreen() {
                 <InsightsPortrait statements={portrait.statements} range={portrait.range} />
                 {loaded && byTab.insights.length > 0 && (
                   <SpotlightTarget id="almanac.insights">
+                    {/* The same block the Movement tab opens with, so the two
+                        views of one screen introduce themselves the same way. */}
+                    <SectionIntro title={"What you've noticed"}>
+                      Symptoms, patterns and notes worth keeping.
+                    </SectionIntro>
                     <InsightsLog rows={byTab.insights} onOpen={setOpenId} />
                   </SpotlightTarget>
                 )}
@@ -149,7 +155,12 @@ export default function AlmanacScreen() {
             {tab === 'me' && loaded && (
               <SpotlightTarget id="almanac.me">
                 {byTab.me.length > 0 ? (
-                  <AlmanacList groups={[{ category: null, entries: byTab.me }]} onOpen={setOpenId} />
+                  <>
+                    <SectionIntro title="Your own record">
+                      The routines and habits you&apos;ve asked me to hold on to.
+                    </SectionIntro>
+                    <AlmanacList groups={[{ category: null, entries: byTab.me }]} onOpen={setOpenId} />
+                  </>
                 ) : (
                   <AlmanacEmptyState heading={ME_EMPTY_HEADING} body={ME_EMPTY_BODY} />
                 )}

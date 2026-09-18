@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityIcon } from '@/components/activity-icon';
+import { SectionIntro } from '@/components/section-intro';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
@@ -12,11 +13,13 @@ import { loadLastDoneByPlan, summarise } from '@/lib/movement-library';
 // MOVEMENT: a library of practices, not a list of workouts (Ruth's brief,
 // 2026-09-18, with a mockup).
 //
-// "Your saved movement practices. Consistency compounds." Everything below that
-// line is one card per practice, and the card says four things: what it is
-// called, what kind of practice it is, roughly how long it takes, and when it
-// was last done. Nothing else, because nothing else is a fact about the
-// practice - a score would be a judgement about the person.
+// "Your movement collection. Saved practices, ready whenever they fit your day."
+// Set as a SectionIntro rather than as two lines of body text - her own
+// diagnosis of the old version: "it doesn't feel intentional". Everything below
+// it is one card per practice, and the card says four things: what it is called,
+// what kind of practice it is, roughly how long it takes, and when it was last
+// done. Nothing else, because nothing else is a fact about the practice - a
+// score would be a judgement about the person.
 //
 // NO PRAISE, ANYWHERE. The brief is explicit: no "well done", no "great job", no
 // "keep it up". "Last done 3 days ago" is an observation; "3 days since you last
@@ -57,9 +60,9 @@ export function MovementLibrary({
 
   return (
     <View style={styles.wrap}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.standfirst}>
-        Your saved movement practices. Consistency compounds.
-      </ThemedText>
+      <SectionIntro title="Your movement collection">
+        Saved practices, ready whenever they fit your day.
+      </SectionIntro>
 
       {entries.map((entry) => {
         const s = summarise(entry.content, entry.category, lastDone.get(entry.id) ?? null);
@@ -99,7 +102,6 @@ export function MovementLibrary({
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
-  standfirst: { paddingRight: Spacing.five, paddingBottom: Spacing.one },
   card: {
     flexDirection: 'row',
     gap: Spacing.two,
