@@ -10,8 +10,8 @@ import {
   View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ButtonRadius, Spacing } from '@/constants/theme';
+import { VoiceHalo } from '@/components/voice-halo';
+import { Spacing } from '@/constants/theme';
 
 // The screen a voice session lives on.
 //
@@ -54,6 +54,21 @@ const BREATHE_TO = 1.015;
 // Speaking is deliberately not just "faster breathing" - a wider swing at a
 // different rhythm reads as a different state at a glance, where a small speed
 // change reads as the same state and leaves you staring at it.
+// THE WASH'S OWN COLOURS. Sage for the person, terracotta for Selodía, taken
+// from the palette rather than invented: #95A987 and #C97458 are the brand's
+// own, and on the dark ground at these opacities they read as ink in water.
+// Terracotta on terracotta would disappear, which is why the wash sits far
+// lighter than the ground and the mark stays cream.
+const SAGE = '#95A987';
+const TERRACOTTA = '#C97458';
+
+// Wide enough that the bloom reaches past the mark on every side without
+// touching the screen edges on a small phone.
+const HALO = 300;
+
+// Long enough to read as ink drying, short enough that nobody waits for it.
+const DISSOLVE_MS = 950;
+
 const SPEAK_MS = 900;
 const SPEAK_TO = 1.075;
 
@@ -77,6 +92,27 @@ export function VoiceSessionScreen({
   // RotatingPlaceholder and SaveConfirmation hold theirs this way.
   const [pulse] = useState(() => new Animated.Value(0));
   const [reduceMotion, setReduceMotion] = useState(false);
+  // THE SCREEN OUTLIVES THE SESSION BY ONE BREATH. "When the conversation ends,
+  // the halo slowly dissolves back to the resting seed" - but the session itself
+  // ends the moment the seed is tapped, so `visible` goes false immediately and
+  // the modal would cut to black mid-wash. So the screen holds itself open for
+  // the length of the dissolve and nothing else: no audio, no connection, no
+  // state, just the drying of the ink.
+  const [shown, setShown] = useState(false);
+  const ending = !visible;
+
+  useEffect(() => {
+    if (visible) {
+      // In a timer rather than straight in the effect body: a synchronous
+      // setState here is what the React Compiler rule forbids, and it is right
+      // to - it costs a second render pass on every open.
+      const t = setTimeout(() => setShown(true), 0);
+      return () => clearTimeout(t);
+    }
+    if (!shown) return;
+    const t = setTimeout(() => setShown(false), DISSOLVE_MS);
+    return () => clearTimeout(t);
+  }, [visible, shown]);
 
   useEffect(() => {
     let alive = true;
@@ -98,7 +134,7 @@ export function VoiceSessionScreen({
   }, []);
 
   useEffect(() => {
-    if (!visible || reduceMotion) {
+    if (!shown || reduceMotion) {
       pulse.stopAnimation();
       pulse.setValue(0);
       return;
@@ -122,9 +158,9 @@ export function VoiceSessionScreen({
     );
     loop.start();
     return () => loop.stop();
-  }, [visible, speaking, reduceMotion, pulse]);
+  }, [shown, speaking, reduceMotion, pulse]);
 
-  if (!visible) return null;
+  if (!shown) return null;
 
   const scale = pulse.interpolate({
     inputRange: [0, 1],
@@ -151,19 +187,30 @@ export function VoiceSessionScreen({
       accessibilityViewIsModal
     >
       <View style={styles.screen}>
-        <View style={styles.centre}>
-          <Animated.View
-            style={{ transform: [{ scale }] }}
-            accessibilityRole="progressbar"
-            accessibilityLiveRegion="polite"
-            // The words moved here when they came off the screen: a screen
-            // reader still hears which state this is, and nobody else reads it.
-            accessibilityLabel={state}
-          >
-            {/* CREAM, NOT SAND (UI brief: "dark background, seed mark in
-                cream"). Part Fifteen's dark lockup uses sand; the brief asks
-                for the lighter mark, and on #834B39 cream measures 6.26:1 where
-                sand measures 4.0. Brighter and more legible, both. */}
+        {/* HER DESIGN, 2026-09-18, after looking at how other apps do this:
+            "a gently animated seed with a soft translucent halo. No buttons, no
+            labels ... a tap on the seed ends the conversation ... like an ink
+            wash or watercolour bloom, not a precise circle."
+
+            So the ground keeps its dark terracotta, the wash sits behind the
+            mark, and the whole of it is one control. */}
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={`${state}. Tap to end the conversation.`}
+          accessibilityLiveRegion="polite"
+          style={styles.centre}
+          hitSlop={Spacing.four}
+        >
+          <VoiceHalo
+            size={HALO}
+            speaking={speaking}
+            ending={ending}
+            sage={SAGE}
+            terracotta={TERRACOTTA}
+            still={reduceMotion}
+          />
+          <Animated.View style={[styles.markWrap, { transform: [{ scale }] }]}>
             <Image
               source={MARK}
               style={styles.mark}
@@ -172,24 +219,6 @@ export function VoiceSessionScreen({
               accessibilityIgnoresInvertColors
             />
           </Animated.View>
-        </View>
-
-        {/* ONE CONTROL STAYS, and the brief does not overrule it. "Only
-            breathing" is about what the screen SAYS, not about whether a
-            session can be ended: on 2026-09-09 closing was reached for twice
-            and missed, and a full-screen modal with no visible way out is a
-            trap rather than a calm. It is quieter than it was - a hairline and
-            one word, no fill. */}
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close voice session"
-          hitSlop={Spacing.four}
-          style={({ pressed }) => [styles.close, pressed && styles.pressed]}
-        >
-          <ThemedText type="smallBold" style={styles.closeLabel}>
-            Done
-          </ThemedText>
         </Pressable>
       </View>
     </Modal>
@@ -208,19 +237,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.six,
   },
-  centre: { alignItems: 'center' },
-  mark: { width: 168, height: 168 },
+  centre: { alignItems: 'center', justifyContent: 'center' },
+  // The mark sits on top of the wash, in the middle of it.
+  markWrap: { position: 'absolute' },
+  mark: { width: 150, height: 150 },
   // Cream on #834B39 measures 6.26:1 (Part Fifteen).
   state: { color: '#F7F3EA', letterSpacing: 0.3 },
-  close: {
-    position: 'absolute',
-    bottom: Spacing.six,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.five,
-    borderRadius: ButtonRadius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E9D6C2',
-  },
-  closeLabel: { color: '#F7F3EA' },
   pressed: { opacity: 0.6 },
 });
