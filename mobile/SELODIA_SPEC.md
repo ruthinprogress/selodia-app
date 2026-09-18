@@ -2029,6 +2029,24 @@ Ruth, 18 September: *"there is an issue with the text typing box in chat. It doe
 
 **The review sheet asks rather than collects.** *"The voice section shouldn't feel like another form to fill in."* It asks *"Anything you'd like to remember?"*, says *"Voice or typing is optional"* out loud, and shows the kind of thing people actually say — "Reduced the weight", "Shoulder felt sore today", "Finished with stretching" — which is how somebody learns that a sore shoulder belongs here as much as a changed weight does. **And both fields can be typed.** The first build offered voice only, on the reasoning that nobody types in a gym: true, and not a reason to make typing impossible.
 
+### Section Introduction — the missing rung in the type ladder
+
+Ruth, 18 September, on the Movement tab: *"at the moment it's just two body text lines sitting under the segmented control. It doesn't feel intentional… it's not the wording that's missing now, it's the typography hierarchy."*
+
+**The ladder is now complete.** A page names itself in the serif at 50 (`display`); a **section** names itself in `SectionIntro`; the cards carry the content. Between the page title and the cards there had been nothing but body text doing a heading's job.
+
+| Part | Setting |
+|---|---|
+| Headline | **Manrope SemiBold 23/28**, charcoal |
+| Supporting line | **Manrope Regular 15/22**, softer charcoal, two lines at most |
+| Spacing | 7 between the two, **24 above** (clear of the segmented control), **22 below** (before the first card), left-aligned with the cards |
+
+**Why the headline is sans and not the serif.** Because it is set semibold, and semibold is a weight this app's serif does not have — Cormorant Infant ships here as Regular only, deliberately. A magazine does the same thing for the same reason: the masthead is the serif, the section deck is a heavier sans, and the contrast between them **is** the hierarchy. One line in `section-intro.tsx` changes it everywhere if that judgement is revisited.
+
+**Two rules the component carries so call sites cannot get them wrong.** The block owns its own margins, because an introduction that needs spacing added at every call site is two text labels again with extra steps. And the supporting line is **not clamped**: "two lines at most" is a rule for whoever writes the words, and `numberOfLines` on Android replaces the whole line with an ellipsis rather than trimming it — a fault this app has already been bitten by twice.
+
+**In use:** all three Almanac views — Movement (*"Your movement collection / Saved practices, ready whenever they fit your day."*), Insights and Me. The Log tab is deliberately not converted yet: it opens with an action rather than a collection.
+
 **Chat took the same pass that evening.** *"Refined, not enlarged."* Bubble padding 8/16→7/13, radius 16→14, the seed mark 28→24; body text **16/26→15/23** and `small` **14/22→14/21**, which is where most of the height actually was; 16 between turns→10 and 8 within a turn→6; an empty composer down from two lines to one, its buttons 36→30, and the gap above the tab bar 24→8. **The page margin is untouched** — it was settled with the typography and is what stops text touching the edges. The room that was wasted was between things, not around them.
 
 **The library needed the same pass, and got it separately.** The first density pass reached the open routine and not the screen in front of it, which Ruth saw at once: *"it's not landed I don't think."* Two cards filled a phone — a 30pt serif title wrapping to two lines, 24 of padding around it, the third card cut off at the fold. The card title is now **21/26** (still the serif, because a practice is a name), everything under it is `detail`, card padding is 14 and the gap between cards 8. Three cards fit where two did: a library you cannot see is a list you have to scroll to remember.
