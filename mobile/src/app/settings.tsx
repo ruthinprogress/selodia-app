@@ -125,16 +125,6 @@ export default function SettingsScreen() {
               and because it is reachable from anywhere without a tester needing
               to be told a gesture. */}
           <BuildVersion />
-
-          {/* TEMPORARY (2026-09-18). One link, to the four-serif comparison, so
-              the font question can be settled on the phone it will be read on.
-              Both this and src/app/type-specimen.tsx come out the moment she
-              picks one. */}
-          <Pressable onPress={() => router.push('/type-specimen')} hitSlop={8}>
-            <ThemedText type="small" themeColor="accentDeep" style={{ textAlign: 'center' }}>
-              Compare heading fonts
-            </ThemedText>
-          </Pressable>
         </SpotlightScroll>
         </ScrollView>
       </SafeAreaView>

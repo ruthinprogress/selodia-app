@@ -134,19 +134,34 @@ export const BrandFont = {
   bold: 'Comfortaa_700Bold',
 } as const;
 
-// The serif display face, added 2026-09-17 for the UI redesign brief: "Serif
-// font for all large display headings - screen titles, dates, section headers",
-// with Comfortaa keeping body text, labels and data.
+// THE DISPLAY FACE: Cormorant Infant, Regular (Ruth, 2026-09-18, after seeing
+// five systems on her own phone).
 //
-// Cormorant Garamond, and only at display sizes. It is a high-contrast garamond
-// with a small x-height, which is why it is beautiful at 32px and unreadable at
-// 13; the brief's hierarchy rule ("large things are large, small things are
-// small") is the same instruction from the other side. As with Comfortaa, each
-// weight is its own family name because React Native cannot synthesise one.
+// The brief she settled on: "quiet editorial luxury, inspired by beautifully
+// printed books and early twentieth-century posters rather than fashion
+// magazines or modern wellness apps" - tall, elegant, refined, calm, effortless.
+// Cormorant Infant is Cormorant with rounder, softer terminals, which is the
+// "tall but rounded" she had been describing since the beginning.
+//
+// REGULAR, NEVER SEMIBOLD. Weight is what makes a serif look modern and
+// insistent; regular at a large size is what makes it look printed. Nothing in
+// the app should set this face above 400.
+//
+// TRACKING IS ZERO, and that was chosen rather than defaulted: she compared
+// tight, close and as-drawn on the real screen and picked the middle - "the
+// slightly looser spacing makes the typography feel more natural and literary,
+// while still remaining elegant".
 export const DisplayFont = {
-  regular: 'CormorantGaramond_400Regular',
-  medium: 'CormorantGaramond_500Medium',
-  semibold: 'CormorantGaramond_600SemiBold',
+  regular: 'CormorantInfant_400Regular',
+} as const;
+
+// The display face's own measurements, kept here so no screen has to re-derive
+// them. The line height is deliberately below the font size: the greeting breaks
+// onto two lines, and tight leading is what makes two lines read as one block.
+export const DisplayType = {
+  size: 50,
+  leading: 47,
+  tracking: 0,
 } as const;
 
 // THE BODY FACE (Ruth, 2026-09-18: Manrope "seems to fit so much more in

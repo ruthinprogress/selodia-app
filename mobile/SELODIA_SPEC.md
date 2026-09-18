@@ -1859,6 +1859,33 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 **Confirmed by comparison testing with real users** — Fiona, Carol, Auguste and Ruth — against rendered full lockups rather than descriptions.
 
+### The app's typography, settled 2026-09-18
+
+**The logo keeps Comfortaa. The interface does not.** The wordmark, tagline and category line above are unchanged: they are the brand mark, drawn once and converted to outlines. What changed is the type the app itself is set in, after Ruth compared five complete typographic systems on her own phone rather than five font names in a list.
+
+| Role | Setting |
+|---|---|
+| Screen headings (`display`) | **Cormorant Infant Regular**, 50/47, tracking 0 |
+| Section headings (`sectionTitle`) | **Cormorant Infant Regular**, 30/38, tracking 0 |
+| Body, labels, data, numbers | **Manrope Regular**, 14/22 and 16/26 |
+| Navigation and UI labels | Manrope, sans, unchanged in weight |
+
+**Why a serif at all, and why this one.** The target she named is *"quiet editorial luxury, inspired by beautifully printed books and early twentieth-century posters rather than fashion magazines or modern wellness apps"*: tall, elegant, refined, calm, effortless. Cormorant Infant is Cormorant with rounder, softer terminals, which is the "tall but rounded, close letters" she had been describing for weeks without a name for it.
+
+**Four things had to move together, and that is the finding.** The first attempt offered four prettier serifs at the app's existing sizes and settled nothing, because the face was never the variable. Size (38 → 50: *"a display face at 38 is a label; at 50 it is a page"*), weight (light or regular, never semibold — weight is what makes a serif look modern and insistent), tracking, and air. Nothing is vertically scaled: the height comes from a face with long ascenders, because stretching type is what makes it look cheap.
+
+**Tracking is zero, and it was chosen rather than defaulted.** Shown the same screen at tight, close and as-drawn, she picked the middle: *"the slightly looser spacing makes the typography feel more natural and literary, while still remaining elegant."* Worth knowing for later: uniform tracking is adjustable to a fraction of a pixel, but kerning between specific letter pairs lives inside the font file and cannot be tuned from here.
+
+**The greeting breaks onto two lines** — "Good morning," then the name — with leading tighter than the font size, so the two lines read as one block. *"The two-line composition gives the page presence and creates a stronger editorial rhythm."* The heading block also sits about 10px above the page margin, which balances the page.
+
+**Manrope replaces Comfortaa for everything the app writes** (Ruth: it *"seems to fit so much more in without feeling bloated. It's clear and petite"*). Comfortaa is rounded and wide: lovely at display size, expensive at 14px, and a data row set in it is a data row that wraps. The warmth now lives in the headings and the mark rather than in every number on the screen.
+
+**Every screen carries a page margin, not an app margin** (32 either side, 32 top, 48 at the foot, named once as `PageInset`). Her words: *"there is not enough black space border, it always feels squished up to the edges."* 24 is the standard mobile margin and reads as exactly that.
+
+**The principle to hold when this is revisited:** *understated confidence*. If somebody notices the typeface immediately, it is trying too hard; if the page simply feels calm, it is right.
+
+**Licensed faces, for when there is revenue.** The direction points at commercial display faces that are out of reach today: Canela (Commercial Type), GT Super, Noe Display, SangBleu, Lyon Display. Desktop licences run roughly US$35–75 per style, but app and web licensing is custom and scales with users and platforms — hundreds to thousands. Cormorant Infant and Manrope are both SIL Open Font License, free for commercial use, and were chosen on merit rather than as placeholders.
+
 **The reasoning, which is the part that must survive:**
 
 - **The italic tagline read as fuzzy and hard to read.** For a 40+ demographic that is not a stylistic quibble, it is a legibility failure, and it was reported by readers rather than inferred by anyone. Work Sans Italic 300 at +0.085em had been chosen on 2026-08-31 from nine treatments and a head-to-head against Spectral Italic — chosen, note, by looking at it rather than by anyone trying to read it at length.

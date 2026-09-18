@@ -5,11 +5,7 @@ import {
   Comfortaa_700Bold,
   useFonts,
 } from '@expo-google-fonts/comfortaa';
-import {
-  CormorantGaramond_400Regular,
-  CormorantGaramond_500Medium,
-  CormorantGaramond_600SemiBold,
-} from '@expo-google-fonts/cormorant-garamond';
+import { CormorantInfant_400Regular } from '@expo-google-fonts/cormorant-infant';
 import {
   Manrope_400Regular,
   Manrope_500Medium,
@@ -75,9 +71,7 @@ export default function RootLayout() {
     Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,
-    CormorantGaramond_400Regular,
-    CormorantGaramond_500Medium,
-    CormorantGaramond_600SemiBold,
+    CormorantInfant_400Regular,
     Comfortaa_400Regular,
     Comfortaa_500Medium,
     Comfortaa_600SemiBold,

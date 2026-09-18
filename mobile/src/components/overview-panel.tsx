@@ -114,12 +114,17 @@ function todayLabel(now: Date = new Date()): string {
 }
 
 // Morning, afternoon or evening, from the phone's own clock. No name unless one
-// can be read off the account: a greeting that guesses somebody's name wrongly
-// is worse than a greeting without one.
+// is stored: a greeting that guesses somebody's name is worse than one without.
+//
+// TWO LINES, DELIBERATELY (Ruth, 2026-09-18): "Good morning," then "Ruth". Her
+// brief: "the two-line composition gives the page presence and creates a
+// stronger editorial rhythm", and it is why the leading is set tighter than the
+// font size - two lines that belong to each other rather than two sentences.
+// With no name there is one line, and nothing is padded out to fake the second.
 function greeting(name: string | null, now: Date = new Date()): string {
   const h = now.getHours();
   const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-  return name ? `${part}, ${name}` : part;
+  return name ? `${part},\n${name}` : part;
 }
 
 // Day 1 is the day the period started, which is how a cycle is counted and how
@@ -679,7 +684,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   header: {
-    gap: Spacing.half,
+    gap: Spacing.two,
+    // 10px higher than the page inset puts it (Ruth, 2026-09-18: "move the
+    // entire heading block 8-12px higher ... so the page feels more balanced").
+    // A negative margin rather than a smaller inset, so every other screen keeps
+    // the same top margin as this one.
+    marginTop: -10,
   },
   focusLine: {
     // No rule, no card. See the header block above.

@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { BodyFont, DisplayFont, Fonts, ThemeColor } from '@/constants/theme';
+import { BodyFont, DisplayFont, DisplayType, Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -45,13 +45,16 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 const styles = StyleSheet.create({
   small: {
     fontSize: 14,
-    lineHeight: 20,
+    // Generous rather than tight: the brief asks for body copy that is never
+    // heavy and always secondary to the display type, and leading is most of
+    // what does that.
+    lineHeight: 22,
     fontFamily: BodyFont.regular,
   },
   // Section headers land here, so this one takes Comfortaa despite its size.
   smallBold: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
     fontFamily: BodyFont.semibold,
   },
   // MANROPE CARRIES THE TEXT, THE SERIF CARRIES THE HEADINGS (2026-09-18).
@@ -61,23 +64,24 @@ const styles = StyleSheet.create({
   // by phone, and this does not.
   default: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     fontFamily: BodyFont.regular,
   },
-  // THE SERIF PAIR (2026-09-17). display is a screen's own name, sectionTitle is
-  // a section within it. Both run larger than their Comfortaa equivalents
-  // because Cormorant's x-height is smaller: 36px of garamond sits at about the
-  // optical size of 30px of Comfortaa, so matching the numbers would quietly
-  // demote every heading in the app.
+  // THE SERIF PAIR. display is a screen's own name, sectionTitle is a section
+  // within it. Both run far larger than the sans they replaced: a display face
+  // at 38 is a label, and at 50 it is a page. See DisplayFont in theme.ts for
+  // why the weight is regular and the tracking is zero.
   display: {
-    fontSize: 38,
-    lineHeight: 46,
-    fontFamily: DisplayFont.medium,
+    fontSize: DisplayType.size,
+    lineHeight: DisplayType.leading,
+    letterSpacing: DisplayType.tracking,
+    fontFamily: DisplayFont.regular,
   },
   sectionTitle: {
-    fontSize: 26,
-    lineHeight: 34,
-    fontFamily: DisplayFont.medium,
+    fontSize: 30,
+    lineHeight: 38,
+    letterSpacing: DisplayType.tracking,
+    fontFamily: DisplayFont.regular,
   },
   // 48px until 2026-09-03, where it dominated every screen it opened. 32 is
   // still unmistakably the page's heading without being the whole page.
