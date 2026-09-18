@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityDetailCard } from '@/components/activity-detail-card';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
+import { RowDelete } from '@/components/row-delete';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { Tag } from '@/components/tag';
 import { ActivityIcon } from '@/components/activity-icon';
@@ -171,6 +172,12 @@ export function ActivityView() {
               >
                 <Ionicons name="eye-outline" size={18} color={theme.textSecondary} />
               </Pressable>
+              <RowDelete
+                table="activity_logs"
+                id={r.id}
+                what={r.activity_type ?? 'this session'}
+                onDeleted={() => setReloadKey((k) => k + 1)}
+              />
             </View>
           ))}
         </ThemedView>

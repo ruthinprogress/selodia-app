@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityDetailCard } from '@/components/activity-detail-card';
+import { RowDelete } from '@/components/row-delete';
 import { Tag } from '@/components/tag';
 import { ActivityIcon } from '@/components/activity-icon';
 import { activityIcon } from '@/lib/activity-icon';
@@ -204,6 +205,12 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
                     >
                       <Ionicons name="eye-outline" size={16} color={theme.textSecondary} />
                     </Pressable>
+                    <RowDelete
+                      table="activity_logs"
+                      id={r.id}
+                      what={r.activity_type ?? 'this session'}
+                      onDeleted={() => setReloadKey((k) => k + 1)}
+                    />
                   </View>
                 ))
               )}

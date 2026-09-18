@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { RowDelete } from '@/components/row-delete';
 import { FoodCategoryIcon } from '@/components/food-category-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -225,6 +226,12 @@ export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date 
                         color={discussed.has(row.id) ? theme.text : theme.textSecondary}
                       />
                     </Pressable>
+                    <RowDelete
+                      table="food_logs"
+                      id={row.id}
+                      what={entryLabel(row)}
+                      onDeleted={() => setReloadKey((k) => k + 1)}
+                    />
                   </View>
                 ))
               )}

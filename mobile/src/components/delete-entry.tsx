@@ -3,22 +3,21 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { supabase } from '@/lib/supabase';
+import { deleteEntry, type DeletableTable } from '@/lib/delete-entry';
 
-// REMOVING ONE ENTRY (Ruth, 2026-09-18: the delete controls "were scoped but
-// seem to have disappeared" - they were specified on 12 September and never
-// built, so this is the first of them rather than a restoration).
+// REMOVING ONE ENTRY, FROM INSIDE ITS OWN CARD (2026-09-18).
 //
-// WHY IT IS ALLOWED AT ALL, given "permanent, never deleted". That rule is about
-// the app not quietly discarding somebody's history, not about trapping a
-// mistake in it. A meal logged twice, a weight typed wrong, a run that never
-// happened: leaving those in is not honesty, it is a wrong record nobody can
-// correct. Chat can already delete an entry by being asked; this is the same
-// power where the entry itself is.
+// This is the version you meet having opened an entry to look at it. The one on
+// the row itself is row-delete.tsx, which is where the work actually gets done -
+// Ruth, the same day: "The delete button should be easier to reach than clicking
+// inside each one, this would be tedious to do for a user." Both call the same
+// deleteEntry, so they cannot drift.
 //
 // IT ASKS FIRST, ONCE, IN PLAIN WORDS, and the confirm is the destructive one -
 // never the first tap, and never a dialog that can be dismissed into deleting.
-// RLS scopes the delete to the signed-in person's own row.
+// The card has room for the whole sentence, so it says it; the row has room for
+// one word, so it says "Delete?". See lib/delete-entry.ts for why deleting is
+// allowed at all.
 
 export function DeleteEntry({
   table,
@@ -26,7 +25,7 @@ export function DeleteEntry({
   what,
   onDeleted,
 }: {
-  table: 'food_logs' | 'activity_logs' | 'body_measurements' | 'personal_metrics' | 'hydration_logs';
+  table: DeletableTable;
   id: string;
   /** What is being removed, for the question: "this meal", "this reading". */
   what: string;
@@ -40,10 +39,9 @@ export function DeleteEntry({
     if (busy) return;
     setBusy(true);
     setFailed(false);
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const ok = await deleteEntry(table, id);
     setBusy(false);
-    if (error) {
-      console.log('DELETE ENTRY FAILED:', error.message);
+    if (!ok) {
       setFailed(true);
       return;
     }

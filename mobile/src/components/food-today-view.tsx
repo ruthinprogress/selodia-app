@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { RowDelete } from '@/components/row-delete';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -164,6 +165,14 @@ export function FoodTodayView() {
                   color={discussed.has(row.id) ? theme.text : theme.textSecondary}
                 />
               </Pressable>
+              {/* Delete, on the row (Ruth, 2026-09-18). See row-delete.tsx for
+                  the evening that made reaching it through the card untenable. */}
+              <RowDelete
+                table="food_logs"
+                id={row.id}
+                what={entryLabel(row)}
+                onDeleted={() => setReloadKey((k) => k + 1)}
+              />
             </View>
           ))}
 
