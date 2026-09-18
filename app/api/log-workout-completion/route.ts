@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   }
 
-  const { planId, planTitle, exerciseName, eccentricLoad, intensity } = body as Record<
+  const { planId, planTitle, exerciseName, eccentricLoad, intensity, note } = body as Record<
     string,
     unknown
   >;
@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
     exerciseName: name,
     eccentricLoad: oneOf(eccentricLoad, ECCENTRIC),
     intensity: oneOf(intensity, INTENSITY),
+    // Her own note about the session. Trimmed and capped rather than trusted:
+    // this is a client payload that lands in a column the chat reads back.
+    note: typeof note === 'string' ? note.trim().slice(0, 500) : null,
   });
 
   // logCompletion returns false only when the completion itself failed to

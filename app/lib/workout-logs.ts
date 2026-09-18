@@ -100,6 +100,11 @@ export async function logCompletion(
     exerciseName: string;
     eccentricLoad: EccentricLoad | null;
     intensity: PlanIntensity | null;
+    // What she said about the session, in her own words, spoken or typed
+    // (2026-09-18). It belongs to the SESSION rather than to the exercise, so it
+    // lands on the derived activity row and the same note is not repeated once
+    // per tick.
+    note?: string | null;
   }
 ): Promise<boolean> {
   const exerciseName = input.exerciseName?.trim();
@@ -140,11 +145,16 @@ export async function logCompletion(
     const intensity = sessionIntensity(rows.map((r) => r.intensity as PlanIntensity | null));
     const existingId = rows.find((r) => r.activity_log_id)?.activity_log_id as string | undefined;
 
+    const note = input.note?.trim() || null;
+
     let activityId = existingId ?? null;
     if (activityId) {
+      // The note is written once and never overwritten with an empty one: a
+      // second save in the same session (she ticked two more and saved again)
+      // must not wipe what she said the first time.
       await supabase
         .from('activity_logs')
-        .update({ eccentric_load: eccentric, intensity })
+        .update({ eccentric_load: eccentric, intensity, ...(note ? { notes: note } : {}) })
         .eq('id', activityId);
     } else {
       const { data: created } = await supabase
@@ -156,6 +166,7 @@ export async function logCompletion(
           source: 'workout plan',
           eccentric_load: eccentric,
           intensity,
+          notes: note,
           // Left null deliberately: a ticked checkbox says nothing about how
           // long the session ran or what it burned, and inventing a figure
           // would poison data the rest of the app treats as measured.
