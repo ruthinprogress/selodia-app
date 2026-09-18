@@ -1,6 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  FOOD_DEDUPE_WINDOW_MIN,
+  findSameMeal,
+  type RecentLog,
+} from './food-dedupe';
+import {
   FOOD_PARSE_CLASSIFICATION_RULES,
   FOOD_PARSE_ENTRIES_SCHEMA,
   FOOD_PARSE_JSON_SCHEMA,
@@ -215,22 +220,80 @@ export async function logFoodFromText(
   const rows = buildFoodRows(parsed, foodText, happenedAt ? new Date(happenedAt) : new Date());
   if (rows.length === 0) return [];
 
-  const { data, error } = await supabase
+  // IS ANY OF THIS A MEAL ALREADY RECORDED? See lib/food-dedupe.ts for the
+  // evening that made this necessary. One read covers the whole batch; RLS
+  // scopes it to this person.
+  const { data: recentData } = await supabase
     .from('food_logs')
-    .insert(
-      rows.map((row) => ({
-        user_id: userId,
-        happened_at: row.happenedAt,
-        raw_text: row.rawText,
-        ...row.fields,
-      }))
-    )
-    .select();
-  if (error) throw new Error('food_logs insert failed: ' + error.message);
+    .select('id, raw_text, happened_at')
+    .gte('happened_at', new Date(Date.now() - FOOD_DEDUPE_WINDOW_MIN * 60_000).toISOString())
+    .order('happened_at', { ascending: false })
+    .limit(25);
+  const recent = (recentData ?? []) as RecentLog[];
 
-  const entries = data as FoodEntry[];
-  // Items are written per row, matched by position: the insert preserves the
-  // order it was given.
-  await Promise.all(entries.map((entry, i) => writeItems(supabase, entry.id, userId, rows[i].items)));
-  return entries;
+  const claimed = new Set<string>();
+  const fresh: typeof rows = [];
+  // Rows that rewrite an existing log rather than adding one, and rows that add
+  // nothing at all because the meal is already there in fuller words.
+  const rewrites: { id: string; row: (typeof rows)[number] }[] = [];
+  const untouched: string[] = [];
+
+  for (const row of rows) {
+    const match = findSameMeal(row.rawText, row.happenedAt, recent, claimed);
+    if (!match) {
+      fresh.push(row);
+      continue;
+    }
+    claimed.add(match.log.id);
+    if (match.how === 'longer') {
+      rewrites.push({ id: match.log.id, row });
+      console.log('FOOD DEDUPE: rewriting', match.log.id, 'with a fuller description of the same meal');
+    } else {
+      untouched.push(match.log.id);
+      console.log('FOOD DEDUPE: dropped a repeat of', match.log.id);
+    }
+  }
+
+  // The fuller description replaces the earlier one, macros and all, and its
+  // breakdown is rebuilt to match. happened_at is left alone: the meal was
+  // eaten when it was first described, not when the sentence finished.
+  for (const { id, row } of rewrites) {
+    const { error: upErr } = await supabase
+      .from('food_logs')
+      .update({ raw_text: row.rawText, ...row.fields })
+      .eq('id', id);
+    if (upErr) throw new Error('food_logs update failed: ' + upErr.message);
+    await supabase.from('food_items').delete().eq('food_log_id', id);
+    await writeItems(supabase, id, userId, row.items);
+  }
+
+  let inserted: FoodEntry[] = [];
+  if (fresh.length > 0) {
+    const { data, error } = await supabase
+      .from('food_logs')
+      .insert(
+        fresh.map((row) => ({
+          user_id: userId,
+          happened_at: row.happenedAt,
+          raw_text: row.rawText,
+          ...row.fields,
+        }))
+      )
+      .select();
+    if (error) throw new Error('food_logs insert failed: ' + error.message);
+    inserted = data as FoodEntry[];
+    // Items are written per row, matched by position: the insert preserves the
+    // order it was given.
+    await Promise.all(
+      inserted.map((entry, i) => writeItems(supabase, entry.id, userId, fresh[i].items))
+    );
+  }
+
+  // The caller needs the rows this turn is ABOUT, not only the ones it created -
+  // a rewritten meal is still the meal that was just described, and the reply
+  // and the summary card both hang off what comes back.
+  const touched = [...rewrites.map((r) => r.id), ...untouched];
+  if (touched.length === 0) return inserted;
+  const { data: back } = await supabase.from('food_logs').select('*').in('id', touched);
+  return [...inserted, ...((back ?? []) as FoodEntry[])];
 }
