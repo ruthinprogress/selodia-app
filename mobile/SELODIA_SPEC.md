@@ -608,15 +608,51 @@ The user never sees which tier handled their log. The experience is identical �
 
 If 50-60% of logs hit Tier 1 or 2 (reasonable for a daily user logging similar meals), API costs reduce by roughly 50-60%. At 1,000 daily active users logging 3 meals/day, that is approximately 1,500 LLM calls/day instead of 3,000.
 
-### Build status
+### Build status — BUILT 18 September 2026, and deliberately switched off
 
-Not yet built. Spec complete.
-Prerequisite: the McCance and Widdowson dataset imported as a local dataset before the feature can be built. Open Food Facts needs no API key.
-Suggested build order:
-1. food_cache table migration
-2. Open Food Facts API integration and testing
-3. Routing logic in food logging pipeline
-4. Personal cache
+**All of it exists**: `food_cache` (tier 1), `food_composition` with 2,886 CoFID foods (tier 2), the Open Food Facts client (tier 2, second), the matcher, the router, and three probe scripts totalling 44 checks. The switch is `FOOD_LOOKUP_TIERS`, and it is **off**.
+
+**Why it is off: it was measured against real logs before being trusted with them.** Against Ruth's own 55 food entries:
+
+| What the spec assumed | What the data showed |
+|---|---|
+| 50–60% of logs answered by tiers 1 or 2 | **7%** are a single weighed food — the only shape a per-100g source can honestly answer |
+| A personal cache pays for itself on repeats | **9%** of descriptions repeat, and **none of the repeats is a food** |
+
+Two of those repeats were the duplicate-logging bug fixed the same day. The third was **"(photo upload)"** — the placeholder every photo log carries — appearing three times at **165, 285 and 520 kcal**. A cache keyed on the description would have answered the 520 kcal meal with 165. `isCacheable` now refuses placeholders and sentences outright, and that guard is the part worth keeping whatever happens next.
+
+The reason is in how people write: *"Tin of sardines in brine, 60g lettuce, 50g grapes, 80g beetroot puree, spoon of garlic olive oil"*. Real meals described in full sentences do not repeat verbatim and are not one weighed food. **The spec's saving assumed somebody who logs "a banana"; the app is used by people who log dinner.**
+
+### The source order is reversed, on evidence
+
+**The spec put Open Food Facts first and McCance and Widdowson second. That is backwards, and the test that showed it is one query.**
+
+| Asked for "100g cheddar" | Answer | Protein |
+|---|---|---|
+| Open Food Facts | "Mature Cheddar & Chive", 469 kcal | **6.9g** |
+| McCance and Widdowson | "Cheese, Cheddar, English", 416 kcal | **25.4g** |
+
+The API's answer would have been accepted at the confidence threshold and logged — wrong by nearly four times on the number this app tracks most carefully. **Five of six ordinary foods** (porridge oats, Greek yoghurt, hummus, chocolate almonds, boiled new potatoes) returned nothing usable from it at all. Open Food Facts is a database of **packaged products**; it is excellent for a barcode and misleading for a food. So CoFID leads, and the product API keeps packaged goods, where it is genuinely the better source.
+
+### Three refusals, each written after a wrong answer
+
+The matcher shortlists by trigram similarity (CoFID inverts its names — "Cheese, Cheddar, English") and then decides on whole words. Each of these rules exists because the matcher gave a wrong answer out loud on the live table:
+
+1. **A material qualifier the person never said.** "150g chicken breast" → *"Chicken breast/steak, **coated**, baked"*, 351 kcal against about 222 for plain. Now refused.
+2. **A raw row for food nobody eats raw.** "80g basmati rice" → *"Rice, **brown**, basmati, **raw**"*, 284 kcal. Dry weight is not eaten weight, and this is the largest error class in the dataset. Now refused; the live answer is "Rice, white, basmati, boiled in unsalted water", 94 kcal.
+3. **A missing head noun.** "60g homemade banana pancake" → *"Banana **split**, homemade"* at 0.67 — two words in three agreed and the one that disagreed was the food. English puts the head noun last; it must appear in the name. Now refused, and the entry goes to the model, which is correct.
+
+**Every live query now answers correctly or refuses.** Refusing costs one model call; assuming costs a wrong number that stays in somebody's record.
+
+### One line that cost the whole tier
+
+Node's `fetch` sends `Accept: */*`, and Open Food Facts' edge answers that with a **503**. Every request failed until it was isolated header by header against a `curl` that worked. Without `Accept: application/json` the tier silently matches nothing — which looks exactly like a database with no data in it, and would have been diagnosed as "the API is no good" rather than as a missing header.
+
+### What would make tier 1 worth switching on
+
+Not repeated sentences — repeated **staples**. That needs the cache keyed on the ITEMS the model parsed rather than the sentence they arrived in, and `food_items` already stores exactly that. It is the next honest version of this idea and it is a different build. Re-run `scripts/measure-food-lookup.mjs` when there are more logs or more people; if the numbers move, turn it on.
+
+**Attribution, required by the licence:** contains public sector information licensed under the Open Government Licence v3.0.
 
 ## Basal Metabolism Tracking
 Pulled directly from smart scale data (Zepp Life, Withings, Fitbit Aria, and similar — most modern bioimpedance scales output this). Tracked as a trend over months, overlaid with muscle mass, and kept clearly separate from active/activity burn so the user understands the difference.
