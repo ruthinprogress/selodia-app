@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { DeleteEntry } from '@/components/delete-entry';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -55,9 +56,13 @@ const kcal = (n: number | null): string => (n == null ? '—' : `${Math.round(n)
 export function FoodBreakdownCard({
   foodLogId,
   onClose,
+  onDeleted,
 }: {
   foodLogId: string | null;
   onClose: () => void;
+  // Called instead of onClose when the meal was removed, so the log behind this
+  // card re-reads rather than keeping a row that is no longer in the database.
+  onDeleted?: () => void;
 }) {
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
@@ -231,6 +236,17 @@ export function FoodBreakdownCard({
                     Ask about this
                   </ThemedText>
                 </Pressable>
+
+                {/* Removing an entry lives with the entry (2026-09-18). Last,
+                    and quiet: it is the one thing here that cannot be undone. */}
+                {foodLogId && (
+                  <DeleteEntry
+                    table="food_logs"
+                    id={foodLogId}
+                    what="this meal"
+                    onDeleted={onDeleted ?? onClose}
+                  />
+                )}
               </ScrollView>
             )}
           </ThemedView>

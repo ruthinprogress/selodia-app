@@ -101,9 +101,10 @@ const styles = StyleSheet.create({
   hint: {
     position: 'absolute',
     // Matches the input's own padding so the hint sits exactly where typed text
-    // will appear, rather than near it.
-    left: 16,
-    right: 16,
+    // will appear, rather than near it. (The composer became a column on
+    // 2026-09-18 and the field's padding came down with it.)
+    left: 8,
+    right: 8,
     top: 10,
     fontFamily: BodyFont.regular,
     fontSize: 16,

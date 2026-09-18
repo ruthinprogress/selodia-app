@@ -23,7 +23,7 @@ import { useSpotlight } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
+import { CardRadius, MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
@@ -738,37 +738,34 @@ export default function ChatScreen() {
             obvious: these are things you could type, already typed. */}
         {showChips === true && <ChatLandingChips onPick={handleChipPick} />}
 
+        {/* THE COMPOSER IS A COLUMN NOW (Ruth, 2026-09-18: "there is an issue
+            with the text typing box in chat. It doesn't expand with what user
+            writes so it's impossible to follow your own thoughts. Look at
+            solution here in Code", with a picture of this window's own message
+            box).
+
+            WHY THE OLD ONE WOULDN'T GROW. The field was one item in a row of
+            four, sharing its line with the +, the mic, the bars and Send, so
+            every extra line of text had to be bought out of a strip about two
+            thirds of the screen wide - and a TextInput stretched with flex
+            inside a row that sizes itself to its tallest child never reports a
+            taller content height, so it simply scrolled its own text out of
+            sight. maxHeight: 220 was already here and never got a chance to
+            apply.
+
+            WHAT IT IS INSTEAD. The field takes the full width on its own line,
+            and every control moves underneath it - which is exactly what the
+            box you are reading this in does. Text grows downward until it
+            reaches the ceiling and only then scrolls, so a long message stays
+            visible while it is being written, which is the whole complaint. */}
         <ThemedView style={styles.inputRow}>
-          <SpotlightTarget id="chat.add" onActivate={() => setAddOpen(true)}>
-            <Pressable
-              onPress={() => setAddOpen(true)}
-              disabled={picking || sending}
-              accessibilityRole="button"
-              accessibilityLabel="Add a photo"
-              hitSlop={Spacing.two}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.addButton, (picking || sending) && styles.addDisabled]}
-              >
-                <ThemedText type="smallBold">{picking ? '…' : '+'}</ThemedText>
-              </ThemedView>
-            </Pressable>
-          </SpotlightTarget>
           {/* No onActivate: there is nothing to "press" on a text field, and
               stealing focus behind a closing overlay would put a keyboard up
               that nobody asked for. Dismissing leaves it there to tap. */}
-          {/* SEND BELONGS TO THE BOX (Ruth, 2026-09-16: "The Send button is to
-              the right of the mic, looks weird and unconnected to chat box,
-              needs moving to the chatbox. The mic needs to be on the right").
-              Send now sits INSIDE the field's own surface, so the control and
-              the text it commits are visibly one object, and the mic takes the
-              outside-right position on its own. */}
           <SpotlightTarget id="chat.composer" style={styles.composerTarget}>
             <ThemedView type="backgroundElement" style={styles.box}>
               {/* The hint is absolutely positioned against THIS wrapper rather
-                  than the whole box, so it cannot run underneath Send. */}
+                  than the whole box, so it cannot run under the controls. */}
               <View style={styles.inputWrap}>
                 <TextInput
                   value={input}
@@ -791,72 +788,90 @@ export default function ChatScreen() {
                   // The surface belongs to the box around it, not the field.
                   style={[styles.input, { color: theme.text }]}
                   multiline
+                  // Android starts multiline text in the vertical middle of the
+                  // field, which makes the first line drift downward as the box
+                  // grows. It should sit at the top and stay there.
+                  textAlignVertical="top"
                   editable={!sending}
                 />
                 {/* Only while there is nothing typed. A hint under real text
                     would be two overlapping lines. */}
                 {input.length === 0 ? <RotatingPlaceholder stopped={hintStopped} /> : null}
               </View>
-              <Pressable
-                onPress={() => handleSend()}
-                // Empty input previously did nothing at all - no message, no
-                // re-ask, nothing - so Send looked pressable and behaved dead.
-                // Disabling it lets the control state the truth instead of
-                // failing silently. A "please type something" nag would be the
-                // other option and is worse: scolding someone for a tap that
-                // should never have been offered.
-                disabled={sending || input.trim().length === 0}
-                accessibilityRole="button"
-                accessibilityLabel="Send"
-                style={({ pressed }) => [
-                  styles.sendInline,
-                  (sending || input.trim().length === 0) && styles.sendDisabled,
-                  pressed && styles.pressed,
-                ]}
-              >
-                {/* AN ARROW, NOT THE WORD (Ruth, 2026-09-16: "we don't need the
-                    word Send, just use an arrow up"). The word was costing the
-                    field about sixty pixels of writing space, which is why the
-                    hint had to be trimmed twice this morning, and it was the
-                    thing Android kept drawing as "Sen". An arrow cannot be
-                    clipped into a different word. */}
-                <Ionicons
-                  name="arrow-up"
-                  size={20}
-                  color={
-                    sending || input.trim().length === 0 ? theme.textSecondary : theme.accentDeep
-                  }
+
+              {/* THE CONTROL ROW, beneath the writing, all four on one line and
+                  all belonging to the same surface. The + keeps the left, where
+                  attachments live in every messaging app anybody has used; the
+                  voice controls and Send take the right. */}
+              <View style={styles.controls}>
+                <SpotlightTarget id="chat.add" onActivate={() => setAddOpen(true)}>
+                  <Pressable
+                    onPress={() => setAddOpen(true)}
+                    disabled={picking || sending}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add a photo"
+                    hitSlop={Spacing.two}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <ThemedView
+                      type="backgroundSelected"
+                      style={[styles.addButton, (picking || sending) && styles.addDisabled]}
+                    >
+                      <ThemedText type="smallBold">{picking ? '…' : '+'}</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                </SpotlightTarget>
+
+                <View style={styles.controlsSpacer} />
+
+                {/* THE MICROPHONE, THEN THE SOUND BARS (Ruth, 2026-09-16,
+                    restated 2026-09-17 when the mic had gone missing). Two
+                    controls with two faces: the mic records a voice note into
+                    the box above, the bars open a live conversation. Native
+                    only; both render nothing on web. */}
+                <VoiceNoteButton
+                  onText={(text) => {
+                    setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
+                    dismissChips();
+                  }}
+                  onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
+                  disabled={sending}
                 />
-              </Pressable>
+                <VoiceControl
+                  onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
+                  disabled={sending}
+                />
+
+                <Pressable
+                  onPress={() => handleSend()}
+                  // Empty input previously did nothing at all - no message, no
+                  // re-ask, nothing - so Send looked pressable and behaved dead.
+                  // Disabling it lets the control state the truth instead of
+                  // failing silently.
+                  disabled={sending || input.trim().length === 0}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send"
+                  hitSlop={Spacing.two}
+                  style={({ pressed }) => [
+                    styles.sendInline,
+                    (sending || input.trim().length === 0) && styles.sendDisabled,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  {/* AN ARROW, NOT THE WORD (Ruth, 2026-09-16: "we don't need
+                      the word Send, just use an arrow up"). An arrow cannot be
+                      clipped into a different word. */}
+                  <Ionicons
+                    name="arrow-up"
+                    size={20}
+                    color={
+                      sending || input.trim().length === 0 ? theme.textSecondary : theme.accentDeep
+                    }
+                  />
+                </Pressable>
+              </View>
             </ThemedView>
           </SpotlightTarget>
-          {/* RIGHTMOST, ON ITS OWN (Ruth, 2026-09-16: "The mic needs to be on
-              the right"). It sat between the field and Send until now, which
-              put two unrelated controls in a row outside the box and made
-              neither of them look like it belonged to anything. Send went
-              inside the field; the mic keeps the outside edge, where a
-              press-and-hold voice note can also live once there is a recorder
-              to build it on.
-
-              Renders nothing on web; see voice-control.web.tsx. */}
-          {/* THE MICROPHONE, THEN THE SOUND BARS (Ruth, 2026-09-16, restated
-              2026-09-17 when the mic had gone missing). Two controls with two
-              faces: the mic records a voice note into the box above, the bars
-              open a live conversation. The sound bars were built on the 16th
-              and the mic was not, which took away the only voice note there
-              was. Native only; both render nothing on web. */}
-          <VoiceNoteButton
-            onText={(text) => {
-              setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
-              dismissChips();
-            }}
-            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
-            disabled={sending}
-          />
-          <VoiceControl
-            onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
-            disabled={sending}
-          />
         </ThemedView>
 
         <SaveConfirmation
@@ -900,48 +915,57 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.two,
     paddingHorizontal: PageInset.horizontal,
     paddingBottom: Spacing.four,
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
   },
-  // The wrapper takes the flex the input used to, so wrapping it does not
-  // collapse the composer to its content width.
-  composerTarget: { flex: 1 },
-  // The field and Send as ONE surface. Rounded and coloured here rather than on
-  // the input, so the word sits on the same shape the text does.
+  composerTarget: { width: '100%' },
+  // THE FIELD AND ITS CONTROLS AS ONE SURFACE, stacked: writing on top, the row
+  // of controls underneath. Rounded and coloured here rather than on the input,
+  // so everything inside sits on the same shape.
   box: {
-    flexDirection: 'row',
-    // Grows downward with the text: Send stays level with the last line rather
-    // than floating beside a tall field.
-    alignItems: 'flex-end',
-    borderRadius: Spacing.three,
+    borderRadius: CardRadius,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+    paddingHorizontal: Spacing.two,
   },
   inputWrap: {
-    flex: 1,
+    width: '100%',
   },
   input: {
-    flex: 1,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    // NO flex HERE, deliberately. flex: 1 was what stopped the field growing:
+    // it took its height from the row around it instead of from its own text,
+    // so maxHeight never came into play and long messages scrolled out of
+    // sight while they were being typed.
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    // Two lines' worth before anything is typed, so an empty composer still
+    // looks like somewhere to write rather than a search bar.
+    minHeight: 44,
     // ROOM TO SEE WHAT YOU ARE WRITING (Ruth, 2026-09-16: "allow the text box to
     // expand with the text so the writer is not blind when typing a long
-    // message"). 100 held about four lines before it started scrolling under
-    // itself - fine for "pizza and chips", useless for a week of catch-up, which
-    // is exactly the message this app asks people to type. It still has a
-    // ceiling: a composer that grows without limit eats the conversation it
-    // belongs to.
+    // message"; restated 2026-09-18). About nine lines at this size. It still
+    // has a ceiling: a composer that grows without limit eats the conversation
+    // it belongs to.
     maxHeight: 220,
   },
-  // Padded generously rather than sized: a fixed width is what clipped this to
-  // "Sen" on the phone, and text that sets its own width cannot be cut off.
+  // The controls sit on their own line now, so Send needs no width of its own -
+  // just enough padding to be a comfortable target.
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Spacing.one,
+  },
+  // Pushes everything after it to the right edge without a fixed gap, so the
+  // row holds together whether or not the voice controls render (they do not on
+  // web).
+  controlsSpacer: { flex: 1 },
   sendInline: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
     justifyContent: 'center',
   },
   sendDisabled: {

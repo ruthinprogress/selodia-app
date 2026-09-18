@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { DeleteEntry } from '@/components/delete-entry';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -39,12 +40,15 @@ type Props = {
   reading: MeasurementRow | null;
   dateLabel: string;
   onClose: () => void;
+  // Called instead of onClose when the reading was removed, so the week behind
+  // this card re-reads rather than keeping a row that is no longer there.
+  onDeleted?: () => void;
 };
 
 const fmt = (v: number | null | undefined, unit: string): string | null =>
   v == null ? null : `${Math.round(v * 10) / 10}${unit}`;
 
-export function ReadingCard({ reading, dateLabel, onClose }: Props) {
+export function ReadingCard({ reading, dateLabel, onClose, onDeleted }: Props) {
   const theme = useTheme();
   const [note, setNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +109,15 @@ export function ReadingCard({ reading, dateLabel, onClose }: Props) {
                 <ThemedText type="small">{note}</ThemedText>
               </ThemedView>
             ) : null}
+
+            {reading?.id && (
+              <DeleteEntry
+                table="body_measurements"
+                id={reading.id}
+                what="this reading"
+                onDeleted={onDeleted ?? onClose}
+              />
+            )}
           </ScrollView>
 
           <View style={styles.actions}>

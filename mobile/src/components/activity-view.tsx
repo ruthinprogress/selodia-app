@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ActivityDetailCard } from '@/components/activity-detail-card';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { Tag } from '@/components/tag';
@@ -55,6 +56,11 @@ export function ActivityView() {
   const [loading, setLoading] = useState(true);
   // See food-today-view: the quick-log bar bumps this so the list re-reads.
   const [reloadKey, setReloadKey] = useState(0);
+  // Which session's detail card is open, if any (Ruth, 2026-09-18: "the
+  // Movements log has lost the look closer eye entirely"). ActivityDetailCard
+  // was built on 16 September and never given anything to open it, so activity
+  // was the one log you could read but not look into.
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,10 +158,34 @@ export function ActivityView() {
               {/* Classified at log time (item 33), so an older row with no
                   intensity simply renders no tag rather than a guess. */}
               <Tag context="intensity" value={r.intensity} />
+              {/* THE SAME EYE AS FOOD AND MEASUREMENTS, in the same place, at
+                  the same size. One affordance across all three logs: a row
+                  states the facts, the eye opens the entry - where "Ask about
+                  this" and Delete live. */}
+              <Pressable
+                onPress={() => setOpenId(r.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`Look closer at ${r.activity_type ?? 'this session'}`}
+                hitSlop={Spacing.two}
+                style={({ pressed }) => [styles.eye, pressed && styles.pressed]}
+              >
+                <Ionicons name="eye-outline" size={18} color={theme.textSecondary} />
+              </Pressable>
             </View>
           ))}
         </ThemedView>
       )}
+
+      <ActivityDetailCard
+        activity={rows.find((r) => r.id === openId) ?? null}
+        onClose={() => setOpenId(null)}
+        // A deleted session must leave the list as well as the card, so this
+        // re-reads rather than closing over a row that is no longer there.
+        onDeleted={() => {
+          setOpenId(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
 
       <Pressable
         onPress={() => router.push('/log/activity-history')}
@@ -206,6 +236,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   rowMain: { flex: 1, gap: Spacing.half },
+  eye: { width: 24, alignItems: 'center', justifyContent: 'center' },
   numbers: { flexDirection: 'row', gap: Spacing.six },
   stat: { gap: Spacing.half },
   note: { fontStyle: 'italic' },

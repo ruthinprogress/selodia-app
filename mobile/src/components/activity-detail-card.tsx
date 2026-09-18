@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Tag } from '@/components/tag';
+import { DeleteEntry } from '@/components/delete-entry';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -38,9 +39,13 @@ export type ActivityDetail = {
 export function ActivityDetailCard({
   activity,
   onClose,
+  onDeleted,
 }: {
   activity: ActivityDetail | null;
   onClose: () => void;
+  // Called instead of onClose when the session was removed, so the list behind
+  // this card can re-read rather than keep drawing a row that no longer exists.
+  onDeleted?: () => void;
 }) {
   const theme = useTheme();
   if (!activity) return null;
@@ -130,6 +135,15 @@ export function ActivityDetailCard({
                 Ask about this
               </ThemedText>
             </Pressable>
+
+            {/* The entry's own delete: quiet, last, and the one thing here that
+                cannot be undone (2026-09-18). */}
+            <DeleteEntry
+              table="activity_logs"
+              id={activity.id}
+              what="this session"
+              onDeleted={onDeleted ?? onClose}
+            />
           </ScrollView>
 
           <View style={styles.actions}>

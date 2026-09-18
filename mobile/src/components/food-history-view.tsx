@@ -44,6 +44,8 @@ import {
 export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const theme = useTheme();
   const [weekStart, setWeekStart] = useState<Date>(() => initialWeekStart ?? currentWeekStart());
+  // Bumped when a meal is deleted from the card, so the week re-reads.
+  const [reloadKey, setReloadKey] = useState(0);
 
   // IT OPENS ON THE LAST WEEK THAT HAS ANYTHING IN IT (2026-09-16, within an
   // hour of shipping). Ruth opened this screen and reported "there is nothing at
@@ -115,7 +117,7 @@ export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date 
     };
     // weekKey is derived from weekStart, which is the real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekKey]);
+  }, [weekKey, reloadKey]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, FoodLogSummary[]>();
@@ -238,7 +240,14 @@ export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date 
         </ThemedText>
       )}
 
-      <FoodBreakdownCard foodLogId={openId} onClose={() => setOpenId(null)} />
+      <FoodBreakdownCard
+        foodLogId={openId}
+        onClose={() => setOpenId(null)}
+        onDeleted={() => {
+          setOpenId(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </>
   );
 }

@@ -199,7 +199,14 @@ export function FoodTodayView() {
         </ThemedText>
       </Pressable>
 
-      <FoodBreakdownCard foodLogId={openId} onClose={() => setOpenId(null)} />
+      <FoodBreakdownCard
+        foodLogId={openId}
+        onClose={() => setOpenId(null)}
+        onDeleted={() => {
+          setOpenId(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </>
   );
 }

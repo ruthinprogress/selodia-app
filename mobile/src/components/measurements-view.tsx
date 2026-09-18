@@ -129,6 +129,10 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           reading={openRow.reading ?? null}
           dateLabel={dayLabel(openRow.date)}
           onClose={() => setOpenRow(null)}
+          onDeleted={() => {
+            setOpenRow(null);
+            setReloadKey((k) => k + 1);
+          }}
         />
       ) : null}
 

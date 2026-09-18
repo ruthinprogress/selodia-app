@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ActivityDetailCard } from '@/components/activity-detail-card';
 import { Tag } from '@/components/tag';
 import { ActivityIcon } from '@/components/activity-icon';
 import { activityIcon } from '@/lib/activity-icon';
@@ -30,10 +31,7 @@ import {
 // on the most recent week that actually holds sessions so it never greets
 // somebody with seven empty days.
 //
-// TWO DIFFERENCES FROM FOOD, both because activity is a different thing.
-//   - No eye icon. There is no activity detail card to open: the breakdown card
-//     is a food_items table, and a session has no items. A row shows what it is,
-//     how long, what it burned and how hard, which is the whole of it.
+// ONE DIFFERENCE FROM FOOD, because activity is a different thing.
 //   - Daily tracker totals are filtered out, the same rule the Activity segment
 //     already applies: a whole-day step total is not a session somebody did, and
 //     listing one beside real workouts is what made incidental walking read as a
@@ -50,9 +48,16 @@ type ActivityRow = {
 };
 
 export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: Date }) {
+  const theme = useTheme();
   const [weekStart, setWeekStart] = useState<Date>(() => initialWeekStart ?? currentWeekStart());
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Which session is open in the detail card, and a key the card bumps when it
+  // deletes one so this week re-reads (2026-09-18). The note above used to say
+  // this log had no eye because there was nothing to open; ActivityDetailCard
+  // now exists, so it does.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const weekKey = toLocalDateKey(weekStart);
   const isCurrentWeek = weekKey === toLocalDateKey(currentWeekStart());
@@ -100,7 +105,7 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
     };
     // weekKey is derived from weekStart, which is the real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekKey]);
+  }, [weekKey, reloadKey]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();
@@ -190,6 +195,15 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
                     {/* Classified at log time (item 33), so an older row with no
                         intensity renders no tag rather than a guess. */}
                     <Tag context="intensity" value={r.intensity} />
+                    <Pressable
+                      onPress={() => setOpenId(r.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Look closer at ${r.activity_type ?? 'this session'}`}
+                      hitSlop={Spacing.two}
+                      style={({ pressed }) => [styles.eye, pressed && styles.pressed]}
+                    >
+                      <Ionicons name="eye-outline" size={16} color={theme.textSecondary} />
+                    </Pressable>
                   </View>
                 ))
               )}
@@ -203,6 +217,15 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
           {Math.round(weekMinutes)} minutes this week
         </ThemedText>
       )}
+
+      <ActivityDetailCard
+        activity={rows.find((r) => r.id === openId) ?? null}
+        onClose={() => setOpenId(null)}
+        onDeleted={() => {
+          setOpenId(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </>
   );
 }
@@ -266,5 +289,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   rowMain: { flex: 1, gap: Spacing.half },
+  eye: { width: 24, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.6 },
 });
