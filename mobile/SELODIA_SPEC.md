@@ -2003,6 +2003,27 @@ Ruth, 18 September: *"there is an issue with the text typing box in chat. It doe
 
 **Delete.** Per-entry delete was scoped on 12 September and never built. It lives **inside the entry's own card** — last, quiet, and asking once in plain words before it does anything, with the confirm as the destructive tap rather than the first one. RLS scopes the delete to the signed-in person's own row, and every card tells its list to re-read so a deleted entry leaves the screen instead of lingering.
 
+### Nine dinners for one dinner, and the guard that stops it
+
+**18 September, evening.** Ruth described one dinner in a voice call and **nine `food_logs` rows** went in across 53 seconds, each carrying more of the same sentence — "73g boiled new potatoes", then "…with oxtail stew", then "…and 250g oxtail stew (homemade)", then the same words four more times. Her day read **5,137 kcal**. Her words: *"Something weird happened on logging food today, tins of duplicates."*
+
+**What caused it.** She paused as she spoke, and every pause was answered by logging everything said so far. The voice adapter already handles a half-answered turn coming back longer — but its defence against double-logging is **a line in the prompt** asking the model not to log the same thing twice, and its own comment names that as the remaining risk: *"a model can still repeat a log"*. The identical failure is on the record from **9 September** (*"four duplicate food entries went in during a voice session"*) and was met with a better turn guard rather than a write guard, which is why it came back.
+
+**The pattern worth keeping: a rule the model is asked to follow is not a guard.** Anything that must not happen twice belongs at the write, in arithmetic the model cannot decline.
+
+**The guard** (`app/lib/food-dedupe.ts`). Within **ten minutes**, an entry whose content words match a recent one — or contain them, or are contained by them — is that meal being described again. The fuller description **rewrites** the earlier row, macros and breakdown rebuilt; `happened_at` is left alone, because the meal was eaten when it was first described.
+
+- **It matches on content words, not on the sentence.** The first version compared whole strings and failed against the very evening it was written for: "potatoes WITH oxtail stew" and "potatoes AND oxtail stew" are one plate, and a single word of grammar was enough to make them two dinners. Transcription varies in exactly those function words and never in the food.
+- **Short entries are left alone.** Two cups of tea ten minutes apart is two cups of tea. Anything under three content words matches only on its exact words and only within **two minutes**, which catches a double-send without deleting a real drink.
+- **What it costs, stated honestly:** somebody who genuinely eats the same thing twice inside ten minutes gets one row. That is the right trade against eight phantom dinners and 4,600 invented calories, and a person who ate two can say so in the next sentence.
+- `scripts/probe-food-dedupe.mjs`: 15 checks, built from the real rows.
+
+### Delete belongs on the row
+
+Ruth, the same evening, on the card-level delete built that morning: *"The delete button should be easier to reach than clicking inside each one, this would be tedious to do for a user."* Removing the eight phantom dinners would have cost five taps each — forty for one evening. Nobody does that; they live with a wrong log instead, which is how a person stops trusting what the app tells them.
+
+The mark now sits **on the row**, beside the eye, on food today, food by week, activity today and activity by week. **Not a swipe and not a long-press:** a hidden gesture is a control only some people ever find, and this app is for people who should not have to know that swiping left on a list does anything. It still asks — the mark arms it, the row says "Delete?" beside a Keep, and it **disarms itself after six seconds** so a stray tap cannot leave a row one accident from gone. The measurements week table keeps its delete inside the reading card: six columns of numbers have no room for a confirm, and a day's reading is not the thing that arrives in duplicate.
+
 **Why deletion is allowed at all, given "permanent, never deleted".** That rule is about the app not quietly discarding somebody's history, not about trapping a mistake inside it. A meal logged twice, a weight typed wrong, a run that never happened: leaving those in is not honesty, it is a wrong record nobody can correct. Chat could already delete an entry by being asked; this is the same power, where the entry is.
 
 ## Pending: bug and design list, 18 September 2026
