@@ -170,7 +170,7 @@ export function VoiceNoteButton({
           ) : (
             <Ionicons
               name={recording ? 'stop' : 'mic-outline'}
-              size={recording ? 16 : 20}
+              size={recording ? 14 : 18}
               color={recording ? theme.background : theme.textSecondary}
             />
           )}
@@ -203,8 +203,8 @@ export function VoiceNoteButton({
 
 const styles = StyleSheet.create({
   button: {
-    width: 36,
-    height: 36,
+    width: 30,
+    height: 30,
     borderRadius: ButtonRadius,
     alignItems: 'center',
     justifyContent: 'center',

@@ -49,14 +49,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     // Generous rather than tight: the brief asks for body copy that is never
     // heavy and always secondary to the display type, and leading is most of
-    // what does that.
-    lineHeight: 22,
+    // what does that. Brought in from 22 on 2026-09-18 - 1.5 rather than 1.57 -
+    // because at chat length that leading was spending a line of screen every
+    // four lines of reading, and the page read as enlarged rather than airy.
+    lineHeight: 21,
     fontFamily: BodyFont.regular,
   },
   // Section headers land here, so this one takes Comfortaa despite its size.
   smallBold: {
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 21,
     fontFamily: BodyFont.semibold,
   },
   // MANROPE CARRIES THE TEXT, THE SERIF CARRIES THE HEADINGS (2026-09-18).
@@ -65,8 +67,11 @@ const styles = StyleSheet.create({
   // tool for dense utility text. The difference is that the system face varies
   // by phone, and this does not.
   default: {
-    fontSize: 16,
-    lineHeight: 26,
+    // 16/26 until 2026-09-18 (Ruth: "slightly reduce the default body text size,
+    // around 1-2pt if appropriate"). 15/23 keeps the same colour on the page and
+    // gives back roughly a line in eight.
+    fontSize: 15,
+    lineHeight: 23,
     fontFamily: BodyFont.regular,
   },
   // THE SERIF PAIR. display is a screen's own name, sectionTitle is a section

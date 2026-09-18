@@ -73,7 +73,7 @@ export function VoiceButton({ onRequestStart, disabled = false }: VoiceButtonPro
             anxiety that the app might call someone" - which is the right
             instinct: nobody is being rung up. */}
         <VoiceWaveIcon
-          size={18}
+          size={16}
           // Sage while a session is live, so the composer still says so if the
           // person navigates away from the voice screen. Grey otherwise.
           color={live ? theme.sage : theme.textSecondary}
@@ -85,8 +85,8 @@ export function VoiceButton({ onRequestStart, disabled = false }: VoiceButtonPro
 
 const styles = StyleSheet.create({
   button: {
-    width: 36,
-    height: 36,
+    width: 30,
+    height: 30,
     borderRadius: ButtonRadius,
     alignItems: 'center',
     justifyContent: 'center',

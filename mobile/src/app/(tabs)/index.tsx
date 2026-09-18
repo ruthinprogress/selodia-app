@@ -863,7 +863,7 @@ export default function ChatScreen() {
                       clipped into a different word. */}
                   <Ionicons
                     name="arrow-up"
-                    size={20}
+                    size={18}
                     color={
                       sending || input.trim().length === 0 ? theme.textSecondary : theme.accentDeep
                     }
@@ -902,21 +902,29 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  // THE CONVERSATION GETS THE SPACE BACK (Ruth, 2026-09-18). The page margin
+  // stays as it is - that was settled with the typography and is what stops the
+  // text touching the edges - but the room BETWEEN messages was set before the
+  // bubbles were this size, and 16 between turns on top of 8 within a turn read
+  // as a list of cards rather than an exchange.
   scrollContent: {
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
     paddingHorizontal: PageInset.horizontal,
     paddingTop: PageInset.top,
-    paddingBottom: PageInset.bottom,
-    gap: Spacing.three,
+    paddingBottom: Spacing.three,
+    gap: 10,
   },
   messageGroup: {
-    gap: Spacing.two,
+    gap: 6,
   },
   inputRow: {
     paddingHorizontal: PageInset.horizontal,
-    paddingBottom: Spacing.four,
+    // Close to the tab bar on purpose: the composer belongs to the conversation
+    // above it, and 24 of daylight under it was a band of nothing between two
+    // things that are both controls.
+    paddingBottom: Spacing.two,
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -927,9 +935,9 @@ const styles = StyleSheet.create({
   // so everything inside sits on the same shape.
   box: {
     borderRadius: CardRadius,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
-    paddingHorizontal: Spacing.two,
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingHorizontal: 6,
   },
   inputWrap: {
     width: '100%',
@@ -939,12 +947,15 @@ const styles = StyleSheet.create({
     // it took its height from the row around it instead of from its own text,
     // so maxHeight never came into play and long messages scrolled out of
     // sight while they were being typed.
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
+    paddingTop: 6,
+    paddingBottom: 4,
     paddingHorizontal: Spacing.two,
-    // Two lines' worth before anything is typed, so an empty composer still
-    // looks like somewhere to write rather than a search bar.
-    minHeight: 44,
+    // Matches the thread it is answering (2026-09-18).
+    fontSize: 15,
+    lineHeight: 21,
+    // ONE comfortable line before anything is typed. It was two, which made an
+    // empty composer the tallest thing on the screen.
+    minHeight: 34,
     // ROOM TO SEE WHAT YOU ARE WRITING (Ruth, 2026-09-16: "allow the text box to
     // expand with the text so the writer is not blind when typing a long
     // message"; restated 2026-09-18). About nine lines at this size. It still
@@ -957,24 +968,24 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Spacing.one,
+    paddingTop: 0,
   },
   // Pushes everything after it to the right edge without a fixed gap, so the
   // row holds together whether or not the voice controls render (they do not on
   // web).
   controlsSpacer: { flex: 1 },
   sendInline: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
     justifyContent: 'center',
   },
   sendDisabled: {
     opacity: 0.4,
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },

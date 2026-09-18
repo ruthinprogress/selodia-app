@@ -111,10 +111,15 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
 }
 
 const styles = StyleSheet.create({
+  // LIGHTER, NOT SMALLER (Ruth, 2026-09-18: "everything is currently a little
+  // oversized. It feels more like an accessibility layout than the calm, premium
+  // editorial aesthetic"). Padding down about a fifth, radius down two, and the
+  // text a point smaller with tighter leading - which together give back roughly
+  // a fifth of the height of every reply without touching the measure.
   bubble: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: 14,
     maxWidth: '85%',
     alignSelf: 'flex-start',
   },
@@ -129,7 +134,7 @@ const styles = StyleSheet.create({
   assistantRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.two,
+    gap: 6,
   },
   // The row owns the alignment now, and the bubble may take what is left of it.
   assistantBubble: {
@@ -137,17 +142,17 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     // Never squashed when a long reply pushes the row.
     flexShrink: 0,
   },
   avatarMark: {
-    width: 18,
-    height: 18,
+    width: 16,
+    height: 16,
   },
   image: {
     width: 240,
