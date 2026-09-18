@@ -60,7 +60,13 @@ const BREATHE_TO = 1.015;
 // Terracotta on terracotta would disappear, which is why the wash sits far
 // lighter than the ground and the mark stays cream.
 const SAGE = '#95A987';
-const TERRACOTTA = '#C97458';
+// LIGHTER THAN THE BRAND TERRACOTTA, and that is the fix rather than the brand
+// being wrong (Ruth, on device: "the terracotta doesn't register as well").
+// #C97458 is a mid terracotta and the ground is #834B39, a dark one: the wash
+// was the same hue and nearly the same value as the paper it sat on, so it had
+// nothing to show against. This is the same hue lifted towards the light, the
+// way a wash reads on tinted paper.
+const TERRACOTTA = '#EFA684';
 
 // Wide enough that the bloom reaches past the mark on every side without
 // touching the screen edges on a small phone.

@@ -132,12 +132,24 @@ const SUPERSEDE_WINDOW_MS = 30_000;
 // and below the point where silence reads as a dropped call. Building a
 // workout plan measures 13-15s and will always cross it; logging a meal
 // never will, and nobody hears a holding line for their toast.
-const HOLDING_AFTER_MS = 4_000;
+// RAISED FROM 4s (Ruth, on device, 18 September: it "keeps saying, let me put
+// that together for you about absolutely nothing and randomly when it's totally
+// not required"). The 4s figure was measured against an ordinary spoken turn of
+// about 3 seconds, which left almost no margin: a turn that took four and a half
+// seconds - most of them, once the context grew - earned a holding line it did
+// not need. 8s still sits well below the point where silence reads as a dropped
+// call, and now only the genuinely long turns cross it.
+const HOLDING_AFTER_MS = 8_000;
 
-// Deliberately not "Let me think about that" - which invites a pause and
-// then sounds odd when the answer was already ready - and deliberately not
-// an apology. It says work is happening, in her own register.
-const HOLDING_LINE = 'Let me put that together for you.';
+// IT MUST NOT PROMISE A THING (Ruth, 18 September: "even when it says, let me
+// put that together for you, it doesn't put anything together"). The old line
+// announced a deliverable, so an ordinary spoken answer arriving afterwards read
+// as the promise being broken. This one says only that she is still there and
+// still working, which is the only thing that is reliably true at that moment.
+//
+// Deliberately not "Let me think about that", which invites a pause and then
+// sounds odd when the answer was already ready, and deliberately not an apology.
+const HOLDING_LINE = 'Bear with me a moment.';
 
 const enc = new TextEncoder();
 

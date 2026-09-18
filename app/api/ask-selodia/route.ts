@@ -629,8 +629,34 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
   // until the model says the topic moved on.
   const discussedEntry = await loadDiscussEntryFacts(supabase, provisionalTag);
 
+  // WHAT THE APP CAN ACTUALLY DO, in its own words (Ruth, 18 September 2026).
+  //
+  // She asked twice for a reminder to drink water at 9am and was told it was not
+  // possible, with a suggestion to pair the habit with something else instead.
+  // Half of that was true - there are no custom reminders yet - and the half
+  // that was not is the damaging half: the app does have reminders, and saying
+  // "I can't" about a feature that exists reads as the app not knowing itself.
+  //
+  // THE RULE UNDER THIS, which is the part worth keeping when the feature list
+  // changes: never answer a request for something with a flat refusal. Say what
+  // is there, say plainly what is not yet, and offer to note it. "I can't track
+  // that" closes a door on a product whose whole proposition is that anything
+  // can be brought here.
+  const CAPABILITIES = `
+WHAT THIS APP CAN DO TODAY. Be accurate about this: claiming a feature that does not exist is as damaging as denying one that does.
+- Logging by typing, by voice note, by live conversation, and by photo: food, drinks, activity, weight and body measurements, tape measurements, water.
+- Showing it back: Today (the day's figures, water, the week's Health Flower, what you burn), the Log tab (Food, Activity, Measurements, with week-by-week history), and the Almanac (Insights, Movement plans, Me).
+- The Almanac keeps things worth remembering, saved deliberately from a conversation.
+- Movement plans with demonstration clips for most exercises.
+- Daily reminders to log, at times the person chooses, turned on or off in Settings. There is no custom or one-off reminder yet: no "remind me to drink water at 9am", no reminders about anything other than logging.
+- Weekly roundups, written on a Sunday evening into the Almanac.
+- Cycle tracking from a logged period start.
+
+WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a workaround instead of answering. Say what the app does do that is nearest, say plainly that the exact thing is not built yet, and offer to note it as something they want. For example, asked for a 9am water reminder: the daily log reminders exist and can be set to any time, but they prompt logging rather than drinking, and a water-specific reminder is not built - so say that, and offer to note it down. The same holds for anything else somebody asks for: micronutrients, a new measurement, a different kind of report.`;
+
   const contextualSystemPrompt =
     SYSTEM_PROMPT +
+    CAPABILITIES +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
     pendingFocusPrompt(pendingFocus) +

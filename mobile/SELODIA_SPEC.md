@@ -1983,6 +1983,10 @@ Unflump is not trying to be a nutrition scientist — it is trying to build unde
 13. **Settings is only reachable from Chat.** It needs to be reachable from every screen.
 14. **The Body card truncates on Today:** "38.5 kg m…", "27.7 % bo…". The cards are too narrow for their contents.
 
+### Requested, not built
+
+17. **A water reminder at a set time** (Ruth, 18 September, asked twice in chat). Reminders today are daily prompts to log, at times she chooses in Settings. There is no custom or one-off reminder, and nothing that reminds about anything other than logging. Two halves to this: the feature is genuinely missing, and the app answered as though it had no reminders at all. The second half was fixed the same day by giving the chat prompt an accurate list of what the app can do, plus the standing rule that a request for something unbuilt is answered with what exists, what does not, and an offer to note it — never a flat refusal or a workaround offered in place of an answer. The feature itself is still open.
+
 ### Design changes
 
 15. **The water tracker loses its words.** Replace "+ Add a drink" with a soft illustrated water icon, tappable to log. The concept narrows to water rather than drinks in general.

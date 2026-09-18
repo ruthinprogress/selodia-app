@@ -66,8 +66,8 @@ function Bloom({ colour, size, index, idPrefix }: { colour: string; size: number
           {/* Densest a little off centre, as a wash pools where the brush
               rested rather than in the exact middle, and gone entirely at the
               edge - there is no outline anywhere in this drawing. */}
-          <Stop offset="0%" stopColor={colour} stopOpacity={0.55} />
-          <Stop offset="55%" stopColor={colour} stopOpacity={0.28} />
+          <Stop offset="0%" stopColor={colour} stopOpacity={0.62} />
+          <Stop offset="55%" stopColor={colour} stopOpacity={0.32} />
           <Stop offset="100%" stopColor={colour} stopOpacity={0} />
         </RadialGradient>
       </Defs>
@@ -154,7 +154,10 @@ export function VoiceHalo({
         { colour: sage, opacity: tint.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) },
         { colour: terracotta, opacity: tint },
       ].map((layer, li) => (
-        <Animated.View key={li} style={[styles.layer, { opacity: layer.opacity }]}>
+        <Animated.View
+          key={li}
+          style={[styles.layer, { opacity: layer.opacity }]}
+        >
           {BLOBS.map((b, i) => (
             <Animated.View
               key={i}
@@ -169,9 +172,11 @@ export function VoiceHalo({
                         ? 1
                         : breath[i].interpolate({
                             inputRange: [0, 1],
-                            // Speaking swings a little wider, as she asked:
-                            // "slightly more energetic, but still slow".
-                            outputRange: [0.94, b.scaleTo],
+                            // Speaking swings wider, as she asked: "slightly
+                            // more energetic, but still slow and fluid". The
+                            // rhythm does not change, only how far it travels -
+                            // a faster clock would read as urgency.
+                            outputRange: [0.94, b.scaleTo + (speaking ? 0.07 : 0)],
                           }),
                     },
                   ],
