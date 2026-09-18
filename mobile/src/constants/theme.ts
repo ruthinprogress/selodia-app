@@ -149,6 +149,23 @@ export const DisplayFont = {
   semibold: 'CormorantGaramond_600SemiBold',
 } as const;
 
+// THE BODY FACE (Ruth, 2026-09-18: Manrope "seems to fit so much more in
+// without feeling bloated. It's clear and petite").
+//
+// A brand change, and recorded as one: Part Fifteen had Comfortaa carrying
+// everything. Comfortaa is rounded and wide, which is warm at display size and
+// costs a lot of room at 14px - a data row in a rounded face is a data row that
+// wraps. Manrope is narrower, quieter and made for interfaces, which leaves the
+// warmth to the serif headings and the brand mark rather than asking every
+// number on the screen to carry it.
+//
+// The wordmark and the splash keep Comfortaa: they are the logo, not the text.
+export const BodyFont = {
+  regular: 'Manrope_400Regular',
+  medium: 'Manrope_500Medium',
+  semibold: 'Manrope_600SemiBold',
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,

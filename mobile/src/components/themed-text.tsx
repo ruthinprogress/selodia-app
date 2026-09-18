@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { BrandFont, DisplayFont, Fonts, ThemeColor } from '@/constants/theme';
+import { BodyFont, DisplayFont, Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -46,22 +46,23 @@ const styles = StyleSheet.create({
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
+    fontFamily: BodyFont.regular,
   },
   // Section headers land here, so this one takes Comfortaa despite its size.
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: BrandFont.semibold,
+    fontFamily: BodyFont.semibold,
   },
-  // Comfortaa carries display, headings and section headers. `small`, `link`
-  // and `code` stay on the system face: a rounded display type is the wrong
-  // tool for dense utility text, and the system font is what a phone reads
-  // most comfortably at 14px.
+  // MANROPE CARRIES THE TEXT, THE SERIF CARRIES THE HEADINGS (2026-09-18).
+  // Comfortaa used to carry both. `small` sat on the system face for exactly
+  // the reason Manrope now replaces it: a rounded display face is the wrong
+  // tool for dense utility text. The difference is that the system face varies
+  // by phone, and this does not.
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontFamily: BrandFont.regular,
+    fontFamily: BodyFont.regular,
   },
   // THE SERIF PAIR (2026-09-17). display is a screen's own name, sectionTitle is
   // a section within it. Both run larger than their Comfortaa equivalents
@@ -83,12 +84,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     lineHeight: 40,
-    fontFamily: BrandFont.semibold,
+    fontFamily: BodyFont.semibold,
   },
   subtitle: {
     fontSize: 24,
     lineHeight: 32,
-    fontFamily: BrandFont.semibold,
+    fontFamily: BodyFont.semibold,
   },
   link: {
     lineHeight: 30,

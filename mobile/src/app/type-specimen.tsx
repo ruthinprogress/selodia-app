@@ -105,12 +105,32 @@ const BODIES = [
   { id: 'manrope', name: 'Manrope', family: 'Manrope_300Light' },
 ];
 
+// TIGHTNESS, AS ITS OWN CONTROL (Ruth, 2026-09-18: "can we choose within that
+// font how close together the letters get put per word?").
+//
+// Tracking is what makes a 1920s poster look like one: the letters sit close,
+// almost touching, and the word reads as a single drawn object rather than a row
+// of characters. It is not the same question as which face, and judging both at
+// once is why neither was settling.
+//
+// Offsets, not absolutes. Each face carries its own natural tracking above, and
+// these move it: a face drawn tight needs less pushing than one drawn open. What
+// cannot be done, and is worth saying: kerning between specific pairs is inside
+// the font file. This moves every letter by the same amount.
+const TIGHTNESS = [
+  { id: 'tight', name: 'Tight', offset: -1.2 },
+  { id: 'close', name: 'Close', offset: -0.6 },
+  { id: 'normal', name: 'As drawn', offset: 0 },
+  { id: 'airy', name: 'Airy', offset: 0.8 },
+];
+
 const FLOWER = { strength: 18, cardio: 48, flexibility: 53, balance: 23, bone: 40, recovery: 20 };
 
 export default function TypeSpecimenScreen() {
   const theme = useTheme();
   const [fontIndex, setFontIndex] = useState(0);
   const [bodyIndex, setBodyIndex] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(2);
   const [loaded] = useFonts({
     Newsreader_300Light,
     InstrumentSerif_400Regular,
@@ -125,6 +145,7 @@ export default function TypeSpecimenScreen() {
 
   const face = CANDIDATES[fontIndex];
   const body = BODIES[bodyIndex];
+  const tracking = face.displayTracking + TIGHTNESS[trackIndex].offset;
   const serif = loaded ? face.family : undefined;
   const sans = loaded ? body.family : BrandFont.regular;
 
@@ -154,8 +175,21 @@ export default function TypeSpecimenScreen() {
               />
             ))}
           </View>
+          <View style={styles.chips}>
+            {TIGHTNESS.map((t, i) => (
+              <Chooser
+                key={t.id}
+                label={t.name}
+                selected={i === trackIndex}
+                onPress={() => setTrackIndex(i)}
+              />
+            ))}
+          </View>
           <ThemedText type="small" themeColor="textSecondary">
             {face.note}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {`${face.name} · ${body.name} · ${TIGHTNESS[trackIndex].name} (${tracking.toFixed(1)})`}
           </ThemedText>
 
           {/* THE REAL SCREEN, in that system. Today as it actually is: greeting,
@@ -170,7 +204,7 @@ export default function TypeSpecimenScreen() {
                     color: theme.text,
                     fontSize: face.displaySize,
                     lineHeight: face.displayLeading,
-                    letterSpacing: face.displayTracking,
+                    letterSpacing: tracking,
                   },
                 ]}
               >
@@ -219,7 +253,7 @@ export default function TypeSpecimenScreen() {
                   {
                     fontFamily: serif,
                     color: theme.text,
-                    letterSpacing: face.displayTracking,
+                    letterSpacing: tracking,
                   },
                 ]}
               >

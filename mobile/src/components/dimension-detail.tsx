@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandFont, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BodyFont, MaxContentWidth, Spacing } from '@/constants/theme';
 import type { DimensionActivity } from '@/hooks/use-dimension-activities';
 import {
   DIMENSION_COLOUR,
@@ -103,13 +103,13 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   title: {
-    fontFamily: BrandFont.regular,
+    fontFamily: BodyFont.regular,
     fontSize: 40,
     lineHeight: 48,
     color: CHARCOAL,
   },
   sub: {
-    fontFamily: BrandFont.regular,
+    fontFamily: BodyFont.regular,
     fontSize: 15,
     color: CHARCOAL,
     // The one place opacity is used on this screen. At 0.65 on these grounds it
@@ -119,10 +119,10 @@ const styles = StyleSheet.create({
   },
   list: { gap: Spacing.three },
   row: { gap: 2 },
-  activity: { fontFamily: BrandFont.medium, fontSize: 17, color: CHARCOAL },
-  meta: { fontFamily: BrandFont.regular, fontSize: 13, color: CHARCOAL, opacity: 0.7 },
+  activity: { fontFamily: BodyFont.medium, fontSize: 17, color: CHARCOAL },
+  meta: { fontFamily: BodyFont.regular, fontSize: 13, color: CHARCOAL, opacity: 0.7 },
   empty: {
-    fontFamily: BrandFont.regular,
+    fontFamily: BodyFont.regular,
     fontSize: 16,
     lineHeight: 26,
     color: CHARCOAL,
@@ -136,6 +136,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     alignSelf: 'flex-start',
   },
-  buttonText: { fontFamily: BrandFont.medium, fontSize: 16, color: CREAM },
+  buttonText: { fontFamily: BodyFont.medium, fontSize: 16, color: CREAM },
   pressed: { opacity: 0.75 },
 });

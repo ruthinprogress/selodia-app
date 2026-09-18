@@ -10,6 +10,11 @@ import {
   CormorantGaramond_500Medium,
   CormorantGaramond_600SemiBold,
 } from '@expo-google-fonts/cormorant-garamond';
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+} from '@expo-google-fonts/manrope';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -67,6 +72,9 @@ export default function RootLayout() {
   // rendering behind it. Same no-reflow guarantee, without unmounting the
   // router to get it.
   const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
     CormorantGaramond_400Regular,
     CormorantGaramond_500Medium,
     CormorantGaramond_600SemiBold,

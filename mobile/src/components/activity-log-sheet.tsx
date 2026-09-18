@@ -12,7 +12,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BrandFont, Spacing } from '@/constants/theme';
+import { BodyFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   buildActivityMessage,
@@ -307,14 +307,14 @@ const styles = StyleSheet.create({
   },
   scroll: { gap: Spacing.two },
   heading: {
-    fontFamily: BrandFont.semibold,
+    fontFamily: BodyFont.semibold,
     fontSize: 22,
     lineHeight: 30,
     marginBottom: Spacing.two,
   },
   rowLabel: { marginTop: Spacing.three },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chipText: { fontFamily: BrandFont.medium },
+  chipText: { fontFamily: BodyFont.medium },
   chip: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
-    fontFamily: BrandFont.regular,
+    fontFamily: BodyFont.regular,
   },
   logButton: {
     marginTop: Spacing.four,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Ellipse, Text as SvgText } from 'react-native-svg';
 
-import { BrandFont } from '@/constants/theme';
+import { BodyFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   allDimensionsFull,
@@ -280,7 +280,7 @@ export function HealthFlower({
               x={pos.x}
               y={pos.y}
               textAnchor={pos.anchor}
-              fontFamily={BrandFont.regular}
+              fontFamily={BodyFont.regular}
               fontSize={9}
               fill={theme.textSecondary}
             >

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet } from 'react-native';
 
-import { BrandFont } from '@/constants/theme';
+import { BodyFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The Chat composer's rotating hint.
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     top: 10,
-    fontFamily: BrandFont.regular,
+    fontFamily: BodyFont.regular,
     fontSize: 16,
   },
 });

@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { BrandFont } from '@/constants/theme';
+import { BodyFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The Log tab is a stack whose root holds the three views (Food, Activity,
@@ -19,7 +19,7 @@ export default function LogLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: theme.background },
         headerTintColor: theme.text,
-        headerTitleStyle: { color: theme.text, fontFamily: BrandFont.semibold },
+        headerTitleStyle: { color: theme.text, fontFamily: BodyFont.semibold },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.background },
         gestureEnabled: true,

@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { BrandFont } from '@/constants/theme';
+import { BodyFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The Today tab is a stack, not a switcher (2026-09-03; renamed from Body when
@@ -28,7 +28,7 @@ export default function TodayLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: theme.background },
         headerTintColor: theme.text,
-        headerTitleStyle: { color: theme.text, fontFamily: BrandFont.semibold },
+        headerTitleStyle: { color: theme.text, fontFamily: BodyFont.semibold },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.background },
         // Swipe from the left edge to go back to the summary, the same place
