@@ -6,6 +6,7 @@ import { ActivityView } from '@/components/activity-view';
 import { BodyScreen } from '@/components/body-screen';
 import { FoodTodayView } from '@/components/food-today-view';
 import { LogTabs, type LogView } from '@/components/log-tabs';
+import { ThemedText } from '@/components/themed-text';
 import { MeasurementsView } from '@/components/measurements-view';
 import { Spacing } from '@/constants/theme';
 import { parseWeekStartParam } from '@/lib/week';
@@ -36,6 +37,9 @@ export default function LogScreen() {
 
   return (
     <BodyScreen>
+      {/* The screen names itself, as Today, the Almanac and Settings do. The
+          switch beneath says which view; this says which place. */}
+      <ThemedText type="display">Log</ThemedText>
       <View style={styles.tabs}>
         <LogTabs value={view} onChange={setView} />
       </View>
@@ -48,6 +52,7 @@ export default function LogScreen() {
 
 const styles = StyleSheet.create({
   tabs: {
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.two,
   },
 });

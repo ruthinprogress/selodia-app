@@ -31,7 +31,7 @@ export default function ConsentScreen() {
             pinning it would take vertical space away from three long checkbox
             labels on precisely the small screens that were the problem. */}
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle">Welcome to Selodía</ThemedText>
+          <ThemedText type="sectionTitle">Welcome to Selodía</ThemedText>
 
           <ThemedText>
             Selodía asks about things like your food, weight, body measurements and activity so it

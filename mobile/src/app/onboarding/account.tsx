@@ -218,7 +218,7 @@ export default function AccountScreen() {
           automaticallyAdjustKeyboardInsets
           keyboardDismissMode="on-drag"
         >
-          <ThemedText type="subtitle">
+          <ThemedText type="sectionTitle">
             {mode === 'signup' ? 'Create your account' : 'Sign in'}
           </ThemedText>
 

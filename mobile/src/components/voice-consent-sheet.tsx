@@ -51,7 +51,7 @@ export function VoiceConsentSheet({
       />
       <View style={styles.bottom} pointerEvents="box-none">
         <ThemedView style={styles.sheet}>
-          <ThemedText type="subtitle">Voice logging</ThemedText>
+          <ThemedText type="sectionTitle">Voice logging</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
             Your voice is processed by ElevenLabs so you can log hands-free. The audio isn&apos;t
             kept. What you say is saved to your chat thread like any other message.

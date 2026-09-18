@@ -106,7 +106,7 @@ export default function AlmanacScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
           <SpotlightScroll scrollRef={scrollRef}>
-            <ThemedText type="title">Almanac</ThemedText>
+            <ThemedText type="display">Almanac</ThemedText>
 
             <SpotlightTarget id="almanac.tabs">
               <AlmanacTabs value={tab} onChange={setTab} />

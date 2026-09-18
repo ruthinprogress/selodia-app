@@ -66,7 +66,7 @@ export default function SettingsScreen() {
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
         <SpotlightScroll scrollRef={scrollRef}>
           <ThemedView style={styles.header}>
-            <ThemedText type="title">Settings</ThemedText>
+            <ThemedText type="display">Settings</ThemedText>
             <Pressable
               onPress={() => router.back()}
               accessibilityRole="button"
