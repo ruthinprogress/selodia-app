@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Tag } from '@/components/tag';
@@ -7,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { supabase } from '@/lib/supabase';
 import { formatLogDate } from '@/lib/week';
 
 // The detail card for one logged session (2026-09-16).
@@ -17,10 +19,16 @@ import { formatLogDate } from '@/lib/week';
 // the food log had both and activity had neither, which is exactly the
 // inconsistency she was pointing at.
 //
-// IT TAKES THE ROW IT WAS GIVEN and reads nothing back. A session is small
-// enough to be entirely on screen already, unlike a food log whose items live in
-// their own table; a second read here would be a query for data the caller is
-// holding.
+// IT TAKES THE ROW IT WAS GIVEN, and reads back one thing: the movements
+// (2026-09-18). Ruth recorded a session with an adapted movement, an added one
+// and a note, opened it in the log, and the card said "When: Today" and nothing
+// else - "workout details not saved into log". Everything WAS saved; this card
+// simply drew none of it. A session's movements live in their own table, linked
+// by activity_log_id, which is exactly the case the paragraph that used to sit
+// here said did not exist.
+//
+// The note is shown too. It is the part somebody wrote in their own words, and
+// it was the only thing on the review sheet that asked for effort.
 //
 // NO INTERPRETATION NOTE. Item 29 writes notes against body measurements only,
 // so there is nothing stored to show for a session, and computing one live is
@@ -34,6 +42,8 @@ export type ActivityDetail = {
   distance_km?: number | null;
   intensity: string | null;
   happened_at: string;
+  /** What they said about the session, when they said anything. */
+  notes?: string | null;
 };
 
 export function ActivityDetailCard({
@@ -48,6 +58,31 @@ export function ActivityDetailCard({
   onDeleted?: () => void;
 }) {
   const theme = useTheme();
+  const [movements, setMovements] = useState<string[]>([]);
+  const activityId = activity?.id ?? null;
+
+  // The movements recorded against this session. Ordinary activity rows have
+  // none and simply show nothing, which is correct rather than empty.
+  useEffect(() => {
+    if (!activityId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from('workout_completion_log')
+        .select('exercise_name, created_at')
+        .eq('activity_log_id', activityId)
+        .order('created_at', { ascending: true });
+      if (!cancelled) {
+        setMovements(
+          ((data ?? []) as { exercise_name: string }[]).map((r) => r.exercise_name).filter(Boolean)
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activityId]);
+
   if (!activity) return null;
 
   const title = activity.activity_type ?? 'Activity';
@@ -91,6 +126,30 @@ export function ActivityDetailCard({
                 <ThemedText type="small">{value}</ThemedText>
               </ThemedView>
             ))}
+
+            {/* WHAT WAS ACTUALLY MOVED THROUGH. Listed, not counted: "6
+                movements" is a number, and the names are the record. */}
+            {movements.length > 0 && (
+              <View style={styles.block}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Movements recorded
+                </ThemedText>
+                {movements.map((m, i) => (
+                  <ThemedText key={`${m}-${i}`} type="small">
+                    {m}
+                  </ThemedText>
+                ))}
+              </View>
+            )}
+
+            {activity.notes?.trim() ? (
+              <View style={styles.block}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  What you said
+                </ThemedText>
+                <ThemedText type="small">{activity.notes.trim()}</ThemedText>
+              </View>
+            ) : null}
 
             {/* The same words and the same behaviour as the food card, because
                 it is the same action: the session's id and type ride to Chat,
@@ -178,6 +237,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.one,
   },
+  block: { gap: Spacing.half, paddingTop: Spacing.two },
   ask: { alignSelf: 'flex-start', paddingVertical: Spacing.one },
   actions: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, alignItems: 'flex-end' },
   close: { paddingVertical: Spacing.one },

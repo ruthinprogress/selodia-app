@@ -1,4 +1,13 @@
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -76,7 +85,17 @@ export function WorkoutReviewSheet({
         onPress={onClose}
         accessibilityLabel="Close"
       />
-      <View style={styles.centre} pointerEvents="box-none">
+      {/* THE KEYBOARD MUST NOT SIT ON THE ANSWER (Ruth, 2026-09-18: "typing is
+          hidden by keyboard"). A Modal is its own window, so Android's
+          adjustResize never reaches inside it and the sheet stayed exactly where
+          it was while the keyboard covered the field being typed into. This
+          lifts the sheet instead, and the card's own maxHeight lets it shrink
+          rather than push its Save button off the top. */}
+      <KeyboardAvoidingView
+        style={styles.centre}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        pointerEvents="box-none"
+      >
         <ThemedView style={styles.card}>
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <ThemedText type="sectionTitle">Today&apos;s movement</ThemedText>
@@ -173,9 +192,12 @@ export function WorkoutReviewSheet({
                 </ThemedText>
               </Pressable>
             </View>
+
+            {/* Room to scroll the last field clear of the keyboard. */}
+            <View style={styles.bodyTail} />
           </ScrollView>
         </ThemedView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -251,6 +273,9 @@ const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   centre: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.four },
   card: { borderRadius: CardRadius, maxHeight: '86%' },
+  // The field being typed into is kept in view by the scroller above; this is
+  // what gives it somewhere to scroll TO once the keyboard is up.
+  bodyTail: { height: Spacing.six },
   body: { padding: Spacing.four, gap: Spacing.three },
   lines: { gap: Spacing.two, paddingTop: Spacing.one },
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },

@@ -45,6 +45,7 @@ type ActivityRow = {
   source: string | null;
   intensity: string | null;
   happened_at: string;
+  notes: string | null;
 };
 
 // BMR_EXPLAINER moved to components/what-you-burn.tsx on 2026-09-16, with the
@@ -74,7 +75,7 @@ export function ActivityView() {
       // Overview already makes the same resolveTDEE call for its calorie target.
       const { data: activity } = await supabase
         .from('activity_logs')
-        .select('id, activity_type, duration_min, kcal_burned, intensity, happened_at, source')
+        .select('id, activity_type, duration_min, kcal_burned, intensity, happened_at, source, notes')
         .gte('happened_at', since)
         .order('happened_at', { ascending: false });
       if (cancelled) return;

@@ -684,12 +684,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   header: {
-    gap: Spacing.two,
     // 10px higher than the page inset puts it (Ruth, 2026-09-18: "move the
     // entire heading block 8-12px higher ... so the page feels more balanced").
     // A negative margin rather than a smaller inset, so every other screen keeps
     // the same top margin as this one.
     marginTop: -10,
+    // The display face now carries 10 points of padding for its descenders (see
+    // themed-text.tsx), so the gap under the greeting is taken back here to keep
+    // this block exactly where she approved it.
+    gap: Spacing.one,
   },
   focusLine: {
     // No rule, no card. See the header block above.

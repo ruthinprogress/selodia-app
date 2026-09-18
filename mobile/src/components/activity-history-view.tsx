@@ -46,6 +46,7 @@ type ActivityRow = {
   intensity: string | null;
   source: string | null;
   happened_at: string;
+  notes: string | null;
 };
 
 export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: Date }) {
@@ -93,7 +94,7 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
       // RLS scopes the read to the signed-in user.
       const { data } = await supabase
         .from('activity_logs')
-        .select('id, activity_type, duration_min, kcal_burned, intensity, source, happened_at')
+        .select('id, activity_type, duration_min, kcal_burned, intensity, source, happened_at, notes')
         .gte('happened_at', startISO)
         .lt('happened_at', endISO)
         .order('happened_at', { ascending: true });

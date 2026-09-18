@@ -78,6 +78,15 @@ const styles = StyleSheet.create({
     lineHeight: DisplayType.leading,
     letterSpacing: DisplayType.tracking,
     fontFamily: DisplayFont.regular,
+    // ROOM FOR THE DESCENDER (Ruth, 2026-09-18: the Log screen drew its own name
+    // as "Loq"). The leading is deliberately tighter than the size - 47 on 50,
+    // which is what makes the two-line greeting read as one block - and Android
+    // clips a glyph at the bottom of the text view rather than letting it hang.
+    // The tail of a g needs about eight points below the last baseline box, so
+    // it is given ten here. This does NOT loosen the leading: the lines stay
+    // exactly as close as she chose, and only the space beneath the last one
+    // changes.
+    paddingBottom: 10,
   },
   sectionTitle: {
     fontSize: 30,
