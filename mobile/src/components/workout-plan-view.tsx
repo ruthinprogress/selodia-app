@@ -9,6 +9,7 @@ import { ButtonRadius, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlanExerciseView, PlanView } from '@/lib/almanac-content';
 import { authedPost } from '@/lib/api';
+import { splitAdditional } from '@/lib/additional-movement';
 import { estimateMinutes } from '@/lib/movement-library';
 import { exerciseMetaLine, groupPlanExercises, shouldGroup } from '@/lib/workout-plan';
 
@@ -35,22 +36,33 @@ import { exerciseMetaLine, groupPlanExercises, shouldGroup } from '@/lib/workout
 // WHAT SURVIVES REGARDLESS is the working weight: a fact about the movement,
 // saved when she sets it. Tomorrow the routine opens unmarked, weights kept.
 //
-// NO PERCENTAGES, no streaks, no congratulation. "5 of 7" counts what happened;
-// "71%" is the same fact turned into a mark, and this screen will not carry one.
+// NO PERCENTAGES, NO COMPARISON WITH THE ROUTINE (Ruth, 2026-09-18, refining
+// this screen): "the movement plan is not a checklist to complete and users
+// should never feel they're being scored or judged against it. These are
+// suggested movement practices based on what has worked previously."
+//
+// So the count says how much movement was recorded, never how much of the plan
+// was got through: "4 movements recorded", with "2 completed - 2 adapted"
+// underneath. Never "4 of 6", never "67%". The first is a record of a day; the
+// second two are marks out of ten against a guide that was never a target.
+//
+// AND THE WORDS CARRY THAT TOO. "Done" is the language of a task list. Completed
+// is what a person does with a movement, Adapted is what they do when their
+// shoulder says otherwise, and neither is better than the other.
 
-type MovementState = 'todo' | 'done' | 'changed' | 'skipped';
+type MovementState = 'todo' | 'completed' | 'adapted' | 'skipped';
 
 const NEXT_STATE: Record<MovementState, MovementState> = {
-  todo: 'done',
-  done: 'changed',
-  changed: 'skipped',
+  todo: 'completed',
+  completed: 'adapted',
+  adapted: 'skipped',
   skipped: 'todo',
 };
 
 const STATE_LABEL: Record<MovementState, string> = {
   todo: '',
-  done: 'Done',
-  changed: 'Changed',
+  completed: 'Completed',
+  adapted: 'Adapted',
   skipped: 'Skipped',
 };
 
@@ -87,12 +99,17 @@ export function WorkoutPlanView({
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
 
   const stateOf = (name: string): MovementState => states[name] ?? 'todo';
-  // Changed still counts as done: she did the movement, differently. What the
-  // change WAS belongs in her note rather than in a category.
-  const doneMovements = plan.exercises.filter((x) => ['done', 'changed'].includes(stateOf(x.name)));
-  const changed = plan.exercises.filter((x) => stateOf(x.name) === 'changed');
+  // Adapted still counts as movement recorded: she did it, differently. What the
+  // adaptation WAS belongs in her note rather than in a category.
+  const doneMovements = plan.exercises.filter((x) =>
+    ['completed', 'adapted'].includes(stateOf(x.name))
+  );
+  const adapted = plan.exercises.filter((x) => stateOf(x.name) === 'adapted');
   const skipped = plan.exercises.filter((x) => stateOf(x.name) === 'skipped');
-  const touched = doneMovements.length > 0 || skipped.length > 0;
+  // Additional movement alone is enough to record a day: somebody who opened
+  // the routine, did none of it and went climbing for twenty minutes has moved,
+  // and the footer must not refuse to write that down.
+  const touched = doneMovements.length > 0 || skipped.length > 0 || extras.trim().length > 0;
 
   function cycle(x: PlanExerciseView) {
     setStates((s) => ({ ...s, [x.name]: NEXT_STATE[stateOf(x.name)] }));
@@ -103,13 +120,15 @@ export function WorkoutPlanView({
   // The states become a sentence the log can carry: workout_completion_log
   // records what was done and has nowhere to put a skip. Her own words come
   // first; this is appended so the record is complete without her repeating it.
+  // Additional movement becomes movement in its own right (see
+  // lib/additional-movement.ts), so it is NOT repeated into the note - it is
+  // already in the record as rows of its own.
+  const additional = splitAdditional(extras);
+
   function composedNote(): string {
     const parts: string[] = [];
     if (note.trim()) parts.push(note.trim());
-    // Named rather than merged, so a reader months later can tell the difference
-    // between "the squats were lighter" and "I also did box jumps".
-    if (extras.trim()) parts.push(`Also did: ${extras.trim()}`);
-    if (changed.length) parts.push(`Changed: ${changed.map((x) => x.name).join(', ')}.`);
+    if (adapted.length) parts.push(`Adapted: ${adapted.map((x) => x.name).join(', ')}.`);
     if (skipped.length) parts.push(`Skipped: ${skipped.map((x) => x.name).join(', ')}.`);
     return parts.join(' ');
   }
@@ -134,9 +153,24 @@ export function WorkoutPlanView({
           note: composed || null,
         });
       }
+      // THE SAME CALL FOR ANYTHING ELSE SHE MOVED THROUGH. No eccentric load and
+      // no intensity: the plan classified its own movements at authoring time
+      // and nothing has classified these, so they go in honestly unrated rather
+      // than guessed at from their names.
+      for (const name of additional) {
+        await authedPost('/api/log-workout-completion', {
+          planId,
+          planTitle,
+          exerciseName: name,
+          eccentricLoad: null,
+          intensity: null,
+          note: composed || null,
+        });
+      }
       setReviewing(false);
+      const total = doneMovements.length + additional.length;
       setSaved(
-        `Saved to today's Activity: ${doneMovements.length} of ${plan.exercises.length}. Working weights kept for next time.`
+        `Recorded: ${total} movement${total === 1 ? '' : 's'}. Working weights kept for next time.`
       );
     } catch {
       setFailed(true);
@@ -145,12 +179,24 @@ export function WorkoutPlanView({
     }
   }
 
+  // WHAT WAS RECORDED, never what was got through. The plan's own length does
+  // not appear: naming it invites the subtraction this screen exists to avoid.
+  const recordedCount = doneMovements.length + additional.length;
+  const recordedLine = `${recordedCount} movement${recordedCount === 1 ? '' : 's'} recorded`;
+  const breakdown = [
+    doneMovements.length - adapted.length > 0
+      ? `${doneMovements.length - adapted.length} completed`
+      : null,
+    adapted.length > 0 ? `${adapted.length} adapted` : null,
+    additional.length > 0 ? `${additional.length} added` : null,
+    skipped.length > 0 ? `${skipped.length} skipped` : null,
+  ]
+    .filter(Boolean)
+    .join('  •  ');
+
   const reviewLines: ReviewLine[] = [
     { label: 'Routine', value: planTitle },
-    {
-      label: 'Movements',
-      value: `${doneMovements.length} of ${plan.exercises.length}${changed.length ? `, ${changed.length} changed` : ''}${skipped.length ? `, ${skipped.length} skipped` : ''}`,
-    },
+    { label: 'Movements', value: recordedLine, detail: breakdown || undefined },
     { label: 'Working weights', value: weights.size > 0 ? 'Kept as they are' : 'None recorded yet' },
   ];
 
@@ -197,11 +243,22 @@ export function WorkoutPlanView({
         ) : (
           <>
             <ThemedText type="small">Record today&apos;s movement</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {touched
-                ? `${doneMovements.length} done${changed.length ? `, ${changed.length} changed` : ''}${skipped.length ? `, ${skipped.length} skipped` : ''}`
-                : 'Mark what you did as you go. Tapping a circle moves it between done, changed and skipped.'}
-            </ThemedText>
+            {touched ? (
+              <>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {recordedLine}
+                </ThemedText>
+                {breakdown.length > 0 && (
+                  <ThemedText type="detail" themeColor="textSecondary">
+                    {breakdown}
+                  </ThemedText>
+                )}
+              </>
+            ) : (
+              <ThemedText type="detail" themeColor="textSecondary">
+                Tapping a circle moves it between completed, adapted and skipped.
+              </ThemedText>
+            )}
             <View style={styles.footerActions}>
               <Pressable
                 onPress={() => setReviewing(true)}
@@ -279,7 +336,7 @@ function ExerciseRow({
   const theme = useTheme();
   // The weight has its own place on the card, so it is left out of the meta.
   const meta = exerciseMetaLine(exercise, null, showGroup);
-  const done = state === 'done' || state === 'changed';
+  const done = state === 'completed' || state === 'adapted';
 
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
@@ -292,7 +349,7 @@ function ExerciseRow({
         onPress={onCycle}
         accessibilityRole="button"
         accessibilityLabel={`${exercise.name}${state === 'todo' ? '' : `, ${STATE_LABEL[state].toLowerCase()}`}`}
-        accessibilityHint="Moves between done, changed and skipped"
+        accessibilityHint="Moves between completed, adapted and skipped"
         hitSlop={Spacing.two}
         style={({ pressed }) => pressed && styles.pressed}
       >
@@ -304,9 +361,9 @@ function ExerciseRow({
             state === 'skipped' && { borderColor: theme.textSecondary },
           ]}
         >
-          {state === 'done' && <Ionicons name="checkmark" size={15} color={theme.background} />}
-          {state === 'changed' && <Ionicons name="repeat" size={14} color={theme.background} />}
-          {state === 'skipped' && <Ionicons name="remove" size={15} color={theme.textSecondary} />}
+          {state === 'completed' && <Ionicons name="checkmark" size={14} color={theme.background} />}
+          {state === 'adapted' && <Ionicons name="repeat" size={13} color={theme.background} />}
+          {state === 'skipped' && <Ionicons name="remove" size={14} color={theme.textSecondary} />}
         </ThemedView>
       </Pressable>
 
@@ -315,7 +372,7 @@ function ExerciseRow({
           {exercise.name}
         </ThemedText>
         {(meta || workingWeightKg != null || state !== 'todo') && (
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="detail" themeColor="textSecondary">
             {[
               meta,
               workingWeightKg != null ? `Last: ${workingWeightKg} kg` : null,
@@ -342,34 +399,42 @@ function ExerciseRow({
   );
 }
 
+// A MAGAZINE PAGE, NOT AN ACCESSIBILITY MODE (Ruth, 2026-09-18: "the current
+// layout feels oversized... Selodia should feel calm, elegant and editorial
+// rather than oversized"). Every measure below came down by roughly a quarter -
+// card padding 16 to 12, the gap between cards 8 to 6, the space under a heading
+// and above the footer 24 to 16 - and the secondary line dropped from 14 to 12.
+// Nothing lost its air; the air stopped being the subject.
 const styles = StyleSheet.create({
-  wrap: { gap: Spacing.three },
-  group: { gap: Spacing.two, paddingTop: Spacing.three },
-  heading: { paddingBottom: Spacing.one },
+  wrap: { gap: Spacing.two },
+  group: { gap: 6, paddingTop: Spacing.three },
+  // Tight to the first card beneath it: a heading belongs to what follows it,
+  // and eight points of daylight made it read as its own paragraph.
+  heading: { paddingBottom: 2 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     borderRadius: CardRadius,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
-  rowBody: { flex: 1, gap: Spacing.half },
+  rowBody: { flex: 1, gap: 1 },
   // Skipped is quieter, never struck through: a line through a movement reads
   // as a failure crossed off rather than a choice made.
   skippedName: { opacity: 0.6 },
   mark: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   footer: {
     borderRadius: CardRadius,
-    padding: Spacing.four,
-    gap: Spacing.two,
-    marginTop: Spacing.four,
+    padding: Spacing.three,
+    gap: Spacing.one,
+    marginTop: Spacing.three,
   },
   footerActions: {
     flexDirection: 'row',
@@ -379,7 +444,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     borderRadius: ButtonRadius,
-    paddingVertical: Spacing.two,
+    paddingVertical: 10,
     paddingHorizontal: Spacing.four,
   },
   quiet: { paddingVertical: Spacing.two },

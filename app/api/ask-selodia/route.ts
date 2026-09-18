@@ -587,7 +587,7 @@ CLARIFYING A COMPOSITE: two kinds of composite dish are worth a light, single cl
 
 SAVING TO THE ALMANAC: the Almanac keeps what the person agrees is worth keeping. There are two ways in, and they work differently.\n(1) INSIGHTS, SYMPTOMS AND NOTES go through an OFFER that the app stores. When one of these moments comes up, answer what they actually said first, then set proposedSave with its type, a short title and its content. Do not ask the question yourself: the app adds the offer to the end of your reply in its own words, so asking it too would ask twice. Never save it yourself and never say it is saved: the app keeps it only if they say yes, and tells them so itself. A SYMPTOM is a physical observation in their own words - pain, soreness, stiffness, fatigue, bloating, hay fever, poor sleep - worth offering when it is specific and physical, not every passing "I'm tired". Answer it first by the symptom rule below, then offer, with their words in content as {"summary": ...}. An INSIGHT is a genuine pattern that connects two different kinds of data across time in a way that changes how a future reading should be read (e.g. weight and waist tending higher in the days before a period); its rule goes in content as {"condition": ..., "expectation": ...}. A plain result (a number the data already shows, like a 5-day trend) or a one-off observation that connects to nothing is not an insight and is never offered. A NOTE is anything they explicitly ask you to note or log as a note ("log a note: I feel really good today"). There is no offer for a note, because asking is the yes: set noteText to their words exactly as they said them, never rewritten or embellished, and do not say it is saved. Offer one thing at a time, never the same thing twice, and never turn a passing remark into an offer. Whatever is kept is observed, not graded: a title or summary describes what they said and never praises, warns or scores it.\n(2) PLANS you have genuinely worked out together (a routine, a movement plan, a meal or drink plan) are still saved the older way. **Confirm first, always:** ASK whether to keep it ("Want me to save this to your Almanac?"), and set almanacKind/almanacTitle/almanacContent ONLY after they agree - never without a yes. Use an open, natural word for almanacKind (e.g. "routine", "movement plan"), a short almanacTitle, and almanacCategory only when a natural grouping exists. Never use almanacKind for an insight, a symptom or a note.\nFOR A WORKOUT OR MOVEMENT PLAN specifically, almanacContent takes this shape: {"programType": string, "goal": string, "exercises": [{"name": string, "group": string, "sets": number, "reps": string, "safetyNote": string, "eccentricLoad": "none"|"low"|"moderate"|"high", "intensity": "light"|"moderate"|"intense"}]}. Notes on each: **programType** describes the kind of program in your own words (e.g. "general strength", "rehab", "skill practice") - it decides how the plan is grouped, so be accurate rather than inventive. **group** is the grouping key and its meaning follows programType: a body area for general strength, the skill being learned for skill practice, and it can be omitted for rehab, which shows as a flat list. **reps** is a STRING so you can write what is actually true - "8-10", "30s", "AMRAP", "12 per side" - never round it to a bare number if that loses meaning. **sets and reps are decided per person and per goal from what you have discussed** - a rep range for building muscle is not the range for rehab or endurance - never a fixed default per exercise. **safetyNote is required for every exercise and must name the real common failure modes of that specific movement** - what actually goes wrong and what it feels like when it does - never generic boilerplate like "use good form" or "warm up first". **eccentricLoad** is how much eccentric (lengthening-under-load) work the movement involves, which is what drives delayed-onset soreness; **intensity** is its typical effort level. Set both from the movement itself. Do NOT put working weights or completed sessions in the plan - those are logged separately, and writing them here would overwrite the history that progressive overload depends on.
 
-RECORDING A SAVED ROUTINE THEY SAY THEY DID. When somebody says they have done one of their own saved plans - "I did the gym workout today", "finished the barbell routine" - set workoutPlan to that plan's title and leave logIntent 'none'. The app writes the session from the plan's own movements, which is a far better record than an activity entry: the plan's history moves on and the movements themselves reach the week's picture. Anything EXTRA they did in the same session goes in workoutNote in their own words and their own numbers - "added box jumps 3x10", "ballet hip pulses 2x40 each side" - never as a separate activity, because it happened inside the same hour and logging it twice would count that hour twice. Movements they say they skipped go in workoutSkipped, by their exact names from the plan. Do not claim in your reply that it is saved or say how much of it landed: the app records it and tells them itself, and it will decline quietly if the routine is already down for today.
+RECORDING A SAVED ROUTINE THEY SAY THEY DID. When somebody says they have done one of their own saved plans - "I did the gym workout today", "finished the barbell routine" - set workoutPlan to that plan's title and leave logIntent 'none'. The app writes the session from the plan's own movements, which is a far better record than an activity entry: the plan's history moves on and the movements themselves reach the week's picture. There are three kinds of thing to record and they go to three different places: movements from the plan they did (nothing to set - unmentioned means done), movements they skipped (workoutSkipped), and MOVEMENT THEY ADDED that the plan does not contain (workoutAdditional, one entry each, their words and their numbers - "box jumps 3x10", "ballet hip pulses 2x40 each side", "20 minutes of climbing"). Added movement is recorded as movement in the same session, never as a separate activity, because it happened inside the same hour and logging it twice would count that hour twice. workoutNote is for what they said about the session that is not itself a movement - how it felt, a sore shoulder. Movements they say they skipped go in workoutSkipped, by their exact names from the plan. Do not claim in your reply that it is saved or say how much of it landed: the app records it and tells them itself, and it will decline quietly if the routine is already down for today.
 
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
@@ -757,10 +757,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Only alongside workoutPlan: the exact names of movements from that plan they say they did NOT do. Omit when they did the whole thing. Never guess - an unmentioned movement was done.",
     },
+    workoutAdditional: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        "Only alongside workoutPlan: movement they did that the routine does NOT contain, one entry each, in their own words and with their own numbers - [\"box jumps 3x10\", \"ballet hip pulses 2x40 each side\", \"20 minutes of climbing\"]. These are recorded as movement in the same session, not as a separate activity, because they happened inside the same hour. Do not tidy them into a prescription and do not include anything already in the plan.",
+    },
     workoutNote: {
       type: 'string',
       description:
-        "Only alongside workoutPlan: what they said about the session in their own words - what was different, and anything EXTRA they did that the plan does not contain (\"added box jumps 3x10\", \"ballet hip pulses 2x40 each side\"). Keep their phrasing and their numbers; do not tidy them into a prescription. The extras belong here rather than as a separate activity, because they happened inside the same session.",
+        "Only alongside workoutPlan: what they said ABOUT the session that is not itself a movement - how it felt, what was lighter, a sore shoulder. Movement they added goes in workoutAdditional instead, never here.",
     },
     reminderAction: {
       type: 'string',
@@ -1029,6 +1035,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     noteText?: string;
     workoutPlan?: string;
     workoutSkipped?: string[];
+    workoutAdditional?: string[];
     workoutNote?: string;
     almanacKind?: string;
     almanacTitle?: string;
@@ -1443,8 +1450,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           const skipped = Array.isArray(result.workoutSkipped)
             ? result.workoutSkipped.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
             : [];
+          const additional = Array.isArray(result.workoutAdditional)
+            ? result.workoutAdditional.filter(
+                (x): x is string => typeof x === 'string' && x.trim().length > 2
+              )
+            : [];
           const logged = await recordPlanSession(supabase, user.id, plan, {
             skipped,
+            additional,
             note: typeof result.workoutNote === 'string' && result.workoutNote.trim()
               ? result.workoutNote.trim()
               : null,

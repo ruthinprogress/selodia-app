@@ -20,11 +20,17 @@ import { logCompletion } from './workout-logs';
 // because it is the same path the Movement screen's Save uses.
 //
 // THE EXTRAS ARE PART OF THE SESSION, NOT A SECOND SESSION. Box jumps and hip
-// pulses belong to the hour she trained; writing them as their own activity row
+// pulses belong to the hour she trained; writing them as their own ACTIVITY row
 // would double-count the same hour and put an invented duration on movements she
-// never timed. They ride in the session note, exactly as the review sheet writes
-// them - "Also did: ..." - so the two ways of recording a session produce the
-// same record.
+// never timed.
+//
+// But they are movement, and they are recorded as movement - one completion row
+// each, named in her words, inside the same session. Ruth's framing: "there are
+// three kinds of information - planned movement completed, planned movement
+// adapted, and additional movement not originally in the routine... these should
+// become part of today's movement record rather than simply disappearing into
+// notes." The review sheet does exactly the same thing with the same table, so
+// speaking it and tapping it produce one record, not two shapes of one.
 
 export type ResolvedPlan = {
   id: string;
@@ -147,7 +153,7 @@ export async function recordPlanSession(
   supabase: SupabaseClient,
   userId: string,
   plan: ResolvedPlan,
-  opts: { skipped?: string[]; note?: string | null; today: string }
+  opts: { skipped?: string[]; additional?: string[]; note?: string | null; today: string }
 ): Promise<number | null> {
   if (await loggedToday(supabase, userId, plan.id, opts.today)) {
     console.log('WORKOUT SESSION: already recorded today, leaving it alone -', plan.title);
@@ -169,12 +175,37 @@ export async function recordPlanSession(
     });
     if (ok) logged++;
   }
+
+  // Unrated on purpose: the plan's movements were classified when it was
+  // written, and nothing has classified these. Guessing an eccentric load from
+  // the words "box jumps" would put an invention into the signal that decides
+  // whether somebody is warned about soreness.
+  for (const name of (opts.additional ?? []).slice(0, 8)) {
+    const clean = name.trim();
+    if (clean.length < 3) continue;
+    const ok = await logCompletion(supabase, userId, {
+      planId: plan.id,
+      planTitle: plan.title,
+      exerciseName: clean,
+      eccentricLoad: null,
+      intensity: null,
+      note: opts.note ?? null,
+    });
+    if (ok) logged++;
+  }
   return logged;
 }
 
-/** What the reply may truthfully say, given what actually happened. */
+/**
+ * What the reply may truthfully say, given what actually happened.
+ *
+ * HOW MUCH MOVEMENT, NEVER HOW MUCH OF THE PLAN. The plan's own length is left
+ * out deliberately (Ruth, 2026-09-18): "please don't use wording like '4 of 6
+ * completed' or '67% complete' or anything that compares the user against the
+ * original routine. The routine is simply a guide."
+ */
 export function sessionSummary(plan: ResolvedPlan, logged: number, skipped: string[]): string {
-  const movements = `${logged} of ${plan.exercises.length} movement${plan.exercises.length === 1 ? '' : 's'}`;
+  const movements = `${logged} movement${logged === 1 ? '' : 's'} recorded`;
   const tail = skipped.length > 0 ? `, ${skipped.length} skipped` : '';
   return `${plan.title}: ${movements}${tail}`;
 }

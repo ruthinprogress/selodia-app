@@ -10,6 +10,7 @@ export type ThemedTextProps = TextProps & {
     | 'title'
     | 'small'
     | 'smallBold'
+    | 'detail'
     | 'subtitle'
     | 'sectionTitle'
     | 'link'
@@ -30,6 +31,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'title' && styles.title,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
+        type === 'detail' && styles.detail,
         type === 'subtitle' && styles.subtitle,
         type === 'sectionTitle' && styles.sectionTitle,
         type === 'link' && styles.link,
@@ -94,6 +96,16 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 32,
     fontFamily: BodyFont.semibold,
+  },
+  // SECONDARY DATA, a step quieter than body text (Ruth, 2026-09-18: the
+  // Movement flow "almost feels like an accessibility mode designed for users
+  // with significant visual impairment"). Sets, reps, a last weight, a state:
+  // facts you read after the name, not with it. 12/17 rather than 14/22, which
+  // is the difference between a caption and a second sentence.
+  detail: {
+    fontFamily: BodyFont.regular,
+    fontSize: 12,
+    lineHeight: 17,
   },
   link: {
     lineHeight: 30,

@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { VoiceNoteButton } from '@/components/voice-note-button';
-import { ButtonRadius, CardRadius, PageInset, Spacing } from '@/constants/theme';
+import { ButtonRadius, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // "What happened today?" - the review before a session is written (Ruth's
@@ -33,7 +33,12 @@ import { useTheme } from '@/hooks/use-theme';
 // or simply preferring to type. The microphone stays where it was; the field it
 // fills is now a field.
 
-export type ReviewLine = { label: string; value: string };
+export type ReviewLine = {
+  label: string;
+  value: string;
+  /** A quieter second line under the value, for the make-up of a count. */
+  detail?: string;
+};
 
 export function WorkoutReviewSheet({
   title,
@@ -74,8 +79,8 @@ export function WorkoutReviewSheet({
       <View style={styles.centre} pointerEvents="box-none">
         <ThemedView style={styles.card}>
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            <ThemedText type="sectionTitle">What happened today?</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="sectionTitle">Today&apos;s movement</ThemedText>
+            <ThemedText type="detail" themeColor="textSecondary">
               {title}
             </ThemedText>
 
@@ -85,28 +90,51 @@ export function WorkoutReviewSheet({
                   <ThemedText type="small" themeColor="textSecondary" style={styles.lineLabel}>
                     {l.label}
                   </ThemedText>
-                  <ThemedText type="small" style={styles.lineValue}>
-                    {l.value}
-                  </ThemedText>
+                  <View style={styles.lineValue}>
+                    <ThemedText type="small">{l.value}</ThemedText>
+                    {l.detail && (
+                      <ThemedText type="detail" themeColor="textSecondary">
+                        {l.detail}
+                      </ThemedText>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>
 
             {/* THE NOTE IS THE POINT OF THIS SHEET, spoken or typed, because
                 months from now these are what let the Almanac notice that the
-                knee has come up three times, which no checkbox can ever say. */}
+                knee has come up three times, which no checkbox can ever say.
+
+                ASKED AS AN INVITATION, NOT A FIELD (Ruth, 2026-09-18): "the
+                voice section shouldn't feel like another form to fill in". So it
+                asks what is worth remembering rather than what was different,
+                says out loud that it is optional, and shows the kind of thing
+                people actually say - which is how somebody learns that a sore
+                shoulder belongs here as much as a changed weight does. */}
             <NoteField
-              label="Anything different?"
-              placeholder="Lighter on the squats, knee was sore"
+              label="Anything you'd like to remember?"
+              hint="Voice or typing is optional."
+              examples={[
+                'Reduced the weight.',
+                'Shoulder felt sore today.',
+                'Finished with stretching.',
+              ]}
               value={note}
               onChange={onNote}
               onNotice={onNotice}
               disabled={saving}
             />
 
+            {/* ADDITIONAL MOVEMENT IS ITS OWN KIND OF FACT, not a note about the
+                routine: "planned movement completed, planned movement adapted,
+                and additional movement not originally in the routine". Climbing
+                for twenty minutes is movement that happened, and it is recorded
+                as movement rather than filed as a remark about squats. */}
             <NoteField
-              label="Anything else you did?"
-              placeholder="Box jumps 3×10, walked home"
+              label="Anything else you moved through?"
+              hint="Not in the routine, but part of today."
+              examples={['Added 3×10 box jumps.', '20 minutes of climbing.', 'Ballet hip pulses.']}
               value={extras}
               onChange={onExtras}
               onNotice={onNotice}
@@ -157,14 +185,17 @@ export function WorkoutReviewSheet({
 // first - and typing after speaking works on what was heard.
 function NoteField({
   label,
-  placeholder,
+  hint,
+  examples,
   value,
   onChange,
   onNotice,
   disabled,
 }: {
   label: string;
-  placeholder: string;
+  hint: string;
+  /** The kind of thing people say, shown only while nothing has been said. */
+  examples: string[];
   value: string;
   onChange: (text: string) => void;
   onNotice: (message: string) => void;
@@ -173,14 +204,17 @@ function NoteField({
   const theme = useTheme();
   return (
     <View style={styles.field}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
+      <ThemedText type="small">{label}</ThemedText>
+      <ThemedText type="detail" themeColor="textSecondary">
+        {hint}
       </ThemedText>
       <ThemedView type="backgroundElement" style={styles.fieldCard}>
         <TextInput
           value={value}
           onChangeText={onChange}
-          placeholder={placeholder}
+          // The examples below carry the hint, so the field itself stays empty:
+          // a placeholder AND three examples is the same advice twice.
+          placeholder=""
           placeholderTextColor={theme.textSecondary}
           editable={!disabled}
           multiline
@@ -190,12 +224,23 @@ function NoteField({
           style={[styles.input, { color: theme.text }]}
           accessibilityLabel={label}
         />
-        <View style={styles.mic}>
+        <View style={styles.micRow}>
           <VoiceNoteButton
             onText={(text) => onChange(value.trim() ? `${value.trim()} ${text}` : text)}
             onNotice={onNotice}
             disabled={disabled}
           />
+          {/* Only while the field is empty. Once there are words of her own,
+              three suggestions of what she might have said are clutter. */}
+          {value.trim().length === 0 && (
+            <View style={styles.examples}>
+              {examples.map((e) => (
+                <ThemedText key={e} type="detail" themeColor="textSecondary">
+                  {e}
+                </ThemedText>
+              ))}
+            </View>
+          )}
         </View>
       </ThemedView>
     </View>
@@ -206,12 +251,12 @@ const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   centre: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.four },
   card: { borderRadius: CardRadius, maxHeight: '86%' },
-  body: { padding: PageInset.horizontal, gap: Spacing.three },
-  lines: { gap: Spacing.two, paddingTop: Spacing.two },
+  body: { padding: Spacing.four, gap: Spacing.three },
+  lines: { gap: Spacing.two, paddingTop: Spacing.one },
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
-  lineLabel: { width: 110 },
-  lineValue: { flex: 1 },
-  field: { gap: Spacing.one },
+  lineLabel: { width: 104 },
+  lineValue: { flex: 1, gap: 1 },
+  field: { gap: 2 },
   fieldCard: {
     borderRadius: CardRadius,
     paddingVertical: Spacing.two,
@@ -219,16 +264,18 @@ const styles = StyleSheet.create({
   },
   input: {
     paddingHorizontal: Spacing.two,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.one,
+    paddingTop: Spacing.one,
+    paddingBottom: 2,
     fontSize: 14,
-    lineHeight: 22,
-    minHeight: 44,
-    maxHeight: 140,
+    lineHeight: 20,
+    minHeight: 34,
+    maxHeight: 132,
   },
   // Under the field rather than beside it: a microphone in the margin squeezes
   // the writing space on a phone, and this way the field keeps the full width.
-  mic: { alignSelf: 'flex-start', paddingLeft: Spacing.one },
+  // The examples sit alongside it, so the row reads as one invitation.
+  micRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.one },
+  examples: { flex: 1 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.two },
   primary: { borderRadius: ButtonRadius, paddingVertical: Spacing.two, paddingHorizontal: Spacing.five },
   quiet: { paddingVertical: Spacing.two },
