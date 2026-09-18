@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIcon } from '@/components/activity-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
 import { activityIcon } from '@/lib/activity-icon';
 import type { AlmanacRow } from '@/lib/insights';
 import { loadLastDoneByPlan, summarise } from '@/lib/movement-library';
@@ -25,6 +25,15 @@ import { loadLastDoneByPlan, summarise } from '@/lib/movement-library';
 // THE CARDS ARE LIGHTER THAN A FITNESS APP'S, deliberately: sand on cream, one
 // radius, no borders, no shadows, no progress bars. Apple Journal rather than
 // gym software.
+//
+// AND SMALLER THAN THEY WERE (Ruth, 2026-09-18, looking at this screen: "it's
+// not landed I don't think"). The density pass that afternoon reached the open
+// routine and never reached the library in front of it, so two cards filled a
+// phone: a 30pt serif title wrapping to two lines, 24 of padding around it, and
+// the third card cut off at the fold. The title is now 21 - still the serif,
+// still unmistakably a name rather than a row - and everything under it is the
+// detail size. Three cards fit where two did, which is the point: a library you
+// cannot see is a list you have to scroll to remember.
 
 export function MovementLibrary({
   entries,
@@ -67,17 +76,15 @@ export function MovementLibrary({
           >
             <ThemedView type="backgroundElement" style={styles.card}>
               <View style={styles.mark}>
-                <ActivityIcon kind={mark} size={22} />
+                <ActivityIcon kind={mark} size={18} />
               </View>
               <View style={styles.body}>
-                <ThemedText type="sectionTitle" style={styles.title}>
-                  {entry.title}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText style={styles.title}>{entry.title}</ThemedText>
+                <ThemedText type="detail" themeColor="textSecondary">
                   {[s.kind, s.duration, s.movements].filter(Boolean).join('  ·  ')}
                 </ThemedText>
                 {s.lastDone && (
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <ThemedText type="detail" themeColor="textSecondary">
                     {s.lastDone}
                   </ThemedText>
                 )}
@@ -91,20 +98,27 @@ export function MovementLibrary({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: Spacing.three },
-  standfirst: { paddingRight: Spacing.five },
+  wrap: { gap: Spacing.two },
+  standfirst: { paddingRight: Spacing.five, paddingBottom: Spacing.one },
   card: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Spacing.two,
     borderRadius: CardRadius,
-    // Generous, because the brief asks for a notebook rather than a table.
-    padding: Spacing.four,
+    // Roomy enough to read as a card rather than a table row, and no roomier.
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.three,
     alignItems: 'flex-start',
   },
-  mark: { paddingTop: 6 },
-  body: { flex: 1, gap: Spacing.half },
-  // The serif at section size, which is what makes a practice read as a title
-  // in a library rather than a row in a list.
-  title: { paddingBottom: Spacing.half },
+  mark: { paddingTop: 5 },
+  body: { flex: 1, gap: 1 },
+  // The serif, because a practice is a NAME and names are set in the serif here
+  // - but at 21 rather than 30, which is the difference between a title in a
+  // library and a headline about one.
+  title: {
+    fontFamily: DisplayFont.regular,
+    fontSize: 21,
+    lineHeight: 26,
+    paddingBottom: 3,
+  },
   pressed: { opacity: 0.75 },
 });

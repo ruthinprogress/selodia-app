@@ -23,6 +23,13 @@ import { useTheme } from '@/hooks/use-theme';
 //     it to draw Comfortaa makes the drawn word wider than the box it was given.
 //     So the label stays on the system face in both states, and selection is
 //     said with the cream segment and the darker text, never with a font change.
+//   - AND THE BOX IS GIVEN SLACK, because that guarantee broke on its own
+//     (Ruth, 2026-09-18: "Movemen"). The labels were on the system face when
+//     that was written; the typography pass moved every body style to Manrope,
+//     which quietly put a custom face back into this control and brought the
+//     measure-versus-draw gap with it. Six points of padding INSIDE the text box
+//     is the fix that does not depend on the measurement being right: the box is
+//     wider than the glyphs need, whichever face measures it.
 //
 // The radii are exact rather than 999: a segment is 36 tall (8 + 20 + 8) so 18,
 // and the track adds 3 either side, so 21. A rounded segment inside a rounded
@@ -86,9 +93,17 @@ const styles = StyleSheet.create({
   segment: {
     borderRadius: 18,
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     alignItems: 'center',
   },
-  label: { textAlign: 'center' },
+  label: {
+    textAlign: 'center',
+    // The slack described above. On the text, not the segment: padding on the
+    // segment sits outside the box Android measured, so it never helps.
+    paddingHorizontal: 6,
+    // A control's label, not body text. 13 buys back the width the slack costs
+    // and keeps three long words - Food, Activity, Measurements - on one line.
+    fontSize: 13,
+  },
   pressed: { opacity: 0.7 },
 });

@@ -54,5 +54,9 @@ const styles = StyleSheet.create({
   tabs: {
     paddingTop: Spacing.two,
     paddingBottom: Spacing.two,
+    // Past the page margin: "Measurements" beside "Activity" and "Food" is
+    // wider than the text column, and a switch is a control rather than a
+    // sentence. See segmented-tabs.tsx.
+    marginHorizontal: -Spacing.three,
   },
 });

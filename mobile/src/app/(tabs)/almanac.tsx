@@ -109,7 +109,11 @@ export default function AlmanacScreen() {
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Almanac</ThemedText>
 
-            <SpotlightTarget id="almanac.tabs">
+            {/* Allowed past the page margin (2026-09-18). Three labels plus
+                their padding can be wider than the text column, and a switch is
+                a control, not a sentence - the margin exists so prose has room
+                to breathe, not to make a word truncate. */}
+            <SpotlightTarget id="almanac.tabs" style={styles.tabs}>
               <AlmanacTabs value={tab} onChange={setTab} />
             </SpotlightTarget>
 
@@ -176,6 +180,8 @@ export default function AlmanacScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
+  // The switch is allowed past the page margin; see where it is used.
+  tabs: { marginHorizontal: -Spacing.three },
   content: {
     // Horizontal padding matches the Body screens at 24; vertical stays at 16.
     paddingHorizontal: PageInset.horizontal,
