@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { FoodCategoryIcon } from '@/components/food-category-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { loadEntriesWithDiscussion } from '@/lib/discuss-state';
+import { foodCategory } from '@/lib/food-category';
 import { entryLabel, sumDay, weeklyAverage, type FoodLogSummary } from '@/lib/food-today';
 import { supabase } from '@/lib/supabase';
 import {
@@ -193,6 +195,9 @@ export function FoodHistoryView({ initialWeekStart }: { initialWeekStart?: Date 
               ) : (
                 entries.map((row) => (
                   <View key={row.id} style={styles.row}>
+                    {/* Same icon as today's log, so an entry looks the same
+                        wherever it is met. */}
+                    <FoodCategoryIcon category={foodCategory(row)} size={18} />
                     <ThemedText type="small" style={styles.label}>
                       {entryLabel(row)}
                     </ThemedText>

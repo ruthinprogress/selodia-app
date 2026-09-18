@@ -7,11 +7,13 @@ import { FoodBreakdownCard } from '@/components/food-breakdown-card';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { SpotlightTarget } from '@/components/spotlight-target';
+import { FoodCategoryIcon } from '@/components/food-category-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { loadEntriesWithDiscussion } from '@/lib/discuss-state';
+import { foodCategory } from '@/lib/food-category';
 import { entryLabel, sumDay, weeklyAverage, type FoodLogSummary } from '@/lib/food-today';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, toLocalDateKey, weekRange } from '@/lib/week';
@@ -125,6 +127,12 @@ export function FoodTodayView() {
         <ThemedView type="backgroundElement" style={styles.card}>
           {today.map((row) => (
             <View key={row.id} style={styles.row}>
+              {/* THE CATEGORY, NOT THE DISH (UI brief, 2026-09-17). A bowl, a
+                  cup, a plate or a leaf, read off the words she wrote. Hidden
+                  from screen readers: the entry's own text says what it is, and
+                  an icon that announces "meal" beside "Turkish leftovers box"
+                  is a second, worse name for the same row. */}
+              <FoodCategoryIcon category={foodCategory(row)} size={20} />
               <View style={styles.labelCol}>
                 <ThemedText type="small">{entryLabel(row)}</ThemedText>
               </View>
@@ -212,7 +220,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    // Tighter than the old three-column gap: the icon belongs to the words
+    // beside it, so it sits closer to them than the macros do.
+    gap: Spacing.two,
   },
   labelCol: {
     flex: 1,
