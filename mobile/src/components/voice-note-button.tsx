@@ -10,7 +10,7 @@ import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { VoiceConsentSheet } from '@/components/voice-consent-sheet';
-import { Spacing } from '@/constants/theme';
+import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authedUpload } from '@/lib/api';
 import { logClientError } from '@/lib/client-error-log';
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   button: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: ButtonRadius,
     alignItems: 'center',
     justifyContent: 'center',
   },

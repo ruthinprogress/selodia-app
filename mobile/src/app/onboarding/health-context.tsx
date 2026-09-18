@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChatBubble } from '@/components/chat-bubble';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: ButtonRadius,
     alignItems: 'center',
   },
   pressed: {

@@ -4,7 +4,7 @@ import { useConversation } from '@elevenlabs/react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { VoiceWaveIcon } from '@/components/voice-wave-icon';
-import { Spacing } from '@/constants/theme';
+import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The mic in the composer. Tap to start, tap to close. That is the whole model.
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   button: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: ButtonRadius,
     alignItems: 'center',
     justifyContent: 'center',
   },

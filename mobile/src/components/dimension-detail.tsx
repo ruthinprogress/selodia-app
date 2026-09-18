@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BodyFont, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BodyFont, ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import type { DimensionActivity } from '@/hooks/use-dimension-activities';
 import {
   DIMENSION_COLOUR,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.five,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
-    borderRadius: Spacing.three,
+    borderRadius: ButtonRadius,
     alignSelf: 'flex-start',
   },
   buttonText: { fontFamily: BodyFont.medium, fontSize: 16, color: CREAM },

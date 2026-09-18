@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { ButtonRadius, Spacing } from '@/constants/theme';
 
 // The screen a voice session lives on.
 //
@@ -131,8 +131,12 @@ export function VoiceSessionScreen({
     outputRange: [BREATHE_FROM, speaking ? SPEAK_TO : BREATHE_TO],
   });
 
-  // Said plainly, because this is the question the old design could not answer.
-  const state = connecting ? 'Connecting…' : speaking ? 'Selodía is speaking' : 'Listening';
+  // Kept for screen readers, and for them only (UI brief, Part 2, 2026-09-17).
+  // The screen itself now says nothing: "listening and speaking states show the
+  // Selodía seed mark only ... no glow, no figure, no face". A sentence under
+  // the mark is the app narrating itself, and the pulse already says which state
+  // this is - slow and small for listening, wider and quicker for speaking.
+  const state = connecting ? 'Connecting' : speaking ? 'Selodía is speaking' : 'Listening';
 
   return (
     <Modal
@@ -148,29 +152,34 @@ export function VoiceSessionScreen({
     >
       <View style={styles.screen}>
         <View style={styles.centre}>
-          <Animated.View style={{ transform: [{ scale }] }}>
-            {/* The cream master tinted to sand. Part Fifteen's dark lockup puts
-                the mark in sand on this ground specifically - terracotta on
-                terracotta would disappear into itself. */}
+          <Animated.View
+            style={{ transform: [{ scale }] }}
+            accessibilityRole="progressbar"
+            accessibilityLiveRegion="polite"
+            // The words moved here when they came off the screen: a screen
+            // reader still hears which state this is, and nobody else reads it.
+            accessibilityLabel={state}
+          >
+            {/* CREAM, NOT SAND (UI brief: "dark background, seed mark in
+                cream"). Part Fifteen's dark lockup uses sand; the brief asks
+                for the lighter mark, and on #834B39 cream measures 6.26:1 where
+                sand measures 4.0. Brighter and more legible, both. */}
             <Image
               source={MARK}
               style={styles.mark}
-              tintColor="#E9D6C2"
-              // Decorative: the state is announced in words below, so a second
-              // reading of the same thing would just be noise to a screen reader.
+              tintColor="#F7F3EA"
               alt=""
               accessibilityIgnoresInvertColors
             />
           </Animated.View>
-
-          <ThemedText type="small" style={styles.state}>
-            {state}
-          </ThemedText>
         </View>
 
-        {/* One control, one word, and the same gesture that opened it. The
-            long-press-to-end model was replaced on 2026-09-09 after it took
-            three to six attempts to register on a real phone. */}
+        {/* ONE CONTROL STAYS, and the brief does not overrule it. "Only
+            breathing" is about what the screen SAYS, not about whether a
+            session can be ended: on 2026-09-09 closing was reached for twice
+            and missed, and a full-screen modal with no visible way out is a
+            trap rather than a calm. It is quieter than it was - a hairline and
+            one word, no fill. */}
         <Pressable
           onPress={onClose}
           accessibilityRole="button"
@@ -199,7 +208,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.six,
   },
-  centre: { alignItems: 'center', gap: Spacing.five },
+  centre: { alignItems: 'center' },
   mark: { width: 168, height: 168 },
   // Cream on #834B39 measures 6.26:1 (Part Fifteen).
   state: { color: '#F7F3EA', letterSpacing: 0.3 },
@@ -208,8 +217,8 @@ const styles = StyleSheet.create({
     bottom: Spacing.six,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.four,
-    borderWidth: 1,
+    borderRadius: ButtonRadius,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E9D6C2',
   },
   closeLabel: { color: '#F7F3EA' },

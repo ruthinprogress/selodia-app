@@ -7,9 +7,10 @@ import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { Tag } from '@/components/tag';
 import { ActivityIcon } from '@/components/activity-icon';
+import { BotanicalMark } from '@/components/botanical-mark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { supabase } from '@/lib/supabase';
@@ -112,6 +113,8 @@ export function ActivityView() {
 
       {rows.length === 0 ? (
         <ThemedView type="backgroundElement" style={styles.empty} accessibilityRole="summary">
+          {/* A sprig, not a shrug (UI brief, Part 2). Empty means not yet. */}
+          <BotanicalMark size={64} />
           <ThemedText type="smallBold" style={styles.centred}>
             Nothing logged yet
           </ThemedText>
@@ -207,6 +210,14 @@ const styles = StyleSheet.create({
   stat: { gap: Spacing.half },
   note: { fontStyle: 'italic' },
   explainerItem: { gap: Spacing.half },
-  empty: { borderRadius: Spacing.three, padding: Spacing.four, gap: Spacing.two },
+  // GENEROUS, because the brief asks for it and because an empty card that
+  // hugs its own words looks like a mistake rather than a page waiting.
+  empty: {
+    borderRadius: CardRadius,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.three,
+    alignItems: 'center',
+  },
   centred: { textAlign: 'center' },
 });

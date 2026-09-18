@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { BotanicalMark } from '@/components/botanical-mark';
 import { MeasurementIcon, measurementIcon } from '@/components/measurement-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   formatChange,
@@ -73,6 +74,7 @@ export function PersonalMetricsView() {
 
       {metrics.length === 0 ? (
         <ThemedView type="backgroundElement" style={styles.empty} accessibilityRole="summary">
+          <BotanicalMark size={64} />
           <ThemedText type="smallBold" style={styles.emptyHeading}>
             {PERSONAL_EMPTY_HEADING}
           </ThemedText>
@@ -183,9 +185,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   empty: {
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.two,
+    borderRadius: CardRadius,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.three,
+    alignItems: 'center',
   },
   emptyHeading: {
     textAlign: 'center',

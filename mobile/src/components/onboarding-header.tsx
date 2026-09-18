@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useOnboardingActionSlot } from '@/components/onboarding-action';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ONBOARDING_TITLE, progressForPath } from '@/lib/onboarding-progress';
 
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   actionButton: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: ButtonRadius,
   },
   secondary: {
     paddingVertical: Spacing.one,

@@ -2,7 +2,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The one time voice is explained, before it is ever used.
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   primary: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: ButtonRadius,
     alignItems: 'center',
   },
   primaryLabel: { color: '#FFFDF7' },

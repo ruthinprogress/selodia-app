@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Checkbox } from '@/components/checkbox';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function ConsentScreen() {
   const [coreConsent, setCoreConsent] = useState(false);
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: ButtonRadius,
     alignItems: 'center',
   },
   pressed: {

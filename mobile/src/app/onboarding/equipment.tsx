@@ -9,7 +9,7 @@ import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.four,
     marginBottom: Spacing.two,
     paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: ButtonRadius,
     alignItems: 'center',
     alignSelf: 'center',
     width: '100%',

@@ -199,6 +199,15 @@ export const Spacing = {
 // bound book, and a book's margin is the widest thing on the page after the type.
 // 32 either side, with the same at the top and more at the foot, where the tab
 // bar sits.
+// THE BUTTON RADIUS (UI brief, Part 2: "large corner radius ... terracotta fill
+// for primary actions ... restrained, tactile, inviting").
+//
+// A pill. The app had four different button radii, which is the kind of
+// inconsistency nobody can name and everybody feels. Round icon buttons keep
+// their own half-of-height radius: they are circles, and a pill radius on a
+// circle is the same circle.
+export const ButtonRadius = 999;
+
 export const PageInset = {
   horizontal: 32,
   top: 32,
