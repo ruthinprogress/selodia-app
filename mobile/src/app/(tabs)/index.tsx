@@ -353,6 +353,31 @@ export default function ChatScreen() {
     }, [loadThread])
   );
 
+  // WHEN A VOICE CALL ENDS (Ruth, 2026-09-19: "There was no response in the chat
+  // at all ... no text showing and no log"). The call is a full-screen modal
+  // over this screen, not a screen of its own, so closing it is not a focus
+  // change and the re-read above never ran: everything said in the call sat in
+  // the database, invisible until the app was restarted. Read once as the call
+  // closes, and once more a few seconds later, because a spoken meal is parsed
+  // after the reply is sent and its row lands a moment after the call.
+  //
+  // THE MIC UNDER THE CALL. The whole call screen is one "tap to end" target and
+  // it fades out, so a second tap during the fade lands on the voice-note mic in
+  // the composer - she found it recording afterwards. For a moment after a call
+  // ends, that mic does not start.
+  const [voiceJustEnded, setVoiceJustEnded] = useState(false);
+  const handleVoiceEnded = useCallback(() => {
+    const reread = () => {
+      if (sendingRef.current) return;
+      if (inputRef.current.trim().length > 0) return;
+      void loadThread();
+    };
+    reread();
+    setTimeout(reread, 6000);
+    setVoiceJustEnded(true);
+    setTimeout(() => setVoiceJustEnded(false), 1500);
+  }, [loadThread]);
+
   // WHETHER THE LANDING CHIPS BELONG ON SCREEN, re-checked every time Chat comes
   // into focus.
   //
@@ -885,10 +910,11 @@ export default function ChatScreen() {
                     dismissChips();
                   }}
                   onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
-                  disabled={sending}
+                  disabled={sending || voiceJustEnded}
                 />
                 <VoiceControl
                   onNotice={(message) => setSaveToast({ summary: message, nonce: Date.now(), notice: true })}
+                  onEnded={handleVoiceEnded}
                   disabled={sending}
                 />
 

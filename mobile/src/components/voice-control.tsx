@@ -19,9 +19,12 @@ import { useVoiceStart } from '@/lib/use-voice-start';
 // imports something that is safe on every platform.
 export function VoiceControl({
   onNotice,
+  onEnded,
   disabled,
 }: {
   onNotice: (message: string) => void;
+  /** Called once when a live conversation ends. */
+  onEnded?: () => void;
   disabled?: boolean;
 }) {
   const voice = useVoiceStart();
@@ -38,8 +41,14 @@ export function VoiceControl({
   const wasLive = useRef(false);
   useEffect(() => {
     const live = status !== 'disconnected';
-    if (wasLive.current && !live) void syncRemindersNow();
+    if (wasLive.current && !live) {
+      void syncRemindersNow();
+      onEnded?.();
+    }
     wasLive.current = live;
+    // onEnded is read at the moment the call ends; a new function each render
+    // must not re-run this and fire it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   // In an effect, not in render. Handing the message up during render would be

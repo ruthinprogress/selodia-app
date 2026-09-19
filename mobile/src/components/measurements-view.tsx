@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet } from 'react-native';
 
@@ -69,6 +70,14 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [rows, setRows] = useState<MeasurementRow[]>([]);
   // Bumped when something lands, so a reading logged here appears here.
   const [reloadKey, setReloadKey] = useState(0);
+  // RE-READ WHENEVER THIS COMES INTO VIEW (2026-09-19). The Log tab stays
+  // mounted, so without this an entry logged elsewhere - by voice, or in chat -
+  // did not appear here until the app was restarted.
+  useFocusEffect(
+    useCallback(() => {
+      setReloadKey((k) => k + 1);
+    }, [])
+  );
 
   // Stable primitive dep: a fresh Date each render would refire the effect.
   const weekKey = toLocalDateKey(weekStart);

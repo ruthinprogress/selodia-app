@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityDetailCard } from '@/components/activity-detail-card';
@@ -58,6 +58,14 @@ export function ActivityView() {
   const [loading, setLoading] = useState(true);
   // See food-today-view: the quick-log bar bumps this so the list re-reads.
   const [reloadKey, setReloadKey] = useState(0);
+  // RE-READ WHENEVER THIS COMES INTO VIEW (2026-09-19). The Log tab stays
+  // mounted, so without this an entry logged elsewhere - by voice, or in chat -
+  // did not appear here until the app was restarted.
+  useFocusEffect(
+    useCallback(() => {
+      setReloadKey((k) => k + 1);
+    }, [])
+  );
   // Which session's detail card is open, if any (Ruth, 2026-09-18: "the
   // Movements log has lost the look closer eye entirely"). ActivityDetailCard
   // was built on 16 September and never given anything to open it, so activity
