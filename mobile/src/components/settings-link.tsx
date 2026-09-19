@@ -51,12 +51,15 @@ export function SettingsLink({
         pressed && styles.pressed,
       ]}
     >
-      {/* "Setting" on her phone (2026-09-19): Android measured the word in one
-          face and drew it in a slightly wider one, clipping the final s. The
-          simple break strategy measures closer to how it draws, and two points
-          of padding give the last glyph room inside the box. The Chat screen's
-          own link has the same fix. */}
-      <ThemedText type="small" themeColor="textSecondary" style={{ paddingRight: 2 }} textBreakStrategy="simple">
+      {/* "Setting" on her phone (2026-09-19), and not clipped: the s was WRAPPED
+          onto a hidden second line, the same way "Measurement / s" wrapped in
+          the Log tabs. Android gave the word a box sized to a narrower
+          measurement than it drew. Two points of padding did not fix it. A box
+          comfortably wider than the word ever needs, right-aligned so it still
+          sits in the corner, leaves Android nothing to wrap - including at a
+          larger phone font size. The Chat screen's own link has the same fix. */}
+      <ThemedText type="small" themeColor="textSecondary" style={placement === 'corner' ? styles.cornerLabel : undefined}
+        textBreakStrategy="simple">
         Settings
       </ThemedText>
     </Pressable>
@@ -72,5 +75,7 @@ const styles = StyleSheet.create({
     right: PageInset.horizontal,
     zIndex: 1,
   },
+  // Corner only: inline, on Today's date line, a wide box would squeeze the date.
+  cornerLabel: { minWidth: 96, textAlign: 'right' },
   pressed: { opacity: 0.6 },
 });
