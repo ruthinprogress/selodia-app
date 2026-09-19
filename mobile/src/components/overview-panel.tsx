@@ -3,7 +3,7 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { HydrationQuickTap } from '@/components/hydration-quick-tap';
+import { HydrationCard } from '@/components/hydration-card';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -15,7 +15,8 @@ import { resolveTDEE } from '@/lib/body-metrics';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
 import { HealthFlower } from '@/components/health-flower';
-import { hydrationLabel, hydrationToday } from '@/lib/hydration';
+import { hydrationToday } from '@/lib/hydration';
+import { hydrationGoal } from '@/lib/hydration-goal';
 import { formatLogDate, toLocalDateKey } from '@/lib/week';
 import {
   findWeekAgoReading,
@@ -525,16 +526,15 @@ export function OverviewPanel() {
           now a single strip rather than a card, for the same reason the squares
           replaced the tall sections. */}
       <SpotlightTarget id="overview.water">
-        <ThemedView type="backgroundElement" style={styles.hydration}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.hydrationLabel}>
-            {hydrationLabel(data.hydrationMl)}
-          </ThemedText>
-          <HydrationQuickTap
-            onLogged={(deltaMl) =>
-              setData((d) => (d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d))
-            }
-          />
-        </ThemedView>
+        {/* The personal goal and its reasons come from what was logged today -
+            see lib/hydration-goal.ts and components/hydration-card.tsx. */}
+        <HydrationCard
+          ml={data.hydrationMl}
+          goal={hydrationGoal({ activityMinutesToday: data.activityMinutes })}
+          onLogged={(deltaMl) =>
+            setData((d) => (d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d))
+          }
+        />
       </SpotlightTarget>
 
       {/* THIS WEEK. A peer of Today rather than a subsection of it, which is why
@@ -751,23 +751,6 @@ const styles = StyleSheet.create({
   },
   // A strip, not a card. One line: the reading on the left, the taps on the
   // right, everything on one baseline.
-  hydration: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: CardRadius,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
-    // WRAPS, so the open drink buttons take a line of their own (2026-09-19).
-    // In one row they claimed the whole width and squeezed "0 L of about 2 L"
-    // into a column one letter wide.
-    flexWrap: 'wrap',
-  },
-  hydrationLabel: {
-    // Never squeezed: the amount keeps its words, and the buttons move below.
-    flexShrink: 0,
-  },
   pressed: {
     opacity: 0.7,
   },

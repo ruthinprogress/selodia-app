@@ -2207,7 +2207,7 @@ All server fixes are live; the phone fixes shipped as EAS updates. **None is ver
 
 ### Design changes
 
-15. **The water tracker loses its words.** Replace "+ Add a drink" with a soft illustrated water icon, tappable to log. The concept narrows to water rather than drinks in general.
+15. **~~The water tracker loses its words~~ — built 19 September 2026 from her ChatGPT brief, needs her eye.** A droplet drawn in vectors (no AI illustration) that fills as she drinks, today's amount in the serif, and a personal goal that says why when tapped: about 1.6 L from drinks (EFSA's 2.0 L of total water for women, less what food supplies) plus about 500 ml per hour of activity logged today. No weather, because the app has none, and no weight formula, because the reference intake does not scale by weight. The droplet sits at four-fifths at the goal and keeps filling past it, with no tick or colour change: "here's where you are today", not a score. The + opens four drawn drinks and "Other amount..."; a tap logs, and "Added 500 ml" with Undo appears and fades (`components/hydration-card.tsx`, `lib/hydration-goal.ts`, probe `scripts/probe-hydration-goal.mjs`). Original item: Replace "+ Add a drink" with a soft illustrated water icon, tappable to log. The concept narrows to water rather than drinks in general.
 16. **Exercise demonstrations change direction.** Away from decorative illustration and towards clean anatomical muscle-activation diagrams: scientific, informative, gender-neutral, and not dependent on the Exercise Animatic library. Needs its own sourcing solution, to be discussed separately. *(This is a strategic change: Part Eight's whole demonstration architecture, the weekly vendor sync and the 919-clip library are built on that library.)*
 
 
