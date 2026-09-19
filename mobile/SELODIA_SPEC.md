@@ -2655,17 +2655,18 @@ A real deletion mechanism must exist for anyone who wants their data removed, in
 
 ---
 
-# BETA FEEDBACK, IN THE APP (idea recorded 2026-09-19, not yet scoped)
+# BETA FEEDBACK, IN THE APP (idea recorded 2026-09-19, in the backlog, not yet scoped)
 
-**Ruth's idea, in her words as far as they reached:** for the free beta users needed at the start, "instead of us doing feedback forms on, like, dot form, which is the original plan, why don't we just do it in app with a notification when it's due, and we do it how we did the different fonts when you gave me the different options in the fonts, and it would be at the bottom in settings or somewhere on settings, they just log in. That way, they'd be able to" (the sentence was cut off; the rest is still to come from her).
+**Ruth's idea, in her words as far as they reached:** for the free beta users needed at the start, "instead of us doing feedback forms on, like, dot form, which is the original plan, why don't we just do it in app with a notification when it's due, and we do it how we did the different fonts when you gave me the different options in the fonts, and it would be at the bottom in settings or somewhere on settings, they just log in. That way, they'd be able to use voice if they wanted to because they're all busy." She recorded the idea by voice while pushing her son in a pram, which is the case it is for, and asked for it to go in the backlog.
 
 **What it means as recorded so far:**
 - Feedback is collected inside the app, replacing the plan to use an external form.
 - A notification tells the tester when feedback is due.
 - The questions are shown as side-by-side options to choose between, the way font options were presented to her.
 - It lives in Settings, near the bottom. Testers are already signed in, so nothing extra is needed to take part.
+- **Every answer can be spoken as well as typed**, because testers are busy. The movement review sheet already offers typing and voice side by side, so the pattern exists to reuse.
 
-**To settle when it is scoped:** the end of her sentence; how often feedback is due; whether answers are tied to the account or kept de-identified (the research opt-in and the privacy policy both bear on this); and that the section is shown only to beta testers.
+**To settle when it is scoped:** how often feedback is due; whether answers are tied to the account or kept de-identified (the research opt-in and the privacy policy both bear on this); and that the section is shown only to beta testers.
 
 ---
 
