@@ -154,9 +154,11 @@ function startOfToday(): string {
 // drink added, and is told when one was undone so its total goes back.
 export function OverviewPanel({
   onWaterAdded,
+  onWaterRemoved,
   waterUndone,
 }: {
   onWaterAdded?: (action: WaterAction) => void;
+  onWaterRemoved?: (id: string) => void;
   waterUndone?: { ml: number; id: string } | null;
 } = {}) {
   const flower = useHealthFlower();
@@ -554,6 +556,7 @@ export function OverviewPanel({
             setData((d) => (d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d))
           }
           onAdded={(action) => onWaterAdded?.(action)}
+          onRemoved={(id) => onWaterRemoved?.(id)}
         />
       </SpotlightTarget>
 

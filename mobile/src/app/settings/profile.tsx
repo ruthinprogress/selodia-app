@@ -1,7 +1,7 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { DateOfBirthField } from '@/components/date-of-birth-field';
 import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -137,18 +137,13 @@ export default function ProfileScreen() {
           onPress={() => setEditing(editing === 'dob' ? null : 'dob')}
         />
         {editing === 'dob' && (
+          // The field the onboarding step uses, rather than the picker itself:
+          // it closes its own dialog on Android, and it has a web fallback
+          // where the native picker renders nothing at all.
           <View style={styles.editor}>
-            <DateTimePicker
-              value={dob ?? new Date(1990, 0, 1)}
-              mode="date"
-              maximumDate={new Date()}
-              onChange={(_, picked) => {
-                if (!picked) {
-                  setEditing(null);
-                  return;
-                }
-                void save({ date_of_birth: picked.toISOString().slice(0, 10) });
-              }}
+            <DateOfBirthField
+              value={dob}
+              onChange={(picked) => void save({ date_of_birth: picked.toISOString().slice(0, 10) })}
             />
           </View>
         )}

@@ -60,8 +60,25 @@ const SpotlightContext = createContext<SpotlightContextValue | null>(null);
 // had nothing to do with the question - so it expires quietly.
 const PENDING_TTL_MS = 3 * 60_000;
 
+// The registration that is on screen now: the last one to mount, which is the
+// deepest screen showing this id.
+function latest(
+  registry: Map<SpotlightId, Registration[]>,
+  id: SpotlightId
+): Registration | undefined {
+  const all = registry.get(id);
+  return all && all.length > 0 ? all[all.length - 1] : undefined;
+}
+
 export function SpotlightProvider({ children }: { children: React.ReactNode }) {
-  const registry = useRef(new Map<SpotlightId, Registration>());
+  // A LIST PER ID, NOT ONE REGISTRATION (2026-09-20). The Settings hub's "Data
+  // and export" row and the page it opens both answer to `settings.export`: the
+  // row is what can be pointed at, the control is the destination. With one
+  // entry per id the page overwrote the row, and going back removed the entry
+  // the still-mounted hub owned - so after one use, nothing pulsed again for
+  // the rest of the session. The newest registration wins while it is mounted,
+  // and the one beneath it comes back when it unmounts.
+  const registry = useRef(new Map<SpotlightId, Registration[]>());
   const [active, setActive] = useState<Active | null>(null);
   const expiry = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,7 +95,7 @@ export function SpotlightProvider({ children }: { children: React.ReactNode }) {
   }, [clearExpiry]);
 
   const register = useCallback((id: SpotlightId, reg: Registration) => {
-    registry.current.set(id, reg);
+    registry.current.set(id, [...(registry.current.get(id) ?? []), reg]);
     // A destination that has just appeared completes a waiting request. Done
     // here rather than in an effect on the screen so that ANY route to the
     // destination finishes the journey - the pointer tap, a tab press, or the
@@ -89,7 +106,9 @@ export function SpotlightProvider({ children }: { children: React.ReactNode }) {
         : current
     );
     return () => {
-      registry.current.delete(id);
+      const left = (registry.current.get(id) ?? []).filter((r) => r !== reg);
+      if (left.length > 0) registry.current.set(id, left);
+      else registry.current.delete(id);
       // The element that was lit has left the screen. Stop pointing at where it
       // used to be; if it was only the pointer, the request keeps waiting for
       // the destination it leads to.
@@ -113,7 +132,7 @@ export function SpotlightProvider({ children }: { children: React.ReactNode }) {
 
       clearExpiry();
       const pointer = REACHED_VIA[target] ?? target;
-      const canPoint = registry.current.has(pointer);
+      const canPoint = (registry.current.get(pointer) ?? []).length > 0;
       setActive({
         final: target,
         message,
@@ -129,7 +148,7 @@ export function SpotlightProvider({ children }: { children: React.ReactNode }) {
 
   const measureActive = useCallback(async () => {
     if (!active?.showing) return null;
-    const reg = registry.current.get(active.showing);
+    const reg = latest(registry.current, active.showing);
     if (!reg) return null;
     const rect = await reg.measure();
     return isUsableRect(rect) ? rect : null;
@@ -140,7 +159,7 @@ export function SpotlightProvider({ children }: { children: React.ReactNode }) {
   // does nothing. Targets that pass no handler simply dismiss, leaving the real
   // control visible and tappable underneath.
   const activateShowing = useCallback(() => {
-    const reg = active?.showing ? registry.current.get(active.showing) : undefined;
+    const reg = active?.showing ? latest(registry.current, active.showing) : undefined;
     const onActivate = reg?.onActivate;
     if (active && active.showing !== active.final) {
       // Mid-journey: keep the request alive so the destination still highlights

@@ -41,6 +41,26 @@ export function SettingsPage({
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content}>
+          {!back && (
+            // THE HUB IS A MODAL OVER THE TABS, and after the rebuild its only
+            // way out was the Android back button or an iOS swipe (2026-09-20).
+            // The single page it replaced had a Done, and a modal without a
+            // visible way out is a trap on any phone whose gestures differ.
+            <View style={styles.topBar}>
+              <Pressable
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Close settings"
+                hitSlop={Spacing.three}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedText type="small" themeColor="link">
+                  Done
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
+
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
               {back && (
@@ -198,6 +218,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerText: { flex: 1, gap: Spacing.one },
   back: { alignSelf: 'flex-start', marginBottom: Spacing.one },
+  topBar: { alignItems: 'flex-end' },
   subtitle: { lineHeight: 20, maxWidth: 260 },
   body: { gap: Spacing.four },
   group: { gap: Spacing.one },

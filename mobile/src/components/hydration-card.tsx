@@ -61,12 +61,15 @@ export function HydrationCard({
   goal,
   onLogged,
   onAdded,
+  onRemoved,
 }: {
   ml: number;
   goal: HydrationGoal;
   onLogged: (deltaMl: number) => void;
   /** The drink just added, for the screen's floating Undo note. */
   onAdded: (action: WaterAction) => void;
+  /** A drink removed from today's list, so a note still offering to undo it goes. */
+  onRemoved?: (id: string) => void;
 }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
@@ -230,7 +233,18 @@ export function HydrationCard({
           </View>
         )}
 
-        <HydrationDay visible={day} onClose={() => setDay(false)} onRemoved={(removedMl) => onLogged(-removedMl)} />
+        {/* A drink deleted here may be the one the floating note still offers
+            to undo. Telling the screen closes that note: undoing an already
+            deleted row found nothing to delete, reported success, and took the
+            millilitres off a second time. */}
+        <HydrationDay
+          visible={day}
+          onClose={() => setDay(false)}
+          onRemoved={(id, removedMl) => {
+            onLogged(-removedMl);
+            onRemoved?.(id);
+          }}
+        />
 
         {failed && (
           <ThemedText type="small" themeColor="danger" style={styles.whyText}>
@@ -421,7 +435,7 @@ function HydrationDay({
 }: {
   visible: boolean;
   onClose: () => void;
-  onRemoved: (ml: number) => void;
+  onRemoved: (id: string, ml: number) => void;
 }) {
   const theme = useTheme();
   const [drinks, setDrinks] = useState<Drink[] | null>(null);
@@ -482,7 +496,7 @@ function HydrationDay({
                       what={`${formatVolume(d.ml)} of water`}
                       onDeleted={() => {
                         setDrinks((rows) => (rows ?? []).filter((r) => r.id !== d.id));
-                        onRemoved(d.ml);
+                        onRemoved(d.id, d.ml);
                       }}
                     />
                   </View>

@@ -24,6 +24,7 @@ export default function NotificationsScreen() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [times, setTimes] = useState<string[]>(DEFAULT_REMINDER_TIMES);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +41,7 @@ export default function NotificationsScreen() {
   async function set(next: boolean) {
     if (busy) return;
     setBusy(true);
+    setFailed(false);
     const before = enabled;
     setEnabled(next);
     try {
@@ -50,9 +52,13 @@ export default function NotificationsScreen() {
       await persistReminderChoice(user.id, { enabled: next, times });
       // The phone's own schedule is rebuilt from the stored answer, so turning
       // them off cancels what is already queued rather than leaving it to fire.
-      await syncRemindersNow();
+      // A false means the phone refused - notifications not permitted, most
+      // likely - and the switch must not claim otherwise.
+      const scheduled = await syncRemindersNow();
+      if (!scheduled && next) throw new Error('the phone would not schedule them');
     } catch {
       setEnabled(before ?? false);
+      setFailed(true);
     } finally {
       setBusy(false);
     }
@@ -95,6 +101,13 @@ export default function NotificationsScreen() {
           </Pressable>
         </View>
       </SettingsGroup>
+
+      {failed && (
+        <ThemedText type="small" themeColor="danger" style={styles.note}>
+          That didn&apos;t save. If your phone has notifications turned off for Selodía, turn them
+          on there first.
+        </ThemedText>
+      )}
 
       <CustomReminderList />
 

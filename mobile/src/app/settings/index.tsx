@@ -82,13 +82,19 @@ export default function SettingsHub() {
         {/* The two pointable rows (build item 23). "Where do I get my data"
             pulses the row that leads there rather than a control on a page
             nobody is looking at - see lib/spotlight.ts. */}
+        {/* Both pointers end at this row: the export and the deletion now live
+            one page deeper, and the row is the step that can be pulsed. The
+            registry holds a list per id, so the page's own target takes over
+            while it is open - see spotlight-provider.tsx. */}
         <SpotlightTarget id="settings.export" onActivate={() => router.push('/settings/data')}>
+          <SpotlightTarget id="settings.delete" onActivate={() => router.push('/settings/data')}>
           <SettingsRow
             icon="cloud-download-outline"
             label="Data and export"
             detail="Take a copy, or delete everything"
             onPress={() => router.push('/settings/data')}
           />
+          </SpotlightTarget>
         </SpotlightTarget>
         <SettingsRow
           icon="help-circle-outline"

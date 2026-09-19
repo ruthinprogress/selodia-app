@@ -28,6 +28,11 @@ export default function BodyOverviewScreen() {
   const [water, setWater] = useState<WaterAction | null>(null);
   const [undone, setUndone] = useState<{ ml: number; id: string } | null>(null);
   const clearWater = useCallback(() => setWater(null), []);
+  // A drink deleted from today's list cannot still be offered for undo.
+  const waterRemoved = useCallback(
+    (id: string) => setWater((w) => (w && w.id === id ? null : w)),
+    []
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -37,7 +42,7 @@ export default function BodyOverviewScreen() {
             which is what keeps the layout identical to the old fixed one until
             the content genuinely outgrows the screen. */}
         <ScrollView contentContainerStyle={styles.content}>
-          <OverviewPanel onWaterAdded={setWater} waterUndone={undone} />
+          <OverviewPanel onWaterAdded={setWater} onWaterRemoved={waterRemoved} waterUndone={undone} />
         </ScrollView>
         <HydrationToast
           action={water}

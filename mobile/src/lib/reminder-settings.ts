@@ -57,12 +57,17 @@ export async function persistReminderChoice(
   choice: { enabled: boolean; times?: string[] }
 ): Promise<string[]> {
   const times = choice.times ?? DEFAULT_REMINDER_TIMES;
-  await supabase.from('reminder_settings').upsert({
+  // THROWS ON FAILURE (2026-09-20). It used to ignore the error, so a screen
+  // that awaited it was told the choice was stored when nothing had been
+  // written - and a "Turn off reminders" that fails while still firing them is
+  // the exact dishonesty the storage-failure rule exists to stop.
+  const { error } = await supabase.from('reminder_settings').upsert({
     user_id: userId,
     enabled: choice.enabled,
     times,
     asked_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
+  if (error) throw new Error('reminder_settings upsert failed: ' + error.message);
   return choice.enabled ? times : [];
 }
