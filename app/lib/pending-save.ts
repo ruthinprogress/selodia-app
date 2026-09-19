@@ -168,6 +168,17 @@ Do not raise it again yourself, do not rephrase the offer, do not make a new off
 // is only added when the offer was actually stored.
 export const SAVE_OFFER_QUESTION = 'Want me to keep that in your Almanac?';
 
+// A Me card goes to a different tab, and the offer should say which - the brief
+// writes it as "Want me to add this to your Me tab?" and that is the wording
+// somebody can answer without wondering where it is going. Telling her a
+// skincare routine had gone to the Almanac generally is how the original
+// complaint started.
+export const ME_OFFER_QUESTION = 'Want me to keep that in your Me tab?';
+
+export function offerQuestionFor(type: SaveType): string {
+  return type === 'me' ? ME_OFFER_QUESTION : SAVE_OFFER_QUESTION;
+}
+
 /**
  * The offer line to add after the reply, or null when the reply already asks
  * about the Almanac. The model is told not to ask; if it does anyway, adding the
@@ -175,8 +186,16 @@ export const SAVE_OFFER_QUESTION = 'Want me to keep that in your Almanac?';
  * the Almanac counts - because a wrong match would leave a stored offer unasked,
  * which is the very thing this exists to prevent.
  */
-export function offerQuestion(reply: string): string | null {
-  return /almanac[^.!?\n]*\?/i.test(reply) ? null : SAVE_OFFER_QUESTION;
+export function offerQuestion(reply: string, type: SaveType = 'note'): string | null {
+  // Suppressed when the reply already asks - about the Almanac, or about the Me
+  // tab, or about keeping or saving the thing. Wider than it was, because a Me
+  // offer is often phrased "shall I add that to your Me tab?" and adding the
+  // app's line underneath would ask twice.
+  const alreadyAsks =
+    /almanac[^.!?\n]*\?/i.test(reply) ||
+    /\bme tab[^.!?\n]*\?/i.test(reply) ||
+    /\b(keep|save|add)\b[^.!?\n]*\b(that|this|it)\b[^.!?\n]*\?/i.test(reply);
+  return alreadyAsks ? null : offerQuestionFor(type);
 }
 
 /**
