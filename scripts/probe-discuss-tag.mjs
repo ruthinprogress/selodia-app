@@ -9,7 +9,7 @@
 //
 //   npx tsx scripts/probe-discuss-tag.mjs
 
-import { resolveDiscussTag } from '../app/lib/discuss-card.ts';
+import { countCarriedTurns, MAX_DISCUSS_TURNS, resolveDiscussTag } from '../app/lib/discuss-card.ts';
 
 let pass = 0;
 let fail = 0;
@@ -125,6 +125,44 @@ check(
   resolveDiscussTag({ posted: null, previous: null, topicEnded: false }),
   null
 );
+
+console.log('\n  A DISCUSSION HAS A LENGTH (2026-09-19)\n');
+// 18 September: the oxtail dinner's tag rode 38 messages through a continuous
+// conversation that had moved on long before. The silence rule never fired,
+// because every carried message reset its clock.
+const STEW = { entryId: 'oxtail-18-sept', entryType: 'food' };
+const carrying = (n) =>
+  resolveDiscussTag({ posted: null, previous: STEW, topicEnded: false, minutesSincePrevious: 1, turnsCarried: n });
+check('the second question about the stew still carries it', carrying(1), STEW);
+check('the fifth still carries it', carrying(MAX_DISCUSS_TURNS - 1), STEW);
+check('at the limit, it lets go even mid-conversation', carrying(MAX_DISCUSS_TURNS), null);
+check('the 38th message is certainly not about the stew', carrying(19), null);
+check(
+  'posting the card again starts it afresh, whatever came before',
+  resolveDiscussTag({ posted: STEW, previous: STEW, topicEnded: false, turnsCarried: 19 }),
+  STEW
+);
+
+console.log('\n  COUNTING WHERE IT STARTED\n');
+const runOf = (rows) => countCarriedTurns(rows, 'oxtail-18-sept');
+const tagged = (role) => ({ role, discuss_entry_id: 'oxtail-18-sept' });
+const other = (role) => ({ role, discuss_entry_id: null });
+const counted = runOf([tagged('assistant'), tagged('user'), tagged('assistant'), tagged('user'), other('user')]);
+if (counted === 2) {
+  pass += 1;
+  console.log('  PASS  only their messages count, and only back to the start');
+} else {
+  fail += 1;
+  console.log(`  FAIL  counted ${counted}, wanted 2`);
+}
+const none = runOf([other('assistant'), tagged('user')]);
+if (none === 0) {
+  pass += 1;
+  console.log('  PASS  a break ends the run');
+} else {
+  fail += 1;
+  console.log(`  FAIL  counted ${none}, wanted 0`);
+}
 
 console.log(`\n  ${pass} passed, ${fail} failed\n`);
 process.exit(fail === 0 ? 0 : 1);

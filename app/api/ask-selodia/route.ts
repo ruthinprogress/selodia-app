@@ -93,6 +93,7 @@ import {
   loadDiscussEntryFacts,
   loadPendingCardImage,
   markCardImageSent,
+  countCarriedTurns,
   resolveDiscussTag,
   uploadDiscussCard,
   type DiscussTag,
@@ -186,6 +187,24 @@ export async function POST(request: NextRequest) {
           entryType: prevTagRow.discuss_entry_type,
         }
       : null;
+
+  // How long the discussion has already run, in their own messages. Read once
+  // here, alongside the previous tag, because it is the same question asked of
+  // the same rows: see MAX_DISCUSS_TURNS for why a gap alone never ended it.
+  let turnsCarried: number | null = null;
+  if (previousTag) {
+    const { data: runRows } = await supabase
+      .from('chat_messages')
+      .select('role, discuss_entry_id')
+      .eq('user_id', user.id)
+      .eq('source', 'chat')
+      .order('created_at', { ascending: false })
+      .limit(30);
+    turnsCarried = countCarriedTurns(
+      (runRows ?? []) as { role: string; discuss_entry_id: string | null }[],
+      previousTag.entryId
+    );
+  }
 
   // How long the discussion has been sitting idle. Null when there is no
   // previous tag or its timestamp is unreadable, which resolveDiscussTag treats
@@ -1091,6 +1110,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // from the week before stayed attached to it.
     loggedSomethingNew:
       typeof result.logIntent === 'string' && result.logIntent !== 'none',
+    turnsCarried,
   });
   if (userRow?.id && resolvedTag?.entryId !== provisionalTag?.entryId) {
     const { error: tagFixError } = await supabase

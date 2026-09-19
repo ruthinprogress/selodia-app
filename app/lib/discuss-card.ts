@@ -332,6 +332,25 @@ export type DiscussTag = { entryId: string; entryType: DiscussEntryType } | null
 // follow-up about a pizza is not a close call.
 const STALE_AFTER_MINUTES = 45;
 
+// A DISCUSSION HAS A LENGTH, NOT ONLY A SILENCE (2026-09-19).
+//
+// On 18 September Ruth asked about her oxtail dinner and the tag stayed on for
+// 38 messages - through hunger, a medical history, the app's duplicates and
+// going to bed. Nothing released it, and the reason is structural. The model is
+// asked to declare the topic over, and rarely does. The long-gap rule above
+// measures from the PREVIOUS TAGGED message, and every carried turn is tagged,
+// so in a continuous conversation that clock resets on every message and never
+// runs out. As long as somebody keeps talking, the entry stays attached.
+//
+// So a discussion now also ends after this many of their messages without the
+// card being posted again. Six is generous for a question about one meal or one
+// session: by the sixth, a conversation that is still about the dinner is rare,
+// and one that is not is common. The cost of ending early is small - the thread
+// still holds the context, so the reply still knows what was said; only the
+// filing under the entry stops. The cost of never ending was the whole evening
+// filed under a stew.
+export const MAX_DISCUSS_TURNS = 6;
+
 export function resolveDiscussTag(input: {
   posted: DiscussTag;
   previous: DiscussTag;
@@ -340,6 +359,9 @@ export function resolveDiscussTag(input: {
   minutesSincePrevious?: number | null;
   // This turn put a new entry in the log.
   loggedSomethingNew?: boolean;
+  // How many of their messages have already carried the previous tag, counting
+  // back to where it was posted. See MAX_DISCUSS_TURNS.
+  turnsCarried?: number | null;
 }): DiscussTag {
   // Posting a card starts that entry's discussion outright. It outranks an
   // end-of-topic declaration: the declaration is about the message the person
@@ -355,5 +377,25 @@ export function resolveDiscussTag(input: {
     return null;
   }
   if (input.topicEnded) return null;
+  if (typeof input.turnsCarried === 'number' && input.turnsCarried >= MAX_DISCUSS_TURNS) {
+    return null;
+  }
   return input.previous;
+}
+
+/**
+ * How many of the person's own messages, most recent first, have carried this
+ * entry's tag without a break. Stops at the first message that carries anything
+ * else or nothing, because that is where the current discussion began.
+ */
+export function countCarriedTurns(
+  recent: { role: string; discuss_entry_id: string | null }[],
+  entryId: string
+): number {
+  let turns = 0;
+  for (const m of recent) {
+    if (m.discuss_entry_id !== entryId) break;
+    if (m.role === 'user') turns++;
+  }
+  return turns;
 }
