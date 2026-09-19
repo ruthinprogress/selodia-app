@@ -107,6 +107,42 @@ export async function saveAlmanacEntry(
     }
   }
 
+  // THE SAME ENTRY SAVED AGAIN IS THE SAME ENTRY (2026-09-19). See
+  // sameEntryWindow below for the evidence and the rule.
+  const since = new Date(Date.now() - SAME_ENTRY_WINDOW_MIN * 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from('almanac_entries')
+    .select('id, kind, title')
+    .eq('user_id', userId)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  const earlier = findSameEntry(prepared, (recent ?? []) as { id: string; kind: string; title: string }[]);
+
+  if (earlier) {
+    // The newer version wins: a plan saved twice in half a minute where the
+    // second renames a movement is a correction, and the correction is what she
+    // meant. The row keeps its id, so anything already recorded against it -
+    // a completion, a working weight - stays attached.
+    const { data, error } = await supabase
+      .from('almanac_entries')
+      .update({
+        content: prepared.content,
+        category: prepared.category,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', earlier.id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (error) {
+      console.log('almanac_entries same-entry update failed:', error.message);
+      return null;
+    }
+    console.log('ALMANAC: same entry saved again, updated rather than duplicated -', prepared.title);
+    return data as AlmanacEntry;
+  }
+
   const { data, error } = await supabase
     .from('almanac_entries')
     .insert({ user_id: userId, ...prepared })
@@ -117,6 +153,48 @@ export async function saveAlmanacEntry(
     return null;
   }
   return data as AlmanacEntry;
+}
+
+// ONE PLAN SAVED THREE TIMES IS ONE PLAN (2026-09-19).
+//
+// Ruth's Movement library held "Barbell Bent Over Row - Strength" three times,
+// saved within 13 seconds of each other; "Side Splits Stretch Program" twice,
+// under a second apart; and "Full-Body Barbell Strength Plan" twice, 32 seconds
+// apart, the second renaming one movement. The same failure as the nine
+// dinners of 18 September, in a different table: a conversation repeating
+// itself, and every repeat written as new.
+//
+// SO THIS IS AT THE WRITE, like the food guard, because a rule the model is
+// asked to follow is not a guard. Same kind, same title (ignoring case and
+// punctuation), saved within ten minutes: it is the same entry, and the newer
+// content replaces the older rather than sitting beside it.
+//
+// WHY UPDATE RATHER THAN DROP. The Full-Body pair shows it: the second save was
+// a correction, and dropping it would keep the version she had just changed her
+// mind about. Keeping the older row's id matters as much, because workouts she
+// has done are recorded against it.
+//
+// Ten minutes is the window the food guard uses, for the same reason: long
+// enough to catch a conversation repeating itself, short enough that
+// deliberately saving a fresh version next week makes a new entry.
+export const SAME_ENTRY_WINDOW_MIN = 10;
+
+const normTitle = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+export function findSameEntry<T extends { id: string; kind: string; title: string }>(
+  incoming: { kind: string; title: string },
+  recent: T[]
+): T | null {
+  const kind = incoming.kind.trim().toLowerCase();
+  const title = normTitle(incoming.title);
+  if (!title) return null;
+  return (
+    recent.find((r) => r.kind.trim().toLowerCase() === kind && normTitle(r.title) === title) ?? null
+  );
 }
 
 // ---------------------------------------------------------------------------
