@@ -639,6 +639,14 @@ Two of those repeats were the duplicate-logging bug fixed the same day. The thir
 
 The reason is in how people write: *"Tin of sardines in brine, 60g lettuce, 50g grapes, 80g beetroot puree, spoon of garlic olive oil"*. Real meals described in full sentences do not repeat verbatim and are not one weighed food. **The spec's saving assumed somebody who logs "a banana"; the app is used by people who log dinner.**
 
+### Food lookup v2: the same food, counted the same way (BUILT 19 September 2026, live)
+
+Measured again at the item level: 47 items across Ruth's logs, and only five foods appeared more than once. Skipping the model for those would save almost nothing, so v2 does not skip it. What the repeats did show was drift: "1 spoon" of peanut butter was stored as 95 kcal one day and 60 kcal the next.
+
+**So each parse now sees her own last value for every food in the new entry she has logged before** (`app/lib/food-memory.ts`, read from her own `food_items`, the last 180 days, at most 12 foods). It is asked to use the same value for the same amount, scale it for a different amount, and depart from it only when the food is described differently. The most recent value wins, so a correction she makes is the value that sticks. Photo logs get it only for the words in her note.
+
+Measured live with Haiku on the same sentence, four runs each: without memory, a spoon of peanut butter came back as 95, 95, 188 and 190 kcal. With memory, 95 every time. Two spoons scaled to 190, and a remembered food that was not mentioned was never added. The first version wrote the values as prose ("4.2g protein") and the model copied the unit into its JSON, which would have failed the save; they are now given in the schema's own shape. Probe: `scripts/probe-food-memory.mjs` (16 checks). Live check: `scripts/measure-food-memory.mjs`.
+
 ### The source order is reversed, on evidence
 
 **The spec put Open Food Facts first and McCance and Widdowson second. That is backwards, and the test that showed it is one query.**

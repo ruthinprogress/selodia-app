@@ -15,6 +15,7 @@ import {
   type ParsedItem,
   type ParsedMacros,
 } from './food-parse-prompt';
+import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -155,12 +156,18 @@ export async function logFoodFromText(
 ): Promise<FoodEntry[]> {
   const today = new Date().toISOString().slice(0, 10);
 
+  // Her own last value for any food in this text she has logged before, so a
+  // staple is counted the same way every time. See lib/food-memory.ts.
+  const memory = rememberedFoodsBlock(await loadRememberedFoods(supabase, userId, foodText));
+
   const instruction = updateLogId
     ? 'Estimate the macros for this food entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: ' +
       FOOD_PARSE_JSON_SCHEMA +
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
-      ' For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries. Food entry: "' +
+      ' For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
+      memory +
+      ' Food entry: "' +
       foodText +
       '"'
     : 'The person described food they ate, which may be one meal or several, and may cover more than one day. ' +
@@ -174,7 +181,9 @@ export async function logFoodFromText(
       FOOD_PARSE_ENTRIES_SCHEMA +
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
-      ' For meal_label on each entry, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries. What they said: "' +
+      ' For meal_label on each entry, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
+      memory +
+      ' What they said: "' +
       foodText +
       '"';
 
