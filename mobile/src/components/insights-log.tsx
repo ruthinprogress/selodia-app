@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isSeeded } from '@/lib/almanac-list';
 import {
@@ -129,15 +129,23 @@ function EntryCard({ row, onPress }: { row: AlmanacRow; onPress: () => void }) {
       style={({ pressed }) => pressed && styles.pressed}
     >
       <ThemedView type="backgroundElement" style={styles.card}>
+        {/* THREE LEVELS, NOT ONE (Ruth's bug list, item 4: "Title, category
+            label and body all render at the same weight. Title large, category
+            small and muted, body readable"). The title and the preview were
+            both 14pt, which is why the card read as a paragraph with a label
+            on it rather than a thing with a name. Now it matches the Movement
+            library's cards: the name in the serif, because a saved insight is
+            named like a practice is, the kind small and quiet above it, and the
+            first line beneath at a size meant to be read. */}
         <View style={styles.cardTop}>
-          <ThemedText type="small" style={[styles.tag, { color: theme.accentDeep }]}>
+          <ThemedText type="detail" themeColor="textSecondary" style={styles.tag}>
             {INSIGHT_TYPE_LABEL[type]}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.date}>
+          <ThemedText type="detail" themeColor="textSecondary">
             {entryDateLabel(row)}
           </ThemedText>
         </View>
-        <ThemedText type="smallBold">{row.title}</ThemedText>
+        <ThemedText style={styles.title}>{row.title}</ThemedText>
         {preview && (
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
             {preview}
@@ -167,13 +175,22 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 12 },
   cards: { gap: Spacing.two },
   card: {
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
+    // The Movement library's measure, so the Almanac's cards read as one set.
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.three,
+    borderRadius: CardRadius,
     gap: Spacing.one,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tag: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-  date: { fontSize: 11 },
+  // Small and muted, as she asked: it says what kind of thing this is, and
+  // that is worth knowing second, not first.
+  tag: { textTransform: 'uppercase', letterSpacing: 0.8 },
+  title: {
+    fontFamily: DisplayFont.regular,
+    fontSize: 21,
+    lineHeight: 26,
+    paddingBottom: 2,
+  },
   seeded: { fontSize: 11, fontWeight: '600' },
   pressed: { opacity: 0.6 },
 });
