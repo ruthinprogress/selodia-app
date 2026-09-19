@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,11 +7,57 @@ import { Checkbox } from '@/components/checkbox';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
+import { holdConsent, recordConsent } from '@/lib/consent';
+import { supabase } from '@/lib/supabase';
 
+// THE ANSWERS ARE NOW KEPT (build item 51, 2026-09-19). Continue used to do
+// nothing but navigate, so for every account Selodia had no record that anybody
+// had agreed to it holding their health data. See lib/consent.ts for how the
+// answers reach the database before an account exists.
+//
+// TWO WAYS IN. At the start of onboarding the answers are held until the
+// account screen creates a session. With `reconfirm`, the auth guard has sent a
+// signed-in account here because nothing was ever recorded for it: the answers
+// are written at once and the person goes straight back to the app. Consent is
+// asked for, never assumed - including from the accounts that existed before
+// this was built.
 export default function ConsentScreen() {
+  const { reconfirm } = useLocalSearchParams<{ reconfirm?: string }>();
+  const reconfirming = reconfirm === '1';
   const [coreConsent, setCoreConsent] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [researchOptIn, setResearchOptIn] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function handleContinue() {
+    if (!coreConsent || saving) return;
+    const answers = {
+      coreConsent,
+      marketingOptIn,
+      researchOptIn,
+      givenAt: new Date().toISOString(),
+    };
+
+    if (!reconfirming) {
+      holdConsent(answers);
+      router.push('/onboarding/account');
+      return;
+    }
+
+    setSaving(true);
+    setFailed(false);
+    const { data } = await supabase.auth.getUser();
+    const ok = data.user ? await recordConsent(data.user.id, answers, 'reconfirm') : false;
+    setSaving(false);
+    if (!ok) {
+      // Said plainly, and they stay here: carrying on without a record is the
+      // exact state this screen exists to end.
+      setFailed(true);
+      return;
+    }
+    router.replace('/');
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -31,7 +77,17 @@ export default function ConsentScreen() {
             pinning it would take vertical space away from three long checkbox
             labels on precisely the small screens that were the problem. */}
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <ThemedText type="sectionTitle">Welcome to Selodía</ThemedText>
+          <ThemedText type="sectionTitle">
+            {reconfirming ? 'One thing before you carry on' : 'Welcome to Selodía'}
+          </ThemedText>
+
+          {reconfirming && (
+            <ThemedText>
+              Selodía now keeps a record of what you have agreed to, so there is proof it only ever
+              holds your health data with your say-so. Nothing about your account has changed. Please
+              confirm your choices below.
+            </ThemedText>
+          )}
 
           <ThemedText>
             Selodía asks about things like your food, weight, body measurements and activity so it
@@ -64,17 +120,45 @@ export default function ConsentScreen() {
           </ThemedView>
 
           <Pressable
-            disabled={!coreConsent}
-            onPress={() => router.push('/onboarding/account')}
+            disabled={!coreConsent || saving}
+            onPress={() => void handleContinue()}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !coreConsent || saving }}
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView
               type={coreConsent ? 'backgroundSelected' : 'backgroundElement'}
               style={styles.continueButton}>
               <ThemedText type="smallBold" themeColor={coreConsent ? 'text' : 'textSecondary'}>
-                Continue
+                {saving ? 'Saving…' : 'Continue'}
               </ThemedText>
             </ThemedView>
           </Pressable>
+
+          {failed && (
+            <ThemedText type="small" themeColor="textSecondary">
+              That didn&apos;t save. Check your connection and try again.
+            </ThemedText>
+          )}
+
+          {/* RETURNING PEOPLE GO STRAIGHT TO SIGN-IN (build item 51). Until now
+              the only way to the sign-in form was through the consent boxes, so
+              signing in on a new phone meant agreeing all over again. They sign
+              in, and are asked here only if nothing was ever recorded. */}
+          {!reconfirming && (
+            <Pressable
+              onPress={() => router.push({ pathname: '/onboarding/account', params: { mode: 'signin' } })}
+              accessibilityRole="button"
+              accessibilityLabel="Already have an account? Sign in"
+              hitSlop={Spacing.two}
+              style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Already have an account?{' '}
+                <ThemedText type="small" themeColor="accentDeep">
+                  Sign in
+                </ThemedText>
+              </ThemedText>
+            </Pressable>
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -107,6 +191,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderRadius: ButtonRadius,
     alignItems: 'center',
+  },
+  signIn: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.two,
   },
   pressed: {
     opacity: 0.7,

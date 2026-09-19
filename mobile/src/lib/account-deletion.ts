@@ -84,6 +84,11 @@ const DELETE_ORDER = [
   // their account to be erased.
   'allergies',
   'reminder_settings',
+  'custom_reminders',
+  'daily_activity_summaries',
+  'food_cache',
+  'consent_records',
+  'client_error_log',
   'push_tokens',
   'user_profile',
 ];

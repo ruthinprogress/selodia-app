@@ -1,5 +1,6 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import { getQueryParams } from 'expo-auth-session/build/QueryParams';
+import { useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps } from 'react-native';
@@ -10,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { consentMetadata, heldConsent } from '@/lib/consent';
 import { supabase } from '@/lib/supabase';
 
 type BiologicalSex = 'female' | 'male' | 'prefer_not_to_say';
@@ -37,23 +39,30 @@ async function createSessionFromUrl(url: string) {
 // (email confirmation off, or the Google path). When confirmation is
 // pending, signUp's metadata is the only viable carrier until a session
 // exists later (no auth-state listener yet to sync it on reauth).
+// ONLY THE FIELDS THAT WERE GIVEN (build item 51, 2026-09-19). This used to
+// write all three every time, so somebody who filled in their date of birth but
+// not their sex before a Google sign-in had their stored sex overwritten with
+// null - a value they had already given, erased by a form they left half
+// finished. A field left empty now leaves what is stored alone.
 async function upsertProfile(
   userId: string,
   dob: Date | null,
   sex: BiologicalSex | null,
   firstName: string | null
 ) {
-  if (!dob && !sex && !firstName) return;
-  await supabase.from('user_profile').upsert({
-    user_id: userId,
-    date_of_birth: dob ? dob.toISOString().slice(0, 10) : null,
-    biological_sex: sex,
-    first_name: firstName,
-  });
+  const patch: Record<string, unknown> = { user_id: userId };
+  if (dob) patch.date_of_birth = dob.toISOString().slice(0, 10);
+  if (sex) patch.biological_sex = sex;
+  if (firstName) patch.first_name = firstName;
+  if (Object.keys(patch).length === 1) return;
+  await supabase.from('user_profile').upsert(patch);
 }
 
 export default function AccountScreen() {
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+  // "Already have an account? Sign in" on the first screen opens this in
+  // sign-in mode, so a returning person is not walked through sign-up.
+  const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
+  const [mode, setMode] = useState<'signup' | 'signin'>(modeParam === 'signin' ? 'signin' : 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -168,6 +177,11 @@ export default function AccountScreen() {
             date_of_birth: dateOfBirth ? dateOfBirth.toISOString().slice(0, 10) : null,
             biological_sex: biologicalSex,
             first_name: firstName.trim() || null,
+            // The consent answers ride with the account too, because on the
+            // email-confirmation path no session exists to write them with
+            // until the link is clicked. The guard writes them the first time
+            // a session appears. See lib/consent.ts.
+            ...consentMetadata(heldConsent()),
           },
         },
       });

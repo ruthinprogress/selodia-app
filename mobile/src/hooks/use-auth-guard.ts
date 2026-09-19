@@ -2,6 +2,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
+import { hasRecordedConsent, recordCarriedConsentIfMissing } from '@/lib/consent';
 import { RESUME_ROUTE, type OnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
 
@@ -98,6 +99,25 @@ export function useAuthGuard(): { ready: boolean } {
 
     let cancelled = false;
     (async () => {
+      // CONSENT BEFORE ANYTHING ELSE (build item 51, 2026-09-19). First write
+      // whatever consent arrived with this session and was never stored - from
+      // the consent screen a moment ago, or from the sign-up metadata after an
+      // email confirmation - and only then ask whether a record exists. In that
+      // order, never at the same time: checking first would send somebody who
+      // consented thirty seconds ago back to the consent screen.
+      await recordCarriedConsentIfMissing(session.user);
+      const consented = await hasRecordedConsent();
+      if (cancelled) return;
+      if (!consented) {
+        // Asked, never assumed - including the accounts that existed before
+        // consent was recorded at all. Left alone once they are on the screen.
+        const onConsent = inOnboarding && screen === 'consent';
+        if (!onConsent) {
+          router.replace({ pathname: '/onboarding/consent', params: { reconfirm: '1' } });
+        }
+        return;
+      }
+
       const { data } = await supabase.from('user_profile').select('onboarding_step').maybeSingle();
       if (cancelled) return;
       const step = (data?.onboarding_step ?? 'not_started') as OnboardingStep;

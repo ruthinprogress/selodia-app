@@ -28,8 +28,17 @@ export type ExportTable = {
   dateColumn: string | null;
 };
 
-// All 17 tables that carry user data, verified against the live schema on
-// 2026-08-31. Every one has user_id → auth.users ON DELETE CASCADE.
+// Every table that carries user data, re-verified against the live schema on
+// 2026-09-19 (first verified 2026-08-31 at 17). Every one has user_id →
+// auth.users ON DELETE CASCADE.
+//
+// SIX HAD BEEN ADDED SINCE AND NEVER JOINED THIS LIST, so a person asking for
+// their data received an incomplete copy - most notably their daily step and
+// burn totals, missing since daily_activity_summaries was created on 4
+// September. A copy that leaves things out is a quiet breach of the right of
+// access, and nothing would ever report it. The one table deliberately absent
+// is me_exports: fifteen-minute copies of the Me tab, whose content is already
+// here as almanac_entries.
 export const EXPORT_TABLES: ExportTable[] = [
   { table: 'user_profile', label: 'Your profile', dateColumn: null },
   { table: 'user_context', label: 'Things Selodía remembers about you', dateColumn: 'created_at' },
@@ -53,6 +62,13 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: 'workout_weight_log', label: 'Working weights', dateColumn: 'logged_at' },
   { table: 'workout_completion_log', label: 'Completed workouts', dateColumn: 'completed_at' },
   { table: 'reminder_settings', label: 'Reminder settings', dateColumn: null },
+  { table: 'custom_reminders', label: 'Reminders you asked for', dateColumn: 'created_at' },
+  { table: 'daily_activity_summaries', label: 'Daily step and burn totals', dateColumn: 'date' },
+  { table: 'food_cache', label: 'Foods remembered for quicker logging', dateColumn: 'created_at' },
+  // What was agreed to and when. Somebody's own copy of their consent is part
+  // of the record they are entitled to.
+  { table: 'consent_records', label: 'What you agreed to, and when', dateColumn: 'recorded_at' },
+  { table: 'client_error_log', label: 'Error reports from your phone', dateColumn: 'created_at' },
   { table: 'push_tokens', label: 'Notification devices', dateColumn: 'created_at' },
 ];
 
