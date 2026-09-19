@@ -1,9 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, type Href } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { HydrationCard } from '@/components/hydration-card';
+import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -149,11 +149,30 @@ function startOfToday(): string {
   return d.toISOString();
 }
 
-export function OverviewPanel() {
+// The floating Undo note lives on the screen, outside its scroll view, so it can
+// sit above the bottom navigation (see today/index.tsx). The panel reports each
+// drink added, and is told when one was undone so its total goes back.
+export function OverviewPanel({
+  onWaterAdded,
+  waterUndone,
+}: {
+  onWaterAdded?: (action: WaterAction) => void;
+  waterUndone?: { ml: number; id: string } | null;
+} = {}) {
   const flower = useHealthFlower();
   const { reload: reloadFlower } = flower;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
+
+  // An undo from the floating note: the total goes back as though the tap never
+  // happened. Keyed by the drink's id so the same undo is applied once, however often
+  // this renders.
+  const appliedUndo = useRef<string | null>(null);
+  useEffect(() => {
+    if (!waterUndone || appliedUndo.current === waterUndone.id) return;
+    appliedUndo.current = waterUndone.id;
+    setData((d) => (d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl - waterUndone.ml) } : d));
+  }, [waterUndone]);
   const [name, setName] = useState<string | null>(null);
 
   // Refetches on FOCUS, not only on mount. Overview is the root of the Body
@@ -534,6 +553,7 @@ export function OverviewPanel() {
           onLogged={(deltaMl) =>
             setData((d) => (d ? { ...d, hydrationMl: Math.max(0, d.hydrationMl + deltaMl) } : d))
           }
+          onAdded={(action) => onWaterAdded?.(action)}
         />
       </SpotlightTarget>
 

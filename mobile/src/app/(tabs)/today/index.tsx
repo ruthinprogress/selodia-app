@@ -1,6 +1,8 @@
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HydrationToast, type WaterAction } from '@/components/hydration-card';
 import { OverviewPanel } from '@/components/overview-panel';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
@@ -21,6 +23,12 @@ import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 // existed to keep this a glance rather than a page; a glance that CAN scroll is
 // still a glance, and everything that was above the fold is still above it.
 export default function BodyOverviewScreen() {
+  // The water card's Undo note, drawn here - outside the scroll view - so it
+  // floats above the bottom navigation wherever the page is scrolled to.
+  const [water, setWater] = useState<WaterAction | null>(null);
+  const [undone, setUndone] = useState<{ ml: number; id: string } | null>(null);
+  const clearWater = useCallback(() => setWater(null), []);
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -29,8 +37,13 @@ export default function BodyOverviewScreen() {
             which is what keeps the layout identical to the old fixed one until
             the content genuinely outgrows the screen. */}
         <ScrollView contentContainerStyle={styles.content}>
-          <OverviewPanel />
+          <OverviewPanel onWaterAdded={setWater} waterUndone={undone} />
         </ScrollView>
+        <HydrationToast
+          action={water}
+          onUndone={(ml, id) => setUndone({ ml, id })}
+          onDone={clearWater}
+        />
       </SafeAreaView>
     </ThemedView>
   );
