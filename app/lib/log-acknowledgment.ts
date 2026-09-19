@@ -207,7 +207,7 @@ BE SPECIFIC OR SAY LESS. "Looking good, keep it up" is worse than silence. If th
 
 NEVER INVENT A COMPARISON. You can see only what you are given. You do not know their history, their usual, their recent weeks, or their pattern unless it is written in front of you. Phrases like "in line with your usual", "middle of where you've been sitting lately", "on par with your recent walks" are FABRICATIONS unless the numbers behind them are in the material above - and a fabricated comparison about someone's own body is worse than saying nothing specific at all. When a recent-history block is provided, compare against those numbers and only those. When it is not, do not reach for a comparison; describe what is in front of you instead.
 
-NEVER EXPLAIN A CHANGE. You are shown the reading and nothing about their day: no food, no salt, no training, no sleep, no cycle. So you cannot know why a number moved, and any reason you give is invented - "yesterday was salty", "a hard session a day or two ago", "probably water", "that time of the month" are all fabrications about someone's own body, however plausible they sound. Do not offer causes, and do not hedge them either ("could be", "might be" still plants an explanation that is not in front of you).
+OBSERVE FIRST. INTERPRET FROM EVIDENCE. You are shown the reading and nothing about their day: no food, no salt, no training, no sleep, no cycle. So you may describe what the number did, and you may name a GENERAL, scientifically plausible possibility if it is clearly labelled as one and claims nothing about them - "day-to-day weight often moves with water, so one reading can't say much on its own". What you must never do is attribute this change to something about THEIR day, body or behaviour, because nothing you have been shown supports it: "yesterday was salty", "a hard session a day or two ago", "your cycle", "a short night" are fabrications about someone's own body however they are hedged - "might be the salty food" still points at salty food nobody logged. When there are several possible reasons, prefer curiosity to certainty: a light question is better than a guess.
 
 THE CHANGE ON SCREEN IS THE ONLY CHANGE. The facts block already states how this reading compares, and against when. Do not compute another difference, name another day, or put a different number on it. If the block says down 0.1 against two days ago, then "up 0.3 since yesterday" is a contradiction of what they are reading one line above.
 
@@ -238,16 +238,25 @@ If there is genuinely nothing worth saying, reply with exactly: NOTHING`;
 // posted, and a read that fails is dropped - the facts and the app's own
 // interpretation still go out, which is a true reply; a fabricated one is not.
 
-// Explanations for a change in the body that a body-measurement read can never
-// support, because it is shown none of the things they name.
-const INVENTED_CAUSES = [
+// REFINED THE SAME DAY, TO RUTH'S PRINCIPLE (2026-09-19): "Observe first.
+// Interpret from evidence." She was explicit that Selodia MAY "explain
+// scientifically plausible possibilities (clearly labelled as possibilities)",
+// and must not "confidently state causes that it has no evidence for... a
+// weight increase should never be attributed to salty food, exercise, hormones
+// or anything else unless the user has actually logged information supporting
+// that interpretation." The first version of this guard dropped both, so it was
+// stricter than the principle it was enforcing.
+//
+// So there are two lists, and the line between them is whether the words make
+// a claim about HER.
+//
+// ATTRIBUTIONS name something she did or something about her body - food, salt,
+// a session, her cycle, her sleep. This route is shown none of those, so any
+// mention is an attribution without evidence, hedged or not: "might be the
+// salty food" still points at salty food nobody logged.
+const ATTRIBUTIONS = [
   /\bsalt(y|ier)?\b/i,
   /\bsodium\b/i,
-  /\bwater (weight|retention)\b/i,
-  /\bretain(ing|ed)?\b/i,
-  /\bfluid\b/i,
-  /\bbloat(ed|ing)?\b/i,
-  /\bhydrat(ed|ion|ing)\b/i,
   /\b(hard|heavy|big|tough) (session|workout|day)\b/i,
   /\b(workout|training|trained|gym|exercise)\b/i,
   /\b(period|cycle|luteal|hormon\w*)\b/i,
@@ -256,6 +265,29 @@ const INVENTED_CAUSES = [
   /\b(carbs?|glycogen)\b/i,
   /\b(alcohol|wine|takeaway)\b/i,
 ];
+
+// GENERAL MECHANISMS are physiology rather than biography: water moves weight
+// from day to day in everybody. Naming one is allowed - but only as a labelled
+// possibility, and only in a sentence that says nothing about her. "Weight
+// often moves with water from day to day" passes; "you're probably retaining
+// water" does not, because that is a claim about her body dressed as a
+// mechanism.
+const MECHANISMS = [
+  /\bwater\b/i,
+  /\bretain(ing|ed)?\b/i,
+  /\bretention\b/i,
+  /\bfluid\b/i,
+  /\bbloat(ed|ing)?\b/i,
+  /\bhydrat(ed|ion|ing)\b/i,
+];
+const LABELLED_POSSIBILITY =
+  /\b(could|might|may|can|often|usually|sometimes|common(ly)?|normal(ly)?|possibl[ey]|tends? to)\b|\bday[- ]to[- ]day\b/i;
+const ABOUT_HER =
+  /\b(you|your|you're|youre|you've|youve|yours)\b|\b(yesterday|last night|this morning|today|tonight|this week)\b/i;
+
+function sentencesOf(text: string): string[] {
+  return text.split(/(?<=[.!?])\s+/).filter((t) => t.trim().length > 0);
+}
 
 /**
  * True when a body-measurement read gives a reason the data cannot support, or
@@ -271,7 +303,14 @@ export function readInventsContext(
   material: string
 ): boolean {
   if (!read || kind !== 'body_measurement') return false;
-  if (INVENTED_CAUSES.some((re) => re.test(read))) return true;
+  if (ATTRIBUTIONS.some((re) => re.test(read))) return true;
+  // A mechanism is judged sentence by sentence, because the label and the
+  // claim have to sit together: "Water moves weight. You've had a salty week."
+  // is a possibility in one sentence and an attribution in the next.
+  for (const sentence of sentencesOf(read)) {
+    if (!MECHANISMS.some((re) => re.test(sentence))) continue;
+    if (!LABELLED_POSSIBILITY.test(sentence) || ABOUT_HER.test(sentence)) return true;
+  }
 
   // Every measured-looking number must be one the model was given. Compared
   // without its sign, because "down 0.1" and "-0.1" are the same figure written

@@ -33,13 +33,30 @@ check(
   true
 );
 
-console.log('\n  CAUSES IT CANNOT KNOW\n');
+console.log('\n  ATTRIBUTIONS TO HER DAY, HOWEVER HEDGED\n');
+// Ruth, 2026-09-19: "a weight increase should never be attributed to salty
+// food, exercise, hormones or anything else unless the user has actually logged
+// information supporting that interpretation."
 check('salt', bad('Probably a bit of salt from yesterday.'), true);
-check('water, hedged', bad('Could just be water retention.'), true);
+check('salt, hedged, is still an attribution', bad('Might be the salty food.'), true);
 check('training', bad('Your training this week may be showing.'), true);
 check('the cycle', bad('Worth remembering where you are in your cycle.'), true);
 check('sleep', bad('A short night of sleep can do this.'), true);
 check('carbs', bad('Carbs hold water, so this may settle.'), true);
+
+console.log('\n  GENERAL POSSIBILITIES, CLEARLY LABELLED, ARE ALLOWED\n');
+// Also Ruth: Selodia may "explain scientifically plausible possibilities
+// (clearly labelled as possibilities)". The first version of this guard
+// dropped these too, which was stricter than the principle.
+check('a labelled general mechanism', bad('Weight often moves with water from day to day.'), false);
+check('hedged, and about nothing she did', bad('Could just be water.'), false);
+check('water as a claim about HER body', bad("You're probably retaining water."), true);
+check('water stated as the cause, unlabelled', bad('That is water retention.'), true);
+check(
+  'a possibility in one sentence, a claim about her in the next',
+  bad('Weight can move with water. Your fluid was up yesterday.'),
+  true
+);
 
 console.log('\n  NUMBERS THAT ARE NOT ON SCREEN\n');
 check('a different change', bad('That is up 0.3 kg on last week.'), true);
