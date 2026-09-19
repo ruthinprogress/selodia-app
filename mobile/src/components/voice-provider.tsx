@@ -1,5 +1,13 @@
 import { ConversationProvider } from '@elevenlabs/react-native';
 
+import { routeVoiceToHeadphones } from '@/lib/voice-audio-route';
+
+// Installed at module load, AFTER the SDK import above has run, and before any
+// call can start: a call only begins from a deliberate press, long after this.
+// See voice-audio-route.ts for why the SDK's own choice sends every call to the
+// loudspeaker.
+routeVoiceToHeadphones();
+
 // The conversation context, mounted once at the root.
 //
 // WHY THE ROOT AND NOT THE CHAT SCREEN. `useConversation()` throws outside a
