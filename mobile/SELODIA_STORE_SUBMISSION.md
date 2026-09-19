@@ -1,6 +1,6 @@
 # Selodía — Store Submission
 
-*Started 10 September 2026. The working document for getting Selodía onto Google Play. Operational rather than conceptual: forms to fill in, answers to copy, copy to approve. The **reasoning** behind the route lives in `SELODIA_SPEC.md` Part Sixteen under "Google Play submission"; this is the thing you sit beside the Play Console with.*
+*Started 10 September 2026; brought up to date and extended to the App Store on 19 September 2026. The working document for getting Selodía onto Google Play and the App Store. Operational rather than conceptual: forms to fill in, answers to copy, copy to approve. The **reasoning** behind the route lives in `SELODIA_SPEC.md` Part Sixteen under "Google Play submission"; this is the thing you sit beside the Play Console with.*
 
 *Every answer below was written from the actual database tables and the actual third-party calls, and must stay consistent with the live privacy policy at **selodia.app/privacy**. Google compares the two, and a Data Safety form that contradicts the policy is a rejection.*
 
@@ -16,7 +16,7 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 |---|---|
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all user data encrypted in transit? | **Yes** |
-| Do you provide a way for users to request data deletion? | **Yes** — in-app, Settings → Delete my account |
+| Do you provide a way for users to request data deletion? | **Yes** — in-app, Settings → Delete my account. **Web link (required): `https://selodia.app/delete-account`** |
 | Is data processed ephemerally only? | **No** — it is stored, because the product's value is history |
 | Is any data collected from children? | **No** — the app is for adults |
 
@@ -28,12 +28,15 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | Personal info | Name | No | — | — | Not collected |
 | Personal info | Other info (date of birth, biological sex) | Yes | No | Optional | App functionality — used to derive metabolic estimates |
 | Health and fitness | Health info | Yes | No | Optional | App functionality — body measurements, conditions and markers the person discloses, menstrual cycle dates, allergies |
-| Health and fitness | Fitness info | Yes | No | Optional | App functionality — activity, duration, intensity, step counts where permission was granted |
+| Health and fitness | Fitness info | Yes | No | Optional | App functionality — activity, duration, intensity, and step counts from Health Connect where permission was granted |
 | Photos and videos | Photos | Yes | No | Optional | App functionality — food photographs the person chooses to send |
 | Messages | Other in-app messages | Yes | No | Required | App functionality — the conversation is the product's primary interface |
 | Audio | Voice or sound recordings | **No** | — | — | Audio is processed to produce a transcript and is not retained. **Declare the transcript under Messages, not here.** |
 | App activity | Other actions | Yes | No | Optional | App functionality — saved plans, insights, notes |
 | Device or other IDs | Device or other IDs | Yes | No | Optional | App functionality — a push token, only if reminders are turned on |
+| App info and performance | Diagnostics | Yes | No | Required | Analytics — a short error note (which part of the app failed, and the error text) written when something fails on the phone. **Added 19 September**: `client_error_log` has existed since 17 September and was missing here. Google counts diagnosing faults as Analytics. |
+
+**Changes the day clinical-letter upload is built** (Part Sixteen, not built yet): *Files and docs* becomes collected, even though the letter is discarded after reading, because Google counts processing, not only storage. Update this table, the privacy policy and the App Store answers in the same change.
 
 **Not collected, and worth stating so nobody assumes otherwise:** location of any kind, contacts, calendar, files and docs, browsing history, search history, installed apps, purchase history, credit info, payment info, race or ethnicity, political or religious beliefs, sexual orientation, financial info, and any advertising or analytics identifier. **There is no third-party analytics SDK and no advertising SDK in the app at all.**
 
@@ -55,6 +58,7 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | Data safety | Section 1 above |
 | Government app | No |
 | Financial features | None |
+| Health Connect permissions | **A separate declaration, with a reason for each permission.** The app reads **Steps only**. Reason: "Shows the person their daily step count alongside the movement they log, so their week is complete without typing it in." Distance and exercise were requested in `app.json` but never read, and Google rejects permissions an app does not use, so both were **removed on 19 September**; add each back only with the code that reads it. The app has the Health Connect rationale entry the platform requires (added by the `react-native-health-connect` plugin); it opens the app rather than the policy, so **check on device** that a reviewer tapping it from Health Connect can reach the privacy policy. |
 | Health apps declaration | **Read this one properly.** Google asks whether the app provides health-related features. It does. It does **not** provide diagnosis, treatment, or medical advice, and the in-app disclaimer already says so. |
 
 ---
@@ -117,3 +121,72 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Config done 10 Sept (`app.config.js`, 5ca248c). **No dev-variant build has run yet**, so its FCM credentials entry cannot exist yet either |
 | 10 | Set up FCM push credentials for `app.selodia` | Ruth in the consoles, Claude the repo | Firebase project `selodia-app`, `google-services.json` and the EAS key all done 10 Sept. **Push verified on a device on 12 Sept**, preview build `1291e191`: token saved, test push delivered and seen. It needed a code fix as well as the setup (`3732881`). (The old wording, "regenerate", was wrong: there were never any credentials to regenerate.) |
 | 11 | Promote to production | Ruth | A separate, deliberate decision |
+| 12 | Account deletion web page, support page, privacy policy update, consent screen AI wording | Claude | **Built 19 September, held on branch `store-wording` for Ruth's approval** |
+
+---
+
+## 5. A deletion request by email
+
+The web page promises a reply and deletion within 30 days. When one arrives at hello@selodia.app:
+
+1. Check it came **from the address on the account**. If it did not, reply asking them to send it from that address, and do nothing else.
+2. In Supabase, Authentication → Users, find that email and delete the user. Every table cascades from it, which is the same end state as the in-app button.
+3. Reply to confirm it is done. Keep the email thread as the record that the request was made and met.
+
+---
+
+# APP STORE (iPhone)
+
+*Started 19 September 2026. Nothing has been submitted and no iOS build has run yet.*
+
+## 6. What would stop review
+
+| # | Blocker | Status |
+|---|---|---|
+| 1 | **Sign in with Apple.** Guideline 4.8: an app offering Google sign-in must also offer Sign in with Apple (or an equivalent privacy-first login). | **Not built.** Needs the Apple Developer account first, then the Apple provider in Supabase Auth and `expo-apple-authentication` in the app. |
+| 2 | **Telling people about AI, and asking.** Guideline 5.1.2(i): people must be told clearly, and agree, before personal data goes to a third-party AI. | **Built, held for approval** (branch `store-wording`): the consent screen names Claude and ElevenLabs and the core consent box includes it. |
+| 3 | **In-app account deletion.** Guideline 5.1.1(v). | **Done** (Settings → Delete my account). |
+| 4 | **HealthKit.** Health data never used for advertising, never stored in iCloud, and a clear reason in the permission prompt. | Permission text set (`react-native-health` plugin). The privacy policy update says HealthKit data is never used for advertising. **Not verified on device** (Part Sixteen notes iOS permission handling is code-fixed but untested). |
+| 5 | **Bundle identifier and export compliance.** | **Done 19 September:** `app.selodia` (dev: `app.selodia.dev`), and `usesNonExemptEncryption: false`, because the app uses only standard HTTPS. |
+| 6 | **Camera, photos and microphone reasons.** | **Done**, set by the plugins in `app.json`. |
+
+## 7. App Store Connect answers
+
+| Item | Answer |
+|---|---|
+| Privacy policy URL | `https://selodia.app/privacy` |
+| Support URL (required) | `https://selodia.app/support` |
+| Marketing URL (optional) | `https://selodia.app` |
+| Age rating | Answer the questionnaire honestly: no violence, sexual content, gambling or user-to-user contact. Medical or treatment information: **infrequent**, because it discusses health but does not diagnose. Set the minimum age to **18+** so it matches the Play declaration: the app is for adults. |
+| Category | Health & Fitness |
+| Review notes | Explain that the app is a conversational health companion, not a medical device; give a **test account** with sample data (never Ruth's real data); say that voice mode needs the microphone and Apple Health is optional. |
+| Content rights | Exercise animations are licensed from Exercise Animatic (see the spec for the licence). |
+
+## 8. App Privacy ("nutrition label")
+
+Apple's categories differ from Google's. Every item below is **linked to the person** (it is stored with their account), and **none is used for tracking**.
+
+| Apple category | Collected | Purpose |
+|---|---|---|
+| Contact info: email address | Yes | App functionality |
+| Health & fitness: health | Yes | App functionality |
+| Health & fitness: fitness | Yes | App functionality |
+| User content: photos | Yes | App functionality (food photos) |
+| User content: other user content | Yes | App functionality (messages and voice transcripts) |
+| Identifiers: device ID | Yes | App functionality (push token, only with reminders on) |
+| Diagnostics: other diagnostic data | Yes | App functionality (error notes) |
+| Sensitive info, location, contacts, browsing, purchases, financial | No | — |
+
+**Audio data**: not collected, for the same reason as on Play. Audio is turned into text and not kept; the transcript is declared as user content. This depends on the ElevenLabs retention setting still to be confirmed.
+
+## 9. Progress
+
+| # | Step | Owner | Status |
+|---|---|---|---|
+| 1 | Apple Developer Program as **Selodía Ltd**, about £79 a year | Ruth | Not started. **Needs the D-U-N-S number**, the same one Play needs. |
+| 2 | Sign in with Apple | Claude, after 1 | Not started |
+| 3 | First iOS build (`eas build --platform ios`), then TestFlight | Claude, after 1 | Not started |
+| 4 | Check Apple Health permissions on a real iPhone | Ruth | Not started |
+| 5 | App Store Connect answers (§7) and App Privacy (§8) | Ruth, from this document | Drafted |
+| 6 | Screenshots: 6.9-inch iPhone required (1320×2868 or 1290×2796) | Ruth | Not started. Same rule as Play: invented data only. |
+| 7 | Submit for review | Ruth | A deliberate decision |
