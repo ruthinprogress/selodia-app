@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountDeletion } from '@/components/account-deletion';
 import { BuildVersion } from '@/components/build-version';
+import { ConsentChoices } from '@/components/consent-choices';
 import { CustomReminderList } from '@/components/custom-reminder-list';
 import { DataExport } from '@/components/data-export';
 import { SpotlightScroll } from '@/components/spotlight-provider';
@@ -108,6 +109,11 @@ export default function SettingsScreen() {
               That is not a preference toggle the product did not ask for; it is
               the missing half of a question it already asks. */}
           <StepTracking />
+
+          {/* What they agreed to, changeable any time - and placed before the
+              export and deletion, so withdrawing everything is the last step of
+              a path that starts with the smaller choices. */}
+          <ConsentChoices />
 
           {/* Entry point one of the two Part Five requires. */}
           <SpotlightTarget id="settings.export">

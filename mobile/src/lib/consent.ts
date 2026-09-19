@@ -102,7 +102,7 @@ export async function hasRecordedConsent(): Promise<boolean> {
 export async function recordConsent(
   userId: string,
   answers: ConsentAnswers,
-  source: 'onboarding' | 'reconfirm',
+  source: 'onboarding' | 'reconfirm' | 'settings',
   policyVersion: string = PRIVACY_POLICY_VERSION
 ): Promise<boolean> {
   const { error } = await supabase.from('consent_records').insert({
@@ -164,4 +164,30 @@ async function writeCarriedConsent(user: User): Promise<void> {
       typeof meta.consent_policy_version === 'string' ? meta.consent_policy_version : PRIVACY_POLICY_VERSION
     );
   }
+}
+
+export type ConsentRecord = {
+  coreConsent: boolean;
+  marketingOptIn: boolean;
+  researchOptIn: boolean;
+  policyVersion: string;
+  givenAt: string;
+};
+
+/** The latest record, for Settings to show. Null when there is none or it failed. */
+export async function latestConsent(): Promise<ConsentRecord | null> {
+  const { data, error } = await supabase
+    .from('consent_records')
+    .select('core_consent, marketing_opt_in, research_opt_in, policy_version, given_at')
+    .order('recorded_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    coreConsent: data.core_consent === true,
+    marketingOptIn: data.marketing_opt_in === true,
+    researchOptIn: data.research_opt_in === true,
+    policyVersion: data.policy_version,
+    givenAt: data.given_at,
+  };
 }
