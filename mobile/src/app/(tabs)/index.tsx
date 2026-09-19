@@ -694,7 +694,7 @@ export default function ChatScreen() {
             accessibilityLabel="Account settings"
             style={({ pressed }) => [styles.settingsEntry, pressed && styles.settingsPressed]}
           >
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="small" themeColor="textSecondary" style={{ paddingRight: 2 }} textBreakStrategy="simple">
               Settings
             </ThemedText>
           </Pressable>

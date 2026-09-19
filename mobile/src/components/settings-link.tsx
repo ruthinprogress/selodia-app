@@ -51,7 +51,12 @@ export function SettingsLink({
         pressed && styles.pressed,
       ]}
     >
-      <ThemedText type="small" themeColor="textSecondary">
+      {/* "Setting" on her phone (2026-09-19): Android measured the word in one
+          face and drew it in a slightly wider one, clipping the final s. The
+          simple break strategy measures closer to how it draws, and two points
+          of padding give the last glyph room inside the box. The Chat screen's
+          own link has the same fix. */}
+      <ThemedText type="small" themeColor="textSecondary" style={{ paddingRight: 2 }} textBreakStrategy="simple">
         Settings
       </ThemedText>
     </Pressable>

@@ -74,10 +74,23 @@ export function SegmentedTabs<T extends string>({
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
           >
             <View style={[styles.segment, selected && { backgroundColor: theme.background }]}>
+              {/* SHRINK RATHER THAN CUT (2026-09-19). "Activit" and "Measurement
+                  / s" came back on her phone: a third of the track is about 100
+                  points, less the segment padding, and a phone set to a larger
+                  font size needs more than that for "Measurements". So the
+                  label may scale down to fit its segment - never below three
+                  quarters - and system font scaling is capped here, as it is in
+                  most apps' tab controls, because a label that wraps or loses
+                  letters is less readable than a slightly smaller one. */}
               <ThemedText
                 type="small"
                 themeColor={selected ? 'text' : 'textSecondary'}
                 style={styles.label}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                maxFontSizeMultiplier={1.3}
+                textBreakStrategy="simple"
               >
                 {item.label}
               </ThemedText>
@@ -107,9 +120,10 @@ const styles = StyleSheet.create({
   segment: {
     borderRadius: 18,
     paddingVertical: 8,
-    // Generous, and now affordable: the segment is a third of a wide track
-    // rather than a word with a margin.
-    paddingHorizontal: 12,
+    // Small on purpose. At 12 either side the claim below ("room to spare")
+    // was false: about 100 points a third, 76 left for the word, and
+    // "Measurements" needs about 88 at the default font size.
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
