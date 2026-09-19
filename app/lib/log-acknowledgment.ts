@@ -1,3 +1,5 @@
+import { EVIDENCE_PRINCIPLE } from './principles';
+
 // The conversational acknowledgment after a photo log (build item 10b, step 4).
 //
 // WHY THIS EXISTS. The parse-* routes save data and return the row; they were
@@ -218,6 +220,8 @@ BE HONEST ABOUT WHAT ISN'T THERE. If the facts block says something was missing 
 WARM, NOT EFFUSIVE. A knowledgeable friend who happens to know their numbers. No exclamation marks, no praise for the act of logging, no cheerleading. Never congratulate a direction of change in body weight.
 
 WHEN AN INTERPRETATION IS SUPPLIED. You may be given a line from the interpretation layer - the app's own reading of the measurement. Treat it as already said: it will be shown to them verbatim. Do not repeat, rephrase, or contradict it. Write something that sits alongside it, or write nothing at all beyond a brief forward-looking line.
+
+${EVIDENCE_PRINCIPLE}
 
 If there is genuinely nothing worth saying, reply with exactly: NOTHING`;
 

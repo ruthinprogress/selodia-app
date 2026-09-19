@@ -29,6 +29,7 @@ import {
   type DayRow,
   type Reading,
 } from '../../lib/weekly-roundup';
+import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-5';
@@ -370,7 +371,9 @@ THE WITNESS STATEMENTS are a different thing from the roundup, and the rules are
 
 Never moralise a food. Never use "bad", "good", "cheat", "guilty", "junk" or "clean" about anything they ate. Never praise restriction, and never frame a lower number as better. A missing day is not a failure and is never described as one.
 
-Do not invent numbers. If a figure above says there is not enough logged to say, say that instead of estimating.`;
+Do not invent numbers. If a figure above says there is not enough logged to say, say that instead of estimating.
+
+${EVIDENCE_PRINCIPLE}`;
 
   let response;
   try {

@@ -34,6 +34,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // A stronger model than the routine parsing tasks (see SELODIA_SPEC.md, Part
 // Three): this route's classification decides whether the safety boundary fires.
 import { PHASE_OPENERS } from '../../lib/onboarding-openers';
+import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 
 const MODEL = 'claude-sonnet-5';
 
@@ -354,7 +355,7 @@ export async function POST(request: NextRequest) {
   }
 
   const systemPrompt =
-    `${PHASE_ROLE[phase]}${goalContext}\n\n${ONBOARDING_COMMON}\n\n${SAFETY_PROMPT_BLOCK}` +
+    `${PHASE_ROLE[phase]}${goalContext}\n\n${ONBOARDING_COMMON}\n\n${EVIDENCE_PRINCIPLE}\n\n${SAFETY_PROMPT_BLOCK}` +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount);
 
   const tool = buildClassifyTool(
