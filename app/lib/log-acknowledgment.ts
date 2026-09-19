@@ -207,6 +207,10 @@ BE SPECIFIC OR SAY LESS. "Looking good, keep it up" is worse than silence. If th
 
 NEVER INVENT A COMPARISON. You can see only what you are given. You do not know their history, their usual, their recent weeks, or their pattern unless it is written in front of you. Phrases like "in line with your usual", "middle of where you've been sitting lately", "on par with your recent walks" are FABRICATIONS unless the numbers behind them are in the material above - and a fabricated comparison about someone's own body is worse than saying nothing specific at all. When a recent-history block is provided, compare against those numbers and only those. When it is not, do not reach for a comparison; describe what is in front of you instead.
 
+NEVER EXPLAIN A CHANGE. You are shown the reading and nothing about their day: no food, no salt, no training, no sleep, no cycle. So you cannot know why a number moved, and any reason you give is invented - "yesterday was salty", "a hard session a day or two ago", "probably water", "that time of the month" are all fabrications about someone's own body, however plausible they sound. Do not offer causes, and do not hedge them either ("could be", "might be" still plants an explanation that is not in front of you).
+
+THE CHANGE ON SCREEN IS THE ONLY CHANGE. The facts block already states how this reading compares, and against when. Do not compute another difference, name another day, or put a different number on it. If the block says down 0.1 against two days ago, then "up 0.3 since yesterday" is a contradiction of what they are reading one line above.
+
 DO NOT PRESCRIBE EQUIPMENT OR METHOD. If a reading is missing body fat or muscle, that is usually the scale, not a choice they made. Never suggest they use different scales, take a "fuller scan", or change how they measure.
 
 BE HONEST ABOUT WHAT ISN'T THERE. If the facts block says something was missing or is a rough estimate, that is real context for how much weight the number carries. Name it plainly where it matters; do not apologise for it.
@@ -216,6 +220,66 @@ WARM, NOT EFFUSIVE. A knowledgeable friend who happens to know their numbers. No
 WHEN AN INTERPRETATION IS SUPPLIED. You may be given a line from the interpretation layer - the app's own reading of the measurement. Treat it as already said: it will be shown to them verbatim. Do not repeat, rephrase, or contradict it. Write something that sits alongside it, or write nothing at all beyond a brief forward-looking line.
 
 If there is genuinely nothing worth saying, reply with exactly: NOTHING`;
+
+// THE PROMPT IS NOT THE GUARD (2026-09-19).
+//
+// On 18 September a weigh-in photo was answered: "Weight's up 0.3 kg since
+// yesterday, but yesterday was on the salty side and you had a hard session a
+// day or two ago." Directly above it, the facts block read "Weight 56.5 kg,
+// down 0.1 vs 2 days ago". Two inventions in one sentence. The causes were made
+// up - this route is never shown food or activity for a body measurement - and
+// the number contradicted the line she was reading one line higher. Ruth logged
+// it as bug 11: "reference only what is there, and never invent context to
+// sound reassuring."
+//
+// The prompt already forbade invented comparisons. It did not hold, which is
+// the lesson of the nine duplicate dinners the same day: a rule the model is
+// asked to follow is not a guard. So the read is checked in code before it is
+// posted, and a read that fails is dropped - the facts and the app's own
+// interpretation still go out, which is a true reply; a fabricated one is not.
+
+// Explanations for a change in the body that a body-measurement read can never
+// support, because it is shown none of the things they name.
+const INVENTED_CAUSES = [
+  /\bsalt(y|ier)?\b/i,
+  /\bsodium\b/i,
+  /\bwater (weight|retention)\b/i,
+  /\bretain(ing|ed)?\b/i,
+  /\bfluid\b/i,
+  /\bbloat(ed|ing)?\b/i,
+  /\bhydrat(ed|ion|ing)\b/i,
+  /\b(hard|heavy|big|tough) (session|workout|day)\b/i,
+  /\b(workout|training|trained|gym|exercise)\b/i,
+  /\b(period|cycle|luteal|hormon\w*)\b/i,
+  /\b(sleep|slept)\b/i,
+  /\bstress(ed|ful)?\b/i,
+  /\b(carbs?|glycogen)\b/i,
+  /\b(alcohol|wine|takeaway)\b/i,
+];
+
+/**
+ * True when a body-measurement read gives a reason the data cannot support, or
+ * puts a number on the change that is not on screen.
+ *
+ * `material` is everything the model was actually shown: the facts block, the
+ * interpretation and any recent history. A number in the read that is in none
+ * of those was produced by the model, not read from the data.
+ */
+export function readInventsContext(
+  kind: AckKind,
+  read: string | null,
+  material: string
+): boolean {
+  if (!read || kind !== 'body_measurement') return false;
+  if (INVENTED_CAUSES.some((re) => re.test(read))) return true;
+
+  // Every measured-looking number must be one the model was given. Compared
+  // without its sign, because "down 0.1" and "-0.1" are the same figure written
+  // two ways and neither is an invention.
+  const shown = new Set((material.match(/\d+(?:\.\d+)?/g) ?? []).map((n) => String(Number(n))));
+  const claimed = read.match(/\d+(?:\.\d+)?(?=\s?(?:kg|%|kilos?|pounds?|lbs?|stone|st)\b)/gi) ?? [];
+  return claimed.some((n) => !shown.has(String(Number(n))));
+}
 
 // The model is told to emit this when a read would be filler. Handled as a real
 // answer rather than a failure: silence is often the right output, and the

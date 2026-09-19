@@ -8,6 +8,7 @@ import {
   composeAcknowledgment,
   factsBlock,
   isEmptyAck,
+  readInventsContext,
   type AckKind,
   type ActivityFacts,
   type BodyFacts,
@@ -98,6 +99,14 @@ export async function POST(request: NextRequest) {
     // that carries real information. Losing the read degrades the reply rather
     // than the log, so the person still gets something true.
     degraded = true;
+  }
+
+  // Checked before it is posted, not trusted because the prompt said so. See
+  // readInventsContext for the message that made this necessary.
+  const material = [block, interpretation ?? '', typed.recent ?? ''].join('\n');
+  if (!isEmptyAck(read) && readInventsContext(kind, read, material)) {
+    console.log('ACKNOWLEDGE-LOG: dropped a read that invented context -', read);
+    read = null;
   }
 
   const message = composeAcknowledgment({
