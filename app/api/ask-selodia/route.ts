@@ -23,9 +23,8 @@ import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import {
   answerWrittenAfter,
-  carriedOnSince,
-  clearSupersededFood,
   earlierTwin,
+  settleVoiceSentence,
 } from '../../lib/voice-supersede';
 import { logActivityFromText } from '../../lib/activity-logging';
 import {
@@ -245,18 +244,21 @@ export async function POST(request: NextRequest) {
     console.log('ASK-SELODIA USER TURN INSERT FAILED:', userInsertError.message);
   }
 
-  // THE SAME TURN, TWICE AT ONCE. See earlierTwin in lib/voice-supersede.ts.
-  // The later copy writes nothing - no model call, no log - and answers with
-  // what the first copy says, so the voice hears one reply. Its own row is
-  // removed, so the thread shows the turn once.
-  const twin = await earlierTwin(supabase, userRow?.id ?? null, message);
+  // THE SAME TURN, TWICE AT ONCE - voice only. See earlierTwin in
+  // lib/voice-supersede.ts. The later copy writes nothing - no model call, no
+  // log - and answers with what the first copy says, so the voice hears one
+  // reply, and its own row is removed so the thread shows the turn once. If the
+  // first copy never answers (it failed), this copy runs the turn itself rather
+  // than speaking an error: a failure must not take its retry down with it.
+  const twin = isVoice ? await earlierTwin(supabase, userRow?.id ?? null, message) : null;
   if (twin && userRow?.id) {
-    console.log('ASK-SELODIA: a second copy of the same turn; answering with the first');
-    await supabase.from('chat_messages').delete().eq('id', userRow.id).eq('user_id', user.id);
     const reply = await answerWrittenAfter(supabase, twin.created_at);
-    return NextResponse.json({
-      reply: reply ?? 'Something went wrong just then. Could you say that again?',
-    });
+    if (reply) {
+      console.log('ASK-SELODIA: a second copy of the same turn; answering with the first');
+      await supabase.from('chat_messages').delete().eq('id', userRow.id).eq('user_id', user.id);
+      return NextResponse.json({ reply });
+    }
+    console.log('ASK-SELODIA: the first copy of this turn never answered; running it');
   }
 
   // HOW FAR BACK THE CONTEXT REACHES. Seven days when typing, three when
@@ -732,7 +734,7 @@ THIS IS A SPOKEN CONVERSATION. They are talking to you and hearing your reply re
 
   const SUPERSEDED_TURN_BLOCK = `
 
-THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first part of what they were saying, and they carried on talking before they heard that answer - so they never heard it. The message below is everything they said. Answer the whole of it as though your previous reply had not been given, without referring to it or repeating it. Anything your previous reply already logged, saved or corrected is already done: do not log, save or correct the same thing again.`;
+THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first part of what they were saying, and they carried on talking before they heard that answer - so they never heard it. The message below is everything they said. Answer the whole of it as though your previous reply had not been given, without referring to it or repeating it. FOOD: log the WHOLE of what they ate in this message, including anything from the part you already answered - the earlier partial log is removed automatically once this one saves, so leaving part of it out would lose it. Anything else your previous reply saved or corrected (a plan, a note, a correction to an entry, a reading) is already done: do not save or correct that again.`;
 
   // THE ENTRY UNDER DISCUSSION, IN WORDS THE MODEL CAN READ (2026-09-16).
   //
@@ -1508,22 +1510,33 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (result.logIntent === 'food' || result.logIntent === 'activity' || saysDidPlan) {
     const runLog = async () => {
       if (result.logIntent === 'food') {
-        // ONE SPOKEN SENTENCE, ONE SET OF ROWS - enforced here, at the write,
-        // rather than asked of the model. See lib/voice-supersede.ts for the
-        // day of food that went in as five rows.
-        if (isVoice && (await carriedOnSince(supabase, userRow?.id ?? null, message))) {
-          console.log('VOICE SUPERSEDE: she carried on talking; the later turn logs all of it');
-          return;
-        }
-        if (supersededSince) {
-          const cleared = await clearSupersededFood(supabase, user.id, supersededSince);
-          if (cleared > 0) console.log('VOICE SUPERSEDE: cleared', cleared, 'rows from the earlier version');
-        }
         // logText carries the food itself when the model has separated it from
         // the rest of the message, exactly as it does for activity. Passing the
         // raw message is how "It's not gone into the log" ended up stored as a
         // meal on 2026-09-16.
-        const entries = await logFoodFromText(supabase, user.id, result.logText?.trim() || message);
+        //
+        // A spoken turn stamps its rows with itself, and only AFTER they have
+        // saved is the sentence settled to one set of rows - see
+        // lib/voice-supersede.ts. Save first, then tidy: a parse that fails
+        // must never have removed anything.
+        const voiceTurnId = isVoice ? userRow?.id ?? undefined : undefined;
+        const entries = await logFoodFromText(
+          supabase,
+          user.id,
+          result.logText?.trim() || message,
+          undefined,
+          undefined,
+          undefined,
+          voiceTurnId
+        );
+        if (voiceTurnId && entries.length > 0) {
+          await settleVoiceSentence(
+            supabase,
+            voiceTurnId,
+            message,
+            entries.map((e) => e.id)
+          );
+        }
         // An empty result means the text held no food. Nothing is claimed: the
         // honesty note below says so rather than the reply pretending.
         if (entries.length > 0) {

@@ -155,7 +155,10 @@ export async function logFoodFromText(
   updateLogId?: string,
   // The entry as it stood, when foodText is a CORRECTION to it rather than a
   // full description. See the update instruction below.
-  correctionOf?: string
+  correctionOf?: string,
+  // The spoken turn that wrote these rows, stamped on each so the voice guard
+  // can tell one sentence's rows from everything else (lib/voice-supersede.ts).
+  sourceTurnId?: string
 ): Promise<FoodEntry[]> {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -172,8 +175,8 @@ export async function logFoodFromText(
   const correctionLead =
     updateLogId && correctionOf
       ? 'This food entry was logged as: "' +
-        correctionOf +
-        '". The person has now corrected it. Apply their correction to that entry, keep every item they did not change, and estimate the corrected whole. Include "entry_text": the corrected entry described in their own words, as short as the original. '
+        correctionOf.replace(/"/g, "'") +
+        '". The person has now corrected it; their correction is given below as the food entry. Apply their correction to that entry, keep every item they did not change, and estimate the corrected whole. Include "entry_text": the corrected entry described in their own words, as short as the original. '
       : '';
 
   const instruction = updateLogId
@@ -307,6 +310,7 @@ export async function logFoodFromText(
           happened_at: row.happenedAt,
           raw_text: row.rawText,
           ...row.fields,
+          ...(sourceTurnId ? { source_turn_id: sourceTurnId } : {}),
         }))
       )
       .select();
