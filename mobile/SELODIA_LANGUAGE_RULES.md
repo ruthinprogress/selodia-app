@@ -37,6 +37,26 @@ The code is otherwise clean: every streak, badge and praise mention in `app/` an
 
 ---
 
+## Evidence Before Interpretation (added 2026-09-19)
+
+*Ruth's two principles for the whole product, set 19 September 2026. Recorded in full as principles 14 and 15 of the build spec; this is what they mean for the words on the page.*
+
+**Observe first. Interpret from evidence.** A witness reflects back what it sees. It does not tell somebody why their body did something unless something they logged or said actually shows why.
+
+**Prefer curiosity to certainty.** When there are several reasonable readings, name that and ask. Trust comes from being accurate about what is known, clear about what is possible, and graceful about what is unknown.
+
+| Says | Never says |
+|---|---|
+| "Up 0.3 since Tuesday." (an observation) | "Up 0.3 because yesterday was salty." (a cause nobody logged) |
+| "The 40kg deadlifts yesterday could be part of it." (a logged fact, named) | "Probably from training." (a vague cause, which is an invented one wearing a hedge) |
+| "Weight often moves with water from day to day, so one reading can't say much." (a general possibility, labelled) | "You're retaining water." (a claim about her body, stated as fact) |
+| "Could be a few things. Has anything been different this week?" (curiosity) | "That'll be your cycle." (certainty with no cycle logged) |
+| "I don't know from this alone." (the truth) | A confident guess, to avoid saying the above |
+
+**Hedging does not rescue an unsupported cause.** "Might be the salty food" still points at salty food nobody logged. The word "might" changes the confidence, not the invention.
+
+**How it is enforced.** One statement of both principles in `app/lib/principles.ts`, drawn into every prompt that speaks about a person, and a check in code on the weigh-in reply (`readInventsContext`), which is the place this first went wrong.
+
 ## Why MI, and how it grounds what's already in the spec
 MI is a person-centered communication approach, often summarized as PACE — Partnership, Acceptance, Compassion, Evocation — developed for exactly this register: helping someone explore where they are, without judgment, in a way that lets their own motivation surface rather than imposing direction from outside. It is not new to this document; it's the clinical foundation that several already-locked spec principles were independently, correctly reaching toward:
 

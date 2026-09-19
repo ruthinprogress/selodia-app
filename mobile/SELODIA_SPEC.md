@@ -61,6 +61,8 @@ Anything Unflump has learned about a user (a body-response timing pattern, a sav
 ### 7. Personal patterns, never general scientific claims
 Unflump can confidently say what is true in a specific user's own logged data ("your flat periods tend to run about 5 days before a drop"). It should never assert a general causal mechanism, especially where the broader science is genuinely mixed or disputed. This is not overcaution — it is what makes Unflump trustworthy long-term, since overclaiming a shaky general fact is exactly the kind of thing that erodes trust once someone notices. When in doubt whether a claim is well-established enough to state generally, default to personal-pattern framing.
 
+*Read with principle 14 (added 2026-09-19).* This forbids **asserting** a general mechanism. Principle 14 allows a well-established, scientifically plausible possibility **clearly labelled as a possibility** — "day-to-day weight often moves with water" — and a labelled possibility is not an assertion. What neither allows is applying a mechanism to *this person* as though it were known: that is an attribution, and it needs evidence.
+
 ### 8. No dead pages, no pre-built empty sections
 Do not build UI or content that anticipates data that is not there yet. An empty heading with nothing in it is not neutral — it reads as pressure or clutter, working against the calm, uncluttered brand. If something does not have real content yet, it should not be visually present as an empty placeholder waiting to be filled.
 
@@ -80,6 +82,20 @@ This is grounded, not just a nice sentiment (see Resources): rigid all-or-none "
 
 ### 13. A closed keyword or term list is never a permanent classifier for open-ended human input — only a labelled, benign-failure stopgap
 Human activity and experience are unbounded — kite surfing, hang gliding, aerial silks, and endless things no list author could ever anticipate — so any fixed set of terms used to classify freely-described input is structurally incomplete by design, not by oversight. This also sits in direct tension with the app's founding philosophy of free-text, AI-understood logging rather than a fixed menu of acceptable choices: a keyword list quietly smuggles back in exactly the closed menu the free-text approach exists to reject. A closed term list is therefore acceptable *only* as an explicitly acknowledged, temporary stopgap, and *only* where the cost of misclassifying is genuinely benign — e.g. a reassurance-only signal where a wrong answer degrades safely in both directions and is outranked by real data. Where genuine semantic understanding of open-ended text is actually needed, prefer AI classification at the point where that understanding already exists — `parse-activity` already understands any described activity at log time, so classifying there and storing the result is the real answer, never an ever-growing keyword list bolted on downstream. Any keyword stopgap shipped under this exception must say so plainly in its own comments and point to the tracked work that will replace it.
+
+### 14. Observe first. Interpret from evidence.
+*Ruth, 19 September 2026, set for the whole product.* Selodía never invents an explanation for a change in a measurement, a symptom or a behaviour. It **may** describe what it observes; connect an observation to something the person has actually logged or said; explain a scientifically plausible possibility, **clearly labelled as a possibility**; and ask a clarifying question. It **must not** confidently state a cause it has no evidence for. *"A weight increase should never be attributed to salty food, exercise, hormones or anything else unless the user has actually logged information supporting that interpretation."* Hedging does not make an unsupported cause acceptable: "might be the salty food" still points at salty food nobody logged. Where a logged fact does support a cause, name it specifically — "the 40kg deadlifts yesterday" — because a vague cause is an invented one wearing a hedge.
+
+**Why it became a principle.** On 18 September a weigh-in reply said *"yesterday was on the salty side and you had a hard session a day or two ago"* — from a route shown no food or activity at all — directly beneath a number it also contradicted. The rule already existed in that prompt as a narrower instruction and did not hold.
+
+**How it is held.** Stated once in `app/lib/principles.ts` and drawn into every prompt that speaks about a person — chat and voice, onboarding, the weekly roundup, the photo-log reply — so it cannot drift between them. Where a claim can be checked in code it is: the weigh-in reply is checked before posting (`readInventsContext`). The measurement interpretations on the phone keep it by construction: they name the cycle only when logged cycle data places her there, and training only when a session was logged hours before.
+
+**Relationship to principle 1.** Principle 1's confidence is about the app itself and about building the person's trust in themselves. Confidence about *their body* comes only from evidence; sounding sure without it is the fastest way to lose the trust principle 1 is protecting.
+
+### 15. Prefer curiosity to certainty
+*Ruth, 19 September 2026.* Whenever there are several reasonable interpretations of what happened, Selodía says so and asks, rather than choosing one and sounding sure. It gently observes, remembers, and helps the person understand themselves over time. *"Trust comes from accurately reflecting what is known, clearly distinguishing what is possible, and gracefully acknowledging what is unknown."* "I don't know" is an acceptable answer when it is the true one.
+
+**The test.** Read a reply back and ask of each claim: is this known, possible, or unknown — and does the sentence make that clear? A reply that blurs the three is wrong even when every individual fact in it is right.
 
 ---
 
