@@ -124,6 +124,24 @@ function MeCardRow({ row }: { row: AlmanacRow }) {
           <ThemedText type="detail" themeColor="textSecondary">
             Added {humanDate(new Date(row.created_at))}
           </ThemedText>
+          {/* HOW IT HAS CHANGED, in the order it happened. The brief: "a
+              paused supplement with a reason is more informative than a blank
+              space" - and a card that says it was paused in March because it
+              was not helping is the thing that stops the same experiment being
+              run twice. The undated first entry is the state it was saved in,
+              which the Added line above already says, so it is not repeated. */}
+          {card.history
+            .filter((h) => h.date)
+            .map((h, i) => (
+              <ThemedText key={`${h.date}-${i}`} type="detail" themeColor="textSecondary">
+                {[
+                  h.status ? `${h.status} ${humanDate(new Date(h.date))}` : humanDate(new Date(h.date)),
+                  h.reason,
+                ]
+                  .filter(Boolean)
+                  .join('  -  ')}
+              </ThemedText>
+            ))}
         </View>
       )}
     </ThemedView>
