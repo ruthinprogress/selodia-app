@@ -416,7 +416,10 @@ export function OverviewPanel() {
                 <Stat value={String(Math.round(data.todayKcal))} unit="kcal" big />
               </SpotlightTarget>
               <SpotlightTarget id="overview.protein">
-                <Stat value={String(Math.round(data.todayProtein))} unit="g protein" />
+                {/* The same fix as the Body square, for the same width: the
+                    gram sits on its number, so "protein" is the only word the
+                    line has to fit beside it. */}
+                <Stat value={`${Math.round(data.todayProtein)}g`} unit="protein" />
               </SpotlightTarget>
             </>
           )}
@@ -450,11 +453,20 @@ export function OverviewPanel() {
               </ThemedText>
             ) : (
               <>
+                {/* WORDS THAT FIT, NOT WORDS THAT CLIP (Ruth's bug list, item
+                    14: "38.5 kg m...", "27.7 % bo..."). In a square a third of
+                    the screen wide, "38.5 kg muscle" needs about 93 points and
+                    has about 78. The unit used to be set to shrink and clip
+                    first, on purpose - which is exactly the ellipsis she saw.
+                    Now: the percent sits on its own number, where it belongs,
+                    and the muscle line drops "kg" because the weight line
+                    directly above it already says it. The Measurements log
+                    carries every unit in full. */}
                 <Stat value={fmt(data.weight.value, '')} unit="kg" />
-                <Stat value={fmt(data.muscle.value, '')} unit="kg muscle" />
+                <Stat value={fmt(data.muscle.value, '')} unit="muscle" />
                 <Stat
-                  value={data.bodyFat.value != null ? `${round1(data.bodyFat.value)}` : '—'}
-                  unit="% body fat"
+                  value={data.bodyFat.value != null ? `${round1(data.bodyFat.value)}%` : '—'}
+                  unit="fat"
                 />
                 {/* Only when the reading is not from today. A date on today's
                     own numbers is noise; a date on Tuesday's is the difference
@@ -616,7 +628,11 @@ function Stat({ value, unit, big }: { value: string; unit: string; big?: boolean
       <ThemedText type="smallBold" style={big ? styles.statValueBig : styles.statValue}>
         {value}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.statUnit} numberOfLines={1}>
+      {/* No numberOfLines: Android replaces text it measures as too wide with
+          an ellipsis, which is how a unit became "m...". The words are now
+          short enough to fit, and if a phone is ever narrower still, a unit
+          that wraps is honest where one that is cut off is not. */}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.statUnit}>
         {unit}
       </ThemedText>
     </View>
@@ -688,8 +704,8 @@ const styles = StyleSheet.create({
   },
   statUnit: {
     fontSize: 11,
-    // Shrinks before the number does. In a square a third of the screen wide,
-    // "% body fat" is the part that can afford to be clipped; the figure is not.
+    // Still gives way before the number does, but by wrapping rather than by
+    // being cut off - see the Stat component.
     flexShrink: 1,
   },
   header: {
