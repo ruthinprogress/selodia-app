@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,8 +23,9 @@ import { supabase } from '@/lib/supabase';
 // asked for, never assumed - including from the accounts that existed before
 // this was built.
 export default function ConsentScreen() {
-  const { reconfirm } = useLocalSearchParams<{ reconfirm?: string }>();
+  const { reconfirm, changed } = useLocalSearchParams<{ reconfirm?: string; changed?: string }>();
   const reconfirming = reconfirm === '1';
+  const policyChanged = reconfirming && changed === '1';
   const [coreConsent, setCoreConsent] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [researchOptIn, setResearchOptIn] = useState(false);
@@ -81,7 +83,7 @@ export default function ConsentScreen() {
             {reconfirming ? 'One thing before you carry on' : 'Welcome to Selodía'}
           </ThemedText>
 
-          {reconfirming && (
+          {reconfirming && !policyChanged && (
             <ThemedText>
               Selodía now keeps a record of what you have agreed to, so there is proof it only ever
               holds your health data with your say-so. Nothing about your account has changed. Please
@@ -89,10 +91,28 @@ export default function ConsentScreen() {
             </ThemedText>
           )}
 
+          {policyChanged && (
+            <ThemedText>
+              Our privacy policy has changed since you last agreed to it. It now names every service
+              that handles your data, and explains the error reports your phone can send. Please have a
+              read, then confirm your choices below.
+            </ThemedText>
+          )}
+
           <ThemedText>
             Selodía asks about things like your food, weight, body measurements and activity so it
             can actually understand you, not just log numbers. This is health data, so we want to
-            be upfront: it&apos;s yours, it&apos;s kept secure, and it&apos;s never sold or shared.
+            be upfront: it&apos;s yours, it&apos;s kept secure, and it&apos;s never sold.
+          </ThemedText>
+
+          {/* SAID ON THE FIRST SCREEN, NOT ONLY IN THE POLICY (2026-09-19). The
+              App Store asks that people are told plainly, and agree, before
+              their data goes to a third-party AI - and "never shared" was not
+              true of the conversation, which is sent to Claude to be answered. */}
+          <ThemedText>
+            To understand what you write or say, Selodía sends it to Claude, an AI model made by
+            Anthropic. If you use voice, what you say goes to ElevenLabs to be turned into text. They
+            use it only to reply to you.
           </ThemedText>
 
           <ThemedText>
@@ -101,11 +121,24 @@ export default function ConsentScreen() {
             at any time.
           </ThemedText>
 
+          {/* The checkbox says "I've read the Privacy Policy", so it has to be
+              one tap away. It was not linked from anywhere in the app. */}
+          <Pressable
+            onPress={() => void WebBrowser.openBrowserAsync('https://selodia.app/privacy')}
+            accessibilityRole="link"
+            accessibilityLabel="Read the privacy policy"
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [styles.policyLink, pressed && styles.pressed]}>
+            <ThemedText type="small" themeColor="accentDeep">
+              Read the privacy policy
+            </ThemedText>
+          </Pressable>
+
           <ThemedView style={styles.checkboxGroup}>
             <Checkbox
               checked={coreConsent}
               onToggle={() => setCoreConsent((v) => !v)}
-              label="I understand and agree to Selodía collecting and using my health data as described, and I've read the Privacy Policy."
+              label="I understand and agree to Selodía collecting and using my health data as described, including sending it to the AI services above to reply to me, and I've read the Privacy Policy."
             />
             <Checkbox
               checked={marketingOptIn}
@@ -191,6 +224,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderRadius: ButtonRadius,
     alignItems: 'center',
+  },
+  policyLink: {
+    alignSelf: 'flex-start',
   },
   signIn: {
     alignSelf: 'center',

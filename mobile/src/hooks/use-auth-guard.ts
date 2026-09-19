@@ -2,7 +2,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
-import { hasRecordedConsent, recordCarriedConsentIfMissing } from '@/lib/consent';
+import { consentStatus, recordCarriedConsentIfMissing } from '@/lib/consent';
 import { RESUME_ROUTE, type OnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
 
@@ -106,14 +106,19 @@ export function useAuthGuard(): { ready: boolean } {
       // order, never at the same time: checking first would send somebody who
       // consented thirty seconds ago back to the consent screen.
       await recordCarriedConsentIfMissing(session.user);
-      const consented = await hasRecordedConsent();
+      const consent = await consentStatus();
       if (cancelled) return;
-      if (!consented) {
+      if (consent !== 'current') {
         // Asked, never assumed - including the accounts that existed before
         // consent was recorded at all. Left alone once they are on the screen.
         const onConsent = inOnboarding && screen === 'consent';
         if (!onConsent) {
-          router.replace({ pathname: '/onboarding/consent', params: { reconfirm: '1' } });
+          // `changed` when they agreed to an earlier privacy policy, so the
+          // screen can say why it is asking again.
+          router.replace({
+            pathname: '/onboarding/consent',
+            params: { reconfirm: '1', ...(consent === 'outdated' ? { changed: '1' } : {}) },
+          });
         }
         return;
       }
