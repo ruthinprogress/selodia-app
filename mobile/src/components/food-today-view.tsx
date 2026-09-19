@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { useFocusReload } from '@/hooks/use-focus-reload';
 import { RowDelete } from '@/components/row-delete';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
@@ -40,14 +41,8 @@ export function FoodTodayView() {
   // Bumped by the quick-log bar so the reads below re-run. The whole point of
   // logging on this tab is watching it land on this tab.
   const [reloadKey, setReloadKey] = useState(0);
-  // RE-READ WHENEVER THIS COMES INTO VIEW (2026-09-19). The Log tab stays
-  // mounted, so without this an entry logged elsewhere - by voice, or in chat -
-  // did not appear here until the app was restarted.
-  useFocusEffect(
-    useCallback(() => {
-      setReloadKey((k) => k + 1);
-    }, [])
-  );
+  // Re-read on arrival and shortly after - see hooks/use-focus-reload.ts.
+  useFocusReload(setReloadKey);
 
   useEffect(() => {
     let cancelled = false;
