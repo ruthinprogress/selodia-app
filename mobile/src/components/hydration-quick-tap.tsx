@@ -167,7 +167,9 @@ export function HydrationQuickTap({ onLogged }: { onLogged: (deltaMl: number) =>
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: Spacing.two, marginTop: Spacing.one },
+  // The full width of the strip, so opening the buttons puts them on their own
+  // line beneath the amount rather than beside it.
+  wrap: { gap: Spacing.two, marginTop: Spacing.one, width: '100%' },
   trigger: { marginTop: Spacing.one },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
   chip: {

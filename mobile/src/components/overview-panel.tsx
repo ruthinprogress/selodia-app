@@ -691,6 +691,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 3,
+    // A unit that does not fit beside its number moves beneath it whole,
+    // rather than breaking mid-word - "8,465 step / s" on her phone.
+    flexWrap: 'wrap',
   },
   statValue: {
     fontSize: 15,
@@ -704,9 +707,9 @@ const styles = StyleSheet.create({
   },
   statUnit: {
     fontSize: 11,
-    // Still gives way before the number does, but by wrapping rather than by
-    // being cut off - see the Stat component.
-    flexShrink: 1,
+    // Not shrinkable: a shrinking Text breaks inside its word. The row wraps
+    // instead (see stat), so the whole unit drops a line when it must.
+    flexShrink: 0,
   },
   header: {
     // 10px higher than the page inset puts it (Ruth, 2026-09-18: "move the
@@ -756,9 +759,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     gap: Spacing.two,
+    // WRAPS, so the open drink buttons take a line of their own (2026-09-19).
+    // In one row they claimed the whole width and squeezed "0 L of about 2 L"
+    // into a column one letter wide.
+    flexWrap: 'wrap',
   },
   hydrationLabel: {
-    flexShrink: 1,
+    // Never squeezed: the amount keeps its words, and the buttons move below.
+    flexShrink: 0,
   },
   pressed: {
     opacity: 0.7,
