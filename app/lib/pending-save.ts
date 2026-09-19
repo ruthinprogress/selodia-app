@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { saveAlmanacEntry } from './almanac';
+import { coerceStatus, normaliseSection } from './me-card';
 
 // The conversational save (build spec, Part Ten: Insights slice 2, 2026-09-12).
 //
@@ -21,9 +22,16 @@ import { saveAlmanacEntry } from './almanac';
 // way, emitted after agreement, because that flow works and the Movement build
 // replaces it. This covers the Insights types a person confirms. Roundups are
 // written by the Sunday job (slice 3) and never offered.
+//
+// ME ARRIVED HERE ON 2026-09-19, which is what this file was built for: "Built
+// once, here, so Me and Movement can reuse it rather than each growing their
+// own." A Me card is the same shape of moment - Selodia notices something has
+// been settled, offers, and keeps it on a yes - so it needed no new machinery,
+// only a fourth type. Until then the Me tab had no way in at all, and a skincare
+// routine offered to it landed in Insights twice.
 
-export type SaveType = 'symptom' | 'insight' | 'note';
-export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note'];
+export type SaveType = 'symptom' | 'insight' | 'note' | 'me';
+export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note', 'me'];
 
 export function coerceSaveType(v: unknown): SaveType | null {
   if (typeof v !== 'string') return null;
@@ -68,6 +76,27 @@ export function coerceProposal(v: unknown): ProposedSave | null {
   // Observation vs Insight). Without both it is an observation, which is not
   // saved.
   if (type === 'insight' && !(str(content.condition) && str(content.expectation))) return null;
+  // A ME CARD IS A DECISION WITH A REASON. The section says where it belongs and
+  // is created by arriving; the why is what makes the card worth having at all,
+  // because a name with no reason is a checklist item and Me is not a checklist.
+  // The status is optional on purpose: a supplement has one, a weekly call does
+  // not.
+  if (type === 'me') {
+    const section = normaliseSection(content.section);
+    const why = str(content.why) ?? str(content.summary);
+    if (!section || !why) return null;
+    return {
+      type,
+      title: title.slice(0, MAX_TITLE),
+      content: {
+        section,
+        why,
+        status: coerceStatus(content.status),
+        detail: str(content.detail),
+      },
+    };
+  }
+
   // A symptom or a note carries what was actually said, or there is nothing to keep.
   if (type !== 'insight' && !str(content.summary)) return null;
 
@@ -111,6 +140,7 @@ const TYPE_WORD: Record<SaveType, string> = {
   symptom: 'a symptom',
   insight: 'an insight',
   note: 'a note',
+  me: 'part of their own protocol',
 };
 
 /**
@@ -186,9 +216,18 @@ export async function commitSave(
   userId: string,
   proposal: ProposedSave
 ): Promise<{ kind: string; title: string } | null> {
+  // A Me card's SECTION is its category, which is how the Almanac groups it and
+  // how a new section comes into existence: by the first card arriving in it.
+  // Nobody ever creates one.
+  const section =
+    proposal.type === 'me' && typeof proposal.content.section === 'string'
+      ? proposal.content.section
+      : null;
+
   const entry = await saveAlmanacEntry(supabase, userId, {
     kind: proposal.type,
     title: proposal.title,
+    category: section,
     content: proposal.content,
   });
   return entry ? { kind: entry.kind, title: entry.title } : null;
@@ -205,6 +244,9 @@ export function saveAppliedNote(
 ): string | null {
   if (saved) {
     const type = coerceSaveType(saved.kind) ?? 'note';
+    // Me and Insights are different tabs, and telling somebody their skincare
+    // routine went to Insights was the complaint that started this.
+    if (type === 'me') return `Kept in your Almanac, under Me.`;
     return `Kept in your Almanac, under Insights, as ${TYPE_WORD[type]}.`;
   }
   if (attempted) return "That didn't save to your Almanac just now. Ask me again and I'll try once more.";

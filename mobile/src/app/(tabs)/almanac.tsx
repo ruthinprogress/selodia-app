@@ -6,12 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacIntro } from '@/components/almanac-intro';
-import { AlmanacList } from '@/components/almanac-list';
 import { AlmanacTabs } from '@/components/almanac-tabs';
 import { InsightsLog } from '@/components/insights-log';
 import { MovementLibrary } from '@/components/movement-library';
 import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
+import { MeProtocol } from '@/components/me-protocol';
 import { SectionIntro } from '@/components/section-intro';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -155,12 +155,10 @@ export default function AlmanacScreen() {
             {tab === 'me' && loaded && (
               <SpotlightTarget id="almanac.me">
                 {byTab.me.length > 0 ? (
-                  <>
-                    <SectionIntro title="Your own record">
-                      The routines and habits you&apos;ve asked me to hold on to.
-                    </SectionIntro>
-                    <AlmanacList groups={[{ category: null, entries: byTab.me }]} onOpen={setOpenId} />
-                  </>
+                  // A protocol, not a list: sections that came into being by
+                  // their first card arriving, and a why behind each one. See
+                  // me-protocol.tsx.
+                  <MeProtocol entries={byTab.me} />
                 ) : (
                   <AlmanacEmptyState heading={ME_EMPTY_HEADING} body={ME_EMPTY_BODY} />
                 )}

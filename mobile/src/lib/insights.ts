@@ -46,8 +46,10 @@ export type AlmanacRow = AlmanacEntryRow & { content: unknown; created_at: strin
 const norm = (s: string | null | undefined): string =>
   typeof s === 'string' ? s.trim().toLowerCase() : '';
 
-// Me entries will be written by the conversational save built for Me, carrying
-// kind "me". Nothing carries it yet, so today every Me list is empty.
+// Me entries are written by the conversational save, carrying kind "me"
+// (2026-09-19). Until that existed nothing could write one, which is why a
+// skincare routine offered to Me landed in Insights twice: the pathway was
+// missing, not misrouted.
 export function tabFor(row: Pick<AlmanacRow, 'kind' | 'content'>): AlmanacTab {
   if (readContent(row.content).shape === 'plan') return 'movement';
   if (norm(row.kind) === 'me') return 'me';
