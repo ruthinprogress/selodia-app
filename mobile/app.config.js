@@ -63,5 +63,11 @@ module.exports = ({ config }) => {
       ...config.android,
       package: 'app.selodia.dev',
     },
+    // The same reason on iOS: a bundle identifier is what makes it a separate
+    // app. Added 2026-09-19 with the store work, before any iOS build exists.
+    ios: {
+      ...config.ios,
+      bundleIdentifier: 'app.selodia.dev',
+    },
   };
 };

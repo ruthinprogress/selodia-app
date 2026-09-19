@@ -9,6 +9,10 @@
     "scheme": "selodia",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "app.selodia",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "icon": {
         "light": "./assets/images/icon-light.png",
         "dark": "./assets/images/icon-dark.png"
