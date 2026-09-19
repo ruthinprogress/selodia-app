@@ -13,6 +13,7 @@ import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { MeProtocol } from '@/components/me-protocol';
 import { SectionIntro } from '@/components/section-intro';
+import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -107,6 +108,7 @@ export default function AlmanacScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+          <SettingsLink />
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Almanac</ThemedText>
 

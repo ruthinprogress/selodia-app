@@ -1,7 +1,8 @@
 import { useRef } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SettingsLink } from '@/components/settings-link';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
@@ -16,11 +17,17 @@ import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 // itself into view is measured off-screen and simply never highlights.
 export function BodyScreen({ children }: { children: React.ReactNode }) {
   const scrollRef = useRef<ScrollView>(null);
+  // This shell does not pad for the status bar (edges below exclude 'top'), so
+  // the Settings link is told how tall it is. See settings-link.tsx.
+  const insets = useSafeAreaInsets();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+          {/* Every Log screen, including the week-by-week ones, from one place
+              (bug list item 13). */}
+          <SettingsLink topInset={insets.top} />
           <SpotlightScroll scrollRef={scrollRef}>{children}</SpotlightScroll>
         </ScrollView>
       </SafeAreaView>

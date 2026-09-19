@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HydrationQuickTap } from '@/components/hydration-quick-tap';
+import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -354,9 +355,12 @@ export function OverviewPanel() {
             size when the data arrives. */}
         <View style={styles.header}>
           <ThemedText type="display">{greeting(name)}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {todayLabel()}
-          </ThemedText>
+          <View style={styles.dateRow}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
+              {todayLabel()}
+            </ThemedText>
+            <SettingsLink placement="inline" />
+          </View>
         </View>
       </View>
     );
@@ -377,10 +381,15 @@ export function OverviewPanel() {
           on. */}
       <View style={styles.header}>
         <ThemedText type="display">{greeting(name)}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {todayLabel()}
-          {data.cycleDay != null ? `  ·  Day ${data.cycleDay}` : ''}
-        </ThemedText>
+        {/* Settings at the end of the date line rather than in the corner (bug
+            list item 13): see settings-link.tsx for why this screen differs. */}
+        <View style={styles.dateRow}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
+            {todayLabel()}
+            {data.cycleDay != null ? `  ·  Day ${data.cycleDay}` : ''}
+          </ThemedText>
+          <SettingsLink placement="inline" />
+        </View>
       </View>
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.focusLine}>
@@ -694,6 +703,10 @@ const styles = StyleSheet.create({
     // this block exactly where she approved it.
     gap: Spacing.one,
   },
+  dateRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.three },
+  // The date takes the room and the link keeps its own width, so a long date
+  // with a cycle day wraps rather than pushing Settings off the edge.
+  dateText: { flex: 1 },
   focusLine: {
     // No rule, no card. See the header block above.
     paddingRight: Spacing.four,
