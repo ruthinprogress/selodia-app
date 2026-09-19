@@ -93,7 +93,7 @@ import {
   loadDiscussEntryFacts,
   loadPendingCardImage,
   markCardImageSent,
-  countCarriedTurns,
+  discussEntryName,
   resolveDiscussTag,
   uploadDiscussCard,
   type DiscussTag,
@@ -136,8 +136,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { message, cardImageBase64, cardMediaType, entryId, entryType, voice, supersedes } =
-    await request.json();
+  const {
+    message,
+    cardImageBase64,
+    cardMediaType,
+    entryId,
+    entryType,
+    voice,
+    supersedes,
+    // She closed the anchored topic herself, from its card (2026-09-19). One of
+    // the three ways a discussion ends - see resolveDiscussTag.
+    closeDiscussion,
+  } = await request.json();
   // A spoken turn, routed in by the custom-LLM adapter. It changes nothing about
   // what is said or what safety runs - only WHEN the parse happens. See the
   // logging branch below.
@@ -187,24 +197,6 @@ export async function POST(request: NextRequest) {
           entryType: prevTagRow.discuss_entry_type,
         }
       : null;
-
-  // How long the discussion has already run, in their own messages. Read once
-  // here, alongside the previous tag, because it is the same question asked of
-  // the same rows: see MAX_DISCUSS_TURNS for why a gap alone never ended it.
-  let turnsCarried: number | null = null;
-  if (previousTag) {
-    const { data: runRows } = await supabase
-      .from('chat_messages')
-      .select('role, discuss_entry_id')
-      .eq('user_id', user.id)
-      .eq('source', 'chat')
-      .order('created_at', { ascending: false })
-      .limit(30);
-    turnsCarried = countCarriedTurns(
-      (runRows ?? []) as { role: string; discuss_entry_id: string | null }[],
-      previousTag.entryId
-    );
-  }
 
   // How long the discussion has been sitting idle. Null when there is no
   // previous tag or its timestamp is unreadable, which resolveDiscussTag treats
@@ -699,7 +691,7 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
   // Follows the tag's own lifetime, so a follow-up question two turns later
   // still knows what "it" is - that is the whole point of a tag that persists
   // until the model says the topic moved on.
-  const discussedEntry = await loadDiscussEntryFacts(supabase, provisionalTag);
+  const discussedEntry = await loadDiscussEntryFacts(supabase, provisionalTag, postedTag !== null);
 
   // WHAT THE APP CAN ACTUALLY DO, in its own words (Ruth, 18 September 2026).
   //
@@ -940,7 +932,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     discussTopicEnded: {
       type: 'boolean',
       description:
-        "Set true ONLY when the conversation was about a specific logged entry (a card was shown earlier) and this message has genuinely moved on to an unrelated subject. A follow-up question about the same entry, or a natural tangent still rooted in it, is NOT a move. Leave unset when in doubt - the tag continues by default.",
+        "Set true ONLY when a discussion is anchored to a logged entry and you are CONFIDENT this message has genuinely moved on to something unrelated. A follow-up about the same entry, a tangent still rooted in it, or anything that only makes sense because of it is NOT a move. The anchor is what keeps the conversation readable later, so when in doubt leave it unset - the discussion continues by default.",
     },
     proposedSave: {
       type: 'object',
@@ -1110,7 +1102,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // from the week before stayed attached to it.
     loggedSomethingNew:
       typeof result.logIntent === 'string' && result.logIntent !== 'none',
-    turnsCarried,
+    closedByUser: closeDiscussion === true,
   });
   if (userRow?.id && resolvedTag?.entryId !== provisionalTag?.entryId) {
     const { error: tagFixError } = await supabase
@@ -1930,6 +1922,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     foodLogId: breakdownFoodLogId,
     // The phone schedules it and says so. Null unless this turn asked for one.
     reminder: reminderResult,
+    // What the conversation is anchored to AFTER this turn, or null when the
+    // discussion has ended. The phone shows it above the message box with a
+    // Close, and only while it is set, so it never offers to close a topic that
+    // has already let go.
+    discussEntry: resolvedTag
+      ? { id: resolvedTag.entryId, name: await discussEntryName(supabase, resolvedTag) }
+      : null,
     // Voice only: they asked to end the call. The adapter says the reply and
     // then hangs up. Always false for a typed message.
     endVoiceSession: isVoice && result.endVoiceSession === true,

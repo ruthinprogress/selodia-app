@@ -176,7 +176,10 @@ const part = (v: unknown, unit: string): string | null => {
 // which is the same honesty the card itself keeps.
 export async function loadDiscussEntryFacts(
   supabase: SupabaseClient,
-  tag: DiscussTag
+  tag: DiscussTag,
+  // True only on the turn that posted the card. Every later turn is a carried
+  // one, and gets carriedLead instead.
+  opening: boolean = true
 ): Promise<string | null> {
   if (!tag) return null;
   // DO NOT READ THE CARD BACK (Ruth, 2026-09-16, on the first reply this block
@@ -184,10 +187,23 @@ export async function loadDiscussEntryFacts(
   // find a more punchy solution"). The reply recited every item and the total,
   // directly beneath a table showing every item and the total. Handing the model
   // the facts was right; it just had no idea the person could already see them.
-  const lead =
+  const openingLead =
     'THE ENTRY THEY ARE ASKING ABOUT. They tapped "Ask about this" on it, so its card is on screen DIRECTLY ABOVE your reply - itemised, with its totals. They can see all of it.\n' +
     'So do not read it back. No list of what was in it, no totals, no recital of the date. One short line that shows you know which entry this is, then ask what they want to know about it. Two sentences at most, and shorter is better.\n' +
     'The facts below are for ANSWERING, not for repeating.';
+
+  // THE CARRIED TURN IS NOT THE OPENING TURN (2026-09-19). Until now every turn
+  // of a discussion was handed the opening lead - "they tapped Ask about this,
+  // ask what they want to know" - so forty messages in, the model was still
+  // being told she had just tapped the card, and had no reason to judge that
+  // the talk had moved on. This lead asks for that judgement on every turn,
+  // with a high bar, because the card is how the transcript keeps its meaning.
+  const carriedLead =
+    'A DISCUSSION IS ANCHORED TO THIS ENTRY. Earlier in this conversation they opened it with "Ask about this", and its card sits above that turn in the thread, which is how anyone reading back later knows what "it", "that meal" or "the protein" refer to.\n' +
+    'JUDGE THIS MESSAGE: is it still about this entry, or has the conversation genuinely moved on to something unrelated? A follow-up, a tangent still rooted in it, or a question that only makes sense because of it is STILL ABOUT IT. Set discussTopicEnded only when you are confident this message is about something else entirely - and if you are unsure, it has not moved on.\n' +
+    'The facts below are for answering, not for repeating.';
+
+  const lead = opening ? openingLead : carriedLead;
 
   if (tag.entryType === 'food') {
     const [{ data: log }, { data: items }] = await Promise.all([
@@ -294,6 +310,41 @@ export async function loadDiscussEntryFacts(
 
 export type DiscussTag = { entryId: string; entryType: DiscussEntryType } | null;
 
+/**
+ * What the conversation is about, in words short enough for one line above the
+ * message box: her own words for a meal, the session's name, or "a body
+ * reading". Null when the entry has gone - a deleted meal is not something a
+ * conversation can still be anchored to by name.
+ */
+export async function discussEntryName(
+  supabase: SupabaseClient,
+  tag: DiscussTag
+): Promise<string | null> {
+  if (!tag) return null;
+  const clip = (s: string) => (s.length > 48 ? `${s.slice(0, 47).trimEnd()}…` : s);
+  if (tag.entryType === 'food') {
+    const { data } = await supabase
+      .from('food_logs')
+      .select('raw_text, meal_label')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    const words = (data.raw_text as string | null)?.trim() || (data.meal_label as string | null)?.trim();
+    return words ? clip(words) : 'a meal';
+  }
+  if (tag.entryType === 'activity') {
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('activity_type')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    return clip((data.activity_type as string | null)?.trim() || 'a session');
+  }
+  const { data } = await supabase.from('body_measurements').select('id').eq('id', tag.entryId).maybeSingle();
+  return data ? 'a body reading' : null;
+}
+
 // Which entry (if any) the current turn belongs to.
 //
 // The tag persists for the natural life of a conversational thread — from the
@@ -332,24 +383,34 @@ export type DiscussTag = { entryId: string; entryType: DiscussEntryType } | null
 // follow-up about a pizza is not a close call.
 const STALE_AFTER_MINUTES = 45;
 
-// A DISCUSSION HAS A LENGTH, NOT ONLY A SILENCE (2026-09-19).
+// THE ANCHOR IS MEANING, NOT NAVIGATION (Ruth, 2026-09-19).
 //
-// On 18 September Ruth asked about her oxtail dinner and the tag stayed on for
-// 38 messages - through hunger, a medical history, the app's duplicates and
-// going to bed. Nothing released it, and the reason is structural. The model is
-// asked to declare the topic over, and rarely does. The long-gap rule above
-// measures from the PREVIOUS TAGGED message, and every carried turn is tagged,
-// so in a continuous conversation that clock resets on every message and never
-// runs out. As long as somebody keeps talking, the entry stays attached.
+// On 18 September her oxtail dinner stayed attached for 38 messages, through
+// subjects that had nothing to do with it. The first fix, the same morning,
+// released it after six of her messages. She reversed it:
 //
-// So a discussion now also ends after this many of their messages without the
-// card being posted again. Six is generous for a question about one meal or one
-// session: by the sixth, a conversation that is still about the dinner is rare,
-// and one that is not is common. The cost of ending early is small - the thread
-// still holds the context, so the reply still knows what was said; only the
-// filing under the entry stops. The cost of never ending was the whole evening
-// filed under a stew.
-export const MAX_DISCUSS_TURNS = 6;
+//   "The anchor card is not just UI - it preserves the context of the
+//   conversation. Without it, the transcript quickly becomes difficult to
+//   understand because references like 'it', 'that meal' or 'the protein' lose
+//   their meaning. The card should remain attached for as long as the
+//   conversation is genuinely about that item. Please don't remove it after an
+//   arbitrary number of messages."
+//
+// She is right, and the count was the wrong fix for a real fault. Read back in
+// six months, message seven about the dinner means nothing without its card.
+// So a discussion ends only when:
+//
+//   1. she opens another "Ask about this" (posted, below),
+//   2. she closes the topic herself (closedByUser),
+//   3. Selodia is confident the conversation has genuinely moved on
+//      (topicEnded) - which now actually gets judged, see carriedLead in
+//      loadDiscussEntryFacts: the 38-message evening happened because every turn
+//      told the model she had just tapped the card, so it never had reason to
+//      think otherwise.
+//
+// Two content signals stay as forms of the third, because neither counts
+// anything: logging a NEW entry is a change of subject by definition, and a
+// 45-minute silence followed by a new message is a new conversation.
 
 export function resolveDiscussTag(input: {
   posted: DiscussTag;
@@ -359,9 +420,8 @@ export function resolveDiscussTag(input: {
   minutesSincePrevious?: number | null;
   // This turn put a new entry in the log.
   loggedSomethingNew?: boolean;
-  // How many of their messages have already carried the previous tag, counting
-  // back to where it was posted. See MAX_DISCUSS_TURNS.
-  turnsCarried?: number | null;
+  // She closed the topic herself, from the card.
+  closedByUser?: boolean;
 }): DiscussTag {
   // Posting a card starts that entry's discussion outright. It outranks an
   // end-of-topic declaration: the declaration is about the message the person
@@ -376,26 +436,7 @@ export function resolveDiscussTag(input: {
   ) {
     return null;
   }
+  if (input.closedByUser) return null;
   if (input.topicEnded) return null;
-  if (typeof input.turnsCarried === 'number' && input.turnsCarried >= MAX_DISCUSS_TURNS) {
-    return null;
-  }
   return input.previous;
-}
-
-/**
- * How many of the person's own messages, most recent first, have carried this
- * entry's tag without a break. Stops at the first message that carries anything
- * else or nothing, because that is where the current discussion began.
- */
-export function countCarriedTurns(
-  recent: { role: string; discuss_entry_id: string | null }[],
-  entryId: string
-): number {
-  let turns = 0;
-  for (const m of recent) {
-    if (m.discuss_entry_id !== entryId) break;
-    if (m.role === 'user') turns++;
-  }
-  return turns;
 }

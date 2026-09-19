@@ -160,6 +160,16 @@ export default function ChatScreen() {
   // Set during render, acted on in an effect below: sending from the render body
   // would be a side effect in a render pass.
   const [autoAsk, setAutoAsk] = useState<{ text: string; tag: DiscussTag } | null>(null);
+  // WHAT THE CONVERSATION IS ANCHORED TO, as the server last reported it
+  // (2026-09-19). Ruth: "The anchor card is not just UI - it preserves the
+  // context of the conversation... When reading conversations back months
+  // later, they should still make complete sense." So while a discussion is
+  // open it is named above the message box, and she can close it herself - one
+  // of the three ways it ends. Null until a reply confirms one.
+  const [anchor, setAnchor] = useState<{ id: string; name: string | null } | null>(null);
+  // Set by Close; travels on the next message, which is when the server next
+  // decides what that message belongs to.
+  const [closeNext, setCloseNext] = useState(false);
   if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
     setLastPrefill(prefill);
     // Router params arrive as strings, so the two numbers are parsed here rather
@@ -552,16 +562,25 @@ export default function ChatScreen() {
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget, reminder } =
+      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget, reminder, discussEntry } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
           // Present only on the turn that opens a discussion about an entry.
           // The server validates the type and ignores anything it does not know.
           ...(tag ? { entryId: tag.entryId, entryType: tag.entryType } : {}),
+          ...(closeNext ? { closeDiscussion: true } : {}),
         });
       // Cleared whatever the reply was: the question has been asked, and the
       // thread's own tag carries the conversation from here.
       setPendingTag(null);
+      // The close has been delivered with this message; the server's answer is
+      // now the truth about what, if anything, the conversation is anchored to.
+      setCloseNext(false);
+      setAnchor(
+        discussEntry && typeof discussEntry.id === 'string'
+          ? { id: discussEntry.id, name: typeof discussEntry.name === 'string' ? discussEntry.name : null }
+          : null
+      );
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId },
@@ -737,6 +756,37 @@ export default function ChatScreen() {
             chosen. Sitting directly over the message box makes the relationship
             obvious: these are things you could type, already typed. */}
         {showChips === true && <ChatLandingChips onPick={handleChipPick} />}
+
+        {/* THE ANCHOR, NAMED, WITH A WAY TO CLOSE IT. One quiet line, only
+            while a discussion is open. It says what "it" and "that meal" refer
+            to, which is the thing the card above the question does in the
+            thread - but the card may be forty messages up by now. */}
+        {anchor && (
+          <View style={styles.anchorRow}>
+            <ThemedText type="detail" themeColor="textSecondary" style={styles.anchorText} numberOfLines={1}>
+              Talking about {anchor.name ?? 'this entry'}
+            </ThemedText>
+            <Pressable
+              onPress={() => {
+                setCloseNext(true);
+                setAnchor(null);
+                setSaveToast((prev) => ({
+                  summary: 'Closed. Your next message starts a new topic.',
+                  nonce: (prev?.nonce ?? 0) + 1,
+                  notice: true,
+                }));
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Close the topic about ${anchor.name ?? 'this entry'}`}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="detail" themeColor="accentDeep">
+                Close
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
 
         {/* THE COMPOSER IS A COLUMN NOW (Ruth, 2026-09-18: "there is an issue
             with the text typing box in chat. It doesn't expand with what user
@@ -919,6 +969,19 @@ const styles = StyleSheet.create({
   messageGroup: {
     gap: 6,
   },
+  // Aligned with the composer beneath it, so it reads as belonging to what is
+  // about to be written rather than to the thread above.
+  anchorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingHorizontal: PageInset.horizontal + Spacing.two,
+    paddingBottom: Spacing.one,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: MaxContentWidth,
+  },
+  anchorText: { flex: 1 },
   inputRow: {
     paddingHorizontal: PageInset.horizontal,
     // Close to the tab bar on purpose: the composer belongs to the conversation
