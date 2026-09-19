@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -63,7 +63,19 @@ export function InsightsPortrait({ statements = [], range = null }: InsightsPort
           beneath never jumps when the flower arrives. */}
       <View style={styles.flower}>
         {flower.coverage && (
-          <HealthFlower coverage={flower.coverage} size={PORTRAIT_FLOWER_SIZE} />
+          <HealthFlower
+            coverage={flower.coverage}
+            size={PORTRAIT_FLOWER_SIZE}
+            // THE SAME PETALS AS TODAY'S, SO THEY DO THE SAME THING (Ruth's bug
+            // list, item 5: "Tapping Strength or Cardio should show what fed that
+            // petal; it does nothing"). This copy was drawn without the handler
+            // the Today flower has always had. It opens the same detail screen,
+            // which lives under Today - so the tap crosses to that tab, and back
+            // returns there. One screen for what fed a petal, not two that drift.
+            onSelectDimension={(d) =>
+              router.push({ pathname: '/today/[dimension]', params: { dimension: d } })
+            }
+          />
         )}
       </View>
       {/* THE WIDTH LIMIT SITS ON A WRAPPER, NOT ON THE TEXT. Found on device
