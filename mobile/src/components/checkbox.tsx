@@ -13,7 +13,9 @@ type CheckboxProps = {
 export function Checkbox({ checked, onToggle, label }: CheckboxProps) {
   return (
     <Pressable onPress={onToggle} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView style={styles.row}>
+      {/* Transparent, so it sits on whatever surface holds it - the page on
+          the consent screen, a card in Settings. */}
+      <ThemedView style={[styles.row, styles.clear]}>
         <ThemedView type={checked ? 'backgroundSelected' : 'backgroundElement'} style={styles.box}>
           {checked && <ThemedText type="smallBold">✓</ThemedText>}
         </ThemedView>
@@ -41,6 +43,7 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
   },
+  clear: { backgroundColor: 'transparent' },
   pressed: {
     opacity: 0.7,
   },

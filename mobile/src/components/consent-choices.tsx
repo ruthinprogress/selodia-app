@@ -134,7 +134,7 @@ export function ConsentChoices() {
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.one },
   body: { lineHeight: 20 },
-  boxes: { gap: Spacing.two, marginVertical: Spacing.two },
+  boxes: { gap: Spacing.two, marginVertical: Spacing.two, backgroundColor: 'transparent' },
   link: { alignSelf: 'flex-start', marginTop: Spacing.one },
   pressed: { opacity: 0.6 },
 });

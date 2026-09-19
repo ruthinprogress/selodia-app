@@ -5,6 +5,7 @@ import {
   getSdkStatus,
   initialize,
   requestPermission,
+  revokeAllPermissions,
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
 
@@ -19,6 +20,24 @@ import {
 // cannot detect a refusal and pester - and pretending that ambiguity is a yes or
 // a no is what made the iOS failure silent. A fourth state is the honest shape.
 export type StepPermissionResult = 'granted' | 'declined' | 'unsupported' | 'unknown';
+
+// TURNING IT OFF (2026-09-19). Ruth: "you be able to turn that off, no?" On
+// Android the permission is handed back to Health Connect, so the phone itself
+// shows Selodía no longer has access - the permission list only updates when
+// the app restarts, which is why the stored preference (see syncTodaySteps) is
+// what actually stops the reading straight away. iOS gives an app no way to
+// give a permission back; there the preference stops the reading, and the
+// Health app is where the permission itself is removed.
+export async function releaseStepPermission(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await initialize();
+    await revokeAllPermissions();
+  } catch (err) {
+    // Never a reason to stay on: the preference below still stops the reads.
+    console.log('STEP PERMISSION (android): revoke failed -', err);
+  }
+}
 
 export async function requestStepPermission(): Promise<StepPermissionResult> {
   if (Platform.OS === 'ios') return requestIOSStepPermission();

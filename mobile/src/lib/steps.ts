@@ -164,6 +164,18 @@ export async function loadStoredSteps(): Promise<number | null> {
 // already stored stands - including a figure typed in or photographed earlier.
 // Writing a null over it would lose real data to a temporary refusal.
 export async function syncTodaySteps(): Promise<number | null> {
+  // OFF MEANS NOT READ (2026-09-19). The Today panel called this without
+  // looking at the person's answer, so a "turn off" that only stored a
+  // preference would have kept reading their steps. Whatever is already stored
+  // for today is still shown; nothing new is taken from the phone.
+  const { data: pref } = await supabase
+    .from('user_profile')
+    .select('steps_permission_declined')
+    .maybeSingle();
+  if ((pref as { steps_permission_declined: boolean | null } | null)?.steps_permission_declined) {
+    return loadStoredSteps();
+  }
+
   const steps = await readTodaySteps();
   if (steps == null) return loadStoredSteps();
 

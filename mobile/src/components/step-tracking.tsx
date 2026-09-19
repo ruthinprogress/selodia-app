@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { requestStepPermission, type StepPermissionResult } from '@/lib/step-permission';
+import {
+  releaseStepPermission,
+  requestStepPermission,
+  type StepPermissionResult,
+} from '@/lib/step-permission';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 
@@ -28,7 +32,7 @@ import { supabase } from '@/lib/supabase';
 // for the same reason: Apple will not say whether read access was granted, and
 // recording a guess would permanently silence a retry the person never refused.
 
-type Status = 'loading' | 'on' | 'off' | StepPermissionResult;
+type Status = 'loading' | 'on' | 'off' | 'turnedOff' | StepPermissionResult;
 
 export function StepTracking() {
   const [status, setStatus] = useState<Status>('loading');
@@ -94,6 +98,31 @@ export function StepTracking() {
     }
   }
 
+  // TURNING IT OFF (2026-09-19), the other half of the same question: somebody
+  // who said yes must be able to say no from the same place, as easily. Steps
+  // already recorded stay in their history - turning reading off is not a
+  // request to delete, and deleting is a separate, deliberate act.
+  async function turnOff() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('user_profile')
+          .update({ steps_permission_declined: true })
+          .eq('user_id', user.id);
+      }
+      await releaseStepPermission();
+      setSteps(null);
+      setStatus('turnedOff');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // Each line says only what is actually known. "Unknown" in particular promises
   // nothing: on iOS a granted permission and a refused one look identical from
   // here, so it describes what will happen rather than what has.
@@ -101,13 +130,18 @@ export function StepTracking() {
     loading: '…',
     on: steps != null ? `On. ${formatSteps(steps)} steps so far today.` : 'On.',
     off: 'Off. Your steps are not being read, so movement only counts when you log it.',
+    turnedOff:
+      Platform.OS === 'ios'
+        ? 'Off. Selodía has stopped reading your steps. To remove its access completely, open the Health app, then Sharing, then Apps.'
+        : 'Off. Selodía has stopped reading your steps and handed back its access. Steps already recorded stay in your history.',
     granted: steps != null ? `On. ${formatSteps(steps)} steps so far today.` : 'On, though there are no steps recorded yet today.',
     declined: 'Not allowed. You can change that in your phone’s health settings whenever you like.',
     unsupported: 'This phone has no health app to read steps from, so there is nothing to turn on.',
     unknown: 'Asked. If your phone shares your steps they will start appearing on their own.',
   };
 
-  const canAsk = status === 'off' || status === 'declined' || status === 'unknown';
+  const canAsk = status === 'off' || status === 'turnedOff' || status === 'declined' || status === 'unknown';
+  const canStop = status === 'on' || status === 'granted' || status === 'unknown';
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
@@ -129,6 +163,21 @@ export function StepTracking() {
           </ThemedView>
         </Pressable>
       )}
+
+      {canStop && (
+        <Pressable
+          onPress={turnOff}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Turn off step tracking"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.stop, pressed && styles.pressed]}
+        >
+          <ThemedText type="small" themeColor="accentDeep">
+            {busy ? 'Turning off…' : 'Turn off step tracking'}
+          </ThemedText>
+        </Pressable>
+      )}
     </ThemedView>
   );
 }
@@ -147,5 +196,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
   },
+  stop: { alignSelf: 'flex-start', marginTop: Spacing.two },
   pressed: { opacity: 0.6 },
 });
