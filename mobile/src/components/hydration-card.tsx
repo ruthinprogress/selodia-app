@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
 import { DrinkIcon, type DrinkKind } from '@/components/drink-icons';
+import { RowDelete } from '@/components/row-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WaterDroplet } from '@/components/water-droplet';
@@ -36,6 +37,14 @@ import { supabase } from '@/lib/supabase';
 // seconds, for the most recent drink only. Older drinks are managed from the
 // log like any other entry.
 //
+// AND A DAY HAS TO BE CORRECTABLE AFTER ITS FIVE SECONDS (Ruth, on device the
+// same evening: "Still cant remove water"). Undo covers the stray tap it was
+// written for, but water lives nowhere else - it is not in the food log - so
+// once the note faded a drink could not be removed at all. Tapping the amount
+// now opens today's drinks, each with the same two-tap delete every other row
+// in the app has. The card itself still carries no delete control, which is
+// what her brief asked for: removal lives inside the detail, on the row.
+//
 // It replaces the "+ Add a drink" strip and its four grey pills (design list
 // item 15). The four measures and their millilitres are unchanged, because a
 // tap and the sentence "a mug of tea" must still agree about what a mug is.
@@ -64,6 +73,7 @@ export function HydrationCard({
   const [busy, setBusy] = useState(false);
   const [other, setOther] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [day, setDay] = useState(false);
 
   async function add(amount: number, label: string) {
     if (busy || !(amount > 0)) return;
@@ -102,17 +112,28 @@ export function HydrationCard({
         <View style={styles.row}>
           <WaterDroplet fill={dropletFill(ml, goal.ml)} />
 
-          <Pressable
-            onPress={() => setWhy((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel={`${formatVolume(ml)} of ${formatVolume(goal.ml)} today. ${why ? 'Hide' : 'Show'} why the goal is ${formatVolume(goal.ml)}.`}
-            style={styles.amounts}
-          >
-            <ThemedText style={styles.amount}>{formatVolume(ml)}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              of {formatVolume(goal.ml)} today
-            </ThemedText>
-          </Pressable>
+          <View style={styles.amounts}>
+            <Pressable
+              onPress={() => setDay(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`${formatVolume(ml)} so far. See today's drinks.`}
+              hitSlop={Spacing.one}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText style={styles.amount}>{formatVolume(ml)}</ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => setWhy((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={`Of ${formatVolume(goal.ml)} today. ${why ? 'Hide' : 'Show'} why the goal is ${formatVolume(goal.ml)}.`}
+              hitSlop={Spacing.one}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="small" themeColor="textSecondary">
+                of {formatVolume(goal.ml)} today
+              </ThemedText>
+            </Pressable>
+          </View>
 
           <Pressable
             onPress={() => {
@@ -208,6 +229,8 @@ export function HydrationCard({
           </View>
         )}
 
+        <HydrationDay visible={day} onClose={() => setDay(false)} onRemoved={(removedMl) => onLogged(-removedMl)} />
+
         {failed && (
           <ThemedText type="small" themeColor="danger" style={styles.whyText}>
             That didn&apos;t save. Check your connection and try again.
@@ -255,6 +278,13 @@ const styles = StyleSheet.create({
   },
   otherInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
   pressed: { opacity: 0.6 },
+  backdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.three },
+  sheetWrap: { width: '100%', maxWidth: 420 },
+  sheet: { borderRadius: Spacing.three, padding: Spacing.four, gap: Spacing.two, maxHeight: '100%' },
+  sheetList: { gap: Spacing.one },
+  drinkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.one },
+  drinkTime: { width: 52 },
+  drinkMl: { flex: 1 },
   // Across the foot of the screen, just above the bottom navigation.
   toastLayer: {
     position: 'absolute',
@@ -373,5 +403,99 @@ export function HydrationToast({
       </Animated.View>
       )}
     </View>
+  );
+}
+
+// TODAY'S DRINKS, each removable. Reached by tapping the amount, so the card
+// keeps its single tap and the removal lives where a record is being read.
+// RowDelete is the same control the food and activity rows use: the first tap
+// arms it, the second removes, and it disarms itself if left alone.
+type Drink = { id: string; ml: number; happened_at: string };
+
+function HydrationDay({
+  visible,
+  onClose,
+  onRemoved,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onRemoved: (ml: number) => void;
+}) {
+  const theme = useTheme();
+  const [drinks, setDrinks] = useState<Drink[] | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    (async () => {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const { data } = await supabase
+        .from('hydration_logs')
+        .select('id, ml, happened_at')
+        .gte('happened_at', start.toISOString())
+        .order('happened_at', { ascending: false });
+      if (!cancelled) setDrinks((data ?? []) as Drink[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose} accessibilityViewIsModal>
+      <Pressable
+        style={[styles.backdrop, { backgroundColor: theme.scrim }]}
+        onPress={onClose}
+        accessibilityLabel="Close"
+      >
+        <Pressable style={styles.sheetWrap} onPress={() => {}}>
+          <ThemedView style={styles.sheet}>
+            <ThemedText type="smallBold">Today&apos;s drinks</ThemedText>
+
+            {drinks === null ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                …
+              </ThemedText>
+            ) : drinks.length === 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                Nothing yet today.
+              </ThemedText>
+            ) : (
+              <ScrollView contentContainerStyle={styles.sheetList}>
+                {drinks.map((d) => (
+                  <View key={d.id} style={styles.drinkRow}>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.drinkTime}>
+                      {new Date(d.happened_at).toLocaleTimeString('en-GB', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </ThemedText>
+                    <ThemedText type="small" style={styles.drinkMl}>
+                      {formatVolume(d.ml)}
+                    </ThemedText>
+                    <RowDelete
+                      table="hydration_logs"
+                      id={d.id}
+                      what={`${formatVolume(d.ml)} of water`}
+                      onDeleted={() => {
+                        setDrinks((rows) => (rows ?? []).filter((r) => r.id !== d.id));
+                        onRemoved(d.ml);
+                      }}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            <Pressable onPress={onClose} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
+              <ThemedText type="small" themeColor="link">
+                Done
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
