@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { openBrowserAsync } from 'expo-web-browser';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -7,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
 import { readMeCard, sectionOf } from '@/lib/me-card';
 import { humanDate } from '@/lib/week';
@@ -46,6 +48,29 @@ function orderSections(names: string[]): string[] {
 }
 
 export function MeProtocol({ entries }: { entries: AlmanacRow[] }) {
+  const theme = useTheme();
+  const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
+
+  // ONE TAP, AS THE BRIEF ASKS. The page opens in the phone's browser, where
+  // printing, saving as a PDF and sharing are the browser's own - so none of it
+  // needs a native module, and it ships over an update rather than a rebuild.
+  async function exportProtocol() {
+    if (exporting) return;
+    setExporting(true);
+    setExportFailed(false);
+    try {
+      const { url } = await authedPost<{ url: string }>('/api/me-export', {});
+      await openBrowserAsync(url);
+    } catch {
+      // Said plainly, and nothing else happens: a half-opened page is worse
+      // than a sentence that says it did not work.
+      setExportFailed(true);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const sections = useMemo(() => {
     const map = new Map<string, AlmanacRow[]>();
     for (const entry of entries) {
@@ -62,6 +87,28 @@ export function MeProtocol({ entries }: { entries: AlmanacRow[] }) {
       <SectionIntro title="Your own record">
         How you have decided to look after yourself, and why.
       </SectionIntro>
+
+      {/* Quiet, and above the sections rather than after them: it is how the
+          whole document leaves the app, so it belongs to the document, not to
+          whichever section happens to be last. */}
+      <Pressable
+        onPress={() => void exportProtocol()}
+        disabled={exporting}
+        accessibilityRole="button"
+        accessibilityLabel="Export your Me tab as a page you can print or share"
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.export, pressed && styles.pressed]}
+      >
+        <Ionicons name="share-outline" size={16} color={theme.accentDeep} />
+        <ThemedText type="small" themeColor="accentDeep">
+          {exporting ? 'Preparing\u2026' : 'Export to print or share'}
+        </ThemedText>
+      </Pressable>
+      {exportFailed && (
+        <ThemedText type="detail" themeColor="textSecondary">
+          That didn&apos;t open. Try again in a moment.
+        </ThemedText>
+      )}
 
       {sections.map((section) => (
         <View key={section.name} style={styles.section}>
@@ -165,6 +212,7 @@ function MeCardRow({ row }: { row: AlmanacRow }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
+  export: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
   section: { gap: 6, paddingTop: Spacing.three },
   heading: { paddingBottom: 2 },
   card: {
