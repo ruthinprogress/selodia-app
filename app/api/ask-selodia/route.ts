@@ -21,6 +21,7 @@ import {
 import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
 import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
+import { carriedOnSince, clearSupersededFood } from '../../lib/voice-supersede';
 import { logActivityFromText } from '../../lib/activity-logging';
 import {
   choosePlan,
@@ -1473,6 +1474,17 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (result.logIntent === 'food' || result.logIntent === 'activity' || saysDidPlan) {
     const runLog = async () => {
       if (result.logIntent === 'food') {
+        // ONE SPOKEN SENTENCE, ONE SET OF ROWS - enforced here, at the write,
+        // rather than asked of the model. See lib/voice-supersede.ts for the
+        // day of food that went in as five rows.
+        if (isVoice && (await carriedOnSince(supabase, userRow?.id ?? null, message))) {
+          console.log('VOICE SUPERSEDE: she carried on talking; the later turn logs all of it');
+          return;
+        }
+        if (supersededSince) {
+          const cleared = await clearSupersededFood(supabase, user.id, supersededSince);
+          if (cleared > 0) console.log('VOICE SUPERSEDE: cleared', cleared, 'rows from the earlier version');
+        }
         // logText carries the food itself when the model has separated it from
         // the rest of the message, exactly as it does for activity. Passing the
         // raw message is how "It's not gone into the log" ended up stored as a
