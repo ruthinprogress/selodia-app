@@ -291,6 +291,7 @@ export async function POST(request: NextRequest) {
     { data: recentFood },
     { data: recentActivity },
     { data: recentDailyBurn },
+    { data: recentDrinks },
     { data: recentMeasurements },
     { data: healthContextRow },
     { data: lastPeriodRow },
@@ -354,6 +355,15 @@ export async function POST(request: NextRequest) {
       .select('date, steps, kcal_burned, active_kcal, active_minutes, distance_km')
       .gte('date', contextSince.toISOString().slice(0, 10))
       .order('date', { ascending: false }),
+    // WATER (2026-09-19). Logged since the hydration card was built and read
+    // nowhere, so "how much have I drunk this week?" had nothing behind it and
+    // a day's drinking could not be connected to anything else. Every drink
+    // with its time, totalled per day below.
+    supabase
+      .from('hydration_logs')
+      .select('ml, happened_at')
+      .gte('happened_at', contextSince.toISOString())
+      .order('happened_at', { ascending: false }),
     supabase
       .from('body_measurements')
       .select('measured_at, weight_kg, body_fat_pct')
@@ -622,6 +632,27 @@ export async function POST(request: NextRequest) {
       }).join('\n')
     : 'No activity logged in the last 7 days.';
 
+  // A DAY'S DRINKING, AND WHAT AN EMPTY DAY MEANS. Totalled per day, with the
+  // number of drinks, because five 250ml glasses and one 1.2L bottle are
+  // different days however equal the totals. A day with nothing is reported as
+  // nothing LOGGED - the distinction the prompt below depends on.
+  const drinkDays = new Map<string, { ml: number; drinks: number }>();
+  for (const d of (recentDrinks ?? []) as { ml: number; happened_at: string }[]) {
+    const key = new Date(d.happened_at).toISOString().slice(0, 10);
+    const day = drinkDays.get(key) ?? { ml: 0, drinks: 0 };
+    day.ml += typeof d.ml === 'number' ? d.ml : 0;
+    day.drinks += 1;
+    drinkDays.set(key, day);
+  }
+  const hydrationSummary = drinkDays.size > 0
+    ? [...drinkDays.entries()]
+        .map(([date, day]) =>
+          humanDate(date) + ': ' + (Math.round(day.ml / 100) / 10) + ' L logged across ' +
+          day.drinks + (day.drinks === 1 ? ' drink' : ' drinks')
+        )
+        .join('\n')
+    : 'No drinks logged in the last 7 days.';
+
   // Named as a whole day, every time, with the source of the figure attached.
   // The wording is doing real work: "burned across the day" cannot be misread as
   // a session the way a bare number beside a duration can.
@@ -660,6 +691,13 @@ ${activitySummary}
 
 Here are their whole-day tracker totals, from a fitness app's daily summary screen. These are NOT sessions and must never be described as one: the calorie figure is everything their body used across a whole day of ordinary movement, not a workout they did. Treat it as background on how active a day was, and never congratulate someone on it as though it were training:
 ${dailyBurnSummary}
+
+Here is the water they have logged in the last 7 days, day by day:
+${hydrationSummary}
+
+WHAT A WATER LOG IS AND IS NOT. It is the drinks they remembered to log, and nothing else: it does not include the water in their food, and a day with nothing logged means nothing was tapped, NOT that they drank nothing. So answer questions about it directly from these figures - "you logged 1.4 L yesterday" - and never turn a missing day into a claim about their drinking, never say they are dehydrated, and never tell them to drink more as a piece of general advice.
+
+Hydration genuinely moves what the scale says, along with salt, food volume, and where somebody is in their cycle. If a reading and a low logged day sit beside each other you may put them side by side as an observation with the possibility labelled - "you logged 700 ml the day before, and hydration is one of the things that shifts the scale day to day" - and you must not state it as the cause, or as the reason for a number, when all you have is the two sitting together.
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}

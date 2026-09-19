@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
+import { router } from 'expo-router';
 import { AppState, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
@@ -282,6 +283,7 @@ const styles = StyleSheet.create({
   sheetWrap: { width: '100%', maxWidth: 420 },
   sheet: { borderRadius: Spacing.three, padding: Spacing.four, gap: Spacing.two, maxHeight: '100%' },
   sheetList: { gap: Spacing.one },
+  sheetFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   drinkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.one },
   drinkTime: { width: 52 },
   drinkMl: { flex: 1 },
@@ -488,11 +490,28 @@ function HydrationDay({
               </ScrollView>
             )}
 
-            <Pressable onPress={onClose} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedText type="small" themeColor="link">
-                Done
-              </ThemedText>
-            </Pressable>
+            <View style={styles.sheetFoot}>
+              {/* Earlier days live on their own screen, with the same delete on
+                  each row - see log/water-history.tsx. */}
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  router.push('/log/water-history');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Earlier days"
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedText type="small" themeColor="textSecondary">
+                  Earlier days
+                </ThemedText>
+              </Pressable>
+              <Pressable onPress={onClose} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
+                <ThemedText type="small" themeColor="link">
+                  Done
+                </ThemedText>
+              </Pressable>
+            </View>
           </ThemedView>
         </Pressable>
       </Pressable>
