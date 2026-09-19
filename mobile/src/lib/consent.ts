@@ -25,7 +25,7 @@ import { supabase } from '@/lib/supabase';
 
 // The privacy policy's own "Last updated" date (app/privacy/page.tsx). Change
 // the two together: a record says which version of the policy was agreed to.
-export const PRIVACY_POLICY_VERSION = '10 September 2026';
+export const PRIVACY_POLICY_VERSION = '19 September 2026';
 
 export type ConsentAnswers = {
   coreConsent: boolean;
@@ -58,7 +58,29 @@ export function consentMetadata(answers: ConsentAnswers | null): Record<string, 
   };
 }
 
-/** True when this account has ever given core consent. */
+// WHERE THIS ACCOUNT STANDS (2026-09-19). 'outdated' means they agreed, but to
+// an earlier privacy policy. The policy promises that a change to what is
+// collected or who sees it is told in the app rather than by a quietly updated
+// page, and this is how: they are asked again, once, with a line saying why.
+export type ConsentStatus = 'current' | 'outdated' | 'none';
+
+export async function consentStatus(): Promise<ConsentStatus> {
+  const { data, error } = await supabase
+    .from('consent_records')
+    .select('core_consent, policy_version')
+    .order('recorded_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    // Unknown is treated as "ask", for the reason given in hasRecordedConsent.
+    console.log('consent check failed -', error.message);
+    return 'none';
+  }
+  if (data?.core_consent !== true) return 'none';
+  return data.policy_version === PRIVACY_POLICY_VERSION ? 'current' : 'outdated';
+}
+
+/** True when this account has ever given core consent, to any version. */
 export async function hasRecordedConsent(): Promise<boolean> {
   const { data, error } = await supabase
     .from('consent_records')
