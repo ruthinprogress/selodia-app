@@ -21,7 +21,12 @@ import {
 import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
 import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
-import { carriedOnSince, clearSupersededFood } from '../../lib/voice-supersede';
+import {
+  answerWrittenAfter,
+  carriedOnSince,
+  clearSupersededFood,
+  earlierTwin,
+} from '../../lib/voice-supersede';
 import { logActivityFromText } from '../../lib/activity-logging';
 import {
   choosePlan,
@@ -238,6 +243,20 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   if (userInsertError) {
     console.log('ASK-SELODIA USER TURN INSERT FAILED:', userInsertError.message);
+  }
+
+  // THE SAME TURN, TWICE AT ONCE. See earlierTwin in lib/voice-supersede.ts.
+  // The later copy writes nothing - no model call, no log - and answers with
+  // what the first copy says, so the voice hears one reply. Its own row is
+  // removed, so the thread shows the turn once.
+  const twin = await earlierTwin(supabase, userRow?.id ?? null, message);
+  if (twin && userRow?.id) {
+    console.log('ASK-SELODIA: a second copy of the same turn; answering with the first');
+    await supabase.from('chat_messages').delete().eq('id', userRow.id).eq('user_id', user.id);
+    const reply = await answerWrittenAfter(supabase, twin.created_at);
+    return NextResponse.json({
+      reply: reply ?? 'Something went wrong just then. Could you say that again?',
+    });
   }
 
   // HOW FAR BACK THE CONTEXT REACHES. Seven days when typing, three when
@@ -1354,7 +1373,22 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           attempt.landed.push('reading');
         }
       } else if (correction.kind === 'food' && target) {
-        const updated = await logFoodFromText(supabase, user.id, message, undefined, target.id);
+        // The entry as it stands, so the correction is applied to it rather than
+        // substituted for it. See logFoodFromText's correctionOf.
+        const { data: foodRow } = await supabase
+          .from('food_logs')
+          .select('raw_text')
+          .eq('id', target.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const updated = await logFoodFromText(
+          supabase,
+          user.id,
+          message,
+          undefined,
+          target.id,
+          typeof foodRow?.raw_text === 'string' && foodRow.raw_text.trim() ? foodRow.raw_text : undefined
+        );
         if (updated.length > 0) {
           saved = { kind: 'food', summary: foodSaveSummary(updated) };
           attempt.landed.push('food');

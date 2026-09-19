@@ -102,3 +102,73 @@ export async function clearSupersededFood(
   }
   return ids.length;
 }
+
+// TWO COPIES OF ONE TURN, AT THE SAME MOMENT (2026-09-19). "The chocolate
+// caramel was just one tiny caramel the size of a Malteser" arrived twice in
+// the same second. The adapter's replay check reads the thread BEFORE the
+// pipeline writes the turn, so two requests that land together each see an
+// empty thread and both run: one corrected the entry, the other logged the
+// whole snack again as new. Checked here instead, AFTER this turn is written:
+// both copies are then in the table, whichever order they arrived, and exactly
+// one of them is first.
+
+/** How close together two identical turns must be to count as one. */
+const TWIN_WINDOW_MS = 15_000;
+
+/**
+ * The earlier copy of this exact turn, when this one is the later copy.
+ * Null when this turn is the first (or only) one.
+ */
+export async function earlierTwin(
+  supabase: SupabaseClient,
+  userRowId: string | null,
+  message: string
+): Promise<{ id: string; created_at: string } | null> {
+  if (!userRowId) return null;
+  const { data } = await supabase
+    .from('chat_messages')
+    .select('id, created_at')
+    .eq('role', 'user')
+    .eq('content', message)
+    .gte('created_at', new Date(Date.now() - TWIN_WINDOW_MS).toISOString())
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(10);
+  const rows = data ?? [];
+  const first = rows[0];
+  const own = rows.find((r) => r.id === userRowId);
+  if (!first || !own || first.id === userRowId) return null;
+  // The same words said again ON PURPOSE - "Yes." and, after hearing the
+  // answer, "Yes." again - are two turns. Only a copy with no answer written
+  // between the two is the same turn.
+  const { count } = await supabase
+    .from('chat_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('role', 'assistant')
+    .gt('created_at', first.created_at)
+    .lt('created_at', own.created_at);
+  if ((count ?? 0) > 0) return null;
+  return { id: first.id as string, created_at: String(first.created_at) };
+}
+
+/** The answer the first copy wrote, once it exists. */
+export async function answerWrittenAfter(
+  supabase: SupabaseClient,
+  since: string,
+  waitMs = 20_000
+): Promise<string | null> {
+  const deadline = Date.now() + waitMs;
+  do {
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('content')
+      .eq('role', 'assistant')
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const text = data?.[0]?.content;
+    if (typeof text === 'string' && text.trim()) return text.trim();
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  } while (Date.now() < deadline);
+  return null;
+}

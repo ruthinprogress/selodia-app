@@ -152,7 +152,10 @@ export async function logFoodFromText(
   userId: string,
   foodText: string,
   happenedAt?: string,
-  updateLogId?: string
+  updateLogId?: string,
+  // The entry as it stood, when foodText is a CORRECTION to it rather than a
+  // full description. See the update instruction below.
+  correctionOf?: string
 ): Promise<FoodEntry[]> {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -160,8 +163,22 @@ export async function logFoodFromText(
   // staple is counted the same way every time. See lib/food-memory.ts.
   const memory = rememberedFoodsBlock(await loadRememberedFoods(supabase, userId, foodText));
 
+  // A CORRECTION IS APPLIED, NOT SUBSTITUTED (2026-09-19). "The chocolate
+  // caramel was just one tiny caramel the size of a Malteser" used to be parsed
+  // on its own and written over the entry, so the candied orange logged with it
+  // vanished. The model now sees the entry as it stood and the correction, and
+  // returns the corrected whole - in her words, as entry_text - so everything
+  // she did not change survives.
+  const correctionLead =
+    updateLogId && correctionOf
+      ? 'This food entry was logged as: "' +
+        correctionOf +
+        '". The person has now corrected it. Apply their correction to that entry, keep every item they did not change, and estimate the corrected whole. Include "entry_text": the corrected entry described in their own words, as short as the original. '
+      : '';
+
   const instruction = updateLogId
-    ? 'Estimate the macros for this food entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: ' +
+    ? correctionLead +
+      'Estimate the macros for this food entry, plus its sodium in milligrams (sodium_mg). Respond ONLY with valid JSON, no other text, in this exact format: ' +
       FOOD_PARSE_JSON_SCHEMA +
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
@@ -212,11 +229,15 @@ export async function logFoodFromText(
   const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
   if (updateLogId) {
-    const macros = JSON.parse(cleaned) as ParsedMacros;
+    const macros = JSON.parse(cleaned) as ParsedMacros & { entry_text?: unknown };
     const items: ParsedItem[] = Array.isArray(macros.items) ? macros.items : [];
+    const corrected =
+      correctionOf && typeof macros.entry_text === 'string' && macros.entry_text.trim()
+        ? macros.entry_text.trim()
+        : null;
     const { data, error } = await supabase
       .from('food_logs')
-      .update({ raw_text: foodText, ...buildFoodLogFields(macros) })
+      .update({ raw_text: corrected ?? foodText, ...buildFoodLogFields(macros) })
       .eq('id', updateLogId)
       .select();
     if (error) throw new Error('food_logs update failed: ' + error.message);

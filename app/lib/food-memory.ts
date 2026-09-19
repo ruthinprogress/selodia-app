@@ -28,6 +28,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const FOOD_MEMORY_DAYS = 180;
 /** At most this many reference lines in one prompt. */
 export const FOOD_MEMORY_MAX = 12;
+/**
+ * Values younger than this are not offered. Found the day memory shipped: a
+ * chocolate logged at 240 kcal was corrected twenty minutes later to "one tiny
+ * caramel the size of a Malteser", and the re-log came back at 240 again -
+ * memory handed the model the very number she was correcting. Consistency is
+ * a between-days problem; within a day, the latest estimate may be the wrong
+ * one still being put right.
+ */
+export const FOOD_MEMORY_SETTLE_HOURS = 12;
 
 export type RememberedFood = {
   name: string;
@@ -143,11 +152,13 @@ export async function loadRememberedFoods(
 ): Promise<RememberedFood[]> {
   if (!text || !text.trim()) return [];
   const since = new Date(Date.now() - FOOD_MEMORY_DAYS * 86_400_000).toISOString();
+  const settled = new Date(Date.now() - FOOD_MEMORY_SETTLE_HOURS * 3_600_000).toISOString();
   const { data, error } = await supabase
     .from('food_items')
     .select('name, quantity, kcal, protein_g, carbs_g, fat_g, created_at')
     .eq('user_id', userId)
     .gte('created_at', since)
+    .lt('created_at', settled)
     .order('created_at', { ascending: false })
     .limit(500);
   if (error) {
