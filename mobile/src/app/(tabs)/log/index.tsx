@@ -66,10 +66,16 @@ const ROWS: Row[] = [
     detail: 'Sessions, classes, walks',
     go: () => router.push('/log/entries?view=activity'),
   },
+  // THESE TWO OPEN CHAT, AND SAY SO, AND ARRIVE DOING SOMETHING (2026-09-20).
+  // Ruth: "the logging going straight to chat for photo needs some kind of
+  // recognition. It feels a bit like it's unintentional." So the symptom row
+  // lands with the sentence already started in the box, and the photo row
+  // lands with the camera-or-gallery choice already open. A row that changes
+  // the screen and then looks like nothing happened is the fault.
   {
     icon: 'pulse-outline',
     label: 'A symptom',
-    detail: 'Described in chat, where it can be asked about',
+    detail: 'Opens chat with the sentence started',
     go: () =>
       router.push({
         pathname: '/',
@@ -79,8 +85,8 @@ const ROWS: Row[] = [
   {
     icon: 'camera-outline',
     label: 'A photo',
-    detail: 'A meal, a label or a scale reading, read in chat',
-    go: () => router.push('/'),
+    detail: 'Opens your camera or gallery, then reads it in chat',
+    go: () => router.push({ pathname: '/', params: { add: '1' } }),
   },
 ];
 

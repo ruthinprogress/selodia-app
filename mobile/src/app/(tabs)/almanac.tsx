@@ -183,7 +183,10 @@ const styles = StyleSheet.create({
   // (2026-09-18). A page margin is for prose; a control this central to the
   // screen looks like a standard mobile component when it is only as wide as
   // its own words.
-  tabs: { marginHorizontal: -Spacing.two },
+  // Inside the page margin again (2026-09-20). The negative margin was bought
+  // for three labels; with two, it pushed the switch off both edges of the
+  // screen.
+  tabs: { marginHorizontal: 0 },
   content: {
     // Horizontal padding matches the Body screens at 24; vertical stays at 16.
     paddingHorizontal: PageInset.horizontal,

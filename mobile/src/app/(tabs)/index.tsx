@@ -136,6 +136,10 @@ export default function ChatScreen() {
   // governs the first frame, which is the frame that was empty.
   const {
     prefill,
+    // The Log's photo row opens the picker on arrival, rather than landing on
+    // a chat screen that looks like nothing happened (Ruth, 2026-09-20: "it
+    // feels a bit like it's unintentional").
+    add,
     discussId,
     discussType,
     askNow,
@@ -146,6 +150,7 @@ export default function ChatScreen() {
     seedProtein,
   } = useLocalSearchParams<{
     prefill?: string;
+    add?: string;
     discussId?: string;
     discussType?: string;
     askNow?: string;
@@ -220,6 +225,15 @@ export default function ChatScreen() {
   const [offerReminders, setOfferReminders] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  // ARRIVING FROM THE LOG'S PHOTO ROW. The sheet opens itself, so the tap that
+  // said "a photo" leads to the two choices rather than to a chat screen where
+  // nothing visible has happened. Guarded by its own flag, not by the param, so
+  // closing the sheet does not reopen it on the next render.
+  const [addHandled, setAddHandled] = useState(false);
+  if (add === '1' && !addHandled) {
+    setAddHandled(true);
+    setAddOpen(true);
+  }
   // Once the composer has been touched the hint stops cycling, and stays
   // stopped for the session. Resuming on blur would be the same interruption a
   // second time.

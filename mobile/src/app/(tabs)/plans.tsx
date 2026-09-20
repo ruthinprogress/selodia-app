@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { MovementLibrary } from '@/components/movement-library';
-import { SectionIntro } from '@/components/section-intro';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -75,12 +74,9 @@ export default function PlansScreen() {
             {loaded && (
               <SpotlightTarget id="almanac.movement">
                 {plans.length > 0 ? (
-                  <>
-                    <SectionIntro title="Your movement collection">
-                      Saved practices, ready whenever they fit your day.
-                    </SectionIntro>
-                    <MovementLibrary entries={plans} onOpen={setOpenId} />
-                  </>
+                  // The library introduces itself (movement-library.tsx), so
+                  // this screen does not say it a second time.
+                  <MovementLibrary entries={plans} onOpen={setOpenId} />
                 ) : (
                   <AlmanacEmptyState heading={PLANS_EMPTY_HEADING} body={PLANS_EMPTY_BODY} />
                 )}
