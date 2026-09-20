@@ -233,7 +233,7 @@ export async function loadReport(
     id: string;
     kind: string;
     title: string | null;
-    content: string | null;
+    content: unknown;
     category: string | null;
     created_at: string;
     updated_at: string | null;
@@ -275,7 +275,7 @@ export async function loadReport(
     symptoms: has('symptoms')
       ? entries
           .filter((e) => e.kind === 'symptom' && withinDay(e.created_at, from, to))
-          .map((e) => ({ at: e.created_at, title: e.title ?? 'Noted', content: e.content ?? '' }))
+          .map((e) => ({ at: e.created_at, title: e.title ?? 'Noted', content: readableContent(e.content) }))
       : [],
     food: has('food') ? perDayFood(foodRows.data ?? []) : [],
     water: has('water') ? perDayWater(waterRows.data ?? []) : [],
@@ -295,12 +295,12 @@ export async function loadReport(
     plans: has('plans')
       ? entries
           .filter((e) => e.kind.includes('plan'))
-          .map((e) => ({ title: e.title ?? 'Plan', content: e.content ?? '' }))
+          .map((e) => ({ title: e.title ?? 'Plan', content: readableContent(e.content) }))
       : [],
     insights: has('insights')
       ? entries
           .filter((e) => e.kind === 'insight' && withinDay(e.created_at, from, to))
-          .map((e) => ({ at: e.created_at, title: e.title ?? 'Noticed', content: e.content ?? '' }))
+          .map((e) => ({ at: e.created_at, title: e.title ?? 'Noticed', content: readableContent(e.content) }))
       : [],
     // CHOSEN ONE BY ONE. Unticked cards are absent, not greyed: the report is
     // what she decided to share, and nothing else.
@@ -310,11 +310,66 @@ export async function loadReport(
           .map((e) => ({
             title: e.title ?? 'Untitled',
             kind: e.category?.trim() || e.kind,
-            content: e.content ?? '',
+            content: readableContent(e.content),
             updated: e.updated_at ?? e.created_at,
           }))
       : [],
   };
+}
+
+// ALMANAC CONTENT IS NOT A STRING (2026-09-20). Every entry's content is
+// JSONB: {"summary": ...} for a symptom or insight, {"why": ..., ...} for a Me
+// card, a whole programme for a plan. The renderer escapes strings, so handing
+// it an object threw and the whole report failed - with her data already read
+// and nothing said about why.
+//
+// So each shape is turned into something a person would want to read, and
+// anything unrecognised is listed key by key rather than dropped: a report that
+// silently omits part of somebody's record is worse than one that looks plain.
+export function readableContent(content: unknown): string {
+  if (typeof content === 'string') return content.trim();
+  if (!content || typeof content !== 'object') return '';
+  const c = content as Record<string, unknown>;
+
+  const lines: string[] = [];
+  const say = (v: unknown): string =>
+    typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '';
+
+  // The words an entry leads with, in the order they are worth reading.
+  for (const key of ['summary', 'why', 'goal', 'detail', 'note', 'notes']) {
+    const said = say(c[key]);
+    if (said) lines.push(said);
+  }
+
+  // A plan's movements.
+  const exercises = Array.isArray(c.exercises) ? c.exercises : null;
+  if (exercises) {
+    const moves = exercises
+      .map((e) => {
+        const m = (e ?? {}) as Record<string, unknown>;
+        const name = say(m.name);
+        if (!name) return '';
+        const bits = [
+          say(m.sets) ? `${say(m.sets)} sets` : '',
+          say(m.reps) ? `${say(m.reps)} reps` : '',
+          say(m.note),
+        ].filter(Boolean);
+        return bits.length > 0 ? `${name} - ${bits.join(', ')}` : name;
+      })
+      .filter(Boolean);
+    if (moves.length > 0) lines.push(moves.map((m) => `• ${m}`).join('\n'));
+  }
+
+  // A Me card's sections, and anything else with words in it.
+  if (lines.length === 0) {
+    for (const [key, value] of Object.entries(c)) {
+      if (key.startsWith('__')) continue;
+      const said = say(value);
+      if (said) lines.push(`${key.replace(/_/g, ' ')}: ${said}`);
+    }
+  }
+
+  return lines.join('\n\n').trim();
 }
 
 function withinDay(iso: string, from: string, to: string): boolean {

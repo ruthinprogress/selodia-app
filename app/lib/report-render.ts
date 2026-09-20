@@ -293,7 +293,12 @@ function round(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-function esc(s: string): string {
+function esc(value: string): string {
+  // Coerced, not trusted (2026-09-20). One field arriving as an object - an
+  // Almanac entry's JSONB content - threw here and took the whole report with
+  // it, after every one of her rows had been read. A document is not the place
+  // to discover a type mismatch.
+  const s = typeof value === 'string' ? value : value == null ? '' : String(value);
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
