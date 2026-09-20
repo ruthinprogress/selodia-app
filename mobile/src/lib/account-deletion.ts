@@ -89,6 +89,7 @@ const DELETE_ORDER = [
   'food_cache',
   'consent_records',
   'client_error_log',
+  'report_exports',
   'push_tokens',
   'user_profile',
 ];
