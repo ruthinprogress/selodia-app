@@ -6,6 +6,7 @@ import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { currentUserId } from '@/lib/current-user';
 import { syncRemindersNow } from '@/lib/notifications';
 import { DEFAULT_REMINDER_TIMES, loadReminderSettings, persistReminderChoice } from '@/lib/reminder-settings';
 import { supabase } from '@/lib/supabase';
@@ -45,11 +46,9 @@ export default function NotificationsScreen() {
     const before = enabled;
     setEnabled(next);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('no session');
-      await persistReminderChoice(user.id, { enabled: next, times });
+      const userId = await currentUserId();
+      if (!userId) throw new Error('no session');
+      await persistReminderChoice(userId, { enabled: next, times });
       // The phone's own schedule is rebuilt from the stored answer, so turning
       // them off cancels what is already queued rather than leaving it to fire.
       // A false means the phone refused - notifications not permitted, most

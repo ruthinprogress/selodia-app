@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // "Has the Almanac orientation been seen?" (build item 15, UI slice 5 — Part
@@ -42,13 +43,11 @@ export async function hasSeenAlmanacIntro(): Promise<boolean> {
 // which is a far better outcome than an error surfacing on a dismiss tap.
 export async function markAlmanacIntroSeen(): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     await supabase
       .from('user_profile')
-      .upsert({ user_id: user.id, almanac_intro_seen_at: new Date().toISOString() });
+      .upsert({ user_id: userId, almanac_intro_seen_at: new Date().toISOString() });
   } catch {
     // Intentionally swallowed — see above.
   }

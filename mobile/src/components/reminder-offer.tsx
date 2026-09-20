@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { currentUserId } from '@/lib/current-user';
 import { DEFAULT_REMINDER_TIMES, persistReminderChoice } from '@/lib/reminder-settings';
 import { nextFireTime } from '@/lib/quiet-hours';
 import { supabase } from '@/lib/supabase';
@@ -33,15 +34,13 @@ export function ReminderOffer({ onDone }: { onDone: () => void }) {
     if (saving) return;
     setSaving(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
+      const userId = await currentUserId();
+      if (userId) {
         // The choice is RECORDED first, and on any binary: that is a Supabase
         // write with nothing native about it, and it must survive even where
         // push does not exist - otherwise someone answers the question and gets
         // asked again tomorrow.
-        const times = await persistReminderChoice(user.id, { enabled, times: chosen });
+        const times = await persistReminderChoice(userId, { enabled, times: chosen });
 
         // Push is reached only here, only on a yes, and only through a dynamic
         // import - so this component never drags expo-notifications into the
@@ -51,7 +50,7 @@ export function ReminderOffer({ onDone }: { onDone: () => void }) {
           try {
             const push = await import('@/lib/notifications');
             if (push.isPushAvailable()) {
-              await push.registerPushToken(user.id);
+              await push.registerPushToken(userId);
               await push.applyReminderSchedule(times);
             }
           } catch {

@@ -9,6 +9,7 @@ import {
   requestStepPermission,
   type StepPermissionResult,
 } from '@/lib/step-permission';
+import { currentUserId } from '@/lib/current-user';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 
@@ -67,11 +68,9 @@ export function StepTracking() {
     setBusy(true);
     try {
       const result = await requestStepPermission();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const userId = await currentUserId();
 
-      if (user) {
+      if (userId) {
         // The same rule as onboarding: only a real refusal, or a phone with no
         // health platform at all, counts as a decline. An 'unknown' leaves the
         // stored answer exactly as it was.
@@ -79,12 +78,12 @@ export function StepTracking() {
           await supabase
             .from('user_profile')
             .update({ steps_permission_declined: false })
-            .eq('user_id', user.id);
+            .eq('user_id', userId);
         } else if (result === 'declined' || result === 'unsupported') {
           await supabase
             .from('user_profile')
             .update({ steps_permission_declined: true })
-            .eq('user_id', user.id);
+            .eq('user_id', userId);
         }
       }
 
@@ -106,14 +105,12 @@ export function StepTracking() {
     if (busy) return;
     setBusy(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
+      const userId = await currentUserId();
+      if (userId) {
         await supabase
           .from('user_profile')
           .update({ steps_permission_declined: true })
-          .eq('user_id', user.id);
+          .eq('user_id', userId);
       }
       await releaseStepPermission();
       setSteps(null);

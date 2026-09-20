@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ActivityLevel } from '@/lib/body-metrics';
+import { currentUserId, verifiedUser } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // PROFILE (2026-09-20). Ruth's brief: "This page does not currently exist. I'd
@@ -57,8 +58,10 @@ export default function ProfileScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [{ data: user }, { data: row }, { data: context }] = await Promise.all([
-        supabase.auth.getUser(),
+      const [account, { data: row }, { data: context }] = await Promise.all([
+        // The EMAIL is the account's, so this one asks the auth server - the
+        // only place left in the app that does. See lib/current-user.ts.
+        verifiedUser(),
         supabase
           .from('user_profile')
           .select('first_name, date_of_birth, biological_sex, height_cm, activity_level')
@@ -66,7 +69,7 @@ export default function ProfileScreen() {
         supabase.from('user_context').select('category, content'),
       ]);
       if (cancelled) return;
-      setEmail(user.user?.email ?? null);
+      setEmail(account?.email ?? null);
       setProfile((row ?? null) as Profile | null);
       setGoals(
         ((context ?? []) as { category: string; content: string }[])
@@ -84,11 +87,9 @@ export default function ProfileScreen() {
   // had until 19 September.
   async function save(patch: Partial<Profile>) {
     setFailed(false);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase.from('user_profile').upsert({ user_id: user.id, ...patch });
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase.from('user_profile').upsert({ user_id: userId, ...patch });
     if (error) {
       setFailed(true);
       return;

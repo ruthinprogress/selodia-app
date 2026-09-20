@@ -8,6 +8,7 @@ import {
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
 
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // Reading the step count the phone already has, and keeping the day's total.
@@ -181,10 +182,8 @@ export async function syncTodaySteps(): Promise<number | null> {
 
   const { dateKey } = todayWindow();
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return steps;
+    const userId = await currentUserId();
+    if (!userId) return steps;
 
     const { data: existing } = await supabase
       .from('daily_activity_summaries')
@@ -201,7 +200,7 @@ export async function syncTodaySteps(): Promise<number | null> {
 
     const { error } = await supabase.from('daily_activity_summaries').upsert(
       {
-        user_id: user.id,
+        user_id: userId,
         date: dateKey,
         steps,
         kcal_burned: prior.kcal_burned ?? null,

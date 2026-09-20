@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // A failure the phone cannot explain on its own screen, written where it can be
@@ -9,15 +10,13 @@ import { supabase } from '@/lib/supabase';
 // diagnostic. RLS scopes the row to the signed-in person.
 export async function logClientError(area: string, err: unknown): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const detail =
       err instanceof Error
         ? `${err.name}: ${err.message}`.slice(0, 500)
         : String(err).slice(0, 500);
-    await supabase.from('client_error_log').insert({ user_id: user.id, area, detail });
+    await supabase.from('client_error_log').insert({ user_id: userId, area, detail });
   } catch {
     // Deliberately silent.
   }

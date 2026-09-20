@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { consentStatus, recordCarriedConsentIfMissing } from '@/lib/consent';
 import { RESUME_ROUTE, type OnboardingStep } from '@/lib/onboarding-step';
+import { clearSnapshots } from '@/lib/snapshot';
 import { supabase } from '@/lib/supabase';
 
 // The onboarding conversation screens (Part Seven's linear push-chain). The
@@ -61,6 +62,10 @@ export function useAuthGuard(): { ready: boolean } {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && next) {
         void syncMetadataIfMissing(next.user);
       }
+      // What the screens remembered goes with the session (2026-09-20). The
+      // snapshots exist to paint a screen instantly for the person who just
+      // closed the app; they must not outlive that person being signed in.
+      if (event === 'SIGNED_OUT') void clearSnapshots();
     });
     return () => sub.subscription.unsubscribe();
   }, []);

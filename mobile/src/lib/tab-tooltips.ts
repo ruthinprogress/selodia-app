@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // "You can also log this in Chat", shown once per detail screen and then never
@@ -42,13 +43,11 @@ export async function hasSeenTabTooltip(tab: TooltipTab): Promise<boolean> {
 // which is a far better outcome than an error surfacing on a dismiss tap.
 export async function markTabTooltipSeen(tab: TooltipTab): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     await supabase
       .from('user_profile')
-      .upsert({ user_id: user.id, [COLUMN[tab]]: new Date().toISOString() });
+      .upsert({ user_id: userId, [COLUMN[tab]]: new Date().toISOString() });
   } catch {
     // Intentionally swallowed - see above.
   }

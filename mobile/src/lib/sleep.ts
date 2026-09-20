@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // SLEEP, ON THE PHONE (2026-09-20). The server parses what she says in chat
@@ -64,10 +65,8 @@ export async function saveNight(night: {
   quality?: SleepQuality | null;
   awakenings?: number | null;
 }): Promise<boolean> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return false;
+  const userId = await currentUserId();
+  if (!userId) return false;
 
   const { data: existing } = await supabase
     .from('sleep_logs')
@@ -77,7 +76,7 @@ export async function saveNight(night: {
 
   const { error } = await supabase.from('sleep_logs').upsert(
     {
-      user_id: user.id,
+      user_id: userId,
       night_of: night.nightOf,
       duration_min: night.durationMin ?? existing?.duration_min ?? null,
       quality: night.quality ?? existing?.quality ?? null,

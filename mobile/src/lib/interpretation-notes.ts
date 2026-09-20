@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // Persisted per-entry interpretation notes (build item 29, Persisted
@@ -45,10 +46,8 @@ export async function persistNote(
   note: string
 ): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
 
     // ignoreDuplicates is what makes this point-in-time rather than a cache:
     // the unique (user_id, entry_type, entry_id) means the first write wins and
@@ -58,7 +57,7 @@ export async function persistNote(
     await supabase
       .from('interpretation_notes')
       .upsert(
-        { user_id: user.id, entry_type: entryType, entry_id: entryId, note },
+        { user_id: userId, entry_type: entryType, entry_id: entryId, note },
         { onConflict: 'user_id,entry_type,entry_id', ignoreDuplicates: true }
       );
   } catch {

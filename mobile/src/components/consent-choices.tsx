@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/checkbox';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { currentUserId } from '@/lib/current-user';
 import { latestConsent, recordConsent, type ConsentRecord } from '@/lib/consent';
 import { supabase } from '@/lib/supabase';
 
@@ -54,10 +55,10 @@ export function ConsentChoices() {
     setRecord(next);
     setSaving(true);
     setError(null);
-    const { data } = await supabase.auth.getUser();
-    const ok = data.user
+    const userId = await currentUserId();
+    const ok = userId
       ? await recordConsent(
-          data.user.id,
+          userId,
           {
             coreConsent: true,
             marketingOptIn: next.marketingOptIn,

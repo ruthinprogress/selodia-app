@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // The cycle-tracking discovery invitation (SELODIA_SPEC.md, Part Thirteen),
@@ -43,13 +44,11 @@ export function CycleDiscoveryCard({ mode, onDone }: Props) {
   async function handleDismiss() {
     if (busy) return;
     setBusy(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
+    const userId = await currentUserId();
+    if (userId) {
       await supabase
         .from('user_profile')
-        .upsert({ user_id: user.id, cycle_prompt_dismissed_at: new Date().toISOString() });
+        .upsert({ user_id: userId, cycle_prompt_dismissed_at: new Date().toISOString() });
     }
     onDone();
   }
@@ -58,13 +57,11 @@ export function CycleDiscoveryCard({ mode, onDone }: Props) {
     if (busy) return;
     setBusy(true);
     const n = Math.max(0, parseInt(daysAgo, 10) || 0);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
+    const userId = await currentUserId();
+    if (userId) {
       await supabase
         .from('cycle_events')
-        .insert({ user_id: user.id, event_type: 'period_start', event_date: isoDateDaysAgo(n) });
+        .insert({ user_id: userId, event_type: 'period_start', event_date: isoDateDaysAgo(n) });
     }
     onDone();
   }

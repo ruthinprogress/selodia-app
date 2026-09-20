@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // The first-time Chat landing chips (Part Five, Chat).
@@ -60,13 +61,11 @@ export async function hasSeenChatChips(): Promise<boolean> {
 // a far better outcome than an error surfacing on the first tap someone makes.
 export async function markChatChipsSeen(): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     await supabase
       .from('user_profile')
-      .upsert({ user_id: user.id, chat_chips_seen_at: new Date().toISOString() });
+      .upsert({ user_id: userId, chat_chips_seen_at: new Date().toISOString() });
   } catch {
     // Intentionally swallowed — see above.
   }

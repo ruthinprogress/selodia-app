@@ -28,6 +28,7 @@ import {
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
 import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
+import { readSnapshot, saveSnapshot } from '@/lib/snapshot';
 import { supabase } from '@/lib/supabase';
 import { WhatYouBurn, type BurnFigures } from '@/components/what-you-burn';
 
@@ -165,6 +166,23 @@ export function OverviewPanel({
   const { reload: reloadFlower } = flower;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
+
+  // WHAT IT SHOWED LAST TIME, WHILE THE REAL READ HAPPENS (2026-09-20). Today
+  // is the screen she opens most and the one with the most to gather, so it
+  // was the one that sat empty longest. The snapshot paints in a frame; the
+  // read below replaces it a moment later, and the figures only ever move if
+  // something actually changed. Half an hour old at most: a day's totals do
+  // not go stale inside that, and anything older is not worth showing.
+  useEffect(() => {
+    let cancelled = false;
+    void readSnapshot<OverviewData>('today', 30 * 60_000).then((snap) => {
+      // Never over the top of a real read that has already landed.
+      if (!cancelled && snap) setData((current) => current ?? snap);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // An undo from the floating note: the total goes back as though the tap never
   // happened. Keyed by the drink's id so the same undo is applied once, however often
@@ -322,7 +340,7 @@ export function OverviewPanel({
       );
 
       if (cancelled) return;
-      setData({
+      const next: OverviewData = {
         hasMeasurement: latest != null,
         personalLine: isTrueDayOne ? PERSONAL_LINE_DAY_ONE : pickDailyPersonalLine(),
         bodyAsOf,
@@ -357,7 +375,10 @@ export function OverviewPanel({
           : null,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
         cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
-      });
+      };
+      setData(next);
+      // Kept for the next opening, so the screen starts full rather than empty.
+      void saveSnapshot('today', next);
       // The stored name, and nothing else. It is asked for at sign-up and left
       // null when somebody would rather not give one; the greeting then simply
       // has no name in it.

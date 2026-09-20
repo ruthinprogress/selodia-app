@@ -1,3 +1,4 @@
+import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
 // Writing a photo-log's acknowledgment into the thread.
@@ -26,13 +27,11 @@ export async function persistLogTurn(
   foodLogId?: string | null
 ): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
 
     await supabase.from('chat_messages').insert({
-      user_id: user.id,
+      user_id: userId,
       role: 'assistant',
       content,
       // 'chat' rather than a new source value: this belongs to the ordinary

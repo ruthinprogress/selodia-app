@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { WaterDroplet } from '@/components/water-droplet';
 import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { currentUserId } from '@/lib/current-user';
 import { QUICK_MEASURES } from '@/lib/hydration';
 import { dropletFill, formatVolume, type HydrationGoal } from '@/lib/hydration-goal';
 import { supabase } from '@/lib/supabase';
@@ -84,13 +85,11 @@ export function HydrationCard({
     setBusy(true);
     setFailed(false);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('no session');
+      const userId = await currentUserId();
+      if (!userId) throw new Error('no session');
       const { data, error } = await supabase
         .from('hydration_logs')
-        .insert({ user_id: user.id, ml: amount, happened_at: new Date().toISOString() })
+        .insert({ user_id: userId, ml: amount, happened_at: new Date().toISOString() })
         .select('id')
         .maybeSingle();
       if (error || !data?.id) throw new Error(error?.message ?? 'no row');
