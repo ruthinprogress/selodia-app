@@ -313,7 +313,7 @@ export default function ChatScreen() {
         foodLogId:
           m.food_log_id ?? (opensDiscussion && tagType === 'food' ? tagId : null),
         entry:
-          opensDiscussion && (tagType === 'activity' || tagType === 'measurement')
+          opensDiscussion && (tagType === 'activity' || tagType === 'measurement' || tagType === 'plan')
             ? { type: tagType, id: tagId }
             : null,
       };
@@ -582,7 +582,8 @@ export default function ChatScreen() {
         content: trimmed,
         foodLogId: tag?.entryType === 'food' ? tag.entryId : null,
         entry:
-          tag && (tag.entryType === 'activity' || tag.entryType === 'measurement')
+          tag &&
+          (tag.entryType === 'activity' || tag.entryType === 'measurement' || tag.entryType === 'plan')
             ? { type: tag.entryType, id: tag.entryId }
             : null,
         // Only on this turn, and only in memory. The reloaded thread has no

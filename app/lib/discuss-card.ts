@@ -10,12 +10,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const DISCUSS_BUCKET = 'discuss-cards';
 
-export type DiscussEntryType = 'food' | 'activity' | 'measurement';
+export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan';
 
 // Only 'food' is wired today — the food breakdown card is the only one built
 // (Measurements and Activity are items 38/39). The seam is generic so those
 // arrive without a schema change.
-const ENTRY_TYPES: DiscussEntryType[] = ['food', 'activity', 'measurement'];
+// 'plan' joined on 2026-09-20: "Update this" on a plan took its words to chat
+// and nothing else, so the conversation had no idea which plan was meant and
+// no way to show her it knew (Ruth: "Tap through takes no card to chat").
+const ENTRY_TYPES: DiscussEntryType[] = ['food', 'activity', 'measurement', 'plan'];
 
 export function isDiscussEntryType(v: unknown): v is DiscussEntryType {
   return typeof v === 'string' && (ENTRY_TYPES as string[]).includes(v);
@@ -271,6 +274,39 @@ export async function loadDiscussEntryFacts(
     ].join('\n');
   }
 
+  if (tag.entryType === 'plan') {
+    const { data } = await supabase
+      .from('almanac_entries')
+      .select('title, category, content, updated_at')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    const content = (data.content ?? {}) as {
+      goal?: unknown;
+      duration_minutes?: unknown;
+      exercises?: { name?: unknown; sets?: unknown; reps?: unknown; note?: unknown }[];
+    };
+    const moves = Array.isArray(content.exercises) ? content.exercises : [];
+    const lines = moves.map((m) => {
+      const bits = [
+        typeof m.sets === 'number' || typeof m.sets === 'string' ? `${m.sets} sets` : null,
+        typeof m.reps === 'number' || typeof m.reps === 'string' ? `${m.reps}` : null,
+      ].filter(Boolean);
+      return `- ${String(m.name ?? 'a movement').trim()}${bits.length > 0 ? ` (${bits.join(', ')})` : ''}`;
+    });
+    return [
+      lead,
+      `The plan: "${String(data.title ?? 'a plan').trim()}"${
+        typeof content.goal === 'string' ? `, for ${content.goal}` : ''
+      }.`,
+      lines.length > 0
+        ? `What is in it:\n${lines.join('\n')}`
+        : 'It has no movements listed on it.',
+      // A PLAN IS EDITED BY AGREEING A NEW VERSION, never by guessing at one.
+      'They came here from the plan itself to change it. Ask what they want different before rewriting anything, and change only what they ask for: the rest of the plan stays as it is.',
+    ].join('\n');
+  }
+
   if (tag.entryType === 'activity') {
     const { data } = await supabase
       .from('activity_logs')
@@ -331,6 +367,15 @@ export async function discussEntryName(
     if (!data) return null;
     const words = (data.raw_text as string | null)?.trim() || (data.meal_label as string | null)?.trim();
     return words ? clip(words) : 'a meal';
+  }
+  if (tag.entryType === 'plan') {
+    const { data } = await supabase
+      .from('almanac_entries')
+      .select('title')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    return clip((data.title as string | null)?.trim() || 'a plan');
   }
   if (tag.entryType === 'activity') {
     const { data } = await supabase

@@ -25,7 +25,10 @@ import { formatLogDate } from '@/lib/week';
 // question was asked leaves the question standing on its own, which is honest;
 // inventing a placeholder for it would not be.
 
-export type SummaryEntryType = 'activity' | 'measurement';
+// 'plan' joined on 2026-09-20, when "Update this" on a plan started sending:
+// the turn needs a card in the thread like any other, or the conversation
+// reads later as though it began about nothing.
+export type SummaryEntryType = 'activity' | 'measurement' | 'plan';
 
 type Summary = { title: string; detail: string | null; when: string | null };
 
@@ -61,7 +64,35 @@ export function EntrySummaryCard({
     let cancelled = false;
     (async () => {
       // RLS scopes both reads to the signed-in user.
-      if (entryType === 'activity') {
+      if (entryType === 'plan') {
+        const { data } = await supabase
+          .from('almanac_entries')
+          .select('title, category, content')
+          .eq('id', entryId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (data) {
+          const content = (data.content ?? {}) as {
+            goal?: unknown;
+            duration_minutes?: unknown;
+            exercises?: unknown[];
+          };
+          const moves = Array.isArray(content.exercises) ? content.exercises.length : 0;
+          const parts = [
+            typeof data.category === 'string' && data.category.trim() ? data.category.trim() : null,
+            typeof content.duration_minutes === 'number' ? `~${content.duration_minutes} min` : null,
+            moves > 0 ? `${moves} ${moves === 1 ? 'movement' : 'movements'}` : null,
+          ].filter((p): p is string => p !== null);
+          setSummary({
+            title: (data.title as string | null)?.trim() || 'A plan',
+            detail: parts.length > 0 ? parts.join('  ·  ') : null,
+            // A plan is not an event, so it carries no date into the thread.
+            when: null,
+          });
+        } else {
+          setSummary(null);
+        }
+      } else if (entryType === 'activity') {
         const { data } = await supabase
           .from('activity_logs')
           .select('activity_type, duration_min, kcal_burned, happened_at')

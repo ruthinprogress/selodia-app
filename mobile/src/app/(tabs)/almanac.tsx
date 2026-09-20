@@ -164,6 +164,9 @@ export default function AlmanacScreen() {
           // Selodia stays the only writer.
           onEdit={(entry) => {
             setOpenId(null);
+            // Fills the box rather than sending: an insight or a Me card has no
+            // card to post in the thread, so there would be nothing to show.
+            // Plans do send, and carry the plan - see plans.tsx.
             router.push({
               pathname: '/',
               params: { prefill: `I'd like to update my Almanac entry "${entry.title}"... ` },

@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 // fading back — and permanence needs no logic to enforce, because chat messages
 // are never deleted, so the set only ever grows.
 
-export type DiscussEntryType = 'food' | 'activity' | 'measurement';
+export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan';
 
 // Pure half, so the mapping is testable without Supabase. Rows may repeat an id
 // (a discussion is many messages), hence a Set rather than a list.

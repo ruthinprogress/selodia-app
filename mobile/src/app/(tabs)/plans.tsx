@@ -90,9 +90,22 @@ export default function PlansScreen() {
           onClose={() => setOpenId(null)}
           onEdit={(entry) => {
             setOpenId(null);
+            // IT SENDS, AND THE PLAN GOES WITH IT (2026-09-20). Ruth: "Tap
+            // through takes no card to chat." It filled the box with a half
+            // sentence and nothing else, so the conversation had no idea which
+            // plan she meant, and the thread later read as though she had
+            // started talking about nothing. Now the turn carries the plan's
+            // id: the line above the composer names it, and the reply is
+            // written with the plan's own movements in front of it.
             router.push({
               pathname: '/',
-              params: { prefill: `I'd like to update my plan "${entry.title}"... ` },
+              params: {
+                prefill: `I'd like to update my "${entry.title}" plan.`,
+                discussId: entry.id,
+                discussType: 'plan',
+                askNow: '1',
+                seedTitle: entry.title,
+              },
             });
           }}
         />
