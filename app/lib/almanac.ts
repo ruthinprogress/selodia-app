@@ -88,7 +88,11 @@ import { resolveDemoRefs } from './movement-demos';
 export async function saveAlmanacEntry(
   supabase: SupabaseClient,
   userId: string,
-  input: AlmanacSaveInput
+  input: AlmanacSaveInput,
+  // The plan this conversation is anchored to, when it is anchored to one.
+  // See editsAnchoredPlan: a plan save during a talk ABOUT a plan is an edit
+  // of it, not a second copy of it.
+  anchoredPlanId?: string | null
 ): Promise<AlmanacEntry | null> {
   const prepared = prepareAlmanacEntry(input);
   if (!prepared) return null;
@@ -104,6 +108,43 @@ export async function saveAlmanacEntry(
     const refs = await resolveDemoRefs(supabase, plan.exercises.map((e) => e.name));
     for (const exercise of plan.exercises) {
       exercise.demoRef = refs.get(exercise.name) ?? null;
+    }
+  }
+
+  // AN EDIT OF THE PLAN IN FRONT OF HER (2026-09-20). She opened "Inner Thigh
+  // Toning Routine", tapped Update this, asked for a change - and got a second
+  // "Inner Thigh Toning Routine" in her library, because the only rule here was
+  // the ten-minute one below and the plan was ten days old.
+  //
+  // The conversation already knows which plan it is about: the turn carries its
+  // id. So a plan save while anchored to a plan updates THAT ROW, keeping its
+  // id and everything recorded against it - the sessions, the working weights.
+  if (anchoredPlanId) {
+    const { data: anchored } = await supabase
+      .from('almanac_entries')
+      .select('id, kind, title, content')
+      .eq('id', anchoredPlanId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (anchored && editsAnchoredPlan(anchored as AnchoredPlan, prepared)) {
+      const { data, error } = await supabase
+        .from('almanac_entries')
+        .update({
+          title: prepared.title,
+          content: prepared.content,
+          category: prepared.category,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', anchored.id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      if (error) {
+        console.log('almanac_entries anchored-plan update failed:', error.message);
+        return null;
+      }
+      console.log('ALMANAC: updated the plan the conversation is about -', prepared.title);
+      return data as AlmanacEntry;
     }
   }
 
@@ -317,4 +358,46 @@ export function prepareWorkoutPlan(content: unknown): WorkoutPlanContent | null 
 // (Part Two, principle 13).
 export function looksLikeWorkoutPlan(content: AlmanacContent): boolean {
   return Array.isArray((content as Record<string, unknown>).exercises);
+}
+
+export type AnchoredPlan = { id: string; kind: string; title: string; content: unknown };
+
+/**
+ * Is this save a new version of the plan the conversation is anchored to, or a
+ * genuinely different plan that happens to be saved during the same talk?
+ *
+ * TWO WAYS TO BE THE SAME PLAN, because both happen:
+ *   - the title matches, which is the ordinary edit;
+ *   - the title changed but the movements did not, which is a rename - and a
+ *     rename must not leave the old plan behind under its old name.
+ *
+ * Anything else is a new plan. Somebody who says "and make me a shoulder one
+ * too" while looking at their leg plan gets a second plan, which is what they
+ * asked for. Pure: scripts/probe-plan-edit.mjs.
+ */
+export function editsAnchoredPlan(
+  anchored: AnchoredPlan,
+  incoming: { kind: string; title: string; content: unknown }
+): boolean {
+  // Only plans. A note or an insight saved mid-conversation is its own thing.
+  const planKind = (k: string) => k.trim().toLowerCase().includes('plan');
+  if (!planKind(anchored.kind) || !planKind(incoming.kind)) return false;
+
+  if (normTitle(anchored.title) === normTitle(incoming.title)) return true;
+
+  const was = movementNames(anchored.content);
+  const now = movementNames(incoming.content);
+  if (was.length === 0 || now.length === 0) return false;
+  const shared = now.filter((n) => was.includes(n)).length;
+  // Half of the new plan's movements, and at least two: one shared squat
+  // between two leg plans is not a rename.
+  return shared >= 2 && shared / now.length >= 0.5;
+}
+
+function movementNames(content: unknown): string[] {
+  const exercises = (content as { exercises?: unknown })?.exercises;
+  if (!Array.isArray(exercises)) return [];
+  return exercises
+    .map((e) => normTitle(String((e as { name?: unknown })?.name ?? '')))
+    .filter((n) => n.length > 0);
 }

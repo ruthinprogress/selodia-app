@@ -1824,12 +1824,19 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     console.log('ASK-SELODIA REFUSED A DIRECT INSIGHTS SAVE:', result.almanacKind);
   }
   if (result.almanacKind && result.almanacTitle && !insightsKind) {
-    const entry = await saveAlmanacEntry(supabase, user.id, {
-      kind: result.almanacKind,
-      title: result.almanacTitle,
-      category: result.almanacCategory,
-      content: result.almanacContent,
-    });
+    const entry = await saveAlmanacEntry(
+      supabase,
+      user.id,
+      {
+        kind: result.almanacKind,
+        title: result.almanacTitle,
+        category: result.almanacCategory,
+        content: result.almanacContent,
+      },
+      // The plan this conversation is about, when it is about one: a plan saved
+      // during a talk anchored to a plan is an edit of it (2026-09-20).
+      provisionalTag?.entryType === 'plan' ? provisionalTag.entryId : null
+    );
     if (entry) savedAlmanac = { kind: entry.kind, title: entry.title };
   }
 
