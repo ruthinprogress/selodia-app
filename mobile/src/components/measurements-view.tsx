@@ -11,6 +11,7 @@ import { PersonalMetricsView } from '@/components/personal-metrics-view';
 import { LogInChatHint } from '@/components/log-in-chat-hint';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { ExportLink } from '@/components/data-export-link';
+import { ReportLink } from '@/components/report-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThenAndNowTable } from '@/components/then-and-now';
 import { ThemedText } from '@/components/themed-text';
@@ -258,6 +259,11 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           itself, since that is where someone browsing old data would naturally
           think to look." Quiet is the operative word - a link, under the
           history, not a button competing with it. */}
+      {/* A report first, the takeout second. Somebody browsing their weeks is
+          far more often preparing for an appointment than backing up, and the
+          two links say plainly which is which. */}
+      <ReportLink start={['body', 'metrics']} label="Build a report from this" />
+
       <SpotlightTarget id="measurements.export">
         <ExportLink />
       </SpotlightTarget>

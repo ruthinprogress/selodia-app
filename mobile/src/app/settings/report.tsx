@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -74,6 +75,9 @@ type Block = {
 const WHOLE = ['profile', 'goals', 'body', 'water', 'sleep'] as const;
 // The sources picked one record at a time.
 const BY_RECORD = ['symptoms', 'plans', 'insights', 'cards'] as const;
+// Every name a screen may hand to `start`; anything else is ignored, so a
+// stale link cannot tick something that no longer exists.
+const ALL_SOURCES = [...WHOLE, ...BY_RECORD, 'food', 'metrics', 'activity'] as const;
 
 const PERIODS: { id: string; label: string; days: number | null }[] = [
   { id: '7', label: 'Last 7 days', days: 7 },
@@ -170,6 +174,20 @@ function Picker({
 
 export default function ReportScreen() {
   const theme = useTheme();
+  // ARRIVING FROM A SCREEN (see components/report-link.tsx). `start` names the
+  // sources that screen was showing, so the builder opens with those chosen
+  // and nothing else - a report about the thing she was just looking at. It is
+  // a starting point, not a decision: every tick is hers to clear.
+  const params = useLocalSearchParams<{ start?: string }>();
+  const startedFrom = useMemo(
+    () =>
+      (params.start ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => (ALL_SOURCES as readonly string[]).includes(s)),
+    [params.start]
+  );
+
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [period, setPeriod] = useState('90');
   const [note, setNote] = useState('');
@@ -190,6 +208,33 @@ export default function ReportScreen() {
         const data = await authedGet<Catalogue>('/api/report');
         if (cancelled) return;
         setCatalogue(data);
+
+        if (startedFrom.length > 0) {
+          // She came from a screen, so that screen is the report: its records
+          // all ticked and its picker open, plus her profile so the pages have
+          // a name on them. Nothing else, because she asked for this and not
+          // for everything.
+          const only = new Set<string>(startedFrom.filter((s) => (WHOLE as readonly string[]).includes(s) || s === 'food'));
+          if (data.hasProfile) only.add('profile');
+          setWhole(only);
+
+          const start: Record<string, Set<string>> = {};
+          for (const source of startedFrom) {
+            if ((BY_RECORD as readonly string[]).includes(source)) {
+              const rows = data[source as (typeof BY_RECORD)[number]];
+              if (rows.length > 0) start[source] = new Set(rows.map((r) => r.id));
+            } else if (source === 'metrics') {
+              if (data.metrics.length > 0) start.metrics = new Set(data.metrics.map((m) => m.value));
+            } else if (source === 'activity') {
+              if (data.activityTypes.length > 0)
+                start.activity = new Set(data.activityTypes.map((a) => a.value));
+            }
+          }
+          setPicked(start);
+          setOpen(new Set(Object.keys(start)));
+          return;
+        }
+
         // A SENSIBLE START, NOT A FULL ONE. The whole-source pieces begin
         // ticked because nearly every report wants them; the picked-one-by-one
         // ones begin empty, because choosing between them is the whole point.
@@ -212,7 +257,7 @@ export default function ReportScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [startedFrom]);
 
   const togglePicked = useCallback(
     (source: string, id: string) =>

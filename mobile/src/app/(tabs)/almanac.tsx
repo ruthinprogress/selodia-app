@@ -7,6 +7,7 @@ import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacIntro } from '@/components/almanac-intro';
 import { AlmanacTabs } from '@/components/almanac-tabs';
+import { ReportLink } from '@/components/report-link';
 import { InsightsLog } from '@/components/insights-log';
 import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
@@ -137,6 +138,12 @@ export default function AlmanacScreen() {
                     </SectionIntro>
                     <InsightsLog rows={byTab.insights} onOpen={setOpenId} />
                   </SpotlightTarget>
+                )}
+                {/* Her example, exactly: reading her symptoms and wanting to
+                    send them on. Both sources, because this one list holds
+                    symptoms and patterns together. */}
+                {loaded && byTab.insights.length > 0 && (
+                  <ReportLink start={['symptoms', 'insights']} label="Build a report from these" />
                 )}
               </>
             )}

@@ -19,13 +19,22 @@ import { Spacing } from '@/constants/theme';
 // QUIET is the requirement, so this is a text link under the history rather than
 // a button beside it. Someone reviewing their week is not looking for this; it
 // only has to be there when they think to look.
+//
+// IT IS NOT THE REPORT BUILDER (report-link.tsx), which sits above it on this
+// screen. This is the whole takeout - every row, no choosing, for keeping. That
+// one builds a document for a person to read. The two words have to carry the
+// difference, so neither of them is just "Export".
+//
+// It pointed at /settings until 20 September, when Settings became a hub and
+// the export moved to a page of its own; a link to the hub left the person to
+// find it again.
 
 export function ExportLink() {
   const router = useRouter();
 
   return (
     <Pressable
-      onPress={() => router.push('/settings')}
+      onPress={() => router.push('/settings/data')}
       accessibilityRole="button"
       accessibilityLabel="Get a copy of your data"
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}

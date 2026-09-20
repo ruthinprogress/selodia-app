@@ -1,4 +1,5 @@
 import { BodyScreen } from '@/components/body-screen';
+import { ReportLink } from '@/components/report-link';
 import { WaterHistoryView } from '@/components/water-history-view';
 
 // Water, week by week. A screen of its own rather than a fourth segment in the
@@ -10,6 +11,7 @@ export default function WaterHistoryScreen() {
   return (
     <BodyScreen>
       <WaterHistoryView />
+      <ReportLink start={['water']} label="Build a report from this" />
     </BodyScreen>
   );
 }

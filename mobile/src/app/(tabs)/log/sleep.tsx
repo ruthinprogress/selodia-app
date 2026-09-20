@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BodyScreen } from '@/components/body-screen';
+import { ReportLink } from '@/components/report-link';
 import { RowDelete } from '@/components/row-delete';
 import { SectionIntro } from '@/components/section-intro';
 import { ThemedText } from '@/components/themed-text';
@@ -169,6 +170,7 @@ export default function SleepScreen() {
               </View>
             ))}
           </ThemedView>
+          <ReportLink start={['sleep']} label="Build a report from this" />
         </>
       )}
     </BodyScreen>

@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
+import { ReportLink } from '@/components/report-link';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { MovementLibrary } from '@/components/movement-library';
 import { SettingsLink } from '@/components/settings-link';
@@ -81,6 +82,9 @@ export default function PlansScreen() {
                   <AlmanacEmptyState heading={PLANS_EMPTY_HEADING} body={PLANS_EMPTY_BODY} />
                 )}
               </SpotlightTarget>
+            )}
+            {loaded && plans.length > 0 && (
+              <ReportLink start={['plans']} label="Build a report from these" />
             )}
           </SpotlightScroll>
         </ScrollView>

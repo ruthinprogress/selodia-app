@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { ActivityHistoryView } from '@/components/activity-history-view';
 import { BodyScreen } from '@/components/body-screen';
+import { ReportLink } from '@/components/report-link';
 import { parseWeekStartParam } from '@/lib/week';
 
 // The activity log, week by week. The food history's sibling, one level in from
@@ -15,6 +16,7 @@ export default function BodyActivityHistoryScreen() {
   return (
     <BodyScreen>
       <ActivityHistoryView initialWeekStart={initialWeekStart} />
+      <ReportLink start={['activity']} label="Build a report from this" />
     </BodyScreen>
   );
 }

@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 
 import { BodyScreen } from '@/components/body-screen';
+import { ReportLink } from '@/components/report-link';
 import { FoodHistoryView } from '@/components/food-history-view';
 import { parseWeekStartParam } from '@/lib/week';
 
@@ -18,6 +19,7 @@ export default function BodyFoodHistoryScreen() {
   return (
     <BodyScreen>
       <FoodHistoryView initialWeekStart={initialWeekStart} />
+      <ReportLink start={['food']} label="Build a report from this" />
     </BodyScreen>
   );
 }
