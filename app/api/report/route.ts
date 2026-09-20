@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { loadAvailability, loadReport, type ReportSection, type ReportSelection } from '../../lib/report';
+import { loadCatalogue, loadReport, readBlocks, type ReportSelection } from '../../lib/report';
 import { renderReport } from '../../lib/report-render';
 import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 
@@ -16,20 +16,6 @@ import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 // The identity rules are the Me export's, for the Me export's reasons: never
 // the service role, never a token in a URL.
 
-const SECTIONS: ReportSection[] = [
-  'profile',
-  'goals',
-  'body',
-  'measurements',
-  'symptoms',
-  'food',
-  'water',
-  'activity',
-  'plans',
-  'insights',
-  'cards',
-];
-
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');
   if (id) return servePage(id);
@@ -41,8 +27,8 @@ export async function GET(request: NextRequest) {
   } = await db.auth.getUser();
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const available = await loadAvailability(db, user.id);
-  return NextResponse.json(available);
+  const catalogue = await loadCatalogue(db, user.id);
+  return NextResponse.json(catalogue);
 }
 
 export async function POST(request: NextRequest) {
@@ -65,23 +51,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const sections = Array.isArray(body.sections)
-    ? (body.sections as unknown[]).filter((s): s is ReportSection =>
-        SECTIONS.includes(s as ReportSection)
-      )
-    : [];
-  if (sections.length === 0) {
-    return NextResponse.json({ error: 'Choose at least one thing to include.' }, { status: 400 });
+  const blocks = readBlocks(body.blocks);
+  if (blocks.length === 0) {
+    // A PHONE THAT HAS NOT UPDATED YET sends the old {sections, cardIds}, and
+    // would otherwise be told to choose something when it already had. Say the
+    // true thing instead: the app is behind the server, and closing it twice
+    // is the fix.
+    const old = Array.isArray(body.sections) || Array.isArray(body.cardIds);
+    return NextResponse.json(
+      {
+        error: old
+          ? 'This version of Selodia cannot build the new report. Close the app completely, open it twice, and try again.'
+          : 'Choose at least one thing to include.',
+      },
+      { status: 400 }
+    );
   }
 
   const selection: ReportSelection = {
     from: isDay(body.from) ? (body.from as string) : null,
     to: isDay(body.to) ? (body.to as string) : null,
     periodLabel: typeof body.periodLabel === 'string' ? body.periodLabel.slice(0, 60) : 'All time',
-    sections,
-    cardIds: Array.isArray(body.cardIds)
-      ? (body.cardIds as unknown[]).filter((v): v is string => typeof v === 'string').slice(0, 100)
-      : [],
+    blocks,
     note: typeof body.note === 'string' ? body.note.slice(0, 400) : null,
   };
 

@@ -1,130 +1,162 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// THE REPORT (2026-09-20), from Ruth's brief: "The PDF export should not feel
-// like downloading data. It should feel like building a story for a specific
-// purpose ... People rarely want everything."
+// THE REPORT, BUILT FROM BLOCKS (2026-09-20, rebuilt the same evening).
 //
-// So this is not the data export (lib/data-export.ts on the phone), which is
-// the legal right of access and hands over everything in machine form. This is
-// a document somebody chooses the contents of, to take to a consultant, a
-// physio, a GP or a trainer - and the difference shows in what it contains:
-// what Selodía understands, written out, rather than every row it holds.
+// The first version offered whole sections - Symptoms, Food, Activity - and
+// Ruth found the fault immediately: "I may want to send my allergy clinician
+// only my allergy history, not my knee pain, even though both live under
+// Symptoms." Sections are the wrong grain for a document somebody hands to a
+// particular person.
 //
-// WHAT IT CAN CONTAIN IS WHAT SHE HAS, and nothing else. The builder on the
-// phone asks this file what exists before drawing a single checkbox, so a
-// person with no saved plans never sees a Plans section to leave unticked, and
-// a section is never invented to make the page look full. Her rule: "If there
-// are no medical summaries, hide Medical. No blood results, don't invent one."
+// A BLOCK IS THREE CHOICES: where it comes from, which of it, and how much
+// detail. "Symptoms: these three, in full." "Body: waist only." "Food: daily
+// totals for the last month." Every example she gave is one of those, and a
+// new data type joins by declaring its own grain rather than by changing this
+// shape. Sleep took an afternoon to add to the app; adding it here was a line.
 //
-// HER KNOWLEDGE CARDS ARE CHOSEN ONE BY ONE - "the user chooses individual
-// knowledge cards rather than everything" - which is why cards are listed with
-// their own ids rather than as a single tick for the whole Almanac.
+// AI SELECTS NOTHING. Her rule, and the right one: "AI should analyse the
+// selected data. AI should not decide what data is selected." So every filter
+// here is a column that exists - a metric's name, an activity's own words, an
+// entry's id - and never a judgement about what a record is about. Where the
+// data offers no honest facet (water, sleep) the only choices are the period
+// and the detail, because inventing a grouping would be inventing evidence.
 
-export type ReportSection =
+export type ReportSource =
   | 'profile'
   | 'goals'
   | 'body'
-  | 'measurements'
+  | 'metrics'
   | 'symptoms'
   | 'food'
   | 'water'
+  | 'sleep'
   | 'activity'
   | 'plans'
   | 'insights'
   | 'cards';
 
+/**
+ * One chosen piece of the report.
+ *
+ * `ids` picks individual records, for the sources whose records have titles
+ * and are few: symptoms, insights, plans, summaries. `names` and `types` pick
+ * by a value the data already carries - a metric's name, an activity's own
+ * words. `detail` is how much of a repetitive source to show.
+ */
+export type ReportBlock = {
+  source: ReportSource;
+  ids?: string[];
+  names?: string[];
+  types?: string[];
+  detail?: 'totals' | 'entries';
+};
+
 export type ReportSelection = {
-  /** ISO date, inclusive. Null for the sections that describe now rather than a stretch of time. */
+  /** ISO dates, inclusive. Null means everything; the blocks that describe now ignore it. */
   from: string | null;
   to: string | null;
-  /** The label the person chose, written on the cover: "Last 3 months". */
   periodLabel: string;
-  sections: ReportSection[];
-  /** Almanac card ids, when 'cards' is included. */
-  cardIds: string[];
-  /** Their own note to whoever reads it. */
+  blocks: ReportBlock[];
   note?: string | null;
 };
 
-/** What a person actually has, so the builder can offer only that. */
-export type ReportAvailability = {
-  section: ReportSection;
-  count: number;
-};
+/** A record that can be picked one at a time. */
+export type PickableRecord = { id: string; title: string; when: string; detail?: string | null };
+/** A value the data carries, offered as a filter. */
+export type PickableValue = { value: string; count: number };
 
-/** A knowledge card, offered individually. */
-export type ReportCard = {
-  id: string;
-  title: string;
-  kind: string;
-  category: string | null;
-  updated: string;
+/**
+ * WHAT SHE CAN CHOOSE FROM, read from her own rows. The builder draws itself
+ * from this and nothing else, so a source with nothing in it is not offered,
+ * and a filter never lists a value she has never logged.
+ */
+export type ReportCatalogue = {
+  hasProfile: boolean;
+  goals: number;
+  bodyReadings: number;
+  metrics: PickableValue[];
+  symptoms: PickableRecord[];
+  insights: PickableRecord[];
+  plans: PickableRecord[];
+  cards: PickableRecord[];
+  foodDays: number;
+  waterDays: number;
+  sleepNights: number;
+  activityTypes: PickableValue[];
 };
 
 const CARD_KINDS = ['me', 'routine', 'self-care routine', 'note', 'protocol'];
 
-export async function loadAvailability(
-  db: SupabaseClient,
-  userId: string
-): Promise<{ sections: ReportAvailability[]; cards: ReportCard[] }> {
-  const count = async (table: string, dateColumn: string | null) => {
-    let q = db.from(table).select('id', { count: 'exact', head: true }).eq('user_id', userId);
-    if (dateColumn) q = q.not(dateColumn, 'is', null);
-    const { count: n } = await q;
-    return n ?? 0;
-  };
+function countValues(rows: { value: string | null }[]): PickableValue[] {
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const v = (r.value ?? '').trim();
+    if (!v) continue;
+    counts.set(v, (counts.get(v) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count);
+}
 
-  const [profile, goals, body, metrics, food, water, activity, entries] = await Promise.all([
+export async function loadCatalogue(db: SupabaseClient, userId: string): Promise<ReportCatalogue> {
+  const [profile, goals, body, metrics, entries, food, water, sleep, activity] = await Promise.all([
     db.from('user_profile').select('user_id', { count: 'exact', head: true }).eq('user_id', userId),
     db.from('user_context').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('category', 'goal'),
-    count('body_measurements', null),
-    count('personal_metrics', null),
-    count('food_logs', null),
-    count('hydration_logs', null),
-    count('activity_logs', null),
+    db.from('body_measurements').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    db.from('personal_metrics').select('metric_name').eq('user_id', userId),
     db
       .from('almanac_entries')
-      .select('id, kind, title, category, updated_at, created_at, status')
+      .select('id, kind, title, content, category, created_at, updated_at, status')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false }),
+      .order('created_at', { ascending: false }),
+    db.from('food_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    db.from('hydration_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    db.from('sleep_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    db.from('activity_logs').select('activity_type').eq('user_id', userId),
   ]);
 
-  const rows = (entries.data ?? []) as {
+  type Entry = {
     id: string;
     kind: string;
     title: string | null;
+    content: unknown;
     category: string | null;
-    updated_at: string | null;
     created_at: string;
+    updated_at: string | null;
     status: string | null;
-  }[];
-  const live = rows.filter((r) => (r.status ?? 'active') === 'active');
+  };
+  const live = ((entries.data ?? []) as Entry[]).filter((e) => (e.status ?? 'active') === 'active');
 
-  const sections: ReportAvailability[] = [
-    { section: 'profile', count: profile.count ?? 0 },
-    { section: 'goals', count: goals.count ?? 0 },
-    { section: 'body', count: body },
-    { section: 'measurements', count: metrics },
-    { section: 'symptoms', count: live.filter((r) => r.kind === 'symptom').length },
-    { section: 'food', count: food },
-    { section: 'water', count: water },
-    { section: 'activity', count: activity },
-    { section: 'plans', count: live.filter((r) => r.kind.includes('plan')).length },
-    { section: 'insights', count: live.filter((r) => r.kind === 'insight').length },
-    { section: 'cards', count: live.filter((r) => CARD_KINDS.includes(r.kind)).length },
-  ];
+  // The first line of an entry, so a list of four symptoms can be told apart
+  // without opening any of them.
+  const pick = (e: Entry): PickableRecord => {
+    const body = readableContent(e.content);
+    const firstLine = body.split('\n').find((l) => l.trim().length > 0)?.trim() ?? '';
+    return {
+      id: e.id,
+      title: e.title?.trim() || 'Untitled',
+      when: e.updated_at ?? e.created_at,
+      detail: firstLine.length > 90 ? `${firstLine.slice(0, 89).trimEnd()}…` : firstLine || null,
+    };
+  };
 
-  const cards: ReportCard[] = live
-    .filter((r) => CARD_KINDS.includes(r.kind))
-    .map((r) => ({
-      id: r.id,
-      title: r.title?.trim() || 'Untitled',
-      kind: r.kind,
-      category: r.category,
-      updated: r.updated_at ?? r.created_at,
-    }));
-
-  return { sections: sections.filter((s) => s.count > 0), cards };
+  return {
+    hasProfile: (profile.count ?? 0) > 0,
+    goals: goals.count ?? 0,
+    bodyReadings: body.count ?? 0,
+    metrics: countValues(((metrics.data ?? []) as { metric_name: string | null }[]).map((m) => ({ value: m.metric_name }))),
+    symptoms: live.filter((e) => e.kind === 'symptom').map(pick),
+    insights: live.filter((e) => e.kind === 'insight').map(pick),
+    plans: live.filter((e) => e.kind.includes('plan')).map(pick),
+    cards: live.filter((e) => CARD_KINDS.includes(e.kind)).map(pick),
+    foodDays: food.count ?? 0,
+    waterDays: water.count ?? 0,
+    sleepNights: sleep.count ?? 0,
+    activityTypes: countValues(
+      ((activity.data ?? []) as { activity_type: string | null }[]).map((a) => ({ value: a.activity_type }))
+    ),
+  };
 }
 
 export type ReportData = {
@@ -137,9 +169,12 @@ export type ReportData = {
   goals: string[];
   weights: { at: string; weight: number | null; fat: number | null; muscle: number | null }[];
   metrics: { at: string; name: string; value: string }[];
+  /** In full, as she wrote them: her instruction, because it is for a clinician. */
   symptoms: { at: string; title: string; content: string }[];
   food: { day: string; kcal: number; protein: number; entries: number }[];
+  foodEntries: { at: string; what: string; kcal: number | null; protein: number | null }[];
   water: { day: string; ml: number; drinks: number }[];
+  sleep: { night: string; minutes: number | null; quality: string | null; awakenings: number | null }[];
   activity: { at: string; what: string; minutes: number | null; intensity: string | null }[];
   plans: { title: string; content: string }[];
   insights: { at: string; title: string; content: string }[];
@@ -151,25 +186,40 @@ export async function loadReport(
   userId: string,
   sel: ReportSelection
 ): Promise<ReportData> {
-  const has = (s: ReportSection) => sel.sections.includes(s);
+  const block = (source: ReportSource) => sel.blocks.find((b) => b.source === source) ?? null;
   const from = sel.from ?? '1970-01-01';
   const to = sel.to ?? new Date().toISOString().slice(0, 10);
   const fromISO = `${from}T00:00:00.000Z`;
   const toISO = `${to}T23:59:59.999Z`;
+  const none = Promise.resolve({ data: [] as unknown[] });
 
-  const [profileRow, goalRows, bodyRows, metricRows, entryRows, foodRows, waterRows, activityRows] =
+  const profileBlock = block('profile');
+  const goalsBlock = block('goals');
+  const bodyBlock = block('body');
+  const metricsBlock = block('metrics');
+  const foodBlock = block('food');
+  const waterBlock = block('water');
+  const sleepBlock = block('sleep');
+  const activityBlock = block('activity');
+  const symptomsBlock = block('symptoms');
+  const plansBlock = block('plans');
+  const insightsBlock = block('insights');
+  const cardsBlock = block('cards');
+  const wantsEntries = Boolean(symptomsBlock || plansBlock || insightsBlock || cardsBlock);
+
+  const [profileRow, goalRows, bodyRows, metricRows, entryRows, foodRows, waterRows, sleepRows, activityRows] =
     await Promise.all([
-      has('profile')
+      profileBlock
         ? db
             .from('user_profile')
             .select('first_name, date_of_birth, biological_sex, height_cm, activity_level')
             .eq('user_id', userId)
             .maybeSingle()
         : Promise.resolve({ data: null }),
-      has('goals')
+      goalsBlock
         ? db.from('user_context').select('content').eq('user_id', userId).eq('category', 'goal')
-        : Promise.resolve({ data: [] }),
-      has('body')
+        : none,
+      bodyBlock
         ? db
             .from('body_measurements')
             .select('measured_at, weight_kg, body_fat_pct, muscle_kg')
@@ -177,40 +227,53 @@ export async function loadReport(
             .gte('measured_at', fromISO)
             .lte('measured_at', toISO)
             .order('measured_at', { ascending: true })
-        : Promise.resolve({ data: [] }),
-      has('measurements')
+        : none,
+      // ONLY THE MEASURES SHE PICKED. "Waist but not thighs" is a column, not a
+      // judgement - personal_metrics has stored the name since it was built.
+      metricsBlock
         ? db
             .from('personal_metrics')
             .select('measured_at, metric_name, value, unit')
             .eq('user_id', userId)
+            .in('metric_name', metricsBlock.names ?? [])
             .gte('measured_at', fromISO)
             .lte('measured_at', toISO)
             .order('measured_at', { ascending: true })
-        : Promise.resolve({ data: [] }),
-      has('symptoms') || has('plans') || has('insights') || has('cards')
+        : none,
+      wantsEntries
         ? db
             .from('almanac_entries')
             .select('id, kind, title, content, category, created_at, updated_at, status')
             .eq('user_id', userId)
             .order('created_at', { ascending: true })
-        : Promise.resolve({ data: [] }),
-      has('food')
+        : none,
+      foodBlock
         ? db
             .from('food_logs')
-            .select('happened_at, kcal, protein_g')
+            .select('happened_at, raw_text, kcal, protein_g')
             .eq('user_id', userId)
             .gte('happened_at', fromISO)
             .lte('happened_at', toISO)
-        : Promise.resolve({ data: [] }),
-      has('water')
+            .order('happened_at', { ascending: true })
+        : none,
+      waterBlock
         ? db
             .from('hydration_logs')
             .select('happened_at, ml')
             .eq('user_id', userId)
             .gte('happened_at', fromISO)
             .lte('happened_at', toISO)
-        : Promise.resolve({ data: [] }),
-      has('activity')
+        : none,
+      sleepBlock
+        ? db
+            .from('sleep_logs')
+            .select('night_of, duration_min, quality, awakenings')
+            .eq('user_id', userId)
+            .gte('night_of', from)
+            .lte('night_of', to)
+            .order('night_of', { ascending: true })
+        : none,
+      activityBlock
         ? db
             .from('activity_logs')
             .select('happened_at, activity_type, duration_min, intensity')
@@ -218,7 +281,7 @@ export async function loadReport(
             .gte('happened_at', fromISO)
             .lte('happened_at', toISO)
             .order('happened_at', { ascending: true })
-        : Promise.resolve({ data: [] }),
+        : none,
     ]);
 
   const p = (profileRow.data ?? null) as {
@@ -229,7 +292,7 @@ export async function loadReport(
     activity_level: string | null;
   } | null;
 
-  const entries = ((entryRows.data ?? []) as {
+  type Entry = {
     id: string;
     kind: string;
     title: string | null;
@@ -238,7 +301,11 @@ export async function loadReport(
     created_at: string;
     updated_at: string | null;
     status: string | null;
-  }[]).filter((e) => (e.status ?? 'active') === 'active');
+  };
+  const entries = ((entryRows.data ?? []) as Entry[]).filter((e) => (e.status ?? 'active') === 'active');
+  // Picked one at a time, so nothing arrives that she did not tick.
+  const chosen = (b: ReportBlock | null) =>
+    b ? entries.filter((e) => (b.ids ?? []).includes(e.id)) : [];
 
   const profile: { label: string; value: string }[] = [];
   if (p) {
@@ -247,6 +314,21 @@ export async function loadReport(
     if (p.height_cm) profile.push({ label: 'Height', value: `${p.height_cm} cm` });
     if (p.activity_level) profile.push({ label: 'Everyday activity', value: p.activity_level.replace('_', ' ') });
   }
+
+  const foods = (foodRows.data ?? []) as {
+    happened_at: string;
+    raw_text: string | null;
+    kcal: number | null;
+    protein_g: number | null;
+  }[];
+
+  const activityTypes = activityBlock?.types ?? [];
+  const acts = ((activityRows.data ?? []) as {
+    happened_at: string;
+    activity_type: string | null;
+    duration_min: number | null;
+    intensity: string | null;
+  }[]).filter((a) => activityTypes.length === 0 || activityTypes.includes((a.activity_type ?? '').trim()));
 
   return {
     name: p?.first_name?.trim() || null,
@@ -272,49 +354,117 @@ export async function loadReport(
       name: m.metric_name,
       value: `${m.value}${m.unit ? ' ' + m.unit : ''}`,
     })),
-    symptoms: has('symptoms')
-      ? entries
-          .filter((e) => e.kind === 'symptom' && withinDay(e.created_at, from, to))
-          .map((e) => ({ at: e.created_at, title: e.title ?? 'Noted', content: readableContent(e.content) }))
-      : [],
-    food: has('food') ? perDayFood(foodRows.data ?? []) : [],
-    water: has('water') ? perDayWater(waterRows.data ?? []) : [],
-    activity: has('activity')
-      ? ((activityRows.data ?? []) as {
-          happened_at: string;
-          activity_type: string;
-          duration_min: number | null;
-          intensity: string | null;
-        }[]).map((a) => ({
-          at: a.happened_at,
-          what: a.activity_type,
-          minutes: a.duration_min,
-          intensity: a.intensity,
-        }))
-      : [],
-    plans: has('plans')
-      ? entries
-          .filter((e) => e.kind.includes('plan'))
-          .map((e) => ({ title: e.title ?? 'Plan', content: readableContent(e.content) }))
-      : [],
-    insights: has('insights')
-      ? entries
-          .filter((e) => e.kind === 'insight' && withinDay(e.created_at, from, to))
-          .map((e) => ({ at: e.created_at, title: e.title ?? 'Noticed', content: readableContent(e.content) }))
-      : [],
-    // CHOSEN ONE BY ONE. Unticked cards are absent, not greyed: the report is
-    // what she decided to share, and nothing else.
-    cards: has('cards')
-      ? entries
-          .filter((e) => sel.cardIds.includes(e.id))
-          .map((e) => ({
-            title: e.title ?? 'Untitled',
-            kind: e.category?.trim() || e.kind,
-            content: readableContent(e.content),
-            updated: e.updated_at ?? e.created_at,
+    // IN FULL, AS SHE WROTE THEM. Her instruction: a clinician reading a
+    // symptom needs what was actually noticed, not a trimmed version of it.
+    symptoms: chosen(symptomsBlock).map((e) => ({
+      at: e.created_at,
+      title: e.title?.trim() || 'Noted',
+      content: readableContent(e.content),
+    })),
+    food: foodBlock ? perDayFood(foods) : [],
+    foodEntries:
+      foodBlock?.detail === 'entries'
+        ? foods.map((f) => ({
+            at: f.happened_at,
+            what: (f.raw_text ?? '').trim() || 'an entry',
+            kcal: f.kcal,
+            protein: f.protein_g,
           }))
-      : [],
+        : [],
+    water: waterBlock ? perDayWater(waterRows.data ?? []) : [],
+    sleep: ((sleepRows.data ?? []) as {
+      night_of: string;
+      duration_min: number | null;
+      quality: string | null;
+      awakenings: number | null;
+    }[]).map((n) => ({
+      night: n.night_of,
+      minutes: n.duration_min,
+      quality: n.quality,
+      awakenings: n.awakenings,
+    })),
+    activity: acts.map((a) => ({
+      at: a.happened_at,
+      what: (a.activity_type ?? 'a session').trim(),
+      minutes: a.duration_min,
+      intensity: a.intensity,
+    })),
+    plans: chosen(plansBlock).map((e) => ({
+      title: e.title?.trim() || 'Plan',
+      content: readableContent(e.content),
+    })),
+    insights: chosen(insightsBlock).map((e) => ({
+      at: e.created_at,
+      title: e.title?.trim() || 'Noticed',
+      content: readableContent(e.content),
+    })),
+    cards: chosen(cardsBlock).map((e) => ({
+      title: e.title?.trim() || 'Untitled',
+      kind: e.category?.trim() || e.kind,
+      content: readableContent(e.content),
+      updated: e.updated_at ?? e.created_at,
+    })),
   };
+}
+
+const SOURCES: ReportSource[] = [
+  'profile',
+  'goals',
+  'body',
+  'metrics',
+  'symptoms',
+  'food',
+  'water',
+  'sleep',
+  'activity',
+  'plans',
+  'insights',
+  'cards',
+];
+
+/** Sources whose blocks mean nothing without a list of chosen records. */
+const NEEDS_IDS: ReportSource[] = ['symptoms', 'plans', 'insights', 'cards'];
+
+/**
+ * THE GUARD ON WHAT THE PHONE SENDS. The blocks arrive over the wire, so each
+ * one is read field by field: an unknown source is dropped, a list of ids is a
+ * list of strings or it is nothing, and a block that picks records but picked
+ * none is dropped rather than printed as an empty heading. Nothing here trusts
+ * the shape it is given.
+ *
+ * It lives beside the reader rather than in the route because it is the part
+ * worth testing: pure, and the only thing standing between a POST body and a
+ * query.
+ */
+export function readBlocks(raw: unknown): ReportBlock[] {
+  if (!Array.isArray(raw)) return [];
+  const strings = (v: unknown, cap: number): string[] | undefined => {
+    if (!Array.isArray(v)) return undefined;
+    const list = [...new Set(v.filter((x): x is string => typeof x === 'string' && x.length > 0))];
+    return list.slice(0, cap);
+  };
+
+  return raw
+    .map((item) => {
+      const b = (item ?? {}) as Record<string, unknown>;
+      const source = SOURCES.find((s) => s === b.source);
+      if (!source) return null;
+      const block: ReportBlock = { source };
+      const ids = strings(b.ids, 200);
+      if (ids) block.ids = ids;
+      const names = strings(b.names, 50);
+      if (names) block.names = names;
+      const types = strings(b.types, 50);
+      if (types) block.types = types;
+      if (b.detail === 'entries' || b.detail === 'totals') block.detail = b.detail;
+      return block;
+    })
+    .filter((b): b is ReportBlock => b !== null)
+    .filter((b) => !NEEDS_IDS.includes(b.source) || (b.ids?.length ?? 0) > 0)
+    .filter((b) => b.source !== 'metrics' || (b.names?.length ?? 0) > 0)
+    .filter((b) => b.source !== 'activity' || (b.types?.length ?? 0) > 0)
+    // One block per source: two Symptoms blocks would print the section twice.
+    .filter((b, i, all) => all.findIndex((o) => o.source === b.source) === i);
 }
 
 // ALMANAC CONTENT IS NOT A STRING (2026-09-20). Every entry's content is
@@ -335,13 +485,11 @@ export function readableContent(content: unknown): string {
   const say = (v: unknown): string =>
     typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '';
 
-  // The words an entry leads with, in the order they are worth reading.
   for (const key of ['summary', 'why', 'goal', 'detail', 'note', 'notes']) {
     const said = say(c[key]);
     if (said) lines.push(said);
   }
 
-  // A plan's movements.
   const exercises = Array.isArray(c.exercises) ? c.exercises : null;
   if (exercises) {
     const moves = exercises
@@ -360,7 +508,6 @@ export function readableContent(content: unknown): string {
     if (moves.length > 0) lines.push(moves.map((m) => `• ${m}`).join('\n'));
   }
 
-  // A Me card's sections, and anything else with words in it.
   if (lines.length === 0) {
     for (const [key, value] of Object.entries(c)) {
       if (key.startsWith('__')) continue;
@@ -372,14 +519,9 @@ export function readableContent(content: unknown): string {
   return lines.join('\n\n').trim();
 }
 
-function withinDay(iso: string, from: string, to: string): boolean {
-  const day = iso.slice(0, 10);
-  return day >= from && day <= to;
-}
-
-function perDayFood(rows: unknown[]): { day: string; kcal: number; protein: number; entries: number }[] {
+function perDayFood(rows: { happened_at: string; kcal: number | null; protein_g: number | null }[]) {
   const map = new Map<string, { kcal: number; protein: number; entries: number }>();
-  for (const r of rows as { happened_at: string; kcal: number | null; protein_g: number | null }[]) {
+  for (const r of rows) {
     const day = r.happened_at.slice(0, 10);
     const d = map.get(day) ?? { kcal: 0, protein: 0, entries: 0 };
     d.kcal += r.kcal ?? 0;

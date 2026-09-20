@@ -70,14 +70,17 @@ export function renderReport(data: ReportData): string {
       id: 'symptoms',
       title: 'Symptoms and observations',
       body:
-        intro('Noted at the time, in their own words.') +
+        // IN FULL, AS WRITTEN (Ruth, 2026-09-20). A clinician reading a symptom
+        // needs what was actually noticed, not a trimmed version of it, so
+        // nothing here is shortened and the chooser picks which ones appear.
+        intro('Each one in full, as it was written at the time. Only the ones chosen for this report appear.') +
         data.symptoms
           .map((s) => card(s.title, shortDate(s.at), s.content))
           .join(''),
     });
   }
 
-  if (data.food.length > 0 || data.water.length > 0) {
+  if (data.food.length > 0 || data.water.length > 0 || data.foodEntries.length > 0) {
     const foodRows = data.food.map((d) => [
       shortDate(d.day),
       `${Math.round(d.kcal)} kcal`,
@@ -98,11 +101,46 @@ export function renderReport(data: ReportData): string {
               'Totals for each day that has entries. Days with nothing logged are absent rather than shown as zero, because a day nobody recorded is not a day of no food.'
             ) + table(['Date', 'Energy', 'Protein', 'Entries'], foodRows)
           : '') +
+        (data.foodEntries.length > 0
+          ? `<h3>Every entry</h3>` +
+            intro('Each entry as it was logged, in her own words.') +
+            table(
+              ['Date', 'What', 'Energy', 'Protein'],
+              data.foodEntries.map((e) => [
+                shortDate(e.at),
+                e.what,
+                e.kcal != null ? `${Math.round(e.kcal)} kcal` : '—',
+                e.protein != null ? `${Math.round(e.protein)} g` : '—',
+              ])
+            )
+          : '') +
         (waterRows.length > 0
           ? `<h3>Drinks</h3>` +
             intro('What was logged, which is not the same as everything that was drunk.') +
             table(['Date', 'Logged', 'Drinks'], waterRows)
           : ''),
+    });
+  }
+
+  if (data.sleep.length > 0) {
+    sections.push({
+      id: 'sleep',
+      title: 'Sleep',
+      body:
+        intro(
+          'Only the nights that were described. A night that is absent was not recorded, which says nothing about how it went.'
+        ) +
+        table(
+          ['Night of', 'Slept', 'How it felt', 'Woke'],
+          data.sleep.map((n) => [
+            shortDate(n.night),
+            n.minutes != null
+              ? `${Math.floor(n.minutes / 60)}h${n.minutes % 60 ? ' ' + (n.minutes % 60) + 'm' : ''}`
+              : '—',
+            n.quality ? capital(n.quality) : '—',
+            n.awakenings != null ? String(n.awakenings) : '—',
+          ])
+        ),
     });
   }
 
@@ -226,7 +264,16 @@ export function renderReport(data: ReportData): string {
       <dt>Generated</dt><dd>${esc(shortDate(data.generated))}</dd>
     </dl>
     ${data.note ? `<div class="note"><p class="muted">${esc(data.note)}</p></div>` : ''}
-    <p class="muted" style="margin-top:10mm">Prepared from your Selodía knowledge.</p>
+    <!-- WHAT THIS DOCUMENT IS, said on its face (Ruth, 2026-09-20): "if the
+         data is just the data collected, the report can't be dismissed as ai
+         dumps, it's the true collected data, with a summary for convenience".
+         A clinician's first question about anything from a health app is
+         whether a machine wrote it, and the answer has to be on the page
+         rather than in the person's explanation of it. -->
+    <p class="muted" style="margin-top:10mm">
+      The pages that follow are records as they were entered, on the dates shown. Nothing here was
+      generated or inferred: any summary is labelled as one and is drawn from these pages.
+    </p>
   </div>
 
   <div class="contents">

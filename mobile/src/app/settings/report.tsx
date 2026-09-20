@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Checkbox } from '@/components/checkbox';
@@ -16,15 +16,27 @@ import { ApiError, authedGet, authedPost } from '@/lib/api';
 // specific purpose ... I'm seeing my vascular consultant. I'm visiting a
 // physiotherapist."
 //
-// THE SCREEN IS BUILT FROM HER DATA, NOT FROM A LIST OF FEATURES. It asks the
-// server what exists before drawing anything, and only what exists appears:
-// no saved plans, no Plans line; no summaries, no Summaries line. "Don't
-// invent one" is her instruction and it is also the app's rule - a checkbox
-// for something somebody does not have is a promise the report cannot keep.
+// Rebuilt the same evening, because the first version offered whole sections
+// and she named the fault at once: "I may want to send my allergy clinician
+// only my allergy history, not my knee pain." A section is too big a unit.
 //
-// Summaries are chosen ONE BY ONE, because that is the point: a physio does
-// not need the cholesterol card, and a consultant does not need the skincare
-// routine.
+// SO A REPORT IS A LIST OF BLOCKS, each one saying where it comes from and
+// which of it. Symptoms, patterns, plans and summaries are picked ONE AT A
+// TIME, because each has a title and there are few enough to read. Other
+// measurements are picked by the measure's own name - waist, resting heart
+// rate - which is a column the rows have always carried. Movement is picked by
+// her own words for what she did. Food chooses a depth instead of rows,
+// because a month of meals is not a list anybody ticks.
+//
+// NOTHING ON THIS SCREEN IS CHOSEN BY A MODEL. Her rule: "AI should analyse
+// the selected data. AI should not decide what data is selected." Every list
+// here is built from rows that exist, and every filter is a value those rows
+// carry.
+//
+// THE SCREEN IS BUILT FROM HER DATA, NOT FROM A LIST OF FEATURES. It asks the
+// server what exists before drawing anything, and only what exists appears: no
+// saved plans, no Plans line. A checkbox for something somebody does not have
+// is a promise the report cannot keep.
 //
 // WHY A BROWSER PAGE AND NOT A FILE. Making a PDF on the phone needs a native
 // module, which cannot arrive in an over-the-air update. The report opens in
@@ -32,23 +44,36 @@ import { ApiError, authedGet, authedPost } from '@/lib/api';
 // A4. When there is a new native build, expo-print can write the file directly
 // from the same HTML.
 
-type Availability = {
-  sections: { section: string; count: number }[];
-  cards: { id: string; title: string; kind: string; category: string | null; updated: string }[];
+type PickableRecord = { id: string; title: string; when: string; detail?: string | null };
+type PickableValue = { value: string; count: number };
+
+type Catalogue = {
+  hasProfile: boolean;
+  goals: number;
+  bodyReadings: number;
+  metrics: PickableValue[];
+  symptoms: PickableRecord[];
+  insights: PickableRecord[];
+  plans: PickableRecord[];
+  cards: PickableRecord[];
+  foodDays: number;
+  waterDays: number;
+  sleepNights: number;
+  activityTypes: PickableValue[];
 };
 
-const LABELS: Record<string, { label: string; detail: string }> = {
-  profile: { label: 'Profile', detail: 'Your current details' },
-  goals: { label: 'Goals', detail: 'What you are working towards' },
-  body: { label: 'Body measurements', detail: 'Weight, body fat, muscle' },
-  measurements: { label: 'Other measurements', detail: 'Waist, resting heart rate and the rest' },
-  symptoms: { label: 'Symptoms and observations', detail: 'Noted at the time' },
-  food: { label: 'Nutrition', detail: 'Daily totals from your food log' },
-  water: { label: 'Drinks', detail: 'What you logged, day by day' },
-  activity: { label: 'Movement', detail: 'Sessions, duration and intensity' },
-  plans: { label: 'Current plans', detail: 'The programmes you are following' },
-  insights: { label: 'Patterns noticed', detail: 'What Selodía has observed holding true' },
+type Block = {
+  source: string;
+  ids?: string[];
+  names?: string[];
+  types?: string[];
+  detail?: 'totals' | 'entries';
 };
+
+// The sources whose blocks are the whole thing or nothing.
+const WHOLE = ['profile', 'goals', 'body', 'water', 'sleep'] as const;
+// The sources picked one record at a time.
+const BY_RECORD = ['symptoms', 'plans', 'insights', 'cards'] as const;
 
 const PERIODS: { id: string; label: string; days: number | null }[] = [
   { id: '7', label: 'Last 7 days', days: 7 },
@@ -58,27 +83,123 @@ const PERIODS: { id: string; label: string; days: number | null }[] = [
   { id: 'all', label: 'All time', days: null },
 ];
 
+function toggled(set: Set<string>, id: string) {
+  const next = new Set(set);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+}
+
+// One stable empty set, so a source nobody has picked from yet does not hand
+// Picker a new object on every keystroke in the note field.
+const EMPTY: ReadonlySet<string> = new Set<string>();
+
+// A picker is closed until she opens it, so nine symptoms and four plans do
+// not turn the screen into a wall of boxes before she has chosen a period.
+// It lives out here rather than inside the screen: a component declared during
+// render is a new type each time, which unmounts and remounts every checkbox
+// underneath it, and the ticks animate themselves back in from nothing.
+function Picker({
+  source,
+  title,
+  hint,
+  records,
+  values,
+  chosen,
+  showing,
+  onOpen,
+  onPick,
+}: {
+  source: string;
+  title: string;
+  hint: string;
+  records?: PickableRecord[];
+  values?: PickableValue[];
+  chosen: ReadonlySet<string>;
+  showing: boolean;
+  onOpen: () => void;
+  onPick: (source: string, id: string) => void;
+}) {
+  const theme = useTheme();
+  const total = records?.length ?? values?.length ?? 0;
+  if (total === 0) return null;
+  return (
+    <SettingsGroup title={title}>
+      <Pressable
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel={showing ? `Hide ${title}` : `Choose from ${title}`}
+        style={({ pressed }) => [styles.expander, pressed && styles.pressed]}
+      >
+        <ThemedText type="small">
+          {chosen.size === 0 ? `${total} kept, none chosen` : `${chosen.size} of ${total} chosen`}
+        </ThemedText>
+        <Ionicons
+          name={showing ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color={theme.textSecondary}
+        />
+      </Pressable>
+
+      {showing && (
+        <View style={styles.boxes}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+            {hint}
+          </ThemedText>
+          {records?.map((r) => (
+            <Checkbox
+              key={r.id}
+              checked={chosen.has(r.id)}
+              onToggle={() => onPick(source, r.id)}
+              label={r.detail?.trim() ? `${r.title} — ${r.detail.trim()}` : r.title}
+            />
+          ))}
+          {values?.map((v) => (
+            <Checkbox
+              key={v.value}
+              checked={chosen.has(v.value)}
+              onToggle={() => onPick(source, v.value)}
+              label={`${v.value} — ${v.count} ${v.count === 1 ? 'entry' : 'entries'}`}
+            />
+          ))}
+        </View>
+      )}
+    </SettingsGroup>
+  );
+}
+
 export default function ReportScreen() {
   const theme = useTheme();
-  const [available, setAvailable] = useState<Availability | null>(null);
-  const [chosen, setChosen] = useState<Set<string>>(new Set());
-  const [cards, setCards] = useState<Set<string>>(new Set());
+  const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [period, setPeriod] = useState('90');
   const [note, setNote] = useState('');
-  const [showCards, setShowCards] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+
+  // Whole-source choices.
+  const [whole, setWhole] = useState<Set<string>>(new Set());
+  const [foodDetail, setFoodDetail] = useState<'totals' | 'entries'>('totals');
+  // Record-by-record and value-by-value choices, keyed by source.
+  const [picked, setPicked] = useState<Record<string, Set<string>>>({});
+  const [open, setOpen] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const data = await authedGet<Availability>('/api/report');
+        const data = await authedGet<Catalogue>('/api/report');
         if (cancelled) return;
-        setAvailable(data);
-        // Everything that exists starts ticked EXCEPT the summaries, which are
-        // the ones worth a deliberate choice.
-        setChosen(new Set(data.sections.map((s) => s.section).filter((s) => s !== 'cards')));
+        setCatalogue(data);
+        // A SENSIBLE START, NOT A FULL ONE. The whole-source pieces begin
+        // ticked because nearly every report wants them; the picked-one-by-one
+        // ones begin empty, because choosing between them is the whole point.
+        const start = new Set<string>();
+        if (data.hasProfile) start.add('profile');
+        if (data.goals > 0) start.add('goals');
+        if (data.bodyReadings > 0) start.add('body');
+        if (data.foodDays > 0) start.add('food');
+        if (data.sleepNights > 0) start.add('sleep');
+        setWhole(start);
       } catch (err) {
         if (!cancelled) {
           setFailed(
@@ -93,17 +214,40 @@ export default function ReportScreen() {
     };
   }, []);
 
-  function toggle(id: string, set: Set<string>, apply: (s: Set<string>) => void) {
-    const next = new Set(set);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    apply(next);
-  }
+  const togglePicked = useCallback(
+    (source: string, id: string) =>
+      setPicked((p) => ({ ...p, [source]: toggled(p[source] ?? new Set<string>(), id) })),
+    []
+  );
 
-  const chosenCount = chosen.size - (chosen.has('cards') ? 1 : 0) + cards.size;
+  const blocks = useMemo<Block[]>(() => {
+    if (!catalogue) return [];
+    const out: Block[] = [];
+    for (const source of WHOLE) {
+      if (whole.has(source)) out.push({ source });
+    }
+    if (whole.has('food')) out.push({ source: 'food', detail: foodDetail });
+    for (const source of BY_RECORD) {
+      const ids = [...(picked[source] ?? [])];
+      if (ids.length > 0) out.push({ source, ids });
+    }
+    const names = [...(picked.metrics ?? [])];
+    if (names.length > 0) out.push({ source: 'metrics', names });
+    const types = [...(picked.activity ?? [])];
+    if (types.length > 0) out.push({ source: 'activity', types });
+    return out;
+  }, [catalogue, whole, foodDetail, picked]);
+
+  // What the button counts: a whole section is one thing, a picked list is as
+  // many things as she picked, so the number matches what she just ticked.
+  const chosenCount = blocks.reduce(
+    (n, b) =>
+      n + Math.max(1, (b.ids?.length ?? 0) + (b.names?.length ?? 0) + (b.types?.length ?? 0)),
+    0
+  );
 
   async function build() {
-    if (busy || chosenCount === 0) return;
+    if (busy || blocks.length === 0) return;
     setBusy(true);
     setFailed(null);
     try {
@@ -112,15 +256,12 @@ export default function ReportScreen() {
       const from = chosenPeriod.days
         ? new Date(to.getTime() - chosenPeriod.days * 86_400_000)
         : null;
-      const sections = [...chosen];
-      if (cards.size > 0 && !sections.includes('cards')) sections.push('cards');
 
       const { url } = await authedPost<{ url?: string }>('/api/report', {
         from: from ? from.toISOString().slice(0, 10) : null,
         to: to.toISOString().slice(0, 10),
         periodLabel: chosenPeriod.label,
-        sections,
-        cardIds: [...cards],
+        blocks,
         note: note.trim() || null,
       });
       if (!url) throw new Error('no url');
@@ -139,18 +280,51 @@ export default function ReportScreen() {
     }
   }
 
-  const sectionsToShow = (available?.sections ?? []).filter((s) => s.section !== 'cards');
-  const cardSection = (available?.sections ?? []).find((s) => s.section === 'cards');
+  const picker = (args: {
+    source: string;
+    title: string;
+    hint: string;
+    records?: PickableRecord[];
+    values?: PickableValue[];
+  }) => (
+    <Picker
+      {...args}
+      key={args.source}
+      chosen={picked[args.source] ?? EMPTY}
+      showing={open.has(args.source)}
+      onOpen={() => setOpen((o) => toggled(o, args.source))}
+      onPick={togglePicked}
+    />
+  );
+
+  const nothingStored =
+    catalogue !== null &&
+    !catalogue.hasProfile &&
+    catalogue.goals === 0 &&
+    catalogue.bodyReadings === 0 &&
+    catalogue.foodDays === 0 &&
+    catalogue.waterDays === 0 &&
+    catalogue.sleepNights === 0 &&
+    catalogue.metrics.length === 0 &&
+    catalogue.activityTypes.length === 0 &&
+    catalogue.symptoms.length === 0 &&
+    catalogue.plans.length === 0 &&
+    catalogue.insights.length === 0 &&
+    catalogue.cards.length === 0;
 
   return (
     <SettingsPage
       title="Build a report"
-      subtitle="Choose what to include. A clear summary to share with a clinician or coach, or to keep."
+      subtitle="Choose exactly what goes in. What comes out is your own record, as you entered it."
       footer="Your knowledge. Your choice."
     >
-      {available === null ? (
+      {catalogue === null ? (
         <ThemedText type="small" themeColor="textSecondary">
           {failed ?? 'Looking at what you have stored…'}
+        </ThemedText>
+      ) : nothingStored ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          There is nothing logged yet to put in a report.
         </ThemedText>
       ) : (
         <>
@@ -180,62 +354,138 @@ export default function ReportScreen() {
             </ThemedText>
           </SettingsGroup>
 
-          <SettingsGroup title="What to include">
-            <View style={styles.boxes}>
-              {sectionsToShow.map((s) => (
-                <Checkbox
-                  key={s.section}
-                  checked={chosen.has(s.section)}
-                  onToggle={() => toggle(s.section, chosen, setChosen)}
-                  label={`${LABELS[s.section]?.label ?? s.section} — ${LABELS[s.section]?.detail ?? ''}`}
-                />
-              ))}
-              {sectionsToShow.length === 0 && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  There is nothing logged yet to put in a report.
-                </ThemedText>
-              )}
-            </View>
-          </SettingsGroup>
-
-          {cardSection && available.cards.length > 0 && (
-            <SettingsGroup title="Summaries">
-              <Pressable
-                onPress={() => setShowCards((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={showCards ? 'Hide summaries' : 'Choose summaries'}
-                style={({ pressed }) => [styles.expander, pressed && styles.pressed]}
-              >
-                <ThemedText type="small">
-                  {cards.size === 0
-                    ? `${available.cards.length} kept, none chosen`
-                    : `${cards.size} of ${available.cards.length} chosen`}
-                </ThemedText>
-                <Ionicons
-                  name={showCards ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={theme.textSecondary}
-                />
-              </Pressable>
-
-              {showCards && (
-                <View style={styles.boxes}>
-                  {available.cards.map((c) => (
-                    <Checkbox
-                      key={c.id}
-                      checked={cards.has(c.id)}
-                      onToggle={() => toggle(c.id, cards, setCards)}
-                      label={`${c.title} — ${c.category?.trim() || c.kind}`}
-                    />
-                  ))}
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-                    These are summaries built from your conversations and notes. Selodía does not
-                    hold medical documents, scans or test results.
-                  </ThemedText>
-                </View>
-              )}
+          {(catalogue.hasProfile || catalogue.goals > 0) && (
+            <SettingsGroup title="About you">
+              <View style={styles.boxes}>
+                {catalogue.hasProfile && (
+                  <Checkbox
+                    checked={whole.has('profile')}
+                    onToggle={() => setWhole((s) => toggled(s, 'profile'))}
+                    label="Profile — your current details"
+                  />
+                )}
+                {catalogue.goals > 0 && (
+                  <Checkbox
+                    checked={whole.has('goals')}
+                    onToggle={() => setWhole((s) => toggled(s, 'goals'))}
+                    label="Goals — what you are working towards"
+                  />
+                )}
+              </View>
             </SettingsGroup>
           )}
+
+          {/* HER EXAMPLE, EXACTLY: the allergy history and not the knee pain,
+              though both are symptoms. */}
+          {picker({
+            source: 'symptoms',
+            title: 'Symptoms and observations',
+            hint: 'Each one you choose appears in full, as you wrote it at the time.',
+            records: catalogue.symptoms,
+          })}
+
+          {catalogue.bodyReadings > 0 && (
+            <SettingsGroup title="Body">
+              <View style={styles.boxes}>
+                <Checkbox
+                  checked={whole.has('body')}
+                  onToggle={() => setWhole((s) => toggled(s, 'body'))}
+                  label="Weight, body fat and muscle"
+                />
+              </View>
+            </SettingsGroup>
+          )}
+
+          {/* Waist but not thigh: the measure's own name, stored on the row. */}
+          {picker({
+            source: 'metrics',
+            title: 'Other measurements',
+            hint: 'Only the measures you choose, each with every reading in the period.',
+            values: catalogue.metrics,
+          })}
+
+          {(catalogue.foodDays > 0 || catalogue.waterDays > 0 || catalogue.sleepNights > 0) && (
+            <SettingsGroup title="Food, drink and sleep">
+              <View style={styles.boxes}>
+                {catalogue.foodDays > 0 && (
+                  <Checkbox
+                    checked={whole.has('food')}
+                    onToggle={() => setWhole((s) => toggled(s, 'food'))}
+                    label={`Food — ${catalogue.foodDays} ${catalogue.foodDays === 1 ? 'day' : 'days'} logged`}
+                  />
+                )}
+                {/* DEPTH, NOT ROWS. A clinician asking about a reaction wants
+                    every entry; one looking at a pattern wants the day's
+                    totals. Neither wants to tick three hundred meals. */}
+                {catalogue.foodDays > 0 && whole.has('food') && (
+                  <View style={styles.chips}>
+                    {(['totals', 'entries'] as const).map((d) => (
+                      <Pressable
+                        key={d}
+                        onPress={() => setFoodDetail(d)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: foodDetail === d }}
+                        accessibilityLabel={d === 'totals' ? 'Daily totals' : 'Every entry'}
+                        style={({ pressed }) => pressed && styles.pressed}
+                      >
+                        <ThemedView
+                          type={foodDetail === d ? 'backgroundSelected' : 'background'}
+                          style={styles.chip}
+                        >
+                          <ThemedText type="small">
+                            {d === 'totals' ? 'Daily totals' : 'Every entry'}
+                          </ThemedText>
+                        </ThemedView>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                {catalogue.waterDays > 0 && (
+                  <Checkbox
+                    checked={whole.has('water')}
+                    onToggle={() => setWhole((s) => toggled(s, 'water'))}
+                    label="Drinks — what you logged, day by day"
+                  />
+                )}
+                {catalogue.sleepNights > 0 && (
+                  <Checkbox
+                    checked={whole.has('sleep')}
+                    onToggle={() => setWhole((s) => toggled(s, 'sleep'))}
+                    label="Sleep — the nights you described"
+                  />
+                )}
+              </View>
+            </SettingsGroup>
+          )}
+
+          {/* Her own words for what she did, counted from her own log. */}
+          {picker({
+            source: 'activity',
+            title: 'Movement',
+            hint: 'The kinds of movement to include. Leave them all clear to leave movement out.',
+            values: catalogue.activityTypes,
+          })}
+
+          {picker({
+            source: 'plans',
+            title: 'Plans',
+            hint: 'The programmes you are following, with their movements.',
+            records: catalogue.plans,
+          })}
+
+          {picker({
+            source: 'insights',
+            title: 'Patterns noticed',
+            hint: 'What has been observed holding true, in full.',
+            records: catalogue.insights,
+          })}
+
+          {picker({
+            source: 'cards',
+            title: 'Summaries',
+            hint: 'Built from your conversations and notes. Selodía holds no medical documents, scans or test results.',
+            records: catalogue.cards,
+          })}
 
           <SettingsGroup title="A note, if you want one">
             <TextInput
@@ -252,22 +502,22 @@ export default function ReportScreen() {
 
           <Pressable
             onPress={() => void build()}
-            disabled={busy || chosenCount === 0}
+            disabled={busy || blocks.length === 0}
             accessibilityRole="button"
             accessibilityLabel="Create the PDF"
             style={({ pressed }) => pressed && styles.pressed}
           >
             <ThemedView
-              type={chosenCount === 0 ? 'backgroundElement' : 'backgroundSelected'}
-              style={[styles.build, chosenCount > 0 && { backgroundColor: theme.accentDeep }]}
+              type={blocks.length === 0 ? 'backgroundElement' : 'backgroundSelected'}
+              style={[styles.build, blocks.length > 0 && { backgroundColor: theme.accentDeep }]}
             >
               <ThemedText
                 type="smallBold"
-                themeColor={chosenCount === 0 ? 'textSecondary' : 'background'}
+                themeColor={blocks.length === 0 ? 'textSecondary' : 'background'}
               >
                 {busy
                   ? 'Building…'
-                  : chosenCount === 0
+                  : blocks.length === 0
                     ? 'Choose something to include'
                     : `Create PDF (${chosenCount} ${chosenCount === 1 ? 'item' : 'items'})`}
               </ThemedText>
