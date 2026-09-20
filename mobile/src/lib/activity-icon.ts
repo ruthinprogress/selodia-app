@@ -34,8 +34,8 @@ const RULES: [ActivityIconKind, RegExp][] = [
   ['cycle', /\b(cycle|cycling|bike|biking|spin class|spinning|turbo)\b/i],
   ['run', /\b(run|running|jog|jogging|sprint|5k|10k|parkrun|treadmill)\b/i],
   ['walk', /\b(walk|walking|hike|hiking|steps|stroll|rambl)/i],
-  ['stretch', /\b(stretch|stretching|mobility|foam roll|warm[ -]?up|cool[ -]?down)\b/i],
-  ['strength', /\b(strength|weights|lifting|gym|resistance|squats?|deadlift|press|kettlebell|dumbbell|barbell|circuit)\b/i],
+  ['stretch', /\b(stretch|stretching|mobility|flexibility|splits?|straddle|pancake|hamstrings?|hip openers?|foam roll|warm[ -]?up|cool[ -]?down)\b/i],
+  ['strength', /\b(strength|weights|lifting|gym|resistance|squats?|deadlift|press|kettlebell|dumbbell|barbell|circuit|toning|tone|glutes?|core|abs|upper body|lower body|legs? day)\b/i],
 ];
 
 export function activityIcon(activityType: string | null | undefined): ActivityIconKind {

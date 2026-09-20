@@ -116,11 +116,15 @@ export function ActivityIcon({
 
       {kind === 'stretch' && (
         <>
-          {/* A long reach: a spine bending over a straight leg. */}
-          <Circle cx="7" cy="7.4" r="1.7" {...line} />
-          <Path d="M7.6 9.6c1.4 2.2 3.2 3.6 5.4 4.2" {...line} />
-          <Path d="M13 13.8h5.8" {...line} />
-          <Path d="M6.2 18.4h8" {...line} />
+          {/* A SPLIT, front on (2026-09-20). It was a spine bending over a
+              straight leg, which at 26 points read as a figure standing about -
+              and every flexibility plan on the shelf looked like every other
+              practice. The legs are what say "stretch" at this size. */}
+          <Circle cx="12" cy="4.8" r="1.7" {...line} />
+          <Path d="M12 6.8v4.6" {...line} />
+          <Path d="M12 11.4 3.6 15.2M12 11.4l8.4 3.8" {...line} />
+          <Path d="M3.6 15.2h-.9M20.4 15.2h.9" {...line} />
+          <Path d="M12 8.6 8.6 10.6M12 8.6l3.4 2" {...line} />
         </>
       )}
 
