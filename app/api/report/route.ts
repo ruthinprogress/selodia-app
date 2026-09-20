@@ -17,6 +17,14 @@ import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 // The identity rules are the Me export's, for the Me export's reasons: never
 // the service role, never a token in a URL.
 
+// LONGER THAN THE DEFAULT, because the draft step reads up to ninety records
+// and then asks a model to write about them, and the default cuts a function
+// off after fifteen seconds. A timeout here would reach her as the generic
+// "could not build" - the exact failure that was rewritten this morning for
+// telling her nothing. Sixty is what the weekly roundup already uses, so it is
+// within what this project's plan allows and is not a new cost decision.
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');
   if (id) return servePage(id);
