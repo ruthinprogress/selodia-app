@@ -87,15 +87,34 @@ export type ReportCatalogue = {
 
 const CARD_KINDS = ['me', 'routine', 'self-care routine', 'note', 'protocol'];
 
+/**
+ * How two names of the same thing are compared. The chooser shows a measure
+ * trimmed; the rows may carry whitespace or a different case. One function, so
+ * what is offered and what is matched can never drift apart again.
+ */
+function sameName(value: string | null): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
 function countValues(rows: { value: string | null }[]): PickableValue[] {
-  const counts = new Map<string, number>();
+  // GROUPED THE WAY THEY WILL BE MATCHED. "Waist" and "waist" are one measure
+  // to the person reading the list, so they are one line in it, counted
+  // together - and the spelling shown is the one her rows use most often.
+  const groups = new Map<string, { spellings: Map<string, number>; count: number }>();
   for (const r of rows) {
-    const v = (r.value ?? '').trim();
-    if (!v) continue;
-    counts.set(v, (counts.get(v) ?? 0) + 1);
+    const shown = (r.value ?? '').trim();
+    if (!shown) continue;
+    const key = sameName(shown);
+    const group = groups.get(key) ?? { spellings: new Map<string, number>(), count: 0 };
+    group.spellings.set(shown, (group.spellings.get(shown) ?? 0) + 1);
+    group.count += 1;
+    groups.set(key, group);
   }
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
+  return [...groups.values()]
+    .map((g) => ({
+      value: [...g.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0],
+      count: g.count,
+    }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -168,6 +187,13 @@ export type ReportData = {
    * is her text, whoever first drafted it. See report-summary.ts.
    */
   summary?: string | null;
+  /**
+   * AT A GLANCE: the figures, counted by the app and printed above the summary
+   * in the app's own words. They live here rather than inside the summary
+   * because a figure and a sentence about a figure are two different kinds of
+   * claim, and only one of them should ever come from a model.
+   */
+  glance?: string[] | null;
   dateOfBirth: string | null;
   generated: string;
   periodLabel: string;
@@ -213,6 +239,7 @@ export async function loadReport(
   const insightsBlock = block('insights');
   const cardsBlock = block('cards');
   const wantsEntries = Boolean(symptomsBlock || plansBlock || insightsBlock || cardsBlock);
+  const wantedMetrics = new Set((metricsBlock?.names ?? []).map(sameName));
 
   const [profileRow, goalRows, bodyRows, metricRows, entryRows, foodRows, waterRows, sleepRows, activityRows] =
     await Promise.all([
@@ -242,7 +269,12 @@ export async function loadReport(
             .from('personal_metrics')
             .select('measured_at, metric_name, value, unit')
             .eq('user_id', userId)
-            .in('metric_name', metricsBlock.names ?? [])
+            // NOT `.in('metric_name', names)`. The chooser offers each name
+            // TRIMMED, because " waist" and "waist" are one measure to a person
+            // reading a list - so a row stored with stray whitespace was
+            // tickable and then matched nothing, and the block she picked
+            // printed empty. Every measure in the period is read and matched
+            // here on the same trimmed, case-folded name the chooser showed.
             .gte('measured_at', fromISO)
             .lte('measured_at', toISO)
             .order('measured_at', { ascending: true })
@@ -329,13 +361,15 @@ export async function loadReport(
     protein_g: number | null;
   }[];
 
-  const activityTypes = activityBlock?.types ?? [];
+  // The same folding the chooser groups by, so "Ballet" and "ballet" are one
+  // kind here as well as in the list she ticked.
+  const activityTypes = new Set((activityBlock?.types ?? []).map(sameName));
   const acts = ((activityRows.data ?? []) as {
     happened_at: string;
     activity_type: string | null;
     duration_min: number | null;
     intensity: string | null;
-  }[]).filter((a) => activityTypes.length === 0 || activityTypes.includes((a.activity_type ?? '').trim()));
+  }[]).filter((a) => activityTypes.size === 0 || activityTypes.has(sameName(a.activity_type)));
 
   return {
     name: p?.first_name?.trim() || null,
@@ -356,11 +390,13 @@ export async function loadReport(
       metric_name: string;
       value: number;
       unit: string | null;
-    }[]).map((m) => ({
-      at: m.measured_at,
-      name: m.metric_name,
-      value: `${m.value}${m.unit ? ' ' + m.unit : ''}`,
-    })),
+    }[])
+      .filter((m) => wantedMetrics.has(sameName(m.metric_name)))
+      .map((m) => ({
+        at: m.measured_at,
+        name: m.metric_name.trim(),
+        value: `${m.value}${m.unit ? ' ' + m.unit : ''}`,
+      })),
     // IN FULL, AS SHE WROTE THEM. Her instruction: a clinician reading a
     // symptom needs what was actually noticed, not a trimmed version of it.
     symptoms: chosen(symptomsBlock).map((e) => ({
@@ -457,7 +493,11 @@ export function readBlocks(raw: unknown): ReportBlock[] {
       const source = SOURCES.find((s) => s === b.source);
       if (!source) return null;
       const block: ReportBlock = { source };
-      const ids = strings(b.ids, 200);
+      // 500 IS A REAL REPORT, and truncating it silently is not (found in
+      // review). The cap exists so one request cannot ask for unbounded work,
+      // but it has to sit above any honest selection rather than in the middle
+      // of one: a person with 400 symptoms who ticks them all should get 400.
+      const ids = strings(b.ids, 1000);
       if (ids) block.ids = ids;
       const names = strings(b.names, 50);
       if (names) block.names = names;

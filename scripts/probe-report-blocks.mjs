@@ -121,10 +121,17 @@ check(
 
 group('size and repetition');
 
+// A REAL SELECTION IS NEVER TRUNCATED. The cap is a ceiling on one request's
+// work, not a limit on how much of her own record she may send - 500 symptoms
+// ticked must be 500 symptoms printed.
 const many = Array.from({ length: 500 }, (_, i) => `id-${i}`);
-const capped = readBlocks([{ source: 'symptoms', ids: many }]);
-check('two hundred ids at most', capped[0].ids.length, 200);
-check('the first is kept', capped[0].ids[0], 'id-0');
+const notCapped = readBlocks([{ source: 'symptoms', ids: many }]);
+check('five hundred ids all survive', notCapped[0].ids.length, 500);
+check('the first is kept', notCapped[0].ids[0], 'id-0');
+check('and so is the last', notCapped[0].ids[499], 'id-499');
+
+const absurd = Array.from({ length: 4000 }, (_, i) => `id-${i}`);
+check('the ceiling is still a ceiling', readBlocks([{ source: 'symptoms', ids: absurd }])[0].ids.length, 1000);
 
 check(
   'the same id twice is once',

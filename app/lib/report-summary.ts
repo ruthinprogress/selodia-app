@@ -55,10 +55,21 @@ function dayCount(days: string[]): number {
 }
 
 function hoursAndMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
+  // ROUND FIRST, THEN SPLIT. Flooring the hours and rounding the remainder
+  // separately turns an average of 419.67 minutes into "6h 60m" - a nonsense
+  // figure in a document whose entire argument is that its figures are exact.
+  const whole = Math.round(minutes);
+  const h = Math.floor(whole / 60);
+  const m = whole % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
+
+// EVERY ROW THIS FILE READS ARRIVES OLDEST FIRST (loadReport orders ascending,
+// so the report's own tables read forwards in time). Saying so once, here,
+// because reading it backwards is what made the first version of this file
+// announce a 4.2 kg loss as a gain.
+const oldest = <T,>(rows: T[]): T => rows[0];
+const newest = <T,>(rows: T[]): T => rows[rows.length - 1];
 
 /**
  * THE FACTS BLOCK. Every figure the summary may use, counted here.
@@ -76,16 +87,14 @@ export function facts(data: ReportData): ReportFacts {
   if (data.weights.length > 0) {
     const weights = data.weights.map((w) => w.weight).filter((w): w is number => w != null);
     if (weights.length > 0) {
-      const first = weights[weights.length - 1];
-      const last = weights[0];
       lines.push(
-        `Weight: ${readings(weights.length)}, from ${first.toFixed(1)} kg to ${last.toFixed(1)} kg.`
+        `Weight: ${readings(weights.length)}, from ${oldest(weights).toFixed(1)} kg on the first to ${newest(weights).toFixed(1)} kg on the last.`
       );
     }
     const fats = data.weights.map((w) => w.fat).filter((f): f is number => f != null);
     if (fats.length > 0) {
       lines.push(
-        `Body fat: ${readings(fats.length)}, from ${fats[fats.length - 1].toFixed(1)}% to ${fats[0].toFixed(1)}%.`
+        `Body fat: ${readings(fats.length)}, from ${oldest(fats).toFixed(1)}% on the first to ${newest(fats).toFixed(1)}% on the last.`
       );
     }
   }
@@ -97,7 +106,7 @@ export function facts(data: ReportData): ReportFacts {
     byMetric.set(m.name, [...(byMetric.get(m.name) ?? []), m.value]);
   }
   for (const [name, values] of byMetric) {
-    lines.push(`${name}: ${readings(values.length)}, most recent ${values[0]}.`);
+    lines.push(`${name}: ${readings(values.length)}, most recent ${newest(values)}.`);
   }
 
   if (data.food.length > 0) {
@@ -199,40 +208,57 @@ export function numbersIn(text: string): Set<string> {
   return found;
 }
 
-/**
- * THE GUARD. Any sentence carrying a number the facts never contained is
- * dropped, whole, rather than corrected - because a sentence built around a
- * figure that does not exist has nothing left when the figure goes.
- *
- * Years and dates are allowed through: they come from the records themselves,
- * which the model is also shown, and a date is not a claim about a trend.
- */
-export function withoutInvention(
-  summary: string,
-  allowed: Set<string>,
-  alsoAllowed: Set<string> = new Set()
-): { text: string; dropped: string[] } {
-  const dropped: string[] = [];
+/** Numbers written as words, which a digit-matching guard cannot see. */
+const WORDED =
+  /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|half|third|quarter|dozen|most|majority|average|typically|usually)\b/i;
 
-  // A SENTENCE ENDS AT A FULL STOP FOLLOWED BY A SPACE, and not at the one
-  // inside 74.5. The first version split on every '.', which cut "Her waist
-  // measured 74.5 cm." into "Her waist measured 74." and "5 cm." - and then
-  // threw both away, because neither 74 nor 5 is a figure the facts contain.
-  // A guard that deletes correct sentences is worse than no guard: it teaches
-  // the person that the summary is unreliable for the opposite reason.
+/**
+ * THE GUARD: THE SUMMARY CARRIES NO FIGURES AT ALL.
+ *
+ * The first version kept a whitelist of every number the facts contained and
+ * dropped any sentence naming something else. A review broke it in three ways
+ * in one afternoon, and all three were the same flaw - a bare number carries
+ * no meaning, so the whitelist could not tell one from another:
+ *
+ *   - "7 nights" in the facts licensed "7 hours a night", "woke 7 times" and
+ *     "body fat is around 7%". Three inventions, all waved through.
+ *   - The records' own free text was whitelisted too, so a symptom reading
+ *     "lasted about 40 minutes" licensed "migraines affected 40% of the days".
+ *   - And a date in scope contributed 2026, 9 and 14 as separate integers, so
+ *     almost every small number in the language was permitted by accident.
+ *
+ * A whitelist of bare digits cannot be fixed, because the thing that makes a
+ * figure right or wrong is the unit and the subject, not the digit. So the
+ * division moved instead of being patched: THE APP PRINTS THE FIGURES AND THE
+ * MODEL WRITES THE PROSE. `facts()` already counts everything, and those lines
+ * now print above the paragraphs as their own block, in the app's words. The
+ * summary's job is what the records show when read together - what recurs,
+ * what is thin, what is absent - which is the analysis Ruth asked for, and
+ * needs no arithmetic of its own.
+ *
+ * That makes the guard total rather than approximate: a sentence with a figure
+ * in it goes, because there is no figure the summary is allowed to state. The
+ * figures are still on the page, one block above, every one of them counted
+ * here. Worded numbers go too, since "fourteen of the ninety days" is the same
+ * claim wearing different clothes.
+ */
+export function withoutFigures(summary: string): { text: string; dropped: string[] } {
+  const dropped: string[] = [];
   const paragraphs = summary.split(/\r?\n\s*\r?\n/);
   const keptParagraphs: string[] = [];
 
   for (const paragraph of paragraphs) {
-    const sentences = paragraph.split(/(?<=[.!?])\s+/);
+    // A SENTENCE ENDS AT A FULL STOP FOLLOWED BY A SPACE, and not at the one
+    // inside 74.5 - splitting on every '.' cut correct sentences in half and
+    // then threw both halves away. Abbreviations are stitched back on, because
+    // a paragraph ending "..., i.e." is its own kind of broken.
+    const sentences = stitch(paragraph.split(/(?<=[.!?])\s+/));
     const kept: string[] = [];
     for (const sentence of sentences) {
-      if (!sentence.trim()) continue;
-      const invented = [...numbersIn(sentence)].filter(
-        (n) => !allowed.has(n) && !alsoAllowed.has(n)
-      );
-      if (invented.length > 0) dropped.push(sentence.trim());
-      else kept.push(sentence.trim());
+      const trimmed = sentence.trim();
+      if (!trimmed) continue;
+      if (numbersIn(trimmed).size > 0 || WORDED.test(trimmed)) dropped.push(trimmed);
+      else kept.push(trimmed);
     }
     if (kept.length > 0) keptParagraphs.push(kept.join(' '));
   }
@@ -242,49 +268,75 @@ export function withoutInvention(
   return { text: keptParagraphs.join('\n\n').trim(), dropped };
 }
 
-const INSTRUCTIONS = `You are writing the opening paragraph of a personal health record that somebody is about to hand to a clinician.
+/** "e.g." and friends are not the end of a sentence. */
+const ABBREVIATION = /\b(?:e\.g|i\.e|etc|vs|Dr|Mr|Mrs|Ms|Prof|approx|no)\.$/i;
+
+function stitch(parts: string[]): string[] {
+  const out: string[] = [];
+  for (const part of parts) {
+    if (out.length > 0 && ABBREVIATION.test(out[out.length - 1].trim())) {
+      out[out.length - 1] = `${out[out.length - 1]} ${part}`;
+    } else {
+      out.push(part);
+    }
+  }
+  return out;
+}
+
+const INSTRUCTIONS = `You are writing the opening paragraphs of a personal health record that somebody is about to hand to a clinician.
 
 WHAT YOU ARE GIVEN
-A block of figures, already counted, and the records themselves. That is the whole of what exists. There is no other context, no history, and nothing you know about this person.
+A block of figures, already counted by the app, and the records themselves. That is the whole of what exists. There is no other context, no history, and nothing you know about this person.
+
+WHERE THE FIGURES GO
+The figures are printed on the page directly above your paragraphs, exactly as you were given them. Your paragraphs must contain NO figures of any kind: no counts, no averages, no percentages, no durations, no dates, and no numbers written as words. Not because a figure would be unwelcome, but because it is already there and repeating it is the one way this document can contradict itself.
+
+Write "sleep was described on only a few of the nights, so it should not be read as a picture of usual sleep", never "sleep was described on 9 of 90 nights". The reader has the 9 and the 90 immediately above.
 
 WHAT TO WRITE
-Two or three short paragraphs. What was recorded, over what period, and what the records show when read together. Name what recurs. Name what is thin - three nights of sleep out of ninety days is worth saying plainly, because it tells the reader how much weight to put on it.
+Two or three short paragraphs saying what the records show when read together. What recurs, and in what circumstances. What the written entries describe. What is thin or missing, said plainly, because it tells the reader how much weight to put on the rest.
 
-RULES, IN ORDER OF IMPORTANCE
-1. Every number you write must be one you were given. Do not add, average, total, convert or estimate. If a figure you want is not in the block, write the sentence without it or leave the sentence out.
-2. Write every number as digits, never as a word: "4 of the days", not "four of the days". This is checked, and a number written as a word cannot be checked.
-3. Do not diagnose, and do not suggest a cause. "Headaches were noted on 4 of the days" is the record. "Headaches were likely dehydration" is not, however plausible.
-4. Do not advise. Somebody else in the room does that.
-5. Say what is absent as readily as what is present. A gap is information.
-6. Write plainly, in British English, in the third person. No headings, no bullet points, no bold. Nothing that sounds like a brochure.
+RULES
+1. No figures. This is checked, and any sentence containing one is deleted before she sees it.
+2. Do not diagnose, and do not suggest a cause. "Swelling was noted after long periods seated" is the record. "Swelling was likely venous insufficiency" is not, however plausible.
+3. Do not advise. Somebody else in the room does that.
+4. Say what is absent as readily as what is present. A gap is information.
+5. Write plainly, in British English, in the third person. No headings, no bullet points, no bold. Nothing that sounds like a brochure.
 
 Return only the paragraphs.`;
 
-/**
- * Writes the summary. Returns null when there is nothing worth summarising or
- * the model could not be reached - a report without a summary is a complete
- * report, so this never fails the build.
- */
-export async function writeSummary(data: ReportData): Promise<{
-  text: string;
-  dropped: string[];
-} | null> {
-  const block = facts(data);
-  if (block.lines.length <= 1) return null;
+/** The result of drafting: what it says, what the guard removed, and why. */
+export type Draft =
+  | { ok: true; text: string; dropped: string[] }
+  | { ok: false; reason: 'too-little' | 'unreachable' | 'all-figures' };
 
-  // The records themselves, so the summary can name what recurs rather than
-  // only counting it. Capped, because the point is a paragraph, not a re-read.
+/**
+ * Writes the summary. It never throws and never fails the build: a report
+ * without a summary is a complete report. But it says WHICH of the three
+ * things happened, because "we could not reach the model" and "there was too
+ * little chosen to say anything about" call for different words on the phone,
+ * and the first version reported both as silence.
+ */
+export async function writeSummary(data: ReportData): Promise<Draft> {
+  const block = facts(data);
+  if (block.lines.length <= 1) return { ok: false, reason: 'too-little' };
+
+  // The records themselves, so the summary can say what they describe rather
+  // than only how many there are. Capped, because the point is a paragraph and
+  // not a re-read - and taken from the END, because the rows arrive oldest
+  // first and a selection of sixty symptoms would otherwise be summarised from
+  // the sixty that matter least.
   const records: string[] = [];
-  for (const s of data.symptoms.slice(0, 40)) {
+  for (const s of data.symptoms.slice(-40)) {
     records.push(`Symptom, ${s.at.slice(0, 10)}: ${s.title}. ${s.content}`);
   }
-  for (const i of data.insights.slice(0, 20)) {
+  for (const i of data.insights.slice(-20)) {
     records.push(`Pattern, ${i.at.slice(0, 10)}: ${i.title}. ${i.content}`);
   }
-  for (const c of data.cards.slice(0, 20)) {
+  for (const c of data.cards.slice(-20)) {
     records.push(`${c.kind}: ${c.title}. ${c.content}`);
   }
-  for (const p of data.plans.slice(0, 10)) {
+  for (const p of data.plans.slice(-10)) {
     records.push(`Plan: ${p.title}. ${p.content}`);
   }
 
@@ -309,17 +361,17 @@ export async function writeSummary(data: ReportData): Promise<{
       .trim();
   } catch (err) {
     console.log('REPORT SUMMARY: not written -', err instanceof Error ? err.message : err);
-    return null;
+    return { ok: false, reason: 'unreachable' };
   }
 
-  if (!written) return null;
+  if (!written) return { ok: false, reason: 'unreachable' };
 
-  // Dates and years in the records are the model's to quote; nothing else is.
-  const fromRecords = numbersIn(records.join(' '));
-  const checked = withoutInvention(written, block.numbers, fromRecords);
+  const checked = withoutFigures(written);
   if (checked.dropped.length > 0) {
-    console.log(`REPORT SUMMARY: dropped ${checked.dropped.length} sentence(s) with invented figures`);
+    console.log(`REPORT SUMMARY: removed ${checked.dropped.length} sentence(s) carrying figures`);
   }
-  if (!checked.text) return null;
-  return checked;
+  // EVERY SENTENCE WENT, which is a different thing from having nothing to say
+  // and must not be reported as silence - she ticked the box and waited.
+  if (!checked.text) return { ok: false, reason: 'all-figures' };
+  return { ok: true, text: checked.text, dropped: checked.dropped };
 }

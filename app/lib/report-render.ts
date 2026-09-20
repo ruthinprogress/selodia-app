@@ -253,7 +253,10 @@ export function renderReport(data: ReportData): string {
   .print { position: fixed; right: 6mm; bottom: 6mm; background: ${TERRACOTTA}; color: ${CREAM};
            border: 0; border-radius: 999px; padding: 3.5mm 7mm; font: inherit; font-size: 11pt; cursor: pointer; }
   .summary { margin-bottom: 10mm; }
-  .summary .label { font-size: 8.5pt; border-left: 2px solid ${SAND}; padding-left: 4mm; margin-bottom: 6mm; }
+  .summary .label { font-size: 8.5pt; border-left: 2px solid ${SAND}; padding-left: 4mm; margin: 6mm 0 4mm; }
+  .glance { list-style: none; margin: 0 0 4mm; padding: 0; }
+  .glance li { padding: 1.6mm 0; border-bottom: 1px solid ${SAND}; }
+  .glance li:last-child { border-bottom: 0; }
   @media print { .print { display: none; } body { background: ${PAPER}; } .sheet { padding: 0; max-width: none; } }
 </style>
 </head><body>
@@ -285,12 +288,19 @@ export function renderReport(data: ReportData): string {
     data.summary
       ? `<section class="summary" id="summary">
           <h2>Summary</h2>
-          <!-- LABELLED, ALWAYS (Ruth, 2026-09-20): "AI should analyse the
-               selected data. AI should not decide what data is selected", and
-               a summary that does not say what it is turns the whole document
-               into something a reader has to take on trust. The label names
-               both what wrote it and what it was allowed to see. -->
-          <p class="muted label">Written by Selodía from the pages that follow, and read and approved by the person named above. The records themselves begin after it.</p>
+          <!-- TWO KINDS OF CLAIM, SAID TO BE DIFFERENT (Ruth, 2026-09-20):
+               "AI should analyse the selected data. AI should not decide what
+               data is selected." The figures below were counted by the app
+               from the pages that follow; the paragraphs after them were
+               written by Selodía and read by her before this was made. Keeping
+               them visibly apart is what lets a reader trust either one. -->
+          ${
+            data.glance && data.glance.length > 0
+              ? `<p class="muted label">Counted by the app from the pages that follow.</p>
+                 <ul class="glance">${data.glance.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`
+              : ''
+          }
+          <p class="muted label">Written by Selodía from those same pages, and read and approved by the person named above. It states no figures of its own: the figures are the ones above.</p>
           ${data.summary
             .split(BLANK_LINE)
             .map((p) => p.trim())

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { loadCatalogue, loadReport, readBlocks, type ReportSelection } from '../../lib/report';
 import { renderReport } from '../../lib/report-render';
-import { writeSummary } from '../../lib/report-summary';
+import { facts, writeSummary } from '../../lib/report-summary';
 import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 
 // THE REPORT BUILDER'S SERVER HALF (2026-09-20).
@@ -116,17 +116,39 @@ export async function POST(request: NextRequest) {
 
   if (body.draft === true) {
     const written = await writeSummary(data);
-    return NextResponse.json({
-      summary: written?.text ?? null,
-      // Said out loud rather than swallowed: if the checker removed a sentence
-      // for naming a figure that was never counted, she should know her draft
-      // was shortened and why.
-      dropped: written?.dropped.length ?? 0,
-    });
+    // WHICH OF THE THREE THINGS HAPPENED, said rather than swallowed. The
+    // first version answered all three with an empty summary, so a model that
+    // could not be reached looked exactly like a selection too thin to
+    // describe - and she had ticked the box and waited either way.
+    return NextResponse.json(
+      written.ok
+        ? { summary: written.text, dropped: written.dropped.length }
+        : { summary: null, reason: written.reason }
+    );
+  }
+
+  // A REPORT OF NOTHING IS NOT A REPORT (found in review, 2026-09-20). Tick
+  // Body alone with "Last 3 months" when the last weigh-in was in May, and
+  // everything downstream succeeded: blocks non-empty, the button enabled, the
+  // page built, stored and opened - as a cover sheet, an empty Contents and a
+  // footer. She would have had a browser tab with a blank document in it and
+  // no idea why. The period is nearly always the reason, so the message names
+  // the period.
+  if (isEmpty(data)) {
+    return NextResponse.json(
+      {
+        error: `Nothing you chose falls in ${selection.periodLabel.toLowerCase()}. Try a longer period, or choose something else to include.`,
+      },
+      { status: 400 }
+    );
   }
 
   if (typeof body.summary === 'string' && body.summary.trim()) {
     data.summary = body.summary.trim().slice(0, 4000);
+    // The figures belong to the app, not to her edit of the paragraphs: she
+    // can rewrite every word of the summary and the counts underneath stay
+    // what the records actually say.
+    data.glance = facts(data).lines;
   }
 
   let html: string;
@@ -192,4 +214,23 @@ async function servePage(id: string) {
 
 function isDay(v: unknown): boolean {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+}
+
+/** True when every chosen block came back with no rows in it. */
+function isEmpty(data: Awaited<ReturnType<typeof loadReport>>): boolean {
+  return (
+    data.profile.length === 0 &&
+    data.goals.length === 0 &&
+    data.weights.length === 0 &&
+    data.metrics.length === 0 &&
+    data.symptoms.length === 0 &&
+    data.food.length === 0 &&
+    data.foodEntries.length === 0 &&
+    data.water.length === 0 &&
+    data.sleep.length === 0 &&
+    data.activity.length === 0 &&
+    data.plans.length === 0 &&
+    data.insights.length === 0 &&
+    data.cards.length === 0
+  );
 }

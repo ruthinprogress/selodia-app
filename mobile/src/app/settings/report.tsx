@@ -301,8 +301,12 @@ export default function ReportScreen() {
   function selection() {
     const chosenPeriod = PERIODS.find((p) => p.id === period) ?? PERIODS[2];
     const to = new Date();
+    // SEVEN DAYS IS SEVEN DAYS, today included. The server's range is
+    // inclusive at both ends, so going a whole 7 days back made "Last 7 days"
+    // cover eight - and the cover page prints the label, so the document said
+    // one thing and held another.
     const from = chosenPeriod.days
-      ? new Date(to.getTime() - chosenPeriod.days * 86_400_000)
+      ? new Date(to.getTime() - (chosenPeriod.days - 1) * 86_400_000)
       : null;
     return {
       from: from ? from.toISOString().slice(0, 10) : null,
@@ -322,16 +326,28 @@ export default function ReportScreen() {
     setBusy(true);
     setFailed(null);
     try {
-      const { summary: written, dropped: removed } = await authedPost<{
+      const { summary: written, dropped: removed, reason } = await authedPost<{
         summary?: string | null;
         dropped?: number;
+        reason?: string;
       }>('/api/report', { ...selection(), draft: true });
+
       if (!written) {
-        // Not an error: there may be too little chosen to say anything about.
-        // Build it without one rather than stopping her.
+        // NOT ALL SILENCE IS THE SAME SILENCE. She ticked the box and waited,
+        // so she is owed the reason - the first version built the report
+        // without a summary and said nothing, which reads as the feature
+        // simply not working.
+        setFailed(
+          reason === 'unreachable'
+            ? 'Could not write a summary just now. The report below is ready without one.'
+            : reason === 'all-figures'
+              ? 'The summary came back as figures rather than description, so none of it could be used. The report is ready without one.'
+              : 'There is too little here to describe in words. The report is ready without a summary.'
+        );
         await build(null);
         return;
       }
+
       setSummary(written);
       setDropped(removed ?? 0);
       setStage('summary');
@@ -437,7 +453,7 @@ export default function ReportScreen() {
             {dropped > 0 && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
                 {dropped === 1 ? 'One sentence was' : `${dropped} sentences were`} removed for
-                naming a figure that is not in your records.
+                stating a figure. The figures are printed above the summary, counted by the app.
               </ThemedText>
             )}
           </SettingsGroup>

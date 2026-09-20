@@ -10,7 +10,7 @@
 //
 //   npx tsx scripts/probe-report-summary.mjs
 
-import { facts, numbersIn, withoutInvention } from '../app/lib/report-summary.ts';
+import { facts, numbersIn, withoutFigures } from '../app/lib/report-summary.ts';
 
 let passed = 0;
 let failed = 0;
@@ -108,6 +108,54 @@ truthy('the kinds are counted', movement.lines.some((l) => l.includes('ballet 2'
 
 check('nothing logged means nothing but the period', facts(empty).lines.length, 1);
 
+group('which end of the record is which');
+
+// THE WORST BUG THIS FILE HAS HAD. loadReport returns every row OLDEST FIRST,
+// so the report's own tables read forwards in time. This file read them
+// backwards and announced a 4.2 kg loss as a gain - on page one, in the block
+// the model is told to trust, with the guard passing it happily because both
+// numbers are real. A clinician would have read the opposite of what happened.
+const trend = facts({
+  ...empty,
+  weights: [
+    { at: '2026-07-01', weight: 78.4, fat: 34.1, muscle: null },
+    { at: '2026-08-01', weight: 76.0, fat: 32.6, muscle: null },
+    { at: '2026-09-01', weight: 74.2, fat: 31.5, muscle: null },
+  ],
+});
+const weightLine = trend.lines.find((l) => l.startsWith('Weight:'));
+truthy('a fall is stated as a fall', weightLine.includes('from 78.4 kg') && weightLine.includes('to 74.2 kg'));
+const fatLine = trend.lines.find((l) => l.startsWith('Body fat:'));
+truthy('and so is a fall in body fat', fatLine.includes('from 34.1%') && fatLine.includes('to 31.5%'));
+
+const waist = facts({
+  ...empty,
+  metrics: [
+    { at: '2026-07-01', name: 'waist', value: '92 cm' },
+    { at: '2026-08-01', name: 'waist', value: '90 cm' },
+    { at: '2026-09-01', name: 'waist', value: '87 cm' },
+  ],
+});
+truthy(
+  '"most recent" is the most recent one',
+  waist.lines.some((l) => l.includes('most recent 87 cm'))
+);
+
+group('an average is not allowed to be nonsense');
+
+// 419.67 minutes floored to 6 hours and rounded to 60 minutes is "6h 60m" - a
+// figure that cannot exist, in the one block whose whole job is being exact.
+const awkward = facts({
+  ...empty,
+  sleep: [
+    { night: '2026-09-18', minutes: 420, quality: null, awakenings: null },
+    { night: '2026-09-19', minutes: 420, quality: null, awakenings: null },
+    { night: '2026-09-20', minutes: 419, quality: null, awakenings: null },
+  ],
+});
+truthy('no sixty-minute hour', !awkward.lines.some((l) => l.includes('60m')));
+truthy('it rounds up to the hour instead', awkward.lines.some((l) => l.includes('7h')));
+
 group('reading numbers out of prose');
 
 check('plain', [...numbersIn('4 nights')], ['4']);
@@ -116,117 +164,117 @@ check('a decimal survives', [...numbersIn('74.5 cm')], ['74.5']);
 check('a trailing zero is not a second number', [...numbersIn('8 and 8.0')], ['8']);
 check('no numbers at all', [...numbersIn('she slept badly')], []);
 
-group('the guard: an invented figure takes its sentence with it');
+group('the guard: the summary states no figures at all');
 
-const allowed = new Set(['2', '1900', '100']);
+// WHY THIS AND NOT A WHITELIST. The first guard kept every number the facts
+// contained and dropped sentences naming anything else. A review broke it three
+// ways in one afternoon, all the same flaw: a bare digit carries no meaning.
+// "7 nights" licensed "7 hours a night", "woke 7 times" and "body fat around
+// 7%". The records' own free text licensed more. A date in scope licensed
+// almost every small integer in the language. So the division moved: the app
+// prints the figures, the model writes the prose, and any figure in the prose
+// goes.
 
 check(
-  'a summary that stays inside the facts is untouched',
-  withoutInvention('Two days were logged, averaging 1900 kcal.', allowed).text,
-  'Two days were logged, averaging 1900 kcal.'
+  'prose with no figures is untouched',
+  withoutFigures('The records describe recurring swelling after long periods seated.').text,
+  'The records describe recurring swelling after long periods seated.'
 );
 
 check(
-  'a figure that was never counted is dropped',
-  withoutInvention(
-    'Two days were logged. Her intake averaged 2400 kcal across the week.',
-    allowed
-  ),
-  { text: 'Two days were logged.', dropped: ['Her intake averaged 2400 kcal across the week.'] }
+  'a figure takes its sentence with it',
+  withoutFigures('Swelling recurred. It was noted on 4 of the days.'),
+  { text: 'Swelling recurred.', dropped: ['It was noted on 4 of the days.'] }
 );
 
 check(
-  'the whole sentence goes, not just the number',
-  withoutInvention('Sleep averaged 6.5 hours, which is below the usual range.', allowed).text,
+  'the three the whitelist waved through are all gone now',
+  withoutFigures('She slept 7 hours a night on average and woke 7 times. Body fat is around 7%.').text,
   ''
 );
 
 check(
-  'several inventions, several drops',
-  withoutInvention('A is 1900. B is 77. C is 100. D is 3.', allowed).dropped,
-  ['B is 77.', 'D is 3.']
-);
-
-check(
-  'a number quoted from the records is allowed',
-  withoutInvention('The entry of 2026-09-18 describes a headache.', allowed, new Set(['2026', '9', '18'])).text,
-  'The entry of 2026-09-18 describes a headache.'
-);
-
-check(
-  'prose with no numbers always passes',
-  withoutInvention('The records describe recurring headaches and broken sleep.', new Set()).text,
-  'The records describe recurring headaches and broken sleep.'
-);
-
-check(
-  'a summary that is entirely invented comes back empty',
-  withoutInvention('Weight fell 3 kg. Protein rose to 130 g.', allowed).text,
+  'a laundered percentage from a record does not survive',
+  withoutFigures('Migraines affected 40% of the days in this period.').text,
   ''
 );
 
-group('a decimal point is not the end of a sentence');
-
-// THE BUG THIS GROUP EXISTS FOR. Splitting on every full stop cut "74.5" in
-// half and then threw away both halves, because neither 74 nor 5 is a figure
-// the facts contain. A guard that deletes CORRECT sentences is worse than no
-// guard at all.
-const decimals = new Set(['74.5', '7.5', '2']);
-
 check(
-  'a decimal inside a sentence survives',
-  withoutInvention('Her waist measured 74.5 cm at the most recent reading.', decimals).text,
-  'Her waist measured 74.5 cm at the most recent reading.'
+  'numbers written as words go too',
+  withoutFigures('Headaches were noted on fourteen of the ninety days.').text,
+  ''
 );
 
 check(
-  'and is not reported as dropped',
-  withoutInvention('Her waist measured 74.5 cm.', decimals).dropped,
-  []
+  'and so does a quantifier standing in for a count',
+  withoutFigures('Most of the nights were broken.').text,
+  ''
 );
 
 check(
-  'two sentences, one with a decimal, both kept',
-  withoutInvention('Sleep averaged 7.5 hours. That rests on 2 nights.', decimals).text,
-  'Sleep averaged 7.5 hours. That rests on 2 nights.'
+  'a decimal cannot hide',
+  withoutFigures('Her waist measured 74.5 cm.').text,
+  ''
 );
 
 check(
-  'the invented one still goes, and takes only itself',
-  withoutInvention('Her waist measured 74.5 cm. It fell 3.2 cm over the period.', decimals),
-  {
-    text: 'Her waist measured 74.5 cm.',
-    dropped: ['It fell 3.2 cm over the period.'],
-  }
+  'a date is a figure for this purpose',
+  withoutFigures('The first entry is dated 2026-09-18.').text,
+  ''
 );
 
 check(
-  'an abbreviation mid-sentence does not split off a fragment',
-  withoutInvention('The records were reviewed by Dr. Okafor on 2 occasions.', decimals).text,
-  'The records were reviewed by Dr. Okafor on 2 occasions.'
+  'honest description of thinness survives, which is the point',
+  withoutFigures(
+    'Sleep was described on only a few of the nights, so it should not be read as a picture of usual sleep.'
+  ).text,
+  'Sleep was described on only a few of the nights, so it should not be read as a picture of usual sleep.'
+);
+
+group('the splitter does not mangle a sentence it keeps');
+
+check(
+  'an abbreviation is not the end of a sentence',
+  withoutFigures('The entries were reviewed by Dr. Okafor and describe the same pattern.').text,
+  'The entries were reviewed by Dr. Okafor and describe the same pattern.'
+);
+
+check(
+  'and one before a dropped clause does not leave a dangling fragment',
+  withoutFigures('Movement was logged regularly, i.e. on most weekdays.').text,
+  ''
+);
+
+check(
+  'two clean sentences stay two clean sentences',
+  withoutFigures('Swelling recurred. It followed long periods seated.').text,
+  'Swelling recurred. It followed long periods seated.'
 );
 
 group('paragraphs survive the guard');
 
+// A blank line, without writing an escape that a shell or a JSON layer can eat.
+const GAP = String.fromCharCode(10, 10);
+
 check(
   'a blank line stays a blank line',
-  withoutInvention('First para, 2 nights.\n\nSecond para, 74.5 cm.', decimals).text,
-  'First para, 2 nights.\n\nSecond para, 74.5 cm.'
+  withoutFigures(`Swelling recurred.${GAP}Sleep was described rarely.`).text,
+  `Swelling recurred.${GAP}Sleep was described rarely.`
 );
 
 check(
   'a paragraph emptied by the guard leaves no blank gap',
-  withoutInvention('First para, 2 nights.\n\nWeight fell 9 kg.', decimals).text,
-  'First para, 2 nights.'
+  withoutFigures(`Swelling recurred.${GAP}Weight fell by 9 kg.`).text,
+  'Swelling recurred.'
 );
 
 check(
   'the surviving paragraph of three keeps its place',
-  withoutInvention('A, 2 nights.\n\nInvented 9 kg.\n\nC, 74.5 cm.', decimals).text,
-  'A, 2 nights.\n\nC, 74.5 cm.'
+  withoutFigures(`A recurred.${GAP}Invented 9 kg.${GAP}C was thin.`).text,
+  `A recurred.${GAP}C was thin.`
 );
 
-group('the figures a real summary would draw on all pass their own guard');
+group('the figures the app prints are the ones it counted');
 
 const real = facts({
   ...empty,
@@ -234,12 +282,10 @@ const real = facts({
   sleep: [{ night: '2026-09-18', minutes: 445, quality: 'broken', awakenings: 2 }],
   activity: [{ at: '2026-09-18T09:00:00Z', what: 'ballet', minutes: 90, intensity: null }],
 });
-const quoted = real.lines.join(' ');
-check(
-  'every number the facts state survives a check against themselves',
-  withoutInvention(quoted, real.numbers).dropped,
-  []
-);
+truthy('they are lines meant to be read', real.lines.every((l) => l.endsWith('.')));
+truthy('and they carry figures, which is why they exist', numbersIn(real.lines.join(' ')).size > 0);
 
-console.log(`\n  ${passed} passed, ${failed} failed\n`);
+console.log(`
+  ${passed} passed, ${failed} failed
+`);
 process.exit(failed === 0 ? 0 : 1);
