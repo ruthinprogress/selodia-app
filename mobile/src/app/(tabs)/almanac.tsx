@@ -8,7 +8,6 @@ import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacIntro } from '@/components/almanac-intro';
 import { AlmanacTabs } from '@/components/almanac-tabs';
 import { InsightsLog } from '@/components/insights-log';
-import { MovementLibrary } from '@/components/movement-library';
 import { InsightsPortrait } from '@/components/insights-portrait';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { MeProtocol } from '@/components/me-protocol';
@@ -23,14 +22,14 @@ import { splitByTab, type AlmanacRow, type AlmanacTab } from '@/lib/insights';
 import { portraitFrom } from '@/lib/roundup';
 import { supabase } from '@/lib/supabase';
 
-// The Almanac, redesigned (build spec, Part Ten, 2026-09-12): three views of one
-// destination - Insights, Movement and Me - chosen by a switch at the top.
+// The Almanac (build spec, Part Ten): what has been learned. Two views of one
+// destination now - Insights and Me - chosen by a switch at the top.
 //
-// THIS IS INSIGHTS SLICE 1: the screen. Insights shows the living portrait and
-// the log. Movement shows the saved plans exactly as they have always worked,
-// so a plan in use is never more than a tap away while the full Movement tab
-// (My Week, My Plans by goal, My Rules) waits its turn. Me is empty until the
-// conversational save for Me exists.
+// MOVEMENT LEFT ON 2026-09-20 for the Plans tab, and the screen is better for
+// it: "Plans = the future = intentions ... Almanac = the past = observations."
+// Insights shows the living portrait and the log; Me is her own reference,
+// which stays here deliberately - it is accumulated knowledge, not
+// configuration, and it is not going into Settings.
 //
 // The old single list grouped by category is gone, and the category page with
 // it: categories were the previous design's way to organise, and the three
@@ -42,9 +41,9 @@ import { supabase } from '@/lib/supabase';
 
 // App copy approved by Ruth, 2026-09-12. Shown on the two views that can be
 // empty, beneath the Almanac's shoot illustration.
-export const MOVEMENT_EMPTY_HEADING = 'No plans yet';
-export const MOVEMENT_EMPTY_BODY =
-  "Tell me in chat what you'd like to work towards, and we'll build a plan for it. It lives here once you've said yes to keeping it.";
+// The plans that used to live here moved to their own tab on 2026-09-20 (see
+// plans.tsx): the Almanac answers what we have learned, and a plan is what she
+// intends to do. Their empty state moved with them.
 export const ME_EMPTY_HEADING = 'Nothing here yet';
 export const ME_EMPTY_BODY =
   "When you settle on something in chat, like a supplement, a skincare routine or a weekly call, I'll offer to keep it here with the reason why.";
@@ -112,10 +111,9 @@ export default function AlmanacScreen() {
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Almanac</ThemedText>
 
-            {/* Allowed past the page margin (2026-09-18). Three labels plus
-                their padding can be wider than the text column, and a switch is
-                a control, not a sentence - the margin exists so prose has room
-                to breathe, not to make a word truncate. */}
+            {/* Two labels since the plans left (2026-09-20), and still allowed
+                past the page margin: a switch is a control, not a sentence, and
+                the margin exists so prose has room to breathe. */}
             <SpotlightTarget id="almanac.tabs" style={styles.tabs}>
               <AlmanacTabs value={tab} onChange={setTab} />
             </SpotlightTarget>
@@ -131,8 +129,9 @@ export default function AlmanacScreen() {
                 <InsightsPortrait statements={portrait.statements} range={portrait.range} />
                 {loaded && byTab.insights.length > 0 && (
                   <SpotlightTarget id="almanac.insights">
-                    {/* The same block the Movement tab opens with, so the two
-                        views of one screen introduce themselves the same way. */}
+                    {/* The same block the Plans tab opens with, so the two
+                        places a person reads their own record introduce
+                        themselves the same way. */}
                     <SectionIntro title={"What you've noticed"}>
                       Symptoms, patterns and notes worth keeping.
                     </SectionIntro>
@@ -140,18 +139,6 @@ export default function AlmanacScreen() {
                   </SpotlightTarget>
                 )}
               </>
-            )}
-
-            {tab === 'movement' && loaded && (
-              <SpotlightTarget id="almanac.movement">
-                {byTab.movement.length > 0 ? (
-                  // A library of practices rather than a list of entries
-                  // (Ruth's brief, 2026-09-18). See movement-library.tsx.
-                  <MovementLibrary entries={byTab.movement} onOpen={setOpenId} />
-                ) : (
-                  <AlmanacEmptyState heading={MOVEMENT_EMPTY_HEADING} body={MOVEMENT_EMPTY_BODY} />
-                )}
-              </SpotlightTarget>
             )}
 
             {tab === 'me' && loaded && (

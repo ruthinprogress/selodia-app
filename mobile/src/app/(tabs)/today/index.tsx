@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HydrationToast, type WaterAction } from '@/components/hydration-card';
 import { OverviewPanel } from '@/components/overview-panel';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
+import { MaxContentWidth, PageInset } from '@/constants/theme';
 
 // THE NO-SCROLL RULE IS RETIRED, 2026-09-16, and it is worth saying why rather
 // than quietly deleting it.

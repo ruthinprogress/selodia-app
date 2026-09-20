@@ -3,6 +3,10 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { useTheme } from '@/hooks/use-theme';
 
+// NAMES UNDER THE ICONS (2026-09-20). They were hidden while there were four
+// destinations and each icon did the explaining. At five, two of them new, a
+// bar of unlabelled symbols is a guessing game - and her design shows the
+// names. Android sizes them itself in a five-item bar.
 export default function AppTabs() {
   // Through useTheme like everything else. This read Colors[scheme] directly
   // until 2026-09-03, which meant the tab bar kept following the system even
@@ -25,7 +29,7 @@ export default function AppTabs() {
       iconColor={colors.textSecondary}
     >
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label hidden>Chat</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Chat</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="chatbubble-ellipses-outline" />}
         />
@@ -35,7 +39,7 @@ export default function AppTabs() {
           which were three routes inside the old Body tab. Second from the left
           because logging is the thing done most often after talking. */}
       <NativeTabs.Trigger name="log">
-        <NativeTabs.Trigger.Label hidden>Log</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Log</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="create-outline" />}
         />
@@ -46,14 +50,24 @@ export default function AppTabs() {
           week's flower and what she burns. The history views it used to hold
           have moved to Log. */}
       <NativeTabs.Trigger name="today">
-        <NativeTabs.Trigger.Label hidden>Today</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="today-outline" />}
         />
       </NativeTabs.Trigger>
 
+      {/* PLANS (Ruth's navigation brief, 2026-09-20): "What am I intentionally
+          following?" Everything that was the Almanac's Movement view, moved
+          rather than rebuilt. */}
+      <NativeTabs.Trigger name="plans">
+        <NativeTabs.Trigger.Label>Plans</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="compass-outline" />}
+        />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="almanac">
-        <NativeTabs.Trigger.Label hidden>Almanac</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Almanac</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="book-outline" />}
         />

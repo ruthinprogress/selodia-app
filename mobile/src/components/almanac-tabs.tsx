@@ -9,9 +9,10 @@ import type { AlmanacTab } from '@/lib/insights';
 // The control itself is segmented-tabs.tsx, shared with the Log tab since
 // 2026-09-17. Five rebuilds of this strip - "Insigh", "Moveme", "M" - are
 // recorded there, in the component that now has to be right once.
+// INSIGHTS AND ME (2026-09-20). Movement was the third, and is now the Plans
+// tab: "If something belongs in two places, the IA is probably wrong."
 const TABS: { id: AlmanacTab; label: string }[] = [
   { id: 'insights', label: 'Insights' },
-  { id: 'movement', label: 'Movement' },
   { id: 'me', label: 'Me' },
 ];
 

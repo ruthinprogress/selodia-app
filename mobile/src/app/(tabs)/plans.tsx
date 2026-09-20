@@ -1,0 +1,121 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
+import { AlmanacEmptyState } from '@/components/almanac-empty-state';
+import { MovementLibrary } from '@/components/movement-library';
+import { SectionIntro } from '@/components/section-intro';
+import { SettingsLink } from '@/components/settings-link';
+import { SpotlightScroll } from '@/components/spotlight-provider';
+import { SpotlightTarget } from '@/components/spotlight-target';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
+import { splitByTab, type AlmanacRow } from '@/lib/insights';
+import { supabase } from '@/lib/supabase';
+
+// PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
+// "every tab should answer a different user question, with no overlap ...
+// Plans: what am I intentionally following?"
+//
+// Nothing about a plan changes here - the library, the detail sheet, the
+// sessions - only where it lives. It was the Almanac's Movement view, which
+// made the Almanac answer two questions at once: what have we learned, and
+// what am I following. Her distinction is the one worth keeping: "Plans = the
+// future = intentions ... Almanac = the past = observations ... Completing a
+// workout records an event in the Almanac, but the workout itself continues to
+// live in Plans."
+
+export const PLANS_EMPTY_HEADING = 'No plans yet';
+export const PLANS_EMPTY_BODY =
+  "Tell me in chat what you'd like to work towards, and we'll build a plan for it. It lives here once you've said yes to keeping it.";
+
+export default function PlansScreen() {
+  const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  const [rows, setRows] = useState<AlmanacRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const { data, error } = await supabase
+          .from('almanac_entries')
+          .select('id, kind, title, category, content, created_at, updated_at')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+        if (!cancelled) {
+          setRows((error ? [] : (data ?? [])) as unknown as AlmanacRow[]);
+          setLoaded(true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
+
+  // The same split the Almanac uses, so an entry is never in both places: what
+  // lands in `movement` is a plan, and it is here.
+  const plans = splitByTab(rows).movement;
+  const openEntry: DetailEntry | null = rows.find((r) => r.id === openId) ?? null;
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+          <SettingsLink />
+          <SpotlightScroll scrollRef={scrollRef}>
+            <ThemedText type="display">Plans</ThemedText>
+
+            {loaded && (
+              <SpotlightTarget id="almanac.movement">
+                {plans.length > 0 ? (
+                  <>
+                    <SectionIntro title="Your movement collection">
+                      Saved practices, ready whenever they fit your day.
+                    </SectionIntro>
+                    <MovementLibrary entries={plans} onOpen={setOpenId} />
+                  </>
+                ) : (
+                  <AlmanacEmptyState heading={PLANS_EMPTY_HEADING} body={PLANS_EMPTY_BODY} />
+                )}
+              </SpotlightTarget>
+            )}
+          </SpotlightScroll>
+        </ScrollView>
+
+        <AlmanacDetail
+          entry={openEntry}
+          onClose={() => setOpenId(null)}
+          onEdit={(entry) => {
+            setOpenId(null);
+            router.push({
+              pathname: '/',
+              params: { prefill: `I'd like to update my plan "${entry.title}"... ` },
+            });
+          }}
+        />
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  content: {
+    paddingHorizontal: PageInset.horizontal,
+    paddingTop: PageInset.top,
+    paddingBottom: PageInset.bottom,
+    gap: Spacing.three,
+    maxWidth: MaxContentWidth,
+    width: '100%',
+    alignSelf: 'center',
+    flexGrow: 1,
+  },
+});
