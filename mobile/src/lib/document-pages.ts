@@ -1,6 +1,4 @@
-import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
 import { ApiError, authedPost } from '@/lib/api';
@@ -30,6 +28,34 @@ import { base64Bytes } from '@/lib/image-logging';
 // by default. Every photographed page is resized and re-saved as JPEG before it
 // is sent, which fixes the format and the size in one step, so what leaves the
 // phone is always something the model can read and small enough to arrive.
+
+// TWO NATIVE MODULES, LOADED ONLY WHEN THEY ARE USED, AND THIS IS NOT A STYLE
+// CHOICE - IT IS THE DIFFERENCE BETWEEN A WORKING APP AND A WHITE SCREEN.
+//
+// expo-document-picker's entry point is one line: `requireNativeModule(...)`,
+// evaluated the moment the module is imported. An over-the-air update cannot
+// add native code, so on a build without that module the import THROWS, and it
+// throws while Chat is loading its own imports - taking the whole screen with
+// it. Not the file picker: the conversation.
+//
+// A top-level `import` runs on load whether the feature is touched or not, so
+// the only safe shape is a require at the moment of use, inside a try. What
+// happens when it is missing then is an honest, local nothing: the PDF option
+// is not offered, and a photograph is sent at its original size.
+function nativeModule<T>(load: () => T): T | null {
+  try {
+    return load();
+  } catch {
+    return null;
+  }
+}
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+const documentPicker = () =>
+  nativeModule<typeof import('expo-document-picker')>(() => require('expo-document-picker'));
+const imageManipulator = () =>
+  nativeModule<typeof import('expo-image-manipulator')>(() => require('expo-image-manipulator'));
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 export type DocumentPage = { base64: string; mediaType: string; label: string };
 
@@ -92,19 +118,21 @@ const JPEG_QUALITY = 0.75;
  * size check below refusing it with words rather than a crash.
  */
 async function shrink(uri: string, mediaType: string, label: string): Promise<DocumentPage | null> {
+  const manipulator = imageManipulator();
+  if (!manipulator) return toPage(uri, mediaType, label);
   try {
-    const context = ImageManipulator.manipulate(uri);
+    const context = manipulator.ImageManipulator.manipulate(uri);
     context.resize({ width: LONG_EDGE });
     const image = await context.renderAsync();
     const out = await image.saveAsync({
       compress: JPEG_QUALITY,
-      format: SaveFormat.JPEG,
+      format: manipulator.SaveFormat.JPEG,
       base64: true,
     });
     if (!out.base64) return null;
     return { base64: out.base64, mediaType: 'image/jpeg', label };
   } catch {
-    // The native module is missing, or the file is not an image it can open.
+    // Not an image this can open. The size check below still applies.
     return toPage(uri, mediaType, label);
   }
 }
@@ -150,11 +178,7 @@ export function readableType(mimeType: string | undefined, name?: string): strin
  * control that does nothing), the option is hidden until the build that has it.
  */
 export function canPickFiles(): boolean {
-  try {
-    return typeof DocumentPicker?.getDocumentAsync === 'function';
-  } catch {
-    return false;
-  }
+  return typeof documentPicker()?.getDocumentAsync === 'function';
 }
 
 async function toPage(uri: string, mediaType: string, label: string): Promise<DocumentPage | null> {
@@ -218,9 +242,10 @@ export async function pickPageImages(source: 'camera' | 'library'): Promise<Pick
 
 /** A PDF, or a photo already saved as a file. Needs the build that has the picker. */
 export async function pickPageFiles(): Promise<PickOutcome> {
-  if (!canPickFiles()) return { ok: false, reason: 'no_file_picker' };
+  const picker = documentPicker();
+  if (!picker) return { ok: false, reason: 'no_file_picker' };
   try {
-    const result = await DocumentPicker.getDocumentAsync({
+    const result = await picker.getDocumentAsync({
       type: READABLE,
       multiple: true,
       copyToCacheDirectory: true,
