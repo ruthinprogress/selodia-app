@@ -2232,6 +2232,29 @@ Her brief, after a long look at the information architecture: *"The issue isn't 
 
 **Reviewed before it was called done**, because none of it could be tested signed-in from here. Six faults came back and were fixed the same night. Two are worth keeping: the spotlight registry held ONE registration per id, and `settings.export` now lives both on the hub row and on the page it opens - so returning from the page removed the entry the hub still owned, and nothing pulsed again for the rest of the session; it holds a list per id now. And `persistReminderChoice` ignored its own error while the switch ignored a refused schedule, so "Turn off reminders" could show Off while the phone kept firing them. The others: the hub modal had lost its Done, the date-of-birth row used the raw picker rather than the shared field (which renders nothing on web), and undoing a drink already deleted from today's list took its millilitres off twice.
 
+### The report is built from records she picks (20 September 2026)
+
+Her brief opened it: *"The PDF export should not feel like downloading data. It should feel like building a story for a specific purpose."* The first build answered that with a chooser over whole sections — Symptoms, Food, Movement — and she found the fault the same evening:
+
+> *"I may want to send my allergy clinician only my allergy history, not my knee pain, even though both live under Symptoms."*
+
+**A section is the wrong unit.** A report is now a list of **blocks**, each one three choices: where it comes from, which of it, and how much detail. Every example she gave is one of those, and a new data type joins by declaring its own grain rather than by changing the shape — sleep took an afternoon to add to the app and one line to add here.
+
+**How each source is picked, and why that grain and not another.**
+
+- **One record at a time** — symptoms, patterns, plans, summaries. Each has a title and there are few enough to read down.
+- **By a value the rows already carry** — measurements by the measure's own name (waist, resting heart rate), movement by her own words for what she did. Both are columns, not judgements.
+- **By depth, not by rows** — food is *daily totals* or *every entry*. A clinician asking about a reaction wants each entry; one looking at a pattern wants the day. Neither wants to tick three hundred meals.
+- **By period only** — water and sleep. Where the data offers no honest facet, inventing a grouping would be inventing evidence, so the only choices are the dates.
+
+**The rule underneath all of it is hers:** *"AI should analyse the selected data. AI should not decide what data is selected."* Every list on the builder is drawn from rows that exist, every filter is a value those rows carry, and no model sees the choice. That is also what answers the objection she raised next — *"if the data is just the data collected, the report can't be dismissed as AI dumps, it's the true collected data, with a summary for convenience"* — so the cover says so in plain words: the pages that follow are records as they were entered, on the dates shown, nothing generated or inferred, and any summary is labelled as one and drawn from these pages.
+
+**Symptoms print in full**, at her instruction, never trimmed: a clinician reading a symptom needs what was actually noticed, and the chooser is what keeps the document short instead.
+
+**The guard is where the guard belongs.** `readBlocks` in `app/lib/report.ts` reads the POST body field by field — an unknown source dropped, ids that are not strings dropped, a records-block with no records dropped rather than printed as an empty heading, one block per source, 200 ids and 50 names at most. It sits in the library rather than the route because it is the part worth testing: `probe-report-blocks.mjs`, 26 checks. A phone still running the old bundle sends `{sections, cardIds}`, is recognised, and is told to reopen the app rather than told to choose something it already chose.
+
+**Still to come:** an Export button on each screen that opens the builder with that screen's records already ticked; saved recipes for a report she rebuilds each visit; and an AI summary at the top, written from the selected blocks only, labelled as a summary, and removable before she sends it.
+
 ### Design changes
 
 15. **~~The water tracker loses its words~~ — built 19 September 2026 from her ChatGPT brief, needs her eye.** A droplet drawn in vectors (no AI illustration) that fills as she drinks, today's amount in the serif, and a personal goal that says why when tapped: about 1.6 L from drinks (EFSA's 2.0 L of total water for women, less what food supplies) plus about 500 ml per hour of activity logged today. No weather, because the app has none, and no weight formula, because the reference intake does not scale by weight. The droplet sits at four-fifths at the goal and keeps filling past it, with no tick or colour change: "here's where you are today", not a score. The + opens four drawn drinks and "Other amount..."; a tap logs. **Undo, never delete** (her second brief the same evening): no minus, delete or edit control on the card; a floating note above the navigation reads "Added Bottle (500 ml)  Undo", stays five seconds, and Undo reverses only that drink, as though the tap never happened. Leaving the app closes the window and the drink stands (`components/hydration-card.tsx`, `lib/hydration-goal.ts`, probe `scripts/probe-hydration-goal.mjs`). Original item: Replace "+ Add a drink" with a soft illustrated water icon, tappable to log. The concept narrows to water rather than drinks in general.
