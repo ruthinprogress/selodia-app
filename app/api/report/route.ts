@@ -51,7 +51,12 @@ export async function POST(request: NextRequest) {
     data: { user },
     error: userError,
   } = await db.auth.getUser();
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (userError || !user) {
+    return NextResponse.json(
+      { error: 'Your session has expired. Sign in again and the report will build.' },
+      { status: 401 }
+    );
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
       )
     : [];
   if (sections.length === 0) {
-    return NextResponse.json({ error: 'Nothing was chosen for the report' }, { status: 400 });
+    return NextResponse.json({ error: 'Choose at least one thing to include.' }, { status: 400 });
   }
 
   const selection: ReportSelection = {
@@ -80,13 +85,37 @@ export async function POST(request: NextRequest) {
     note: typeof body.note === 'string' ? body.note.slice(0, 400) : null,
   };
 
+  // EACH STEP FAILS IN ITS OWN WAY, AND SAYS SO (2026-09-20). This used to be
+  // one try around both with one message - "Could not build the report just
+  // now. Please try again." - which was wrong twice over on the day it first
+  // failed: trying again could not help, and the server knew exactly what had
+  // happened and said none of it. A person cannot act on a sentence that
+  // covers every cause.
+  let data: Awaited<ReturnType<typeof loadReport>>;
+  try {
+    data = await loadReport(db, user.id, selection);
+  } catch (err) {
+    console.log('REPORT: could not read her data -', err instanceof Error ? err.message : err);
+    return NextResponse.json(
+      { error: 'Could not read your data just now. Check your connection and try again.' },
+      { status: 503 }
+    );
+  }
+
   let html: string;
   try {
-    const data = await loadReport(db, user.id, selection);
     html = renderReport(data);
   } catch (err) {
-    console.log('REPORT: could not build it -', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: 'Could not build the report' }, { status: 500 });
+    // The fault is ours, the data is fine, and trying again will do the same
+    // thing - so say that rather than inviting a pointless retry.
+    console.log('REPORT: the document could not be written -', err instanceof Error ? err.stack : err);
+    return NextResponse.json(
+      {
+        error:
+          'Your data is fine, but Selodia could not write it into a report. That is a fault in the app, and it has been recorded.',
+      },
+      { status: 500 }
+    );
   }
 
   // Expired copies go on the way in, so a report never outlives its link by
@@ -99,7 +128,10 @@ export async function POST(request: NextRequest) {
   const { error: storeError } = await db.from('report_exports').insert({ id, user_id: user.id, html });
   if (storeError) {
     console.log('REPORT: could not store the page -', storeError.message);
-    return NextResponse.json({ error: 'Could not prepare the report' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'The report was built, but could not be saved for its link. Please try again.' },
+      { status: 500 }
+    );
   }
 
   const url = new URL('/api/report', request.url);

@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { authedGet, authedPost } from '@/lib/api';
+import { ApiError, authedGet, authedPost } from '@/lib/api';
 
 // BUILD A REPORT (2026-09-20), from Ruth's brief: "The PDF export should not
 // feel like downloading data. It should feel like building a story for a
@@ -79,8 +79,13 @@ export default function ReportScreen() {
         // Everything that exists starts ticked EXCEPT the summaries, which are
         // the ones worth a deliberate choice.
         setChosen(new Set(data.sections.map((s) => s.section).filter((s) => s !== 'cards')));
-      } catch {
-        if (!cancelled) setFailed('Could not see what you have stored. Check your connection.');
+      } catch (err) {
+        if (!cancelled) {
+          setFailed(
+            (err instanceof ApiError && err.userMessage) ||
+              'Could not see what you have stored. Check your connection.'
+          );
+        }
       }
     })();
     return () => {
@@ -122,8 +127,13 @@ export default function ReportScreen() {
       // The session goes nowhere near the link: the page was rendered with it
       // and stored, and this opens a plain address that expires in 15 minutes.
       await WebBrowser.openBrowserAsync(url);
-    } catch {
-      setFailed('Could not build the report just now. Please try again.');
+    } catch (err) {
+      // The server's own sentence when it sent one - it knows which step
+      // failed, and "please try again" is wrong when trying again cannot help.
+      setFailed(
+        (err instanceof ApiError && err.userMessage) ||
+          'Could not build the report just now. Please try again.'
+      );
     } finally {
       setBusy(false);
     }

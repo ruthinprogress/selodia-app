@@ -22,7 +22,13 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly path: string
+    readonly path: string,
+    // WHAT THE SERVER SAID, FOR THE PERSON (2026-09-20). Our routes answer a
+    // failure with { error: "one sentence" }, written to be read on a phone.
+    // It was going into `message` with the status and the path around it, so
+    // every screen fell back to its own generic line and the real reason was
+    // only ever visible in a log. Null when the body carried nothing usable.
+    readonly userMessage: string | null = null
   ) {
     super(message);
     this.name = 'ApiError';
@@ -30,13 +36,20 @@ export class ApiError extends Error {
 
   static async from(path: string, response: Response): Promise<ApiError> {
     let detail = '';
+    let said: string | null = null;
     try {
-      detail = (await response.text()).slice(0, 200);
+      detail = (await response.text()).slice(0, 400);
+      const parsed = JSON.parse(detail) as { error?: unknown };
+      // A sentence, not a code: anything that looks like an identifier or a
+      // stack stays out of her way and lives in the log line instead.
+      if (typeof parsed.error === 'string' && /\s/.test(parsed.error.trim())) {
+        said = parsed.error.trim().slice(0, 200);
+      }
     } catch {
-      // A body that cannot be read must not replace the status, which is the
-      // part that actually says what went wrong.
+      // A body that cannot be read, or is not JSON, must not replace the
+      // status - which is the part that always says something.
     }
-    return new ApiError(`${path} failed (${response.status}): ${detail}`, response.status, path);
+    return new ApiError(`${path} failed (${response.status}): ${detail}`, response.status, path, said);
   }
 
   // 404 on one of our own routes never means "not found" in the domain sense -
