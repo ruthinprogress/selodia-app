@@ -9,14 +9,22 @@
 // Kept as data rather than inline in the component so the list is testable
 // without rendering.
 
-export type AddSource = 'camera' | 'library';
+export type AddSource = 'camera' | 'library' | 'file';
 
-// "Choose a file" is in the spec's sheet but is NOT here yet: expo-image-picker
-// handles the camera and the photo library only, and arbitrary files need
-// expo-document-picker — another native module, deliberately not added to this
-// build. Showing the option before it can do anything would be a dead control
-// (principle 8), so it arrives with that module rather than ahead of it.
-export const ADD_OPTIONS: { source: AddSource; label: string }[] = [
-  { source: 'camera', label: 'Take a photo' },
-  { source: 'library', label: 'Gallery' },
-];
+// "CHOOSE A FILE" ARRIVED ON 2026-09-20, with expo-document-picker, and it
+// arrived for a reason: "I wanted to upload the consultant letter with the mri
+// results ... this is something selodia needs to be able to do to help ppl."
+// A letter from a hospital is very often a PDF in an email, never a photograph.
+//
+// IT IS STILL A DEAD CONTROL ON A BUILD WITHOUT THE NATIVE MODULE, and an
+// over-the-air update cannot add native code - so the option is asked for at
+// the moment the sheet is drawn rather than listed unconditionally. Principle 8
+// holds either way: the control appears only where it works.
+export function addOptions(canOpenFiles: boolean): { source: AddSource; label: string }[] {
+  const options: { source: AddSource; label: string }[] = [
+    { source: 'camera', label: 'Take a photo' },
+    { source: 'library', label: 'Gallery' },
+  ];
+  if (canOpenFiles) options.push({ source: 'file', label: 'Choose a file' });
+  return options;
+}

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -10,6 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
 import { hasDuration } from '@/lib/activity-sheet';
 import type { AddSource } from '@/lib/composer-add';
+import { handOverDocument } from '@/lib/document-handoff';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 
 // Logging from the tab you are already looking at (Part Five).
@@ -132,6 +134,19 @@ export function QuickLogBar({
         return;
       }
       const result = await classifyAndLog(picked.image);
+
+      // A MEDICAL LETTER IS NOT A LOG. It goes to Chat, where the pages of one
+      // are gathered and read together - and the photograph she has just taken
+      // travels with her rather than being taken again.
+      if (result.status === 'document') {
+        handOverDocument([
+          { base64: result.image.base64, mediaType: result.image.mediaType, label: 'Page 1' },
+        ]);
+        setNote(null);
+        router.push('/');
+        return;
+      }
+
       setNote(messageForResult(result));
       if (result.status === 'logged') onLogged();
     } catch {
@@ -191,6 +206,7 @@ export function QuickLogBar({
       )}
 
       <ComposerAddSheet
+        allowFiles={false}
         visible={addOpen}
         onSelect={(source) => void addPhoto(source)}
         onCancel={() => setAddOpen(false)}

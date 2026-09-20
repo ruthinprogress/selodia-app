@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { consentStatus, recordCarriedConsentIfMissing } from '@/lib/consent';
 import { RESUME_ROUTE, type OnboardingStep } from '@/lib/onboarding-step';
+import { clearDocumentHandoff } from '@/lib/document-handoff';
 import { clearSnapshots } from '@/lib/snapshot';
 import { supabase } from '@/lib/supabase';
 
@@ -65,7 +66,12 @@ export function useAuthGuard(): { ready: boolean } {
       // What the screens remembered goes with the session (2026-09-20). The
       // snapshots exist to paint a screen instantly for the person who just
       // closed the app; they must not outlive that person being signed in.
-      if (event === 'SIGNED_OUT') void clearSnapshots();
+      if (event === 'SIGNED_OUT') {
+        void clearSnapshots();
+        // A medical letter waiting to be handed from Today to Chat belongs to
+        // whoever signed in, and to nobody who signs in after them.
+        clearDocumentHandoff();
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);

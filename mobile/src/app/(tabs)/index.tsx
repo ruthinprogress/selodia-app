@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ChatBubble } from '@/components/chat-bubble';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
+import { DocumentTray } from '@/components/document-tray';
 import { VoiceControl } from '@/components/voice-control';
 import { VoiceNoteButton } from '@/components/voice-note-button';
 import { ConversationLayout } from '@/components/conversation-layout';
@@ -28,6 +29,15 @@ import { useChatScroll } from '@/hooks/use-chat-scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { attachImageUrls, signCardImageUrls } from '@/lib/chat-images';
 import type { AddSource } from '@/lib/composer-add';
+import { collectDocument, hasDocumentWaiting } from '@/lib/document-handoff';
+import {
+  MAX_PAGES as MAX_DOCUMENT_PAGES,
+  pickFailureMessage,
+  pickPageFiles,
+  pickPageImages,
+  readDocument,
+  type DocumentPage,
+} from '@/lib/document-pages';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
@@ -225,6 +235,17 @@ export default function ChatScreen() {
   const [offerReminders, setOfferReminders] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  // THE PAGES OF A LETTER, waiting to be read together. See document-tray.tsx:
+  // a document is the one thing in this app gathered before it is handled,
+  // because the hospital number and the plan are rarely on the same side.
+  const [documentPages, setDocumentPages] = useState<DocumentPage[]>(() =>
+    // A letter photographed on Today arrives here rather than being taken
+    // again. Collected on first render so the tray is already open when the
+    // screen appears - she pressed a camera button, and the next thing she
+    // sees should be her page in the tray, not an empty chat.
+    hasDocumentWaiting() ? collectDocument() : []
+  );
+  const [readingDocument, setReadingDocument] = useState(false);
   // ARRIVING FROM THE LOG'S PHOTO ROW. The sheet opens itself, so the tap that
   // said "a photo" leads to the two choices rather than to a chat screen where
   // nothing visible has happened. Guarded by its own flag, not by the param, so
@@ -497,6 +518,16 @@ export default function ChatScreen() {
   async function handleAdd(source: AddSource) {
     setAddOpen(false);
     if (picking) return;
+
+    // A FILE IS NOT CLASSIFIED, IT IS A DOCUMENT. Someone who goes looking
+    // through their files for something to hand Selodia is holding a letter,
+    // not a plate of food - and the classifier cannot read a PDF at all. So
+    // this goes straight to the tray, where she can add the rest of the pages.
+    if (source === 'file') {
+      await addDocumentPages('file');
+      return;
+    }
+
     setPicking(true);
     try {
       const picked = await pickImage(source);
@@ -515,6 +546,27 @@ export default function ChatScreen() {
       }
 
       const result = await classifyAndLog(picked.image);
+
+      // A MEDICAL DOCUMENT GOES TO THE TRAY, not to the log. The photo she has
+      // just taken becomes page one, and nothing is read or saved until she
+      // says the letter is complete - which is the only way a three-sided
+      // consultant letter arrives as one record rather than three.
+      if (result.status === 'document') {
+        setDocumentPages((pages) =>
+          pages.length >= MAX_DOCUMENT_PAGES
+            ? pages
+            : [
+                ...pages,
+                {
+                  base64: result.image.base64,
+                  mediaType: result.image.mediaType,
+                  label: `Page ${pages.length + 1}`,
+                },
+              ]
+        );
+        return;
+      }
+
       const msg = messageForResult(result);
       const foodLogId = result.status === 'logged' ? (result.foodLogId ?? null) : null;
       // A photographed meal earns the same itemised table as a typed one - it is
@@ -531,6 +583,54 @@ export default function ChatScreen() {
       }
     } finally {
       setPicking(false);
+    }
+  }
+
+  // ADDING PAGES TO A DOCUMENT ALREADY IN THE TRAY. Deliberately does not
+  // classify: she has already told the app what this is by putting a page in
+  // the tray, and asking a model whether page three of a letter is a letter -
+  // when page three is often a bare list of results - would throw away a page
+  // she meant to include.
+  async function addDocumentPages(from: 'camera' | 'library' | 'file') {
+    if (picking || readingDocument) return;
+    setPicking(true);
+    try {
+      const picked = from === 'file' ? await pickPageFiles() : await pickPageImages(from);
+      if (!picked.ok) {
+        const msg = pickFailureMessage(picked.reason);
+        if (msg) setMessages((m) => [...m, { role: 'assistant', content: msg }]);
+        return;
+      }
+      setDocumentPages((pages) => [...pages, ...picked.pages].slice(0, MAX_DOCUMENT_PAGES));
+    } finally {
+      setPicking(false);
+    }
+  }
+
+  // READ THE LOT. The server holds what it reads as an offer rather than
+  // writing it, so what comes back here is a question - and the answer goes
+  // through the same conversational save every other Almanac entry uses.
+  async function handleReadDocument() {
+    if (readingDocument || documentPages.length === 0) return;
+    setReadingDocument(true);
+    try {
+      const result = await readDocument(documentPages);
+      if (!result.ok) {
+        setMessages((m) => [...m, { role: 'assistant', content: result.message }]);
+        return;
+      }
+      // The pages go the moment they have been read. They were never uploaded
+      // to be kept, and holding them in memory after the fact would be the app
+      // quietly storing a medical document.
+      setDocumentPages([]);
+      setMessages((m) => [
+        ...m,
+        { role: 'assistant', content: `${result.card.body}
+
+${result.message}` },
+      ]);
+    } finally {
+      setReadingDocument(false);
     }
   }
 
@@ -848,6 +948,20 @@ export default function ChatScreen() {
             box you are reading this in does. Text grows downward until it
             reaches the ceiling and only then scrolls, so a long message stays
             visible while it is being written, which is the whole complaint. */}
+        {/* ABOVE THE COMPOSER, not over the conversation: she may want to look
+            back at what was said while deciding whether she has every page,
+            and a sheet on top would take that away. */}
+        <DocumentTray
+          pages={documentPages}
+          busy={readingDocument || picking}
+          onAddPhoto={() => void addDocumentPages('camera')}
+          onAddLibrary={() => void addDocumentPages('library')}
+          onAddFile={() => void addDocumentPages('file')}
+          onRemove={(i) => setDocumentPages((pages) => pages.filter((_, n) => n !== i))}
+          onRead={() => void handleReadDocument()}
+          onCancel={() => setDocumentPages([])}
+        />
+
         <ThemedView style={styles.inputRow}>
           {/* No onActivate: there is nothing to "press" on a text field, and
               stealing focus behind a closing overlay would put a keyboard up

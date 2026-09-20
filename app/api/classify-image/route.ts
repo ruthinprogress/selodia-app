@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
             properties: {
               kind: {
                 type: 'string',
-                enum: ['body_measurement', 'food', 'activity', 'unclear'],
+                enum: ['body_measurement', 'food', 'activity', 'document', 'unclear'],
                 description: 'The kind of log this photo is, or unclear.',
               },
             },

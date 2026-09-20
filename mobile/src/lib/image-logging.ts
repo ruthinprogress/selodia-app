@@ -21,7 +21,7 @@ const PICKER_QUALITY = 0.6;
 // fails immediately with something readable rather than after a long upload.
 const MAX_BASE64_BYTES = 8 * 1024 * 1024;
 
-export type ImageKind = 'body_measurement' | 'food' | 'activity' | 'unclear';
+export type ImageKind = 'body_measurement' | 'food' | 'activity' | 'document' | 'unclear';
 
 export type PickedImage = { base64: string; mediaType: string };
 
@@ -61,6 +61,13 @@ export type ImageLogResult =
         muscle_kg?: number | null;
       } | null;
     }
+  // A MEDICAL DOCUMENT IS NOT LOGGED, IT IS GATHERED. Every other kind here is
+  // written the moment it is recognised, because a plate of food is one
+  // photograph and belongs to one day. A consultant letter is three sides, and
+  // what she needs is spread over them - so this status carries the photo back
+  // to the caller, which puts it in the document tray and waits for the rest.
+  // Nothing is read and nothing is saved until she says the letter is complete.
+  | { status: 'document'; image: PickedImage }
   | { status: 'unclear' }
   | { status: 'cancelled' }
   | { status: 'denied'; source: AddSource }
@@ -137,6 +144,7 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
   }
 
   if (kind === 'unclear') return { status: 'unclear' };
+  if (kind === 'document') return { status: 'document', image };
 
   // What each parse route hands back differs, so the saved row is captured here
   // rather than discarded - it is the raw material for the acknowledgment.
@@ -238,6 +246,10 @@ export function messageForResult(result: ImageLogResult): string | null {
         ? `You've already got today's reading logged, at ${figure}. I've left it as it is.`
         : "You've already got a reading logged for today, so I've left it as it is.";
     }
+    // The tray says everything that needs saying, and is on screen. A line in
+    // the thread as well would be the app narrating its own UI.
+    case 'document':
+      return null;
     case 'unclear':
       return "I couldn't quite make that out. Want to just tell me what it was instead?";
     case 'too_large':

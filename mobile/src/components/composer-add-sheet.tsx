@@ -4,7 +4,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ADD_OPTIONS, type AddSource } from '@/lib/composer-add';
+import { addOptions, type AddSource } from '@/lib/composer-add';
+import { canPickFiles } from '@/lib/document-pages';
 
 // The composer's "+" action sheet (build item 10b, step 1).
 //
@@ -14,18 +15,23 @@ import { ADD_OPTIONS, type AddSource } from '@/lib/composer-add';
 // and the image is classified afterwards. Asking someone to categorise their
 // own photo would be the closed menu the free-text philosophy exists to reject.
 //
-// "Choose a file" is absent: expo-image-picker covers the camera and the photo
-// library only, and arbitrary files need expo-document-picker - another native
-// module, deliberately kept out of this build. See composer-add.ts.
+// "Choose a file" appears only on a build that can open one - see
+// composer-add.ts and canPickFiles(). A PDF is how a hospital letter usually
+// arrives, and it was added the day Ruth tried to give Selodia one.
 
 export function ComposerAddSheet({
   visible,
   onSelect,
   onCancel,
+  // Off on the Today quick-log bar: a file is always a document, documents are
+  // read in Chat, and a control that hands its result to another screen does
+  // not belong on a bar whose whole promise is logging without leaving Today.
+  allowFiles = true,
 }: {
   visible: boolean;
   onSelect: (source: AddSource) => void;
   onCancel: () => void;
+  allowFiles?: boolean;
 }) {
   const theme = useTheme();
   if (!visible) return null;
@@ -39,7 +45,7 @@ export function ComposerAddSheet({
       />
       <View style={styles.bottom} pointerEvents="box-none">
         <ThemedView style={styles.sheet}>
-          {ADD_OPTIONS.map((o) => (
+          {addOptions(allowFiles && canPickFiles()).map((o) => (
             <Pressable
               key={o.source}
               onPress={() => onSelect(o.source)}
