@@ -35,21 +35,25 @@ export const SPOTLIGHT_TARGETS = {
   'chat.settings': 'the Settings link at the top of Chat',
   'chat.add': 'the "+" button beside the message box, which offers a photo or a file',
   'chat.composer': 'the message box itself, where they type to you',
-  'body.food': 'the "Food" heading on the Body tab, which opens the food detail',
-  'body.measurements': 'the "Body" heading on the Body tab, which opens the measurement detail',
-  'body.activity': 'the "Activity" heading on the Body tab, which opens the activity detail',
-  'overview.stats': 'the weight and muscle figures under the "Body" heading',
-  'overview.calories': "today's calorie figure under the \"Food\" heading",
-  'overview.protein': "today's protein figure under the \"Food\" heading",
-  'overview.water': 'the drink total and the quick-tap beside it, at the foot of the Body tab',
+  // THE IDS KEPT THEIR OLD NAMES AND THE SCREENS DID NOT (2026-09-20). Body
+  // became Today, its histories moved to Log, and Movement left the Almanac for
+  // Plans. Renaming an id would break the app's own registry for no gain; the
+  // descriptions are what the model reads, so those are what had to be true.
+  'body.food': 'the "Food" heading on Today, which opens the food log',
+  'body.measurements': 'the "Body" heading on Today, which opens the measurements log',
+  'body.activity': 'the "Activity" heading on Today, which opens the movement log',
+  'overview.stats': 'the weight and muscle figures under the "Body" heading on Today',
+  'overview.calories': "today's calorie figure under the \"Food\" heading on Today",
+  'overview.protein': "today's protein figure under the \"Food\" heading on Today",
+  'overview.water': 'the drink total and the quick-tap beside it, at the foot of Today',
   'food.entries': "today's food entries, where tapping one opens its breakdown",
-  'measurements.week': 'the week stepper on Measurements, for moving between weeks',
-  'measurements.export': 'the link to your data at the foot of Measurements',
-  'almanac.tabs': 'the Insights, Movement and Me switch at the top of the Almanac',
+  'measurements.week': 'the week stepper on the measurements log, for moving between weeks',
+  'measurements.export': 'the link to your data at the foot of the measurements log',
+  'almanac.tabs': 'the Insights and Me switch at the top of the Almanac',
   'almanac.insights': "the saved insights, symptoms and notes on the Almanac's Insights view, with their filter pills",
-  'almanac.movement': "the saved workout plans on the Almanac's Movement view",
-  'almanac.me': "the Almanac's Me view, which holds the self-care decisions they have asked to keep",
-  'settings.export': 'the data export in Settings, "Prepare my data"',
+  'almanac.movement': 'the saved workout plans on the Plans tab',
+  'almanac.me': "the Almanac's Me view, which holds the self-care decisions and medical records they have asked to keep",
+  'settings.export': 'the data and export page in Settings, which holds both a copy of everything and "Build a report"',
   'settings.delete': 'the delete-my-account control in Settings',
 } as const;
 
@@ -71,4 +75,4 @@ ${Object.entries(SPOTLIGHT_TARGETS)
 
 Rules for it. Use the id EXACTLY as written; anything else is discarded and nothing is shown. Only set it when someone is actually looking for something - never to decorate an ordinary answer, never to give a tour, and never twice in a row for the same thing. Do not mention the highlight in your words ("see it flashing", "tap the glowing one") - they may be somewhere else in the app, or looking away, and a reply that depends on an animation reads as broken when the animation is not there. Say where the thing is in plain words as though nothing were being highlighted at all.
 
-There is no id for the three tabs themselves, and that is deliberate - do not try to invent one. When what someone needs is on a different tab, just tell them which tab it is on and what to tap once they are there.`;
+There is no id for the tabs themselves, and that is deliberate - do not try to invent one. When what someone needs is on a different tab, just tell them which tab it is on and what to tap once they are there.`;
