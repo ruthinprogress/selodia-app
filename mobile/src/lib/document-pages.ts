@@ -22,9 +22,14 @@ import { base64Bytes } from '@/lib/image-logging';
 // Asked how multi-page should work, she declined the incremental option:
 // "Lets just get those right the first time. Please make it so it can accept
 // all photo formats and pdf." So: several photos at once from the gallery, one
-// at a time from the camera, PDFs, and the formats a phone actually produces -
-// including HEIC, which is what an iPhone writes by default and which every
-// other path in this app quietly refuses.
+// at a time from the camera, and PDFs.
+//
+// "ALL PHOTO FORMATS" HAS ONE HONEST EXCEPTION. The model reads PNG, JPEG,
+// WebP and GIF, and not HEIC - which is what an iPhone writes by default. The
+// camera and gallery hand over a converted JPEG, so it only arises for a .heic
+// chosen as a file, and the app says so at that moment rather than uploading it
+// to be refused. Converting it needs a native image module; it is queued for
+// the next build rather than papered over with a list that lies.
 
 export type DocumentPage = { base64: string; mediaType: string; label: string };
 
@@ -33,24 +38,25 @@ export type PickOutcome =
   | { ok: false; reason: 'cancelled' | 'denied' | 'too_large' | 'too_many' | 'unsupported' | 'no_file_picker' | 'failed' };
 
 /** What the server will read. Anything else is refused here rather than uploaded first. */
-const READABLE = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-];
+const READABLE = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'];
+
+/**
+ * HEIC IS AN IPHONE'S NATIVE FORMAT and the model cannot read it. It is named
+ * separately rather than lumped in with "unsupported" so the app can say which
+ * problem this is: the camera and gallery hand over a converted JPEG, so this
+ * only arises for a .heic picked as a FILE, and "photograph the page instead"
+ * is advice that actually works. Converting it properly needs a native image
+ * module and is queued for the next build.
+ */
+const NEEDS_CONVERTING = ['image/heic', 'image/heif'];
 
 export const MAX_PAGES = 8;
 const MAX_ONE_BYTES = 12 * 1024 * 1024;
 
 /**
- * HEIC IS NOT A CURIOSITY, it is what an iPhone writes by default, and "all
- * photo formats" was the instruction. The other paths in this app normalise to
- * four types and drop the rest; a letter is exactly the thing somebody will
- * have photographed months ago on a phone that writes HEIC.
+ * The type a file really is. A picker that reports nothing useful -
+ * "application/octet-stream" is common on Android - should not cost her the
+ * file when its name says plainly what it is.
  */
 export function readableType(mimeType: string | undefined, name?: string): string | null {
   const fromName = (() => {
@@ -67,6 +73,7 @@ export function readableType(mimeType: string | undefined, name?: string): strin
   const raw = (mimeType ?? '').toLowerCase().split(';')[0].trim();
   const fixed = raw === 'image/jpg' ? 'image/jpeg' : raw;
   if (READABLE.includes(fixed)) return fixed;
+  if (NEEDS_CONVERTING.includes(fixed) || NEEDS_CONVERTING.includes(fromName ?? '')) return null;
   // A picker that reports nothing useful ("application/octet-stream" is common
   // on Android) should not cost her the file when the name says what it is.
   return fromName;
@@ -225,7 +232,7 @@ export function pickFailureMessage(reason: Exclude<PickOutcome, { ok: true }>['r
     case 'too_many':
       return `That is more than ${MAX_PAGES} pages. Add the ones with the findings and the reference numbers.`;
     case 'unsupported':
-      return 'That kind of file cannot be read. A photo or a PDF works.';
+      return 'That kind of file cannot be read yet. A photo of the page, or a PDF, both work.';
     case 'no_file_picker':
       return 'Opening a file needs the newer version of the app. A photo of the page works in this one.';
     default:

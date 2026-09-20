@@ -37,7 +37,13 @@ import { getSupabaseForRequest } from '../../lib/supabase';
 // already waited.
 export const maxDuration = 120;
 
-const ALLOWED_IMAGE = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/heic', 'image/heif'] as const;
+// WHAT THE MODEL ACTUALLY ACCEPTS, which is four image types and PDF. HEIC is
+// not among them, and listing it here would have sent an iPhone's native format
+// upstream to be refused - reaching her as a blank failure after a long upload,
+// which is the shape of error this app spent the morning removing. The app says
+// so before the upload instead. Converting HEIC needs a native module and
+// belongs in the next build, not in a list that quietly lies.
+const ALLOWED_IMAGE = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
 
 // Per page, and across the whole request. A phone photograph of A4 is around a
 // megabyte; a scanned PDF of six pages can be much more, and the model has its

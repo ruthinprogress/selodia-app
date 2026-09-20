@@ -39,6 +39,7 @@ import {
   type DocumentPage,
 } from '@/lib/document-pages';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
+import { persistLogTurn } from '@/lib/log-turn';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
 import { reminderSummary } from '@/lib/custom-reminders';
@@ -623,12 +624,19 @@ export default function ChatScreen() {
       // to be kept, and holding them in memory after the fact would be the app
       // quietly storing a medical document.
       setDocumentPages([]);
-      setMessages((m) => [
-        ...m,
-        { role: 'assistant', content: `${result.card.body}
+      const turn = `${result.card.body}
 
-${result.message}` },
-      ]);
+${result.message}`;
+      setMessages((m) => [...m, { role: 'assistant', content: turn }]);
+
+      // WRITTEN TO THE THREAD, NOT JUST THE SCREEN. The server is now holding
+      // this card as an offer waiting for a yes. An offer that lives only in
+      // local state disappears on a reload while the offer itself does not -
+      // so she would come back to an empty thread, say yes to something else
+      // later, and have a medical record saved that she could no longer see.
+      // The photo-log path learned this in September; the stakes are higher
+      // here.
+      void persistLogTurn(turn);
     } finally {
       setReadingDocument(false);
     }
