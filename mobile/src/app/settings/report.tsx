@@ -201,6 +201,12 @@ export default function ReportScreen() {
   const [picked, setPicked] = useState<Record<string, Set<string>>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
 
+  // The summary step.
+  const [wantSummary, setWantSummary] = useState(true);
+  const [stage, setStage] = useState<'choose' | 'summary'>('choose');
+  const [summary, setSummary] = useState('');
+  const [dropped, setDropped] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -291,28 +297,68 @@ export default function ReportScreen() {
     0
   );
 
-  async function build() {
+  // The same selection, sent by both steps.
+  function selection() {
+    const chosenPeriod = PERIODS.find((p) => p.id === period) ?? PERIODS[2];
+    const to = new Date();
+    const from = chosenPeriod.days
+      ? new Date(to.getTime() - chosenPeriod.days * 86_400_000)
+      : null;
+    return {
+      from: from ? from.toISOString().slice(0, 10) : null,
+      to: to.toISOString().slice(0, 10),
+      periodLabel: chosenPeriod.label,
+      blocks,
+      note: note.trim() || null,
+    };
+  }
+
+  // SHE READS IT BEFORE IT GOES IN (her requirement, in her words: the summary
+  // is "editable or removable before sharing"). So a summary is drafted, shown,
+  // and only then built into the document - or thrown away. Nothing writes a
+  // paragraph under her name that she has not seen.
+  async function draft() {
     if (busy || blocks.length === 0) return;
     setBusy(true);
     setFailed(null);
     try {
-      const chosenPeriod = PERIODS.find((p) => p.id === period) ?? PERIODS[2];
-      const to = new Date();
-      const from = chosenPeriod.days
-        ? new Date(to.getTime() - chosenPeriod.days * 86_400_000)
-        : null;
+      const { summary: written, dropped: removed } = await authedPost<{
+        summary?: string | null;
+        dropped?: number;
+      }>('/api/report', { ...selection(), draft: true });
+      if (!written) {
+        // Not an error: there may be too little chosen to say anything about.
+        // Build it without one rather than stopping her.
+        await build(null);
+        return;
+      }
+      setSummary(written);
+      setDropped(removed ?? 0);
+      setStage('summary');
+    } catch (err) {
+      setFailed(
+        (err instanceof ApiError && err.userMessage) ||
+          'Could not write a summary just now. You can build the report without one.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
+  async function build(withSummary: string | null) {
+    if (busy || blocks.length === 0) return;
+    setBusy(true);
+    setFailed(null);
+    try {
       const { url } = await authedPost<{ url?: string }>('/api/report', {
-        from: from ? from.toISOString().slice(0, 10) : null,
-        to: to.toISOString().slice(0, 10),
-        periodLabel: chosenPeriod.label,
-        blocks,
-        note: note.trim() || null,
+        ...selection(),
+        summary: withSummary?.trim() || null,
       });
       if (!url) throw new Error('no url');
       // The session goes nowhere near the link: the page was rendered with it
       // and stored, and this opens a plain address that expires in 15 minutes.
       await WebBrowser.openBrowserAsync(url);
+      setStage('choose');
     } catch (err) {
       // The server's own sentence when it sent one - it knows which step
       // failed, and "please try again" is wrong when trying again cannot help.
@@ -371,6 +417,75 @@ export default function ReportScreen() {
         <ThemedText type="small" themeColor="textSecondary">
           There is nothing logged yet to put in a report.
         </ThemedText>
+      ) : stage === 'summary' ? (
+        // THE DRAFT, BEFORE IT IS ANYTHING. Editable, because it is going out
+        // under her name; removable, because she may want the records alone.
+        <>
+          <SettingsGroup title="The summary">
+            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+              Written from the pages you chose and nothing else. Read it, change anything you want,
+              or leave it out. It goes at the top of the report, labelled as a summary.
+            </ThemedText>
+            <TextInput
+              value={summary}
+              onChangeText={setSummary}
+              multiline
+              maxLength={4000}
+              style={[styles.summary, { color: theme.text, backgroundColor: theme.background }]}
+              accessibilityLabel="The summary, which you can edit"
+            />
+            {dropped > 0 && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                {dropped === 1 ? 'One sentence was' : `${dropped} sentences were`} removed for
+                naming a figure that is not in your records.
+              </ThemedText>
+            )}
+          </SettingsGroup>
+
+          <Pressable
+            onPress={() => void build(summary)}
+            disabled={busy || !summary.trim()}
+            accessibilityRole="button"
+            accessibilityLabel="Create the PDF with this summary"
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedView style={[styles.build, { backgroundColor: theme.accentDeep }]}>
+              <ThemedText type="smallBold" themeColor="background">
+                {busy ? 'Building…' : 'Create PDF with this summary'}
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+
+          <Pressable
+            onPress={() => void build(null)}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Create the PDF without a summary"
+            style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+          >
+            <ThemedText type="small" themeColor="link">
+              Leave the summary out
+            </ThemedText>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setStage('choose')}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Go back and change what is included"
+            style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+          >
+            <ThemedText type="small" themeColor="textSecondary">
+              Change what is included
+            </ThemedText>
+          </Pressable>
+
+          {failed && (
+            <ThemedText type="small" themeColor="danger">
+              {failed}
+            </ThemedText>
+          )}
+        </>
       ) : (
         <>
           <SettingsGroup title="Time period">
@@ -545,8 +660,23 @@ export default function ReportScreen() {
             />
           </SettingsGroup>
 
+          <SettingsGroup title="A summary at the top">
+            <View style={styles.boxes}>
+              <Checkbox
+                checked={wantSummary}
+                onToggle={() => setWantSummary((v) => !v)}
+                label="Write a short summary of what I chose"
+              />
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                Read from the pages you chose and nothing else, and shown to you to change or throw
+                away before anything is built. The figures in it are counted by the app, not written
+                by the summary.
+              </ThemedText>
+            </View>
+          </SettingsGroup>
+
           <Pressable
-            onPress={() => void build()}
+            onPress={() => void (wantSummary ? draft() : build(null))}
             disabled={busy || blocks.length === 0}
             accessibilityRole="button"
             accessibilityLabel="Create the PDF"
@@ -560,8 +690,14 @@ export default function ReportScreen() {
                 type="smallBold"
                 themeColor={blocks.length === 0 ? 'textSecondary' : 'background'}
               >
+                {/* Say which of the two things is happening. Reading her pages
+                    and writing a paragraph takes longer than rendering a
+                    document, and "Building…" for fifteen seconds is how a
+                    working app comes to look broken. */}
                 {busy
-                  ? 'Building…'
+                  ? wantSummary
+                    ? 'Reading your pages…'
+                    : 'Building…'
                   : blocks.length === 0
                     ? 'Choose something to include'
                     : `Create PDF (${chosenCount} ${chosenCount === 1 ? 'item' : 'items'})`}
@@ -603,6 +739,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlignVertical: 'top',
   },
+  summary: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    minHeight: 260,
+    marginVertical: Spacing.three,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlignVertical: 'top',
+  },
+  secondary: { alignItems: 'center', paddingVertical: Spacing.three },
   hint: { lineHeight: 18, paddingBottom: Spacing.two },
   build: { borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
   pressed: { opacity: 0.6 },

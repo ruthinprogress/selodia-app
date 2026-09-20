@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { loadCatalogue, loadReport, readBlocks, type ReportSelection } from '../../lib/report';
 import { renderReport } from '../../lib/report-render';
+import { writeSummary } from '../../lib/report-summary';
 import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 
 // THE REPORT BUILDER'S SERVER HALF (2026-09-20).
@@ -76,6 +77,18 @@ export async function POST(request: NextRequest) {
     note: typeof body.note === 'string' ? body.note.slice(0, 400) : null,
   };
 
+  // TWO SHAPES OF POST, ONE SELECTION (2026-09-20).
+  //
+  // `draft: true` reads the chosen blocks, writes a summary from them, and
+  // returns it. Nothing is stored and nothing is built. She then edits it,
+  // keeps it, or throws it away - which is her requirement in her own words:
+  // the summary is "editable or removable before sharing". A summary she has
+  // not read has no business at the top of a document with her name on it.
+  //
+  // The ordinary POST builds the report, and takes `summary` as TEXT rather
+  // than as a flag: whatever arrives is what she approved. The server never
+  // writes a summary into a report on its own initiative.
+
   // EACH STEP FAILS IN ITS OWN WAY, AND SAYS SO (2026-09-20). This used to be
   // one try around both with one message - "Could not build the report just
   // now. Please try again." - which was wrong twice over on the day it first
@@ -91,6 +104,21 @@ export async function POST(request: NextRequest) {
       { error: 'Could not read your data just now. Check your connection and try again.' },
       { status: 503 }
     );
+  }
+
+  if (body.draft === true) {
+    const written = await writeSummary(data);
+    return NextResponse.json({
+      summary: written?.text ?? null,
+      // Said out loud rather than swallowed: if the checker removed a sentence
+      // for naming a figure that was never counted, she should know her draft
+      // was shortened and why.
+      dropped: written?.dropped.length ?? 0,
+    });
+  }
+
+  if (typeof body.summary === 'string' && body.summary.trim()) {
+    data.summary = body.summary.trim().slice(0, 4000);
   }
 
   let html: string;

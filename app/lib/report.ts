@@ -161,6 +161,13 @@ export async function loadCatalogue(db: SupabaseClient, userId: string): Promise
 
 export type ReportData = {
   name: string | null;
+  /**
+   * THE SUMMARY SHE APPROVED, or null. Written by the model from the selected
+   * blocks only, checked for invented figures, and then shown to her to edit
+   * or remove before any of this was built - so by the time it arrives here it
+   * is her text, whoever first drafted it. See report-summary.ts.
+   */
+  summary?: string | null;
   dateOfBirth: string | null;
   generated: string;
   periodLabel: string;

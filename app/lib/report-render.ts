@@ -28,6 +28,9 @@ const SAGE = '#95A987';
 
 type Section = { id: string; title: string; body: string };
 
+// A blank line is a paragraph break in the summary she approved.
+const BLANK_LINE = /\r?\n\s*\r?\n/;
+
 export function renderReport(data: ReportData): string {
   const sections: Section[] = [];
 
@@ -249,6 +252,8 @@ export function renderReport(data: ReportData): string {
   footer { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid ${SAND}; color: ${GREY}; font-size: 9pt; display: flex; justify-content: space-between; }
   .print { position: fixed; right: 6mm; bottom: 6mm; background: ${TERRACOTTA}; color: ${CREAM};
            border: 0; border-radius: 999px; padding: 3.5mm 7mm; font: inherit; font-size: 11pt; cursor: pointer; }
+  .summary { margin-bottom: 10mm; }
+  .summary .label { font-size: 8.5pt; border-left: 2px solid ${SAND}; padding-left: 4mm; margin-bottom: 6mm; }
   @media print { .print { display: none; } body { background: ${PAPER}; } .sheet { padding: 0; max-width: none; } }
 </style>
 </head><body>
@@ -275,6 +280,26 @@ export function renderReport(data: ReportData): string {
       generated or inferred: any summary is labelled as one and is drawn from these pages.
     </p>
   </div>
+
+  ${
+    data.summary
+      ? `<section class="summary" id="summary">
+          <h2>Summary</h2>
+          <!-- LABELLED, ALWAYS (Ruth, 2026-09-20): "AI should analyse the
+               selected data. AI should not decide what data is selected", and
+               a summary that does not say what it is turns the whole document
+               into something a reader has to take on trust. The label names
+               both what wrote it and what it was allowed to see. -->
+          <p class="muted label">Written by Selodía from the pages that follow, and read and approved by the person named above. The records themselves begin after it.</p>
+          ${data.summary
+            .split(BLANK_LINE)
+            .map((p) => p.trim())
+            .filter(Boolean)
+            .map((p) => `<p>${esc(p)}</p>`)
+            .join('')}
+        </section>`
+      : ''
+  }
 
   <div class="contents">
     <h2>Contents</h2>
