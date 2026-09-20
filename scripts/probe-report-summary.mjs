@@ -165,6 +165,67 @@ check(
   ''
 );
 
+group('a decimal point is not the end of a sentence');
+
+// THE BUG THIS GROUP EXISTS FOR. Splitting on every full stop cut "74.5" in
+// half and then threw away both halves, because neither 74 nor 5 is a figure
+// the facts contain. A guard that deletes CORRECT sentences is worse than no
+// guard at all.
+const decimals = new Set(['74.5', '7.5', '2']);
+
+check(
+  'a decimal inside a sentence survives',
+  withoutInvention('Her waist measured 74.5 cm at the most recent reading.', decimals).text,
+  'Her waist measured 74.5 cm at the most recent reading.'
+);
+
+check(
+  'and is not reported as dropped',
+  withoutInvention('Her waist measured 74.5 cm.', decimals).dropped,
+  []
+);
+
+check(
+  'two sentences, one with a decimal, both kept',
+  withoutInvention('Sleep averaged 7.5 hours. That rests on 2 nights.', decimals).text,
+  'Sleep averaged 7.5 hours. That rests on 2 nights.'
+);
+
+check(
+  'the invented one still goes, and takes only itself',
+  withoutInvention('Her waist measured 74.5 cm. It fell 3.2 cm over the period.', decimals),
+  {
+    text: 'Her waist measured 74.5 cm.',
+    dropped: ['It fell 3.2 cm over the period.'],
+  }
+);
+
+check(
+  'an abbreviation mid-sentence does not split off a fragment',
+  withoutInvention('The records were reviewed by Dr. Okafor on 2 occasions.', decimals).text,
+  'The records were reviewed by Dr. Okafor on 2 occasions.'
+);
+
+group('paragraphs survive the guard');
+
+check(
+  'a blank line stays a blank line',
+  withoutInvention('First para, 2 nights.\n\nSecond para, 74.5 cm.', decimals).text,
+  'First para, 2 nights.\n\nSecond para, 74.5 cm.'
+);
+
+check(
+  'a paragraph emptied by the guard leaves no blank gap',
+  withoutInvention('First para, 2 nights.\n\nWeight fell 9 kg.', decimals).text,
+  'First para, 2 nights.'
+);
+
+check(
+  'the surviving paragraph of three keeps its place',
+  withoutInvention('A, 2 nights.\n\nInvented 9 kg.\n\nC, 74.5 cm.', decimals).text,
+  'A, 2 nights.\n\nC, 74.5 cm.'
+);
+
 group('the figures a real summary would draw on all pass their own guard');
 
 const real = facts({

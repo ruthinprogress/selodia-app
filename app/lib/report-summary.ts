@@ -212,20 +212,34 @@ export function withoutInvention(
   allowed: Set<string>,
   alsoAllowed: Set<string> = new Set()
 ): { text: string; dropped: string[] } {
-  const kept: string[] = [];
   const dropped: string[] = [];
 
-  // Split on sentence ends, keeping the punctuation with its sentence.
-  const sentences = summary.match(/[^.!?]+[.!?]*/g) ?? [];
-  for (const sentence of sentences) {
-    const invented = [...numbersIn(sentence)].filter(
-      (n) => !allowed.has(n) && !alsoAllowed.has(n)
-    );
-    if (invented.length > 0) dropped.push(sentence.trim());
-    else kept.push(sentence);
+  // A SENTENCE ENDS AT A FULL STOP FOLLOWED BY A SPACE, and not at the one
+  // inside 74.5. The first version split on every '.', which cut "Her waist
+  // measured 74.5 cm." into "Her waist measured 74." and "5 cm." - and then
+  // threw both away, because neither 74 nor 5 is a figure the facts contain.
+  // A guard that deletes correct sentences is worse than no guard: it teaches
+  // the person that the summary is unreliable for the opposite reason.
+  const paragraphs = summary.split(/\r?\n\s*\r?\n/);
+  const keptParagraphs: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    const sentences = paragraph.split(/(?<=[.!?])\s+/);
+    const kept: string[] = [];
+    for (const sentence of sentences) {
+      if (!sentence.trim()) continue;
+      const invented = [...numbersIn(sentence)].filter(
+        (n) => !allowed.has(n) && !alsoAllowed.has(n)
+      );
+      if (invented.length > 0) dropped.push(sentence.trim());
+      else kept.push(sentence.trim());
+    }
+    if (kept.length > 0) keptParagraphs.push(kept.join(' '));
   }
 
-  return { text: kept.join('').trim(), dropped };
+  // Paragraph breaks survive, because the renderer turns them into paragraphs
+  // and a summary that arrives as one slab reads like a wall.
+  return { text: keptParagraphs.join('\n\n').trim(), dropped };
 }
 
 const INSTRUCTIONS = `You are writing the opening paragraph of a personal health record that somebody is about to hand to a clinician.
@@ -238,10 +252,11 @@ Two or three short paragraphs. What was recorded, over what period, and what the
 
 RULES, IN ORDER OF IMPORTANCE
 1. Every number you write must be one you were given. Do not add, average, total, convert or estimate. If a figure you want is not in the block, write the sentence without it or leave the sentence out.
-2. Do not diagnose, and do not suggest a cause. "Headaches were noted on four of the days" is the record. "Headaches were likely dehydration" is not, however plausible.
-3. Do not advise. Somebody else in the room does that.
-4. Say what is absent as readily as what is present. A gap is information.
-5. Write plainly, in British English, in the third person. No headings, no bullet points, no bold. Nothing that sounds like a brochure.
+2. Write every number as digits, never as a word: "4 of the days", not "four of the days". This is checked, and a number written as a word cannot be checked.
+3. Do not diagnose, and do not suggest a cause. "Headaches were noted on 4 of the days" is the record. "Headaches were likely dehydration" is not, however plausible.
+4. Do not advise. Somebody else in the room does that.
+5. Say what is absent as readily as what is present. A gap is information.
+6. Write plainly, in British English, in the third person. No headings, no bullet points, no bold. Nothing that sounds like a brochure.
 
 Return only the paragraphs.`;
 
