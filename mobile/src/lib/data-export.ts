@@ -52,6 +52,7 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: 'body_measurements', label: 'Body measurements', dateColumn: 'measured_at' },
   { table: 'personal_metrics', label: 'Your own measurements', dateColumn: 'measured_at' },
   { table: 'hydration_logs', label: 'Drinks', dateColumn: 'happened_at' },
+  { table: 'sleep_logs', label: 'Sleep', dateColumn: 'night_of' },
   { table: 'cycle_events', label: 'Cycle events', dateColumn: 'event_date' },
   { table: 'daily_summaries', label: 'Daily summaries', dateColumn: 'created_at' },
   { table: 'almanac_entries', label: 'Almanac entries', dateColumn: 'created_at' },

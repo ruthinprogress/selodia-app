@@ -73,6 +73,7 @@ const DELETE_ORDER = [
   'food_logs',
   'activity_logs',
   'hydration_logs',
+  'sleep_logs',
   'personal_metrics',
   'body_measurements',
   'cycle_events',

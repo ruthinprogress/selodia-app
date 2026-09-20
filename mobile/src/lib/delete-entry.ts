@@ -17,7 +17,8 @@ export type DeletableTable =
   | 'activity_logs'
   | 'body_measurements'
   | 'personal_metrics'
-  | 'hydration_logs';
+  | 'hydration_logs'
+  | 'sleep_logs';
 
 /** True when the row is gone. Never throws: the caller says so on screen. */
 export async function deleteEntry(table: DeletableTable, id: string): Promise<boolean> {

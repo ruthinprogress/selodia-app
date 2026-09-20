@@ -36,6 +36,7 @@ import {
 import { todayISODate } from '../../lib/workout-logs';
 import { meUpdateNote, updateMeCard } from '../../lib/me-update';
 import { hydrationSaveSummary, logHydrationFromText } from '../../lib/hydration-logging';
+import { logSleepFromText, sleepSaveSummary } from '../../lib/sleep-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
 import {
   logMeasurementFromText,
@@ -292,6 +293,7 @@ export async function POST(request: NextRequest) {
     { data: recentActivity },
     { data: recentDailyBurn },
     { data: recentDrinks },
+    { data: recentSleep },
     { data: recentMeasurements },
     { data: healthContextRow },
     { data: lastPeriodRow },
@@ -364,6 +366,15 @@ export async function POST(request: NextRequest) {
       .select('ml, happened_at')
       .gte('happened_at', contextSince.toISOString())
       .order('happened_at', { ascending: false }),
+    // SLEEP (2026-09-20). A symptom is a result, and the night before it is
+    // one of the few things that explains fatigue, low mood or a heavy session
+    // going badly - so it belongs beside the food and the training, not in a
+    // table nobody reads.
+    supabase
+      .from('sleep_logs')
+      .select('night_of, duration_min, quality, awakenings')
+      .gte('night_of', contextSince.toISOString().slice(0, 10))
+      .order('night_of', { ascending: false }),
     supabase
       .from('body_measurements')
       .select('measured_at, weight_kg, body_fat_pct')
@@ -632,6 +643,25 @@ export async function POST(request: NextRequest) {
       }).join('\n')
     : 'No activity logged in the last 7 days.';
 
+  // THE NIGHTS, IN HER OWN TERMS. Hours where she gave them, the word she
+  // used for how it went, and how often she woke. A night she has not
+  // described is simply absent: no row means nothing was said about it, which
+  // is not the same as a night of no sleep.
+  const sleepSummary = recentSleep && recentSleep.length > 0
+    ? (recentSleep as { night_of: string; duration_min: number | null; quality: string | null; awakenings: number | null }[])
+        .map((n) => {
+          const bits = [
+            n.duration_min != null
+              ? `${Math.floor(n.duration_min / 60)}h${n.duration_min % 60 ? ' ' + (n.duration_min % 60) + 'm' : ''}`
+              : null,
+            n.quality ? `described as ${n.quality}` : null,
+            n.awakenings != null && n.awakenings > 0 ? `awake ${n.awakenings}x` : null,
+          ].filter(Boolean);
+          return `night of ${humanDate(n.night_of)}: ${bits.join(', ')}`;
+        })
+        .join('\n')
+    : 'No sleep logged in the last 7 days.';
+
   // A DAY'S DRINKING, AND WHAT AN EMPTY DAY MEANS. Totalled per day, with the
   // number of drinks, because five 250ml glasses and one 1.2L bottle are
   // different days however equal the totals. A day with nothing is reported as
@@ -692,6 +722,11 @@ ${activitySummary}
 Here are their whole-day tracker totals, from a fitness app's daily summary screen. These are NOT sessions and must never be described as one: the calorie figure is everything their body used across a whole day of ordinary movement, not a workout they did. Treat it as background on how active a day was, and never congratulate someone on it as though it were training:
 ${dailyBurnSummary}
 
+Here is the sleep they have logged in the last 7 days, by the night it started:
+${sleepSummary}
+
+WHAT A SLEEP LOG IS. Only the nights they described. A night that is not here was not recorded, which says nothing about how they slept, and you must never read a gap as a bad night or as a good one. When a symptom, a mood or a hard session comes up, LOOK AT THE NIGHT BEFORE IT and say what is actually there - "you had five hours and woke twice before that session" is useful; inventing a link to sleep they did not log is the thing this app does not do.
+
 Here is the water they have logged in the last 7 days, day by day:
 ${hydrationSummary}
 
@@ -750,7 +785,7 @@ ACKNOWLEDGE, DO NOT EVALUATE. A logged session is a fact, not a result. Never pr
 
 WHAT CAN BE LOGGED HERE. If somebody asks what they can log, what this is for, or how any of it works, answer completely rather than naming the one or two things that come to mind. Everything goes through this conversation: food and drink, activity and exercise, body measurements including weight, body fat and muscle, anything else they measure such as a waist or a resting heart rate, water, how they are feeling, and photographs - a plate, a scale readout, a treadmill display, a nutrition label. Free text is the point: there is no format to learn, no fields to fill, and nothing has to be phrased a particular way. Say it warmly and in a sentence or two, the way you would tell a friend what you can help with, never as a bulleted feature list or a tour of the app.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), 'sleep' if it describes how they slept - how long, what time they went to bed or woke, how it felt, how often they woke - or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}
 
@@ -868,7 +903,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     },
     logIntent: {
       type: 'string',
-      enum: ['none', 'food', 'activity', 'measurement', 'hydration'],
+      enum: ['none', 'food', 'activity', 'measurement', 'hydration', 'sleep'],
       description:
         "'food' ONLY when the message actually describes food or drink they consumed - a message ABOUT the log is not a meal (\"it's not gone into the log\", \"did that save?\", \"my log is empty\"), and gets an answer rather than an entry. 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText.",
     },
@@ -1147,7 +1182,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     rememberCategory?: string;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
-    logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration';
+    logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep';
     logText?: string;
     reminderAction?: 'create' | 'cancel';
     reminderLabel?: string;
@@ -1221,7 +1256,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // visual toast in the client (the `saved` field), never in the reply text.
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
-  let saved: { kind: 'food' | 'activity' | 'measurement' | 'hydration'; summary: string } | null = null;
+  let saved: { kind: 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep'; summary: string } | null = null;
   // What actually reached the database this turn, for the honesty note below.
   // Kept separate from `saved` because `saved` drives the toast and carries one
   // headline summary, while this has to survive a PARTIAL landing - a weight
@@ -1512,6 +1547,23 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       }
     } catch (err) {
       console.log('ASK-SELODIA HYDRATION LOG FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // SLEEP (2026-09-20), parsed in code like water: how long somebody slept is
+  // a fixed fact, and the open-ended judgement - is this message about sleep at
+  // all - is the one the model just made. A night that says nothing usable
+  // ("didn't sleep much, anyway...") writes no row rather than an empty one,
+  // and the honesty note then speaks for it.
+  if (result.logIntent === 'sleep') {
+    try {
+      const entry = await logSleepFromText(supabase, user.id, message);
+      if (entry) {
+        saved = { kind: 'sleep', summary: sleepSaveSummary(entry) };
+        attempt.landed.push('sleep');
+      }
+    } catch (err) {
+      console.log('ASK-SELODIA SLEEP LOG FAILED:', err instanceof Error ? err.message : err);
     }
   }
 
