@@ -2253,7 +2253,23 @@ Her brief opened it: *"The PDF export should not feel like downloading data. It 
 
 **The guard is where the guard belongs.** `readBlocks` in `app/lib/report.ts` reads the POST body field by field — an unknown source dropped, ids that are not strings dropped, a records-block with no records dropped rather than printed as an empty heading, one block per source, 200 ids and 50 names at most. It sits in the library rather than the route because it is the part worth testing: `probe-report-blocks.mjs`, 26 checks. A phone still running the old bundle sends `{sections, cardIds}`, is recognised, and is told to reopen the app rather than told to choose something it already chose.
 
-**Still to come:** an Export button on each screen that opens the builder with that screen's records already ticked; saved recipes for a report she rebuilds each visit; and an AI summary at the top, written from the selected blocks only, labelled as a summary, and removable before she sends it.
+**Reachable from where the data is**, the second half of her brief: *"I'd also like Export to be discoverable throughout the app, not just buried in Settings. I may be looking at my symptoms and want to export them."* A quiet line at the foot of each data screen — Almanac, Plans, Sleep, and the food, movement, drinks and measurement histories — opens the same builder with that screen's records already ticked and its picker open, plus her profile so the pages have a name on them. Nothing else, because she asked for that and not for everything, and every tick is still hers to clear.
+
+**One builder, one door.** A screen-specific exporter would be a second answer to the same question and the two would drift. Two things surfaced from that rule. The word *Export* already belongs to the whole-data takeout (*"Get a copy of your data"*), so these links read **"Build a report from this"** — the name of the screen they open. And the Me tab keeps its own one-tap protocol export and gains nothing: two doors to two different documents on one screen is exactly the drift being avoided. *(Found on the way: that takeout link still pointed at `/settings`, which stopped being its home when Settings became a hub of pages, so it left the person to find it again.)*
+
+### The summary is analysis, and it is checked
+
+Her rule again, this time about the paragraph at the top: *"AI should analyse the selected data. AI should not decide what data is selected."* And her argument for the whole feature rests on it: *"if the data is just the data collected, the report can't be dismissed as AI dumps, it's the true collected data, with a summary for convenience."* One invented number and a clinician is right to disbelieve every page behind it.
+
+**So the arithmetic is done in code and the prose is done by the model.** `facts()` in `app/lib/report-summary.ts` counts the readings, averages the days, totals the minutes and spans the ranges — in TypeScript — and hands the model the answers. The model writes paragraphs about figures it was given. This is the division the weigh-in acknowledgement already uses, for the same reason: a language model doing mental arithmetic over forty rows is a plausible wrong number waiting to happen.
+
+**And the guard is at the write, not in the prompt.** `withoutInvention()` reads every number out of the finished summary and drops any sentence carrying one the facts never contained — the whole sentence, because a sentence built around a figure that does not exist has nothing left when the figure goes. The prompt asks as well, because asking is free and mostly works, but *a rule the model is asked to follow is not a guard*. `probe-report-summary.mjs`, 25 checks. If sentences were removed, the app says how many and why rather than quietly handing back a shorter draft.
+
+**Nothing is built until she has read it.** Create PDF drafts the summary, shows it in a box she can edit, and offers three ways on: use it, leave it out, or go back and change what is included. It prints at the top under a label naming both what wrote it and what it was allowed to see.
+
+**What the summary may not do**, in the instructions and checked by the shape of what it is given: diagnose, suggest a cause, or advise. *"Headaches were noted on four of the days"* is the record; *"headaches were likely dehydration"* is not, however plausible. It is asked to name what is thin as readily as what is there — three nights of sleep out of ninety days is worth saying plainly, because it tells the reader how much weight to put on it.
+
+**Still to come:** saved recipes, for a report she rebuilds before each visit.
 
 ### Design changes
 
