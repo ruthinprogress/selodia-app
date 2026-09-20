@@ -58,6 +58,7 @@ export type ReportSelection = {
   periodLabel: string;
   blocks: ReportBlock[];
   note?: string | null;
+  recipient?: string | null;
 };
 
 /** A record that can be picked one at a time. */
@@ -194,6 +195,19 @@ export type ReportData = {
    * claim, and only one of them should ever come from a model.
    */
   glance?: string[] | null;
+  /**
+   * WHO IT IS FOR, in her words on the cover: "Prepared for / Dr Jane Smith".
+   * Optional, because a report kept for herself has no recipient and a cover
+   * that insists on one would make her invent a name.
+   */
+  recipient?: string | null;
+  /**
+   * The short id printed on every page. A document handed across a desk needs
+   * something to refer to it by, and the link's own UUID is too long to read
+   * aloud - so this is the first eight characters of it, which is the same
+   * identifier and quotable.
+   */
+  reportId?: string | null;
   dateOfBirth: string | null;
   generated: string;
   periodLabel: string;

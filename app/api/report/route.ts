@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
     periodLabel: typeof body.periodLabel === 'string' ? body.periodLabel.slice(0, 60) : 'All time',
     blocks,
     note: typeof body.note === 'string' ? body.note.slice(0, 400) : null,
+    recipient: typeof body.recipient === 'string' ? body.recipient.trim().slice(0, 80) || null : null,
   };
 
   // TWO SHAPES OF POST, ONE SELECTION (2026-09-20).
@@ -143,6 +144,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // THE ID IS MINTED BEFORE THE PAGE IS WRITTEN, not after it. It is printed
+  // in the footer of every page and on the cover, so the document has to know
+  // it while it is being made - and it is the same id the link carries, so
+  // there is one identifier rather than a private one and a printed one.
+  const id = crypto.randomUUID();
+  data.reportId = id.slice(0, 8).toUpperCase();
+  data.recipient = selection.recipient ?? null;
+
   if (typeof body.summary === 'string' && body.summary.trim()) {
     data.summary = body.summary.trim().slice(0, 4000);
     // The figures belong to the app, not to her edit of the paragraphs: she
@@ -171,9 +180,8 @@ export async function POST(request: NextRequest) {
   // more than one more report.
   await db.rpc('purge_expired_report_exports');
 
-  // The id is made here rather than returned by the insert: report_exports has
-  // no read policy at all, and PostgREST needs read access to hand a row back.
-  const id = crypto.randomUUID();
+  // Stored under the id the pages already carry. report_exports has no read
+  // policy at all, so the id could never have come back from the insert.
   const { error: storeError } = await db.from('report_exports').insert({ id, user_id: user.id, html });
   if (storeError) {
     console.log('REPORT: could not store the page -', storeError.message);
