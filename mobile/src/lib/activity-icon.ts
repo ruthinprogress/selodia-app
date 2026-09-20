@@ -24,7 +24,11 @@ export type ActivityIconKind =
 
 const RULES: [ActivityIconKind, RegExp][] = [
   ['yoga', /\b(yoga|pilates|barre|vinyasa|ashtanga|hatha)\b/i],
-  ['dance', /\b(ballet|dance|dancing|zumba|salsa|tap class)\b/i],
+  // A BALLET SLIPPER WAS TRIED AND DROPPED (2026-09-20). Drawn twice, it read
+  // as a blob at the 26 points a card gives it: a slipper needs a ribbon and a
+  // sole to be a slipper at all. The dancing figure says the same thing
+  // legibly, which is the only test a small drawing has to pass.
+  ['dance', /\b(ballet|barre class|pointe|dance|dancing|zumba|salsa|tap class)\b/i],
   ['climb', /\b(climb|climbing|bouldering|scrambl)/i],
   ['swim', /\b(swim|swimming|pool|breaststroke|front crawl|lengths)\b/i],
   ['cycle', /\b(cycle|cycling|bike|biking|spin class|spinning|turbo)\b/i],

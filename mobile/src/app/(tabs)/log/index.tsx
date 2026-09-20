@@ -75,7 +75,7 @@ const ROWS: Row[] = [
   {
     icon: 'pulse-outline',
     label: 'A symptom',
-    detail: 'Opens chat with the sentence started',
+    detail: "Describe something that's bothering you",
     go: () =>
       router.push({
         pathname: '/',
@@ -85,7 +85,7 @@ const ROWS: Row[] = [
   {
     icon: 'camera-outline',
     label: 'A photo',
-    detail: 'Opens your camera or gallery, then reads it in chat',
+    detail: 'A meal, nutrition label or scale reading',
     go: () => router.push({ pathname: '/', params: { add: '1' } }),
   },
 ];

@@ -78,9 +78,15 @@ export function MovementLibrary({
             style={({ pressed }) => pressed && styles.pressed}
           >
             <ThemedView type="backgroundElement" style={styles.card}>
-              <View style={styles.mark}>
-                <ActivityIcon kind={mark} size={18} />
-              </View>
+              {/* BIGGER, AND ON ITS OWN GROUND (2026-09-20). At 18 points
+                  beside a serif title the drawing read as a bullet; the plans
+                  are the one place in the app where a picture does real work,
+                  telling a barbell plan from a ballet one before either is
+                  opened. Line art in the app's own hand - no photography,
+                  here or anywhere. */}
+              <ThemedView type="background" style={styles.mark}>
+                <ActivityIcon kind={mark} size={26} />
+              </ThemedView>
               <View style={styles.body}>
                 <ThemedText style={styles.title}>{entry.title}</ThemedText>
                 <ThemedText type="detail" themeColor="textSecondary">
@@ -111,7 +117,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     alignItems: 'flex-start',
   },
-  mark: { paddingTop: 5 },
+  // A round, quiet ground for the drawing, the size of two lines of the title.
+  mark: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
   body: { flex: 1, gap: 1 },
   // The serif, because a practice is a NAME and names are set in the serif here
   // - but at 21 rather than 30, which is the difference between a title in a
