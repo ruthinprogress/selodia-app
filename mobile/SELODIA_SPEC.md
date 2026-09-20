@@ -97,6 +97,17 @@ Human activity and experience are unbounded — kite surfing, hang gliding, aeri
 
 **The test.** Read a reply back and ask of each claim: is this known, possible, or unknown — and does the sentence make that clear? A reply that blurs the three is wrong even when every individual fact in it is right.
 
+### 16. No photography of bodies. Ever.
+*Ruth, 20 September 2026, agreeing with the observation that the app had quietly built a visual language worth protecting.* Selodía uses drawn line art, botanical marks and the seed — and never a photograph of a person, a body part, a gym, a meal styled for a camera, or any stock image of a life somebody is supposed to want.
+
+**Why it is a principle and not a preference.** A photograph of a body in a health app is an argument about which body is correct, made silently, to somebody looking at their own. This app exists to help a person understand the body they have; the moment it shows a different one, approvingly, it has taken a position it does not hold. The same goes for the aspirational still life: a photographed plate is a claim about how food should look before it counts.
+
+**What this rules out**, so it cannot be reopened by accident: body photography, before-and-after imagery, stock lifestyle photography, model-led marketing images, food photography as decoration (a person's OWN food photo, sent to be logged, is theirs and is different), and photographic empty states. It also rules out photography in the marketing material, where the temptation is strongest.
+
+**What it rules in:** line drawings in the app's own hand, the botanical marks, the seed, the movement icons, the water droplet, the health flower. The test is simple - could this have been drawn by the same hand as the seed? - and the practical benefit is that a product made of drawings ages far better than one made of a particular year's photography.
+
+It sits beside the standing rule that **nothing is AI-generated** (Part Eleven, the 19 August ruling): one says nothing is generated, this says nothing is photographed. Together they leave exactly one way to make a picture for Selodía, which is to draw it.
+
 ---
 
 # PART THREE: TECHNICAL ARCHITECTURE

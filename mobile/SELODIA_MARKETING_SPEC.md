@@ -92,6 +92,7 @@ In brief, for orientation only:
 - **Typeface:** Comfortaa throughout. Weight 300 for the wordmark and the tagline, 400 for the category line. Confirmed 2 September 2026 after testing with real readers.
 - **Seed Mark:** the one true logo. It is never redrawn, recoloured outside the approved colourways, or set alongside a different mark.
 - **Tone:** calm, unhurried, generous whitespace. If a layout feels busy, it is wrong.
+- **No photography of bodies, anywhere.** Principle 16 of the build spec, added 20 September 2026, and it binds marketing as tightly as the app: line drawings, botanical marks and the seed, never a photographed body, gym, model or styled plate. A photograph of a body in a health product is a silent argument about which body is correct, made to somebody looking at their own. The practical gain is that a product made of drawings does not date the way a particular year's photography does.
 
 **Logo Asset Pack v2.0 is the current production pack — safe to send to vendors, printers and designers.** Located in `Build Specs/Branding/Logo Asset Pack v2.0/`, and it holds everything: lockups, wordmarks and the Seed Mark on its own. Everything drawing the previous brand name has been archived to `Selodia archive/Logo Asset Pack v1.0 — superseded/`, so the Branding folder no longer offers a wrong file to reach for.
 
@@ -193,6 +194,7 @@ The negative space matters as much as the rest. Most of these are the difference
 - No moralising food language. Ever.
 - No "well done". No praise for logging.
 - No before and after framing.
+- No photography of bodies, models, gyms or styled food. See Visual identity above and principle 16 of the build spec.
 - No calorie obsession.
 - No "fix your body" positioning.
 - Nothing that makes someone feel surveilled or judged.
