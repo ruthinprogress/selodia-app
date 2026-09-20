@@ -253,16 +253,32 @@ export function confirmReferences(
   second: { label: string; value: string }[]
 ): ClinicalReference[] {
   const out: ClinicalReference[] = [];
-  const seen = new Set<string>();
+  const claimed = new Set<string>();
 
   for (const ref of first) {
-    const key = `${ref.label.toLowerCase()}|${ref.value.replace(/\s/g, '')}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    // ONE ENTRY PER FIELD, decided on the first reading. Without this, a model
+    // that read the hospital number off the letterhead and again off the
+    // footer, transcribing them a digit apart, put BOTH on the card - one
+    // marked confirmed and one not. Two "Hospital number:" lines is the record
+    // becoming a puzzle to solve at a reception desk, which is the one thing
+    // this file is written to prevent.
+    const label = sameLabel(ref.label);
+    if (claimed.has(label)) continue;
+    claimed.add(label);
+
     out.push({
       label: ref.label,
       value: ref.value,
-      confirmed: second.some((o) => sameValue(o.value, ref.value)),
+      // THE LABEL IS PART OF THE CLAIM, and leaving it out made this guard
+      // confirm the wrong thing entirely. It used to ask "did this string
+      // appear anywhere in the second reading?", which is not the question.
+      // An NHS number and a hospital number sit side by side on an NHS letter
+      // and look alike; a reading that SWAPPED them contains both strings, so
+      // both came back confirmed, printed under the wrong headings with no
+      // warning - and the offer line then told her the two readings agreed.
+      // Two readings that disagree about what a number IS were being reported
+      // as agreement, which is worse than having no second reading at all.
+      confirmed: second.some((o) => sameValue(o.value, ref.value) && sameLabel(o.label) === label),
     });
   }
 
@@ -275,18 +291,24 @@ export function confirmReferences(
   // has to solve at a reception desk. One value, marked to check, is the honest
   // form of "I am not certain of this"; two values is the app declining to
   // answer while looking like it did.
-  const labelled = new Set(out.map((o) => o.label.toLowerCase()));
   for (const ref of second) {
-    if (labelled.has(ref.label.toLowerCase())) continue;
+    const label = sameLabel(ref.label);
+    if (claimed.has(label)) continue;
     if (out.some((o) => sameValue(o.value, ref.value))) continue;
-    const key = `${ref.label.toLowerCase()}|${ref.value.replace(/\s/g, '')}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    labelled.add(ref.label.toLowerCase());
+    claimed.add(label);
     out.push({ label: ref.label, value: ref.value, confirmed: false });
   }
 
-  return out.slice(0, 20);
+  // A ceiling on one letter, set well above any letter. It used to be 20, which
+  // a busy letterhead can reach on its own - and because the second reading's
+  // finds are appended last, the cap cut exactly the details only one reading
+  // saw, silently. Forty is beyond anything a real document carries.
+  return out.slice(0, 40);
+}
+
+/** Two names for the same field. Case and spacing are how a page is printed. */
+function sameLabel(label: string): string {
+  return label.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function toolInput(reply: Anthropic.Message, name: string): Record<string, unknown> | null {

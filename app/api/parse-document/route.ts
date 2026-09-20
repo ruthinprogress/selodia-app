@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { cardBody, cardSection, offerLine } from '../../lib/clinical-card';
 import { readClinicalDocument } from '../../lib/clinical-document';
-import { storePendingSave } from '../../lib/pending-save';
+import { clearPendingSave, coerceProposal, readPendingSave, storePendingSave } from '../../lib/pending-save';
 import { getSupabaseForRequest } from '../../lib/supabase';
 
 // READING A MEDICAL DOCUMENT SHE HAS PHOTOGRAPHED OR UPLOADED.
@@ -35,7 +35,13 @@ import { getSupabaseForRequest } from '../../lib/supabase';
 // Reading several pages twice over, with a vision model, is not a two-second
 // job. The default cut-off would surface as a generic failure after she had
 // already waited.
-export const maxDuration = 120;
+//
+// SIXTY, NOT A HUNDRED AND TWENTY. The weekly roundup and the report both run
+// at 60, which is the only evidence in this repo of what the plan allows; 120
+// was a guess, and a value a plan refuses is either clamped silently or fails
+// the build. If eight pages ever need longer, that is a deliberate decision
+// about the plan rather than a number changed in passing.
+export const maxDuration = 60;
 
 // WHAT THE MODEL ACTUALLY ACCEPTS, which is four image types and PDF. HEIC is
 // not among them, and listing it here would have sent an iPhone's native format
@@ -45,11 +51,19 @@ export const maxDuration = 120;
 // belongs in the next build, not in a list that quietly lies.
 const ALLOWED_IMAGE = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
 
-// Per page, and across the whole request. A phone photograph of A4 is around a
-// megabyte; a scanned PDF of six pages can be much more, and the model has its
-// own ceiling well below anything that would trouble this one.
-const MAX_ONE = 12 * 1024 * 1024;
-const MAX_TOTAL = 28 * 1024 * 1024;
+// THE CEILING IS THE PLATFORM'S, AND IT IS LOW. A serverless function here
+// refuses a request body over about 4.5MB, so the 28MB this file used to allow
+// was a number with no authority behind it: a two-page letter at photographic
+// quality sailed past our own check and was refused by the platform, which
+// answers with a non-JSON body - so the app found no message in it and fell
+// back to "I could not read that just now". The three-page consultant letter
+// this feature exists for was the case that broke.
+//
+// Stated in DECODED bytes, with base64's third of inflation and the JSON
+// around it already allowed for. The app applies the same figure before it
+// uploads anything, and resizes pages to stay under it.
+const MAX_ONE = 3 * 1024 * 1024;
+const MAX_TOTAL = 3 * 1024 * 1024;
 const MAX_PAGES = 8;
 
 type Source =
@@ -79,7 +93,12 @@ function readSources(raw: unknown): { ok: true; sources: Source[] } | { ok: fals
     const bytes = Buffer.byteLength(base64, 'base64');
     total += bytes;
     if (bytes > MAX_ONE || total > MAX_TOTAL) {
-      return { ok: false, error: 'Those files are too large. Try photographing the pages instead.', status: 413 };
+      return {
+        ok: false,
+        error:
+          'That is more than I can take in one go. Send two or three pages at a time and I will read each set.',
+        status: 413,
+      };
     }
 
     const mediaType = typeof s.mediaType === 'string' ? s.mediaType : '';
@@ -151,11 +170,42 @@ export async function POST(request: NextRequest) {
     doc.about ??
     `A record of ${doc.kind === 'other' ? 'a medical document' : `a ${doc.kind}`}${doc.dated ? ` dated ${doc.dated}` : ''}, kept so the paper is not needed.`;
 
-  const stored = await storePendingSave(db, user.id, {
+  // COERCED HERE, NOT ONLY ON THE WAY BACK OUT. `readPendingSave` runs every
+  // proposal through `coerceProposal`, so an offer that cannot survive that
+  // stores fine, asks its question, and then reads back as nothing - and her
+  // yes does nothing, for ever, with no error anywhere. Checking now turns a
+  // silent permanent failure into one honest sentence.
+  const proposal = coerceProposal({
     type: 'me',
     title: doc.title,
     content: { section: cardSection(doc), why, detail: body_ },
   });
+
+  if (!proposal) {
+    console.log('DOCUMENT: the record could not be made into a save', doc.title);
+    return NextResponse.json(
+      { error: 'I read the document, but could not make a record of it that would keep. That is a fault in the app, and it has been recorded.' },
+      { status: 500 }
+    );
+  }
+
+  // ONE QUESTION AT A TIME, which the chat route has always enforced and this
+  // one did not. Selodia offers to keep an insight, she reads a letter instead
+  // of answering, and the letter overwrote the insight's offer - so scrolling
+  // up and saying "yes" to the insight question wrote a MEDICAL RECORD to her
+  // Me tab. The waiting offer is cleared and named, so the question she can
+  // still see on screen no longer has an answer that means something else.
+  const { data: profile } = await db
+    .from('user_profile')
+    .select('pending_save, pending_save_asked_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const waiting = readPendingSave(profile);
+  const dropped = waiting.proposal?.title ?? null;
+  if (dropped) await clearPendingSave(db, user.id);
+
+  const stored = await storePendingSave(db, user.id, proposal);
 
   if (!stored) {
     // The reading worked and the offer did not, so saying yes would save
@@ -171,6 +221,13 @@ export async function POST(request: NextRequest) {
     // The draft, so the phone can show what it is agreeing to. Built here so
     // the app never has to know how a clinical record is laid out.
     card: { title: doc.title, section: cardSection(doc), body: body_ },
-    message: offerLine(doc),
+    // AND SAY SO IF A QUESTION WAS SET ASIDE. The earlier offer is still on
+    // her screen, further up the thread; dropping it without a word would
+    // leave a question there that no longer has an answer.
+    message: dropped
+      ? `${offerLine(doc)}
+
+(I had also asked about keeping "${dropped}" - that one is set aside for now, and I can offer it again.)`
+      : offerLine(doc),
   });
 }

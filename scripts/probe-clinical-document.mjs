@@ -98,6 +98,77 @@ check(
 
 check('nothing read means nothing claimed', confirmReferences([], []), []);
 
+group('a number is confirmed for a field, not in the abstract');
+
+// THE WORST DEFECT THIS FILE HAS HAD, found in review. The guard used to ask
+// "did this string appear anywhere in the second reading?", which is not the
+// question. An NHS number and a hospital number sit side by side on an NHS
+// letter and look alike. A second reading that SWAPPED them contains both
+// strings - so both came back confirmed, printed under the wrong headings,
+// and the offer line told her the two readings agreed. Two readings
+// disagreeing about what a number IS, reported as agreement.
+const swapped = confirmReferences(
+  [
+    { label: 'NHS number', value: '943 476 5919' },
+    { label: 'Hospital number', value: '485 002 1176' },
+  ],
+  [
+    { label: 'Hospital number', value: '9434765919' },
+    { label: 'NHS number', value: '4850021176' },
+  ]
+);
+check('a swap is not agreement', swapped.map((r) => r.confirmed), [false, false]);
+truthy('and both are still offered, to be checked', swapped.length === 2);
+
+check(
+  'the right number under the right label is still confirmed',
+  confirmReferences(
+    [
+      { label: 'NHS number', value: '943 476 5919' },
+      { label: 'Hospital number', value: '485 002 1176' },
+    ],
+    [
+      { label: 'NHS Number', value: '9434765919' },
+      { label: 'hospital  number', value: '485-002-1176' },
+    ]
+  ).map((r) => r.confirmed),
+  [true, true]
+);
+
+group('one line per field, whichever reading found it');
+
+// The ordinary phone-photo failure: the same number read off the letterhead
+// and again off the footer, a digit apart. Both used to reach the card.
+check(
+  'the same field read twice is one line',
+  confirmReferences(
+    [
+      { label: 'Hospital number', value: 'RX1-448210' },
+      { label: 'Hospital number', value: 'RX1-448270' },
+    ],
+    [{ label: 'Hospital number', value: 'RX1-448210' }]
+  ),
+  [{ label: 'Hospital number', value: 'RX1-448210', confirmed: true }]
+);
+
+check(
+  'and the second reading cannot add a rival for a field already answered',
+  confirmReferences(
+    [{ label: 'Hospital number', value: 'RX1-448210' }],
+    [{ label: 'hospital number', value: 'RX1-448270' }]
+  ),
+  [{ label: 'Hospital number', value: 'RX1-448210', confirmed: false }]
+);
+
+const many = confirmReferences(
+  Array.from({ length: 25 }, (_, i) => ({ label: `Ref ${i}`, value: `V${i}` })),
+  [{ label: 'Hospital number', value: 'RX1-448210' }]
+);
+truthy(
+  'a detail only the second reading saw is not cut by the cap',
+  many.some((r) => r.label === 'Hospital number')
+);
+
 group('the card is written to be read out at a desk');
 
 const doc = {

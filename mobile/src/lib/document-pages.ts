@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
 import { ApiError, authedPost } from '@/lib/api';
@@ -24,34 +25,94 @@ import { base64Bytes } from '@/lib/image-logging';
 // all photo formats and pdf." So: several photos at once from the gallery, one
 // at a time from the camera, and PDFs.
 //
-// "ALL PHOTO FORMATS" HAS ONE HONEST EXCEPTION. The model reads PNG, JPEG,
-// WebP and GIF, and not HEIC - which is what an iPhone writes by default. The
-// camera and gallery hand over a converted JPEG, so it only arises for a .heic
-// chosen as a file, and the app says so at that moment rather than uploading it
-// to be refused. Converting it needs a native image module; it is queued for
-// the next build rather than papered over with a list that lies.
+// "ALL PHOTO FORMATS" IS HANDLED BY CONVERTING, NOT BY ACCEPTING. The model
+// reads PNG, JPEG, WebP and GIF, and not HEIC - which is what an iPhone writes
+// by default. Every photographed page is resized and re-saved as JPEG before it
+// is sent, which fixes the format and the size in one step, so what leaves the
+// phone is always something the model can read and small enough to arrive.
 
 export type DocumentPage = { base64: string; mediaType: string; label: string };
 
 export type PickOutcome =
   | { ok: true; pages: DocumentPage[] }
-  | { ok: false; reason: 'cancelled' | 'denied' | 'too_large' | 'too_many' | 'unsupported' | 'no_file_picker' | 'failed' };
+  | {
+      ok: false;
+      reason:
+        | 'cancelled'
+        | 'denied'
+        | 'too_large'
+        | 'too_big_together'
+        | 'too_many'
+        | 'unsupported'
+        | 'no_file_picker'
+        | 'failed';
+    };
 
 /** What the server will read. Anything else is refused here rather than uploaded first. */
 const READABLE = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'];
 
 /**
- * HEIC IS AN IPHONE'S NATIVE FORMAT and the model cannot read it. It is named
- * separately rather than lumped in with "unsupported" so the app can say which
- * problem this is: the camera and gallery hand over a converted JPEG, so this
- * only arises for a .heic picked as a FILE, and "photograph the page instead"
- * is advice that actually works. Converting it properly needs a native image
- * module and is queued for the next build.
+ * HEIC IS AN IPHONE'S NATIVE FORMAT and the model cannot read it - but the
+ * resizer can OPEN it and saves everything as JPEG, so it arrives readable.
+ * That is what "all photo formats" needed, and the reason this is a list of
+ * things to convert rather than a list of things to refuse.
+ *
+ * For a stretch it was neither: readableType returned null for HEIC exactly as
+ * it did for a .docx, so the three comments explaining the careful HEIC message
+ * described a branch that did not exist and she would have got the generic
+ * refusal. A comment describing behaviour the code does not have is worse than
+ * no comment, because the next person trusts it.
  */
-const NEEDS_CONVERTING = ['image/heic', 'image/heif'];
+const CONVERTIBLE = ['image/heic', 'image/heif'];
 
 export const MAX_PAGES = 8;
-const MAX_ONE_BYTES = 12 * 1024 * 1024;
+
+// WHAT WILL ACTUALLY GO THROUGH. The server sits behind a platform that refuses
+// a request body over about 4.5MB, and base64 is a third larger than the bytes
+// it carries - so the whole letter has to come in under roughly 3MB decoded.
+// The old limit here was 12MB PER PAGE, which meant a two-page letter passed
+// every check this file made and was then thrown away by the platform, with a
+// non-JSON body the app could not read a message out of.
+const MAX_ONE_BYTES = 3 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 3 * 1024 * 1024;
+
+// A4 at 1800px on the long edge is about 150 dpi, which reads a hospital number
+// comfortably and a printed letter easily - and lands around 400KB, so four
+// pages fit where one used to. This is why the photo is taken at quality 1 and
+// reduced here rather than captured small: the picker's own compression works
+// on a full-resolution image and leaves a file far larger than this for no
+// more legibility.
+const LONG_EDGE = 1800;
+const JPEG_QUALITY = 0.75;
+
+/**
+ * SHRINK A PHOTOGRAPHED PAGE UNTIL IT FITS, and leave a PDF alone - a PDF is
+ * already compressed and is not an image this can open. Returns the page
+ * unchanged if resizing is unavailable or fails, so the worst case is the
+ * size check below refusing it with words rather than a crash.
+ */
+async function shrink(uri: string, mediaType: string, label: string): Promise<DocumentPage | null> {
+  try {
+    const context = ImageManipulator.manipulate(uri);
+    context.resize({ width: LONG_EDGE });
+    const image = await context.renderAsync();
+    const out = await image.saveAsync({
+      compress: JPEG_QUALITY,
+      format: SaveFormat.JPEG,
+      base64: true,
+    });
+    if (!out.base64) return null;
+    return { base64: out.base64, mediaType: 'image/jpeg', label };
+  } catch {
+    // The native module is missing, or the file is not an image it can open.
+    return toPage(uri, mediaType, label);
+  }
+}
+
+/** Refuses a set that cannot be sent, in words that say what to do instead. */
+export function tooBig(pages: DocumentPage[]): boolean {
+  return pages.reduce((n, p) => n + base64Bytes(p.base64), 0) > MAX_TOTAL_BYTES;
+}
 
 /**
  * The type a file really is. A picker that reports nothing useful -
@@ -73,7 +134,9 @@ export function readableType(mimeType: string | undefined, name?: string): strin
   const raw = (mimeType ?? '').toLowerCase().split(';')[0].trim();
   const fixed = raw === 'image/jpg' ? 'image/jpeg' : raw;
   if (READABLE.includes(fixed)) return fixed;
-  if (NEEDS_CONVERTING.includes(fixed) || NEEDS_CONVERTING.includes(fromName ?? '')) return null;
+  // Convertible rather than readable: shrink() re-saves it as JPEG on the way
+  // out, so what reaches the server is a format the model accepts.
+  if (CONVERTIBLE.includes(fixed) || CONVERTIBLE.includes(fromName ?? '')) return 'image/heic';
   // A picker that reports nothing useful ("application/octet-stream" is common
   // on Android) should not cost her the file when the name says what it is.
   return fromName;
@@ -139,13 +202,9 @@ export async function pickPageImages(source: 'camera' | 'library'): Promise<Pick
       const mediaType = readableType(asset.mimeType, asset.fileName ?? undefined);
       if (!mediaType) return { ok: false, reason: 'unsupported' };
 
-      // base64 comes back from the picker for most formats; a file read is the
-      // fallback, and the only route for anything the picker hands over as a
-      // URI alone.
-      const page = asset.base64
-        ? { base64: asset.base64, mediaType, label: asset.fileName ?? `Page ${i + 1}` }
-        : await toPage(asset.uri, mediaType, asset.fileName ?? `Page ${i + 1}`);
-
+      // RESIZED, NOT JUST READ. The picker's base64 is the full-resolution
+      // photograph, which is several times what can be sent.
+      const page = await shrink(asset.uri, mediaType, asset.fileName ?? `Page ${i + 1}`);
       if (!page) return { ok: false, reason: 'too_large' };
       if (base64Bytes(page.base64) > MAX_ONE_BYTES) return { ok: false, reason: 'too_large' };
       pages.push(page);
@@ -176,8 +235,12 @@ export async function pickPageFiles(): Promise<PickOutcome> {
     for (const asset of assets) {
       const mediaType = readableType(asset.mimeType, asset.name);
       if (!mediaType) return { ok: false, reason: 'unsupported' };
-      const page = await toPage(asset.uri, mediaType, asset.name || 'Document');
+      const page =
+        mediaType === 'application/pdf'
+          ? await toPage(asset.uri, mediaType, asset.name || 'Document')
+          : await shrink(asset.uri, mediaType, asset.name || 'Document');
       if (!page) return { ok: false, reason: 'too_large' };
+      if (base64Bytes(page.base64) > MAX_ONE_BYTES) return { ok: false, reason: 'too_large' };
       pages.push(page);
     }
 
@@ -228,7 +291,9 @@ export function pickFailureMessage(reason: Exclude<PickOutcome, { ok: true }>['r
     case 'denied':
       return 'Selodía needs permission to open your photos before it can read a document.';
     case 'too_large':
-      return 'One of those pages is too large to read. A photo taken in the app is usually smaller.';
+      return 'One of those pages is too large to send. A photo taken in the app is usually smaller than a scan.';
+    case 'too_big_together':
+      return 'Those pages come to more than I can send in one go. Two or three at a time works, and I will read each set.';
     case 'too_many':
       return `That is more than ${MAX_PAGES} pages. Add the ones with the findings and the reference numbers.`;
     case 'unsupported':

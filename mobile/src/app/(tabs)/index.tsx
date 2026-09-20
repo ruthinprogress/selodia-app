@@ -36,6 +36,7 @@ import {
   pickPageFiles,
   pickPageImages,
   readDocument,
+  tooBig,
   type DocumentPage,
 } from '@/lib/document-pages';
 import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
@@ -239,13 +240,7 @@ export default function ChatScreen() {
   // THE PAGES OF A LETTER, waiting to be read together. See document-tray.tsx:
   // a document is the one thing in this app gathered before it is handled,
   // because the hospital number and the plan are rarely on the same side.
-  const [documentPages, setDocumentPages] = useState<DocumentPage[]>(() =>
-    // A letter photographed on Today arrives here rather than being taken
-    // again. Collected on first render so the tray is already open when the
-    // screen appears - she pressed a camera button, and the next thing she
-    // sees should be her page in the tray, not an empty chat.
-    hasDocumentWaiting() ? collectDocument() : []
-  );
+  const [documentPages, setDocumentPages] = useState<DocumentPage[]>([]);
   const [readingDocument, setReadingDocument] = useState(false);
   // ARRIVING FROM THE LOG'S PHOTO ROW. The sheet opens itself, so the tap that
   // said "a photo" leads to the two choices rather than to a chat screen where
@@ -513,6 +508,21 @@ export default function ChatScreen() {
     return response.json();
   }
 
+  // COLLECTED ON EVERY ARRIVAL, not on first render. This was a lazy useState
+  // initialiser, which runs once - and Chat is the first tab, mounted at app
+  // launch and kept alive after that. So the initialiser had ALWAYS already
+  // run by the time a letter was photographed on Today: the tray stayed empty,
+  // she landed on a chat where nothing had happened, and the base64 of her
+  // consultant letter sat in module memory until she signed out. One defect
+  // wearing two coats - the feature never worked, and a medical document was
+  // retained indefinitely by the very file whose comment promises it lives
+  // "in memory, for seconds".
+  useFocusEffect(
+    useCallback(() => {
+      if (hasDocumentWaiting()) setDocumentPages((pages) => [...pages, ...collectDocument()]);
+    }, [])
+  );
+
   // Image logging (build item 10b). The sheet asks only WHERE the image comes
   // from; what it is gets classified afterwards, so the person is never made to
   // categorise their own photo.
@@ -602,7 +612,22 @@ export default function ChatScreen() {
         if (msg) setMessages((m) => [...m, { role: 'assistant', content: msg }]);
         return;
       }
-      setDocumentPages((pages) => [...pages, ...picked.pages].slice(0, MAX_DOCUMENT_PAGES));
+      setDocumentPages((pages) => {
+        const all = [...pages, ...picked.pages];
+        // SAYING WHEN SOMETHING WAS LEFT OUT. Silently slicing to eight meant
+        // she could pick ten pages, get eight, and have no way of knowing which
+        // two of her letter were missing from the record.
+        if (all.length > MAX_DOCUMENT_PAGES) {
+          setMessages((m) => [
+            ...m,
+            {
+              role: 'assistant',
+              content: `I can take ${MAX_DOCUMENT_PAGES} pages at a time, so I have kept the first ${MAX_DOCUMENT_PAGES}. Read these and then send the rest and I will read those too.`,
+            },
+          ]);
+        }
+        return all.slice(0, MAX_DOCUMENT_PAGES);
+      });
     } finally {
       setPicking(false);
     }
@@ -613,6 +638,21 @@ export default function ChatScreen() {
   // through the same conversational save every other Almanac entry uses.
   async function handleReadDocument() {
     if (readingDocument || documentPages.length === 0) return;
+    // TOLD BEFORE THE UPLOAD, NOT AFTER IT. Too much at once is refused by the
+    // platform with a reply the app cannot read a message out of, so she would
+    // have waited through a long upload for "I could not read that just now".
+    if (tooBig(documentPages)) {
+      setMessages((m) => [
+        ...m,
+        {
+          role: 'assistant',
+          content:
+            'Those pages come to more than I can send in one go. Take two or three out and I will read these, then send the rest and I will read those too.',
+        },
+      ]);
+      return;
+    }
+
     setReadingDocument(true);
     try {
       const result = await readDocument(documentPages);
@@ -624,19 +664,32 @@ export default function ChatScreen() {
       // to be kept, and holding them in memory after the fact would be the app
       // quietly storing a medical document.
       setDocumentPages([]);
-      const turn = `${result.card.body}
+
+      // WHAT SHE SEES NOW, AND WHAT IS WRITTEN DOWN, ARE DIFFERENT ON PURPOSE.
+      //
+      // On screen: the whole card, so she can read every line of what she is
+      // agreeing to before she agrees to it.
+      const shown = `${result.card.body}
 
 ${result.message}`;
-      setMessages((m) => [...m, { role: 'assistant', content: turn }]);
+      setMessages((m) => [...m, { role: 'assistant', content: shown }]);
 
-      // WRITTEN TO THE THREAD, NOT JUST THE SCREEN. The server is now holding
-      // this card as an offer waiting for a yes. An offer that lives only in
-      // local state disappears on a reload while the offer itself does not -
-      // so she would come back to an empty thread, say yes to something else
-      // later, and have a medical record saved that she could no longer see.
-      // The photo-log path learned this in September; the stakes are higher
-      // here.
-      void persistLogTurn(turn);
+      // In the thread: the question, and not the contents. Writing the card
+      // itself would put her NHS number, hospital number, consultant and
+      // secretary's telephone number into chat_messages BEFORE she had said
+      // yes - and leave them there for good if she said no, read back into
+      // every future turn's context. This route's own rule is that the
+      // difference between offering and saving is the difference between a
+      // record she agreed to and one that appeared because a photograph was
+      // taken; persisting the identifiers ahead of the answer breaks it just
+      // as surely as saving would.
+      //
+      // The offer still survives a reload, which is what persisting is for:
+      // she comes back to a question she can see, about a document she
+      // remembers, and the card arrives in full when she says yes.
+      void persistLogTurn(
+        `I read ${result.card.title ? `"${result.card.title}"` : 'the document you sent'}. ${result.message}`
+      );
     } finally {
       setReadingDocument(false);
     }
