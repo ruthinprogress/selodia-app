@@ -10,6 +10,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const DISCUSS_BUCKET = 'discuss-cards';
 
+// ADDING A TYPE HERE IS THREE CHANGES, NOT ONE (learned 2026-09-20, when
+// 'plan' was added in two of them): this union, the app's copy in
+// mobile/src/lib/discuss-state.ts, and the CHECK constraint on
+// chat_messages.discuss_entry_type. Miss the constraint and every tagged turn
+// fails its insert - no message, no reply, and an error the person cannot act
+// on.
 export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan';
 
 // Only 'food' is wired today — the food breakdown card is the only one built

@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase';
 // fading back — and permanence needs no logic to enforce, because chat messages
 // are never deleted, so the set only ever grows.
 
+// Kept in step with app/lib/discuss-card.ts AND with the CHECK constraint on
+// chat_messages.discuss_entry_type - see the note there.
 export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan';
 
 // Pure half, so the mapping is testable without Supabase. Rows may repeat an id
