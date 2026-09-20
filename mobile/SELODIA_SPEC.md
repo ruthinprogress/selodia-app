@@ -2261,13 +2261,33 @@ Her brief opened it: *"The PDF export should not feel like downloading data. It 
 
 Her rule again, this time about the paragraph at the top: *"AI should analyse the selected data. AI should not decide what data is selected."* And her argument for the whole feature rests on it: *"if the data is just the data collected, the report can't be dismissed as AI dumps, it's the true collected data, with a summary for convenience."* One invented number and a clinician is right to disbelieve every page behind it.
 
-**So the arithmetic is done in code and the prose is done by the model.** `facts()` in `app/lib/report-summary.ts` counts the readings, averages the days, totals the minutes and spans the ranges — in TypeScript — and hands the model the answers. The model writes paragraphs about figures it was given. This is the division the weigh-in acknowledgement already uses, for the same reason: a language model doing mental arithmetic over forty rows is a plausible wrong number waiting to happen.
+**So the app prints the figures and the summary writes the prose.** `facts()` in `app/lib/report-summary.ts` counts the readings, averages the days, totals the minutes and spans the ranges — in TypeScript — and those lines print as their own block at the top of the report, above the paragraphs, in the app's words. The summary states **no figures at all**: no counts, no averages, no percentages, no dates. Its job is what the records show when read together — what recurs and in what circumstances, what is thin, what is absent — which is the analysis she asked for and needs no arithmetic of its own. It writes *"sleep was described on only a few of the nights, so it should not be read as a picture of usual sleep"*, and the 9 and the 90 sit immediately above it.
 
-**And the guard is at the write, not in the prompt.** `withoutInvention()` reads every number out of the finished summary and drops any sentence carrying one the facts never contained — the whole sentence, because a sentence built around a figure that does not exist has nothing left when the figure goes. The prompt asks as well, because asking is free and mostly works, but *a rule the model is asked to follow is not a guard*. `probe-report-summary.mjs`, 25 checks. If sentences were removed, the app says how many and why rather than quietly handing back a shorter draft.
+**That division is the second design, and the first one was wrong.** The first kept a whitelist of every number the facts contained and dropped any sentence naming something else. A review broke it three ways in one afternoon, and all three were the same flaw — **a bare digit carries no meaning, so a whitelist of digits cannot tell one figure from another**:
 
-**Nothing is built until she has read it.** Create PDF drafts the summary, shows it in a box she can edit, and offers three ways on: use it, leave it out, or go back and change what is included. It prints at the top under a label naming both what wrote it and what it was allowed to see.
+- `7 nights` in the facts licensed *"slept 7 hours a night"*, *"woke 7 times"* and *"body fat is around 7%"*. Three inventions, all waved through.
+- The records' own free text was whitelisted too, so a symptom reading *"lasted about 40 minutes"* licensed *"migraines affected 40% of the days"* — a fabricated statistic of exactly the kind the feature exists to prevent.
+- A single date in scope contributed 2026, 9 and 14 as separate integers, so almost every small number in the language was permitted by accident.
 
-**What the summary may not do**, in the instructions and checked by the shape of what it is given: diagnose, suggest a cause, or advise. *"Headaches were noted on four of the days"* is the record; *"headaches were likely dehydration"* is not, however plausible. It is asked to name what is thin as readily as what is there — three nights of sleep out of ninety days is worth saying plainly, because it tells the reader how much weight to put on it.
+**The pattern worth keeping: when a guard's unit of comparison carries no meaning, it cannot be patched — move the division instead.** Percentages, en dashes and decimal points were all symptoms; the cause was that the guard was asked to judge something a digit cannot express. Taking figures out of the model's hands entirely made the guarantee total rather than approximate, and it made the guard one line: a sentence with a figure in it goes, worded numbers included. `probe-report-summary.mjs`, 39 checks.
+
+**Nothing is built until she has read it.** Create PDF drafts the summary, shows it in a box she can edit, and offers three ways on: use it, leave it out, or go back and change what is included. A draft that fails says **which** of three things happened — the model could not be reached, there was too little chosen to describe, or every sentence was removed — because the first version reported all three as the same silence, and she had ticked the box and waited either way.
+
+**What the summary may not do**, in the instructions: diagnose, suggest a cause, or advise. *"Swelling was noted after long periods seated"* is the record; *"swelling was likely venous insufficiency"* is not, however plausible. It is asked to name what is thin as readily as what is there, because that tells the reader how much weight to put on the rest.
+
+### Seven more faults the same review found
+
+All verified against real inputs, all fixed the same evening. Four of them were arithmetic in the block that exists to be exact:
+
+1. **Every row arrives oldest first**, and the facts block read them backwards — announcing a 4.2 kg fall as a rise, on page one, with the guard passing it because both numbers are real. *"Most recent"* was the oldest reading. A `oldest()`/`newest()` pair now says which end is which, once, at the top of the file.
+2. **An average of 419.67 minutes printed as "6h 60m"** — hours floored, remainder rounded, separately.
+3. **The summary was drafted from the 40 oldest symptoms** of a larger selection, while the count above it was truthful about all of them.
+4. **A report whose every block fell outside the period** built, stored and opened as a cover sheet, an empty Contents and a footer. It now says so, and names the period, because the period is nearly always the reason.
+5. **500 ticked records were silently cut to 200** while the button still said 500. The ceiling exists to bound one request's work, not to limit how much of her own record she may send; it sits at 1000 now, above any honest selection.
+6. **"Last 7 days" covered eight**, because the server's range is inclusive at both ends — and the cover page prints the label, so the document said one thing and held another.
+7. **The chooser offered metric names trimmed and the query matched them raw**, so a row stored with stray whitespace was tickable and then printed nothing. One `sameName()` now does both, and the chooser groups *Waist* and *waist* into one line counted together.
+
+**Nothing was found on security**, which is worth recording as plainly as the faults: all 18 queries scoped to the signed-in user, ids filtered against an already-scoped array so a borrowed id matches nothing, no select policy on `report_exports` at all, no token or user id in any URL, and every dynamic value through `esc()` including the new summary path.
 
 **Still to come:** saved recipes, for a report she rebuilds before each visit.
 
