@@ -190,6 +190,7 @@ export default function ReportScreen() {
 
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [period, setPeriod] = useState('90');
+  const [recipient, setRecipient] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -314,6 +315,7 @@ export default function ReportScreen() {
       periodLabel: chosenPeriod.label,
       blocks,
       note: note.trim() || null,
+      recipient: recipient.trim() || null,
     };
   }
 
@@ -663,6 +665,22 @@ export default function ReportScreen() {
             records: catalogue.cards,
           })}
 
+          {/* WHO IT IS FOR, on the cover: "Prepared for / Dr Greenstein". Left
+              empty it simply says "Health Summary", because a report kept for
+              herself has no recipient and a cover that insisted on one would
+              make her invent a name. */}
+          <SettingsGroup title="Who is it for">
+            <TextInput
+              value={recipient}
+              onChangeText={setRecipient}
+              placeholder="A name for the cover, if it is going to someone"
+              placeholderTextColor={theme.textSecondary}
+              maxLength={80}
+              style={[styles.oneLine, { color: theme.text, backgroundColor: theme.background }]}
+              accessibilityLabel="Who the report is prepared for"
+            />
+          </SettingsGroup>
+
           <SettingsGroup title="A note, if you want one">
             <TextInput
               value={note}
@@ -765,6 +783,12 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   secondary: { alignItems: 'center', paddingVertical: Spacing.three },
+  oneLine: {
+    borderRadius: Spacing.two,
+    padding: Spacing.two,
+    marginVertical: Spacing.three,
+    fontSize: 15,
+  },
   hint: { lineHeight: 18, paddingBottom: Spacing.two },
   build: { borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
   pressed: { opacity: 0.6 },
