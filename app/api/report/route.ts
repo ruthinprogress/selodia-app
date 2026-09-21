@@ -182,9 +182,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Expired copies go on the way in, so a report never outlives its link by
-  // more than one more report.
-  await db.rpc('purge_expired_report_exports');
+  // Expired copies are swept every fifteen minutes by a pg_cron job, so a
+  // report no longer waits for somebody else's export to be cleared away - and
+  // the function is not callable from the API at all. See the migration
+  // expired_copies_go_on_a_schedule.
 
   // Stored under the id the pages already carry. report_exports has no read
   // policy at all, so the id could never have come back from the insert.

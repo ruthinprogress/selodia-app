@@ -54,9 +54,11 @@ export async function POST(request: NextRequest) {
   // policy on purpose - nobody may read it except through get_me_export - and
   // PostgREST needs read access to hand an inserted row back, so asking the
   // insert for its id would be refused and every export would fail.
-  // Expired copies are cleared on the way in. Nothing else ever removed them,
-  // so every export used to leave its page in the database indefinitely.
-  await db.rpc('purge_expired_me_exports');
+  // EXPIRED COPIES ARE SWEPT ON A SCHEDULE NOW (21 September 2026), not here.
+  // This used to call purge_expired_me_exports on the way in, which meant a
+  // maintenance function had to be callable by every signed-in person - and
+  // that expired health data only left when somebody else happened to export.
+  // A pg_cron job runs it every fifteen minutes instead, and nobody can call it.
 
   const id = crypto.randomUUID();
   const { error: storeError } = await db.from('me_exports').insert({ id, user_id: user.id, html });
