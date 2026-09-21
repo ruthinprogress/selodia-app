@@ -197,16 +197,42 @@ export function renderReport(data: ReportData): string {
         e.protein != null ? `${Math.round(e.protein)} g` : '—',
       ])));
     }
-    if (data.water.length > 0) {
-      blocks.push(`<h3>Drinks</h3>`);
-      blocks.push(intro('What was logged, which is not the same as everything that was drunk.'));
-      blocks.push(...tableBlocks(['Date', 'Logged', 'Drinks'], data.water.map((d) => [
-        shortDate(d.day),
-        `${Math.round(d.ml / 100) / 10} L`,
-        String(d.drinks),
-      ])));
-    }
-    sections.push({ id: 'nutrition', title: 'Nutrition and drinks', blocks });
+    sections.push({ id: 'nutrition', title: 'Nutrition', blocks });
+  }
+
+  // ---- HYDRATION, ON ITS OWN, AND SAYING HOW IT IS COUNTED --------------
+  // Ruth, 21 September 2026: "Nutrition and drinks is confusing as there isn't
+  // a separate view of hydration ... it should be exportable, in it's own table
+  // as hydration with an explanation of how it's calculated, calories
+  // extracted, liquid volume added to hydration log."
+  //
+  // THE EXPLANATION IS NOT OPTIONAL HERE. Since this afternoon a drink with
+  // calories in it is recorded twice on purpose - its macros in the food log,
+  // its volume here - and a clinician who sees a milky tea in both tables
+  // without being told will read it as the same thing counted twice. Saying so
+  // plainly is the difference between a document that is trusted and one that
+  // gets an asterisk put beside it.
+  if (data.water.length > 0) {
+    const blocks: Block[] = [
+      intro(
+        'What was logged, which is not the same as everything that was drunk. Volume is counted from ' +
+          'the drink as it was described: a stated amount where there was one, and an ordinary serving ' +
+          'where there was not.'
+      ),
+      `<div class="panel"><h3>How a drink is counted</h3><ul class="points">` +
+        `<li>A drink with no calories in it - water, black tea or coffee, herbal tea - appears here only.</li>` +
+        `<li>A drink carrying calories, such as tea with milk, is recorded in BOTH places: its energy and ` +
+        `protein in the nutrition tables, its volume here. These are two different measurements of one ` +
+        `drink, not the same figure counted twice.</li>` +
+        `<li>Alcohol is recorded for its calories in the nutrition tables and is deliberately absent from ` +
+        `this table, because it does not hydrate.</li>` +
+        `</ul></div>`,
+      ...tableBlocks(
+        ['Date', 'Volume', 'Drinks'],
+        data.water.map((d) => [shortDate(d.day), `${Math.round(d.ml / 100) / 10} L`, String(d.drinks)])
+      ),
+    ];
+    sections.push({ id: 'water', title: 'Hydration', blocks });
   }
 
   // ---- 5. Sleep ---------------------------------------------------------
