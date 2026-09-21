@@ -16,6 +16,7 @@ import {
   type ParsedMacros,
 } from './food-parse-prompt';
 import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
+import { checkStatedWeight, scaleMacros } from './stated-weight';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -114,18 +115,34 @@ export function buildFoodRows(
 ): FoodRow[] {
   const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
   const timeOfDay = now.toISOString().slice(11, 23);
-  return entries.filter(hasFood).map((entry) => {
+  return entries.filter(hasFood).map((raw) => {
     const date =
-      typeof entry.detected_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.detected_date)
-        ? entry.detected_date
+      typeof raw.detected_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.detected_date)
+        ? raw.detected_date
         : null;
-    const text = typeof entry.entry_text === 'string' ? entry.entry_text.trim() : '';
+    const text = typeof raw.entry_text === 'string' ? raw.entry_text.trim() : '';
+    const rawText = text || foodText;
+
+    // THE WEIGHT SHE GAVE BEATS THE ONE THE MODEL ASSEMBLED (21 September
+    // 2026). "50g cheese omelette" came back as two large eggs plus fifty
+    // grams of cheese - an omelette made WITH 50g of cheese, about 150g of
+    // food, against the fifty grams she said. The prompt now says which noun a
+    // leading weight belongs to, and this is here because a rule the model is
+    // asked to follow is not a guard. See stated-weight.ts.
+    const check = checkStatedWeight(rawText, raw);
+    const entry = check.rescaled ? scaleMacros(raw, check.factor) : raw;
+    if (check.rescaled) {
+      console.log(
+        `FOOD: "${rawText}" stated ${check.statedGrams}g but its parts weighed ${Math.round(check.itemGrams)}g - scaled to what she said`
+      );
+    }
+
     return {
       happenedAt: date ? `${date}T${timeOfDay}Z` : now.toISOString(),
       // The entry's own words when the model separated them out, so a row in a
       // seven-day catch-up reads as that day's meal rather than as the whole
       // message repeated seven times.
-      rawText: text || foodText,
+      rawText,
       items: Array.isArray(entry.items) ? entry.items : [],
       fields: buildFoodLogFields(entry),
     };
