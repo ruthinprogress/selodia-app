@@ -711,8 +711,8 @@ export default function ReportScreen() {
             values: catalogue.metrics,
           })}
 
-          {(catalogue.foodDays > 0 || catalogue.waterDays > 0 || catalogue.sleepNights > 0) && (
-            <SettingsGroup title="Food, drink and sleep">
+          {(catalogue.foodDays > 0 || catalogue.waterDays > 0) && (
+            <SettingsGroup title="Food and drink">
               <View style={styles.boxes}>
                 {catalogue.foodDays > 0 && (
                   <Checkbox
@@ -758,16 +758,25 @@ export default function ReportScreen() {
                   <Checkbox
                     checked={whole.has('water')}
                     onToggle={() => setWhole((s) => toggled(s, 'water'))}
-                    label="Drinks — what you logged, day by day"
+                    label="Hydration — every drink and its volume, day by day"
                   />
                 )}
-                {catalogue.sleepNights > 0 && (
-                  <Checkbox
-                    checked={whole.has('sleep')}
-                    onToggle={() => setWhole((s) => toggled(s, 'sleep'))}
-                    label="Sleep — the nights you described"
-                  />
-                )}
+              </View>
+            </SettingsGroup>
+          )}
+
+          {/* SLEEP IS NOT FOOD OR DRINK (Ruth, 21 September 2026): "Take Sleep
+              out of Food and Drink - that wierd." It was grouped there because
+              all three are daily logs, which is a fact about the code and not
+              about the body. */}
+          {catalogue.sleepNights > 0 && (
+            <SettingsGroup title="Sleep">
+              <View style={styles.boxes}>
+                <Checkbox
+                  checked={whole.has('sleep')}
+                  onToggle={() => setWhole((s) => toggled(s, 'sleep'))}
+                  label="Sleep — the nights you described"
+                />
               </View>
             </SettingsGroup>
           )}

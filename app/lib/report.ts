@@ -330,6 +330,41 @@ export type ReportData = {
   cards: { title: string; kind: string; content: string; updated: string }[];
 };
 
+// THE CURRENT GOAL, NOT ITS HISTORY (Ruth, 21 September 2026): "I don't think
+// the (updated) from earlier section is needed. should just be current goal."
+//
+// Two things were wrong and she saw both in one line. A goal is written as a
+// new row every time somebody states one, so the report printed a goal from
+// August beside the one that replaced it - and the newer row narrated its own
+// change: "Goal is to reach 25% body fat and 40kg muscle mass (updated from
+// earlier...)". A report states what is true now. Anyone who wants the history
+// is asking a different question, and the log answers it.
+//
+// THE COST, STATED: somebody with two genuine goals written weeks apart keeps
+// only the later one. That is the same rule this app already applies to a
+// stated weight or a height - the most recent statement is the true one - and
+// the alternative is a report that cannot tell a replacement from an addition
+// and prints both, which is the bug being fixed.
+export function currentGoals(rows: string[]): string[] {
+  const newest = rows.map(withoutChangeNote).find((g) => g.length > 0);
+  return newest ? [newest] : [];
+}
+
+/**
+ * Strips a trailing parenthetical that narrates a change rather than stating
+ * the goal: "(updated from earlier...)", "(was 30%)".
+ *
+ * The word boundary in here was, for about a minute, a literal backspace
+ * character - the third time on this project that a backslash-b written
+ * through a script has landed in a regex as 0x08 rather than as an escape.
+ * It is invisible in an editor and the pattern silently stops matching.
+ */
+export function withoutChangeNote(text: string | null | undefined): string {
+  return String(text ?? '')
+    .replace(/\s*\((?:updated|revised|changed|previously|was)\b[^)]*\)\s*$/i, '')
+    .trim();
+}
+
 export async function loadReport(
   db: SupabaseClient,
   userId: string,
@@ -373,7 +408,12 @@ export async function loadReport(
             .maybeSingle()
         : Promise.resolve({ data: null }),
       goalsBlock
-        ? db.from('user_context').select('content').eq('user_id', userId).eq('category', 'goal')
+        ? db
+            .from('user_context')
+            .select('content, updated_at')
+            .eq('user_id', userId)
+            .eq('category', 'goal')
+            .order('updated_at', { ascending: false })
         : none,
       bodyBlock
         ? db
@@ -520,7 +560,7 @@ export async function loadReport(
     periodLabel: sel.periodLabel,
     note: sel.note?.trim() || null,
     profile,
-    goals: ((goalRows.data ?? []) as { content: string }[]).map((g) => g.content),
+    goals: currentGoals(((goalRows.data ?? []) as { content: string }[]).map((g) => g.content)),
     weights: ((bodyRows.data ?? []) as {
       measured_at: string;
       weight_kg: number | null;

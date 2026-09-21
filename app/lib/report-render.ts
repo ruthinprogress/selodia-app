@@ -84,6 +84,21 @@ export function renderReport(data: ReportData): string {
     sections.push({ id: 'summary', title: 'Summary', blocks });
   }
 
+  // ---- ABOUT YOU, AT THE TOP (Ruth, 21 September 2026) ------------------
+  // "it's still a strange place to put About You - shuldn't it be at the top
+  // with the other data? not at the end"
+  //
+  // The same fault she caught with Goals this afternoon, wearing the other
+  // face: the details that tell a reader WHO this is about were filed behind
+  // everything measured about them. A clinician reads the person first.
+  //
+  // Only the fields not already on the cover. Name and date of birth are
+  // printed once, on the cover, and repeating them here was the duplication
+  // she spotted earlier today.
+  if (data.profile.length > 0) {
+    sections.push({ id: 'profile', title: 'About you', blocks: [definitionList(data.profile)] });
+  }
+
   // ---- 2. Goals ---------------------------------------------------------
   // Their own heading, near the front (Ruth, 21 September 2026). They were
   // sharing a section with height and date of birth at the very end, which put
@@ -288,13 +303,6 @@ export function renderReport(data: ReportData): string {
       );
     }
     sections.push({ id: `attachment-${i}`, title: a.name, blocks });
-  }
-
-  // ---- Last: the reference details, and only the ones not on the cover ----
-  // Name and date of birth are printed once, on the cover. Repeating them here
-  // under "Profile" was the duplication she spotted.
-  if (data.profile.length > 0) {
-    sections.push({ id: 'profile', title: 'About you', blocks: [definitionList(data.profile)] });
   }
 
   const id = data.reportId ?? '';
