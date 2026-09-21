@@ -1,7 +1,12 @@
 import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
-// READING AND WRITING HER ARRANGEMENT OF THE LOG (Ruth, 21 September 2026).
+// READING AND WRITING HER ARRANGEMENT OF A LIST (Ruth, 21 September 2026).
+//
+// TWO SCREENS USE THIS NOW, which is why it takes a column name. The Log rows
+// came first; the Cycle cards asked for exactly the same thing a few hours
+// later - "All cards should be moveable and hideable too" - and a second copy
+// of this file would have been two sets of rules about the same question.
 //
 // "I don't think everyone will want to log everything, so can we make the cards
 // on the logging page so they can be reorganised by holding down and just
@@ -25,16 +30,19 @@ import { EMPTY, readLayout, type LogLayout } from '@/lib/log-layout-rules';
 export type { LogLayout };
 export { arrange, layoutOf } from '@/lib/log-layout-rules';
 
-export async function loadLogLayout(): Promise<LogLayout> {
+/** Which list: each screen keeps its arrangement in its own column. */
+export type LayoutKey = 'log_layout' | 'cycle_layout';
+
+export async function loadLayout(key: LayoutKey): Promise<LogLayout> {
   try {
     const userId = await currentUserId();
     if (!userId) return EMPTY;
     const { data } = await supabase
       .from('user_profile')
-      .select('log_layout')
+      .select(key)
       .eq('user_id', userId)
       .maybeSingle();
-    return readLayout(data?.log_layout);
+    return readLayout((data as Record<string, unknown> | null)?.[key]);
   } catch {
     // Her own order failing to load must never cost her the screen: the app's
     // own order is a perfectly good list.
@@ -43,15 +51,15 @@ export async function loadLogLayout(): Promise<LogLayout> {
 }
 
 /** Returns false when nothing was written, so a caller can say so rather than assume. */
-export async function saveLogLayout(layout: LogLayout): Promise<boolean> {
+export async function saveLayout(key: LayoutKey, layout: LogLayout): Promise<boolean> {
   try {
     const userId = await currentUserId();
     if (!userId) return false;
     const { error } = await supabase
       .from('user_profile')
-      .upsert({ user_id: userId, log_layout: layout }, { onConflict: 'user_id' });
+      .upsert({ user_id: userId, [key]: layout }, { onConflict: 'user_id' });
     if (error) {
-      console.log('LOG LAYOUT: could not save -', error.message);
+      console.log(`LAYOUT: could not save ${key} -`, error.message);
       return false;
     }
     return true;

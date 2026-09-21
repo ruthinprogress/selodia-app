@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { arrange, layoutOf, loadLogLayout, saveLogLayout } from '@/lib/log-layout';
+import { arrange, layoutOf, loadLayout, saveLayout } from '@/lib/log-layout';
 
 // THE LOG (2026-09-20), rebuilt from Ruth's navigation brief: "Some users don't
 // want to chat every time they drink water or weigh themselves. This screen is
@@ -131,7 +131,7 @@ export default function LogScreen() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const layout = await loadLogLayout();
+      const layout = await loadLayout('log_layout');
       if (cancelled) return;
       const arranged = arrange(ROWS, layout);
       setShown(arranged.shown);
@@ -149,7 +149,7 @@ export default function LogScreen() {
   const keep = useCallback((nextShown: Row[], nextHidden: Row[]) => {
     setShown(nextShown);
     setHidden(nextHidden);
-    void saveLogLayout(layoutOf(nextShown.map((r) => r.id), nextHidden.map((r) => r.id)));
+    void saveLayout('log_layout', layoutOf(nextShown.map((r) => r.id), nextHidden.map((r) => r.id)));
   }, []);
 
   const hide = (row: Row) => keep(shown.filter((r) => r.id !== row.id), [...hidden, row]);
