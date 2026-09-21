@@ -218,6 +218,30 @@ function str(v: unknown, max = 400): string | null {
   return typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null;
 }
 
+// A MODEL WRITING JSON SOMETIMES WRITES THE ESCAPE RATHER THAN THE BREAK, and
+// her MRI report came back with a literal backslash-n between every paragraph,
+// printed as characters in the middle of the explanation. Nothing downstream
+// can tell the difference, so it is fixed here, once.
+const NL = String.fromCharCode(10);
+const ESCAPED_BREAK = new RegExp(String.raw`\\r\\n|\\n|\\r`, 'g');
+const MANY_BREAKS = new RegExp(`${NL}{3,}`, 'g');
+
+export function tidy(v: string | null): string | null {
+  if (!v) return null;
+  return v.replace(ESCAPED_BREAK, NL).replace(MANY_BREAKS, NL + NL).trim() || null;
+}
+
+// "NOT STATED IN THIS DOCUMENT" IS NOT A VALUE, it is the absence of one - and
+// printed into a card it becomes a heading with a shrug under it. The letter
+// either says when she will be reviewed or it does not, and if it does not the
+// line has no business on the page.
+const ABSENT = /^(not (stated|specified|mentioned|given|recorded|available|documented)|none( stated| specified)?|n\/?a|unknown|unspecified)/i;
+
+export function stated(v: string | null): string | null {
+  if (!v) return null;
+  return ABSENT.test(v.trim()) ? null : v;
+}
+
 function strings(v: unknown, max = 30): string[] {
   return Array.isArray(v)
     ? v.map((x) => str(x, 1000)).filter((x): x is string => x !== null).slice(0, max)
@@ -234,19 +258,38 @@ export function sameValue(a: string, b: string): boolean {
   return clean(a) === clean(b);
 }
 
+/** Just the digits, which is the part of a reference that can be wrong. */
+export function digitsOf(value: string): string {
+  return (value.match(/\d/g) ?? []).join('');
+}
+
 /**
- * THE GUARD, AND WHY IT IS A SECOND READING RATHER THAN A RULE.
+ * THE GUARD: SILENT UNLESS THE TWO READINGS CONTRADICT EACH OTHER.
  *
- * Every other guard in this app checks an output against data the app already
- * holds. Here there is no such data: the only record of what the letter says is
- * the reading itself, so there is nothing to check it against except another
- * reading. So the page is transcribed twice, by two calls that cannot see each
- * other, and a reference is marked confirmed only where both agree.
+ * The page is still transcribed twice by two calls that cannot see each other,
+ * because there is no stored truth to check a letter against and another
+ * reading is the only check available. What changed on 21 September is WHEN
+ * that produces a mark.
  *
- * A number that differs between readings is NOT thrown away - it is kept and
- * marked unconfirmed, because a half-read hospital number she can check against
- * the letter is more use than a blank. The card says which are which, and she
- * is told to verify the rest before quoting them.
+ * It first marked anything the second reading had not independently confirmed.
+ * On her real MRI report that flagged TEN of FOURTEEN details - her own name,
+ * her sex, the hospital's telephone number - because the two prompts naturally
+ * label things differently, not because anything disagreed. Her verdict was
+ * exactly right:
+ *
+ *   "lots of comments that it needs to be checked - this is terrible UI, it
+ *   needs to just get it right ... or it's actually just useless and will not
+ *   be trusted."
+ *
+ * She is describing the failure mode of a smoke alarm that goes off when you
+ * make toast. A warning on ten of fourteen lines is not caution, it is noise,
+ * and it teaches the reader to skip every warning including a real one.
+ *
+ * So a mark now means ONE thing: both readings found this field and they do not
+ * agree about its digits. Silence means no contradiction was found - which is
+ * what it honestly means, and is all a second reading can ever tell you.
+ * Anything with no digits in it is never marked at all, because two readings
+ * wording an address differently is not a disagreement about the address.
  */
 export function confirmReferences(
   first: { label: string; value: string }[],
@@ -278,26 +321,16 @@ export function confirmReferences(
       // warning - and the offer line then told her the two readings agreed.
       // Two readings that disagree about what a number IS were being reported
       // as agreement, which is worse than having no second reading at all.
-      confirmed: second.some((o) => sameValue(o.value, ref.value) && sameLabel(o.label) === label),
+      confirmed: !contradicted(ref, second),
     });
   }
 
-  // A detail only the second reading saw is still a detail she may need, and is
-  // offered unconfirmed rather than dropped.
-  //
-  // BUT A FIELD IS NEVER OFFERED TWICE. When the readings disagree about the
-  // hospital number, the second value is a rival reading of the SAME number,
-  // not a second number - and printing both turns a record into a puzzle she
-  // has to solve at a reception desk. One value, marked to check, is the honest
-  // form of "I am not certain of this"; two values is the app declining to
-  // answer while looking like it did.
-  for (const ref of second) {
-    const label = sameLabel(ref.label);
-    if (claimed.has(label)) continue;
-    if (out.some((o) => sameValue(o.value, ref.value))) continue;
-    claimed.add(label);
-    out.push({ label: ref.label, value: ref.value, confirmed: false });
-  }
+  // THE SECOND READING CONTRIBUTES NOTHING OF ITS OWN. It exists to disagree,
+  // not to add. The two prompts name things differently, so anything it found
+  // and the extraction did not arrived as a near-duplicate row - "Name" beside
+  // "Patient name" - with the newcomer marked to check. Two lines for one fact,
+  // one of them wearing a warning, is exactly the noise that made her say the
+  // feature would not be trusted.
 
   // A ceiling on one letter, set well above any letter. It used to be 20, which
   // a busy letterhead can reach on its own - and because the second reading's
@@ -309,6 +342,23 @@ export function confirmReferences(
 /** Two names for the same field. Case and spacing are how a page is printed. */
 function sameLabel(label: string): string {
   return label.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * True only when the second reading found THIS field and read different digits
+ * in it. Everything else - a field the second reading did not report, a field
+ * with no digits, a difference in punctuation or wording - is not a
+ * contradiction and says nothing.
+ */
+function contradicted(
+  ref: { label: string; value: string },
+  second: { label: string; value: string }[]
+): boolean {
+  const mine = digitsOf(ref.value);
+  if (!mine) return false;
+  const label = sameLabel(ref.label);
+  const rival = second.find((o) => sameLabel(o.label) === label && digitsOf(o.value));
+  return Boolean(rival && digitsOf(rival.value) !== mine);
 }
 
 function toolInput(reply: Anthropic.Message, name: string): Record<string, unknown> | null {
@@ -337,7 +387,7 @@ export async function readClinicalDocument(sources: Source[]): Promise<ReadResul
     [main, numbers] = await Promise.all([
       anthropic.messages.create({
         model: MODEL,
-        max_tokens: 3000,
+        max_tokens: 8000,
         system: EXTRACT,
         tools: [TOOL],
         tool_choice: { type: 'tool', name: 'record_document' },
@@ -384,7 +434,7 @@ export async function readClinicalDocument(sources: Source[]): Promise<ReadResul
       : 'other',
     title: str(got.title, 120) ?? 'A medical document',
     dated: /^\d{4}-\d{2}-\d{2}$/.test(String(got.dated)) ? (got.dated as string) : null,
-    about: str(got.about, 300),
+    about: stated(str(got.about, 300)),
     clinician: {
       name: str(clinician.name, 120),
       role: str(clinician.role, 120),
@@ -399,10 +449,10 @@ export async function readClinicalDocument(sources: Source[]): Promise<ReadResul
     },
     references: confirmReferences(rawRefs, secondRefs),
     says: strings(got.says),
-    plainWords: str(got.plainWords, 2000),
+    plainWords: tidy(str(got.plainWords, 12000)),
     plan: strings(got.plan),
-    review: str(got.review, 300),
-    routeBackIn: str(got.routeBackIn, 400),
+    review: stated(str(got.review, 300)),
+    routeBackIn: stated(str(got.routeBackIn, 400)),
     medications: strings(got.medications, 20),
     unreadable: strings(got.unreadable, 10),
   };

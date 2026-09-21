@@ -58,8 +58,20 @@ export function SettingsLink({
           comfortably wider than the word ever needs, right-aligned so it still
           sits in the corner, leaves Android nothing to wrap - including at a
           larger phone font size. The Chat screen's own link has the same fix. */}
-      <ThemedText type="small" themeColor="textSecondary" style={placement === 'corner' ? styles.cornerLabel : undefined}
-        textBreakStrategy="simple">
+      {/* THE INLINE ONE IS A LINK, THE CORNER ONE IS A CORNER (Ruth, 21
+          September 2026: "Today has no Settings menu"). It was there all along,
+          at the end of the date line - in the same muted grey as the date, so
+          it read as more date rather than as a way out, and she looked for it
+          and did not find it.
+          In the corner, a single lone word is obviously a control because
+          nothing else is up there. Sitting at the end of a sentence it needs
+          the colour the rest of the app gives a text link, or it is camouflage. */}
+      <ThemedText
+        type="small"
+        themeColor={placement === 'corner' ? 'textSecondary' : 'link'}
+        style={placement === 'corner' ? styles.cornerLabel : undefined}
+        textBreakStrategy="simple"
+      >
         Settings
       </ThemedText>
     </Pressable>

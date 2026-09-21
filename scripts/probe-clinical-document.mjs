@@ -12,7 +12,7 @@
 //
 //   npx tsx scripts/probe-clinical-document.mjs
 
-import { confirmReferences, sameValue } from '../app/lib/clinical-document.ts';
+import { confirmReferences, sameValue, stated, tidy } from '../app/lib/clinical-document.ts';
 import { cardBody, cardSection, offerLine } from '../app/lib/clinical-card.ts';
 
 let passed = 0;
@@ -72,6 +72,11 @@ check('a disagreement is KEPT, and marked', disagreed, [
 // moment the card is made - which is exactly when the mark is useful.
 truthy('because a blank is less use than something to check', disagreed.length === 1);
 
+// THE SECOND READING IS A CHECK, NOT A SOURCE (changed 21 September). It used
+// to contribute anything the extraction had missed, which on her real MRI
+// report meant a second "Name" row beside "Patient name" - two lines for one
+// fact, the newcomer wearing a warning. That is the noise that made her say the
+// feature would not be trusted.
 const onlySecond = confirmReferences(
   [{ label: 'NHS number', value: '4857773456' }],
   [
@@ -79,9 +84,8 @@ const onlySecond = confirmReferences(
     { label: 'Appointment ref', value: 'APP-99213' },
   ]
 );
-check('a detail only the second reading saw is offered, unconfirmed', onlySecond, [
+check('the second reading adds nothing of its own', onlySecond, [
   { label: 'NHS number', value: '4857773456', confirmed: true },
-  { label: 'Appointment ref', value: 'APP-99213', confirmed: false },
 ]);
 
 check(
@@ -161,13 +165,11 @@ check(
 );
 
 const many = confirmReferences(
-  Array.from({ length: 25 }, (_, i) => ({ label: `Ref ${i}`, value: `V${i}` })),
-  [{ label: 'Hospital number', value: 'RX1-448210' }]
+  Array.from({ length: 45 }, (_, i) => ({ label: `Ref ${i}`, value: `V${i}` })),
+  []
 );
-truthy(
-  'a detail only the second reading saw is not cut by the cap',
-  many.some((r) => r.label === 'Hospital number')
-);
+check('a ceiling well above any real letter', many.length, 40);
+truthy('and it keeps the earliest, which is the top of the page', many[0].label === 'Ref 0');
 
 group('the card is written to be read out at a desk');
 
@@ -205,30 +207,30 @@ const doc = {
 const body = cardBody(doc);
 
 truthy('the numbers are in it', body.includes('485 777 3456'));
-truthy('and so is the one to check, marked', body.includes('RX447102') && body.includes('check this against the letter'));
+truthy('and so is the one to check, marked', body.includes('RX447102') && body.includes('check this one against the letter'));
 truthy('a confirmed number carries no warning', !body.split('485 777 3456')[1].startsWith('  (check'));
 truthy('the phone number survives', body.includes('020 7946 0321'));
 truthy('so does the secretary', body.includes('Jane Hollis'));
 truthy('and the consultant and hospital', body.includes('Mr A Okafor') && body.includes('St Bartholomew'));
 
 // HER ACTUAL QUESTION: "these symptoms are back, how do I get seen?"
-truthy('the route back in is there, under its own heading', body.includes('If it comes back:'));
+truthy('the route back in is there, under its own heading', body.includes('**If it comes back**'));
 truthy('and says what the letter said', body.includes('Contact my secretary directly'));
 truthy('the review date is kept', body.includes('In 3 months'));
 
-truthy("what the letter SAYS is labelled as the letter's", body.includes('What the letter says:'));
-truthy('and the explanation is labelled an explanation', body.includes('an explanation of the terms above, not a new opinion'));
+truthy("what the letter SAYS is labelled as the letter's", body.includes('**What the letter says**'));
+truthy('and the explanation is labelled an explanation', body.includes('An explanation of the terms above, not a new opinion'));
 truthy('the plain words are present', body.includes('cushions between the bones'));
-truthy('what could not be read is admitted', body.includes('Could not be read from the photo:'));
+truthy('what could not be read is admitted', body.includes('**Could not be read**'));
 truthy('and the card says the document is gone', body.includes('The document itself is not kept'));
 
 group('the order is the order of the phone call');
 
 const at = (needle) => body.indexOf(needle);
-truthy('who, before what to quote', at('Seen by:') < at('To quote:'));
-truthy('what to quote, before the findings', at('To quote:') < at('What the letter says:'));
-truthy('the findings, before the explanation of them', at('What the letter says:') < at('In ordinary words'));
-truthy('and the route back in comes last', at('If it comes back:') > at('What was agreed:'));
+truthy('who, before what to quote', at('**Seen by**') < at('**To quote**'));
+truthy('what to quote, before the findings', at('**To quote**') < at('**What the letter says**'));
+truthy('the findings, before the explanation of them', at('**What the letter says**') < at('**In ordinary words**'));
+truthy('and the route back in comes last', at('**If it comes back**') > at('**What was agreed**'));
 
 group('where it lands, and what she is told');
 
@@ -238,12 +240,14 @@ check('a referral is appointments', cardSection({ ...doc, kind: 'referral' }), '
 
 const offer = offerLine(doc);
 truthy('the offer names what it read', offer.includes('an imaging report'));
-truthy('and says one number needs checking', offer.includes('1 of the 2 reference numbers'));
+truthy('and says which one needs checking, by name', offer.includes('a different answer for Hospital number'));
 truthy('and admits what it could not make out', offer.includes('could not make out'));
 truthy('and asks rather than saves', offer.includes('Want me to keep this'));
 
 const clean = offerLine({ ...doc, references: [{ label: 'NHS number', value: '1', confirmed: true }], unreadable: [] });
-truthy('a clean read says so plainly', clean.includes('read the reference numbers twice'));
+// A CLEAN READ SAYS NOTHING ABOUT READING TWICE. A process that worked is not
+// news, and reporting it every time is what turned a safeguard into noise.
+truthy('a clean read does not mention checking at all', !clean.includes('marked to check'));
 truthy('and claims nothing about unreadable parts', !clean.includes('could not make out'));
 
 const allBad = offerLine({
@@ -254,7 +258,7 @@ const allBad = offerLine({
   ],
   unreadable: [],
 });
-truthy('and when none agreed, it says to check them all', allBad.includes('check them against the letter'));
+truthy('and when two disagree it names both', allBad.includes('a and b'));
 
 group('a thin document does not pretend');
 
@@ -270,11 +274,107 @@ const thin = {
   unreadable: [],
 };
 const thinBody = cardBody(thin);
-truthy('no empty "To quote" heading', !thinBody.includes('To quote:'));
-truthy('no empty contact block', !thinBody.includes('Contact:'));
-truthy('no empty explanation heading', !thinBody.includes('In ordinary words'));
-truthy('no invented route back in', !thinBody.includes('If it comes back:'));
+truthy('no empty "To quote" heading', !thinBody.includes('**To quote**'));
+truthy('no empty contact block', !thinBody.includes('**Contact**'));
+truthy('no empty explanation heading', !thinBody.includes('**In ordinary words**'));
+truthy('no invented route back in', !thinBody.includes('**If it comes back**'));
 truthy('but what it did say is still there', thinBody.includes('Disc bulge at C5/C6'));
+
+group('a mark means the readings disagree, and nothing else');
+
+// HER VERDICT ON THE FIRST VERSION, from her real MRI report: "lots of comments
+// that it needs to be checked - this is terrible UI, it needs to just get it
+// right ... or it's actually just useless and will not be trusted." It marked
+// 10 of 14 details, including her own name and the hospital's phone number,
+// because two prompts label things differently - not because anything
+// disagreed. A warning on ten lines of fourteen teaches you to skip warnings.
+
+check(
+  'a field the second reading never mentioned is not a doubt',
+  confirmReferences([{ label: 'Hospital Number', value: '676230' }], []),
+  [{ label: 'Hospital Number', value: '676230', confirmed: true }]
+);
+
+check(
+  'a field with no digits is never marked',
+  confirmReferences(
+    [{ label: 'Patient name', value: 'Ms Ruth CHRISTIANSON-MONROY' }],
+    [{ label: 'Name', value: 'Ruth Christianson-Monroy' }]
+  ),
+  [{ label: 'Patient name', value: 'Ms Ruth CHRISTIANSON-MONROY', confirmed: true }]
+);
+
+check(
+  'the same digits read twice are agreement whatever the punctuation',
+  confirmReferences(
+    [{ label: 'T', value: '020 7806 4000' }],
+    [{ label: 't', value: '02078064000' }]
+  )[0].confirmed,
+  true
+);
+
+// THE ONE THING A MARK IS FOR.
+check(
+  'the same field with different digits IS a doubt',
+  confirmReferences(
+    [{ label: 'Hospital Number', value: '676230' }],
+    [{ label: 'hospital number', value: '676238' }]
+  ),
+  [{ label: 'Hospital Number', value: '676230', confirmed: false }]
+);
+
+check(
+  'and a swap is still caught, because each field contradicts its own rival',
+  confirmReferences(
+    [
+      { label: 'NHS number', value: '943 476 5919' },
+      { label: 'Hospital number', value: '485 002 1176' },
+    ],
+    [
+      { label: 'Hospital number', value: '9434765919' },
+      { label: 'NHS number', value: '4850021176' },
+    ]
+  ).map((r) => r.confirmed),
+  [false, false]
+);
+
+// A REAL LETTER'S WORTH, to prove the noise is gone.
+const real = confirmReferences(
+  [
+    { label: 'Hospital Number', value: '676230' },
+    { label: 'DoB', value: '11-Sep-1985' },
+    { label: 'Date/Time of Exam', value: '03-Jul-2026 13:23' },
+    { label: 'GMC number', value: 'GMC6076495' },
+    { label: 'Patient name', value: 'Ms Ruth CHRISTIANSON-MONROY' },
+    { label: 'Sex', value: 'Female' },
+    { label: 'T', value: '020 7806 4000' },
+    { label: 'E', value: 'info@hje.org.uk' },
+  ],
+  [
+    { label: 'Hospital No', value: '676230' },
+    { label: 'Date of birth', value: '11 Sep 1985' },
+  ]
+);
+check('none of the eight is marked, because none was contradicted', real.filter((r) => !r.confirmed).length, 0);
+
+group('an escape is not a line break, and an absence is not a value');
+
+// Her MRI report came back with a literal backslash-n between every paragraph
+// of the explanation, printed as characters in the middle of the text.
+const LITERAL = 'First para.' + String.fromCharCode(92) + 'n' + String.fromCharCode(92) + 'n' + 'Second para.';
+check(
+  'a written-out escape becomes a real break',
+  tidy(LITERAL),
+  'First para.' + String.fromCharCode(10, 10) + 'Second para.'
+);
+check('a real break is left alone', tidy('A' + String.fromCharCode(10, 10) + 'B'), 'A' + String.fromCharCode(10, 10) + 'B');
+check('nothing is nothing', tidy(null), null);
+
+check('"Not stated in this document" is an absence', stated('Not stated in this document.'), null);
+check('so is "None"', stated('None'), null);
+check('so is "n/a"', stated('n/a'), null);
+check('a real review date survives', stated('In 3 months, or sooner if symptoms change'), 'In 3 months, or sooner if symptoms change');
+check('and so does a sentence that merely starts with no', stated('Nothing further is planned at this stage'), 'Nothing further is planned at this stage');
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

@@ -1,5 +1,15 @@
 import type { ClinicalDocument } from './clinical-document';
 
+const NL = String.fromCharCode(10);
+
+/** The paragraphs of a block of text, however its breaks were written. */
+function paragraphs(text: string): string[] {
+  return text
+    .split(new RegExp(`${NL}+`))
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
 // TURNING A READ DOCUMENT INTO SOMETHING SHE CAN USE AT A DESK.
 //
 // Ruth's test for this feature, in her words: "You should be able to ask
@@ -15,95 +25,86 @@ import type { ClinicalDocument } from './clinical-document';
 // explanation. A person handing this to a clinician, or reading it back to
 // themselves in six months, can always tell which is which.
 
-/** What goes in the Me card's body, as readable text. */
+/**
+ * What goes in the card, written to be READ.
+ *
+ * Ruth, on the first real document: "Very hard to read, needs much better
+ * formatting in chat, with Bold headings and spacing - clear and readable for a
+ * human, especially since it's a lot of data."
+ *
+ * So each part gets a heading in bold and a blank line around it, and nothing
+ * is crammed. The headings are `**like this**`, which the chat bubble now
+ * renders as weight and the report prints as plain words - the same string
+ * reads properly in both places.
+ */
 export function cardBody(doc: ClinicalDocument): string {
   const out: string[] = [];
+  const section = (heading: string, lines: string[]) => {
+    if (lines.length === 0) return;
+    if (out.length > 0) out.push('');
+    out.push(`**${heading}**`);
+    for (const l of lines) out.push(l);
+  };
 
-  const who = [
-    doc.clinician.name,
-    doc.clinician.role,
-    doc.clinician.department,
-    doc.clinician.organisation,
-  ]
+  const who = [doc.clinician.name, doc.clinician.role, doc.clinician.department, doc.clinician.organisation]
     .filter(Boolean)
     .join(', ');
-  if (who) out.push(`Seen by: ${who}`);
-  if (doc.dated) out.push(`Letter dated: ${doc.dated}`);
-  if (doc.about) out.push(`About: ${doc.about}`);
+  section('Seen by', [who, doc.dated ? `Letter dated ${longish(doc.dated)}` : ''].filter(Boolean) as string[]);
 
-  // THE NUMBERS FIRST, because this is the part that replaces the paper. An
-  // unconfirmed one is marked rather than hidden: she can check it against the
-  // letter while she still has it, which is exactly when the mark is useful.
-  if (doc.references.length > 0) {
-    out.push('');
-    out.push('To quote:');
-    for (const ref of doc.references) {
-      out.push(`  ${ref.label}: ${ref.value}${ref.confirmed ? '' : '  (check this against the letter)'}`);
-    }
-  }
+  if (doc.about) section('About', [doc.about]);
 
-  const contact = [
-    doc.contact.phone && `Phone: ${doc.contact.phone}`,
-    doc.contact.secretary && `Secretary: ${doc.contact.secretary}`,
-    doc.contact.email && `Email: ${doc.contact.email}`,
-    doc.contact.address && `Address: ${doc.contact.address}`,
-  ].filter(Boolean) as string[];
-  if (contact.length > 0) {
-    out.push('');
-    out.push('Contact:');
-    for (const line of contact) out.push(`  ${line}`);
-  }
+  // THE NUMBERS FIRST AMONG THE FACTS, because this is the part that replaces
+  // the paper. A mark now means the two readings disagreed about the digits,
+  // and nothing else - so it appears rarely, and means something when it does.
+  section(
+    'To quote',
+    doc.references.map((r) => `${r.label}: ${r.value}${r.confirmed ? '' : '  — check this one against the letter'}`)
+  );
 
-  if (doc.says.length > 0) {
-    out.push('');
-    out.push('What the letter says:');
-    for (const line of doc.says) out.push(`  ${line}`);
-  }
+  section(
+    'Contact',
+    [
+      doc.contact.phone && `Phone: ${doc.contact.phone}`,
+      doc.contact.secretary && `Secretary: ${doc.contact.secretary}`,
+      doc.contact.email && `Email: ${doc.contact.email}`,
+      doc.contact.address && `Address: ${doc.contact.address}`,
+    ].filter(Boolean) as string[]
+  );
+
+  section('What the letter says', doc.says);
 
   if (doc.plainWords) {
-    out.push('');
     // SAID TO BE AN EXPLANATION, every time. She asked for this feature because
     // she could not follow her own letter - and the moment an explanation stops
     // being labelled as one, it starts being mistaken for what the clinician
     // wrote.
-    out.push('In ordinary words (an explanation of the terms above, not a new opinion):');
-    out.push(`  ${doc.plainWords}`);
+    section('In ordinary words', [
+      '_An explanation of the terms above, not a new opinion._',
+      '',
+      ...paragraphs(doc.plainWords).flatMap((para, n) => (n === 0 ? [para] : ['', para])),
+    ]);
   }
 
-  if (doc.medications.length > 0) {
-    out.push('');
-    out.push('Medication named:');
-    for (const line of doc.medications) out.push(`  ${line}`);
-  }
-
-  if (doc.plan.length > 0) {
-    out.push('');
-    out.push('What was agreed:');
-    for (const line of doc.plan) out.push(`  ${line}`);
-  }
-
-  if (doc.review) {
-    out.push('');
-    out.push(`Review: ${doc.review}`);
-  }
-
-  if (doc.routeBackIn) {
-    out.push('');
-    out.push(`If it comes back: ${doc.routeBackIn}`);
-  }
-
-  if (doc.unreadable.length > 0) {
-    out.push('');
-    out.push('Could not be read from the photo:');
-    for (const line of doc.unreadable) out.push(`  ${line}`);
-  }
+  section('Medication named', doc.medications);
+  section('What was agreed', doc.plan);
+  if (doc.review) section('Review', [doc.review]);
+  if (doc.routeBackIn) section('If it comes back', [doc.routeBackIn]);
+  section('Could not be read', doc.unreadable);
 
   out.push('');
   out.push(
-    'Taken from a document you photographed. The document itself is not kept, so check anything marked before you rely on it.'
+    '_Taken from a document you photographed. The document itself is not kept._'
   );
 
-  return out.join('\n').trim();
+  return out.join(NL).trim();
+}
+
+/** "4 July 2026" from "2026-07-04", and the input back if it is not a date. */
+function longish(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /** Which Me section a document belongs in. */
@@ -127,24 +128,40 @@ export function offerLine(doc: ClinicalDocument): string {
   const unconfirmed = doc.references.filter((r) => !r.confirmed).length;
   const parts: string[] = [];
 
-  parts.push(`I have read it as ${indefinite(doc.kind)}${doc.dated ? ` dated ${doc.dated}` : ''}.`);
+  parts.push(`I have read it as ${indefinite(doc.kind)}${doc.dated ? ` dated ${longish(doc.dated)}` : ''}.`);
 
-  if (doc.references.length > 0) {
+  // NOTHING IS SAID WHEN THERE IS NOTHING TO SAY.
+  //
+  // This used to report the score every time - "10 of the 14 reference numbers
+  // came out differently on a second reading" - which on her real MRI report
+  // was both alarming and untrue: the readings had not disagreed, they had
+  // merely labelled things differently. Her verdict: "it needs to just get it
+  // right ... or it's actually just useless and will not be trusted."
+  //
+  // A clean read now says nothing at all about reading twice, because a
+  // process that worked is not news. Only a genuine contradiction speaks, and
+  // it says exactly which line to look at.
+  if (unconfirmed > 0) {
+    const which = doc.references.filter((r) => !r.confirmed).map((r) => r.label);
     parts.push(
-      unconfirmed === 0
-        ? `I read the reference numbers twice and got the same answer both times.`
-        : unconfirmed === doc.references.length
-          ? `I could not get the same reading twice on the reference numbers, so check them against the letter before you quote them.`
-          : `${unconfirmed} of the ${doc.references.length} reference numbers came out differently on a second reading, and ${unconfirmed === 1 ? 'is' : 'are'} marked to check.`
+      unconfirmed === 1
+        ? `I read it twice and got a different answer for ${which[0]}, so that one is marked to check.`
+        : `I read it twice and got different answers for ${list(which)}, so those are marked to check.`
     );
   }
 
   if (doc.unreadable.length > 0) {
-    parts.push(`Some of it I could not make out, and I have said which rather than guessed.`);
+    parts.push('Some of it I could not make out, and I have said which rather than guessed.');
   }
 
   parts.push('Want me to keep this in your Me tab?');
   return parts.join(' ');
+}
+
+/** "a, b and c". */
+function list(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 function indefinite(kind: string): string {
