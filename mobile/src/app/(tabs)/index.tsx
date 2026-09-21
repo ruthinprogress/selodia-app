@@ -130,7 +130,10 @@ export default function ChatScreen() {
   // with the React Compiler on, a property access on the returned object
   // during render trips react-hooks/refs, which cannot tell it apart from
   // reading .current. Passing a ref BINDING to ref= is the sanctioned shape.
-  const { ref: scrollRef, onContentSizeChange: onThreadGrew, settled: threadSettled } = useChatScroll();
+  // Declared here rather than with the other state below, because the scroll
+  // hook needs it: nothing may settle while the history is still on its way.
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const { ref: scrollRef, onContentSizeChange: onThreadGrew, settled: threadSettled } = useChatScroll(loadingHistory);
   const theme = useTheme();
   const spotlight = useSpotlight();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -241,7 +244,6 @@ export default function ChatScreen() {
     else if (input.length === 0) setInput(prefill);
   }
   const [sending, setSending] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(true);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number; notice?: boolean } | null>(null);
   const [cyclePrompt, setCyclePrompt] = useState<'discover' | 'relog' | null>(null);
   // Shown once, after a log has actually happened - never on open, and never

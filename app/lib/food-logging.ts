@@ -17,6 +17,7 @@ import {
 } from './food-parse-prompt';
 import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
 import { checkStatedWeight, scaleMacros } from './stated-weight';
+import { entriesNeedingSplit, SPLIT_AGAIN } from './itemisation';
 import { logWaterWithFood } from './water-in-food';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -273,7 +274,51 @@ export async function logFoodFromText(
     return data as FoodEntry[];
   }
 
-  const parsed = JSON.parse(cleaned) as ParsedFoodEntries;
+  let parsed = JSON.parse(cleaned) as ParsedFoodEntries;
+
+  // SEVERAL THINGS ARE SEVERAL ROWS (Bug 18, 21 September 2026). "Mug of tea
+  // and a cookie" was stored as one combined entry, so asking for the split
+  // afterwards found nothing to split - "it was lost at storage time".
+  //
+  // The prompt no longer licenses merging a list. This is the part that does
+  // not depend on the prompt: an entry that plainly names two or more things
+  // and came back with fewer than two rows contradicts itself, and that is
+  // visible in code without knowing anything about food.
+  //
+  // IT ASKS AGAIN RATHER THAN SPLITTING THE FIGURES ITSELF. Dividing 65 kcal
+  // between a herbal tea, a milky tea and a biscuit is a division nobody
+  // stated, and inventing it would be worse than the bug. One retry, and a
+  // second refusal is stored as it came: a missing breakdown is a gap, a made
+  // up one is a false record.
+  if (!updateLogId && entriesNeedingSplit(parsed.entries, foodText) > 0) {
+    console.log('FOOD: entry named several things but came back merged - asking again');
+    try {
+      const again = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: instruction + SPLIT_AGAIN }],
+      });
+      const retryText = again.content[0].type === 'text' ? again.content[0].text : '';
+      const retry = JSON.parse(
+        retryText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      ) as ParsedFoodEntries;
+      // Only taken when it is actually better, so a worse second answer cannot
+      // replace a usable first one.
+      if (
+        Array.isArray(retry.entries) &&
+        retry.entries.length > 0 &&
+        entriesNeedingSplit(retry.entries, foodText) < entriesNeedingSplit(parsed.entries, foodText)
+      ) {
+        parsed = retry;
+      } else {
+        console.log('FOOD: second attempt was no better, keeping the first');
+      }
+    } catch (err) {
+      // A failed retry must never cost the log that already parsed.
+      console.log('FOOD: re-ask failed, keeping the first answer -', err instanceof Error ? err.message : err);
+    }
+  }
+
   const rows = buildFoodRows(parsed, foodText, happenedAt ? new Date(happenedAt) : new Date());
   if (rows.length === 0) return [];
 

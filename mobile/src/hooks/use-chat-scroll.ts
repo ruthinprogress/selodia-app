@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dimensions, Keyboard, type ScrollView } from 'react-native';
 
-import { OPENING_MS, QUIET_MS, shouldAnimate } from '@/lib/chat-scroll-rules';
+import { QUIET_MS, REVEAL_CEILING_MS, shouldAnimate } from '@/lib/chat-scroll-rules';
 
 // Keeping the newest message in view.
 //
@@ -37,11 +37,20 @@ import { OPENING_MS, QUIET_MS, shouldAnimate } from '@/lib/chat-scroll-rules';
 // nothing is visible until there is nothing left to travel through. That is
 // what "just opens where the chat is actually up to" actually requires.
 //
-// A HARD CEILING ON THE WAIT, because a blank screen is its own kind of wrong.
-// If the thread is still arriving after OPENING_MS it is revealed anyway, and
-// the worst case is the old behaviour rather than a chat that never appears.
+// A HARD CEILING ON THE WAIT, because a chat that never appears would be far
+// worse than one that arrives untidily. It is deliberately generous: while the
+// history is still loading there is nothing to look at either way, so hiding
+// costs nothing, and the only thing the ceiling protects against is a query
+// that never returns.
 
-export function useChatScroll() {
+// `pending` is whatever the screen is still waiting for - the history query,
+// in Chat's case. WITHOUT IT THE REVEAL FIRES TOO EARLY (found 21 September
+// 2026, after Ruth reported the scroll a second time): the quiet countdown
+// started at mount, the history read took longer than it, and the thread was
+// revealed EMPTY - so the whole history then landed in full view, which is
+// precisely the thing being hidden. Nothing settles while something is still on
+// its way.
+export function useChatScroll(pending: boolean = false) {
   const ref = useRef<ScrollView | null>(null);
   const openedAt = useRef(Date.now());
   const lastHeight = useRef(0);
@@ -65,14 +74,25 @@ export function useChatScroll() {
   }, [done]);
 
   useEffect(() => {
-    const ceiling = setTimeout(done, OPENING_MS);
-    // An empty thread never fires a size change, so start the clock regardless.
+    // The ceiling runs from mount whatever happens, so a query that never
+    // returns cannot leave the thread invisible for ever.
+    const ceiling = setTimeout(done, REVEAL_CEILING_MS);
+    return () => clearTimeout(ceiling);
+  }, [done]);
+
+  useEffect(() => {
+    // While something is still loading, keep pushing the reveal back. Once it
+    // is done, the ordinary quiet period decides - and an empty thread, which
+    // never fires a size change at all, is settled by this same countdown.
+    if (pending) {
+      if (quiet.current) clearTimeout(quiet.current);
+      return;
+    }
     waitForQuiet();
     return () => {
-      clearTimeout(ceiling);
       if (quiet.current) clearTimeout(quiet.current);
     };
-  }, [done, waitForQuiet]);
+  }, [pending, waitForQuiet]);
 
   const onContentSizeChange = useCallback(
     (_w: number, h: number) => {

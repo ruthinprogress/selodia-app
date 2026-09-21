@@ -24,9 +24,18 @@
 export const OPENING_MS = 2500;
 
 // How long the thread has to stop growing before it counts as arrived. Short,
-// because this is the delay somebody actually waits on an ordinary open - the
-// ceiling above only applies when something is genuinely still loading.
+// because this is the delay somebody actually waits on an ordinary open.
 export const QUIET_MS = 220;
+
+// The longest the thread may stay hidden, counted from mount. Separate from
+// OPENING_MS, and longer, because the two answer different questions: that one
+// asks "is this still the opening, so do not animate", this one asks "has
+// something gone wrong, show it anyway".
+//
+// Generous on purpose. While the history is still loading there is nothing to
+// look at either way, so hiding costs nothing - the only thing this protects
+// against is a query that never returns leaving a permanently blank chat.
+export const REVEAL_CEILING_MS = 5000;
 
 /**
  * Whether this growth deserves to be travelled through, or simply arrived at.
