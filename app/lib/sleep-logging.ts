@@ -251,5 +251,8 @@ export function sleepSaveSummary(entry: ParsedSleep): string {
   if (entry.awakenings != null && entry.awakenings > 0) {
     bits.push(`awake ${entry.awakenings} ${entry.awakenings === 1 ? 'time' : 'times'}`);
   }
-  return `Sleep · ${bits.join(' · ')}`;
+  // The screen it landed on, named, for the same reason the cycle and feeling
+  // confirmations name theirs: a pill that fades tells you something saved and
+  // not where to go and look at it.
+  return `Sleep · ${bits.join(' · ')} · Log › Sleep`;
 }

@@ -146,11 +146,19 @@ export function readSpokenFeeling(
   return { day, through: ends, mood, energy, note };
 }
 
+// AND IT SAYS WHERE TO GO AND LOOK (Ruth, 21 September 2026): "where do I
+// check it landed? where is the history for Cycle to look back on? it's very
+// confused." The confirmation is a pill that fades; somebody who logs a period
+// by speaking has no way of knowing the Cycle page is where it went. Naming the
+// screen costs four words and answers the question at the moment it is asked.
+const WHERE = { cycle: 'Log › Cycle', feeling: 'Log › How you felt' };
+
 /** What Selodía's confirmation says. Short, and names the day when it is not today. */
 export function cycleSaved(event: SpokenCycle, today: string, human: (d: string) => string): string {
   const what =
     event.type === 'period_start' ? 'Period start' : event.type === 'period_end' ? 'Period end' : 'Spotting';
-  return event.day === today ? `${what} recorded for today.` : `${what} recorded for ${human(event.day)}.`;
+  const when = event.day === today ? 'today' : human(event.day);
+  return `${what} recorded for ${when} · ${WHERE.cycle}`;
 }
 
 export function feelingSaved(
@@ -169,7 +177,7 @@ export function feelingSaved(
   const first = f.day === today ? 'today' : human(f.day);
   const when =
     f.through === f.day ? first : `${first} to ${f.through === today ? 'today' : human(f.through)}`;
-  return `Noted for ${when}: ${parts.join(', ')}.`;
+  return `Noted for ${when}: ${parts.join(', ')} · ${WHERE.feeling}`;
 }
 
 /**

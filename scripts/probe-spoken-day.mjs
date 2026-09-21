@@ -237,33 +237,33 @@ group('what she is told');
 check(
   'today needs no date',
   cycleSaved({ type: 'period_start', day: TODAY }, TODAY, spokenDayLabel),
-  'Period start recorded for today.'
+  'Period start recorded for today · Log › Cycle'
 );
 // A DAY IN THE PAST IS NAMED BACK, so a misheard Tuesday is visible in the
 // confirmation rather than three months later in a prediction.
 check(
   'a past day is named back',
   cycleSaved({ type: 'period_start', day: '2026-09-15' }, TODAY, spokenDayLabel),
-  'Period start recorded for Tuesday 15 September.'
+  'Period start recorded for Tuesday 15 September · Log › Cycle'
 );
 check('a day reads as a person would say it', spokenDayLabel('2026-09-15'), 'Tuesday 15 September');
 
 check(
   'both measures, in words not numbers',
   feelingSaved({ day: TODAY, through: TODAY, mood: 2, energy: 1, note: null }, TODAY, spokenDayLabel, wordFor),
-  'Noted for today: mood flat, energy drained.'
+  'Noted for today: mood flat, energy drained · Log › How you felt'
 );
 // A SPAN IS SAID BACK AS A SPAN, so a week filled in from one sentence is
 // visible in the confirmation rather than discovered later in a chart.
 check(
   'a stretch says so',
   feelingSaved({ day: '2026-09-15', through: TODAY, mood: null, energy: 1, note: null }, TODAY, spokenDayLabel, wordFor),
-  'Noted for Tuesday 15 September to today: energy drained.'
+  'Noted for Tuesday 15 September to today: energy drained · Log › How you felt'
 );
 check(
   'one measure on a past day',
   feelingSaved({ day: '2026-09-19', through: '2026-09-19', mood: null, energy: 4, note: null }, TODAY, spokenDayLabel, wordFor),
-  'Noted for Saturday 19 September: energy lively.'
+  'Noted for Saturday 19 September: energy lively · Log › How you felt'
 );
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);

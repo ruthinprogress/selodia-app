@@ -33,7 +33,7 @@ import {
 // says "nothing logged", which is not the same as a day without water - and the
 // distinction matters enough to be in the words.
 
-type Drink = { id: string; ml: number; happened_at: string };
+type Drink = { id: string; ml: number; happened_at: string; raw_input: string | null };
 
 export function WaterHistoryView() {
   const theme = useTheme();
@@ -51,7 +51,7 @@ export function WaterHistoryView() {
       const { startISO, endISO } = weekRange(weekStart);
       const { data } = await supabase
         .from('hydration_logs')
-        .select('id, ml, happened_at')
+        .select('id, ml, happened_at, raw_input')
         .gte('happened_at', startISO)
         .lt('happened_at', endISO)
         .order('happened_at', { ascending: false });
@@ -147,13 +147,28 @@ export function WaterHistoryView() {
                         minute: '2-digit',
                       })}
                     </ThemedText>
-                    <ThemedText type="small" style={styles.volume}>
-                      {formatVolume(r.ml)}
-                    </ThemedText>
+                    {/* WHAT IT CAME FROM (Ruth, 21 September 2026): "I think
+                        the hydration log needs to show the source of the
+                        hydration or it's going to confuse people and it's
+                        really hard to check if it's correct too."
+                        Since a milky tea now counts towards water as well as
+                        food, a column of bare volumes is unreadable: 300ml of
+                        WHAT. Their own words, which is also the only way to
+                        see that a figure is wrong. */}
+                    <View style={styles.what}>
+                      <ThemedText type="small" style={styles.volume}>
+                        {formatVolume(r.ml)}
+                      </ThemedText>
+                      {r.raw_input?.trim() ? (
+                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                          {r.raw_input.trim()}
+                        </ThemedText>
+                      ) : null}
+                    </View>
                     <RowDelete
                       table="hydration_logs"
                       id={r.id}
-                      what={`${formatVolume(r.ml)} of water`}
+                      what={r.raw_input?.trim() ? `${formatVolume(r.ml)} of ${r.raw_input.trim()}` : `${formatVolume(r.ml)} of water`}
                       onDeleted={() => setRows((all) => all.filter((x) => x.id !== r.id))}
                     />
                   </View>
@@ -178,7 +193,8 @@ const styles = StyleSheet.create({
   day: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.one },
   dayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   drinkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  what: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two, minWidth: 0 },
   time: { width: 52 },
-  volume: { flex: 1 },
+  volume: { flexShrink: 0 },
   pressed: { opacity: 0.6 },
 });
