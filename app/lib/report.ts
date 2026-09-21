@@ -311,6 +311,20 @@ export type ReportData = {
   /** Every kind across the whole period, most minutes first. */
   activityKinds: { what: string; minutes: number; sessions: number }[];
   activityGrain: 'weekly' | 'monthly';
+  /**
+   * DOCUMENTS SHE ATTACHED WHEN SHE BUILT IT (Ruth, 21 September 2026). The app
+   * stores no photographs and no files; these are read at build time, printed
+   * into an appendix, and exist only inside this report. See
+   * report-attachment.ts.
+   */
+  attachments?: {
+    name: string;
+    kind: string;
+    dated: string | null;
+    lines: string[];
+    image: { dataUri: string } | null;
+    unreadable: string[];
+  }[];
   plans: { title: string; content: string }[];
   insights: { at: string; title: string; content: string }[];
   cards: { title: string; kind: string; content: string; updated: string }[];

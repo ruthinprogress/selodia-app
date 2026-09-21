@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, authedGet, authedPost } from '@/lib/api';
+import { canPickFiles, pickFailureMessage, pickPageFiles, pickPageImages } from '@/lib/document-pages';
 
 // BUILD A REPORT (2026-09-20), from Ruth's brief: "The PDF export should not
 // feel like downloading data. It should feel like building a story for a
@@ -63,6 +64,29 @@ type Catalogue = {
   sleepNights: number;
   activityTypes: PickableValue[];
 };
+
+/**
+ * A DOCUMENT SHE ATTACHED, already read and named by the server.
+ *
+ * Ruth, 21 September 2026, deciding the photographs question outright: "No
+ * photos in the app, please add a section to the report builder where
+ * additional and supplementary documents can be added to the report. They will
+ * need to be ai named and added to the contents as part of an appendix."
+ *
+ * So nothing is stored. A document is picked, read once, and held here only
+ * until the report is built - and what is held is the small form, not the file.
+ */
+type Attachment = {
+  name: string;
+  kind: string;
+  dated: string | null;
+  lines: string[];
+  image: { dataUri: string } | null;
+  unreadable: string[];
+};
+
+/** Four is what fits in one request alongside a report. */
+const MAX_ATTACHMENTS = 4;
 
 type Block = {
   source: string;
@@ -253,6 +277,8 @@ export default function ReportScreen() {
   const [whole, setWhole] = useState<Set<string>>(new Set());
   const [foodDetail, setFoodDetail] = useState<FoodGrain>('daily');
   const [movementGrain, setMovementGrain] = useState<'weekly' | 'monthly'>('weekly');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [reading, setReading] = useState(false);
   // Record-by-record and value-by-value choices, keyed by source.
   const [picked, setPicked] = useState<Record<string, Set<string>>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -382,7 +408,45 @@ export default function ReportScreen() {
       blocks,
       note: note.trim() || null,
       recipient: recipient.trim() || null,
+      attachments,
     };
+  }
+
+  // ADDING A SUPPLEMENTARY DOCUMENT. Read on the server one at a time, because
+  // the build request already carries a report's worth of choices and the
+  // platform refuses a body much over four megabytes - the failure that lost
+  // her a two-page letter this morning.
+  async function addAttachment(from: 'camera' | 'library' | 'file') {
+    if (reading || attachments.length >= MAX_ATTACHMENTS) return;
+    setReading(true);
+    setFailed(null);
+    try {
+      const picked = from === 'file' ? await pickPageFiles() : await pickPageImages(from);
+      if (!picked.ok) {
+        const msg = pickFailureMessage(picked.reason);
+        if (msg) setFailed(msg);
+        return;
+      }
+
+      const room = MAX_ATTACHMENTS - attachments.length;
+      for (const page of picked.pages.slice(0, room)) {
+        const res = await authedPost<{ attachment?: Attachment }>('/api/report/attachment', {
+          base64: page.base64,
+          mediaType: page.mediaType,
+        });
+        if (res.attachment) setAttachments((list) => [...list, res.attachment as Attachment]);
+      }
+
+      if (picked.pages.length > room) {
+        setFailed(`A report can carry ${MAX_ATTACHMENTS} documents, so I have taken the first ${room}.`);
+      }
+    } catch (err) {
+      setFailed(
+        (err instanceof ApiError && err.userMessage) || 'Could not read that document. Please try again.'
+      );
+    } finally {
+      setReading(false);
+    }
   }
 
   // SHE READS IT BEFORE IT GOES IN (her requirement, in her words: the summary
@@ -786,6 +850,75 @@ export default function ReportScreen() {
             />
           </SettingsGroup>
 
+          {/* SUPPLEMENTARY DOCUMENTS (Ruth, 21 September 2026). Each is read
+              and named when it is added, and printed into an appendix with its
+              own number in the Contents. Nothing is stored: a document lives
+              here until the report is built, and then only inside the report. */}
+          <SettingsGroup title="Anything else to include">
+            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+              A scan report, a letter, test results. Selodía reads each one, names it, and prints it as an appendix
+              with its own entry in the contents. The documents themselves are never kept.
+            </ThemedText>
+
+            {attachments.length > 0 && (
+              <View style={styles.boxes}>
+                {attachments.map((a, i) => (
+                  <View key={`${a.name}-${i}`} style={styles.attachment}>
+                    <View style={styles.attachmentText}>
+                      <ThemedText type="small">{a.name}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {a.image ? 'Photograph' : 'PDF'}
+                        {a.unreadable.length > 0 ? ' · some of it could not be read' : ''}
+                      </ThemedText>
+                    </View>
+                    <Pressable
+                      onPress={() => setAttachments((list) => list.filter((_, n) => n !== i))}
+                      disabled={reading}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${a.name}`}
+                      hitSlop={Spacing.two}
+                      style={({ pressed }) => pressed && styles.pressed}
+                    >
+                      <Ionicons name="close" size={16} color={theme.textSecondary} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {attachments.length < MAX_ATTACHMENTS && (
+              <View style={styles.attachActions}>
+                {(
+                  [
+                    { from: 'camera' as const, label: 'Photograph one' },
+                    { from: 'library' as const, label: 'From gallery' },
+                    ...(canPickFiles() ? [{ from: 'file' as const, label: 'Choose a file' }] : []),
+                  ]
+                ).map((o) => (
+                  <Pressable
+                    key={o.from}
+                    onPress={() => void addAttachment(o.from)}
+                    disabled={reading}
+                    accessibilityRole="button"
+                    accessibilityLabel={o.label}
+                    hitSlop={Spacing.two}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <ThemedText type="small" themeColor={reading ? 'textSecondary' : 'link'}>
+                      {o.label}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {reading && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                Reading it, and working out what to call it…
+              </ThemedText>
+            )}
+          </SettingsGroup>
+
           <SettingsGroup title="A note, if you want one">
             <TextInput
               value={note}
@@ -865,6 +998,9 @@ const styles = StyleSheet.create({
   chip: { paddingVertical: Spacing.one, paddingHorizontal: Spacing.three, borderRadius: Spacing.three },
   boxes: { gap: Spacing.two, paddingVertical: Spacing.three },
   allOrNone: { flexDirection: 'row', gap: Spacing.four, paddingBottom: Spacing.one },
+  attachment: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  attachmentText: { flex: 1 },
+  attachActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.four, paddingTop: Spacing.two },
   expander: {
     flexDirection: 'row',
     alignItems: 'center',

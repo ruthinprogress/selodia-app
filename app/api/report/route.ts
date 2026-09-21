@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { loadCatalogue, loadReport, readBlocks, type ReportSelection } from '../../lib/report';
 import { renderReport } from '../../lib/report-render';
+import { readAttachments } from '../../lib/report-attachment';
 import { facts, writeSummary } from '../../lib/report-summary';
 import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
   // footer. She would have had a browser tab with a blank document in it and
   // no idea why. The period is nearly always the reason, so the message names
   // the period.
-  if (isEmpty(data)) {
+  if (isEmpty(data) && (data.attachments?.length ?? 0) === 0) {
     return NextResponse.json(
       {
         error: `Nothing you chose falls in ${selection.periodLabel.toLowerCase()}. Try a longer period, or choose something else to include.`,
@@ -151,6 +152,11 @@ export async function POST(request: NextRequest) {
   const id = crypto.randomUUID();
   data.reportId = id.slice(0, 8).toUpperCase();
   data.recipient = selection.recipient ?? null;
+
+  // WHAT SHE ATTACHED, already read one at a time by /api/report/attachment.
+  // What arrives here is the small form - a name, the substance as text, the
+  // picture - never the original file, which was never stored anywhere.
+  data.attachments = readAttachments(body.attachments);
 
   if (typeof body.summary === 'string' && body.summary.trim()) {
     data.summary = body.summary.trim().slice(0, 4000);

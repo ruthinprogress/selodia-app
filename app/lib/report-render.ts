@@ -260,6 +260,36 @@ export function renderReport(data: ReportData): string {
     sections.push({ id: 'knowledge', title: 'Records kept', blocks });
   }
 
+  // ---- Appendix: what she attached ---------------------------------------
+  // Her instruction: supplementary documents "added to the contents as part of
+  // an appendix or supplementary information". Each one gets its own page, its
+  // own number, and a line in the Contents like any other section - because a
+  // document that is only reachable by scrolling past everything else is not
+  // really in the report.
+  for (const [i, a] of (data.attachments ?? []).entries()) {
+    const blocks: Block[] = [];
+    blocks.push(
+      `<p class="attach-meta">${esc(capital(a.kind))}${a.dated ? ` · ${esc(shortDate(a.dated))}` : ''}${
+        a.image ? '' : ' · the original file is not reproduced here'
+      }</p>`
+    );
+    if (a.lines.length > 0) {
+      blocks.push(`<div class="panel">${a.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`);
+    }
+    if (a.image) {
+      // THE PAGE ITSELF, because for an image the page IS the evidence and a
+      // description of it is not. Sized to sit inside one printed page with its
+      // heading, and never cropped.
+      blocks.push(`<figure class="attach"><img src="${a.image.dataUri}" alt="${esc(a.name)}"><figcaption>${esc(a.name)}</figcaption></figure>`);
+    }
+    if (a.unreadable.length > 0) {
+      blocks.push(
+        `<p class="intro">Could not be read: ${a.unreadable.map((u) => esc(u)).join(' ')}</p>`
+      );
+    }
+    sections.push({ id: `attachment-${i}`, title: a.name, blocks });
+  }
+
   // ---- Last: the reference details, and only the ones not on the cover ----
   // Name and date of birth are printed once, on the cover. Repeating them here
   // under "Profile" was the duplication she spotted.
@@ -442,6 +472,12 @@ export function renderReport(data: ReportData): string {
   .legend { display: flex; flex-wrap: wrap; gap: 2mm 5mm; font-size: 7.6pt; color: var(--grey); margin-bottom: 3mm; }
   .legend .key { display: inline-flex; align-items: center; gap: 1.4mm; }
   .legend i { width: 2.4mm; height: 2.4mm; border-radius: 0.6mm; display: inline-block; }
+
+  /* ---- Attachments --------------------------------------------------- */
+  .attach-meta { font-size: 7.6pt; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin-bottom: 4mm; }
+  figure.attach { margin: 0; }
+  figure.attach img { display: block; width: 100%; max-height: 185mm; object-fit: contain; border-radius: 2mm; border: 0.4pt solid var(--rule); background: #fff; }
+  figure.attach figcaption { font-size: 7.6pt; color: var(--faint); padding-top: 2mm; }
 
   /* ---- Timeline ------------------------------------------------------ */
   .tl { display: grid; grid-template-columns: 30mm 1fr; gap: 5mm; padding: 0 0 5mm 0; position: relative; }
