@@ -18,11 +18,15 @@ const BOTTLE_ML = 500;
 export function parseVolumeMl(text: string): number | null {
   const t = text.toLowerCase();
 
-  const explicit = /(\d+(?:\.\d+)?)\s*(ml|l|litres?|liters?)\b/.exec(t);
+  // "lt" and "ltr" are here because she types them (2026-09-21: "1lt water"
+  // logged nothing). Without them "1lt" fell past this to the no-quantity
+  // default and would have become a single glass - a litre recorded as 250ml is
+  // worse than a litre recorded as nothing, because nobody would notice.
+  const explicit = /(\d+(?:\.\d+)?)\s*(mls?|l|lts?|ltrs?|litres?|liters?)\b/.exec(t);
   if (explicit) {
     const n = Number(explicit[1]);
     if (!isFinite(n) || n <= 0) return null;
-    return explicit[2] === 'ml' ? n : n * 1000;
+    return explicit[2].startsWith('ml') ? n : n * 1000;
   }
 
   const counted = /(\d+(?:\.\d+)?|a|an|another)\s*(glass(?:es)?|mugs?|cups?|pints?|bottles?)\b/.exec(t);

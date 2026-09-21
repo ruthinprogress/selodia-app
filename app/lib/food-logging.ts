@@ -17,6 +17,7 @@ import {
 } from './food-parse-prompt';
 import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
 import { checkStatedWeight, scaleMacros } from './stated-weight';
+import { logWaterWithFood } from './water-in-food';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -96,6 +97,9 @@ export type FoodRow = {
   rawText: string;
   items: ParsedItem[];
   fields: ReturnType<typeof buildFoodLogFields>;
+  // The zero-calorie drinks named in this entry, verbatim. Measured and written
+  // to hydration after the row lands - see waterFromDrinks below.
+  drinks: string[];
 };
 
 /**
@@ -145,6 +149,7 @@ export function buildFoodRows(
       rawText,
       items: Array.isArray(entry.items) ? entry.items : [],
       fields: buildFoodLogFields(entry),
+      drinks: Array.isArray(entry.drinks) ? entry.drinks.filter((d): d is string => typeof d === 'string') : [],
     };
   });
 }
@@ -203,6 +208,7 @@ export async function logFoodFromText(
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
       ' For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
+      ' DRINKS THAT CARRY NO CALORIES GO IN "drinks" AS WELL, verbatim and with their quantity, one string each - "1lt water", "black coffee", "two mugs of tea", "a pint of squash". Water, tea, coffee, herbal tea and sugar-free squash only. NOT beer, wine, juice, milk, a smoothie or anything with calories in it, and not a food that merely borrows the name of a drink - a coffee cake is not a coffee. Return an empty array when there were none. The app converts these into a water total itself, so do not estimate a volume and do not leave a drink out because it has no calories: a litre of water somebody typed and never saw recorded is the failure this field exists to stop.' +
       memory +
       ' Food entry: "' +
       foodText +
@@ -219,6 +225,7 @@ export async function logFoodFromText(
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
       ' For meal_label on each entry, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
+      ' DRINKS THAT CARRY NO CALORIES GO IN "drinks" AS WELL, verbatim and with their quantity, one string each - "1lt water", "black coffee", "two mugs of tea", "a pint of squash". Water, tea, coffee, herbal tea and sugar-free squash only. NOT beer, wine, juice, milk, a smoothie or anything with calories in it, and not a food that merely borrows the name of a drink - a coffee cake is not a coffee. Return an empty array when there were none. The app converts these into a water total itself, so do not estimate a volume and do not leave a drink out because it has no calories: a litre of water somebody typed and never saw recorded is the failure this field exists to stop.' +
       memory +
       ' What they said: "' +
       foodText +
@@ -337,6 +344,20 @@ export async function logFoodFromText(
     // order it was given.
     await Promise.all(
       inserted.map((entry, i) => writeItems(supabase, entry.id, userId, fresh[i].items))
+    );
+
+    // THE WATER THAT CAME WITH THE MEAL (2026-09-21). "I logged 1lt of water in
+    // food log in typed entry and it didnt show up in the chat text, the table
+    // or the hydration log" - because a mixed message is classified as food,
+    // and the hydration path only ever ran for a message that was ONLY a drink.
+    //
+    // Only on FRESH rows. A correction re-parses the same words, and adding the
+    // litre again every time she fixed a figure would inflate the day silently,
+    // which is the same class of error one layer along.
+    await Promise.all(
+      inserted.map((_entry, i) =>
+        logWaterWithFood(supabase, userId, fresh[i].drinks, fresh[i].happenedAt, fresh[i].rawText)
+      )
     );
   }
 

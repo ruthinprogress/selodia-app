@@ -36,6 +36,17 @@ export type ParsedMacros = {
   breakdown_type?: string;
   confidence?: string;
   items?: ParsedItem[];
+  // ZERO-CALORIE DRINKS IN THE SAME ENTRY (2026-09-21). Ruth typed "5 chocolate
+  // almonds, 1 chocolate caramel Malteser sized, 150g mango, black coffee, 1lt
+  // water" and the reply said "the litre of water's in too". It was not: the
+  // message was classified as food, and the hydration path only ever ran for a
+  // message that was ONLY about a drink, so the litre went nowhere.
+  //
+  // THE MODEL NAMES THE DRINKS, THE CODE MEASURES THEM - the same division as
+  // everywhere else. Which words in a mixed sentence are a drink is an
+  // open-ended reading ("coffee cake" is not a coffee); how many millilitres are
+  // in a pint is a fixed fact with a right answer.
+  drinks?: string[];
 };
 
 // Coerce the model's protein_source to a valid enum value or null, so a stray
@@ -65,7 +76,7 @@ export const aminoProfile = (s: unknown): AminoProfileValue | null =>
 // The exact JSON shape every food-parse call must return. Add a field here once
 // and both paths inherit it (also update ParsedItem and buildFoodLogFields).
 export const FOOD_PARSE_JSON_SCHEMA =
-  '{"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null}], "meal_label": string, "confidence": "clear" or "uncertain"}';
+  '{"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null}], "meal_label": string, "confidence": "clear" or "uncertain", "drinks": [string]}';
 
 // ONE MESSAGE CAN BE SEVERAL DAYS OF FOOD (2026-09-16).
 //
