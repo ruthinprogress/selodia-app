@@ -89,6 +89,19 @@ const ROWS: Row[] = [
   // makes sense when the ai starts making observations there's something to
   // check against." Anyone it does not apply to can put it away, which is what
   // the arranging is for.
+  // MOOD AND ENERGY CAME BACK ON 21 SEPTEMBER, at her own reversal and with her
+  // own reason: "just voice logging meant that users had no idea what was
+  // available ... catching things like low mood always 2 days after cocktails
+  // eg, could genuinely be unknown to a user and needs something to check if Ai
+  // says it." A card is how somebody discovers a thing exists; voice only works
+  // for what you already know to ask for.
+  {
+    id: 'feeling',
+    icon: 'weather-partly-cloudy',
+    label: 'How you felt',
+    detail: 'Mood and energy, in two taps',
+    go: () => router.push('/log/feeling'),
+  },
   {
     id: 'cycle',
     icon: 'flower-outline',

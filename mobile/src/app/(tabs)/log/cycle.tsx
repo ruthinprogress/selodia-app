@@ -22,6 +22,7 @@ import {
   type CycleDay,
 } from '@/lib/cycle-day';
 import { describeToday, expectedNextPeriod, knowledgeFrom } from '@/lib/cycle-history';
+import { MEASURES, ratingsByMeasure, wordFor, type Rating } from '@/lib/daily-ratings';
 import { currentUserId } from '@/lib/current-user';
 import { arrange, layoutOf, loadLayout, saveLayout } from '@/lib/log-layout';
 import { supabase } from '@/lib/supabase';
@@ -48,13 +49,21 @@ import { supabase } from '@/lib/supabase';
 // and where it estimates it says so and says on what - see cycle-history.ts,
 // where one logged period earns a position and no prediction at all.
 
-type CardId = 'period' | 'flow' | 'symptoms' | 'ovulation' | 'mucus' | 'notes';
+type CardId = 'period' | 'flow' | 'symptoms' | 'feeling' | 'ovulation' | 'mucus' | 'notes';
 type Section = { id: CardId };
 
 const SECTIONS: Section[] = [
   { id: 'period' },
   { id: 'flow' },
   { id: 'symptoms' },
+  // MOOD LEFT THIS PAGE AND LEFT A HOLE (Ruth, 21 September 2026): "if you
+  // removed it from cycle context, maybe it needs a button there to take you to
+  // mood, something like, 'notice any changes in mood or energy today?'"
+  //
+  // Exactly right, and it is the difference between moving a thing and losing
+  // it. The record lives in one place; the QUESTION belongs wherever somebody
+  // is already thinking about it, and on a cycle page they are.
+  { id: 'feeling' },
   { id: 'ovulation' },
   { id: 'mucus' },
   { id: 'notes' },
@@ -65,6 +74,7 @@ const TITLES: Record<CardId, string> = {
   flow: 'Flow',
   symptoms: 'Symptoms',
   ovulation: 'Ovulation',
+  feeling: 'Mood and energy',
   mucus: 'Cervical mucus',
   notes: 'Notes',
 };
@@ -74,6 +84,7 @@ const ICONS: Record<CardId, keyof typeof MaterialCommunityIcons.glyphMap> = {
   flow: 'wave',
   symptoms: 'star-four-points-outline',
   ovulation: 'target',
+  feeling: 'weather-partly-cloudy',
   mucus: 'sine-wave',
   notes: 'note-text-outline',
 };
@@ -113,6 +124,9 @@ export default function CycleScreen() {
   const [showTemperature, setShowTemperature] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // READ, NEVER WRITTEN HERE. This page asks the question; the answer is kept
+  // once, on its own screen, in its own table.
+  const [feeling, setFeeling] = useState<Record<string, Rating>>({});
 
   // Her arrangement and her history, once.
   useEffect(() => {
@@ -175,6 +189,15 @@ export default function CycleScreen() {
       setTemperature(row?.temperature_c != null ? String(row.temperature_c) : '');
       setShowTemperature(row?.temperature_c != null);
       setNote(null);
+
+      const { data: rated } = await supabase
+        .from('daily_ratings')
+        .select('measure, value, note')
+        .eq('user_id', userId)
+        .eq('day', day);
+      if (!cancelled) {
+        setFeeling(ratingsByMeasure((rated ?? []) as { measure: string; value: number; note: string | null }[]));
+      }
     })();
     return () => {
       cancelled = true;
@@ -338,6 +361,34 @@ export default function CycleScreen() {
             />
           </>
         );
+
+      case 'feeling': {
+        const said = MEASURES.map((m) => ({ m, word: wordFor(m.id, feeling[m.id]?.value) })).filter((x) => x.word);
+        return (
+          <>
+            {said.length > 0 ? (
+              <ThemedText type="small">
+                {said.map((x) => `${x.m.label}: ${x.word}`).join('  ·  ')}
+              </ThemedText>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                Notice any changes in mood or energy {day === today() ? 'today' : 'that day'}?
+              </ThemedText>
+            )}
+            <Pressable
+              onPress={() => router.push({ pathname: '/log/feeling', params: { day } })}
+              accessibilityRole="button"
+              accessibilityLabel={said.length > 0 ? 'Change how you felt that day' : 'Record how you felt that day'}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="small" themeColor="link">
+                {said.length > 0 ? 'Change it' : 'Record it'}
+              </ThemedText>
+            </Pressable>
+          </>
+        );
+      }
 
       case 'ovulation':
         return (

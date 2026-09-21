@@ -39,11 +39,16 @@ export const COMMON_SYMPTOMS = [
   'Fatigue',
   'Nausea',
   'Food cravings',
-  'Low mood',
-  'Anxiety',
-  'Irritability',
   'Insomnia',
 ];
+
+// LOW MOOD, ANXIETY AND IRRITABILITY WERE HERE FOR ABOUT FOUR HOURS on 21
+// September and have moved to their own screen. They are real cycle symptoms
+// and she was right to want them; what they cannot be is a second copy. Mood
+// recorded here would have been invisible to a report that reads daily_ratings,
+// and a person looking at one screen would have seen half their own record.
+//
+// One fact, one table. The Cycle page reads the day's mood from there instead.
 
 export const OVULATION_SIGNS = ['Positive LH test', 'Ovulation pain', 'Temperature rise'];
 
