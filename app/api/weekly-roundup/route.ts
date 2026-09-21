@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
   const [
     { data: food },
     { data: activity },
+    { data: drinks },
     { data: measurements },
     { data: noticed },
     { data: priorRoundups },
@@ -155,6 +156,13 @@ export async function POST(req: NextRequest) {
       .gte('happened_at', windowStart)
       .lte('happened_at', windowEnd)
       .order('happened_at', { ascending: true }),
+    // WATER IN THE ROUNDUP (Ruth said yes, 21 September 2026). It was the one
+    // thing she logs almost daily that the week never mentioned.
+    supabase
+      .from('hydration_logs')
+      .select('happened_at, ml')
+      .gte('happened_at', windowStart)
+      .lte('happened_at', windowEnd),
     supabase
       .from('body_measurements')
       .select('measured_at, weight_kg')
@@ -223,6 +231,7 @@ export async function POST(req: NextRequest) {
   const emptyWeek =
     (food ?? []).length === 0 &&
     (activity ?? []).length === 0 &&
+    (drinks ?? []).length === 0 &&
     (measurements ?? []).length === 0 &&
     (noticed ?? []).length === 0 &&
     (chat ?? []).length === 0;
@@ -300,6 +309,26 @@ export async function POST(req: NextRequest) {
       )
       .join('\n') || '(nothing logged)';
 
+  // A DAY, AND WHAT WAS IN IT. The average is per day she logged a drink, with
+  // the count of those days beside it - the same rule the report follows,
+  // because 1.6 L a day across two days is not a week of 1.6 L a day.
+  const drinkDays = new Map<string, number>();
+  for (const d of drinks ?? []) {
+    const day = String(d.happened_at ?? '').slice(0, 10);
+    if (!day) continue;
+    drinkDays.set(day, (drinkDays.get(day) ?? 0) + (Number(d.ml) || 0));
+  }
+  const drinkTotals = [...drinkDays.values()];
+  const water =
+    drinkTotals.length === 0
+      ? 'DRINKS THIS WEEK: nothing was logged. That is a gap in the record and says nothing about what she drank.'
+      : `DRINKS THIS WEEK: logged on ${drinkTotals.length} of ${WEEK_DAYS} days, averaging ${Math.round(
+          drinkTotals.reduce((a, b) => a + b, 0) / drinkTotals.length
+        )} ml on the days with a drink logged. Day by day: ${[...drinkDays.entries()]
+          .sort(([a], [b]) => (a < b ? -1 : 1))
+          .map(([day, ml]) => `${day} ${Math.round(ml)} ml`)
+          .join(', ')}. A day with nothing logged is a day nobody recorded, not a day without drinking.`;
+
   const kept =
     (noticed ?? [])
       .map((n) => `${String(n.created_at ?? '').slice(0, 10)} [${n.kind}] ${n.title}`)
@@ -343,6 +372,8 @@ export async function POST(req: NextRequest) {
         }. Do not omit the subject and do not hedge into a direction anyway.`,
     '',
     `MOVEMENT THIS WEEK:\n${movement}`,
+    '',
+    water,
     '',
     `WHAT SHE AGREED TO KEEP THIS WEEK (already in her Almanac):\n${kept}`,
     '',
