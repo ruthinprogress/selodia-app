@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { drinkIsAlcohol } from './caloric-drink';
 import { parseVolumeMl } from './hydration-logging';
 
 // A LITRE OF WATER TYPED IN THE MIDDLE OF A MEAL (Ruth, 21 September 2026).
@@ -43,6 +44,11 @@ export function waterFromDrinks(drinks: string[] | undefined): WaterFound {
   for (const phrase of drinks ?? []) {
     const text = String(phrase ?? '').trim();
     if (!text) continue;
+    // ALCOHOL IS THE ONE DRINK WHOSE VOLUME MUST NOT REACH THE WATER FIGURE
+    // (21 September 2026, alongside Bug 17). It logs as food like any caloric
+    // drink, but it is a diuretic, and a good hydration day built out of wine
+    // would be a false day - which is worse than a missing one.
+    if (drinkIsAlcohol(text)) continue;
     const found = parseVolumeMl(text);
     if (found == null || found <= 0) continue;
     // A CEILING, because a model that returns "10 litres" has misread

@@ -44,6 +44,13 @@ check('500ml', parseVolumeMl('500ml water'), 500);
 check('500 mls', parseVolumeMl('500 mls water'), 500);
 check('a pint', parseVolumeMl('a pint of squash'), 568);
 check('two mugs', parseVolumeMl('2 mugs of tea'), 600);
+// WRITTEN NUMBERS, because people type "two mugs of tea" far more often than
+// "2 mugs". This was falling through to the one-glass default and recording
+// 250ml instead of 600 - found while fixing Bug 17, not by looking for it.
+check('two mugs, written out', parseVolumeMl('two mugs of tea'), 600);
+check('a couple of glasses', parseVolumeMl('a couple of glasses of water'), 500);
+check('three cups', parseVolumeMl('three cups of coffee'), 900);
+check('one glass', parseVolumeMl('one glass of water'), 250);
 // A DRINK WITH NO QUANTITY IS ONE ORDINARY GLASS, which was already the rule.
 check('black coffee', parseVolumeMl('black coffee'), 250);
 
@@ -72,6 +79,27 @@ check('the measurable one survives beside it', waterFromDrinks(['a drink', '500m
 check('an absurd volume is refused', waterFromDrinks(['10 litres of water']), { ml: 0, from: [] });
 check('five litres is still allowed', waterFromDrinks(['5 litres of water']).ml, 5000);
 check('several drinks add up', waterFromDrinks(['500ml water', '2 mugs of tea']).ml, 1100);
+
+group('bug 17: what reaches the water figure');
+
+// A MILKY TEA IS BOTH, which is what Ruth chose: "macros AND its volume as
+// water". Its macros come from the food parse; this is the volume half.
+check('a milky tea still hydrates', waterFromDrinks(['two mugs of tea with milk']).ml, 600);
+check('juice hydrates', waterFromDrinks(['a glass of orange juice']).ml, 250);
+
+// ALCOHOL IS THE EXCEPTION. It logs as food like any caloric drink, but its
+// volume must never reach the water figure: alcohol is a diuretic, and a good
+// hydration day built out of wine would be a false day.
+check('a pint of cider is not water', waterFromDrinks(['a pint of cider']), { ml: 0, from: [] });
+check('wine is not water', waterFromDrinks(['2 glasses of wine']), { ml: 0, from: [] });
+check('a cocktail is not water', waterFromDrinks(['a mojito']), { ml: 0, from: [] });
+// AND THE WATER BESIDE IT STILL COUNTS, which is the case that matters on a
+// night out - the evening should not lose its water because it also had wine.
+check('water beside the wine survives', waterFromDrinks(['2 glasses of wine', '500ml water']), {
+  ml: 500,
+  from: ['500ml water'],
+});
+check('alcohol free beer hydrates', waterFromDrinks(['a bottle of alcohol free beer']).ml, 500);
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

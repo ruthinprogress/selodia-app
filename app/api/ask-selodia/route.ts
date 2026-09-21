@@ -106,6 +106,7 @@ import {
 } from '../../lib/discuss-card';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
+import { drinkHasCalories } from '../../lib/caloric-drink';
 import { readOffsets } from '../../lib/pattern-check';
 import { type PatternResult, runPatternCheck } from '../../lib/pattern-query';
 import { wordFor as wordForMeasure, writeFeeling } from '../../lib/feeling-logging';
@@ -840,7 +841,7 @@ ACKNOWLEDGE, DO NOT EVALUATE. A logged session is a fact, not a result. Never pr
 
 WHAT CAN BE LOGGED HERE. If somebody asks what they can log, what this is for, or how any of it works, answer completely rather than naming the one or two things that come to mind. Everything goes through this conversation: food and drink, activity and exercise, body measurements including weight, body fat and muscle, anything else they measure such as a waist or a resting heart rate, water, how they are feeling, and photographs - a plate, a scale readout, a treadmill display, a nutrition label. Free text is the point: there is no format to learn, no fields to fill, and nothing has to be phrased a particular way. Say it warmly and in a sentence or two, the way you would tell a friend what you can help with, never as a bulleted feature list or a tour of the app.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), 'sleep' if it describes how they slept - how long, what time they went to bed or woke, how it felt, how often they woke - or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. AND NEVER LIST BACK WHAT WENT IN. Not "the almonds and the coffee are logged as food and the litre of water is in too" - you do not know what landed, the app does, and a sentence like that one told somebody her water was recorded on a day it was lost. Water and other drinks mentioned alongside food are handled by the app in the same pass; say nothing about them either way. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' ONLY when the drink has NO CALORIES IN IT - plain or sparkling water, black coffee, black tea, herbal or fruit tea, sugar-free squash. ANY DRINK CARRYING CALORIES IS FOOD, not hydration: tea or coffee with milk, anything with sugar, honey or syrup in it, a latte, a hot chocolate, juice, a smoothie, milk, a fizzy drink, alcohol. Beware of "a mug of tea" and "a cuppa", which in British usage mean tea WITH MILK unless they say otherwise - that is food. "Green tea", "peppermint tea" and "black tea" are not. When you genuinely cannot tell whether there was milk in it, ask rather than guess; the calories are small but they are wrong every cup, all day. Nothing is lost by choosing food: the app records the volume of any drink as water in the same pass.  'sleep' if it describes how they slept - how long, what time they went to bed or woke, how it felt, how often they woke - or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. AND NEVER LIST BACK WHAT WENT IN. Not "the almonds and the coffee are logged as food and the litre of water is in too" - you do not know what landed, the app does, and a sentence like that one told somebody her water was recorded on a day it was lost. Water and other drinks mentioned alongside food are handled by the app in the same pass; say nothing about them either way. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}
 
@@ -1337,6 +1338,25 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     almanacCategory?: string;
     almanacContent?: unknown;
   };
+
+  // A DRINK WITH CALORIES IN IT IS FOOD, WHATEVER THE MODEL CALLED IT
+  // (Bug 17, 21 September 2026). "Tea with milk is currently being logged as
+  // hydration only, with no calories captured."
+  //
+  // The prompt now says so too, but a rule the model is asked to follow is not
+  // a guard - and this one had been quietly wrong since the app was built,
+  // because the prompt's own example of a zero-calorie drink was "a mug of
+  // tea". In Britain that has milk in it.
+  //
+  // So the intent is corrected here, before anything reads it: a message the
+  // model called hydration, whose words plainly name milk, sugar, syrup or a
+  // drink made of them, becomes a food log. The volume is not lost by this -
+  // logFoodFromText writes the water for drinks in a food entry, which is what
+  // Ruth asked for when she chose "macros AND its volume as water".
+  if (result.logIntent === 'hydration' && drinkHasCalories(result.logText?.trim() || message)) {
+    console.log('DRINK: caloric drink classified as hydration, routing to food -', result.logText || message);
+    result.logIntent = 'food';
+  }
 
   // Now the model has spoken, settle the tag properly. Posting a card always
   // wins; otherwise the previous tag carries forward unless the topic moved on.

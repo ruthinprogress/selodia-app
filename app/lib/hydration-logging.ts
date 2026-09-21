@@ -29,10 +29,21 @@ export function parseVolumeMl(text: string): number | null {
     return explicit[2].startsWith('ml') ? n : n * 1000;
   }
 
-  const counted = /(\d+(?:\.\d+)?|a|an|another)\s*(glass(?:es)?|mugs?|cups?|pints?|bottles?)\b/.exec(t);
+  // WRITTEN NUMBERS, because people type "two mugs of tea" far more often than
+  // "2 mugs of tea" (found 21 September 2026 while fixing Bug 17: "two mugs of
+  // tea with milk" was falling all the way through to the one-glass default and
+  // recording 250ml instead of 600).
+  const WORDS: Record<string, number> = {
+    a: 1, an: 1, another: 1, one: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10, couple: 2,
+  };
+
+  const counted = new RegExp(
+    String.raw`(\d+(?:\.\d+)?|` + Object.keys(WORDS).join('|') + String.raw`)\s*(?:of\s+)?(glass(?:es)?|mugs?|cups?|pints?|bottles?)\b`
+  ).exec(t);
   if (counted) {
     const raw = counted[1];
-    const count = raw === 'a' || raw === 'an' || raw === 'another' ? 1 : Number(raw);
+    const count = WORDS[raw] ?? Number(raw);
     if (!isFinite(count) || count <= 0) return null;
     const unit = counted[2];
     const per = unit.startsWith('pint')
