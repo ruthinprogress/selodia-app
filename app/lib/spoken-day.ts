@@ -56,7 +56,35 @@ export function rating(v: unknown): number | null {
 }
 
 export type SpokenCycle = { type: CycleEventType; day: string };
-export type SpokenFeeling = { day: string; mood: number | null; energy: number | null; note: string | null };
+export type SpokenFeeling = {
+  /** The first day it covers. */
+  day: string;
+  /** The last day it covers. Equal to `day` for the ordinary single-day case. */
+  through: string;
+  mood: number | null;
+  energy: number | null;
+  note: string | null;
+};
+
+// A MONTH IS AS FAR AS ONE SENTENCE REACHES. "Shattered ever since" about a
+// period three weeks ago is a real thing to say; "tired since January" is a
+// feeling about a season, and writing two hundred and sixty identical rows from
+// it would bury every day somebody actually logged.
+export const LONGEST_SPAN_DAYS = 31;
+
+/** Every day from one to the other, inclusive. Empty when the pair makes no sense. */
+export function daysFrom(from: string, to: string): string[] {
+  const start = Date.parse(`${from}T12:00:00Z`);
+  const end = Date.parse(`${to}T12:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
+  const span = Math.round((end - start) / 86_400_000) + 1;
+  if (span > LONGEST_SPAN_DAYS) return [];
+  const out: string[] = [];
+  for (let i = 0; i < span; i += 1) {
+    out.push(new Date(start + i * 86_400_000).toISOString().slice(0, 10));
+  }
+  return out;
+}
 
 /**
  * What the model said about a cycle, or nothing.
@@ -86,7 +114,13 @@ export function readSpokenCycle(
  * sentence.
  */
 export function readSpokenFeeling(
-  raw: { feelingMood?: unknown; feelingEnergy?: unknown; feelingDate?: unknown; feelingNote?: unknown },
+  raw: {
+    feelingMood?: unknown;
+    feelingEnergy?: unknown;
+    feelingDate?: unknown;
+    feelingThrough?: unknown;
+    feelingNote?: unknown;
+  },
   today: string
 ): SpokenFeeling | null {
   const mood = rating(raw.feelingMood);
@@ -99,7 +133,17 @@ export function readSpokenFeeling(
   const note = typeof raw.feelingNote === 'string' && raw.feelingNote.trim()
     ? raw.feelingNote.trim().slice(0, 500)
     : null;
-  return { day: spokenDay(raw.feelingDate, today) ?? today, mood, energy, note };
+  const day = spokenDay(raw.feelingDate, today) ?? today;
+  // "EVER SINCE" IS A RANGE (Ruth, 21 September 2026): "'been shattered ever
+  // since' actually means that all days, including the period started day were
+  // fatigued" - and then, on where it ends, "Upto Today."
+  //
+  // A span that runs backwards, or one longer than a month, is a misreading
+  // rather than a fortnight, and collapses to the single day she named. Losing
+  // six days is a gap; writing two hundred is a fabrication.
+  const through = spokenDay(raw.feelingThrough, today);
+  const ends = through && through >= day && daysFrom(day, through).length > 0 ? through : day;
+  return { day, through: ends, mood, energy, note };
 }
 
 /** What Selodía's confirmation says. Short, and names the day when it is not today. */
@@ -120,7 +164,11 @@ export function feelingSaved(
   const e = f.energy != null ? word('energy', f.energy) : null;
   if (m) parts.push(`mood ${m.toLowerCase()}`);
   if (e) parts.push(`energy ${e.toLowerCase()}`);
-  const when = f.day === today ? 'today' : human(f.day);
+  // A SPAN IS SAID BACK AS A SPAN, so a fortnight filled in from one sentence
+  // is visible in the confirmation rather than discovered later in a chart.
+  const first = f.day === today ? 'today' : human(f.day);
+  const when =
+    f.through === f.day ? first : `${first} to ${f.through === today ? 'today' : human(f.through)}`;
   return `Noted for ${when}: ${parts.join(', ')}.`;
 }
 

@@ -17,6 +17,8 @@ import {
   feelingSaved,
   rating,
   readSpokenCycle,
+  daysFrom,
+  LONGEST_SPAN_DAYS,
   readSpokenFeeling,
   spokenDay,
   spokenDayLabel,
@@ -111,6 +113,7 @@ group('reading a spoken feeling');
 
 check('both measures', readSpokenFeeling({ feelingMood: 2, feelingEnergy: 1, feelingNote: 'second bad night' }, TODAY), {
   day: TODAY,
+  through: TODAY,
   mood: 2,
   energy: 1,
   note: 'second bad night',
@@ -120,12 +123,14 @@ check('both measures', readSpokenFeeling({ feelingMood: 2, feelingEnergy: 1, fee
 // feature exists to check AI observations against.
 check('energy alone leaves mood empty', readSpokenFeeling({ feelingEnergy: 1 }, TODAY), {
   day: TODAY,
+  through: TODAY,
   mood: null,
   energy: 1,
   note: null,
 });
 check('a past day', readSpokenFeeling({ feelingMood: 4, feelingDate: '2026-09-19' }, TODAY), {
   day: '2026-09-19',
+  through: '2026-09-19',
   mood: 4,
   energy: null,
   note: null,
@@ -138,10 +143,42 @@ check('nothing at all', readSpokenFeeling({}, TODAY), null);
 check('an off-scale rating is not a rating', readSpokenFeeling({ feelingMood: 9 }, TODAY), null);
 check('an empty note is no note', readSpokenFeeling({ feelingMood: 3, feelingNote: '   ' }, TODAY), {
   day: TODAY,
+  through: TODAY,
   mood: 3,
   energy: null,
   note: null,
 });
+
+group('a stretch of days, which is how people talk');
+
+// "Im sure other verbal ranges are quite common." They are: all week, since the
+// weekend, the last few days, for a fortnight, all last week.
+check('one day', daysFrom('2026-09-21', '2026-09-21'), ['2026-09-21']);
+check('a weekend', daysFrom('2026-09-19', '2026-09-21'), ['2026-09-19', '2026-09-20', '2026-09-21']);
+check('across a month end', daysFrom('2026-09-30', '2026-10-01'), ['2026-09-30', '2026-10-01']);
+check('a week is seven days', daysFrom('2026-09-15', '2026-09-21').length, 7);
+// BACKWARDS IS A MISREADING, not a range.
+check('ending before it starts', daysFrom('2026-09-21', '2026-09-15'), []);
+// A MONTH IS AS FAR AS ONE SENTENCE REACHES. "Tired since January" is a feeling
+// about a season, and 260 identical rows would bury every day she logged.
+check('a month exactly', daysFrom('2026-08-22', '2026-09-21').length, LONGEST_SPAN_DAYS);
+check('longer than a month is refused', daysFrom('2026-01-01', '2026-09-21'), []);
+check('nonsense', daysFrom('whenever', 'later'), []);
+
+check('all week', readSpokenFeeling({ feelingEnergy: 1, feelingDate: '2026-09-15', feelingThrough: TODAY }, TODAY), {
+  day: '2026-09-15',
+  through: TODAY,
+  mood: null,
+  energy: 1,
+  note: null,
+});
+// A STRETCH THAT ENDED BEFORE TODAY. "I was low all last week" does not reach
+// now, and saying it does would claim something about this week nobody said.
+check('all last week', readSpokenFeeling({ feelingMood: 1, feelingDate: '2026-09-07', feelingThrough: '2026-09-13' }, TODAY).through, '2026-09-13');
+// AN IMPOSSIBLE SPAN COLLAPSES TO THE DAY SHE NAMED rather than being dropped:
+// losing six days is a gap, writing two hundred is a fabrication.
+check('a backwards span keeps the named day', readSpokenFeeling({ feelingMood: 2, feelingDate: '2026-09-19', feelingThrough: '2026-09-17' }, TODAY).through, '2026-09-19');
+check('an over-long span keeps the named day', readSpokenFeeling({ feelingMood: 2, feelingDate: '2026-01-02', feelingThrough: TODAY }, TODAY).through, '2026-01-02');
 
 group('the sentence that is two facts on two days');
 
@@ -149,13 +186,23 @@ group('the sentence that is two facts on two days');
 // going to differentiate feeling tired actually today, vs when logging period
 // start day". She was right - the two shared one date field, so the tiredness
 // in a sentence like this one would have been filed under Tuesday.
-const bothInOne = { cycleEvent: 'period_start', cycleDate: '2026-09-15', feelingEnergy: 1 };
+// HER SECOND CORRECTION, the same evening: "'been shattered ever since'
+// actually means that all days, including the period started day were
+// fatigued" - and on where it stops, "Upto Today."
+const bothInOne = {
+  cycleEvent: 'period_start',
+  cycleDate: '2026-09-15',
+  feelingEnergy: 1,
+  feelingDate: '2026-09-15',
+  feelingThrough: TODAY,
+};
 check('the period is dated Tuesday', readSpokenCycle(bothInOne, TODAY), {
   type: 'period_start',
   day: '2026-09-15',
 });
-check('and the tiredness is today', readSpokenFeeling(bothInOne, TODAY), {
-  day: TODAY,
+check('and the tiredness covers Tuesday to today', readSpokenFeeling(bothInOne, TODAY), {
+  day: '2026-09-15',
+  through: TODAY,
   mood: null,
   energy: 1,
   note: null,
@@ -203,12 +250,19 @@ check('a day reads as a person would say it', spokenDayLabel('2026-09-15'), 'Tue
 
 check(
   'both measures, in words not numbers',
-  feelingSaved({ day: TODAY, mood: 2, energy: 1, note: null }, TODAY, spokenDayLabel, wordFor),
+  feelingSaved({ day: TODAY, through: TODAY, mood: 2, energy: 1, note: null }, TODAY, spokenDayLabel, wordFor),
   'Noted for today: mood flat, energy drained.'
+);
+// A SPAN IS SAID BACK AS A SPAN, so a week filled in from one sentence is
+// visible in the confirmation rather than discovered later in a chart.
+check(
+  'a stretch says so',
+  feelingSaved({ day: '2026-09-15', through: TODAY, mood: null, energy: 1, note: null }, TODAY, spokenDayLabel, wordFor),
+  'Noted for Tuesday 15 September to today: energy drained.'
 );
 check(
   'one measure on a past day',
-  feelingSaved({ day: '2026-09-19', mood: null, energy: 4, note: null }, TODAY, spokenDayLabel, wordFor),
+  feelingSaved({ day: '2026-09-19', through: '2026-09-19', mood: null, energy: 4, note: null }, TODAY, spokenDayLabel, wordFor),
   'Noted for Saturday 19 September: energy lively.'
 );
 

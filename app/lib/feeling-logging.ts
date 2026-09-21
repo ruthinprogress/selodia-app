@@ -34,37 +34,54 @@ export function wordFor(measure: string, value: number): string | null {
 }
 
 /**
- * One row per measure they gave, replacing whatever that day already held.
+ * One row per measure, per day it covers.
  *
  * A DAY HAS ONE ANSWER PER MEASURE. Saying "actually today was more of a good
- * day" an hour later is a correction, not a second reading, so this upserts on
- * the table's own key rather than appending. That is also why a measure they
- * did NOT mention is left alone: mentioning energy does not retract what they
- * said about mood this morning.
+ * day" an hour later is a correction, not a second reading, so a single day
+ * upserts on the table's own key rather than appending. A measure they did NOT
+ * mention is left alone: mentioning energy does not retract what they said
+ * about mood this morning.
+ *
+ * A SPAN NEVER OVERWRITES A DAY THEY LOGGED THEMSELVES. This is the important
+ * rule in this file. "Shattered ever since Tuesday" is one remark covering a
+ * week; a word tapped on the Feeling screen on the Thursday is a first-hand
+ * check-in for that Thursday. The remark fills the gaps and leaves the
+ * check-ins alone - a guard that deletes correct work is worse than no guard,
+ * and here the correct work is the more reliable of the two.
+ *
+ * And each row records HOW IT GOT THERE, so seven days filled from one sentence
+ * are never mistaken later for seven separate observations.
  */
 export async function writeFeeling(
   supabase: SupabaseClient,
   userId: string,
-  felt: SpokenFeeling
+  felt: SpokenFeeling,
+  days: string[]
 ): Promise<SpokenFeeling | null> {
   const now = new Date().toISOString();
-  const rows = (['mood', 'energy'] as const)
-    .filter((m) => felt[m] != null)
-    .map((m) => ({
+  const measures = (['mood', 'energy'] as const).filter((m) => felt[m] != null);
+  if (measures.length === 0 || days.length === 0) return null;
+
+  const spanned = days.length > 1;
+  const rows = days.flatMap((day) =>
+    measures.map((m) => ({
       user_id: userId,
-      day: felt.day,
+      day,
       measure: m,
       value: felt[m] as number,
+      source: spanned ? 'spanned' : 'said',
       updated_at: now,
       // A NOTE IS ONLY WRITTEN WHEN THERE IS ONE. PostgREST updates the columns
       // it is sent, so leaving `note` out keeps whatever the day already had.
       // Sending null instead would let "energy was low" erase the sentence they
       // typed this morning explaining why - a write that deletes correct work.
       ...(felt.note ? { note: felt.note } : {}),
-    }));
-  if (rows.length === 0) return null;
+    }))
+  );
 
-  const { error } = await supabase.from('daily_ratings').upsert(rows, { onConflict: 'user_id,day,measure' });
+  const { error } = await supabase
+    .from('daily_ratings')
+    .upsert(rows, { onConflict: 'user_id,day,measure', ignoreDuplicates: spanned });
   if (error) {
     console.log('FEELING WRITE FAILED:', error.message);
     return null;

@@ -109,7 +109,7 @@ import { writeCycleEvent } from '../../lib/cycle-logging';
 import { readOffsets } from '../../lib/pattern-check';
 import { type PatternResult, runPatternCheck } from '../../lib/pattern-query';
 import { wordFor as wordForMeasure, writeFeeling } from '../../lib/feeling-logging';
-import { cycleSaved, feelingSaved, readSpokenCycle, readSpokenFeeling, spokenDayLabel } from '../../lib/spoken-day';
+import { cycleSaved, daysFrom, feelingSaved, readSpokenCycle, readSpokenFeeling, spokenDayLabel } from '../../lib/spoken-day';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -775,15 +775,28 @@ CYCLE AND FEELING ARE NOT LOGGING INTENTS. They are separate fields, and they ar
 THEY HAVE SEPARATE DATES, AND THIS IS THE PART TO GET RIGHT. cycleDate dates the bleeding. feelingDate dates how they felt. They are very often different days in the same sentence, because a period is usually reported late and a feeling is usually reported now:
 
   "my period started Tuesday and I've been shattered ever since"
-    cycleEvent period_start, cycleDate Tuesday, feelingEnergy 1, feelingDate OMITTED (the tiredness is today)
+    cycleEvent period_start, cycleDate Tuesday
+    feelingEnergy 1, feelingDate Tuesday, feelingThrough today - "ever since" covers EVERY day from Tuesday to now, the Tuesday included
 
   "I came on Monday"
     cycleEvent period_start, cycleDate Monday, and NO feeling at all - they did not say how they felt
 
   "yesterday was a write-off, no energy"
-    feelingEnergy 1, feelingDate yesterday, and NO cycle event
+    feelingEnergy 1, feelingDate yesterday, no feelingThrough - one day
 
-Nobody opens an app the morning their period starts - she said so when she asked for this: "I rarely remember to add it to my calendar on the day it started or ended." So resolve a named day into cycleDate the way you already do for a food log somebody is catching up on. A feeling, by contrast, is almost always about today, so leave feelingDate out unless they NAME a different day.
+Nobody opens an app the morning their period starts - she said so when she asked for this: "I rarely remember to add it to my calendar on the day it started or ended." So resolve a named day into cycleDate the way you already do for a food log somebody is catching up on.
+
+A FEELING IS OFTEN A STRETCH OF DAYS, AND PEOPLE SAY SO CONSTANTLY. "Ever since", "all week", "the last few days", "since the weekend", "for a fortnight", "these past three days", "all month", "all last week". Every one of those is a range, and the app records every day in it. Set feelingDate to where it starts and feelingThrough to where it ends:
+
+  "no energy all week"                    feelingDate Monday, feelingThrough today
+  "flat since the weekend"                feelingDate Saturday, feelingThrough today
+  "shattered the last three days"         feelingDate two days ago, feelingThrough today
+  "I was low all last week"               feelingDate that Monday, feelingThrough that Sunday - it does NOT reach today
+  "rough today"                           feelingDate omitted, feelingThrough omitted - one day
+
+Most stretches run up to today, because somebody describing how they have been is describing how they are. "All last week" is the exception and ends on its own Sunday. A single day is still the common case, so omit both fields for "I feel rough".
+
+BE HONEST ABOUT THE EDGES OF A STRETCH. Every day in the range is written as a day that felt like that, so a range you widen out of tidiness is days of somebody's life recorded wrongly. If they said "the last few days" take it as three; if you genuinely cannot tell where it starts, record today alone and ask.
 
 WHAT IS NOT A CYCLE EVENT: a period they are expecting, a question about when it is due, a prediction you are making, cramps or any other symptom on its own. Only the bleeding itself, only when they say it happened.
 
@@ -985,7 +998,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     feelingDate: {
       type: 'string',
       description:
-        "The day the FEELING is about, as YYYY-MM-DD. Omit it when they mean today, which is the usual case - \"shattered today\", \"I feel rough\". Set it only when they name a different day: \"yesterday was a write-off\", \"Monday was flat\". THIS IS NOT cycleDate: in \"my period started Tuesday and I am shattered today\", cycleDate is Tuesday and this is omitted, because the tiredness is today. Never a date in the future.",
+        "The FIRST day the feeling covers, as YYYY-MM-DD. Omit it when they mean today, which is the usual case - \"shattered today\", \"I feel rough\". Set it when they name another day (\"yesterday was a write-off\", \"Monday was flat\") or when they describe a stretch of days, in which case this is where the stretch begins. THIS IS NOT cycleDate: a period is dated by cycleDate, a feeling by this. Never a date in the future.",
+    },
+    feelingThrough: {
+      type: 'string',
+      description:
+        "The LAST day the feeling covers, as YYYY-MM-DD, when they described a stretch of days rather than one day. People say this constantly: \"ever since\", \"all week\", \"the last few days\", \"since the weekend\", \"for a fortnight\", \"all month\", \"these past three days\", \"all last week\". Most of those run UP TO TODAY, so this is usually today - but not always: \"all last week\" ends on that Sunday. Omit it entirely for a single day, which is still the common case. The whole stretch gets recorded, every day of it, so a stretch you invent is days of somebody's life recorded wrongly - set it only when they genuinely described one.",
     },
     patternTrigger: {
       type: 'string',
@@ -1282,6 +1300,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     feelingEnergy?: number;
     feelingNote?: string;
     feelingDate?: string;
+    feelingThrough?: string;
     patternTrigger?: string;
     patternMeasure?: 'mood' | 'energy';
     patternOffsets?: number[];
@@ -1719,7 +1738,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (result.feelingMood != null || result.feelingEnergy != null) {
     try {
       const felt = readSpokenFeeling(result, todayKey);
-      if (felt && (await writeFeeling(supabase, user.id, felt))) {
+      // Every day the remark covers. One day for the ordinary case; a week for
+      // "shattered ever since Tuesday", which is what she pointed out my own
+      // example actually meant.
+      const days = felt ? daysFrom(felt.day, felt.through) : [];
+      if (felt && days.length > 0 && (await writeFeeling(supabase, user.id, felt, days))) {
         saved = alsoSaved(saved, 'feeling', feelingSaved(felt, todayKey, spokenDayLabel, wordForMeasure));
         attempt.landed.push('feeling');
       }

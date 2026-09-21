@@ -68,6 +68,7 @@ export default function FeelingScreen() {
   const [ratings, setRatings] = useState<Record<string, Rating>>({});
   const [note, setNote] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
+  const [filled, setFilled] = useState<'said' | 'spanned' | null>(null);
 
   // IN HINDSIGHT, LIKE THE CYCLE PAGE, and for the same reason she gave there:
   // "I rarely remember to add it to my calendar on the day." Somebody thinking
@@ -79,12 +80,18 @@ export default function FeelingScreen() {
       if (!userId) return;
       const { data } = await supabase
         .from('daily_ratings')
-        .select('measure, value, note')
+        .select('measure, value, note, source')
         .eq('user_id', userId)
         .eq('day', day);
       if (cancelled) return;
-      const found = ratingsByMeasure((data ?? []) as { measure: string; value: number; note: string | null }[]);
+      const rows = (data ?? []) as { measure: string; value: number; note: string | null; source?: string }[];
+      const found = ratingsByMeasure(rows);
       setRatings(found);
+      // WHERE THIS DAY'S ANSWER CAME FROM (21 September 2026). Once a sentence
+      // like "shattered ever since Tuesday" can fill a week, a day can carry a
+      // word she never tapped - and finding one with no explanation is how an
+      // app stops being trusted. It says so, quietly, and tapping replaces it.
+      setFilled(rows.some((r) => r.source === 'spanned') ? 'spanned' : rows.some((r) => r.source === 'said') ? 'said' : null);
       // One note for the day, kept against whichever measure carried it.
       setNote(Object.values(found).find((r) => r.note)?.note ?? '');
       setSaved(null);
@@ -120,6 +127,7 @@ export default function FeelingScreen() {
     }
 
     setRatings((r) => ({ ...r, [measureId]: { measure: measureId, value, note: note.trim() || null } }));
+    setFilled(null);
     const { error } = await supabase.from('daily_ratings').upsert(
       {
         user_id: userId,
@@ -127,6 +135,9 @@ export default function FeelingScreen() {
         measure: measureId,
         value,
         note: note.trim() || null,
+        // A TAP IS FIRST-HAND, whatever was here before. A day filled in from a
+        // remark becomes a real check-in the moment she answers it herself.
+        source: 'tapped',
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,day,measure' }
@@ -201,6 +212,14 @@ export default function FeelingScreen() {
           />
         </Pressable>
       </ThemedView>
+
+      {filled && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+          {filled === 'spanned'
+            ? 'Filled in from a stretch of days you described in chat. Tap a word to answer for this day yourself.'
+            : 'Recorded from what you said in chat.'}
+        </ThemedText>
+      )}
 
       {MEASURES.map((m) => (
         <ThemedView key={m.id} type="backgroundElement" style={styles.card}>
