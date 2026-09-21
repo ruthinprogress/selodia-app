@@ -82,6 +82,8 @@ export type PickableValue = { value: string; count: number };
  */
 export type ReportCatalogue = {
   hasProfile: boolean;
+  /** The profile facts this person actually has, each pickable on its own. */
+  profileFields: PickableValue[];
   goals: number;
   bodyReadings: number;
   metrics: PickableValue[];
@@ -96,6 +98,28 @@ export type ReportCatalogue = {
 };
 
 const CARD_KINDS = ['me', 'routine', 'self-care routine', 'note', 'protocol'];
+
+/**
+ * THE PROFILE IS FIVE SEPARATE FACTS, NOT ONE (Ruth, 21 September 2026): "there
+ * needs to be a further granular selection in the Builder with all items listed
+ * so user choses: Name, dob, height, etc."
+ *
+ * It is the blocks argument again, one level further in. A report going to an
+ * insurer needs the name and the date of birth; one going to a physiotherapist
+ * needs the height and how active the days are, and has no business carrying
+ * either. Offering them as a single tick makes that choice for her.
+ *
+ * The labels ARE the identifiers, so what the chooser lists and what the
+ * document prints can never drift apart.
+ */
+export const PROFILE_FIELDS = [
+  'Name',
+  'Date of birth',
+  'Biological sex',
+  'Height',
+  'Everyday activity',
+] as const;
+export type ProfileField = (typeof PROFILE_FIELDS)[number];
 
 /**
  * How two names of the same thing are compared. The chooser shows a measure
@@ -128,9 +152,33 @@ function countValues(rows: { value: string | null }[]): PickableValue[] {
     .sort((a, b) => b.count - a.count);
 }
 
+type ProfileRow = {
+  first_name: string | null;
+  date_of_birth: string | null;
+  biological_sex: string | null;
+  height_cm: number | null;
+  activity_level: string | null;
+};
+
+/** Which of the five she has filled in. Nothing empty is ever offered. */
+function heldProfileFields(p: ProfileRow | null): ProfileField[] {
+  if (!p) return [];
+  const has: ProfileField[] = [];
+  if (p.first_name?.trim()) has.push('Name');
+  if (p.date_of_birth) has.push('Date of birth');
+  if (p.biological_sex) has.push('Biological sex');
+  if (p.height_cm) has.push('Height');
+  if (p.activity_level) has.push('Everyday activity');
+  return has;
+}
+
 export async function loadCatalogue(db: SupabaseClient, userId: string): Promise<ReportCatalogue> {
   const [profile, goals, body, metrics, entries, food, water, sleep, activity] = await Promise.all([
-    db.from('user_profile').select('user_id', { count: 'exact', head: true }).eq('user_id', userId),
+    db
+      .from('user_profile')
+      .select('first_name, date_of_birth, biological_sex, height_cm, activity_level', { count: 'exact' })
+      .eq('user_id', userId)
+      .maybeSingle(),
     db.from('user_context').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('category', 'goal'),
     db.from('body_measurements').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     db.from('personal_metrics').select('metric_name').eq('user_id', userId),
@@ -171,7 +219,10 @@ export async function loadCatalogue(db: SupabaseClient, userId: string): Promise
   };
 
   return {
-    hasProfile: (profile.count ?? 0) > 0,
+    hasProfile: Boolean(profile.data),
+    // Counted as 0 so the chooser prints the name alone: "Height", not
+    // "Height - 1 entry", which would be counting a fact that is not countable.
+    profileFields: heldProfileFields((profile.data ?? null) as ProfileRow | null).map((value) => ({ value, count: 0 })),
     goals: goals.count ?? 0,
     bodyReadings: body.count ?? 0,
     metrics: countValues(((metrics.data ?? []) as { metric_name: string | null }[]).map((m) => ({ value: m.metric_name }))),
@@ -240,6 +291,26 @@ export type ReportData = {
   water: { day: string; ml: number; drinks: number }[];
   sleep: { night: string; minutes: number | null; quality: string | null; awakenings: number | null }[];
   activity: { at: string; what: string; minutes: number | null; intensity: string | null }[];
+  /**
+   * THE SHAPE OF THE MOVEMENT, rather than a list of it (Ruth, 21 September
+   * 2026): "a long list is not helpful, needs to give a sense of the activity
+   * profile at a glance."
+   *
+   * One row per week or month: how many sessions, how many separate days they
+   * fell on, how many minutes, and what the minutes were made of. Days matters
+   * for the same reason it does in food - four sessions on one day is not four
+   * days of movement.
+   */
+  activityPeriods: {
+    label: string;
+    sessions: number;
+    days: number;
+    minutes: number;
+    kinds: { what: string; minutes: number; sessions: number }[];
+  }[];
+  /** Every kind across the whole period, most minutes first. */
+  activityKinds: { what: string; minutes: number; sessions: number }[];
+  activityGrain: 'weekly' | 'monthly';
   plans: { title: string; content: string }[];
   insights: { at: string; title: string; content: string }[];
   cards: { title: string; kind: string; content: string; updated: string }[];
@@ -273,6 +344,9 @@ export async function loadReport(
   // 'totals' is what a phone built before 21 September calls a day.
   const foodGrain: 'daily' | 'weekly' | 'monthly' =
     foodBlock?.detail === 'weekly' ? 'weekly' : foodBlock?.detail === 'monthly' ? 'monthly' : 'daily';
+  // Movement has no daily grain: a day is what the session list already shows,
+  // and the summary exists precisely to be coarser than that.
+  const activityGrain: 'weekly' | 'monthly' = activityBlock?.detail === 'monthly' ? 'monthly' : 'weekly';
   const wantedMetrics = new Set((metricsBlock?.names ?? []).map(sameName));
 
   const [profileRow, goalRows, bodyRows, metricRows, entryRows, foodRows, waterRows, sleepRows, activityRows] =
@@ -380,12 +454,21 @@ export async function loadReport(
   const chosen = (b: ReportBlock | null) =>
     b ? entries.filter((e) => (b.ids ?? []).includes(e.id)) : [];
 
+  // FIELD BY FIELD, and an empty `names` means every field she has - which is
+  // what a phone built before 21 September sends, and what "all of it" means
+  // anyway.
+  const wantedFields = new Set((profileBlock?.names ?? []).map(sameName));
+  const wants = (f: ProfileField) => wantedFields.size === 0 || wantedFields.has(sameName(f));
+
   const profile: { label: string; value: string }[] = [];
   if (p) {
-    if (p.date_of_birth) profile.push({ label: 'Date of birth', value: longDate(p.date_of_birth) });
-    if (p.biological_sex) profile.push({ label: 'Biological sex', value: capital(p.biological_sex) });
-    if (p.height_cm) profile.push({ label: 'Height', value: `${p.height_cm} cm` });
-    if (p.activity_level) profile.push({ label: 'Everyday activity', value: p.activity_level.replace('_', ' ') });
+    if (p.biological_sex && wants('Biological sex')) {
+      profile.push({ label: 'Biological sex', value: capital(p.biological_sex) });
+    }
+    if (p.height_cm && wants('Height')) profile.push({ label: 'Height', value: `${p.height_cm} cm` });
+    if (p.activity_level && wants('Everyday activity')) {
+      profile.push({ label: 'Everyday activity', value: p.activity_level.replace('_', ' ') });
+    }
   }
 
   const foods = (foodRows.data ?? []) as {
@@ -405,9 +488,20 @@ export async function loadReport(
     intensity: string | null;
   }[]).filter((a) => activityTypes.size === 0 || activityTypes.has(sameName(a.activity_type)));
 
+  // One shape for the summary and the table, so a session cannot be counted one
+  // way in the chart and another in the list beneath it.
+  const sessions = acts.map((a) => ({
+    at: a.happened_at,
+    what: (a.activity_type ?? 'a session').trim(),
+    minutes: a.duration_min,
+  }));
+
   return {
-    name: p?.first_name?.trim() || null,
-    dateOfBirth: p?.date_of_birth ?? null,
+    // NAME AND DATE OF BIRTH LIVE ON THE COVER, and nowhere else - printing
+    // them again under "Profile" was the repetition she spotted. They are still
+    // hers to withhold: unticked, the cover simply says "Health Summary".
+    name: p && wants('Name') ? p.first_name?.trim() || null : null,
+    dateOfBirth: p && wants('Date of birth') ? (p.date_of_birth ?? null) : null,
     generated: new Date().toISOString(),
     periodLabel: sel.periodLabel,
     note: sel.note?.trim() || null,
@@ -440,6 +534,9 @@ export async function loadReport(
     })),
     food: foodBlock ? groupFood(foods, foodGrain) : [],
     foodGrain,
+    activityPeriods: activityBlock ? groupActivity(sessions, activityGrain) : [],
+    activityKinds: activityBlock ? countKinds(sessions) : [],
+    activityGrain,
     foodEntries:
       foodBlock?.detail === 'entries'
         ? foods.map((f) => ({
@@ -620,6 +717,94 @@ export function weekBeginning(day: string): string {
   const back = (d.getUTCDay() + 6) % 7;
   d.setUTCDate(d.getUTCDate() - back);
   return d.toISOString().slice(0, 10);
+}
+
+type Session = { at: string; what: string; minutes: number | null };
+
+/** Every kind of movement in a set of sessions, most minutes first. */
+export function countKinds(rows: Session[]): { what: string; minutes: number; sessions: number }[] {
+  const map = new Map<string, { what: string; minutes: number; sessions: number }>();
+  for (const r of rows) {
+    const what = (r.what ?? '').trim() || 'a session';
+    const key = what.toLowerCase();
+    const k = map.get(key) ?? { what, minutes: 0, sessions: 0 };
+    k.minutes += r.minutes ?? 0;
+    k.sessions += 1;
+    map.set(key, k);
+  }
+  return [...map.values()].sort((a, b) => b.minutes - a.minutes || b.sessions - a.sessions);
+}
+
+/**
+ * Movement gathered into weeks or months, each carrying what it was made of.
+ *
+ * EVERY PERIOD BETWEEN THE FIRST AND THE LAST APPEARS, including the empty
+ * ones. A chart that silently omits a fortnight of nothing draws a steady habit
+ * out of a broken one, which is the single most misleading thing this document
+ * could do - and the caption says an empty column means nothing was recorded
+ * rather than nothing was done.
+ */
+export function groupActivity(
+  rows: Session[],
+  grain: 'weekly' | 'monthly'
+): {
+  label: string;
+  sessions: number;
+  days: number;
+  minutes: number;
+  kinds: { what: string; minutes: number; sessions: number }[];
+}[] {
+  if (rows.length === 0) return [];
+
+  const keyOf = (day: string) => (grain === 'weekly' ? weekBeginning(day) : day.slice(0, 7));
+  const buckets = new Map<string, { rows: Session[]; days: Set<string> }>();
+
+  for (const r of rows) {
+    const day = r.at.slice(0, 10);
+    const key = keyOf(day);
+    const b = buckets.get(key) ?? { rows: [], days: new Set<string>() };
+    b.rows.push(r);
+    b.days.add(day);
+    buckets.set(key, b);
+  }
+
+  const keys = [...buckets.keys()].sort();
+  const filled = everyPeriod(keys[0], keys[keys.length - 1], grain);
+
+  return filled.map((label) => {
+    const b = buckets.get(label);
+    return {
+      label,
+      sessions: b?.rows.length ?? 0,
+      days: b?.days.size ?? 0,
+      minutes: (b?.rows ?? []).reduce((n, r) => n + (r.minutes ?? 0), 0),
+      kinds: countKinds(b?.rows ?? []),
+    };
+  });
+}
+
+/** Every week or month from the first to the last, gaps included. */
+function everyPeriod(first: string, last: string, grain: 'weekly' | 'monthly'): string[] {
+  const out: string[] = [];
+  if (grain === 'monthly') {
+    let [y, m] = first.split('-').map(Number);
+    const [ly, lm] = last.split('-').map(Number);
+    // A guard on the loop as well as the condition: a malformed label must not
+    // spin this forever inside a request.
+    for (let n = 0; n < 240 && (y < ly || (y === ly && m <= lm)); n += 1) {
+      out.push(`${y}-${String(m).padStart(2, '0')}`);
+      m += 1;
+      if (m > 12) { m = 1; y += 1; }
+    }
+    return out;
+  }
+  const d = new Date(`${first}T12:00:00Z`);
+  const end = new Date(`${last}T12:00:00Z`);
+  for (let n = 0; n < 520 && d.getTime() <= end.getTime(); n += 1) {
+    out.push(d.toISOString().slice(0, 10));
+    d.setUTCDate(d.getUTCDate() + 7);
+  }
+  return out;
 }
 
 /**

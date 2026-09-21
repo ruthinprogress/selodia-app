@@ -50,6 +50,7 @@ type PickableValue = { value: string; count: number };
 
 type Catalogue = {
   hasProfile: boolean;
+  profileFields: PickableValue[];
   goals: number;
   bodyReadings: number;
   metrics: PickableValue[];
@@ -85,7 +86,7 @@ const FOOD_GRAINS: { id: FoodGrain; label: string }[] = [
 ];
 
 // The sources whose blocks are the whole thing or nothing.
-const WHOLE = ['profile', 'goals', 'body', 'water', 'sleep'] as const;
+const WHOLE = ['goals', 'body', 'water', 'sleep'] as const;
 // The sources picked one record at a time.
 const BY_RECORD = ['symptoms', 'plans', 'insights', 'cards'] as const;
 // Every name a screen may hand to `start`; anything else is ignored, so a
@@ -213,7 +214,10 @@ function Picker({
               key={v.value}
               checked={chosen.has(v.value)}
               onToggle={() => onPick(source, v.value)}
-              label={`${v.value} — ${v.count} ${v.count === 1 ? 'entry' : 'entries'}`}
+              // A count of zero means there is nothing to count: "Height" is a
+              // fact, not a tally, and "Height - 1 entry" would be the app
+              // counting something uncountable.
+              label={v.count > 0 ? `${v.value} — ${v.count} ${v.count === 1 ? 'entry' : 'entries'}` : v.value}
             />
           ))}
         </View>
@@ -248,6 +252,7 @@ export default function ReportScreen() {
   // Whole-source choices.
   const [whole, setWhole] = useState<Set<string>>(new Set());
   const [foodDetail, setFoodDetail] = useState<FoodGrain>('daily');
+  const [movementGrain, setMovementGrain] = useState<'weekly' | 'monthly'>('weekly');
   // Record-by-record and value-by-value choices, keyed by source.
   const [picked, setPicked] = useState<Record<string, Set<string>>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -341,10 +346,15 @@ export default function ReportScreen() {
     }
     const names = [...(picked.metrics ?? [])];
     if (names.length > 0) out.push({ source: 'metrics', names });
+    // PROFILE IS FIVE FACTS, PICKED SEPARATELY (Ruth, 21 September 2026): a
+    // report to an insurer needs the name and date of birth, one to a
+    // physiotherapist needs the height and has no business carrying either.
+    const fields = [...(picked.profile ?? [])];
+    if (fields.length > 0) out.push({ source: 'profile', names: fields });
     const types = [...(picked.activity ?? [])];
-    if (types.length > 0) out.push({ source: 'activity', types });
+    if (types.length > 0) out.push({ source: 'activity', types, detail: movementGrain });
     return out;
-  }, [catalogue, whole, foodDetail, picked]);
+  }, [catalogue, whole, foodDetail, movementGrain, picked]);
 
   // What the button counts: a whole section is one thing, a picked list is as
   // many things as she picked, so the number matches what she just ticked.
@@ -589,23 +599,21 @@ export default function ReportScreen() {
             </ThemedText>
           </SettingsGroup>
 
-          {(catalogue.hasProfile || catalogue.goals > 0) && (
-            <SettingsGroup title="About you">
+          {picker({
+            source: 'profile',
+            title: 'About you',
+            hint: 'Your name and date of birth are printed on the cover, and nowhere else. Anything you leave unticked does not appear at all.',
+            values: catalogue.profileFields,
+          })}
+
+          {catalogue.goals > 0 && (
+            <SettingsGroup title="What you are working towards">
               <View style={styles.boxes}>
-                {catalogue.hasProfile && (
-                  <Checkbox
-                    checked={whole.has('profile')}
-                    onToggle={() => setWhole((s) => toggled(s, 'profile'))}
-                    label="Profile — your current details"
-                  />
-                )}
-                {catalogue.goals > 0 && (
-                  <Checkbox
-                    checked={whole.has('goals')}
-                    onToggle={() => setWhole((s) => toggled(s, 'goals'))}
-                    label="Goals — what you are working towards"
-                  />
-                )}
+                <Checkbox
+                  checked={whole.has('goals')}
+                  onToggle={() => setWhole((s) => toggled(s, 'goals'))}
+                  label="Your goals, under their own heading"
+                />
               </View>
             </SettingsGroup>
           )}
@@ -707,6 +715,39 @@ export default function ReportScreen() {
             hint: 'The kinds of movement to include. Leave them all clear to leave movement out.',
             values: catalogue.activityTypes,
           })}
+
+          {/* A LIST IS NOT A PROFILE (Ruth, 21 September 2026): "a long list is
+              not helpful, needs to give a sense of the activity profile at a
+              glance". Under the sessions the report draws a column per week or
+              month, as tall as the minutes in it and divided by what those
+              minutes were made of. This chooses how wide a column is. */}
+          {(picked.activity?.size ?? 0) > 0 && (
+            <SettingsGroup title="How to picture it">
+              <View style={styles.chips}>
+                {(['weekly', 'monthly'] as const).map((g) => (
+                  <Pressable
+                    key={g}
+                    onPress={() => setMovementGrain(g)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: movementGrain === g }}
+                    accessibilityLabel={g === 'weekly' ? 'A column per week' : 'A column per month'}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <ThemedView
+                      type={movementGrain === g ? 'backgroundSelected' : 'background'}
+                      style={styles.chip}
+                    >
+                      <ThemedText type="small">{g === 'weekly' ? 'By week' : 'By month'}</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                ))}
+              </View>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                Under the list of sessions, a column per {movementGrain === 'weekly' ? 'week' : 'month'} showing how
+                much movement it held and what kind. An empty column means nothing was recorded then.
+              </ThemedText>
+            </SettingsGroup>
+          )}
 
           {picker({
             source: 'plans',

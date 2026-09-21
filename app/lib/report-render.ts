@@ -41,6 +41,8 @@ const GREY = '#6B645B';
 const FAINT = '#9A9188';
 const TERRACOTTA = '#BA7256';
 const SAND = '#E4D7C5';
+// Her brief's muted sage, kept for the second-commonest kind of movement.
+const SAGE = '#8E9E82';
 const RULE = '#E7DFD3';
 
 const BLANK_LINE = /\r?\n\s*\r?\n/;
@@ -82,7 +84,19 @@ export function renderReport(data: ReportData): string {
     sections.push({ id: 'summary', title: 'Summary', blocks });
   }
 
-  // ---- 2. Symptoms, as a timeline --------------------------------------
+  // ---- 2. Goals ---------------------------------------------------------
+  // Their own heading, near the front (Ruth, 21 September 2026). They were
+  // sharing a section with height and date of birth at the very end, which put
+  // what she is working towards behind her reference details.
+  if (data.goals.length > 0) {
+    sections.push({
+      id: 'goals',
+      title: 'What you are working towards',
+      blocks: [`<ul class="points">${data.goals.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>`],
+    });
+  }
+
+  // ---- 3. Symptoms, as a timeline --------------------------------------
   if (data.symptoms.length > 0) {
     const blocks: Block[] = [
       intro('Each one in full, as it was written at the time. Only the ones chosen for this report appear.'),
@@ -212,6 +226,15 @@ export function renderReport(data: ReportData): string {
         a.intensity ? capital(a.intensity) : '—',
       ])));
     }
+    // THE SHAPE OF IT, UNDER THE LIST (Ruth, 21 September 2026): "a long list
+    // is not helpful, needs to give a sense of the activity profile at a
+    // glance ... could you suggest a way to visualise the data weekly or
+    // monthly?"
+    const shape = activityShape(data);
+    if (shape) {
+      blocks.push(`<h3>The shape of it</h3>`);
+      blocks.push(...shape);
+    }
     if (data.plans.length > 0) {
       blocks.push(`<h3>Current plans</h3>`);
       for (const p of data.plans) blocks.push(panel(p.title, null, p.content));
@@ -237,16 +260,11 @@ export function renderReport(data: ReportData): string {
     sections.push({ id: 'knowledge', title: 'Records kept', blocks });
   }
 
-  // ---- 9. Profile and goals, last ---------------------------------------
-  // Last rather than first: a consultant wants the findings, and the height and
-  // activity level are reference material behind them.
-  if (data.profile.length > 0 || data.goals.length > 0) {
-    const blocks: Block[] = [];
-    if (data.profile.length > 0) blocks.push(definitionList(data.profile));
-    if (data.goals.length > 0) {
-      blocks.push(`<h3>Goals</h3><ul class="points">${data.goals.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>`);
-    }
-    sections.push({ id: 'profile', title: 'Profile and goals', blocks });
+  // ---- Last: the reference details, and only the ones not on the cover ----
+  // Name and date of birth are printed once, on the cover. Repeating them here
+  // under "Profile" was the duplication she spotted.
+  if (data.profile.length > 0) {
+    sections.push({ id: 'profile', title: 'About you', blocks: [definitionList(data.profile)] });
   }
 
   const id = data.reportId ?? '';
@@ -412,6 +430,18 @@ export function renderReport(data: ReportData): string {
   .trend .s { font-size: 7.4pt; color: var(--faint); }
   .trend svg { display: block; width: 100%; height: 11mm; margin: 2mm 0 1mm; }
   .trend .ends { display: flex; justify-content: space-between; font-size: 7.4pt; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  /* ---- The shape of the movement ------------------------------------- */
+  .chart { display: flex; gap: 3mm; align-items: stretch; margin: 2mm 0 2mm; }
+  .bars { flex: 1; display: flex; align-items: flex-end; gap: 1.6mm; height: 34mm; border-bottom: 0.4pt solid var(--rule); }
+  .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; }
+  .col { display: flex; flex-direction: column-reverse; border-radius: 1mm 1mm 0 0; overflow: hidden; min-height: 0; }
+  .col span { display: block; width: 100%; }
+  .lab { font-size: 6.4pt; color: var(--faint); text-align: center; padding-top: 1.2mm; white-space: nowrap; }
+  .scale { display: flex; flex-direction: column; justify-content: space-between; height: 34mm; font-size: 6.6pt; color: var(--faint); padding-bottom: 4mm; }
+  .legend { display: flex; flex-wrap: wrap; gap: 2mm 5mm; font-size: 7.6pt; color: var(--grey); margin-bottom: 3mm; }
+  .legend .key { display: inline-flex; align-items: center; gap: 1.4mm; }
+  .legend i { width: 2.4mm; height: 2.4mm; border-radius: 0.6mm; display: inline-block; }
 
   /* ---- Timeline ------------------------------------------------------ */
   .tl { display: grid; grid-template-columns: 30mm 1fr; gap: 5mm; padding: 0 0 5mm 0; position: relative; }
@@ -585,6 +615,97 @@ function cover(data: ReportData, generated: string): string {
     }
     <p class="cover-provenance">The pages that follow are records as they were entered, on the dates shown. Nothing here was generated or inferred: any summary is labelled as one and is drawn from these pages.</p>
   </div>`;
+}
+
+/**
+ * A COLUMN PER WEEK OR MONTH, AND WHAT THE MINUTES WERE MADE OF.
+ *
+ * Three things a reader wants from a movement history and cannot get from a
+ * list: how much, how regularly, and of what. The bars answer the first two and
+ * the band inside each bar answers the third.
+ *
+ * EMPTY PERIODS ARE DRAWN, not skipped. A chart that quietly omits a fortnight
+ * of nothing turns a broken habit into a steady one, which is the single most
+ * misleading thing this document could do - so the gap is a gap, and the
+ * caption says an empty column means nothing was RECORDED rather than nothing
+ * was done.
+ */
+function activityShape(data: ReportData): Block[] | null {
+  const periods = data.activityPeriods ?? [];
+  const kinds = data.activityKinds ?? [];
+  if (periods.length === 0 || kinds.length === 0) return null;
+
+  const grain = data.activityGrain ?? 'weekly';
+  const tallest = Math.max(...periods.map((p) => p.minutes), 1);
+  // Enough tones to tell the kinds apart, in the document's own palette, and
+  // ordered so the commonest movement gets the strongest one.
+  const tones = [TERRACOTTA, SAGE, '#C9A227', '#7E8AA2', '#B08B6E', '#9BAF9B'];
+  const toneOf = (what: string) => {
+    const i = kinds.findIndex((k) => k.what.toLowerCase() === what.toLowerCase());
+    return tones[i >= 0 ? i % tones.length : tones.length - 1];
+  };
+
+  const columns = periods
+    .map((p) => {
+      const height = Math.round((p.minutes / tallest) * 100);
+      const stack = p.kinds
+        .map((k) => `<span style="height:${(k.minutes / (p.minutes || 1)) * 100}%;background:${toneOf(k.what)}"></span>`)
+        .join('');
+      return `<div class="bar"><div class="col" style="height:${height}%">${stack}</div>
+        <div class="lab">${esc(grain === 'weekly' ? dayMonth(p.label) : shortMonth(p.label))}</div></div>`;
+    })
+    .join('');
+
+  const legend = kinds
+    .map((k) => `<span class="key"><i style="background:${toneOf(k.what)}"></i>${esc(capital(k.what))}</span>`)
+    .join('');
+
+  const chart =
+    `<div class="chart">
+      <div class="bars">${columns}</div>
+      <div class="scale"><span>${hoursMinutes(tallest)}</span><span>0</span></div>
+    </div>
+    <div class="legend">${legend}</div>` +
+    intro(
+      `One column per ${grain === 'weekly' ? 'week' : 'month'}, as tall as the minutes in it and divided by what those minutes were. An empty column means nothing was recorded in that ${grain === 'weekly' ? 'week' : 'month'}, which is not the same as nothing being done.`
+    );
+
+  const table = tableBlocks(
+    [grain === 'weekly' ? 'Week beginning' : 'Month', 'Days', 'Sessions', 'Time', 'Mostly'],
+    periods.map((p) => [
+      grain === 'weekly' ? shortDate(p.label) : monthName(p.label),
+      String(p.days),
+      String(p.sessions),
+      p.minutes > 0 ? hoursMinutes(p.minutes) : '—',
+      p.kinds.length > 0 ? capital(p.kinds[0].what) : '—',
+    ])
+  );
+
+  const totals = tableBlocks(
+    ['Kind of movement', 'Sessions', 'Total time'],
+    kinds.map((k) => [capital(k.what), String(k.sessions), hoursMinutes(k.minutes)])
+  );
+
+  return [chart, ...table, `<h3>Across the whole period</h3>`, ...totals];
+}
+
+function hoursMinutes(minutes: number): string {
+  const whole = Math.round(minutes);
+  const h = Math.floor(whole / 60);
+  const m = whole % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/** "14 Sep" for a bar label - short, because there may be many. */
+function dayMonth(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function shortMonth(ym: string): string {
+  const d = new Date(`${ym}-01T12:00:00Z`);
+  return isNaN(d.getTime()) ? ym : d.toLocaleDateString('en-GB', { month: 'short' });
 }
 
 /** The small counted cards at the top of the summary. */
