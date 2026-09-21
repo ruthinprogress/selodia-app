@@ -196,17 +196,57 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ url: url.toString() });
 }
 
-const EXPIRED = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Link expired</title>
-<style>body{margin:0;background:#F7F3EA;color:#2D2B28;font:15px/1.55 system-ui,sans-serif}main{max-width:520px;margin:0 auto;padding:48px 24px}</style></head>
-<body><main><p>This report has expired. Open Selodia, go to Settings, then Data and export, and build it again.</p></main></body></html>`;
+// THREE FAILURES WORE ONE FACE (21 September 2026). Every way of not getting a
+// page said "This report has expired ... build it again" - a link that was
+// never real, a database that could not be reached, and a link whose two hours
+// had genuinely run out. She hit the third and the sentence blamed her for it
+// without saying what had happened or that nothing was lost.
+//
+// It is the same fault fixed on the building side the day before, missed here
+// because this path is the one nobody tests: it only runs in a browser that
+// carries no session.
+function notice(title: string, body: string): string {
+  return `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
+<style>body{margin:0;background:#F8F5EF;color:#2D2B28;font:15px/1.6 system-ui,-apple-system,sans-serif}main{max-width:460px;margin:0 auto;padding:64px 24px}h1{font-size:19px;font-weight:600;margin:0 0 12px}p{margin:0 0 10px;color:#6B645B}</style></head>
+<body><main><h1>${title}</h1><p>${body}</p></main></body></html>`;
+}
+
+const EXPIRED = notice(
+  'This link has run out',
+  'A report link works for two hours, and this one is past that. Nothing has been lost: open Selodía, go to Settings, then Data and export, and build it again with the same choices.'
+);
+
+const UNKNOWN = notice(
+  'This link does not lead anywhere',
+  'It may have been copied incompletely. Open Selodía, go to Settings, then Data and export, and build the report again to get a fresh link.'
+);
+
+const BROKEN = notice(
+  'The report could not be fetched',
+  'Your report is fine and still stored. Something went wrong reading it just now, which is a fault at our end and has been recorded. Try the link again in a moment.'
+);
 
 async function servePage(id: string) {
+  const html = (page: string, status: number) =>
+    new NextResponse(page, { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    return new NextResponse(EXPIRED, { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    return html(UNKNOWN, 404);
   }
+
   const { data, error } = await anon.rpc('get_report', { report_id: id });
-  if (error || typeof data !== 'string' || data.length === 0) {
-    return new NextResponse(EXPIRED, { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+
+  if (error) {
+    // LOGGED, because this one is ours. Nothing about this path is visible
+    // from the app, so without a line here a real outage is indistinguishable
+    // from a clock running out - which is exactly how this went unnoticed.
+    console.log('REPORT PAGE: could not be read -', error.message);
+    return html(BROKEN, 503);
+  }
+
+  if (typeof data !== 'string' || data.length === 0) {
+    const { data: existed } = await anon.rpc('report_exists', { report_id: id });
+    return html(existed === true ? EXPIRED : UNKNOWN, 404);
   }
   return new NextResponse(data, {
     status: 200,

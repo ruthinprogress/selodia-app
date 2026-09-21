@@ -48,7 +48,16 @@ export type ReportBlock = {
   ids?: string[];
   names?: string[];
   types?: string[];
-  detail?: 'totals' | 'entries';
+  /**
+   * How much of a repetitive source to show. 'totals' is the old name for
+   * 'daily' and still arrives from a phone that has not updated.
+   *
+   * WEEKLY AND MONTHLY ARRIVED 21 SEPTEMBER, from her first real use of the
+   * builder: "Food Logs needs to have option to have weekly and monthly
+   * totals." Thirty rows of days is a log; four rows of weeks is something a
+   * clinician reads.
+   */
+  detail?: 'entries' | 'daily' | 'weekly' | 'monthly' | 'totals';
 };
 
 export type ReportSelection = {
@@ -218,7 +227,15 @@ export type ReportData = {
   metrics: { at: string; name: string; value: string }[];
   /** In full, as she wrote them: her instruction, because it is for a clinician. */
   symptoms: { at: string; title: string; content: string }[];
-  food: { day: string; kcal: number; protein: number; entries: number }[];
+  /**
+   * Food at the grain she chose. `label` is the row's name - a date, a week
+   * beginning, a month - and `days` is how many days of the period actually
+   * carried an entry, which is the number that says how much weight to put on
+   * the rest of the row.
+   */
+  food: { label: string; kcal: number; protein: number; entries: number; days: number }[];
+  /** Which grain `food` is at, so the table can head its first column truthfully. */
+  foodGrain: 'daily' | 'weekly' | 'monthly';
   foodEntries: { at: string; what: string; kcal: number | null; protein: number | null }[];
   water: { day: string; ml: number; drinks: number }[];
   sleep: { night: string; minutes: number | null; quality: string | null; awakenings: number | null }[];
@@ -253,6 +270,9 @@ export async function loadReport(
   const insightsBlock = block('insights');
   const cardsBlock = block('cards');
   const wantsEntries = Boolean(symptomsBlock || plansBlock || insightsBlock || cardsBlock);
+  // 'totals' is what a phone built before 21 September calls a day.
+  const foodGrain: 'daily' | 'weekly' | 'monthly' =
+    foodBlock?.detail === 'weekly' ? 'weekly' : foodBlock?.detail === 'monthly' ? 'monthly' : 'daily';
   const wantedMetrics = new Set((metricsBlock?.names ?? []).map(sameName));
 
   const [profileRow, goalRows, bodyRows, metricRows, entryRows, foodRows, waterRows, sleepRows, activityRows] =
@@ -418,7 +438,8 @@ export async function loadReport(
       title: e.title?.trim() || 'Noted',
       content: readableContent(e.content),
     })),
-    food: foodBlock ? perDayFood(foods) : [],
+    food: foodBlock ? groupFood(foods, foodGrain) : [],
+    foodGrain,
     foodEntries:
       foodBlock?.detail === 'entries'
         ? foods.map((f) => ({
@@ -517,7 +538,15 @@ export function readBlocks(raw: unknown): ReportBlock[] {
       if (names) block.names = names;
       const types = strings(b.types, 50);
       if (types) block.types = types;
-      if (b.detail === 'entries' || b.detail === 'totals') block.detail = b.detail;
+      if (
+        b.detail === 'entries' ||
+        b.detail === 'daily' ||
+        b.detail === 'weekly' ||
+        b.detail === 'monthly' ||
+        b.detail === 'totals'
+      ) {
+        block.detail = b.detail;
+      }
       return block;
     })
     .filter((b): b is ReportBlock => b !== null)
@@ -580,17 +609,52 @@ export function readableContent(content: unknown): string {
   return lines.join('\n\n').trim();
 }
 
-function perDayFood(rows: { happened_at: string; kcal: number | null; protein_g: number | null }[]) {
-  const map = new Map<string, { kcal: number; protein: number; entries: number }>();
+/**
+ * The Monday of a day's week, so a weekly row starts where a week starts. ISO
+ * dates sort as strings, which is why everything here stays a string.
+ */
+export function weekBeginning(day: string): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  if (isNaN(d.getTime())) return day;
+  // getUTCDay is 0 on Sunday; a week here begins on Monday.
+  const back = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Food at a day, a week or a month.
+ *
+ * `days` IS NOT DECORATION. A week's energy total means one thing across seven
+ * logged days and something else entirely across two, and the row that does not
+ * say which invites a reader to assume the first. So every grouped row carries
+ * how many days of it were logged, and the renderer puts that column next to
+ * the figures rather than at the end.
+ */
+export function groupFood(
+  rows: { happened_at: string; kcal: number | null; protein_g: number | null }[],
+  grain: 'daily' | 'weekly' | 'monthly'
+): { label: string; kcal: number; protein: number; entries: number; days: number }[] {
+  const map = new Map<string, { kcal: number; protein: number; entries: number; days: Set<string> }>();
   for (const r of rows) {
     const day = r.happened_at.slice(0, 10);
-    const d = map.get(day) ?? { kcal: 0, protein: 0, entries: 0 };
+    const key = grain === 'daily' ? day : grain === 'weekly' ? weekBeginning(day) : day.slice(0, 7);
+    const d = map.get(key) ?? { kcal: 0, protein: 0, entries: 0, days: new Set<string>() };
     d.kcal += r.kcal ?? 0;
     d.protein += r.protein_g ?? 0;
     d.entries += 1;
-    map.set(day, d);
+    d.days.add(day);
+    map.set(key, d);
   }
-  return [...map.entries()].sort().map(([day, d]) => ({ day, ...d }));
+  return [...map.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([label, d]) => ({
+      label,
+      kcal: d.kcal,
+      protein: d.protein,
+      entries: d.entries,
+      days: d.days.size,
+    }));
 }
 
 function perDayWater(rows: unknown[]): { day: string; ml: number; drinks: number }[] {

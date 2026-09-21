@@ -6,7 +6,7 @@
 //
 //   npx tsx scripts/probe-report-blocks.mjs
 
-import { readBlocks } from '../app/lib/report.ts';
+import { groupFood, readBlocks, weekBeginning } from '../app/lib/report.ts';
 
 let passed = 0;
 let failed = 0;
@@ -161,6 +161,66 @@ check(
   'sections and cardIds are not blocks',
   readBlocks(['profile', 'goals', 'symptoms']),
   []
+);
+
+group('how much food to show');
+
+check('daily is a grain', readBlocks([{ source: 'food', detail: 'daily' }]), [{ source: 'food', detail: 'daily' }]);
+check('so is weekly', readBlocks([{ source: 'food', detail: 'weekly' }]), [{ source: 'food', detail: 'weekly' }]);
+check('so is monthly', readBlocks([{ source: 'food', detail: 'monthly' }]), [{ source: 'food', detail: 'monthly' }]);
+// A phone built before 21 September still says 'totals' and means a day.
+check('the old word still arrives', readBlocks([{ source: 'food', detail: 'totals' }]), [{ source: 'food', detail: 'totals' }]);
+check('an invented grain is ignored', readBlocks([{ source: 'food', detail: 'hourly' }]), [{ source: 'food' }]);
+
+group('a week begins on a monday');
+
+check('a wednesday', weekBeginning('2026-09-16'), '2026-09-14');
+check('the monday itself', weekBeginning('2026-09-14'), '2026-09-14');
+// THE ONE THAT CATCHES A BAD IMPLEMENTATION. getUTCDay is 0 on Sunday, so a
+// naive subtraction sends a Sunday forward into a week that has not started.
+check('a sunday belongs to the week that is ending', weekBeginning('2026-09-20'), '2026-09-14');
+check('and the next day starts a new one', weekBeginning('2026-09-21'), '2026-09-21');
+check('across a month boundary', weekBeginning('2026-10-01'), '2026-09-28');
+check('nonsense comes back unchanged', weekBeginning('not-a-date'), 'not-a-date');
+
+group('grouping food, and saying how many days it rests on');
+
+const meals = [
+  { happened_at: '2026-09-14T08:00:00Z', kcal: 400, protein_g: 20 },
+  { happened_at: '2026-09-14T19:00:00Z', kcal: 600, protein_g: 30 },
+  { happened_at: '2026-09-16T12:00:00Z', kcal: 500, protein_g: 25 },
+  { happened_at: '2026-10-02T12:00:00Z', kcal: 700, protein_g: 35 },
+];
+
+check('daily keeps a row per day', groupFood(meals, 'daily').map((r) => r.label), [
+  '2026-09-14',
+  '2026-09-16',
+  '2026-10-02',
+]);
+check('and counts its own entries', groupFood(meals, 'daily')[0], {
+  label: '2026-09-14',
+  kcal: 1000,
+  protein: 50,
+  entries: 2,
+  days: 1,
+});
+
+const weekly = groupFood(meals, 'weekly');
+check('weekly gathers the week', weekly.map((r) => r.label), ['2026-09-14', '2026-09-28']);
+// DAYS IS THE DENOMINATOR AND IT IS NOT DECORATION. 1500 kcal across a week
+// means one thing over seven logged days and another over two.
+check('1500 kcal across 2 logged days, from 3 entries', [weekly[0].kcal, weekly[0].days, weekly[0].entries], [1500, 2, 3]);
+
+const monthly = groupFood(meals, 'monthly');
+check('monthly gathers the month', monthly.map((r) => r.label), ['2026-09', '2026-10']);
+check('September holds three entries over two days', [monthly[0].kcal, monthly[0].days, monthly[0].entries], [1500, 2, 3]);
+
+check('nothing logged groups to nothing', groupFood([], 'weekly'), []);
+
+check(
+  'a missing figure counts as zero and never as absent',
+  groupFood([{ happened_at: '2026-09-14T08:00:00Z', kcal: null, protein_g: null }], 'daily')[0],
+  { label: '2026-09-14', kcal: 0, protein: 0, entries: 1, days: 1 }
 );
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);

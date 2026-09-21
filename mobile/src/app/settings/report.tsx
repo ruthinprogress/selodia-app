@@ -68,8 +68,21 @@ type Block = {
   ids?: string[];
   names?: string[];
   types?: string[];
-  detail?: 'totals' | 'entries';
+  detail?: FoodGrain;
 };
+
+// HOW MUCH FOOD TO SHOW (Ruth, 21 September 2026, from her first real use of
+// the builder: "Food Logs needs to have option to have weekly and monthly
+// totals"). Thirty rows of days is a log; four rows of weeks is something a
+// clinician reads without turning pages.
+type FoodGrain = 'entries' | 'daily' | 'weekly' | 'monthly';
+
+const FOOD_GRAINS: { id: FoodGrain; label: string }[] = [
+  { id: 'daily', label: 'Daily' },
+  { id: 'weekly', label: 'Weekly' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'entries', label: 'Every entry' },
+];
 
 // The sources whose blocks are the whole thing or nothing.
 const WHOLE = ['profile', 'goals', 'body', 'water', 'sleep'] as const;
@@ -113,6 +126,7 @@ function Picker({
   showing,
   onOpen,
   onPick,
+  onSetAll,
 }: {
   source: string;
   title: string;
@@ -123,9 +137,12 @@ function Picker({
   showing: boolean;
   onOpen: () => void;
   onPick: (source: string, id: string) => void;
+  /** Every id, or null for none. One call, so the two controls share a path. */
+  onSetAll: (source: string, ids: string[] | null) => void;
 }) {
   const theme = useTheme();
-  const total = records?.length ?? values?.length ?? 0;
+  const everyId = records ? records.map((r) => r.id) : (values ?? []).map((v) => v.value);
+  const total = everyId.length;
   if (total === 0) return null;
   return (
     <SettingsGroup title={title}>
@@ -150,6 +167,39 @@ function Picker({
           <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
             {hint}
           </ThemedText>
+
+          {/* ALL OR NONE, WITHOUT TAPPING EACH ONE (Ruth, 21 September 2026,
+              after her first real use: "Movement needs a way to select
+              all/unselect all"). It is on every picker rather than only
+              Movement, because ticking fourteen symptoms one at a time is the
+              same chore wearing a different label - and the picker with most
+              in it is the one that actually bites. */}
+          <View style={styles.allOrNone}>
+            <Pressable
+              onPress={() => onSetAll(source, everyId)}
+              disabled={chosen.size === total}
+              accessibilityRole="button"
+              accessibilityLabel={`Select all in ${title}`}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="small" themeColor={chosen.size === total ? 'textSecondary' : 'link'}>
+                Select all
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => onSetAll(source, null)}
+              disabled={chosen.size === 0}
+              accessibilityRole="button"
+              accessibilityLabel={`Clear all in ${title}`}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="small" themeColor={chosen.size === 0 ? 'textSecondary' : 'link'}>
+                Clear
+              </ThemedText>
+            </Pressable>
+          </View>
           {records?.map((r) => (
             <Checkbox
               key={r.id}
@@ -197,7 +247,7 @@ export default function ReportScreen() {
 
   // Whole-source choices.
   const [whole, setWhole] = useState<Set<string>>(new Set());
-  const [foodDetail, setFoodDetail] = useState<'totals' | 'entries'>('totals');
+  const [foodDetail, setFoodDetail] = useState<FoodGrain>('daily');
   // Record-by-record and value-by-value choices, keyed by source.
   const [picked, setPicked] = useState<Record<string, Set<string>>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -269,6 +319,12 @@ export default function ReportScreen() {
   const togglePicked = useCallback(
     (source: string, id: string) =>
       setPicked((p) => ({ ...p, [source]: toggled(p[source] ?? new Set<string>(), id) })),
+    []
+  );
+
+  const setAllPicked = useCallback(
+    (source: string, ids: string[] | null) =>
+      setPicked((p) => ({ ...p, [source]: new Set(ids ?? []) })),
     []
   );
 
@@ -403,6 +459,7 @@ export default function ReportScreen() {
       showing={open.has(args.source)}
       onOpen={() => setOpen((o) => toggled(o, args.source))}
       onPick={togglePicked}
+      onSetAll={setAllPicked}
     />
   );
 
@@ -596,27 +653,34 @@ export default function ReportScreen() {
                     every entry; one looking at a pattern wants the day's
                     totals. Neither wants to tick three hundred meals. */}
                 {catalogue.foodDays > 0 && whole.has('food') && (
-                  <View style={styles.chips}>
-                    {(['totals', 'entries'] as const).map((d) => (
-                      <Pressable
-                        key={d}
-                        onPress={() => setFoodDetail(d)}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: foodDetail === d }}
-                        accessibilityLabel={d === 'totals' ? 'Daily totals' : 'Every entry'}
-                        style={({ pressed }) => pressed && styles.pressed}
-                      >
-                        <ThemedView
-                          type={foodDetail === d ? 'backgroundSelected' : 'background'}
-                          style={styles.chip}
+                  <>
+                    <View style={styles.chips}>
+                      {FOOD_GRAINS.map((g) => (
+                        <Pressable
+                          key={g.id}
+                          onPress={() => setFoodDetail(g.id)}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: foodDetail === g.id }}
+                          accessibilityLabel={g.label}
+                          style={({ pressed }) => pressed && styles.pressed}
                         >
-                          <ThemedText type="small">
-                            {d === 'totals' ? 'Daily totals' : 'Every entry'}
-                          </ThemedText>
-                        </ThemedView>
-                      </Pressable>
-                    ))}
-                  </View>
+                          <ThemedView
+                            type={foodDetail === g.id ? 'backgroundSelected' : 'background'}
+                            style={styles.chip}
+                          >
+                            <ThemedText type="small">{g.label}</ThemedText>
+                          </ThemedView>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                      {foodDetail === 'entries'
+                        ? 'Every meal as it was logged. Thorough, and long.'
+                        : foodDetail === 'daily'
+                          ? 'One row per day that has entries.'
+                          : `One row per ${foodDetail === 'weekly' ? 'week' : 'month'}, with how many days of it were logged and the average per day logged.`}
+                    </ThemedText>
+                  </>
                 )}
                 {catalogue.waterDays > 0 && (
                   <Checkbox
@@ -759,6 +823,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one, paddingVertical: Spacing.three },
   chip: { paddingVertical: Spacing.one, paddingHorizontal: Spacing.three, borderRadius: Spacing.three },
   boxes: { gap: Spacing.two, paddingVertical: Spacing.three },
+  allOrNone: { flexDirection: 'row', gap: Spacing.four, paddingBottom: Spacing.one },
   expander: {
     flexDirection: 'row',
     alignItems: 'center',

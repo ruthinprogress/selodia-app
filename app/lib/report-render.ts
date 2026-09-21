@@ -128,17 +128,35 @@ export function renderReport(data: ReportData): string {
   if (data.food.length > 0 || data.water.length > 0 || data.foodEntries.length > 0) {
     const blocks: Block[] = [];
     if (data.food.length > 0) {
+      const grain = data.foodGrain ?? 'daily';
       blocks.push(
         intro(
-          'Totals for each day that has entries. Days with nothing logged are absent rather than shown as zero, because a day nobody recorded is not a day of no food.'
+          grain === 'daily'
+            ? 'Totals for each day that has entries. Days with nothing logged are absent rather than shown as zero, because a day nobody recorded is not a day of no food.'
+            : `Totals for each ${grain === 'weekly' ? 'week' : 'month'}, with the number of days in it that carried an entry. The average is per day logged, not per day in the ${grain === 'weekly' ? 'week' : 'month'} - a total across two logged days is not a picture of seven.`
         )
       );
-      blocks.push(...tableBlocks(['Date', 'Energy', 'Protein', 'Entries'], data.food.map((d) => [
-        shortDate(d.day),
-        `${Math.round(d.kcal)} kcal`,
-        `${Math.round(d.protein)} g`,
-        String(d.entries),
-      ])));
+      // THE AVERAGE IS PER DAY LOGGED, and the column beside it says how many
+      // those were. A weekly total with no denominator reads as a week.
+      blocks.push(
+        ...tableBlocks(
+          grain === 'daily'
+            ? ['Date', 'Energy', 'Protein', 'Entries']
+            : [grain === 'weekly' ? 'Week beginning' : 'Month', 'Days logged', 'Energy', 'A day', 'Protein', 'A day'],
+          data.food.map((d) =>
+            grain === 'daily'
+              ? [shortDate(d.label), `${Math.round(d.kcal)} kcal`, `${Math.round(d.protein)} g`, String(d.entries)]
+              : [
+                  grain === 'weekly' ? shortDate(d.label) : monthName(d.label),
+                  String(d.days),
+                  `${Math.round(d.kcal)} kcal`,
+                  d.days > 0 ? `${Math.round(d.kcal / d.days)} kcal` : '—',
+                  `${Math.round(d.protein)} g`,
+                  d.days > 0 ? `${Math.round(d.protein / d.days)} g` : '—',
+                ]
+          )
+        )
+      );
     }
     if (data.foodEntries.length > 0) {
       blocks.push(`<h3>Every entry</h3>`);
@@ -695,6 +713,12 @@ function shortName(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
+
+/** "Sept 2026" from "2026-09". */
+function monthName(ym: string): string {
+  const d = new Date(`${ym}-01T12:00:00Z`);
+  return isNaN(d.getTime()) ? ym : d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 function shortDate(iso: string): string {
