@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dimensions, Keyboard, type ScrollView } from 'react-native';
 
-import { shouldAnimate } from '@/lib/chat-scroll-rules';
+import { OPENING_MS, QUIET_MS, shouldAnimate } from '@/lib/chat-scroll-rules';
 
 // Keeping the newest message in view.
 //
@@ -13,8 +13,7 @@ import { shouldAnimate } from '@/lib/chat-scroll-rules';
 // Driven by onContentSizeChange rather than by a messages-length effect, because
 // the thread grows for reasons a message count does not capture: history
 // hydrating on mount, a signed image URL arriving, the food breakdown table
-// rendering under a turn once its rows load. Content size covers all of them
-// with one signal.
+// rendering under a turn once its rows load.
 //
 // THEN IT ARRIVED SOMEWHERE VIOLENT (Ruth, 21 September 2026):
 //
@@ -23,36 +22,71 @@ import { shouldAnimate } from '@/lib/chat-scroll-rules';
 //   so it just opens where the chat is actually up to, not mad scrolling to the
 //   present?"
 //
-// The first version guarded exactly one frame - `settled` flipped true after the
-// first size change - and a thread does not arrive in one frame. It arrives in
-// a dozen: the history query, then the images, then a food table filling in
-// under a turn from three weeks ago. Every one of those after the first was an
-// ANIMATED scroll through her whole conversation, one after another. The guard
-// was right about the problem and wrong about its length.
+// THE FIRST ATTEMPT TURNED THE ANIMATION OFF AND WAS NOT ENOUGH. Her note back
+// the same evening: "crazy scroll entry still happening." Turning off animation
+// only governs how the view TRAVELS; it does nothing about the fact that the
+// thread is assembled on screen in front of her. A ScrollView holding a long
+// history lays out from the top, and every chunk that arrives - the history
+// query, then the images, then a food table filling in under a turn from three
+// weeks ago - moves the content under the viewport. Instant jumps through an
+// assembling thread look exactly like scrolling through it, because they are.
 //
-// SO THE OPENING IS A PERIOD, NOT AN EVENT. While the thread is still assembling
-// itself the view is simply PUT at the bottom, with no travel at all; only once
-// it has stopped arriving does a new message get the animation, which is the one
-// place animation earns its keep - it says something new came in.
+// SO THE THREAD IS NOT SHOWN UNTIL IT IS PLACED. It lays out as normal,
+// invisibly, and is revealed once it has stopped arriving - by which time the
+// view is already at the newest message. There is no travel to watch because
+// nothing is visible until there is nothing left to travel through. That is
+// what "just opens where the chat is actually up to" actually requires.
 //
-// AND A BIG JUMP IS NEVER ANIMATED, however late it lands. A slow history query
-// can finish after any timer, and scrolling a screenful or more is the violent
-// motion itself regardless of what the clock says. A new message is small; the
-// past arriving is not.
+// A HARD CEILING ON THE WAIT, because a blank screen is its own kind of wrong.
+// If the thread is still arriving after OPENING_MS it is revealed anyway, and
+// the worst case is the old behaviour rather than a chat that never appears.
 
 export function useChatScroll() {
   const ref = useRef<ScrollView | null>(null);
   const openedAt = useRef(Date.now());
   const lastHeight = useRef(0);
 
-  const onContentSizeChange = useCallback((_w: number, h: number) => {
-    const grew = h - lastHeight.current;
-    lastHeight.current = h;
+  // `settled` drives what the screen shows; the ref is what the callback reads,
+  // so the handler never closes over a stale value.
+  const [settled, setSettled] = useState(false);
+  const isSettled = useRef(false);
+  const quiet = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    ref.current?.scrollToEnd({
-      animated: shouldAnimate(Date.now() - openedAt.current, grew, Dimensions.get('window').height),
-    });
+  const done = useCallback(() => {
+    isSettled.current = true;
+    setSettled(true);
   }, []);
+
+  // Each arrival pushes the reveal back a little; a pause means it has finished.
+  const waitForQuiet = useCallback(() => {
+    if (isSettled.current) return;
+    if (quiet.current) clearTimeout(quiet.current);
+    quiet.current = setTimeout(done, QUIET_MS);
+  }, [done]);
+
+  useEffect(() => {
+    const ceiling = setTimeout(done, OPENING_MS);
+    // An empty thread never fires a size change, so start the clock regardless.
+    waitForQuiet();
+    return () => {
+      clearTimeout(ceiling);
+      if (quiet.current) clearTimeout(quiet.current);
+    };
+  }, [done, waitForQuiet]);
+
+  const onContentSizeChange = useCallback(
+    (_w: number, h: number) => {
+      const grew = h - lastHeight.current;
+      lastHeight.current = h;
+
+      ref.current?.scrollToEnd({
+        animated: shouldAnimate(Date.now() - openedAt.current, grew, Dimensions.get('window').height),
+      });
+
+      waitForQuiet();
+    },
+    [waitForQuiet]
+  );
 
   // The keyboard opening is the one case onContentSizeChange cannot catch. The
   // layout gets SHORTER (that is the whole point of the keyboard-avoiding
@@ -67,5 +101,5 @@ export function useChatScroll() {
     return () => sub.remove();
   }, []);
 
-  return { ref, onContentSizeChange };
+  return { ref, onContentSizeChange, settled };
 }

@@ -18,8 +18,15 @@
 // scroll through her whole conversation, one after another.
 
 // Long enough for a history query and its images on a slow morning, short
-// enough that a real reply a second later still animates.
+// enough that a real reply a second later still animates. It doubles as the
+// hard ceiling on hiding the thread: past this it is revealed whether it has
+// finished arriving or not, because a blank screen is its own kind of wrong.
 export const OPENING_MS = 2500;
+
+// How long the thread has to stop growing before it counts as arrived. Short,
+// because this is the delay somebody actually waits on an ordinary open - the
+// ceiling above only applies when something is genuinely still loading.
+export const QUIET_MS = 220;
 
 /**
  * Whether this growth deserves to be travelled through, or simply arrived at.

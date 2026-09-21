@@ -130,7 +130,7 @@ export default function ChatScreen() {
   // with the React Compiler on, a property access on the returned object
   // during render trips react-hooks/refs, which cannot tell it apart from
   // reading .current. Passing a ref BINDING to ref= is the sanctioned shape.
-  const { ref: scrollRef, onContentSizeChange: onThreadGrew } = useChatScroll();
+  const { ref: scrollRef, onContentSizeChange: onThreadGrew, settled: threadSettled } = useChatScroll();
   const theme = useTheme();
   const spotlight = useSpotlight();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -888,10 +888,16 @@ ${result.message}`;
           </Pressable>
         </SpotlightTarget>
 
+        {/* HIDDEN UNTIL IT IS PLACED (Ruth, 21 September 2026: "crazy scroll
+            entry still happening"). The thread lays out as normal behind this,
+            and appears once it has stopped arriving - by which point the view
+            is already at the newest message, so there is no travel to watch.
+            Revealed regardless after OPENING_MS; see use-chat-scroll.ts. */}
         <ScrollView
           ref={scrollRef}
           onContentSizeChange={onThreadGrew}
           contentContainerStyle={styles.scrollContent}
+          style={threadSettled ? undefined : styles.arriving}
           keyboardShouldPersistTaps="handled"
         >
           {cyclePrompt && (
@@ -1186,6 +1192,10 @@ const styles = StyleSheet.create({
   // text touching the edges - but the room BETWEEN messages was set before the
   // bubbles were this size, and 16 between turns on top of 8 within a turn read
   // as a list of cards rather than an exchange.
+  // Laid out, measured, scrolled - just not drawn yet. opacity rather than
+  // display:none on purpose: the thread has to take its real height for the
+  // scroll to land in the right place before anybody sees it.
+  arriving: { opacity: 0 },
   scrollContent: {
     alignSelf: 'center',
     width: '100%',
