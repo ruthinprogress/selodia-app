@@ -21,6 +21,13 @@ import {
   periodStarts,
   phaseForCycleDay,
 } from '../mobile/src/lib/cycle-history.ts';
+import {
+  isEmptyDay,
+  emptyDay,
+  readTemperature,
+  symptomChoices,
+  toggleChoice,
+} from '../mobile/src/lib/cycle-day.ts';
 
 let passed = 0;
 let failed = 0;
@@ -159,6 +166,42 @@ truthy(
 );
 truthy('and how many cycles that rests on', describeToday(four, '2026-09-01').includes('4 cycles'));
 check('with nothing logged it says nothing at all', describeToday(knowledgeFrom([]), '2026-09-01'), null);
+
+group('her own words, kept');
+
+// "Add Another ... we should keep that as a user generated option that's
+// tracked if they create it." So a symptom she invents is offered back to her
+// from then on, and offered FIRST - what she has recorded before is likelier
+// than what the app guessed at.
+const mine = symptomChoices(['Jaw tension', 'Cramps']);
+check('her own come first', mine.slice(0, 2), ['Jaw tension', 'Cramps']);
+truthy('and the common ones follow', mine.includes('Bloating'));
+check('a symptom she shares with the list appears once', mine.filter((s) => s.toLowerCase() === 'cramps').length, 1);
+check('her spelling wins over the app', symptomChoices(['cramps'])[0], 'cramps');
+check('blank entries are not choices', symptomChoices(['  ', 'Cramps']).includes(''), false);
+
+check('toggling adds', toggleChoice([], 'Cramps'), ['Cramps']);
+check('toggling again removes', toggleChoice(['Cramps'], 'Cramps'), []);
+check('and matching ignores case', toggleChoice(['cramps'], 'Cramps'), []);
+
+group('a temperature, or nothing');
+
+// A WRONG BASAL TEMPERATURE IS WORSE THAN NONE. The signal is a shift of two or
+// three tenths of a degree, so a mistyped 37 where 36.7 was meant erases the
+// very thing it was recorded for.
+check('an ordinary reading', readTemperature('36.62'), 36.62);
+check('a comma for a point', readTemperature('36,62'), 36.62);
+check('Fahrenheit is converted, not refused', readTemperature('97.8'), 36.56);
+check('a temperature no living person has is refused', readTemperature('12'), null);
+check('and so is a typo', readTemperature('366'), null);
+check('and so is a word', readTemperature('warm'), null);
+
+group('an empty form writes nothing');
+
+truthy('a blank day is empty', isEmptyDay(emptyDay('2026-09-21')));
+truthy('a note alone is not', !isEmptyDay({ ...emptyDay('2026-09-21'), notes: 'slept badly' }));
+truthy('whitespace is still empty', isEmptyDay({ ...emptyDay('2026-09-21'), notes: '   ' }));
+truthy('a temperature alone is not', !isEmptyDay({ ...emptyDay('2026-09-21'), temperatureC: 36.6 }));
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

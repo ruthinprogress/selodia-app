@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, UIManager, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -9,22 +9,28 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// HOLD A ROW AND MOVE IT (Ruth, 21 September 2026): "can we make the cards on
+// HOLD A CARD AND MOVE IT (Ruth, 21 September 2026): "can we make the cards on
 // the logging page so they can be reorganised by holding down and just moving
-// up or down?"
+// up or down?" - and, a few hours later, the same for the Cycle page's own
+// cards.
 //
 // WRITTEN HERE RATHER THAN INSTALLED. The obvious answer is a drag-and-drop
 // list library, and the obvious answer is wrong this time: the established ones
 // are built against Reanimated 2 and 3, this app is on 4.5, and a library that
 // half-works inside a gesture is the kind of fault that only shows up on a real
-// phone in somebody's hand. For a fixed list of seven rows of equal height the
-// arithmetic is small and completely knowable - which index is the finger over
-// - so it is written out where it can be read.
+// phone in somebody's hand.
 //
-// EQUAL HEIGHTS ARE THE WHOLE TRICK, and the reason this stays simple. Every
-// row on the Log is the same shape, so "which row am I over" is one division
-// rather than a table of measured offsets that has to be kept in step with the
-// layout.
+// IT MEASURES NOW, RATHER THAN ASSUMING (21 September, second version). The
+// first one took a single row height and divided by it, which was true of the
+// Log - seven identical rows - and false the moment the Cycle cards asked for
+// the same behaviour, because a Notes card is four times the height of a Flow
+// one. Dividing by an average there would put the card two places from where
+// the finger is.
+//
+// So every row reports its own height as it lays out, and the drag walks its
+// neighbours: move down when the finger has passed half of the card BELOW,
+// move up when it has passed half of the one above. That is the same arithmetic
+// at equal heights, so the Log is unchanged.
 //
 // NOTHING MOVES UNTIL SHE MEANS IT. A long press starts the drag - a list whose
 // rows slide under an ordinary scroll would be unusable - and the row lifts so
@@ -38,24 +44,42 @@ export type Reorderable = { id: string };
 
 export function ReorderableRows<T extends Reorderable>({
   items,
-  rowHeight,
   renderRow,
   onReorder,
+  disabled = false,
 }: {
   items: T[];
-  /** Every row is this tall. See the note above: it is what keeps this honest. */
-  rowHeight: number;
   renderRow: (item: T, index: number, dragging: boolean) => React.ReactNode;
   onReorder: (items: T[]) => void;
+  /** True while the list is not hers to rearrange - a save in flight, say. */
+  disabled?: boolean;
 }) {
   const [held, setHeld] = useState<string | null>(null);
+  // Measured, not assumed. A ref rather than state: heights change on layout,
+  // and re-rendering the list every time one is measured would fight the drag.
+  const heights = useRef<Record<string, number>>({});
+
+  const measure = useCallback((id: string, height: number) => {
+    heights.current[id] = height;
+  }, []);
+
+  // How far the finger must travel to displace the neighbour in `direction`.
+  const neighbour = useCallback(
+    (id: string, direction: 1 | -1) => {
+      const at = items.findIndex((i) => i.id === id);
+      const next = items[at + direction];
+      // A sensible fallback for a row that has not laid out yet, so the first
+      // drag after a mount still behaves.
+      return next ? (heights.current[next.id] ?? 64) : Infinity;
+    },
+    [items]
+  );
 
   const move = useCallback(
-    (id: string, by: number) => {
+    (id: string, by: 1 | -1) => {
       const from = items.findIndex((i) => i.id === id);
-      if (from < 0) return;
-      const to = Math.max(0, Math.min(items.length - 1, from + by));
-      if (to === from) return;
+      const to = from + by;
+      if (from < 0 || to < 0 || to >= items.length) return;
       const next = [...items];
       const [row] = next.splice(from, 1);
       next.splice(to, 0, row);
@@ -72,8 +96,10 @@ export function ReorderableRows<T extends Reorderable>({
       {items.map((item, index) => (
         <Row
           key={item.id}
-          rowHeight={rowHeight}
           dragging={held === item.id}
+          disabled={disabled}
+          onMeasure={(h) => measure(item.id, h)}
+          neighbour={(d) => neighbour(item.id, d)}
           onHold={() => setHeld(item.id)}
           onRelease={() => setHeld(null)}
           onMove={(by) => move(item.id, by)}
@@ -87,44 +113,62 @@ export function ReorderableRows<T extends Reorderable>({
 
 function Row({
   children,
-  rowHeight,
   dragging,
+  disabled,
+  onMeasure,
+  neighbour,
   onHold,
   onRelease,
   onMove,
 }: {
   children: React.ReactNode;
-  rowHeight: number;
   dragging: boolean;
+  disabled: boolean;
+  onMeasure: (height: number) => void;
+  neighbour: (direction: 1 | -1) => number;
   onHold: () => void;
   onRelease: () => void;
-  onMove: (by: number) => void;
+  onMove: (by: 1 | -1) => void;
 }) {
   const offset = useSharedValue(0);
-  // How many places this row has already been moved during THIS drag. Without
-  // it a slow drag across two rows would fire the same single-step move twice
-  // and then again, walking the row to the bottom of the list.
-  const stepped = useSharedValue(0);
+  // Pixels already accounted for by moves made during THIS drag. Without it a
+  // slow drag across two cards would fire the same single-step move repeatedly
+  // and walk the card to the bottom of the list.
+  const consumed = useSharedValue(0);
+
+  const step = useCallback(
+    (by: 1 | -1) => {
+      onMove(by);
+    },
+    [onMove]
+  );
 
   const drag = Gesture.Pan()
+    .enabled(!disabled)
     .activateAfterLongPress(220)
     .onStart(() => {
       runOnJS(onHold)();
     })
     .onUpdate((e) => {
-      offset.set(e.translationY);
-      const want = Math.round(e.translationY / rowHeight);
-      if (want !== stepped.get()) {
-        const by = want - stepped.get();
-        stepped.set(want);
-        // The list reorders under the finger, so the row being dragged is
-        // already where it will land and the offset is measured from there.
-        offset.set(e.translationY - want * rowHeight);
-        runOnJS(onMove)(by);
+      const remaining = e.translationY - consumed.get();
+
+      // Half of the neighbour is the moment the cards should swap: any less and
+      // the list twitches, any more and it feels stuck.
+      const below = neighbour(1);
+      const above = neighbour(-1);
+
+      if (remaining > below / 2 && Number.isFinite(below)) {
+        consumed.set(consumed.get() + below);
+        runOnJS(step)(1);
+      } else if (-remaining > above / 2 && Number.isFinite(above)) {
+        consumed.set(consumed.get() - above);
+        runOnJS(step)(-1);
       }
+
+      offset.set(e.translationY - consumed.get());
     })
     .onFinalize(() => {
-      stepped.set(0);
+      consumed.set(0);
       offset.set(withSpring(0, { damping: 20, stiffness: 220 }));
       runOnJS(onRelease)();
     });
@@ -139,7 +183,12 @@ function Row({
 
   return (
     <GestureDetector gesture={drag}>
-      <Animated.View style={[styles.row, style]}>{children}</Animated.View>
+      <Animated.View
+        onLayout={(e) => onMeasure(e.nativeEvent.layout.height)}
+        style={[styles.row, style]}
+      >
+        {children}
+      </Animated.View>
     </GestureDetector>
   );
 }

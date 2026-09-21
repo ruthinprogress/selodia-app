@@ -21,10 +21,16 @@ import { arrange, layoutOf, loadLayout, saveLayout } from '@/lib/log-layout';
 // with no home but the conversation. Now it lists what can be recorded, and
 // each row goes straight to the quickest way to record it.
 //
-// WHAT IS NOT ON THE LIST. Medication and mood are in her mock-up and she took
-// them out ("Leave out medication and mood. Add sleep."). Nothing else was
-// invented to fill the space: a row that opened a screen with no table behind
-// it would be the same broken promise as a switch that changes nothing.
+// WHAT IS NOT ON THE LIST. Medication is in her mock-up and she took it out
+// ("Leave out medication and mood. Add sleep."). Mood came back on 21 September
+// by a different door - not as a mood diary, which is what she declined, but as
+// three of the twelve symptom chips on the Cycle page, where low mood and
+// irritability are cycle-linked observations rather than a daily rating. She
+// was asked about the difference rather than left to discover it.
+//
+// Nothing else was invented to fill the space: a row that opened a screen with
+// no table behind it would be the same broken promise as a switch that changes
+// nothing.
 //
 // SYMPTOMS AND PHOTOS GO TO CHAT ON PURPOSE. A symptom is a sentence - where,
 // when, how it feels - and a form would flatten it into fields; a photo needs
@@ -77,6 +83,19 @@ const ROWS: Row[] = [
     detail: 'How long, and how it felt',
     go: () => router.push('/log/sleep'),
   },
+  // CYCLE ARRIVED ON THE LOG ON 21 SEPTEMBER, at her instruction: "I think we
+  // need to add the cycle tracker to the Log page afterall. It needs to be
+  // visually accessible to a user to build pattern understanding and so it
+  // makes sense when the ai starts making observations there's something to
+  // check against." Anyone it does not apply to can put it away, which is what
+  // the arranging is for.
+  {
+    id: 'cycle',
+    icon: 'flower-outline',
+    label: 'Cycle',
+    detail: 'Period, flow, symptoms and observations',
+    go: () => router.push('/log/cycle'),
+  },
   {
     id: 'body',
     icon: 'scale-bathroom',
@@ -116,10 +135,6 @@ const ROWS: Row[] = [
     go: () => router.push({ pathname: '/', params: { add: '1' } }),
   },
 ];
-
-// Every row is this tall, which is what lets the drag be arithmetic rather than
-// a table of measured positions. Keep it in step with `styles.row`.
-const ROW_HEIGHT = 64;
 
 export default function LogScreen() {
   const theme = useTheme();
@@ -165,7 +180,6 @@ export default function LogScreen() {
       <ThemedView type="backgroundElement" style={styles.card}>
         <ReorderableRows
           items={shown}
-          rowHeight={ROW_HEIGHT}
           onReorder={(next) => keep(next, hidden)}
           renderRow={(r, i, dragging) => (
             <Pressable
@@ -274,9 +288,8 @@ export default function LogScreen() {
 const styles = StyleSheet.create({
   intro: { lineHeight: 20, maxWidth: 300 },
   card: { borderRadius: CardRadius, paddingHorizontal: Spacing.three },
-  // Height fixed rather than derived from its contents: the drag measures in
-  // whole rows, so a row that grew by a line would put the finger over the
-  // wrong one. Keep in step with ROW_HEIGHT.
+  // Still a fixed height, though the drag no longer needs it to be: seven rows
+  // of the same size is what makes this list scannable.
   row: {
     height: 64,
     flexDirection: 'row',
