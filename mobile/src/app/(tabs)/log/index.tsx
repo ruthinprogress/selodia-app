@@ -190,6 +190,28 @@ export default function LogScreen() {
         Quickly record what&apos;s relevant to you. Anything here can be said in chat instead.
       </ThemedText>
 
+      {/* THE WAY IN, WHERE SHE CAN SEE IT (Ruth, 21 September 2026: "no hide
+          buttons on the cards as expected"). The buttons were there - behind an
+          edit mode whose only door was a grey line under the list, which she
+          never found. A control nobody finds is a control that does not exist,
+          so it sits beside the list it changes, in the accent colour, saying
+          what it does. */}
+      {loaded && (
+        <View style={styles.arrangeBar}>
+          <Pressable
+            onPress={() => setEditing((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={editing ? 'Finish arranging the list' : 'Arrange this list'}
+            hitSlop={Spacing.two}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedText type="smallBold" themeColor="link">
+              {editing ? 'Done' : 'Arrange'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
+
       <ThemedView type="backgroundElement" style={styles.card}>
         <ReorderableRows
           items={shown}
@@ -299,6 +321,7 @@ export default function LogScreen() {
 }
 
 const styles = StyleSheet.create({
+  arrangeBar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: Spacing.two },
   intro: { lineHeight: 20, maxWidth: 300 },
   card: { borderRadius: CardRadius, paddingHorizontal: Spacing.three },
   // Still a fixed height, though the drag no longer needs it to be: seven rows

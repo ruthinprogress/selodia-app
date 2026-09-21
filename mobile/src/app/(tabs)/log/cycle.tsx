@@ -49,11 +49,19 @@ import { supabase } from '@/lib/supabase';
 // and where it estimates it says so and says on what - see cycle-history.ts,
 // where one logged period earns a position and no prediction at all.
 
-type CardId = 'period' | 'flow' | 'symptoms' | 'feeling' | 'ovulation' | 'mucus' | 'notes';
+type CardId = 'period' | 'history' | 'flow' | 'symptoms' | 'feeling' | 'ovulation' | 'mucus' | 'notes';
 type Section = { id: CardId };
 
 const SECTIONS: Section[] = [
   { id: 'period' },
+  // WHERE SHE CHECKS IT LANDED (Ruth, 21 September 2026): "where do I check it
+  // landed? where is the history for Cycle to look back on? it's very
+  // confused."
+  //
+  // The page could record a period start and then showed no sign of having
+  // done it, so the buttons read as dead and the only proof was the sentence
+  // that appeared for a moment. A log you cannot look back at is not a log.
+  { id: 'history' },
   { id: 'flow' },
   { id: 'symptoms' },
   // MOOD LEFT THIS PAGE AND LEFT A HOLE (Ruth, 21 September 2026): "if you
@@ -71,6 +79,7 @@ const SECTIONS: Section[] = [
 
 const TITLES: Record<CardId, string> = {
   period: 'Period',
+  history: 'Recorded so far',
   flow: 'Flow',
   symptoms: 'Symptoms',
   ovulation: 'Ovulation',
@@ -79,8 +88,16 @@ const TITLES: Record<CardId, string> = {
   notes: 'Notes',
 };
 
+/** Their own plain words for a stored event type. */
+const EVENT_WORDS: Record<string, string> = {
+  period_start: 'Period started',
+  period_end: 'Period ended',
+  spotting: 'Spotting',
+};
+
 const ICONS: Record<CardId, keyof typeof MaterialCommunityIcons.glyphMap> = {
   period: 'water',
+  history: 'history',
   flow: 'wave',
   symptoms: 'star-four-points-outline',
   ovulation: 'target',
@@ -210,6 +227,10 @@ export default function CycleScreen() {
     void saveLayout('cycle_layout', layoutOf(nextShown.map((s) => s.id), nextHidden.map((s) => s.id)));
   }, []);
 
+  // What is already recorded on the day showing, and the recent log behind it.
+  const onThisDay = events.filter((e) => e.event_date === day);
+  const recent = [...events].sort((a, b) => b.event_date.localeCompare(a.event_date)).slice(0, 12);
+
   const knowledge = knowledgeFrom(events);
   const todayLine = describeToday(knowledge, day);
   const next = expectedNextPeriod(knowledge);
@@ -218,15 +239,43 @@ export default function CycleScreen() {
     const userId = await currentUserId();
     if (!userId) return;
     // THE DAY ON SCREEN, NOT TODAY. The whole reason the day is movable.
+    // UPSERT, because saying it twice is not two periods. There is a unique
+    // index on the day and the kind, so a second press on the same day is a
+    // quiet no-op rather than an error reported as a failure to save.
     const { error } = await supabase
       .from('cycle_events')
-      .insert({ user_id: userId, event_date: day, event_type: type });
+      .upsert(
+        { user_id: userId, event_date: day, event_type: type },
+        { onConflict: 'user_id,event_date,event_type' }
+      );
     if (error) {
       setNote('That did not save. Worth trying again.');
       return;
     }
-    setEvents((e) => [...e, { event_date: day, event_type: type }]);
+    setEvents((e) =>
+      e.some((x) => x.event_date === day && x.event_type === type)
+        ? e
+        : [...e, { event_date: day, event_type: type }]
+    );
     setNote(type === 'period_start' ? `Period start recorded for ${human(day)}.` : `Period end recorded for ${human(day)}.`);
+  }
+
+  /** Taking back a mark on the day showing - the other half of being able to make one. */
+  async function unmarkPeriod(type: string) {
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase
+      .from('cycle_events')
+      .delete()
+      .eq('user_id', userId)
+      .eq('event_date', day)
+      .eq('event_type', type);
+    if (error) {
+      setNote('That did not clear. Worth trying again.');
+      return;
+    }
+    setEvents((e) => e.filter((x) => !(x.event_date === day && x.event_type === type)));
+    setNote(`Removed from ${human(day)}.`);
   }
 
   async function save() {
@@ -306,6 +355,32 @@ export default function CycleScreen() {
                 </ThemedView>
               </Pressable>
             </View>
+            {/* WHAT IS ACTUALLY ON THIS DAY. The buttons say what they WOULD
+                record, which is why the labels changing with the day read as
+                the recorded date moving. This says what is there. */}
+            {onThisDay.length > 0 && (
+              <View style={styles.marks}>
+                {onThisDay.map((m) => (
+                  <View key={m.event_type} style={styles.mark}>
+                    <MaterialCommunityIcons name="check-circle" size={16} color={theme.accentDeep} />
+                    <ThemedText type="small" style={styles.markText}>
+                      {EVENT_WORDS[m.event_type] ?? m.event_type} recorded for {human(day).toLowerCase()}
+                    </ThemedText>
+                    <Pressable
+                      onPress={() => void unmarkPeriod(m.event_type)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${EVENT_WORDS[m.event_type] ?? m.event_type} from ${human(day)}`}
+                      hitSlop={Spacing.two}
+                      style={({ pressed }) => pressed && styles.pressed}
+                    >
+                      <ThemedText type="small" themeColor="link">
+                        Remove
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
             {todayLine && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
                 {todayLine}
@@ -326,6 +401,38 @@ export default function CycleScreen() {
           </>
         );
 
+      case 'history':
+        // NEWEST FIRST, because the question somebody brings to this card is
+        // almost always "when did it last start", not "when did it ever start".
+        return recent.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+            Nothing recorded yet. Move to the day it started, then tap Started.
+          </ThemedText>
+        ) : (
+          <View style={styles.history}>
+            {recent.map((e) => (
+              <Pressable
+                key={`${e.event_date}-${e.event_type}`}
+                onPress={() => setDay(e.event_date)}
+                accessibilityRole="button"
+                accessibilityLabel={`Go to ${human(e.event_date)}`}
+                style={({ pressed }) => [styles.historyRow, pressed && styles.pressed]}
+              >
+                <MaterialCommunityIcons
+                  name={e.event_type === 'period_end' ? 'ray-end' : e.event_type === 'spotting' ? 'circle-small' : 'ray-start'}
+                  size={18}
+                  color={theme.accent}
+                />
+                <ThemedText type="small" style={styles.markText}>
+                  {EVENT_WORDS[e.event_type] ?? e.event_type}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {human(e.event_date)}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        );
       case 'flow':
         return (
           <Chips
@@ -624,6 +731,11 @@ const styles = StyleSheet.create({
   save: { borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
   putAway: { gap: Spacing.two },
   putAwayRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  marks: { gap: Spacing.one },
+  mark: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  markText: { flex: 1 },
+  history: { gap: Spacing.two },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   hint: { lineHeight: 18 },
   pressed: { opacity: 0.6 },
 });

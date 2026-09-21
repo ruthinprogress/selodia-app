@@ -40,15 +40,29 @@ export const COMMON_SYMPTOMS = [
   'Nausea',
   'Food cravings',
   'Insomnia',
+  // THESE CAME OFF THIS LIST AND WENT BACK ON THE SAME EVENING, and the reason
+  // is worth keeping because my first reasoning was wrong.
+  //
+  // They were removed when mood and energy got their own screen, on the
+  // principle of one fact in one table. But Ruth: "i think bring them back
+  // everywhere. they are quite specific and not covered otherwise. they are the
+  // things i suffer most from and they are also linked to menopause symptoms,
+  // anxiety and irritability especially."
+  //
+  // SHE IS RIGHT, AND THEY ARE NOT THE SAME FACT. A mood rating is where a day
+  // sat between Low and Bright; irritability is a symptom somebody had. A
+  // person can have a perfectly good day and be irritable in it, and "Low"
+  // would not record that. Leaving them out was not tidiness, it was losing the
+  // specific thing in favour of the general one - and for a perimenopausal user
+  // these three are among the most diagnostic symptoms there are.
+  //
+  // The duplication I was guarding against is real but narrower than I thought:
+  // it would matter if mood were RATED twice. A symptom chip and a rating are
+  // different records of different things, and a report can carry both.
+  'Low mood',
+  'Anxiety',
+  'Irritability',
 ];
-
-// LOW MOOD, ANXIETY AND IRRITABILITY WERE HERE FOR ABOUT FOUR HOURS on 21
-// September and have moved to their own screen. They are real cycle symptoms
-// and she was right to want them; what they cannot be is a second copy. Mood
-// recorded here would have been invisible to a report that reads daily_ratings,
-// and a person looking at one screen would have seen half their own record.
-//
-// One fact, one table. The Cycle page reads the day's mood from there instead.
 
 export const OVULATION_SIGNS = ['Positive LH test', 'Ovulation pain', 'Temperature rise'];
 

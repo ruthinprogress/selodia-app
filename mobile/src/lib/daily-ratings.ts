@@ -39,13 +39,18 @@ export const MEASURES: Measure[] = [
   {
     id: 'mood',
     label: 'Mood',
-    question: 'How has today felt?',
+    // "HOW HAS TODAY FELT" MAKES NO SENSE WHEN IT IS NOT TODAY (Ruth, 21
+    // September 2026): "how about 'how did the day feel?' works for today and
+    // the past". Hers, and right - the screen reaches back weeks, so the
+    // question has to as well.
+    question: 'How did the day feel?',
     words: ['Low', 'Flat', 'Steady', 'Good', 'Bright'],
   },
   {
     id: 'energy',
     label: 'Energy',
-    question: 'And how much have you had in the tank?',
+    // "doesn't sound right either" - and it did not. Plain beats folksy.
+    question: 'And how was your energy?',
     words: ['Drained', 'Tired', 'Steady', 'Lively', 'Buzzing'],
   },
 ];

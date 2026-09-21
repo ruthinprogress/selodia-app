@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -59,6 +59,7 @@ function human(day: string): string {
 
 export default function FeelingScreen() {
   const theme = useTheme();
+  const router = useRouter();
   // ARRIVING ON A PARTICULAR DAY, because the Cycle page asks about the day it
   // is showing rather than about today. Landing on today after tapping a
   // question about last Tuesday would answer the wrong question.
@@ -278,6 +279,25 @@ export default function FeelingScreen() {
           {saved}
         </ThemedText>
       )}
+
+      {/* A WAY OUT, AND PROOF IT WENT IN (Ruth, 21 September 2026): "That screen
+          needs a save button to take them back to the previous page or it feels
+          like it's not registered it all."
+          Every tap here has already saved, so this button saves nothing - but a
+          screen that gives you no way to finish reads as a screen that did not
+          take your answer, and being right about the data is no defence. It
+          says what is true rather than pretending to save: what went in, and
+          the way back. */}
+      <Pressable
+        onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel="Done, go back"
+        style={({ pressed }) => [styles.done, { backgroundColor: theme.accentDeep }, pressed && styles.pressed]}
+      >
+        <ThemedText type="smallBold" themeColor="background">
+          {Object.keys(ratings).length > 0 ? 'Done · saved' : 'Done'}
+        </ThemedText>
+      </Pressable>
     </BodyScreen>
   );
 }
@@ -313,5 +333,11 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   hint: { lineHeight: 18 },
+  done: {
+    marginTop: Spacing.three,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+    alignItems: 'center',
+  },
   pressed: { opacity: 0.6 },
 });

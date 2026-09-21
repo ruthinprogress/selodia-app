@@ -13,6 +13,8 @@ import {
 } from '@expo-google-fonts/manrope';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -98,6 +100,14 @@ export default function RootLayout() {
   // react-navigation a dark theme while every screen paints cream would give
   // dark chrome around a light app. See use-theme.ts for the reasoning.
   return (
+    // WITHOUT THIS, NO GESTURE IN THE APP EVER FIRES (Ruth, 21 September 2026:
+    // "re-ordering cards did not work at all anywhere ... doesn't move at
+    // all"). react-native-gesture-handler needs a root view to attach to on
+    // Android, and there was not one anywhere in the tree - so the Log cards
+    // and the Cycle cards both handled a long press that could never arrive.
+    // It costs nothing when nothing on screen uses a gesture, which is why its
+    // absence went unnoticed until something did.
+    <GestureHandlerRootView style={styles.root}>
     <ThemeProvider value={BrandNavigationTheme}>
       {/* Above the spotlight provider and the Stack, because it has to be above
           every screen that has a text input in it - which is Chat, the sign-in
@@ -154,5 +164,10 @@ export default function RootLayout() {
       </VoiceProvider>
       </KeyboardProvider>
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

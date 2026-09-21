@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, UIManager, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -35,6 +35,17 @@ import Animated, {
 // NOTHING MOVES UNTIL SHE MEANS IT. A long press starts the drag - a list whose
 // rows slide under an ordinary scroll would be unusable - and the row lifts so
 // it is obvious which one is in hand.
+//
+// THE NEIGHBOUR HEIGHTS ARE NUMBERS, NOT A FUNCTION (21 September 2026, after
+// "re-ordering cards did not work at all anywhere"). The first version asked a
+// JavaScript callback for them from inside the drag - but a gesture's onUpdate
+// runs on the UI thread, where it can read numbers captured in its closure and
+// cannot call back into JavaScript. So the heights are measured into state and
+// handed down as plain numbers, which a worklet may read freely.
+//
+// There were two faults behind that report and this is only one of them. The
+// other was that the app had no GestureHandlerRootView at all, so no gesture
+// anywhere could fire; see app/_layout.tsx.
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -55,25 +66,28 @@ export function ReorderableRows<T extends Reorderable>({
   disabled?: boolean;
 }) {
   const [held, setHeld] = useState<string | null>(null);
-  // Measured, not assumed. A ref rather than state: heights change on layout,
-  // and re-rendering the list every time one is measured would fight the drag.
-  const heights = useRef<Record<string, number>>({});
+
+  // MEASURED, AND IN STATE. A ref would avoid a render per row, but the numbers
+  // have to reach the drag as props: the gesture runs on the UI thread and
+  // cannot read a ref that JavaScript updates later. Settling costs one render
+  // per row on first layout and nothing after, because a height that has not
+  // changed is not written.
+  const [heights, setHeights] = useState<Record<string, number>>({});
 
   const measure = useCallback((id: string, height: number) => {
-    heights.current[id] = height;
+    setHeights((current) =>
+      Math.abs((current[id] ?? 0) - height) < 1 ? current : { ...current, [id]: height }
+    );
   }, []);
 
-  // How far the finger must travel to displace the neighbour in `direction`.
-  const neighbour = useCallback(
-    (id: string, direction: 1 | -1) => {
-      const at = items.findIndex((i) => i.id === id);
-      const next = items[at + direction];
-      // A sensible fallback for a row that has not laid out yet, so the first
-      // drag after a mount still behaves.
-      return next ? (heights.current[next.id] ?? 64) : Infinity;
-    },
-    [items]
-  );
+  // How far the finger must travel to displace the neighbour in a direction.
+  // Infinity at the ends of the list, which reads as "there is nothing there".
+  const spaceFor = (index: number, direction: 1 | -1) => {
+    const next = items[index + direction];
+    // A sensible fallback for a row that has not laid out yet, so the first
+    // drag after a mount still behaves.
+    return next ? (heights[next.id] ?? 64) : Infinity;
+  };
 
   const move = useCallback(
     (id: string, by: 1 | -1) => {
@@ -99,7 +113,8 @@ export function ReorderableRows<T extends Reorderable>({
           dragging={held === item.id}
           disabled={disabled}
           onMeasure={(h) => measure(item.id, h)}
-          neighbour={(d) => neighbour(item.id, d)}
+          below={spaceFor(index, 1)}
+          above={spaceFor(index, -1)}
           onHold={() => setHeld(item.id)}
           onRelease={() => setHeld(null)}
           onMove={(by) => move(item.id, by)}
@@ -116,7 +131,8 @@ function Row({
   dragging,
   disabled,
   onMeasure,
-  neighbour,
+  below,
+  above,
   onHold,
   onRelease,
   onMove,
@@ -125,7 +141,9 @@ function Row({
   dragging: boolean;
   disabled: boolean;
   onMeasure: (height: number) => void;
-  neighbour: (direction: 1 | -1) => number;
+  /** The height of the row below and above, or Infinity at the ends. */
+  below: number;
+  above: number;
   onHold: () => void;
   onRelease: () => void;
   onMove: (by: 1 | -1) => void;
@@ -154,9 +172,6 @@ function Row({
 
       // Half of the neighbour is the moment the cards should swap: any less and
       // the list twitches, any more and it feels stuck.
-      const below = neighbour(1);
-      const above = neighbour(-1);
-
       if (remaining > below / 2 && Number.isFinite(below)) {
         consumed.set(consumed.get() + below);
         runOnJS(step)(1);
