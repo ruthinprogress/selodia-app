@@ -76,64 +76,9 @@ export function ratingsByMeasure(rows: { measure: string; value: number; note: s
   return out;
 }
 
-/**
- * WHAT A DAY LOOKED LIKE BESIDE WHAT CAME BEFORE IT.
- *
- * Her question, and the reason any of this is being built: "could the user say,
- * run a report on all days i drank cocktails and my mood the following days?"
- *
- * This is the arithmetic half of that - given the days something happened, and
- * a set of ratings, line up the ratings on the days AFTER by the offsets asked
- * for. It states nothing and concludes nothing: it puts the rows side by side
- * so a person can see whether there is anything there.
- *
- * THAT RESTRAINT IS THE DESIGN, not caution. Three matching days is a
- * coincidence, not a finding, and an app that says "your mood dips two days
- * after drinking" on three nights has invented a cause out of noise. A table
- * showing all three, with the days that do not fit the story still in it, is
- * both more honest and more useful.
- */
-export function alongside(
-  days: string[],
-  ratings: { day: string; measure: string; value: number }[],
-  offsets: number[],
-  measureId: MeasureId
-): { day: string; after: (number | null)[] }[] {
-  const found = new Map<string, number>();
-  for (const r of ratings) {
-    if (r.measure !== measureId) continue;
-    found.set(r.day, Math.round(Number(r.value)));
-  }
-  return [...new Set(days)]
-    .sort()
-    .map((day) => ({
-      day,
-      after: offsets.map((o) => found.get(shiftDay(day, o)) ?? null),
-    }));
-}
-
-export function shiftDay(day: string, by: number): string {
-  const d = new Date(`${day}T12:00:00Z`);
-  if (isNaN(d.getTime())) return day;
-  d.setUTCDate(d.getUTCDate() + by);
-  return d.toISOString().slice(0, 10);
-}
-
-/**
- * How many of the lined-up days actually carry a rating.
- *
- * A caller needs this before it draws anything, because "mood on the two days
- * after" across eight nights where six have no rating is a table of blanks
- * pretending to be evidence.
- */
-export function coverage(rows: { after: (number | null)[] }[]): { have: number; of: number } {
-  let have = 0;
-  let of = 0;
-  for (const r of rows) {
-    for (const v of r.after) {
-      of += 1;
-      if (v != null) have += 1;
-    }
-  }
-  return { have, of };
-}
+// THE CORRELATION ARITHMETIC MOVED OUT (21 September 2026). `alongside`,
+// `coverage` and `shiftDay` lived here for an afternoon, then the question they
+// answer - "run a report on all days i drank cocktails and my mood the
+// following days" - turned out to be answered on the server, where the rows
+// are. They now live in app/lib/pattern-check.ts, once, because two
+// implementations of one correlation is the drift that nothing would catch.

@@ -106,6 +106,8 @@ import {
 } from '../../lib/discuss-card';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
+import { readOffsets } from '../../lib/pattern-check';
+import { type PatternResult, runPatternCheck } from '../../lib/pattern-query';
 import { wordFor as wordForMeasure, writeFeeling } from '../../lib/feeling-logging';
 import { cycleSaved, feelingSaved, readSpokenCycle, readSpokenFeeling, spokenDayLabel } from '../../lib/spoken-day';
 
@@ -776,6 +778,12 @@ WHAT IS NOT A FEELING LOG: how they feel about something you just said, a one-wo
 
 A FEELING LOG IS STILL A FEELING, so answer it as one. Somebody who says today was low has told you something real about their day, not filed a form, and the reply should be to the person. The app records it and confirms it separately, as with every other log.
 
+LOOKING FOR A PATTERN IN THEIR OWN DAYS. Somebody can ask you to put two things they log side by side - "run a report on all the days I drank cocktails and my mood the following days", "does my energy dip after a long run". Set patternTrigger to the thing to look for, patternMeasure to mood or energy, and patternOffsets to which days afterwards. The app then finds those days in their log, lines the ratings up against them and draws the whole thing as a table beneath your reply.
+
+DO NOT STATE ANY FIGURE YOURSELF, and do not say what the answer is. You have not seen their days; the app has. Reply to what they ASKED - one warm sentence saying you are putting it side by side for them - and let the table speak. Naming a number you have not been given is how somebody ends up told their mood dips after drinking on the strength of nothing.
+
+AND DO NOT PROMISE A VERDICT. The table shows the days and says how many there were; it does not declare a cause, and neither do you, on this turn or a later one. If they come back and ask what it means, the honest answer is what is in front of them both and how few or many days it rests on.
+
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
@@ -960,6 +968,23 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'string',
       description:
         "Alongside logIntent 'feeling': the REASON they gave, in their own words, short. \"second bad night in a row\", \"big week at work\". This is usually the part worth more than the rating. Omit it when they gave no reason - do not summarise their mood back as a note.",
+    },
+    patternTrigger: {
+      type: 'string',
+      description:
+        'Only when the person asks to look at how something they log lines up with how they felt afterwards - "run a report on all the days I drank cocktails and my mood the following days", "does my energy dip after a long run", "am I flat the day after wine". The THING TO LOOK FOR, in one or two plain words as it would appear in a log entry: "cocktail", "wine", "run". Not a sentence, not a category. Leave unset for anything else, including a general question about whether the app can spot patterns.',
+    },
+    patternMeasure: {
+      type: 'string',
+      enum: ['mood', 'energy'],
+      description:
+        "Alongside patternTrigger: which of the two they asked about. 'mood' when they said mood, how they felt, low or flat; 'energy' when they said energy, tiredness or being wiped out. If they said neither, use 'mood'.",
+    },
+    patternOffsets: {
+      type: 'array',
+      items: { type: 'number' },
+      description:
+        'Alongside patternTrigger: which days afterwards to look at, as whole numbers of days. 0 is the same day, 1 the day after, 2 two days after. "the following day" is [1]; "the next couple of days" is [1, 2]; "two days after" is [2]. Omit when they did not say, and the day after is used.',
     },
     workoutPlan: {
       type: 'string',
@@ -1238,6 +1263,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     feelingMood?: number;
     feelingEnergy?: number;
     feelingNote?: string;
+    patternTrigger?: string;
+    patternMeasure?: 'mood' | 'energy';
+    patternOffsets?: number[];
     reminderAction?: 'create' | 'cancel';
     reminderLabel?: string;
     reminderTime?: string;
@@ -1657,6 +1685,33 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       }
     } catch (err) {
       console.log('ASK-SELODIA FEELING LOG FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // "RUN A REPORT ON ALL DAYS I DRANK COCKTAILS AND MY MOOD THE FOLLOWING DAYS"
+  // (2026-09-21). Her question, asked in the same message that put mood back.
+  //
+  // THE APP COUNTS AND THE MODEL DESCRIBES, as with the report summary. Every
+  // figure here is arithmetic on her own rows, computed before the reply is
+  // even read, and the table is drawn from the stored numbers rather than from
+  // anything the model wrote. A model asked to eyeball eleven nights against a
+  // column of mood ratings will find a pattern, because that is what it is for.
+  //
+  // It never concludes. It lines the days up, says how many there were, says
+  // plainly when there are too few to mean anything, and leaves the days that
+  // do not fit the story in the table.
+  let patternCheck: PatternResult | null = null;
+  const wantsPattern = typeof result.patternTrigger === 'string' && result.patternTrigger.trim().length > 0;
+  if (wantsPattern) {
+    try {
+      patternCheck = await runPatternCheck(supabase, user.id, {
+        trigger: result.patternTrigger!.trim(),
+        measure: result.patternMeasure === 'energy' ? 'energy' : 'mood',
+        offsets: readOffsets(result.patternOffsets),
+        today: todayKey,
+      });
+    } catch (err) {
+      console.log('ASK-SELODIA PATTERN CHECK FAILED:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -2203,6 +2258,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     healthGuidanceApplied,
     saved,
     foodLogId: breakdownFoodLogId,
+    // The days something happened beside how they felt afterwards, drawn as a
+    // real table beneath the reply from these stored figures. Null on every
+    // turn that did not ask for one.
+    patternCheck,
     // The phone schedules it and says so. Null unless this turn asked for one.
     reminder: reminderResult,
     // What the conversation is anchored to AFTER this turn, or null when the

@@ -14,6 +14,8 @@ import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { EntrySummaryCard, type SummaryEntryType } from '@/components/entry-summary-card';
 import { FoodBreakdownTable } from '@/components/food-breakdown-table';
+import { PatternTable } from '@/components/pattern-table';
+import type { PatternPayload } from '@/lib/pattern-table';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ReminderOffer } from '@/components/reminder-offer';
 import { ResourceCard } from '@/components/resource-card';
@@ -72,6 +74,16 @@ type Message = {
   // the REFERENCE; the table itself is read from food_items at render time, so
   // it always shows what was stored rather than what the reply said.
   foodLogId?: string | null;
+  // The pattern check this turn asked for, when it asked for one - her own days
+  // beside how she felt afterwards. Unlike the food table this carries the
+  // FIGURES rather than a reference, because they are arithmetic over a window
+  // rather than a row, and recomputing them on the phone would be a second
+  // implementation of the one thing that must not disagree with itself.
+  //
+  // It lives only on the turn that asked. A reloaded thread does not redraw it,
+  // which is right: a table of somebody's days three weeks later, silently
+  // stale, is worse than the sentence that accompanied it.
+  patternCheck?: PatternPayload | null;
   // A session or a reading this turn is ABOUT ("Ask about this", 2026-09-16).
   // Food is not carried here: it has the richer itemised table above, and two
   // components drawing one entry differently is how they drift.
@@ -763,7 +775,7 @@ ${result.message}`;
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, navigationTarget, reminder, discussEntry } =
+      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, patternCheck, navigationTarget, reminder, discussEntry } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
           // Present only on the turn that opens a discussion about an entry.
@@ -784,7 +796,7 @@ ${result.message}`;
       );
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId },
+        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId, patternCheck },
       ]);
       // A REMINDER IS CONFIRMED BY THE PHONE, NOT BY THE SENTENCE (2026-09-18).
       // The server stores it; the notification is scheduled here, on the device,
@@ -921,6 +933,7 @@ ${result.message}`;
                   }
                 />
               )}
+              {m.patternCheck && <PatternTable payload={m.patternCheck} />}
               {/* A session or a reading has no items and so no table. It gets a
                   summary card instead, so "Ask about this" shows its subject
                   whatever kind of entry it was asked about. */}
