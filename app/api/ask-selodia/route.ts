@@ -770,11 +770,24 @@ A plain result (a number the data already shows, like a 5-day trend) or a one-of
 
 RECORDING A SAVED ROUTINE THEY SAY THEY DID. When somebody says they have done one of their own saved plans - "I did the gym workout today", "finished the barbell routine" - set workoutPlan to that plan's title and leave logIntent 'none'. The app writes the session from the plan's own movements, which is a far better record than an activity entry: the plan's history moves on and the movements themselves reach the week's picture. There are three kinds of thing to record and they go to three different places: movements from the plan they did (nothing to set - unmentioned means done), movements they skipped (workoutSkipped), and MOVEMENT THEY ADDED that the plan does not contain (workoutAdditional, one entry each, their words and their numbers - "box jumps 3x10", "ballet hip pulses 2x40 each side", "20 minutes of climbing"). Added movement is recorded as movement in the same session, never as a separate activity, because it happened inside the same hour and logging it twice would count that hour twice. workoutNote is for what they said about the session that is not itself a movement - how it felt, a sore shoulder. Movements they say they skipped go in workoutSkipped, by their exact names from the plan. Do not claim in your reply that it is saved or say how much of it landed: the app records it and tells them itself, and it will decline quietly if the routine is already down for today.
 
-CYCLE AND FEELING, WHICH ARE MOSTLY SAID IN THE PAST TENSE. Nobody opens an app the morning their period starts. She said so herself when she asked for this: "I rarely remember to add it to my calendar on the day it started or ended." So "I came on Tuesday" on a Friday is a Tuesday event, not a Friday one - resolve the day into logDate exactly as you already do for a food log somebody is catching up on. The same holds for how a day felt: "yesterday was a write-off" is yesterday. A day nobody names is today, and you may leave logDate out then.
+CYCLE AND FEELING ARE NOT LOGGING INTENTS. They are separate fields, and they are independent of logIntent and of each other. One message can log a meal AND a period AND a mood; set whichever of them the message actually contains, and never drop one because you have already set another.
+
+THEY HAVE SEPARATE DATES, AND THIS IS THE PART TO GET RIGHT. cycleDate dates the bleeding. feelingDate dates how they felt. They are very often different days in the same sentence, because a period is usually reported late and a feeling is usually reported now:
+
+  "my period started Tuesday and I've been shattered ever since"
+    cycleEvent period_start, cycleDate Tuesday, feelingEnergy 1, feelingDate OMITTED (the tiredness is today)
+
+  "I came on Monday"
+    cycleEvent period_start, cycleDate Monday, and NO feeling at all - they did not say how they felt
+
+  "yesterday was a write-off, no energy"
+    feelingEnergy 1, feelingDate yesterday, and NO cycle event
+
+Nobody opens an app the morning their period starts - she said so when she asked for this: "I rarely remember to add it to my calendar on the day it started or ended." So resolve a named day into cycleDate the way you already do for a food log somebody is catching up on. A feeling, by contrast, is almost always about today, so leave feelingDate out unless they NAME a different day.
 
 WHAT IS NOT A CYCLE EVENT: a period they are expecting, a question about when it is due, a prediction you are making, cramps or any other symptom on its own. Only the bleeding itself, only when they say it happened.
 
-WHAT IS NOT A FEELING LOG: how they feel about something you just said, a one-word reply, a mood you have inferred rather than been told. It is a feeling log when they are describing their own day - "flat all week", "no energy today at all", "yesterday was a good one". Set only the measure they actually gave; saying they are tired is not a statement about their mood.
+WHAT IS NOT A FEELING LOG: how they feel about something you just said, a one-word reply, a mood you have inferred rather than been told. It is a feeling log when they are describing their own day - "flat all week", "no energy today at all", "yesterday was a good one". Set only the measure they actually gave; saying they are tired is not a statement about their mood, and a period starting is not a statement about either.
 
 A FEELING LOG IS STILL A FEELING, so answer it as one. Somebody who says today was low has told you something real about their day, not filed a form, and the reply should be to the person. The app records it and confirms it separately, as with every other log.
 
@@ -814,7 +827,7 @@ ACKNOWLEDGE, DO NOT EVALUATE. A logged session is a fact, not a result. Never pr
 
 WHAT CAN BE LOGGED HERE. If somebody asks what they can log, what this is for, or how any of it works, answer completely rather than naming the one or two things that come to mind. Everything goes through this conversation: food and drink, activity and exercise, body measurements including weight, body fat and muscle, anything else they measure such as a waist or a resting heart rate, water, how they are feeling, and photographs - a plate, a scale readout, a treadmill display, a nutrition label. Free text is the point: there is no format to learn, no fields to fill, and nothing has to be phrased a particular way. Say it warmly and in a sentence or two, the way you would tell a friend what you can help with, never as a bulleted feature list or a tour of the app.
 
-LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), 'sleep' if it describes how they slept - how long, what time they went to bed or woke, how it felt, how often they woke - 'cycle' if they state that their period started or ended or that they are spotting, 'feeling' if they say how their mood or their energy has been over a day - or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. AND NEVER LIST BACK WHAT WENT IN. Not "the almonds and the coffee are logged as food and the litre of water is in too" - you do not know what landed, the app does, and a sentence like that one told somebody her water was recorded on a day it was lost. Water and other drinks mentioned alongside food are handled by the app in the same pass; say nothing about them either way. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
+LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' if it is only about drinking water or another zero-calorie drink (a glass of water, a mug of tea), 'sleep' if it describes how they slept - how long, what time they went to bed or woke, how it felt, how often they woke - or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. AND NEVER LIST BACK WHAT WENT IN. Not "the almonds and the coffee are logged as food and the litre of water is in too" - you do not know what landed, the app does, and a sentence like that one told somebody her water was recorded on a day it was lost. Water and other drinks mentioned alongside food are handled by the app in the same pass; say nothing about them either way. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
 ${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}
 
@@ -934,7 +947,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     },
     logIntent: {
       type: 'string',
-      enum: ['none', 'food', 'activity', 'measurement', 'hydration', 'sleep', 'cycle', 'feeling'],
+      enum: ['none', 'food', 'activity', 'measurement', 'hydration', 'sleep'],
       description:
         "'food' ONLY when the message actually describes food or drink they consumed - a message ABOUT the log is not a meal (\"it's not gone into the log\", \"did that save?\", \"my log is empty\"), and gets an answer rather than an entry. 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText.",
     },
@@ -943,31 +956,36 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Alongside logIntent 'activity' or 'food'. The COMPLETE description to store, assembled from the conversation and stripped of everything that is not the food or the session - e.g. after \"I did a run\" then \"about 40 minutes\", send \"a 40 minute run\"; for \"catch up my log: Mon 7th pizza and chips, Tuesday 8th burger\", send the days and their meals and nothing else. Without this the app stores the raw message, which is how a complaint about logging once became a meal. For activity include the duration always, and anything else belonging to the same session (intensity, terrain, how it felt). Omit it only when the message is already exactly the thing to store.",
     },
-    logDate: {
-      type: 'string',
-      description:
-        "Alongside logIntent 'cycle' or 'feeling': the day they are talking about, as YYYY-MM-DD, resolved from today's date in the context. \"My period started on Tuesday\" said on a Friday is the Tuesday three days back; \"yesterday was a flat day\" is yesterday. Omit it when they mean today. Never a date in the future - if you are unsure which of two days they mean, omit this and let it be today rather than guessing.",
-    },
     cycleEvent: {
       type: 'string',
       enum: ['period_start', 'period_end', 'spotting'],
       description:
-        "Alongside logIntent 'cycle'. Which moment they are reporting: 'period_start' for a period beginning (\"I came on this morning\", \"started my period Tuesday\"), 'period_end' for it finishing (\"finally finished\", \"it stopped yesterday\"), 'spotting' for light bleeding between periods. ONLY when they are stating that it happened. A question about their cycle, a prediction, a period they are EXPECTING, or a symptom with no bleeding is not an event - leave logIntent 'none'.",
+        "Which cycle moment they are reporting: 'period_start' for a period beginning (\"I came on this morning\", \"started my period Tuesday\"), 'period_end' for it finishing (\"finally finished\", \"it stopped yesterday\"), 'spotting' for light bleeding between periods. ONLY when they are stating that it happened. A question about their cycle, a prediction, a period they are EXPECTING, or a symptom with no bleeding is not an event. This is INDEPENDENT of logIntent - leave logIntent as whatever else the message logs, or 'none'.",
+    },
+    cycleDate: {
+      type: 'string',
+      description:
+        "The day the CYCLE EVENT happened, as YYYY-MM-DD, resolved from today's date in the context. \"My period started on Tuesday\" said on a Friday is the Tuesday three days back. Omit it when they mean today. This dates the bleeding and NOTHING ELSE in the message: in \"my period started Tuesday and I have been shattered ever since\", this is Tuesday and the tiredness is a different day. Never a date in the future - if you are unsure which of two days they mean, omit this and let it be today rather than guessing.",
     },
     feelingMood: {
       type: 'number',
       description:
-        "Alongside logIntent 'feeling', when they said how they FELT: 1 Low, 2 Flat, 3 Steady, 4 Good, 5 Bright. These five words are the ones on their Feeling screen, so match to the nearest - \"pretty rough today\" is 1, \"bit meh\" is 2, \"fine\" is 3, \"really good day\" is 4. Only when they are describing their own mood over a DAY. A reaction to something you just said is conversation, not a rating.",
+        "When they said how they FELT: 1 Low, 2 Flat, 3 Steady, 4 Good, 5 Bright. These five words are the ones on their Feeling screen, so match to the nearest - \"pretty rough today\" is 1, \"bit meh\" is 2, \"fine\" is 3, \"really good day\" is 4. Only when they are describing their own mood over a DAY. A reaction to something you just said is conversation, not a rating. INDEPENDENT of logIntent and of cycleEvent: a message can log a meal and a mood, or a period and a mood.",
     },
     feelingEnergy: {
       type: 'number',
       description:
-        "Alongside logIntent 'feeling', when they said how much ENERGY they had: 1 Drained, 2 Tired, 3 Steady, 4 Lively, 5 Buzzing. \"Shattered\" is 1, \"tired\" is 2, \"normal\" is 3, \"loads of energy\" is 5. Set this and feelingMood together when they said both (\"flat and exhausted today\"), and only one when they said only one - never invent the other.",
+        "When they said how much ENERGY they had: 1 Drained, 2 Tired, 3 Steady, 4 Lively, 5 Buzzing. \"Shattered\" is 1, \"tired\" is 2, \"normal\" is 3, \"loads of energy\" is 5. Set this and feelingMood together when they said both (\"flat and exhausted today\"), and only one when they said only one - never invent the other.",
     },
     feelingNote: {
       type: 'string',
       description:
-        "Alongside logIntent 'feeling': the REASON they gave, in their own words, short. \"second bad night in a row\", \"big week at work\". This is usually the part worth more than the rating. Omit it when they gave no reason - do not summarise their mood back as a note.",
+        "The REASON they gave for how they felt, in their own words, short. \"second bad night in a row\", \"big week at work\". This is usually the part worth more than the rating. Omit it when they gave no reason - do not summarise their mood back as a note.",
+    },
+    feelingDate: {
+      type: 'string',
+      description:
+        "The day the FEELING is about, as YYYY-MM-DD. Omit it when they mean today, which is the usual case - \"shattered today\", \"I feel rough\". Set it only when they name a different day: \"yesterday was a write-off\", \"Monday was flat\". THIS IS NOT cycleDate: in \"my period started Tuesday and I am shattered today\", cycleDate is Tuesday and this is omitted, because the tiredness is today. Never a date in the future.",
     },
     patternTrigger: {
       type: 'string',
@@ -1256,13 +1274,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     rememberCategory?: string;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
-    logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep' | 'cycle' | 'feeling';
+    logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep';
     logText?: string;
-    logDate?: string;
     cycleEvent?: string;
+    cycleDate?: string;
     feelingMood?: number;
     feelingEnergy?: number;
     feelingNote?: string;
+    feelingDate?: string;
     patternTrigger?: string;
     patternMeasure?: 'mood' | 'energy';
     patternOffsets?: number[];
@@ -1339,6 +1358,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
   let saved: { kind: 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep' | 'cycle' | 'feeling'; summary: string } | null = null;
+  // TWO THINGS CAN LAND IN ONE MESSAGE, and the toast has one line. Rather than
+  // let the second write silently replace the first one's confirmation - which
+  // would tell her the mood saved and say nothing about the period - both are
+  // said, in the order they happened.
+  const alsoSaved = (
+    current: typeof saved,
+    kind: 'cycle' | 'feeling',
+    summary: string
+  ): typeof saved => (current ? { ...current, summary: `${current.summary} · ${summary}` } : { kind, summary });
+
   // What actually reached the database this turn, for the honesty note below.
   // Kept separate from `saved` because `saved` drives the toast and carries one
   // headline summary, while this has to survive a PARTIAL landing - a weight
@@ -1657,11 +1686,22 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // date in the future or a year in the past is dropped to today rather than
   // written, because cycle length is arithmetic on these dates and one bad one
   // skews a prediction for months.
-  if (result.logIntent === 'cycle') {
+  //
+  // NEITHER OF THESE IS AN INTENT (corrected the same evening). They were both
+  // values of logIntent, which holds ONE value, so a sentence that was both -
+  // "my period started Tuesday and I have been shattered ever since" - could
+  // only ever be recorded as one, and the other was dropped in silence. Ruth
+  // caught it from the description alone: "What's going to differentiate
+  // feeling tired actually today, vs when logging period start day".
+  //
+  // They are independent facts now, each gated on its own field and dated by
+  // its own field, exactly as a saved routine already was. A message can log a
+  // meal, a period and a mood, and each lands on the day it belongs to.
+  if (result.cycleEvent) {
     try {
       const event = readSpokenCycle(result, todayKey);
       if (event && (await writeCycleEvent(supabase, user.id, event))) {
-        saved = { kind: 'cycle', summary: cycleSaved(event, todayKey, spokenDayLabel) };
+        saved = alsoSaved(saved, 'cycle', cycleSaved(event, todayKey, spokenDayLabel));
         attempt.landed.push('cycle');
       }
     } catch (err) {
@@ -1676,11 +1716,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // A measure nobody mentioned is not written. Saying they are shattered says
   // nothing about their mood, and filling the other column in would manufacture
   // exactly the record this exists to check against.
-  if (result.logIntent === 'feeling') {
+  if (result.feelingMood != null || result.feelingEnergy != null) {
     try {
       const felt = readSpokenFeeling(result, todayKey);
       if (felt && (await writeFeeling(supabase, user.id, felt))) {
-        saved = { kind: 'feeling', summary: feelingSaved(felt, todayKey, spokenDayLabel, wordForMeasure) };
+        saved = alsoSaved(saved, 'feeling', feelingSaved(felt, todayKey, spokenDayLabel, wordForMeasure));
         attempt.landed.push('feeling');
       }
     } catch (err) {

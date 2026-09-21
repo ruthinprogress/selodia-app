@@ -77,7 +77,7 @@ check('nothing', cycleEventType(undefined), null);
 
 group('reading a spoken cycle event');
 
-check('her exact case, said on the Friday about the Tuesday', readSpokenCycle({ cycleEvent: 'period_start', logDate: '2026-09-15' }, TODAY), {
+check('her exact case, said on the Friday about the Tuesday', readSpokenCycle({ cycleEvent: 'period_start', cycleDate: '2026-09-15' }, TODAY), {
   type: 'period_start',
   day: '2026-09-15',
 });
@@ -86,12 +86,12 @@ check('her exact case, said on the Friday about the Tuesday', readSpokenCycle({ 
 check('no day given', readSpokenCycle({ cycleEvent: 'period_start' }, TODAY), { type: 'period_start', day: TODAY });
 // A BAD DATE FALLS BACK TO TODAY RATHER THAN BEING WRITTEN. The event did
 // happen - they said so - and today is the only day we actually know about.
-check('a future day falls back to today', readSpokenCycle({ cycleEvent: 'period_end', logDate: '2026-12-01' }, TODAY), {
+check('a future day falls back to today', readSpokenCycle({ cycleEvent: 'period_end', cycleDate: '2026-12-01' }, TODAY), {
   type: 'period_end',
   day: TODAY,
 });
-check('no event, nothing to write', readSpokenCycle({ logDate: '2026-09-15' }, TODAY), null);
-check('an invented event writes nothing', readSpokenCycle({ cycleEvent: 'ovulation', logDate: '2026-09-15' }, TODAY), null);
+check('no event, nothing to write', readSpokenCycle({ cycleDate: '2026-09-15' }, TODAY), null);
+check('an invented event writes nothing', readSpokenCycle({ cycleEvent: 'ovulation', cycleDate: '2026-09-15' }, TODAY), null);
 
 group('the one-to-five scale');
 
@@ -124,7 +124,7 @@ check('energy alone leaves mood empty', readSpokenFeeling({ feelingEnergy: 1 }, 
   energy: 1,
   note: null,
 });
-check('a past day', readSpokenFeeling({ feelingMood: 4, logDate: '2026-09-19' }, TODAY), {
+check('a past day', readSpokenFeeling({ feelingMood: 4, feelingDate: '2026-09-19' }, TODAY), {
   day: '2026-09-19',
   mood: 4,
   energy: null,
@@ -142,6 +142,32 @@ check('an empty note is no note', readSpokenFeeling({ feelingMood: 3, feelingNot
   energy: null,
   note: null,
 });
+
+group('the sentence that is two facts on two days');
+
+// RUTH CAUGHT THIS FROM THE DESCRIPTION ALONE, before it ever ran: "What's
+// going to differentiate feeling tired actually today, vs when logging period
+// start day". She was right - the two shared one date field, so the tiredness
+// in a sentence like this one would have been filed under Tuesday.
+const bothInOne = { cycleEvent: 'period_start', cycleDate: '2026-09-15', feelingEnergy: 1 };
+check('the period is dated Tuesday', readSpokenCycle(bothInOne, TODAY), {
+  type: 'period_start',
+  day: '2026-09-15',
+});
+check('and the tiredness is today', readSpokenFeeling(bothInOne, TODAY), {
+  day: TODAY,
+  mood: null,
+  energy: 1,
+  note: null,
+});
+// AND THE DATES DO NOT LEAK THE OTHER WAY EITHER.
+const feltLastWeek = { cycleEvent: 'period_start', feelingMood: 2, feelingDate: '2026-09-19' };
+check('a period today', readSpokenCycle(feltLastWeek, TODAY).day, TODAY);
+check('beside a mood named for Saturday', readSpokenFeeling(feltLastWeek, TODAY).day, '2026-09-19');
+// A CYCLE EVENT IS NOT A STATEMENT ABOUT HOW SOMEBODY FEELS. Nothing may be
+// inferred into the other table from it.
+check('a period alone writes no feeling', readSpokenFeeling({ cycleEvent: 'period_start', cycleDate: '2026-09-15' }, TODAY), null);
+check('a feeling alone writes no cycle event', readSpokenCycle({ feelingMood: 2 }, TODAY), null);
 
 group('the words, which must be the screen’s words');
 

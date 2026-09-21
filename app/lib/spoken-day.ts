@@ -58,21 +58,35 @@ export function rating(v: unknown): number | null {
 export type SpokenCycle = { type: CycleEventType; day: string };
 export type SpokenFeeling = { day: string; mood: number | null; energy: number | null; note: string | null };
 
-/** What the model said about a cycle, or nothing. */
+/**
+ * What the model said about a cycle, or nothing.
+ *
+ * ITS OWN DATE FIELD, NOT A SHARED ONE (corrected 21 September 2026, Ruth:
+ * "What's going to differentiate feeling tired actually today, vs when logging
+ * period start day"). She was right. One sentence can carry two facts on two
+ * different days - "my period started Tuesday and I'm shattered today" - and a
+ * single date passed round between them puts today's tiredness on Tuesday.
+ */
 export function readSpokenCycle(
-  raw: { cycleEvent?: unknown; logDate?: unknown },
+  raw: { cycleEvent?: unknown; cycleDate?: unknown },
   today: string
 ): SpokenCycle | null {
   const type = cycleEventType(raw.cycleEvent);
   if (!type) return null;
   // A DAY NOBODY NAMED IS TODAY, which is what somebody saying "my period
   // started" without a day means.
-  return { type, day: spokenDay(raw.logDate, today) ?? today };
+  return { type, day: spokenDay(raw.cycleDate, today) ?? today };
 }
 
-/** What the model said about how a day felt, or nothing. */
+/**
+ * What the model said about how a day felt, or nothing.
+ *
+ * ITS OWN DATE, for the reason above: the day somebody FELT something and the
+ * day their period started are two different days that often arrive in one
+ * sentence.
+ */
 export function readSpokenFeeling(
-  raw: { feelingMood?: unknown; feelingEnergy?: unknown; logDate?: unknown; feelingNote?: unknown },
+  raw: { feelingMood?: unknown; feelingEnergy?: unknown; feelingDate?: unknown; feelingNote?: unknown },
   today: string
 ): SpokenFeeling | null {
   const mood = rating(raw.feelingMood);
@@ -85,7 +99,7 @@ export function readSpokenFeeling(
   const note = typeof raw.feelingNote === 'string' && raw.feelingNote.trim()
     ? raw.feelingNote.trim().slice(0, 500)
     : null;
-  return { day: spokenDay(raw.logDate, today) ?? today, mood, energy, note };
+  return { day: spokenDay(raw.feelingDate, today) ?? today, mood, energy, note };
 }
 
 /** What Selodía's confirmation says. Short, and names the day when it is not today. */
