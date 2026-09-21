@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -41,9 +42,14 @@ import { arrange, layoutOf, loadLogLayout, saveLogLayout } from '@/lib/log-layou
 // saved id this list no longer has is ignored rather than leaving a hole. See
 // log-layout-rules.ts, where both of those are the whole point.
 
+// THE ROWS WEAR THE LIBRARY'S MARKS NOW (21 September 2026), in terracotta
+// rather than grey. Her mock put them in the accent and it is right: a grey
+// mark reads as furniture, and this screen is a set of choices rather than a
+// settings list. The objects are also truer - a bathroom scale and a tape
+// measure rather than an outline of a person standing.
 type Row = {
   id: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
   detail: string;
   go: () => void;
@@ -52,35 +58,35 @@ type Row = {
 const ROWS: Row[] = [
   {
     id: 'food',
-    icon: 'restaurant-outline',
+    icon: 'silverware-fork-knife',
     label: 'Food and drink',
     detail: "Today's meals, and the week behind them",
     go: () => router.push('/log/entries?view=food'),
   },
   {
     id: 'water',
-    icon: 'water-outline',
+    icon: 'cup-water',
     label: 'Water',
     detail: 'A glass, a mug, a bottle',
     go: () => router.push('/log/water-history'),
   },
   {
     id: 'sleep',
-    icon: 'moon-outline',
+    icon: 'weather-night',
     label: 'Sleep',
     detail: 'How long, and how it felt',
     go: () => router.push('/log/sleep'),
   },
   {
     id: 'body',
-    icon: 'body-outline',
+    icon: 'scale-bathroom',
     label: 'Body measurements',
     detail: 'Weight, body fat, muscle, and the rest',
     go: () => router.push('/log/entries?view=measurements'),
   },
   {
     id: 'activity',
-    icon: 'walk-outline',
+    icon: 'run',
     label: 'Activity',
     detail: 'Sessions, classes, walks',
     go: () => router.push('/log/entries?view=activity'),
@@ -93,7 +99,7 @@ const ROWS: Row[] = [
   // the screen and then looks like nothing happened is the fault.
   {
     id: 'symptom',
-    icon: 'pulse-outline',
+    icon: 'heart-pulse',
     label: 'A symptom',
     detail: "Describe something that's bothering you",
     go: () =>
@@ -178,7 +184,7 @@ export default function LogScreen() {
                   dragging && { borderTopWidth: 0, borderRadius: CardRadius },
                 ]}
               >
-                <Ionicons name={r.icon} size={20} color={theme.textSecondary} />
+                <MaterialCommunityIcons name={r.icon} size={22} color={theme.accent} />
                 <View style={styles.text}>
                   <ThemedText type="smallBold">{r.label}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.detail}>

@@ -1,6 +1,12 @@
-// Which drawn icon an activity gets, from the words it was logged with.
+// Which icon an activity gets, from the words it was logged with.
 //
-// FREE TEXT IN, EIGHT SHAPES OUT. Activities arrive as whatever somebody said -
+// THE DRAWINGS BECAME LIBRARY ICONS ON 21 SEPTEMBER 2026 and none of this
+// changed, which is the point of the split: this file decides WHICH mark, and
+// activity-icon.tsx decides what that mark looks like. Swapping every drawing
+// in the app for Material Community Icons touched one file and left the
+// matching alone.
+//
+// FREE TEXT IN, TEN SHAPES OUT. Activities arrive as whatever somebody said -
 // "ballet", "1.5 hours ballet then yoga", "walked the dog", "Samsung daily
 // summary" - so this answers one question only: which of the eight drawings
 // belongs beside it. Anything unrecognised gets the plain movement mark rather
@@ -24,10 +30,12 @@ export type ActivityIconKind =
 
 const RULES: [ActivityIconKind, RegExp][] = [
   ['yoga', /\b(yoga|pilates|barre|vinyasa|ashtanga|hatha)\b/i],
-  // A BALLET SLIPPER WAS TRIED AND DROPPED (2026-09-20). Drawn twice, it read
-  // as a blob at the 26 points a card gives it: a slipper needs a ribbon and a
-  // sole to be a slipper at all. The dancing figure says the same thing
-  // legibly, which is the only test a small drawing has to pass.
+  // THE BALLET SLIPPER, RESOLVED (2026-09-21). It was drawn and dropped twice
+  // on 20 September and once more the next day - at 26 points a hand-drawn
+  // slipper is a blob, because a slipper needs a ribbon and a sole to be a
+  // slipper at all. It exists in the icon library, drawn properly, and always
+  // did. Two days of drawing answered by one glyph name is worth remembering
+  // the next time something small has to be legible.
   ['dance', /\b(ballet|barre class|pointe|dance|dancing|zumba|salsa|tap class)\b/i],
   ['climb', /\b(climb|climbing|bouldering|scrambl)/i],
   ['swim', /\b(swim|swimming|pool|breaststroke|front crawl|lengths)\b/i],
