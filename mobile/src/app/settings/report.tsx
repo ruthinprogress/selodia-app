@@ -177,8 +177,15 @@ function Picker({
         accessibilityLabel={showing ? `Hide ${title}` : `Choose from ${title}`}
         style={({ pressed }) => [styles.expander, pressed && styles.pressed]}
       >
-        <ThemedText type="small">
-          {chosen.size === 0 ? `${total} kept, none chosen` : `${chosen.size} of ${total} chosen`}
+        {/* IT SAYS WHAT WILL HAPPEN, NOT WHAT STATE IT IS IN (Ruth, 21
+            September 2026: "the activity tick box is ambiguous until you know").
+            It read "14 kept, none chosen", which sounds like fourteen things
+            are going in - and none of them were. A builder has one job, which
+            is to tell you what the document will contain before you make it. */}
+        <ThemedText type="small" themeColor={chosen.size === 0 ? 'textSecondary' : 'text'}>
+          {chosen.size === 0
+            ? `Not included · ${total} to choose from`
+            : `${chosen.size} of ${total} included`}
         </ThemedText>
         <Ionicons
           name={showing ? 'chevron-up' : 'chevron-down'}
@@ -785,7 +792,7 @@ export default function ReportScreen() {
           {picker({
             source: 'activity',
             title: 'Movement',
-            hint: 'The kinds of movement to include. Leave them all clear to leave movement out.',
+            hint: 'Tick a kind of movement to put it in the report. Anything left unticked is left out, and if you tick nothing there is no movement section at all.',
             values: catalogue.activityTypes,
           })}
 
