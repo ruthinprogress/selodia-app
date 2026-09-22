@@ -1,0 +1,88 @@
+# MOVING THE LIBRARY TO ITS REAL HOME (Ruth, 22 September 2026).
+#
+# Her Dropbox team trial ended and the renewal was £172.80 a year for an account
+# that was only ever holding the vendor's bundle twice. Backblaze B2 keeps the
+# whole 138 GB for about 66p a month. See scripts/mirror-library.mjs for why
+# this works at all - the short version is that the vendor's shared folder can
+# be read by its namespace without being added to her Dropbox, so it stops
+# counting against her storage while staying fully readable.
+#
+# ONE FOLDER PER JOB. 20,600 files is too much for a single six-hour run, and
+# splitting it means a folder that fails is re-run on its own rather than
+# restarting the lot. They run one at a time on purpose: two jobs pulling from
+# Dropbox at once is how you find a rate limit.
+#
+# SAFE TO RUN AGAIN, ALWAYS. A file already in the bucket at the same size is
+# skipped, so the way to finish an interrupted mirror is to press the button
+# again. Nothing is ever deleted, in Dropbox or in B2.
+name: Mirror the library to B2
+
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: 'Which part to mirror'
+        type: choice
+        default: 'the irreplaceable bit first'
+        options:
+          - 'the irreplaceable bit first'
+          - 'everything the app needs'
+          - 'the whole bundle'
+      dry_run:
+        description: 'List what would copy, upload nothing'
+        type: boolean
+        default: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.pick.outputs.jobs }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          case "${{ inputs.what }}" in
+            "the irreplaceable bit first")
+              # The 265 files the vendor has already replaced. These exist
+              # nowhere else - everything else can be pulled from the vendor
+              # again - so they go first, whatever else is decided later.
+              echo 'jobs=[{"source":"backup","folder":"Superseded by vendor re-release"}]' >> "$GITHUB_OUTPUT"
+              ;;
+            "everything the app needs")
+              echo 'jobs=[{"source":"backup","folder":"Superseded by vendor re-release"},{"source":"vendor","folder":"VERTICAL VIDEOS"},{"source":"vendor","folder":"ILLUSTRATIONS"},{"source":"vendor","folder":""}]' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo 'jobs=[{"source":"backup","folder":"Superseded by vendor re-release"},{"source":"vendor","folder":"VERTICAL VIDEOS"},{"source":"vendor","folder":"ILLUSTRATIONS"},{"source":"vendor","folder":"HD 720p LOWEST FILE SIZE"},{"source":"vendor","folder":"FULL HD 1080P"},{"source":"vendor","folder":"1500+ GREEN SCREEN VIDEOS"},{"source":"vendor","folder":"OLDER CHARACTER VIDEOS & ILLUSTRATIONS - ALREADY AVAILABLE IN THE OTHER FOLDERS"},{"source":"vendor","folder":"4K UHD 2160P"},{"source":"vendor","folder":""}]' >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  mirror:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      # One at a time, and a folder that fails does not cancel the rest.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        part: ${{ fromJson(needs.plan.outputs.jobs) }}
+    name: ${{ matrix.part.folder || 'loose files at the top' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Mirror
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+        run: |
+          node scripts/mirror-library.mjs \
+            --source "${{ matrix.part.source }}" \
+            ${{ matrix.part.folder && format('--folder "{0}"', matrix.part.folder) || '' }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
