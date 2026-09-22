@@ -72,8 +72,13 @@ const ROWS: Row[] = [
   {
     id: 'water',
     icon: 'cup-water',
-    label: 'Water',
-    detail: 'A glass, a mug, a bottle',
+    // HYDRATION, NOT WATER (Ruth, 22 September 2026: "which is still called
+    // water, hydration is better"). It stopped being only water the day a milky
+    // tea started counting towards it, and the name was the last thing still
+    // saying otherwise. The id stays `water` so nobody's saved arrangement of
+    // this list breaks over a label.
+    label: 'Hydration',
+    detail: 'Add a drink, and the week behind it',
     go: () => router.push('/log/water-history'),
   },
   {

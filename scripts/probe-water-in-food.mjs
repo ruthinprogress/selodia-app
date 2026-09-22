@@ -101,5 +101,23 @@ check('water beside the wine survives', waterFromDrinks(['2 glasses of wine', '5
 });
 check('alcohol free beer hydrates', waterFromDrinks(['a bottle of alcohol free beer']).ml, 500);
 
+group('a drink named without a vessel');
+
+// HER ENTRY, 22 September: "three black coffees" was logged as food and
+// recorded as no hydration at all, because the word boundary after "coffee"
+// does not match "coffees". The plural fell straight through.
+check('three black coffees', parseVolumeMl('three black coffees'), 750);
+check('one black coffee', parseVolumeMl('black coffee'), 250);
+check('2 coffees in digits', parseVolumeMl('2 coffees'), 500);
+check('a herbal tea', parseVolumeMl('a herbal tea'), 250);
+check('teas, plural', parseVolumeMl('two teas'), 500);
+check('waters, plural', parseVolumeMl('two waters'), 500);
+// A COUNT STILL LOSES TO A STATED VOLUME, which is the more precise thing.
+check('a stated volume wins', parseVolumeMl('500ml of coffee'), 500);
+check('a vessel wins too', parseVolumeMl('two mugs of coffee'), 600);
+// A TURN OF PHRASE IS NOT FIVE LITRES.
+check('an absurd count is capped', parseVolumeMl('20 coffees'), 3000);
+check('still not a drink', parseVolumeMl('a slice of coffee cake'), 250);
+
 console.log(`\n  ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

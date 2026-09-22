@@ -28,6 +28,14 @@ export default function LogLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="food-history" options={{ title: 'Food log' }} />
       <Stack.Screen name="activity-history" options={{ title: 'Activity log' }} />
+      {/* WITHOUT A TITLE THE HEADER SHOWS THE FILE NAME (Ruth, 22 September
+          2026, from a screenshot reading "water-history"). Every screen reached
+          from the Log needs one, or the route name leaks into the app. */}
+      <Stack.Screen name="water-history" options={{ title: 'Hydration' }} />
+      <Stack.Screen name="entries" options={{ title: 'Log' }} />
+      <Stack.Screen name="sleep" options={{ title: 'Sleep' }} />
+      <Stack.Screen name="cycle" options={{ title: 'Cycle' }} />
+      <Stack.Screen name="feeling" options={{ title: 'How you felt' }} />
     </Stack>
   );
 }

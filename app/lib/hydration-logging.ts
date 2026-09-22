@@ -56,10 +56,28 @@ export function parseVolumeMl(text: string): number | null {
     return count * per;
   }
 
-  // A drink with no stated quantity is one ordinary glass. A default is right
-  // here where it would be wrong for food: the range of plausible answers is
-  // narrow, and the cost of being 50ml out on a wellbeing reflection is nil.
-  if (/\b(water|tea|coffee|squash|herbal)\b/.test(t)) return GLASS_ML;
+  // A DRINK NAMED WITHOUT A VESSEL, WHICH IS HOW PEOPLE MOSTLY TALK: "three
+  // black coffees", "a herbal tea". Two things were wrong here before 22
+  // September 2026, and Ruth found them the same evening with one entry:
+  //
+  //   "Coffee logged in food (thats ok) but wasnt logged in hydration"
+  //
+  // She had said "three black coffees". The word boundary after `coffee` does
+  // not match `coffees`, so the plural fell straight through and the drink was
+  // recorded as nothing at all. And even singular, the count was ignored: three
+  // coffees and one coffee both came to a single glass.
+  //
+  // A default volume is right here where it would be wrong for food - the range
+  // of plausible answers is narrow, and being 50ml out on a wellbeing figure
+  // costs nothing. Silently losing a drink does.
+  const drink = /\b(waters?|teas?|coffees?|squash|herbal|decaf|brew)\b/.exec(t);
+  if (drink) {
+    const leading = new RegExp(String.raw`^(?:about\s+|approx\.?\s+|around\s+)?(\d+(?:\.\d+)?|` + Object.keys(WORDS).join('|') + String.raw`)\b`).exec(t);
+    const count = leading ? (WORDS[leading[1]] ?? Number(leading[1])) : 1;
+    if (!isFinite(count) || count <= 0) return GLASS_ML;
+    // A sanity ceiling: "20 coffees" is a turn of phrase, not five litres.
+    return Math.min(count, 12) * GLASS_ML;
+  }
 
   return null;
 }
