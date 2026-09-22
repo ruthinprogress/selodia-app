@@ -1,5 +1,6 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, Keyboard, type ScrollView } from 'react-native';
+import { AppState, Dimensions, Keyboard, type ScrollView } from 'react-native';
 
 import { QUIET_MS, REVEAL_CEILING_MS, shouldAnimate } from '@/lib/chat-scroll-rules';
 
@@ -7,59 +8,53 @@ import { QUIET_MS, REVEAL_CEILING_MS, shouldAnimate } from '@/lib/chat-scroll-ru
 //
 // Found live 2026-08-27: the thread never moved. Opening Chat landed you at the
 // TOP of the entire conversation, and sending a message left the reply below the
-// fold - you had to scroll down to read what you had just been told. There was
-// no ref, no scrollToEnd, nothing: it had simply never been implemented.
+// fold. There was no ref, no scrollToEnd, nothing.
 //
 // Driven by onContentSizeChange rather than by a messages-length effect, because
 // the thread grows for reasons a message count does not capture: history
-// hydrating on mount, a signed image URL arriving, the food breakdown table
-// rendering under a turn once its rows load.
+// hydrating, a signed image URL arriving, a food table filling in under a turn.
 //
 // THEN IT ARRIVED SOMEWHERE VIOLENT (Ruth, 21 September 2026):
 //
 //   "when you open the app, the chat scrolls violently through all the past
-//   chat, landing in the present. It doesn't feel calm at all. Can we change it
-//   so it just opens where the chat is actually up to, not mad scrolling to the
-//   present?"
+//   chat, landing in the present. It doesn't feel calm at all."
 //
-// THE FIRST ATTEMPT TURNED THE ANIMATION OFF AND WAS NOT ENOUGH. Her note back
-// the same evening: "crazy scroll entry still happening." Turning off animation
-// only governs how the view TRAVELS; it does nothing about the fact that the
-// thread is assembled on screen in front of her. A ScrollView holding a long
-// history lays out from the top, and every chunk that arrives - the history
-// query, then the images, then a food table filling in under a turn from three
-// weeks ago - moves the content under the viewport. Instant jumps through an
-// assembling thread look exactly like scrolling through it, because they are.
+// AND THEN IT TOOK FOUR GOES, which is worth writing down properly because the
+// first three were the same mistake wearing different clothes.
 //
-// SO THE THREAD IS NOT SHOWN UNTIL IT IS PLACED. It lays out as normal,
-// invisibly, and is revealed once it has stopped arriving - by which time the
-// view is already at the newest message. There is no travel to watch because
-// nothing is visible until there is nothing left to travel through. That is
-// what "just opens where the chat is actually up to" actually requires.
+//   1. Turned the animation off during an opening window. Still happened. That
+//      only governs how the view TRAVELS; it says nothing about the thread
+//      being assembled on screen in front of her.
+//   2. Hid the thread until it stopped growing. Still happened.
+//   3. Held the reveal until the history query finished. Still happened.
 //
-// A HARD CEILING ON THE WAIT, because a chat that never appears would be far
-// worse than one that arrives untidily. It is deliberately generous: while the
-// history is still loading there is nothing to look at either way, so hiding
-// costs nothing, and the only thing the ceiling protects against is a query
-// that never returns.
+// EVERY ONE OF THOSE RAN AT MOUNT, AND OPENING THE APP IS NOT A MOUNT. Chat is
+// the first tab. It mounts once and stays mounted for the life of the process,
+// so reopening the app RESUMES it: no mount, none of that code runs, `settled`
+// is still true from hours ago, and the thread reloads in full view. Three
+// fixes could not work, for a reason that had nothing to do with any of them.
+//
+// This is the SECOND time this exact trap has cost a day on this app. The first
+// was a handoff that never ran because it sat in a lazy useState initialiser on
+// a screen that was already mounted. The lesson both times: on this screen,
+// "when it opens" means FOCUS AND RESUME, and never mount.
+//
+// So the opening state is reset by useFocusEffect and by AppState going active,
+// and mount is one more way in rather than the only one.
 
-// `pending` is whatever the screen is still waiting for - the history query,
-// in Chat's case. WITHOUT IT THE REVEAL FIRES TOO EARLY (found 21 September
-// 2026, after Ruth reported the scroll a second time): the quiet countdown
-// started at mount, the history read took longer than it, and the thread was
-// revealed EMPTY - so the whole history then landed in full view, which is
-// precisely the thing being hidden. Nothing settles while something is still on
-// its way.
 export function useChatScroll(pending: boolean = false) {
   const ref = useRef<ScrollView | null>(null);
-  const openedAt = useRef(Date.now());
+  // Zero until the first opening, rather than Date.now() here: reading the clock
+  // during render is impure, and reopen() sets it before anything can read it.
+  const openedAt = useRef(0);
   const lastHeight = useRef(0);
 
-  // `settled` drives what the screen shows; the ref is what the callback reads,
-  // so the handler never closes over a stale value.
+  // `settled` drives what the screen shows; the ref is what the callbacks read,
+  // so a handler never closes over a stale value.
   const [settled, setSettled] = useState(false);
   const isSettled = useRef(false);
   const quiet = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ceiling = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const done = useCallback(() => {
     isSettled.current = true;
@@ -73,25 +68,53 @@ export function useChatScroll(pending: boolean = false) {
     quiet.current = setTimeout(done, QUIET_MS);
   }, [done]);
 
-  useEffect(() => {
-    // The ceiling runs from mount whatever happens, so a query that never
-    // returns cannot leave the thread invisible for ever.
-    const ceiling = setTimeout(done, REVEAL_CEILING_MS);
-    return () => clearTimeout(ceiling);
-  }, [done]);
+  /** Treat this as a fresh opening: hide, re-measure, arrive at the bottom. */
+  const reopen = useCallback(() => {
+    openedAt.current = Date.now();
+    lastHeight.current = 0;
+    isSettled.current = false;
+    setSettled(false);
+    if (ceiling.current) clearTimeout(ceiling.current);
+    // A chat that never appears would be far worse than one that arrives
+    // untidily, so it is revealed regardless after this.
+    ceiling.current = setTimeout(done, REVEAL_CEILING_MS);
+    waitForQuiet();
+  }, [done, waitForQuiet]);
 
+  // COMING BACK TO THE SCREEN COUNTS AS OPENING IT. This is the line the first
+  // three attempts were missing.
+  useFocusEffect(
+    useCallback(() => {
+      reopen();
+    }, [reopen])
+  );
+
+  // AND SO DOES THE APP WAKING UP, which changes no focus at all: Chat can be
+  // the focused screen for days while the phone is in a pocket.
   useEffect(() => {
-    // While something is still loading, keep pushing the reveal back. Once it
-    // is done, the ordinary quiet period decides - and an empty thread, which
-    // never fires a size change at all, is settled by this same countdown.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') reopen();
+    });
+    return () => sub.remove();
+  }, [reopen]);
+
+  useEffect(
+    () => () => {
+      if (quiet.current) clearTimeout(quiet.current);
+      if (ceiling.current) clearTimeout(ceiling.current);
+    },
+    []
+  );
+
+  // Nothing settles while something is still on its way - the history query, in
+  // Chat's case. Without this the reveal fires on an EMPTY thread and the whole
+  // history then lands in full view, which is the thing being hidden.
+  useEffect(() => {
     if (pending) {
       if (quiet.current) clearTimeout(quiet.current);
       return;
     }
     waitForQuiet();
-    return () => {
-      if (quiet.current) clearTimeout(quiet.current);
-    };
   }, [pending, waitForQuiet]);
 
   const onContentSizeChange = useCallback(
@@ -99,8 +122,11 @@ export function useChatScroll(pending: boolean = false) {
       const grew = h - lastHeight.current;
       lastHeight.current = h;
 
+      // A zero here means the opening has not been stamped yet, which is itself
+      // an opening - so it reads as "no time has passed" and does not animate.
+      const sinceOpen = openedAt.current === 0 ? 0 : Date.now() - openedAt.current;
       ref.current?.scrollToEnd({
-        animated: shouldAnimate(Date.now() - openedAt.current, grew, Dimensions.get('window').height),
+        animated: shouldAnimate(sinceOpen, grew, Dimensions.get('window').height),
       });
 
       waitForQuiet();
@@ -109,11 +135,8 @@ export function useChatScroll(pending: boolean = false) {
   );
 
   // The keyboard opening is the one case onContentSizeChange cannot catch. The
-  // layout gets SHORTER (that is the whole point of the keyboard-avoiding
-  // padding) while the content stays exactly the same size, so nothing fires -
-  // and the newest message slides up under the input, which is the same
-  // can't-see-it problem one layer along. Handled here rather than per screen so
-  // all eight conversation screens get it from one place.
+  // layout gets SHORTER while the content stays the same size, so nothing fires,
+  // and the newest message slides up under the input.
   useEffect(() => {
     const sub = Keyboard.addListener('keyboardDidShow', () => {
       ref.current?.scrollToEnd({ animated: true });
