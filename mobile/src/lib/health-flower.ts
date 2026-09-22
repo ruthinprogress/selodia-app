@@ -157,6 +157,20 @@ export function coverageFromRows(rows: CoverageRow[]): FlowerCoverage {
   return out;
 }
 
+/**
+ * Recovery earned outside the activity table, folded in.
+ *
+ * Sleep and rest days are not sessions, so they never appear in the cover_*
+ * columns - but they are the larger part of what recovery actually is. Added
+ * here rather than invented as fake activity rows, because a night's sleep is
+ * not a workout and the Movement log must never show one.
+ */
+export function withExtraRecovery(c: FlowerCoverage, points: number): FlowerCoverage {
+  if (!Number.isFinite(points) || points <= 0) return c;
+  const asPercent = Math.round((points / WEEKLY_TARGET) * 100);
+  return { ...c, recovery: Math.min(100, c.recovery + asPercent) };
+}
+
 // True only when every dimension is genuinely full. This is what makes the seed
 // appear, so it is an exact test rather than a nearly: a flower that blooms at
 // 97% would make the moment cheap, and the moment is the whole point of it.

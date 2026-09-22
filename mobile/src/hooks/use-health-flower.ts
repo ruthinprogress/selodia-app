@@ -2,10 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 
 import {
   coverageFromRows,
+  withExtraRecovery,
   EMPTY_COVERAGE,
   type CoverageRow,
   type FlowerCoverage,
 } from '@/lib/health-flower';
+import {
+  daysOfWeek,
+  type LoadedSession,
+  recoveryFromRestDays,
+  recoveryFromSleep,
+  type SleepNight,
+} from '@/lib/recovery';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, toLocalDateKey } from '@/lib/week';
 
@@ -68,7 +76,7 @@ export function useHealthFlower(): HealthFlowerState {
         const { data, error: readError } = await supabase
           .from('activity_logs')
           .select(
-            'cover_strength, cover_cardio, cover_flexibility, cover_balance, cover_bone, cover_recovery'
+            'cover_strength, cover_cardio, cover_flexibility, cover_balance, cover_bone, cover_recovery, happened_at, intensity, eccentric_load'
           )
           // Half-open interval: Monday 00:00 inclusive, next Monday 00:00
           // exclusive. gte/lt rather than gte/lte so a row stamped exactly at
@@ -90,7 +98,25 @@ export function useHealthFlower(): HealthFlowerState {
         }
 
         const rows = (data ?? []) as CoverageRow[];
-        setCoverage(coverageFromRows(rows));
+
+        // SLEEP IS THE BIGGEST RECOVERY INPUT THERE IS, and until today it fed
+        // nothing at all (Ruth, 22 September 2026: "the Health flower in Today
+        // is empty, but I'm pretty sure I've been resting"). A rested week now
+        // looks rested, while an empty week still looks empty - see
+        // lib/recovery.ts for why those have to stay different.
+        const { data: sleepRows } = await supabase
+          .from('sleep_logs')
+          .select('night_of, duration_min, quality, awakenings')
+          .gte('night_of', weekStart.toISOString().slice(0, 10))
+          .lt('night_of', weekEnd.toISOString().slice(0, 10));
+
+        if (cancelled) return;
+
+        const earned =
+          recoveryFromSleep((sleepRows ?? []) as SleepNight[]) +
+          recoveryFromRestDays(rows as unknown as LoadedSession[], daysOfWeek(weekStart));
+
+        setCoverage(withExtraRecovery(coverageFromRows(rows), earned));
         setUnclassified(rows.filter((r) => r.cover_strength == null).length);
       } catch (err) {
         if (!cancelled) {

@@ -79,8 +79,20 @@ export async function logActivityFromText(
   // calorie figure with nothing underneath it, and it is better to log nothing
   // than to log that. Silently dropping is right here - the caller reports what
   // landed, and an empty result reads as "not logged" all the way up.
+  //
+  // A REST DAY IS THE ONE THING WITH NO DURATION TO WITHHOLD (22 September
+  // 2026). The rule above exists because a calorie figure cannot be built on a
+  // guessed length - and a rest day burns nothing to guess at. Without this
+  // exception, "rest day today" was silently dropped, which is why recovery
+  // could never be earned by saying so.
+  // String.raw, because a backslash written through a script has landed in a
+  // regex as a literal backspace five separate times on this project today.
+  // Without the word boundaries, "restaurant" would count as a rest day.
+  const isRest = (a: ParsedActivity) =>
+    new RegExp(String.raw`\brest\b`, 'i').test(String(a.activity_type ?? ''));
+
   const loggable = (parsed.activities as ParsedActivity[]).filter(
-    (a) => typeof a.duration_min === 'number' && a.duration_min > 0
+    (a) => isRest(a) || (typeof a.duration_min === 'number' && a.duration_min > 0)
   );
   if (loggable.length === 0) return [];
 
