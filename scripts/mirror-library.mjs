@@ -166,13 +166,24 @@ async function backblaze() {
   });
   if (!a.ok) throw new Error(`B2 authorize failed (${a.status}): ${(await a.text()).slice(0, 200)}`);
   const auth = await a.json();
-  const apiUrl = auth.apiInfo.storageApi.apiUrl;
+  const storage = auth.apiInfo.storageApi;
+  const apiUrl = storage.apiUrl;
   const token = auth.authorizationToken;
 
-  const buckets = await fetch(`${apiUrl}/b2api/v3/b2_list_buckets?accountId=${auth.accountId}`, {
-    headers: { Authorization: token },
-  });
-  const found = (await buckets.json()).buckets?.find((b) => b.bucketName === E.B2_BUCKET);
+  // A KEY RESTRICTED TO ONE BUCKET - which is what the setup page tells her to
+  // make, so it is the normal case - cannot call b2_list_buckets at all. The
+  // login response names the bucket it is allowed, so that is used when it is
+  // there and the list is only asked for when the key is account-wide.
+  let found = storage.bucketId ? { bucketId: storage.bucketId, bucketName: storage.bucketName } : null;
+  if (found && found.bucketName !== E.B2_BUCKET) {
+    throw new Error(`This key is restricted to the bucket "${found.bucketName}", but B2_BUCKET says "${E.B2_BUCKET}".`);
+  }
+  if (!found) {
+    const buckets = await fetch(`${apiUrl}/b2api/v3/b2_list_buckets?accountId=${auth.accountId}`, {
+      headers: { Authorization: token },
+    });
+    found = (await buckets.json()).buckets?.find((b) => b.bucketName === E.B2_BUCKET);
+  }
   if (!found) throw new Error(`No B2 bucket called "${E.B2_BUCKET}" on this account.`);
 
   return {

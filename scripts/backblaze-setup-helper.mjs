@@ -54,8 +54,23 @@ async function check({ B2_KEY_ID, B2_APP_KEY, B2_BUCKET }) {
     });
     if (!a.ok) return { ok: false, why: 'Backblaze would not accept that key id and key. Worth making a fresh application key.' };
     const auth = await a.json();
-    const apiUrl = auth.apiInfo.storageApi.apiUrl;
-    const r = await fetch(`${apiUrl}/b2api/v3/b2_list_buckets?accountId=${auth.accountId}`, {
+    const storage = auth.apiInfo.storageApi;
+
+    // A KEY RESTRICTED TO ONE BUCKET CANNOT LIST BUCKETS (found by Ruth, 22
+    // September 2026: "your form says there's no bucket but there is"). It was
+    // my own advice to restrict the key, and then this asked Backblaze for the
+    // whole list, which a restricted key is refused. The login response already
+    // names the bucket such a key is allowed, so it is read from there.
+    if (storage.bucketId) {
+      return storage.bucketName === B2_BUCKET
+        ? { ok: true, why: `Connected. This key is restricted to "${storage.bucketName}", which is exactly right.` }
+        : {
+            ok: false,
+            why: `The key works, but it is restricted to the bucket "${storage.bucketName}" and you have typed "${B2_BUCKET}". Change the bucket name above to match.`,
+          };
+    }
+
+    const r = await fetch(`${storage.apiUrl}/b2api/v3/b2_list_buckets?accountId=${auth.accountId}`, {
       headers: { Authorization: auth.authorizationToken },
     });
     const buckets = (await r.json()).buckets ?? [];
