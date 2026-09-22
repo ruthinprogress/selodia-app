@@ -614,6 +614,25 @@ export default function CycleScreen() {
         </Pressable>
       </ThemedView>
 
+      {/* THE WAY IN, WHERE SHE CAN SEE IT (Ruth, 22 September 2026: "Cards on
+          Cycle are re-ordering bit no 'hide' available"). The hide buttons were
+          there all along, behind an edit mode whose only door was a grey line
+          under the cards - the same fault the Log page had, fixed there and not
+          here. A control nobody finds is a control that does not exist. */}
+      <View style={styles.arrangeBar}>
+        <Pressable
+          onPress={() => setEditing((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={editing ? 'Finish arranging the cards' : 'Arrange these cards'}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <ThemedText type="smallBold" themeColor="link">
+            {editing ? 'Done' : 'Arrange'}
+          </ThemedText>
+        </Pressable>
+      </View>
+
       <ReorderableRows
         items={shown}
         onReorder={(next_) => keep(next_, hidden)}
@@ -736,6 +755,7 @@ const styles = StyleSheet.create({
   markText: { flex: 1 },
   history: { gap: Spacing.two },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  arrangeBar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: Spacing.two },
   hint: { lineHeight: 18 },
   pressed: { opacity: 0.6 },
 });
