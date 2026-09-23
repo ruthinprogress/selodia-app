@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ActivityLogSheet } from '@/components/activity-log-sheet';
@@ -41,11 +41,17 @@ import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging
 export function QuickLogBar({
   kind,
   onLogged,
+  onNoteChange,
 }: {
   kind: 'food' | 'activity' | 'measurement';
   // Fired after anything lands, so the view above can re-read itself. The point
   // of logging here is seeing it appear here.
   onLogged: () => void;
+  // Whether an acknowledgment is currently on screen. The measurements view
+  // uses it to stop saying the same sentence twice: the acknowledgment already
+  // carries the reading's interpretation, because bodyAckFacts composes it from
+  // the same function the standalone note does.
+  onNoteChange?: (showing: boolean) => void;
 }) {
   const theme = useTheme();
   const [input, setInput] = useState('');
@@ -54,7 +60,14 @@ export function QuickLogBar({
   // The last thing that happened, in one line. Not a chat thread — this surface
   // logs and gets out of the way, and the conversation is a tab away for anyone
   // who wants it.
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNoteRaw] = useState<string | null>(null);
+  const setNote = useCallback(
+    (value: string | null) => {
+      setNoteRaw(value);
+      onNoteChange?.(Boolean(value));
+    },
+    [onNoteChange]
+  );
   // The activity waiting on its effort and duration. Non-null means the sheet
   // is open and nothing has been sent yet: the text has left the input, but it
   // has not left the phone.

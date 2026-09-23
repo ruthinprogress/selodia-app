@@ -71,6 +71,10 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [rows, setRows] = useState<MeasurementRow[]>([]);
   // Bumped when something lands, so a reading logged here appears here.
   const [reloadKey, setReloadKey] = useState(0);
+  // See ReadingInterpretationNote: the quick-log acknowledgment already carries
+  // the reading's interpretation, so the standalone note stands down while it is
+  // on screen rather than repeating it.
+  const [ackShowing, setAckShowing] = useState(false);
   // Re-read on arrival and shortly after - see hooks/use-focus-reload.ts.
   useFocusReload(setReloadKey);
 
@@ -119,14 +123,18 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           No duration sheet on this one. That gate is specific to activity,
           where a missing duration makes the calorie figure a fiction; a weight
           is complete the moment it is stated. */}
-      <QuickLogBar kind="measurement" onLogged={() => setReloadKey((k) => k + 1)} />
+      <QuickLogBar
+        kind="measurement"
+        onLogged={() => setReloadKey((k) => k + 1)}
+        onNoteChange={setAckShowing}
+      />
 
       <LogInChatHint tab="body" />
 
       {/* What the latest reading means. Anchored to the latest reading, not to
           the displayed week, so it stays put while you step back through
           history - it is a statement about now, not about the week on screen. */}
-      <ReadingInterpretationNote />
+      <ReadingInterpretationNote hidden={ackShowing} />
 
       {openRow ? (
         <ReadingCard
