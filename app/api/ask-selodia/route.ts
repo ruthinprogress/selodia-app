@@ -437,28 +437,49 @@ export async function POST(request: NextRequest) {
       content: m.content as string,
     }));
 
-  // The card image reaches the model exactly ONCE (decision, 2026-08-21):
-  // re-sending it every turn would charge vision tokens for the rest of the
-  // conversation to no benefit, since the reply it produces is already in the
-  // text history. Attached to the newest user turn so "this" is unambiguous.
-  // THEIR OWN SAVED ROUTINES, by name, so "I did the gym workout today" can
-  // find the plan it means (2026-09-18). Read beside the pending card, which is
-  // already an await at this point, rather than adding a round trip of its own.
-  const savedPlans = await loadPlans(supabase, user.id);
+  // FOUR READS, ONE WAIT (2026-09-23). These were four separate awaits in a row
+  // immediately after the Promise.all above, and none of them needs anything
+  // from the others: saved plans, insight titles, Me cards, pending card. Timed
+  // against the real database they cost 275ms one after another and 149ms
+  // together, so more than a third of this stretch was the route waiting on
+  // itself. Anything added here belongs in this batch, not after it.
+  //
+  // What each one is for:
+  //  - THEIR OWN SAVED ROUTINES, by name, so "I did the gym workout today" can
+  //    find the plan it means (2026-09-18).
+  //  - WHAT IS ALREADY IN HER INSIGHTS (2026-09-19). Without this the model
+  //    could not know a knee flare had been recorded the day before, so it
+  //    offered it again as a second symptom - and could never notice that
+  //    something keeps coming back, which is exactly when a symptom becomes
+  //    worth an insight. Titles, kinds and dates only; the newest few, because
+  //    a long list of old entries is a prompt about things the conversation is
+  //    not about.
+  //  - HER ME CARDS, by name and current status, so "I've stopped the
+  //    magnesium" can name the card it means. Titles only: the why stays in the
+  //    card, and quoting every reason on every turn would be a long prompt
+  //    about decisions the conversation is not about.
+  //  - The card image reaches the model exactly ONCE (decision, 2026-08-21):
+  //    re-sending it every turn would charge vision tokens for the rest of the
+  //    conversation to no benefit, since the reply it produces is already in
+  //    the text history. Attached to the newest user turn so "this" is
+  //    unambiguous.
+  const [savedPlans, { data: insightRows }, { data: meRows }, pendingCard] = await Promise.all([
+    loadPlans(supabase, user.id),
+    supabase
+      .from('almanac_entries')
+      .select('kind, title, created_at')
+      .eq('user_id', user.id)
+      .in('kind', ['symptom', 'insight'])
+      .order('created_at', { ascending: false })
+      .limit(15),
+    supabase
+      .from('almanac_entries')
+      .select('title, category, content')
+      .eq('user_id', user.id)
+      .eq('kind', 'me'),
+    loadPendingCardImage(supabase, user.id),
+  ]);
 
-  // WHAT IS ALREADY IN HER INSIGHTS (2026-09-19). Without this the model could
-  // not know a knee flare had been recorded the day before, so it offered it
-  // again as a second symptom - and could never notice that something keeps
-  // coming back, which is exactly when a symptom becomes worth an insight.
-  // Titles, kinds and dates only; the newest few, because a long list of old
-  // entries is a prompt about things the conversation is not about.
-  const { data: insightRows } = await supabase
-    .from('almanac_entries')
-    .select('kind, title, created_at')
-    .eq('user_id', user.id)
-    .in('kind', ['symptom', 'insight'])
-    .order('created_at', { ascending: false })
-    .limit(15);
   const insightsBlock =
     (insightRows ?? []).length > 0
       ? [
@@ -471,15 +492,6 @@ export async function POST(request: NextRequest) {
         ].join('\n')
       : '';
 
-  // HER ME CARDS, by name and current status, so "I've stopped the magnesium"
-  // can name the card it means. Titles only: the why stays in the card, and
-  // quoting every reason on every turn would be a long prompt about decisions
-  // the conversation is not about.
-  const { data: meRows } = await supabase
-    .from('almanac_entries')
-    .select('title, category, content')
-    .eq('user_id', user.id)
-    .eq('kind', 'me');
   const meCardsBlock =
     (meRows ?? []).length > 0
       ? [
@@ -506,7 +518,6 @@ export async function POST(request: NextRequest) {
         ].join('\n')
       : '';
 
-  const pendingCard = await loadPendingCardImage(supabase, user.id);
   if (pendingCard) {
     const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
     if (lastUserIdx >= 0) {
