@@ -59,6 +59,41 @@ export async function recordVoiceConsent(): Promise<void> {
   if (error) throw error;
 }
 
+// THE HEADPHONE FIX WAS HALF-BUILT AND NOBODY COULD HAVE SEEN IT (23 September
+// 2026). Ruth reported on 18 September that voice did not route to her
+// headphones, and lib/voice-audio-route.ts was given a preferred output list
+// beginning with 'bluetooth'. That list has been asking for something the app
+// was never allowed to have.
+//
+// The audio library underneath (com.github.davidliu:audioswitch, pulled in by
+// @livekit/react-native) declares BLUETOOTH with maxSdkVersion="30" - Android
+// 11 and below. From Android 12 the permission that lets an app see and route
+// to a paired Bluetooth device is BLUETOOTH_CONNECT, and it was declared
+// NOWHERE: not in the app, not in any dependency's manifest. Checked by reading
+// the AAR itself rather than assuming.
+//
+// So on any current phone the 'bluetooth' entry silently fell through to
+// headset, then speaker. No error, no log, nothing to notice - the fix simply
+// did not apply, and the symptom was identical to not having made it.
+//
+// ASKED ALONGSIDE THE MICROPHONE, not at the moment audio starts. It is a
+// dangerous permission on API 31+, so it needs a runtime prompt, and two
+// dialogs in a row while somebody is already saying yes to voice is far kinder
+// than one arriving mid-sentence. A refusal is not fatal: the route falls back
+// to headset or speaker exactly as it does now, which is why nothing here
+// returns a failure.
+async function askForBluetooth(): Promise<void> {
+  const permission = PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT;
+  // Absent on Android 11 and below, where BLUETOOTH from the library covers it.
+  if (!permission) return;
+  try {
+    if (await PermissionsAndroid.check(permission)) return;
+    await PermissionsAndroid.request(permission);
+  } catch {
+    // Routing is a convenience, never a reason to stop somebody talking.
+  }
+}
+
 // The OS dialog, after consent and never before.
 //
 // Two paths because the platforms answer differently, and the difference is one
@@ -73,7 +108,10 @@ export async function requestMicPermission(): Promise<MicPermission> {
       const result = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
       );
-      if (result === PermissionsAndroid.RESULTS.GRANTED) return 'granted';
+      if (result === PermissionsAndroid.RESULTS.GRANTED) {
+        await askForBluetooth();
+        return 'granted';
+      }
       if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) return 'blocked';
       return 'denied';
     } catch {
