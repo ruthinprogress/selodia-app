@@ -5,12 +5,25 @@ memory of any conversation, so this file is the only thing it knows.
 
 **Rules for a run**
 
-- Work the **first READY item** only. Finish it properly, then stop.
+- Work the READY items **in order**, as far as you get. Finish each one properly
+  before starting the next. Do not skip ahead because something looks quicker.
 - Commit and push each finished item with a real message.
 - Move it to **Done** below, with the date and one line on what happened.
 - If an item turns out to need a decision, move it to **Needs Ruth** with the
   question written out, and take the next READY one instead.
 - Never invent work that is not on this list.
+- Read `docs/where-things-go.md` before saving anything for her. It does not go
+  in the scratchpad and it does not go in a new folder.
+
+**Before you stop, leave the hand-back** (asked for 23 September 2026)
+
+She wants this waiting when she arrives, not assembled once she asks. Write it
+as a plain message, and put any file it refers to where that doc says:
+
+1. What got done, with the commits.
+2. What broke or got stuck. Honestly, including anything abandoned.
+3. What needs her, kept separate from what does not.
+4. Today's list, in a sensible order.
 
 **Never, in an unattended run**
 
@@ -54,6 +67,31 @@ memory of any conversation, so this file is the only thing it knows.
 
    `scripts/check-food-parse.mjs` passes on "a mug of tea with milk", so add a
    case that mixes a drink INTO a meal, which is the shape that fails.
+
+   Verify against the real model at the end, not just the probes. The probes
+   passed on this area two days running while the bug was live.
+
+2. **Session 51 and 52 close-out.** Two sessions behind. Append to the two
+   continuous sheets in `Selodia-Session-Closeouts.xlsx`, never a tab per
+   session, then add to `mobile/DECISION_PATTERNS.md` where a decision revealed
+   a real judgement pattern rather than just a choice. Re-sync to Drive.
+
+   Today alone is worth several: a guard belongs at the write; measure before
+   optimising; absent things present as working things; and the one that keeps
+   recurring, that a wrong mental model survives three confident fixes.
+
+3. **Measure the voice path.** The one part of "speed, round two" never done.
+   Get real numbers for the split between ASR finalising, the round trip to
+   `/v1/chat/completions`, and TTS first byte. Her ElevenLabs meeting is on
+   24 September and the notes currently say the turn is about five seconds
+   without being able to say where the five seconds go.
+
+   Measurement only. Do not tune anything tonight; a change made at 3am and not
+   understood by morning is worse than a slow turn she can describe.
+
+4. **Look in the Dropbox `_To process` folder** (0.39 GB), left unchecked after
+   the library migration. **Read only.** List what is in it, say whether it
+   matters, and write the answer down. Move nothing, delete nothing.
 
 ## Needs Ruth
 
