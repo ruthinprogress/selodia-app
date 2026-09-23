@@ -64,12 +64,14 @@ as a plain message, and put any file it refers to where that doc says:
    state machine use the finished text. Reproduce with
    `node scripts/measure-voice-turn.mjs 5`.
 
-2. **Look in the Dropbox `_To process` folder** (0.39 GB), left unchecked after
-   the library migration. **Read only.** List what is in it, say whether it
-   matters, and write the answer down. Move nothing, delete nothing.
-
 ## Needs Ruth
 
+- **`_To process` can be emptied, when she says so.** Checked 24 September,
+  read only. `/Selodia Team Folder/_To process`, 149 clips plus the metadata
+  sheet, 385 MB, all dated 17 September. Every single one of the 149 is already
+  in the library (919 clips). It is a staging copy of that release and holds
+  nothing the app does not have. Re-check any time with
+  `node scripts/check-to-process.mjs`. Hers to delete, not mine.
 - **Dropbox cleanup.** Unmount the vendor folder, confirm the namespace read
   still works, then delete the duplicate. Steps are in `docs/library-mirror.md`.
   Needs her at a keyboard, and nothing may be deleted without her confirming.
@@ -85,6 +87,9 @@ as a plain message, and put any file it refers to where that doc says:
   reopened twice to pick changes up.
 
 ## Done
+
+- 2026-09-24 — `_To process` inspected, read only: 149 clips, 385 MB, every one
+  already in the library. Safe for her to empty. Nothing touched.
 
 - 2026-09-24 — Voice turn measured, the part we own: median 6.6s to the first
   word, and the first word arrives at the same instant as the last. Numbers in
