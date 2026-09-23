@@ -26,8 +26,34 @@ memory of any conversation, so this file is the only thing it knows.
 
 ## Ready
 
-*Empty.* Everything queued on 22 September is done. Add the next thing here
-before the next unattended run, or it will have nothing to do.
+1. **A drink named alongside food is dropped entirely.** Found live on
+   23 September, not by a probe.
+
+   Sent: `Chicken salad with avocado and a flat white for lunch`
+
+   | | |
+   |---|---|
+   | `food_logs.raw_text` | "chicken salad with avocado, flat white" |
+   | `food_items` | Chicken, Salad, Avocado |
+   | `hydration_logs` | nothing |
+
+   So the model understood the flat white and said "the flat white is added",
+   but it never became an item and never reached Hydration. `flat white` IS in
+   `ALWAYS_CALORIC` in `app/lib/caloric-drink.ts`, so the drinks guard is not
+   the problem.
+
+   The itemiser is. It split the salad into three rows and dropped the drink,
+   and the hydration write hangs off an item that was never created. The
+   `underItemised` guard did not fire because "chicken salad with avocado,
+   flat white" reads as two things named against three rows written, which
+   looks like enough.
+
+   Two things to fix, and they are separate: a named drink must always become
+   its own item, and hydration must not depend on the itemiser having noticed.
+   A guard belongs at the write.
+
+   `scripts/check-food-parse.mjs` passes on "a mug of tea with milk", so add a
+   case that mixes a drink INTO a meal, which is the shape that fails.
 
 ## Needs Ruth
 

@@ -37,7 +37,17 @@ const TABS = [
 export default function AppTabs() {
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
+      {/* THE BAR MUST NOT SIT ON TOP OF THE SCREEN (23 September 2026). The
+          starter template gave TabSlot height 100% and floated the bar over it
+          absolutely, which covered the bottom strip of every screen - including
+          Chat's composer and Send button, so a click aimed at Send landed on
+          whichever tab was underneath. Found when a scripted message kept
+          navigating to Almanac instead of sending.
+
+          Flex instead: the screen takes the space that is left, the bar takes
+          what it needs, and nothing overlaps. minHeight 0 so a long thread
+          scrolls inside the slot rather than pushing the bar off-screen. */}
+      <TabSlot style={{ flex: 1, minHeight: 0 }} />
       <TabList asChild>
         <CustomTabList>
           {TABS.map((tab) => (
@@ -86,10 +96,11 @@ export function CustomTabList(props: TabListProps) {
 
 const styles = StyleSheet.create({
   tabListContainer: {
-    position: 'absolute',
-    bottom: 0,
     width: '100%',
-    padding: Spacing.three,
+    flexShrink: 0,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.three,
+    paddingTop: Spacing.two,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
