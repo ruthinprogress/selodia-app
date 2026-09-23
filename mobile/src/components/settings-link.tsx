@@ -66,11 +66,21 @@ export function SettingsLink({
           In the corner, a single lone word is obviously a control because
           nothing else is up there. Sitting at the end of a sentence it needs
           the colour the rest of the app gives a text link, or it is camouflage. */}
+      {/* THE THIRD TIME THIS WORD HAS LOST ITS S (Ruth, 23 September 2026,
+          screenshot of Today reading "Setting"). The 19 September fix above is
+          real and works - and it is on `cornerLabel`, which is applied only to
+          the CORNER placement. Today uses the inline one, which had no width
+          protection at all, so the fix never reached the screen that kept
+          reporting the fault.
+
+          numberOfLines={1} is the part that cannot be got wrong by placement:
+          with no second line to wrap onto, Android has nowhere to put the s. */}
       <ThemedText
         type="small"
         themeColor={placement === 'corner' ? 'textSecondary' : 'link'}
-        style={placement === 'corner' ? styles.cornerLabel : undefined}
+        style={placement === 'corner' ? styles.cornerLabel : styles.inlineLabel}
         textBreakStrategy="simple"
+        numberOfLines={1}
       >
         Settings
       </ThemedText>
@@ -89,5 +99,9 @@ const styles = StyleSheet.create({
   },
   // Corner only: inline, on Today's date line, a wide box would squeeze the date.
   cornerLabel: { minWidth: 96, textAlign: 'right' },
+  // Inline sits at the end of a sentence, so it cannot have a generous minimum
+  // width without pushing the date around. It gets the other half instead:
+  // never shrink, and never wrap. The date can reflow; the control cannot.
+  inlineLabel: { flexShrink: 0 },
   pressed: { opacity: 0.6 },
 });
