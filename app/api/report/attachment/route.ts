@@ -69,6 +69,24 @@ export async function POST(request: NextRequest) {
 
   const read = await readAttachment(source);
   if (!read.ok) {
+    // A REFUSAL HAS TO SAY IT IS A REFUSAL (23 September 2026). Ruth tried to
+    // attach a photograph of her knee, from the gallery and from the camera,
+    // and got "a straighter photo in better light usually does it" both times.
+    // It was never going to work: attachments are documents, by her own
+    // decision of 21 September. Suggesting better lighting for something the
+    // app will always decline wastes her afternoon and hides the rule.
+    if (read.reason === 'not_a_document') {
+      const saw = read.sawInstead ? ` This looks like ${read.sawInstead.replace(/\.$/, '')}.` : '';
+      return NextResponse.json(
+        {
+          error:
+            `This section takes documents rather than photographs: a letter, a results sheet, a scan report, a prescription.${saw} ` +
+            'Selodía does not keep photographs of bodies, so a picture of the area itself will not attach. ' +
+            'If you want it in the report, describe it in chat instead and it becomes part of the record.',
+        },
+        { status: 422 }
+      );
+    }
     return NextResponse.json(
       {
         error:

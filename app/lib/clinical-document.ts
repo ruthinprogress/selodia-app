@@ -372,7 +372,10 @@ function toolInput(reply: Anthropic.Message, name: string): Record<string, unkno
 
 export type ReadResult =
   | { ok: true; document: ClinicalDocument }
-  | { ok: false; reason: 'unreadable' | 'failed' };
+  | { ok: false; reason: 'unreadable' | 'failed' }
+  // Not a medical document at all. `sawInstead` is the model's own description
+  // of what the picture is, so the refusal can name it rather than be generic.
+  | { ok: false; reason: 'not_a_document'; sawInstead: string | null };
 
 /**
  * Reads one document, which may be several photographed pages or a PDF.
@@ -465,7 +468,30 @@ export async function readClinicalDocument(sources: Source[]): Promise<ReadResul
     document.references.length > 0 ||
     document.plan.length > 0 ||
     Boolean(document.clinician.name || document.clinician.organisation);
-  if (!hasSubstance) return { ok: false, reason: 'unreadable' };
+
+  // A PHOTOGRAPH IS NOT A BLURRY LETTER (Ruth, 23 September 2026: "Uploading
+  // photos to the report don't work. I tried a photo of my knee from gallery
+  // and straight from camera, no luck.")
+  //
+  // It worked exactly as built. Attachments are DOCUMENTS by her own decision
+  // of 21 September, when she was asked whether principle 16 covered a clinical
+  // photograph of her own knee and answered the whole question: "No photos in
+  // the app, please add a section to the report builder where additional and
+  // supplementary documents can be added."
+  //
+  // What was wrong was what she was told. The prompt above already asks the
+  // model to return kind "other" and say what the picture appears to be when it
+  // is not a medical document, and this line threw that away, so a photograph
+  // came back with the same reason as a page too dark to read - and the screen
+  // then suggested "a straighter photo in better light", inviting her to keep
+  // retrying something that can never succeed. A refusal dressed as a technical
+  // failure is worse than a refusal.
+  if (!hasSubstance) {
+    const looksLikeAPhoto = document.kind === 'other';
+    return looksLikeAPhoto
+      ? { ok: false, reason: 'not_a_document', sawInstead: document.unreadable[0] ?? null }
+      : { ok: false, reason: 'unreadable' };
+  }
 
   return { ok: true, document };
 }

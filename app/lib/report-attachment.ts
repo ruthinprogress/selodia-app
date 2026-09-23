@@ -46,7 +46,8 @@ export type Attachment = {
 /** What the app holds between reading an attachment and building the report. */
 export type ReadAttachment =
   | { ok: true; attachment: Attachment }
-  | { ok: false; reason: 'unreadable' | 'failed' };
+  | { ok: false; reason: 'unreadable' | 'failed' }
+  | { ok: false; reason: 'not_a_document'; sawInstead: string | null };
 
 const MAX_LINES = 40;
 
@@ -61,7 +62,11 @@ export async function readAttachment(
   source: { type: 'image'; mediaType: string; base64: string } | { type: 'pdf'; base64: string }
 ): Promise<ReadAttachment> {
   const read = await readClinicalDocument([source]);
-  if (!read.ok) return { ok: false, reason: read.reason };
+  if (!read.ok) {
+    return read.reason === 'not_a_document'
+      ? { ok: false, reason: 'not_a_document', sawInstead: read.sawInstead }
+      : { ok: false, reason: read.reason };
+  }
 
   const doc = read.document;
   return {
