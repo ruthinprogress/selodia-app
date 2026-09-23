@@ -1,13 +1,23 @@
 import { Platform } from 'react-native';
 import AppleHealthKit, { type HealthKitPermissions, type HealthValue } from 'react-native-health';
-import {
-  getGrantedPermissions,
-  getSdkStatus,
-  initialize,
-  requestPermission,
-  revokeAllPermissions,
-  SdkAvailabilityStatus,
-} from 'react-native-health-connect';
+
+// LOADED WHERE IT IS USED, NEVER AT IMPORT (23 September 2026). See the long
+// note in lib/steps.ts: react-native-health-connect evaluates its Android
+// branch on every platform, and on the New Architecture that branch throws
+// when the native module is absent. A static import here meant a dead screen
+// on iOS and a white screen on any over-the-air update reaching a binary built
+// before the package was added.
+type HealthConnect = typeof import('react-native-health-connect');
+
+function healthConnect(): HealthConnect | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('react-native-health-connect') as HealthConnect;
+  } catch {
+    return null;
+  }
+}
 
 // Asking the phone for step data, and being honest about the answer.
 //
@@ -29,10 +39,11 @@ export type StepPermissionResult = 'granted' | 'declined' | 'unsupported' | 'unk
 // give a permission back; there the preference stops the reading, and the
 // Health app is where the permission itself is removed.
 export async function releaseStepPermission(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  const hc = healthConnect();
+  if (!hc) return;
   try {
-    await initialize();
-    await revokeAllPermissions();
+    await hc.initialize();
+    await hc.revokeAllPermissions();
   } catch (err) {
     // Never a reason to stay on: the preference below still stops the reads.
     console.log('STEP PERMISSION (android): revoke failed -', err);
@@ -125,16 +136,19 @@ function requestIOSStepPermission(): Promise<StepPermissionResult> {
 async function requestAndroidStepPermission(): Promise<StepPermissionResult> {
   // Health Connect may not be installed or updated on the device even on a
   // supported OS version.
-  const status = await getSdkStatus();
-  if (status !== SdkAvailabilityStatus.SDK_AVAILABLE) return 'unsupported';
+  const hc = healthConnect();
+  if (!hc) return 'unsupported';
 
-  const initialized = await initialize();
+  const status = await hc.getSdkStatus();
+  if (status !== hc.SdkAvailabilityStatus.SDK_AVAILABLE) return 'unsupported';
+
+  const initialized = await hc.initialize();
   if (!initialized) return 'unsupported';
 
   if (await hasStepsRead()) return 'granted';
 
   try {
-    const granted = await requestPermission([{ accessType: 'read', recordType: 'Steps' }]);
+    const granted = await hc.requestPermission([{ accessType: 'read', recordType: 'Steps' }]);
     if (grantsSteps(granted)) return 'granted';
   } catch (err) {
     console.log('STEP PERMISSION (android): requestPermission threw —', err);
@@ -154,8 +168,10 @@ function grantsSteps(permissions: readonly MaybePermission[] | null | undefined)
 }
 
 async function hasStepsRead(): Promise<boolean> {
+  const hc = healthConnect();
+  if (!hc) return false;
   try {
-    return grantsSteps(await getGrantedPermissions());
+    return grantsSteps(await hc.getGrantedPermissions());
   } catch (err) {
     // Never let this throw into the caller: a failure to READ the permission list
     // is not evidence that permission is absent, and the request path below is

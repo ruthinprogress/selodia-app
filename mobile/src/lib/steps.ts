@@ -1,15 +1,44 @@
 import { Platform } from 'react-native';
 import AppleHealthKit, { type HealthKitPermissions, type HealthValue } from 'react-native-health';
-import {
-  aggregateRecord,
-  getGrantedPermissions,
-  getSdkStatus,
-  initialize,
-  SdkAvailabilityStatus,
-} from 'react-native-health-connect';
-
 import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
+
+// HEALTH CONNECT IS LOADED WHERE IT IS USED, NEVER AT IMPORT (23 September
+// 2026). It was a static top-level import, and that is the same fault as the
+// missing GestureHandlerRootView wearing a worse face.
+//
+// The package builds its module object BEFORE Platform.select runs, so the
+// Android branch is evaluated on every platform, and on the New Architecture
+// that branch is TurboModuleRegistry.getEnforcing('HealthConnect') - which
+// THROWS when the module is absent. The package is Android-only: no ios
+// directory, no podspec.
+//
+// So a static import meant:
+//   - on iOS, opening Today threw during module evaluation. A dead screen, on
+//     the path to the first TestFlight build.
+//   - on Android, any over-the-air update reaching a binary built before
+//     react-native-health-connect was added white-screened the Today tab.
+//
+// This codebase already documents the hazard three times - see
+// lib/document-pages.ts, lib/reminder-settings.ts and lib/notifications.ts -
+// and these two files were written afterwards without following it. A
+// try/catch around an await import() does not help: the throw happens at
+// evaluation, so the require has to be inside the function that needs it.
+type HealthConnect = typeof import('react-native-health-connect');
+
+function healthConnect(): HealthConnect | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('react-native-health-connect') as HealthConnect;
+  } catch {
+    // An older binary without the native module. Null reads as "cannot know",
+    // which every caller here already handles - and null is never written over
+    // a figure that exists.
+    return null;
+  }
+}
+
 
 // Reading the step count the phone already has, and keeping the day's total.
 //
@@ -72,18 +101,20 @@ function todayWindow(): { startISO: string; endISO: string; dateKey: string } {
 // refreshing itself. Somebody who declined must not meet the dialog again just
 // for opening the app.
 async function readAndroidSteps(startISO: string, endISO: string): Promise<number | null> {
+  const hc = healthConnect();
+  if (!hc) return null;
   try {
-    if ((await getSdkStatus()) !== SdkAvailabilityStatus.SDK_AVAILABLE) return null;
-    if (!(await initialize())) return null;
+    if ((await hc.getSdkStatus()) !== hc.SdkAvailabilityStatus.SDK_AVAILABLE) return null;
+    if (!(await hc.initialize())) return null;
 
-    const granted = await getGrantedPermissions();
+    const granted = await hc.getGrantedPermissions();
     const canRead = (granted ?? []).some(
       (p) => (p as { recordType?: string; accessType?: string }).recordType === 'Steps' &&
         (p as { recordType?: string; accessType?: string }).accessType === 'read'
     );
     if (!canRead) return null;
 
-    const result = await aggregateRecord({
+    const result = await hc.aggregateRecord({
       recordType: 'Steps',
       timeRangeFilter: { operator: 'between', startTime: startISO, endTime: endISO },
     });
