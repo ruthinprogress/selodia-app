@@ -39,75 +39,23 @@ as a plain message, and put any file it refers to where that doc says:
 
 ## Ready
 
-*Six from Ruth, 23 September, just before bed. Screenshots in the session.*
+1. **Nothing is sent until the whole reply exists.** Measured 23 September:
+   time to the FIRST word and time to the LAST word were identical across
+   eight turns, median 6.6s. `spokenCompletion` awaits the whole reply before
+   sending, so ElevenLabs cannot start speaking until generation ends.
 
-1. **Two contradictory readings of the same weigh-in.** Log > Measurements,
-   23 September. The card says "Weight's up 0.5 kg since yesterday ... cycle
-   day 3" and then, in a separate tinted bubble underneath, "Weight's flat
-   since your reading 3 days ago, but you're on your period and yesterday was
-   on the salty side."
-
-   Up 0.5 since yesterday, and flat since three days ago, about one weigh-in.
-   Both cannot be true and the app is asserting both. This is the worst kind
-   because it is health information stated confidently and wrongly. Find out
-   which one is stale, or whether two commentaries are being rendered for one
-   reading, before changing any wording.
-
-2. **Plans: drop the page title, promote the subheading.** "Plans" over "Your
-   movement collection" is saying the same thing twice. Her instinct is to
-   make "Your movement collection" the heading in the title face. Mock it both
-   ways, side by side, for her to choose tomorrow.
-
-3. **Log: the same double heading, plus a segmented control that now repeats
-   the tabs.** "Log" in the nav bar, "Log" again as the page title, then
-   Food / Activity / Measurements underneath. Her words: "this is now a double
-   entry that doesnt quite make sense ... unless you can suggest another way
-   to tidy this up logically." Propose, do not just delete.
-
-4. **"Settings" is cut off in the top right on several screens.** Reads
-   "Setting" on Today. Check every screen. Her suggestion: a profile-style
-   icon instead. If that is not obviously right, mock up two or three options
-   for her to pick tomorrow.
-
-5. **The report's appendix needs a decision, not a build.** For a medical
-   reader the original PDF should probably be attached as it is; for a friend
-   a summary reads better. The problem she names: a consultant letter loses
-   its official weight the moment it is retyped off the hospital letterhead.
-   Write up the options with a recommendation. Do not build it.
-
-6. **Photo upload to the report does not work.** Tried from the gallery and
-   straight from the camera, neither worked. Find out why first, because that
-   is a different problem from the one she then raises: that a photo of a knee
-   is hard to identify. Her suggested answer is that the person labels it
-   themselves, and her own objection is that they may write "knee" when they
-   meant "left knee". Suggestions welcome.
-
-1. **Nothing is sent until the whole reply exists.** Measured 23 September, not
-   guessed at. Across eight turns through production, time to the FIRST word
-   and time to the LAST word were identical to within a millisecond:
-
-   | | |
-   |---|---|
-   | response opens | 0.4-0.9s warm, 1.7s cold |
-   | first real word | 4.9-12.5s, median 6.6s |
-   | turn complete | the same instant, every time |
-   | holding line heard | 2 turns in 8 |
-
-   `spokenCompletion` in `app/v1/chat/completions/route.ts` already splits the
-   reply into SSE pieces, but only after awaiting the entire thing, so they all
-   land together. ElevenLabs cannot begin speaking until the whole answer is
-   generated, and "Bear with me a moment" is a plaster over exactly that.
-
-   The fix is to stream Claude's tokens through as they arrive. It touches the
-   safety path, which decides things about a whole reply, so read that first:
-   a turn that is going to be replaced by a safety response must not already
-   have been half spoken. That is the real design question, not the plumbing.
-
-   Do NOT start this without reading how the classifier and the escalation
-   state machine use the finished text. Reproduce with
+   Read how the classifier and escalation state machine use the finished text
+   BEFORE touching this: a turn that will be replaced by a safety response must
+   not already have been half spoken. Reproduce with
    `node scripts/measure-voice-turn.mjs 5`.
 
 ## Needs Ruth
+
+- **Three header decisions, mocked up and waiting.** Plans, the Log entries
+  screen, and the Settings affordance, three options each, side by side:
+  https://claude.ai/artifact/KcyUwqcYUxVHoDLoShj6Pr
+- **The report appendix.** Options written up with a recommendation, in
+  Build Specs > 2026-09-23 Report appendix - options.docx. Not built.
 
 - **`_To process` can be emptied, when she says so.** Checked 24 September,
   read only. `/Selodia Team Folder/_To process`, 149 clips plus the metadata
@@ -130,6 +78,15 @@ as a plain message, and put any file it refers to where that doc says:
   reopened twice to pick changes up.
 
 ## Done
+
+- 2026-09-24 — Two contradictory readings of one weigh-in. The note had an
+  empty dependency array and never re-read; it also duplicated the
+  acknowledgment, which composes from the same function.
+- 2026-09-24 — Photo upload to a report: the feature was right, the refusal was
+  wrong. Attachments are documents by her 21 September decision; the message
+  suggested better lighting for something that can never work.
+- 2026-09-24 — "Settings" clipped for the third time. The 19 September fix was
+  on the corner placement only, and Today uses the inline one.
 
 - 2026-09-24 — `_To process` inspected, read only: 149 clips, 385 MB, every one
   already in the library. Safe for her to empty. Nothing touched.
