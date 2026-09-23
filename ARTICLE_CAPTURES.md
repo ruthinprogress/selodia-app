@@ -50,7 +50,9 @@ A small realisation with large consequences for every screen: the dark tone in t
 
 ## 11 September 2026 — Her birthday, five hours in a WeWork, and a meeting room borrowed to film in
 
-The ElevenLabs Demo Day application was due and the video had to be recorded somewhere quiet. Ruth spent five hours working in a WeWork on her own birthday and slipped into a meeting room she had not booked to film the pitch. Nobody gave her the day, the room or the permission. She is a solo founder who is her own target user, and this is what that actually looks like on the day it is not a tagline.
+The ElevenLabs Demo Day application was due and the video had to be recorded somewhere quiet. Ruth spent five hours working in a WeWork on her own birthday and slipped into a meeting room she had not booked to film the pitch. Nobody gave her the day, the room or the permission.
+
+The file timestamps still hold the shape of it. First upload at 15:12, zero bytes, failed, and that empty file is still sitting in the Drive folder. Second attempt at 15:47, 276 MB, landed. The written answers were signed off at 16:18, the application document saved for the last time at 17:56. Then twenty commits, running until 20:48. She is a solo founder who is her own target user, and that is what the day looks like when it is not a tagline.
 
 ---
 
