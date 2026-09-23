@@ -2,6 +2,98 @@
 
 Running log of build moments worth writing about later. Updated as moments surface and at closing ceremony each session.
 
+Everything before 9 September 2026 is in the older log, now at Build Specs › Selodia archive › "ARCHIVED - Article Log, Unflump App". This file is the live one.
+
+---
+
+## 9 September 2026 — Every calorie target the app had ever shown was a maintenance target
+
+Not a rounding error, a category error: the number people were being shown to eat to was the number that keeps you exactly where you are. Every target, from the beginning. It had never looked wrong because a maintenance figure is a perfectly plausible-looking figure.
+
+---
+
+## 9 September 2026 — Four things the record said were done, and were not
+
+A check of the status document against the actual code found four claims that had quietly stopped being true, with nothing to mark the moment they did. The fix was not to correct them, it was to accept that a status document drifts unless something forces it to be re-checked. Writing it down is not the same as it being true.
+
+---
+
+## 9 September 2026 — The allergy gate was waiting on a feature while the risk was already live
+
+A safety check had been designed to sit inside a feature that had not been built yet. Meanwhile the thing it was protecting against was already reachable. Safety work queued behind product work stops being safety work.
+
+---
+
+## 10 September 2026 — Push notifications had never worked, since the very beginning
+
+The configuration file push needs had been missing the entire time. Nobody had noticed because nothing errors: notifications simply do not arrive, which looks exactly like nobody having sent one. The second bug of this shape in two days.
+
+---
+
+## 10 September 2026 — Denying a feature you have costs more than admitting uncertainty
+
+Selodía had been telling people it could not do things that it could, in fact, do. Pushing back on that turned into a real principle: a false no destroys trust faster than an honest "I am not sure". It is easy to write a cautious system prompt and much harder to write an honest one.
+
+---
+
+## 10 September 2026 — Unflump becomes Selodía
+
+The old name came out of the code and stayed in the record. Renaming a product mid-build touches the bundle identity, the store listing, the email addresses and every document, and it has to be done deliberately rather than inherited by whatever the folder happened to be called on day one.
+
+---
+
+## 10 September 2026 — Charcoal is a text colour, and the brand is light
+
+A small realisation with large consequences for every screen: the dark tone in the palette was never meant to be a surface. The brand is a light brand. Once that was said out loud, a set of decisions that had felt arbitrary all pointed the same way.
+
+---
+
+## 11 September 2026 — Save the visual the moment it is approved
+
+Became a standing rule after the alternative proved itself. An approved design that lives only in a chat window is an approved design you will be remaking in a fortnight. Now everything goes to Drive the same turn it is signed off.
+
+---
+
+## 12 September 2026 — The Witness Principle
+
+Written down as a principle in its own right. The app's job is not to judge or to optimise, it is to notice and to reflect back what it has seen. Most of the hard product arguments since have been settled by asking which answer is the more witnessing one.
+
+---
+
+## 12 September 2026 — Step tracking had never read a single step, and the chat said it had
+
+Not a broken feature, an absent one that presented as present: the app was talking confidently about step data it had never once fetched. Worse than a crash, because a crash tells you. This is the third fault of this shape in four days, and the pattern is the point.
+
+---
+
+## 12 September 2026 — Google sign-in had never worked, because the provider was never switched on
+
+A button that had been in the app for weeks, that nobody had successfully pressed. One toggle in a dashboard. Again: nothing logged, nothing failed loudly, it just did not work.
+
+---
+
+## 16 September 2026 — The roundup speaks to her, never about her
+
+The weekly summary had been written in the third person, describing the user like a case file. Changing it to speak directly to the person changed what the feature was for. The same facts, addressed differently, stop being surveillance and start being company.
+
+---
+
+## 16 September 2026 — A catch-up too long to finish saved nothing at all
+
+Logging a whole week in one message was designed to be forgiving, and instead it timed out partway and wrote nothing. The generous feature was the fragile one, and the failure was silent. Partial progress has to be saved as it happens, or a long job is a coin toss.
+
+---
+
+## 17 September 2026 — Four tabs, each answering one question
+
+The navigation stopped being a list of screens and became four questions: what do I want to say, what do I want to record, how is today, and what have I learned. Deciding what each tab was FOR did more for the app than any amount of rearranging.
+
+---
+
+## 17 September 2026 — Pasting into PowerShell did not work, so it became a web page
+
+A setup step that required pasting a command into a terminal failed, repeatedly, for entirely reasonable reasons. Rebuilding it as a double-click file and a browser page fixed it permanently and turned into a rule: anything Ruth has to run by hand gets a button, never a terminal. The friction was never the person.
+
 ---
 
 ## 18 September 2026 — A rule you ask a model to follow is not a guard
