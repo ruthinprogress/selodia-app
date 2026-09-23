@@ -110,9 +110,9 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 
 | # | Step | Owner | Status |
 |---|---|---|---|
-| 1 | Play Console account as Selodía Ltd, $25 | Ruth | **Not started — now the only real blocker.** Register as an ORGANISATION using the D-U-N-S: a new *personal* account must run 12 testers for 14 days before production, and a company account does not. That is a fortnight that would otherwise land on top of demo day |
+| 1 | Play Console account as Selodía Ltd, $25 | Ruth | **PAID 23 Sept 2026** — £18.77 ($25.00), order PDS.1166-5377-9708-29527, personal Monzo card. One-off, never renews. Registered as an organisation, which also avoids the 12-testers-for-14-days rule a personal account would face |
 | 2 | D-U-N-S number | Ruth | **DONE — 235125707.** Issued and emailed 10 Sept 2026; found in the promotions tab on 22 Sept, having been the stated blocker for twelve days |
-| 3 | Google verification | Ruth | Blocked on 1 only, now that the D-U-N-S is in hand |
+| 3 | Google verification | Ruth | **NOW THE NEXT STEP.** Account paid and D-U-N-S in hand, so this is the organisation verification itself: the legal name must match the D-U-N-S record and Companies House EXACTLY — Selodía Ltd. A mismatch is the usual reason an organisation verification is rejected, and it can take a few days to come back |
 | 4 | App content declarations | Ruth, from §2 | Drafted |
 | 5 | Store listing copy | Ruth approves §3 | Drafted |
 | 6 | Icon, feature graphic, screenshots | Ruth | Not started |
