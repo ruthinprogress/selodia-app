@@ -65,6 +65,16 @@ def cell(text, header=False):
 
 
 def table(rows):
+    # A HEADERLESS TABLE IS A REAL SHAPE. Markdown has no way to write one, so
+    # people write "| | |" and let the separator do the work - which arrived
+    # here as a header row of empty strings, got the bold treatment, and
+    # rendered as a row of four asterisks. Drop it and let the first real row
+    # be the first row.
+    headed = not (rows and all(not c.strip() for c in rows[0]))
+    if not headed:
+        rows = rows[1:]
+    if not rows:
+        return ""
     borders = "".join(
         f'<w:{e} w:val="single" w:sz="4" w:space="0" w:color="D8CCBC"/>'
         for e in ("top", "left", "bottom", "right", "insideH", "insideV")
@@ -79,7 +89,7 @@ def table(rows):
         f"<w:tblBorders>{borders}</w:tblBorders></w:tblPr>{grid}"
     ]
     for n, cells in enumerate(rows):
-        out.append("<w:tr>" + "".join(cell(c, header=(n == 0)) for c in cells) + "</w:tr>")
+        out.append("<w:tr>" + "".join(cell(c, header=(n == 0 and headed)) for c in cells) + "</w:tr>")
     out.append("</w:tbl>")
     # Word needs a paragraph after a table or the next block glues to it.
     out.append(para("", after=120))

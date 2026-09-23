@@ -39,57 +39,32 @@ as a plain message, and put any file it refers to where that doc says:
 
 ## Ready
 
-1. **A drink named alongside food is dropped entirely.** Found live on
-   23 September, not by a probe.
-
-   Sent: `Chicken salad with avocado and a flat white for lunch`
+1. **Nothing is sent until the whole reply exists.** Measured 23 September, not
+   guessed at. Across eight turns through production, time to the FIRST word
+   and time to the LAST word were identical to within a millisecond:
 
    | | |
    |---|---|
-   | `food_logs.raw_text` | "chicken salad with avocado, flat white" |
-   | `food_items` | Chicken, Salad, Avocado |
-   | `hydration_logs` | nothing |
+   | response opens | 0.4-0.9s warm, 1.7s cold |
+   | first real word | 4.9-12.5s, median 6.6s |
+   | turn complete | the same instant, every time |
+   | holding line heard | 2 turns in 8 |
 
-   So the model understood the flat white and said "the flat white is added",
-   but it never became an item and never reached Hydration. `flat white` IS in
-   `ALWAYS_CALORIC` in `app/lib/caloric-drink.ts`, so the drinks guard is not
-   the problem.
+   `spokenCompletion` in `app/v1/chat/completions/route.ts` already splits the
+   reply into SSE pieces, but only after awaiting the entire thing, so they all
+   land together. ElevenLabs cannot begin speaking until the whole answer is
+   generated, and "Bear with me a moment" is a plaster over exactly that.
 
-   The itemiser is. It split the salad into three rows and dropped the drink,
-   and the hydration write hangs off an item that was never created. The
-   `underItemised` guard did not fire because "chicken salad with avocado,
-   flat white" reads as two things named against three rows written, which
-   looks like enough.
+   The fix is to stream Claude's tokens through as they arrive. It touches the
+   safety path, which decides things about a whole reply, so read that first:
+   a turn that is going to be replaced by a safety response must not already
+   have been half spoken. That is the real design question, not the plumbing.
 
-   Two things to fix, and they are separate: a named drink must always become
-   its own item, and hydration must not depend on the itemiser having noticed.
-   A guard belongs at the write.
+   Do NOT start this without reading how the classifier and the escalation
+   state machine use the finished text. Reproduce with
+   `node scripts/measure-voice-turn.mjs 5`.
 
-   `scripts/check-food-parse.mjs` passes on "a mug of tea with milk", so add a
-   case that mixes a drink INTO a meal, which is the shape that fails.
-
-   Verify against the real model at the end, not just the probes. The probes
-   passed on this area two days running while the bug was live.
-
-2. **Session 51 and 52 close-out.** Two sessions behind. Append to the two
-   continuous sheets in `Selodia-Session-Closeouts.xlsx`, never a tab per
-   session, then add to `mobile/DECISION_PATTERNS.md` where a decision revealed
-   a real judgement pattern rather than just a choice. Re-sync to Drive.
-
-   Today alone is worth several: a guard belongs at the write; measure before
-   optimising; absent things present as working things; and the one that keeps
-   recurring, that a wrong mental model survives three confident fixes.
-
-3. **Measure the voice path.** The one part of "speed, round two" never done.
-   Get real numbers for the split between ASR finalising, the round trip to
-   `/v1/chat/completions`, and TTS first byte. Her ElevenLabs meeting is on
-   24 September and the notes currently say the turn is about five seconds
-   without being able to say where the five seconds go.
-
-   Measurement only. Do not tune anything tonight; a change made at 3am and not
-   understood by morning is worse than a slow turn she can describe.
-
-4. **Look in the Dropbox `_To process` folder** (0.39 GB), left unchecked after
+2. **Look in the Dropbox `_To process` folder** (0.39 GB), left unchecked after
    the library migration. **Read only.** List what is in it, say whether it
    matters, and write the answer down. Move nothing, delete nothing.
 
@@ -110,6 +85,16 @@ as a plain message, and put any file it refers to where that doc says:
   reopened twice to pick changes up.
 
 ## Done
+
+- 2026-09-24 — Voice turn measured, the part we own: median 6.6s to the first
+  word, and the first word arrives at the same instant as the last. Numbers in
+  the ElevenLabs notes for the 24 September meeting. Measurement only; the
+  streaming fix is queued above rather than made at 3am.
+- 2026-09-24 — Close-out for sessions 50, 51 and 52. 38 checklist rows, 11
+  decisions, 3 patterns in DECISION_PATTERNS.md.
+- 2026-09-24 — A drink named alongside food was dropped entirely. Two faults:
+  the model omitted it despite an emphatic prompt, and parseVolumeMl had never
+  heard of a flat white. Verified against the real model three times.
 
 - 2026-09-22 — Recovery from sleep, rest days and "rest day today". 30 probes.
 - 2026-09-22 — Cycle cards can be hidden; the Arrange link the Log page had.
