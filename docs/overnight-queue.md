@@ -26,26 +26,9 @@ memory of any conversation, so this file is the only thing it knows.
 
 ## Ready
 
-1. **Screenshots of every screen.** Start the Expo web server
-   (`preview_start` name `expo-mobile-web`, raise Node memory — it has run out
-   before), sign the demo account in by minting a session with the Supabase
-   service role key from `.env.local` (never type a password), then capture each
-   route at phone size. Routes are listed in `mobile/src/app`. Save to the
-   scratchpad, not the repo.
-2. **Compose the flow map poster** from those screenshots with Pillow: screens
-   grouped by tab, arrows for the real navigation, ready to hand to ChatGPT.
-   Flag any screenshot showing something that looks like Ruth's real health data
-   rather than test data.
-3. **Hardening sweep.** Look for more faults of the missing-GestureHandlerRootView
-   kind: providers absent from the tree, native modules imported at module scope,
-   setup that was never wired. Report findings; fix only the unambiguous ones.
-4. **Lint and type sweep** across the whole repo, not only recently touched files.
-5. **Supabase performance advisors** — only the security ones have ever been run.
-6. **Speed, round two.** Measure cold start, chat send and the voice path with
+1. **Speed, round two.** Measure cold start, chat send and the voice path with
    real numbers, then fix the worst single thing. Measurement first; no guessing.
-7. **Review the `store-wording` branch** (built 19 September, never merged) and
-   write up what it changes, so it is a yes or no for Ruth rather than a review.
-8. **Regenerate the screen map artifact** from the router tree — it is stale:
+2. **Regenerate the screen map artifact** from the router tree — it is stale:
    Hydration renamed, new screen titles, the Cycle history card added.
 
 ## Needs Ruth
@@ -65,3 +48,16 @@ memory of any conversation, so this file is the only thing it knows.
   model, with a stubbed database. Found that the itemisation retry is
   load-bearing: the model still merges on its first pass.
 - 2026-09-23 — Library mirror finished: ~20,600 files, ~137 GB into Backblaze.
+- 2026-09-23 — Hardening sweep: health-connect was imported at module scope and
+  would have killed Today on iOS; the web override was missing an export;
+  BLUETOOTH_CONNECT was never requested, so the 18 September headphone fix had
+  never worked on Android 12 or later.
+- 2026-09-23 — Lint and type sweep, whole repo.
+- 2026-09-23 — Supabase performance advisors, never run before: 41 RLS policies
+  re-evaluating auth.uid() per row, 4 duplicate policies, 5 missing FK indexes.
+  All clear now.
+- 2026-09-23 — `store-wording` branch: it does not exist. The work was merged
+  and is live; /privacy, /support and /delete-account all answer.
+- 2026-09-23 — Screenshots of all 40 screens, and the flow map poster composed
+  from them. Notes and the re-run steps are beside them in the scratchpad.
+  Found that `/log` and `/plans` were unreachable on the web build (af497fb).
