@@ -26,19 +26,24 @@ memory of any conversation, so this file is the only thing it knows.
 
 ## Ready
 
-1. **Speed, round two.** Measure cold start, chat send and the voice path with
-   real numbers, then fix the worst single thing. Measurement first; no guessing.
-2. **Regenerate the screen map artifact** from the router tree — it is stale:
-   Hydration renamed, new screen titles, the Cycle history card added.
+*Empty.* Everything queued on 22 September is done. Add the next thing here
+before the next unattended run, or it will have nothing to do.
 
 ## Needs Ruth
 
 - **Dropbox cleanup.** Unmount the vendor folder, confirm the namespace read
   still works, then delete the duplicate. Steps are in `docs/library-mirror.md`.
   Needs her at a keyboard, and nothing may be deleted without her confirming.
-- **Play Console account**, £25, as Selodía Ltd using D-U-N-S 235125707.
-- **Apple Developer enrolment**, $99/year, same D-U-N-S.
-- **Store artwork** — icon, feature graphic, screenshots for the listing.
+- **Google Play Console** — paid and the account verification is submitted.
+  Waiting on Google.
+- **Apple Developer enrolment**, $99/year, same D-U-N-S 235125707.
+- **Store artwork** — icon, feature graphic, screenshots for the listing. The
+  40 screenshots taken on 23 September are a starting point, but read the
+  flagged list first: several carry data that reads as a real person's.
+- **A new phone build.** The EAS build quota is spent until 1 October. The APK
+  she has is the one from 20 September; everything since reaches her as an
+  over-the-air update on that build, which is why the app has to be closed and
+  reopened twice to pick changes up.
 
 ## Done
 
@@ -61,3 +66,9 @@ memory of any conversation, so this file is the only thing it knows.
 - 2026-09-23 — Screenshots of all 40 screens, and the flow map poster composed
   from them. Notes and the re-run steps are beside them in the scratchpad.
   Found that `/log` and `/plans` were unreachable on the web build (af497fb).
+- 2026-09-23 — Speed, round two, measured rather than guessed. Two findings,
+  both fixed: the chat route ran four independent database reads one after
+  another before every reply (275ms serial, 149ms batched), and two files
+  imported the `@expo/vector-icons` barrel, which shipped every icon family —
+  42 font files and 12 MB of assets, down to 25 files and 8.8 MB.
+- 2026-09-23 — Screen map artifact regenerated, same URL.
