@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { DRINK_NOUNS } from './caloric-drink';
+
 // Water logging (Part Twelve, build item 31), on the same silent-log pattern as
 // food and activity: the person says it, the app stores it, and a brief toast
 // confirms - the reply never announces it.
@@ -70,7 +72,20 @@ export function parseVolumeMl(text: string): number | null {
   // A default volume is right here where it would be wrong for food - the range
   // of plausible answers is narrow, and being 50ml out on a wellbeing figure
   // costs nothing. Silently losing a drink does.
-  const drink = /\b(waters?|teas?|coffees?|squash|herbal|decaf|brew)\b/.exec(t);
+  // THE LIST USED TO BE SEVEN WORDS LONG (23 September 2026). It knew water,
+  // tea, coffee, squash, herbal, decaf and brew, and had never heard of a
+  // latte, a cappuccino or a flat white. So even once a flat white reached
+  // this function it measured as null, which is no hydration row at all.
+  //
+  // Two separate things had to fail for Ruth's lunch to vanish, and both did:
+  // the model left the drink out of its answer, and this parser could not have
+  // measured it anyway. The vocabulary now lives in one place, beside the rules
+  // about what each drink counts toward.
+  const drink = new RegExp(
+    String.raw`(^|\s)(` +
+      [...DRINK_NOUNS].sort((a, b) => b.length - a.length).map((n) => n.replace(/-/g, '[- ]')).join('|') +
+      String.raw`)(s|es)?(?=$|\s)`
+  ).exec(t);
   if (drink) {
     const leading = new RegExp(String.raw`^(?:about\s+|approx\.?\s+|around\s+)?(\d+(?:\.\d+)?|` + Object.keys(WORDS).join('|') + String.raw`)\b`).exec(t);
     const count = leading ? (WORDS[leading[1]] ?? Number(leading[1])) : 1;

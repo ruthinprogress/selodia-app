@@ -15,6 +15,7 @@ import {
   type ParsedItem,
   type ParsedMacros,
 } from './food-parse-prompt';
+import { drinksNamedIn, mentionsDrink } from './caloric-drink';
 import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
 import { checkStatedWeight, scaleMacros } from './stated-weight';
 import { entriesNeedingSplit, SPLIT_AGAIN } from './itemisation';
@@ -150,9 +151,41 @@ export function buildFoodRows(
       rawText,
       items: Array.isArray(entry.items) ? entry.items : [],
       fields: buildFoodLogFields(entry),
-      drinks: Array.isArray(entry.drinks) ? entry.drinks.filter((d): d is string => typeof d === 'string') : [],
+      drinks: reconcileDrinks(
+        Array.isArray(entry.drinks) ? entry.drinks.filter((d): d is string => typeof d === 'string') : [],
+        rawText
+      ),
     };
   });
+}
+
+/**
+ * The drinks the model returned, plus any it named in the entry text and then
+ * left out.
+ *
+ * WHY THIS IS HERE AND NOT IN THE PROMPT (23 September 2026). The prompt already
+ * says, at length and in capitals, that every drink goes in `drinks`, that none
+ * may be left out for any reason, and that a litre of water somebody typed and
+ * never saw recorded is the failure the field exists to stop. It is about as
+ * emphatic as a prompt gets, and on "Chicken salad with avocado and a flat white
+ * for lunch" the model wrote the flat white into the entry text, said out loud
+ * that it had been added, and returned an empty `drinks`.
+ *
+ * So the hydration row no longer depends on the model having remembered. It
+ * depends on the words the person typed, which are right there.
+ *
+ * ADDITIVE ONLY. Nothing the model returned is removed or rewritten - it has the
+ * conversation and knows whether "a cuppa" had milk in it. This only puts back
+ * what fell out.
+ */
+export function reconcileDrinks(fromModel: string[], entryText: string): string[] {
+  const named = drinksNamedIn(entryText);
+  const missing = named.filter((drink) => !fromModel.some((d) => mentionsDrink(d, drink.noun)));
+  if (missing.length === 0) return fromModel;
+  console.log(
+    `DRINK: "${entryText}" named ${missing.map((m) => `"${m.phrase}"`).join(', ')} and the parse left ${missing.length === 1 ? 'it' : 'them'} out - recovered from the text`
+  );
+  return [...fromModel, ...missing.map((m) => m.phrase)];
 }
 
 // Shared text-only food logging: extract macros via Haiku, insert into

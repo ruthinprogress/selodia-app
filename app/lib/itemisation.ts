@@ -1,3 +1,4 @@
+import { drinksNamedIn, mentionsDrink } from './caloric-drink';
 import type { ParsedItem } from './food-parse-prompt';
 
 // SEVERAL THINGS ARE SEVERAL ROWS (Bug 18, Ruth, 21 September 2026).
@@ -56,9 +57,36 @@ export function thingsNamed(entryText: string | null | undefined): number {
  * anything already itemised.
  */
 export function underItemised(entryText: string | null | undefined, items: ParsedItem[] | undefined): boolean {
+  if (drinkMissingFromItems(entryText, items)) return true;
   const rows = items?.length ?? 0;
   if (rows >= 2) return false;
   return thingsNamed(entryText) >= 2;
+}
+
+/**
+ * A drink the person named that never became a row.
+ *
+ * THE COUNT WAS NOT ENOUGH (23 September 2026). "Chicken salad with avocado and
+ * a flat white for lunch" came back as three items - Chicken, Salad, Avocado -
+ * and no flat white. The check above never fired, and was right not to by its
+ * own logic: three rows is comfortably more than the two things that sentence
+ * reads as, so by counting alone the breakdown looked generous.
+ *
+ * Counting cannot see WHICH thing went missing. A drink is the one kind of item
+ * worth naming specifically, because it is the only one that also has to reach
+ * somewhere else, and because a dropped drink loses calories and millilitres at
+ * the same time while the reply cheerfully confirms it was added.
+ */
+export function drinkMissingFromItems(
+  entryText: string | null | undefined,
+  items: ParsedItem[] | undefined
+): boolean {
+  const named = drinksNamedIn(entryText);
+  if (named.length === 0) return false;
+  const rows = items ?? [];
+  return named.some(
+    (drink) => !rows.some((it) => mentionsDrink(String((it as { name?: unknown }).name ?? ''), drink.noun))
+  );
 }
 
 /** The entries in a parse whose breakdown contradicts their own text. */
@@ -80,4 +108,8 @@ export const SPLIT_AGAIN =
   'and came back with fewer than two rows in items. Return the same entries again, but with EVERY thing the person ' +
   'named as its own row in items, each with its own macro figures - "mug of tea and a cookie" is two rows, ' +
   '"herbal tea, English tea with milk, and a biscuit" is three. The totals should still be the sum of the rows. ' +
-  'Do not merge a list into one row for any reason: a figure stored as one lump can never be separated afterwards.';
+  'Do not merge a list into one row for any reason: a figure stored as one lump can never be separated afterwards. ' +
+  'AND EVERY DRINK IS ONE OF THOSE THINGS. A drink named alongside food is its own row in items when it carries ' +
+  'calories, and belongs in "drinks" either way - "chicken salad with avocado and a flat white" is a salad, an ' +
+  'avocado AND a flat white, never just the food. Leaving the drink out while confirming it was added is the exact ' +
+  'failure this retry exists to catch.';

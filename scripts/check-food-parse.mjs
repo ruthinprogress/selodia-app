@@ -105,6 +105,34 @@ console.log('  (no rows are written; the database is a stub)\n');
   check('both teas reach hydration', ml >= 400, `${ml}ml`);
 }
 
+// ---- A DRINK MIXED INTO A MEAL, which is the shape that failed -----------
+//
+// 23 September 2026. Every check above passed, two days running, while this
+// was broken: they all name the drink on its own or at the head of a list.
+// Her actual entry buried it at the end of a sentence about food, and the
+// model dropped it from `items` and from `drinks` while telling her it had
+// been added. The checks were the wrong shape, not too few.
+{
+  const w = await parse('Chicken salad with avocado and a flat white for lunch');
+  const items = w.food_items.map((i) => i.name);
+  const ml = w.hydration_logs.reduce((n, h) => n + (h.ml ?? 0), 0);
+  console.log(`\n  "Chicken salad with avocado and a flat white for lunch"\n    items: ${JSON.stringify(items)}\n    hydration: ${ml}ml`);
+  const hasDrink = items.some((n) => /flat white|coffee|latte/i.test(String(n)));
+  check('the flat white is one of the items', hasDrink, JSON.stringify(items));
+  check('the flat white reaches hydration', ml > 0, `${ml}ml`);
+  const kcal = w.food_logs.reduce((n, f) => n + (f.kcal ?? 0), 0);
+  check('and the meal still carries its calories', kcal > 200, `${kcal} kcal`);
+}
+
+{
+  const w = await parse('Porridge with berries, then a latte on the way to work');
+  const items = w.food_items.map((i) => i.name);
+  const ml = w.hydration_logs.reduce((n, h) => n + (h.ml ?? 0), 0);
+  console.log(`\n  "Porridge with berries, then a latte on the way to work"\n    items: ${JSON.stringify(items)}\n    hydration: ${ml}ml`);
+  check('the latte is itemised', items.some((n) => /latte|coffee/i.test(String(n))), JSON.stringify(items));
+  check('the latte reaches hydration', ml > 0, `${ml}ml`);
+}
+
 // ---- BUG 17: her coffee entry -------------------------------------------
 {
   const w = await parse('three black coffees');
