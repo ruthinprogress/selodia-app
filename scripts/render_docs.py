@@ -110,7 +110,12 @@ DRIVE = Path(r"H:\My Drive\Selodia App Project Master Folder\Build Specs")
 # Specs`: that folder runs one file per document, and a .docx beside its own
 # .md is exactly the duplication that rule prevents.
 WORD = DRIVE / "Spec Documents (Word)"
-ARTICLES = DRIVE / "Branding" / "Marketing Articles and Copy"
+# "Branding & Assets", not "Branding". The folder was renamed on 2026-09-11 and
+# this line was not, so render_articles() has quietly rendered NOTHING since:
+# the directory check below simply found no folder and returned an empty list.
+# Two articles sat in Drive as markdown Ruth cannot read, one of them for a
+# fortnight, and nothing ever said so. Found 2026-09-23.
+ARTICLES = DRIVE / "Branding & Assets" / "Marketing Articles and Copy"
 
 # Part Fifteen's locked palette.
 CHARCOAL = RGBColor(0x2D, 0x2B, 0x28)
@@ -126,6 +131,9 @@ MONO_FACE = "Consolas"
 MONTHS = {m: i for i, m in enumerate(
     ["January", "February", "March", "April", "May", "June", "July",
      "August", "September", "October", "November", "December"], 1)}
+
+# The way back, for a date recovered from a filename.
+MONTH_NAMES = {i: m for m, i in MONTHS.items()}
 
 INLINE = re.compile(r"(\*\*.+?\*\*|\*[^*]+?\*|`[^`]+?`|~~.+?~~)", re.S)
 
@@ -422,7 +430,11 @@ def render_docx(source: Path, out_name: str, subtitle: str, blurb: str,
 
 def render_articles() -> list[Path]:
     """One .docx per article, `YYYY-MM-DD Title.docx` — date only, no numbering."""
+    # SAY SO. Returning an empty list quietly is how a wrong path survived
+    # twelve days of close-outs: the step ran, reported nothing, and looked
+    # exactly like a run with no articles to render.
     if not ARTICLES.is_dir():
+        print(f"  ! articles folder not found, nothing rendered: {ARTICLES}")
         return []
     written = []
     for src in sorted(ARTICLES.glob("*.md")):
@@ -447,14 +459,35 @@ def render_articles() -> list[Path]:
                     date_human = m.group(1).strip()
                     start = n + 1
                     continue
-        if not title or not date_human:
-            print(f"    skipped (no title/date header): {src.name}")
+        # THE FILENAME IS A PERFECTLY GOOD DATE. Two articles were skipped for a
+        # fortnight because the date line inside them did not match the expected
+        # shape: one said "September 2026" with no day, the other had a subtitle
+        # where the date should be. Both files are named `YYYY-MM-DD Title.md`,
+        # so the date was sitting there in the name the whole time. Refusing to
+        # render over a header formatting detail left Ruth with articles she
+        # could not open, which is the opposite of what this script is for.
+        stem = re.match(r"^(\d{4})-(\d{2})-(\d{2})\s+(.*)$", src.stem)
+
+        if not title:
+            title = stem.group(4).strip() if stem else src.stem
+
+        iso = None
+        m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$", date_human or "")
+        if m:
+            iso = f"{int(m.group(3)):04d}-{MONTHS[m.group(2)]:02d}-{int(m.group(1)):02d}"
+        elif stem:
+            iso = f"{stem.group(1)}-{stem.group(2)}-{stem.group(3)}"
+            human = f"{int(stem.group(3))} {MONTH_NAMES[int(stem.group(2))]} {stem.group(1)}"
+            print(f"    date taken from the filename ({human}): {src.name}")
+            # Whatever was on the date line was not a date. If it reads like a
+            # standfirst, keep it as the body's first line rather than binning it.
+            if date_human and len(date_human) > 24:
+                lines.insert(start, f"*{date_human}*")
+            date_human = human
+
+        if not iso:
+            print(f"    skipped (no date in the file or its name): {src.name}")
             continue
-        m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$", date_human)
-        if not m:
-            print(f"    skipped (unparseable date {date_human!r}): {src.name}")
-            continue
-        iso = f"{int(m.group(3)):04d}-{MONTHS[m.group(2)]:02d}-{int(m.group(1)):02d}"
 
         doc = Document()
         base_styles(doc, body_pt=11)

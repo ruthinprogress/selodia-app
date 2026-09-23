@@ -48,6 +48,12 @@ A small realisation with large consequences for every screen: the dark tone in t
 
 ---
 
+## 11 September 2026 — Her birthday, five hours in a WeWork, and a meeting room borrowed to film in
+
+The ElevenLabs Demo Day application was due and the video had to be recorded somewhere quiet. Ruth spent five hours working in a WeWork on her own birthday and slipped into a meeting room she had not booked to film the pitch. Nobody gave her the day, the room or the permission. She is a solo founder who is her own target user, and this is what that actually looks like on the day it is not a tagline.
+
+---
+
 ## 11 September 2026 — Save the visual the moment it is approved
 
 Became a standing rule after the alternative proved itself. An approved design that lives only in a chat window is an approved design you will be remaking in a fortnight. Now everything goes to Drive the same turn it is signed off.
