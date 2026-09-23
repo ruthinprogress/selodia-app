@@ -39,6 +39,49 @@ as a plain message, and put any file it refers to where that doc says:
 
 ## Ready
 
+*Six from Ruth, 23 September, just before bed. Screenshots in the session.*
+
+1. **Two contradictory readings of the same weigh-in.** Log > Measurements,
+   23 September. The card says "Weight's up 0.5 kg since yesterday ... cycle
+   day 3" and then, in a separate tinted bubble underneath, "Weight's flat
+   since your reading 3 days ago, but you're on your period and yesterday was
+   on the salty side."
+
+   Up 0.5 since yesterday, and flat since three days ago, about one weigh-in.
+   Both cannot be true and the app is asserting both. This is the worst kind
+   because it is health information stated confidently and wrongly. Find out
+   which one is stale, or whether two commentaries are being rendered for one
+   reading, before changing any wording.
+
+2. **Plans: drop the page title, promote the subheading.** "Plans" over "Your
+   movement collection" is saying the same thing twice. Her instinct is to
+   make "Your movement collection" the heading in the title face. Mock it both
+   ways, side by side, for her to choose tomorrow.
+
+3. **Log: the same double heading, plus a segmented control that now repeats
+   the tabs.** "Log" in the nav bar, "Log" again as the page title, then
+   Food / Activity / Measurements underneath. Her words: "this is now a double
+   entry that doesnt quite make sense ... unless you can suggest another way
+   to tidy this up logically." Propose, do not just delete.
+
+4. **"Settings" is cut off in the top right on several screens.** Reads
+   "Setting" on Today. Check every screen. Her suggestion: a profile-style
+   icon instead. If that is not obviously right, mock up two or three options
+   for her to pick tomorrow.
+
+5. **The report's appendix needs a decision, not a build.** For a medical
+   reader the original PDF should probably be attached as it is; for a friend
+   a summary reads better. The problem she names: a consultant letter loses
+   its official weight the moment it is retyped off the hospital letterhead.
+   Write up the options with a recommendation. Do not build it.
+
+6. **Photo upload to the report does not work.** Tried from the gallery and
+   straight from the camera, neither worked. Find out why first, because that
+   is a different problem from the one she then raises: that a photo of a knee
+   is hard to identify. Her suggested answer is that the person labels it
+   themselves, and her own objection is that they may write "knee" when they
+   meant "left knee". Suggestions welcome.
+
 1. **Nothing is sent until the whole reply exists.** Measured 23 September, not
    guessed at. Across eight turns through production, time to the FIRST word
    and time to the LAST word were identical to within a millisecond:
