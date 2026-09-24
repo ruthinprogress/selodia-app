@@ -139,7 +139,36 @@ function humanDate(value: string | null | undefined): string {
   return d.getFullYear() === new Date().getFullYear() ? spoken : `${spoken} ${d.getFullYear()}`;
 }
 
+// WHERE THE SECONDS GO, written down rather than guessed at.
+//
+// On 24 September a spoken turn measured 8.6s to its first word, and the
+// Anthropic call inside it measured 2.9s against the real prompt and the real
+// tool. Five and a half seconds were somewhere else in this function and
+// nobody could say where, which is how "voice is slow" stayed an opinion for
+// two weeks.
+//
+// One line in the log per turn, so the next question about latency is answered
+// by reading rather than by another afternoon of probes. Cheap enough to leave
+// on: a Date.now() per phase and one console.log at the end.
+function phaseTimer() {
+  const start = Date.now();
+  const marks: Record<string, number> = {};
+  return {
+    mark: (name: string) => {
+      marks[name] = Date.now() - start;
+    },
+    report: (label: string) => {
+      const total = Date.now() - start;
+      // Elapsed-at-mark is what a flame chart shows; the gaps between them are
+      // the phases. Printed as one JSON object so it can be read out of the
+      // Vercel log with a single grep.
+      console.log(`TURN TIMINGS ${label}`, JSON.stringify({ ...marks, total }));
+    },
+  };
+}
+
 export async function POST(request: NextRequest) {
+  const timing = phaseTimer();
   const supabase = getSupabaseForRequest(request);
   const {
     data: { user },
@@ -257,6 +286,7 @@ export async function POST(request: NextRequest) {
   // reply, and its own row is removed so the thread shows the turn once. If the
   // first copy never answers (it failed), this copy runs the turn itself rather
   // than speaking an error: a failure must not take its retry down with it.
+  timing.mark('userRowWritten');
   const twin = isVoice ? await earlierTwin(supabase, userRow?.id ?? null, message) : null;
   if (twin && userRow?.id) {
     const reply = await answerWrittenAfter(supabase, twin.created_at);
@@ -463,6 +493,7 @@ export async function POST(request: NextRequest) {
   //    conversation to no benefit, since the reply it produces is already in
   //    the text history. Attached to the newest user turn so "this" is
   //    unambiguous.
+  timing.mark('contextLoaded');
   const [savedPlans, { data: insightRows }, { data: meRows }, pendingCard] = await Promise.all([
     loadPlans(supabase, user.id),
     supabase
@@ -651,7 +682,9 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   // day boundaries in one app would eventually disagree in front of somebody.
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
+  timing.mark('almanacLoaded');
   const dayState = await loadDayState(supabase, profile, dayStart.toISOString());
+  timing.mark('dayStateLoaded');
 
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => humanDate(f.happened_at) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
@@ -888,6 +921,7 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
   // still knows what "it" is - that is the whole point of a tag that persists
   // until the model says the topic moved on.
   const discussedEntry = await loadDiscussEntryFacts(supabase, provisionalTag, postedTag !== null);
+  timing.mark('promptBuilt');
 
   // WHAT THE APP CAN ACTUALLY DO, in its own words (Ruth, 18 September 2026).
   //
@@ -915,9 +949,24 @@ WHAT THIS APP CAN DO TODAY. Be accurate about this: claiming a feature that does
 
 WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a workaround instead of answering. Say what the app does do that is nearest, say plainly that the exact thing is not built yet, and offer to note it as something they want. For example, asked for a 9am water reminder: the daily log reminders exist and can be set to any time, but they prompt logging rather than drinking, and a water-specific reminder is not built - so say that, and offer to note it down. The same holds for anything else somebody asks for: a new measurement, a different kind of report. MICRONUTRIENTS ARE DIFFERENT, because there is something real you can do - see ASKED ABOUT A VITAMIN OR MINERAL.`;
 
-  const contextualSystemPrompt =
-    SYSTEM_PROMPT +
-    CAPABILITIES +
+  // SPLIT SO THE STATIC HALF CAN BE CACHED (2026-09-24).
+  //
+  // Measured against the real prompt and the real tool: one Sonnet turn sends
+  // 21,575 input tokens and takes about 2.9 seconds, of which almost all is
+  // reading the prompt rather than writing the answer. Roughly 15,000 of those
+  // tokens are these two constants and the tool schema - identical on every
+  // turn of every conversation, re-read from scratch every time.
+  //
+  // Cached, the same call measured 2.3 seconds. It also stops us paying full
+  // input price for the same 15,000 tokens on every turn.
+  //
+  // THE SPLIT IS WHAT MAKES IT WORK. A cache entry is keyed on everything up to
+  // its breakpoint, so a single concatenated string containing today's date
+  // would miss every day, and one containing the day's calories would miss
+  // every turn. Static first, then everything that moves.
+  const staticSystemPrompt = SYSTEM_PROMPT + CAPABILITIES;
+
+  const turnSystemPrompt =
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     todayBlock +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
@@ -928,6 +977,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     (supersededSince ? SUPERSEDED_TURN_BLOCK : '') +
     (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +
     (isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : '');
+
+  // The whole thing as one string, for the rare second call that appends the
+  // goal-safety instruction to it. That path re-runs a turn to rewrite one
+  // reply and is not worth a cache breakpoint of its own.
+  const contextualSystemPrompt = staticSystemPrompt + turnSystemPrompt;
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
     // The spotlight (build item 23). Free-form on the wire, validated below
@@ -1259,7 +1313,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // and stops. The latency note above concerns tokens READ, not tokens
       // allowed, and is unaffected.
       max_tokens: 2000,
-      system: contextualSystemPrompt,
+      // Two blocks, and the breakpoint sits on the first. Everything up to and
+      // including it is cached: the tool schema (which the API places ahead of
+      // the system prompt) and the static instructions. The turn's own context
+      // follows uncached, because it is different every time by definition.
+      system: [
+        { type: 'text', text: staticSystemPrompt, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: turnSystemPrompt },
+      ],
       messages,
       tools: [tool],
       tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
@@ -1270,6 +1331,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // consume the one chance the image had to be seen.
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
+
+  timing.mark('modelAnswered');
 
   if (pendingCard) await markCardImageSent(supabase, pendingCard.messageId);
 
@@ -2284,6 +2347,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // would believe it had suggested the thing it was stopped from suggesting.
   //
   // Costs nothing for anybody with no declared allergies, which is most people.
+  timing.mark('sideEffectsDone');
   const gate = await runAllergyGate(
     anthropic,
     goalSafeReply,
@@ -2305,6 +2369,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       ? `${safeReplyText}\n\n${trailingLines.join('\n\n')}`
       : safeReplyText;
 
+  timing.mark('allergyGateDone');
   const { error: insertError } = await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
@@ -2342,6 +2407,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (result.navigationTarget && !navigationTarget) {
     console.log('ASK-SELODIA DROPPED UNKNOWN SPOTLIGHT TARGET:', result.navigationTarget);
   }
+
+  timing.report(isVoice ? 'voice' : 'typed');
 
   return NextResponse.json({
     reply: finalReply,
