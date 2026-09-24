@@ -8,6 +8,7 @@ import Svg, { Path } from 'react-native-svg';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, MaxContentWidth, Spacing } from '@/constants/theme';
+import { FigureMark } from '@/components/seed-marks';
 import { useTheme } from '@/hooks/use-theme';
 
 // THE FURNITURE EVERY SETTINGS PAGE SHARES (2026-09-20), from Ruth's IA brief:
@@ -28,7 +29,7 @@ export function SettingsPage({
   children,
   footer,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   /** The hub is reached from Chat and closes; its pages go back to the hub. */
   back?: boolean;
@@ -74,7 +75,14 @@ export function SettingsPage({
                   <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
                 </Pressable>
               )}
-              <ThemedText type="display">{title}</ThemedText>
+              {/* THE HUB HAS NO TITLE (Ruth, 24 September 2026: "remove the
+                  title entirely from Settings screen"). Calling it Settings was
+                  wrong - it holds the profile, the report builder, the data
+                  export - and the corner mark that opens it is three seeds
+                  meaning "more", which needs no word repeating it underneath.
+                  The pages BELOW it keep their titles: those really are one
+                  thing each, and a person arriving needs to know which. */}
+              {title ? <ThemedText type="display">{title}</ThemedText> : null}
               {subtitle && (
                 <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
                   {subtitle}
@@ -118,6 +126,7 @@ export function SettingsGroup({ title, children }: { title?: string; children: R
 /** One row: an icon, what it is, what it holds, and where it goes. */
 export function SettingsRow({
   icon,
+  mark,
   label,
   detail,
   value,
@@ -125,7 +134,11 @@ export function SettingsRow({
   first,
   danger,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap;
+  /** One of the app's own drawn marks, where a borrowed icon would be wrong.
+      The profile row uses it: that row is the person, and a stock silhouette
+      beside the sprig and the seed looks like it came from somewhere else. */
+  mark?: 'figure';
   label: string;
   /** The line under the label: what lives behind this row. */
   detail?: string;
@@ -138,7 +151,11 @@ export function SettingsRow({
   const theme = useTheme();
   const body = (
     <View style={[styles.row, !first && { borderTopColor: theme.backgroundSelected, borderTopWidth: 1 }]}>
-      <Ionicons name={icon} size={20} color={danger ? theme.danger : theme.textSecondary} />
+      {mark === 'figure' ? (
+        <FigureMark size={20} color={danger ? theme.danger : theme.textSecondary} />
+      ) : icon ? (
+        <Ionicons name={icon} size={20} color={danger ? theme.danger : theme.textSecondary} />
+      ) : null}
       <View style={styles.rowText}>
         <ThemedText type="smallBold" themeColor={danger ? 'danger' : 'text'}>
           {label}

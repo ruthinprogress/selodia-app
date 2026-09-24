@@ -48,7 +48,6 @@ export default function SettingsHub() {
 
   return (
     <SettingsPage
-      title="Settings"
       subtitle="Personalise your experience and manage your account."
       back={false}
       footer="Small settings support big change."
@@ -56,7 +55,7 @@ export default function SettingsHub() {
       <SettingsGroup>
         <SettingsRow
           first
-          icon="person-outline"
+          mark="figure"
           label="Profile"
           detail="Your details and goals"
           onPress={() => router.push('/settings/profile')}
