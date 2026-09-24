@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DeleteEntry } from '@/components/delete-entry';
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -10,6 +11,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { perItemProteinFlag } from '@/lib/protein-quality';
 import type { ProteinSource } from '@/lib/protein-quality';
 import { supabase } from '@/lib/supabase';
+import { MACROS, macroLine, type MacroKey } from '@/lib/tracked-macros';
+import { loadTrackedMacros } from '@/lib/tracked-macros-store';
 
 // The "What's In Here" breakdown card (build item 13) — the READ-ONLY half of
 // the discuss-card. Deliberately host-agnostic: it takes a `food_logs.id` and
@@ -37,6 +40,10 @@ type FoodLog = {
   protein_g: number | null;
   carbs_g: number | null;
   fat_g: number | null;
+  saturated_fat_g: number | null;
+  sugar_g: number | null;
+  fibre_g: number | null;
+  sodium_mg: number | null;
   breakdown_type: string | null;
   protein_source: string | null;
 };
@@ -53,6 +60,14 @@ type FoodItem = {
 const g = (n: number | null): string => (n == null ? '—' : `${Math.round(n)}g`);
 const kcal = (n: number | null): string => (n == null ? '—' : `${Math.round(n)} kcal`);
 
+// One macro, worded exactly as the row above words it - macroLine formats a
+// whole line, so ask it for this macro alone. An em dash where there is no
+// figure, because this grid has a slot per macro and an empty slot reads as a
+// rendering fault; on a row the macro is simply left out instead.
+function macroValue(row: Record<string, unknown>, key: MacroKey): string {
+  return macroLine(row, [key]) || '—';
+}
+
 export function FoodBreakdownCard({
   foodLogId,
   onClose,
@@ -68,6 +83,7 @@ export function FoodBreakdownCard({
   const [loading, setLoading] = useState(true);
   const [log, setLog] = useState<FoodLog | null>(null);
   const [items, setItems] = useState<FoodItem[]>([]);
+  const [tracked, setTracked] = useState<MacroKey[]>([]);
 
   useEffect(() => {
     if (!foodLogId) return;
@@ -82,7 +98,7 @@ export function FoodBreakdownCard({
             // happened_at is not displayed on this card - it is read so the
             // chat card it hands off to can head itself with the right date
             // immediately rather than waiting for its own lookup.
-            'meal_label, raw_text, happened_at, kcal, protein_g, carbs_g, fat_g, breakdown_type, protein_source'
+            'meal_label, raw_text, happened_at, kcal, protein_g, carbs_g, fat_g, saturated_fat_g, sugar_g, fibre_g, sodium_mg, breakdown_type, protein_source'
           )
           .eq('id', foodLogId)
           .maybeSingle(),
@@ -102,12 +118,62 @@ export function FoodBreakdownCard({
     };
   }, [foodLogId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const keys = await loadTrackedMacros();
+      if (!cancelled) setTracked(keys);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [foodLogId]);
+
   // Two real cases produce no rows in food_items, and neither is an error:
   //   - a 'simple' log (an apple, a branded yoghurt) is never itemised by design;
   //   - a log predating item 11 was written before food_items existed.
   // Both fall back to the log's own description and macros, so the card always
   // says something true rather than showing an empty ingredient list.
   const hasItems = items.length > 0;
+
+  // ONE ROUTE INTO THE CONVERSATION, TWO OPENING LINES.
+  //
+  // "Ask about this" and tapping the entry both end up in Chat with this log
+  // tagged, because in this app changing an entry IS a conversation: say what
+  // it really was and the parse rewrites the row (see app/lib/food-logging.ts).
+  // What differs is the sentence already in the box - a question, or a
+  // correction - so a person who tapped to fix a mistake does not have to work
+  // out how to phrase it.
+  function openInChat(mode: 'ask' | 'correct') {
+    if (!log) return;
+    const label = log.raw_text ?? log.meal_label ?? 'this entry';
+    onClose();
+    router.push({
+      pathname: '/',
+      params: {
+        prefill: mode === 'ask' ? `About my "${label}" log: ` : `My "${label}" log should say `,
+        discussId: foodLogId ?? '',
+        discussType: 'food',
+        // The entry's own words, date and totals, already loaded into this
+        // sheet and now handed across so the chat card draws immediately
+        // instead of after two reads. The live read still overwrites all of it.
+        seedTitle: label,
+        seedWhen: log.happened_at ?? '',
+        seedKcal: log.kcal != null ? String(log.kcal) : '',
+        seedProtein: log.protein_g != null ? String(log.protein_g) : '',
+        // WITHOUT THIS THE BUTTON ONLY FILLS THE BOX (2026-09-16). Chat
+        // auto-sends only on askNow === '1', and not one of the three cards was
+        // sending it - so "Ask about this" opened Chat, dropped a half-sentence
+        // into the composer and stopped. Ruth, three times: "nothing happens at
+        // all". The flag is what makes the name true.
+        //
+        // A CORRECTION MUST NOT AUTO-SEND. "My ... log should say " is half a
+        // sentence SHE has to finish; sending it would ask the model to guess
+        // what she meant to change.
+        askNow: mode === 'ask' ? '1' : '',
+      },
+    });
+  }
 
   return (
     <Modal
@@ -131,13 +197,39 @@ export function FoodBreakdownCard({
               </ThemedText>
             ) : (
               <ScrollView contentContainerStyle={styles.scroll}>
-                <View style={styles.headerRow}>
-                  <ThemedText type="smallBold" style={styles.title}>
-                    {/* Her words first, the inferred category only if there are
-                        none - see entryLabel for why (2026-09-16). */}
-                    {log.raw_text ?? log.meal_label ?? 'This entry'}
-                  </ThemedText>
-                </View>
+                {/* THE ENTRY ITSELF, AND EVERY ACTION ON IT (Ruth, 24 September
+                    2026): "Tap a food row -> opens detail view for that entry.
+                    Inside detail view -> swipe left on the row to delete the
+                    whole entry. Tap to edit or discuss."
+
+                    Swipe uncovers a Delete rather than firing on the gesture -
+                    see swipe-to-delete.tsx. Tap opens the conversation with
+                    this entry named, which is where correcting a log has always
+                    happened: say what it really was and the parse rewrites the
+                    row. No editor was built, because there is already a way to
+                    change an entry and a second one would be a second set of
+                    rules about the same data. */}
+                <SwipeToDelete
+                  table="food_logs"
+                  id={foodLogId ?? ''}
+                  what={log.raw_text ?? log.meal_label ?? 'this entry'}
+                  onDeleted={onDeleted ?? onClose}
+                >
+                  <Pressable
+                    onPress={() => openInChat('correct')}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${log.raw_text ?? log.meal_label ?? 'This entry'}. Tap to change it or ask about it.`}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <View style={styles.headerRow}>
+                      <ThemedText type="smallBold" style={styles.title}>
+                        {/* Her words first, the inferred category only if there
+                            are none - see entryLabel for why (2026-09-16). */}
+                        {log.raw_text ?? log.meal_label ?? 'This entry'}
+                      </ThemedText>
+                    </View>
+                  </Pressable>
+                </SwipeToDelete>
 
                 {hasItems ? (
                   <View style={styles.section}>
@@ -178,11 +270,18 @@ export function FoodBreakdownCard({
                   </ThemedText>
                 )}
 
+                {/* THE SAME FIGURES THE ROW SHOWS (24 September 2026). This
+                    grid was a fixed four - calories, protein, carbs, fat -
+                    which meant the detail view disagreed with the list above it
+                    for anybody who had switched carbs off or fibre on. */}
                 <ThemedView type="backgroundElement" style={styles.macros}>
-                  <Macro label="Calories" value={kcal(log.kcal)} />
-                  <Macro label="Protein" value={g(log.protein_g)} />
-                  <Macro label="Carbs" value={g(log.carbs_g)} />
-                  <Macro label="Fat" value={g(log.fat_g)} />
+                  {MACROS.filter((m) => tracked.includes(m.key)).map((m) => (
+                    <Macro
+                      key={m.key}
+                      label={m.label}
+                      value={macroValue(log as unknown as Record<string, unknown>, m.key)}
+                    />
+                  ))}
                 </ThemedView>
 
                 {/* ASK ABOUT THIS (build item 30's interactive half), built
@@ -200,34 +299,7 @@ export function FoodBreakdownCard({
                     half-built. The hand-off carries the entry's name in the
                     composer, which is what makes the question answerable. */}
                 <Pressable
-                  onPress={() => {
-                    const label = log.raw_text ?? log.meal_label ?? 'this entry';
-                    onClose();
-                    router.push({
-                      pathname: '/',
-                      params: {
-                        prefill: `About my "${label}" log: `,
-                        discussId: foodLogId ?? '',
-                        discussType: 'food',
-                        // The entry's own words, date and totals, already loaded
-                        // into this sheet and now handed across so the chat card
-                        // draws immediately instead of after two reads. The live
-                        // read still overwrites all of it.
-                        seedTitle: label,
-                        seedWhen: log.happened_at ?? '',
-                        seedKcal: log.kcal != null ? String(log.kcal) : '',
-                        seedProtein: log.protein_g != null ? String(log.protein_g) : '',
-                        // WITHOUT THIS THE BUTTON ONLY FILLS THE BOX (2026-09-16).
-                        // Chat auto-sends only on askNow === '1', and not one of
-                        // the three cards was sending it - so "Ask about this"
-                        // opened Chat, dropped a half-sentence into the composer
-                        // and stopped. Ruth, three times: "nothing happens at
-                        // all". The flag is what makes the name true.
-                        askNow: '1',
-                      },
-                    });
-                  }}
-                  accessibilityRole="button"
+                  onPress={() => openInChat('ask')}
                   accessibilityLabel="Ask about this"
                   hitSlop={Spacing.two}
                   style={({ pressed }) => [styles.ask, pressed && styles.pressed]}
