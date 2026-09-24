@@ -39,6 +39,39 @@ as a plain message, and put any file it refers to where that doc says:
 
 ## Ready
 
+1. **Food Log redesign (UI pass).** Her full brief, 24 September 2026, with
+   ChatGPT mockups. Calm, editorial, effortless; no new features.
+
+   Structure: back arrow, "Food" title, three seeds top right. Week selector
+   `< 21-27 Sept >`, arrows only, no calendar picker. A Today card with one
+   natural-language field, placeholder "What did you eat?", + on the left and
+   Add on the right. No meal tabs, no breakfast/lunch/dinner.
+
+   A row per entry: food name as the hero, `445 kcal · 34g protein` underneath
+   in muted small, `···` on the right opening detail/edit. **Swipe left to
+   delete; no inline delete icons, no eye icon.** Then a quiet
+   `Today's total` line, previous days collapsed in reverse order showing
+   `Tuesday  1,455 kcal · 93g protein  >` (or `Nothing logged`), a muted week
+   line, and a quiet `Build a report` link that opens Reports with this week
+   pre-selected. Empty days say `Nothing logged.` and nothing else - no
+   illustration, no encouragement. Cards expand softly, weeks slide sideways,
+   nothing bounces.
+
+   **Three things to settle with her before building, not after:**
+
+   - **The mockups contradict the brief.** Her "Add food" screens show a
+     `Search for a food...` field and a `Recent` list, and the brief's own
+     "Do not build" list rules out both a searchable food database and recent
+     foods suggestions. The written brief should win, but ask.
+   - **Macro toggles are a new feature**, despite "do not add new features" at
+     the top. Calories and protein always on and not toggleable; fat, saturated
+     fat, carbohydrates, sugar, fibre and salt off by default, in Settings and
+     in onboarding, showing on every row and in the daily totals. Real work,
+     touching the food schema, the rows, the totals and onboarding.
+   - **Swipe-to-delete is the only way to delete.** Check that against the
+     delete-belongs-on-the-row decision of 18 September, and against how a
+     correction currently works in chat.
+
 1. **Nothing is sent until the whole reply exists.** Measured 23 September:
    time to the FIRST word and time to the LAST word were identical across
    eight turns, median 6.6s. `spokenCompletion` awaits the whole reply before
