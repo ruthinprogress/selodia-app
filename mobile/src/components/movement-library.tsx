@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityIcon } from '@/components/activity-icon';
-import { SectionIntro } from '@/components/section-intro';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
@@ -13,9 +12,10 @@ import { loadLastDoneByPlan, summarise } from '@/lib/movement-library';
 // MOVEMENT: a library of practices, not a list of workouts (Ruth's brief,
 // 2026-09-18, with a mockup).
 //
-// "Your movement collection. Saved practices, ready whenever they fit your day."
-// Set as a SectionIntro rather than as two lines of body text - her own
-// diagnosis of the old version: "it doesn't feel intentional". Everything below
+// "Saved practices, ready whenever they fit your day." The screen's own
+// "Plans" heading is the title now; this line only says what these ARE. It was
+// a SectionIntro under a second heading until 24 September 2026, when Ruth read
+// the two stacked headings as clutter. Everything below
 // it is one card per practice, and the card says four things: what it is called,
 // what kind of practice it is, roughly how long it takes, and when it was last
 // done. Nothing else, because nothing else is a fact about the practice - a
@@ -60,9 +60,18 @@ export function MovementLibrary({
 
   return (
     <View style={styles.wrap}>
-      <SectionIntro title="Your movement collection">
+      {/* THE HEADING WENT (Ruth, 24 September 2026: "Plans is the title. Remove
+          'your movement plans' too cluttered"). The screen already says Plans
+          in the display face; "Your movement collection" underneath it was the
+          same thought in a second voice, and the two headings stacked read as
+          clutter rather than as hierarchy.
+
+          The line under it stays. It is not a heading, it says what these ARE -
+          saved practices rather than a programme you are behind on - and that
+          distinction is the whole point of the tab (see her brief above). */}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         Saved practices, ready whenever they fit your day.
-      </SectionIntro>
+      </ThemedText>
 
       {entries.map((entry) => {
         const s = summarise(entry.content, entry.category, lastDone.get(entry.id) ?? null);
@@ -108,6 +117,9 @@ export function MovementLibrary({
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
+  // A little air under the display heading above, which used to be the
+  // SectionIntro's job.
+  intro: { marginBottom: Spacing.one },
   card: {
     flexDirection: 'row',
     gap: Spacing.two,
