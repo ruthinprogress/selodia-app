@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { NextRequest } from 'next/server';
 
-const E: Record<string, string> = {};
+const E = {};
 for (const line of fs.readFileSync(path.join(process.cwd(), '.env.local'), 'utf8').split(/\r?\n/)) {
   const i = line.indexOf('=');
   if (i > 0 && !line.startsWith('#')) E[line.slice(0, i).trim()] = line.slice(i + 1).trim();
@@ -22,7 +22,7 @@ const ANON = E.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE = E.SUPABASE_SERVICE_ROLE_KEY;
 const DEMO = 'unflumpapp@gmail.com';
 
-async function demoToken(): Promise<string> {
+async function demoToken() {
   const link = await fetch(`${SUPA}/auth/v1/admin/generate_link`, {
     method: 'POST',
     headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' },
@@ -34,10 +34,10 @@ async function demoToken(): Promise<string> {
     headers: { apikey: ANON, 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'magiclink', token_hash: hashed }),
   }).then((r) => r.json());
-  return session.access_token as string;
+  return session.access_token;
 }
 
-const req = (auth?: string) =>
+const req = (auth) =>
   new NextRequest('https://api.selodia.app/api/ask-selodia', {
     method: 'POST',
     headers: auth ? { Authorization: auth } : {},
@@ -57,7 +57,8 @@ const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
 payload.sub = '00000000-0000-0000-0000-000000000000';
 const swapped = `${parts[0]}.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.${parts[2]}`;
 
-const cases: [string, string | undefined, string | null][] = [
+/** @type {[string, string|undefined, string|null][]} */
+const cases = [
   ['a real signed-in token', `Bearer ${good}`, expectedId],
   ['no header at all', undefined, null],
   ['empty bearer', 'Bearer ', null],
@@ -71,11 +72,11 @@ const cases: [string, string | undefined, string | null][] = [
 let failed = 0;
 for (const [name, header, expected] of cases) {
   const t0 = performance.now();
-  let got: string | null = null;
+  let got = null;
   try {
     got = await userIdForRequest(req(header));
   } catch (err) {
-    got = `threw: ${err instanceof Error ? err.message : String(err)}` as string;
+    got = `threw: ${err instanceof Error ? err.message : String(err)}`;
   }
   const ok = got === expected;
   if (!ok) failed++;
