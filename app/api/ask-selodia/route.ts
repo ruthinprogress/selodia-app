@@ -949,24 +949,30 @@ WHAT THIS APP CAN DO TODAY. Be accurate about this: claiming a feature that does
 
 WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a workaround instead of answering. Say what the app does do that is nearest, say plainly that the exact thing is not built yet, and offer to note it as something they want. For example, asked for a 9am water reminder: the daily log reminders exist and can be set to any time, but they prompt logging rather than drinking, and a water-specific reminder is not built - so say that, and offer to note it down. The same holds for anything else somebody asks for: a new measurement, a different kind of report. MICRONUTRIENTS ARE DIFFERENT, because there is something real you can do - see ASKED ABOUT A VITAMIN OR MINERAL.`;
 
-  // SPLIT SO THE STATIC HALF CAN BE CACHED (2026-09-24).
+  // WHY THE SYSTEM PROMPT IS NOT CACHED, AND THE TOOL IS (2026-09-24).
   //
-  // Measured against the real prompt and the real tool: one Sonnet turn sends
-  // 21,575 input tokens and takes about 2.9 seconds, of which almost all is
-  // reading the prompt rather than writing the answer. Roughly 15,000 of those
-  // tokens are these two constants and the tool schema - identical on every
-  // turn of every conversation, re-read from scratch every time.
+  // A Sonnet turn sends 21,575 input tokens and gets back about 150, so the
+  // time goes on READING the prompt, not writing the answer. That makes prompt
+  // caching the obvious lever, and the obvious way to pull it is wrong.
   //
-  // Cached, the same call measured 2.3 seconds. It also stops us paying full
-  // input price for the same 15,000 tokens on every turn.
+  // SYSTEM_PROMPT LOOKS STATIC AND IS NOT. It interpolates the person's food
+  // summary, day state, activity, burn, sleep, hydration, measurements, plans,
+  // Me cards, insights, allergies, health context, cycle and yesterday - all of
+  // it inside the template, most of it near the top. A cache entry is keyed on
+  // every byte up to its breakpoint, so a breakpoint after that block would
+  // miss on every single turn and still pay the write surcharge. Caching it
+  // properly means moving the static instructions in front of the person's
+  // context, which reorders the safety block, and that is not a change to make
+  // in an afternoon. Measured prize if it is done: about 2,900 more tokens
+  // cached on a voice turn, 5,600 on a typed one.
   //
-  // THE SPLIT IS WHAT MAKES IT WORK. A cache entry is keyed on everything up to
-  // its breakpoint, so a single concatenated string containing today's date
-  // would miss every day, and one containing the day's calories would miss
-  // every turn. Static first, then everything that moves.
-  const staticSystemPrompt = SYSTEM_PROMPT + CAPABILITIES;
-
-  const turnSystemPrompt =
+  // THE TOOL SCHEMA IS GENUINELY STATIC, all 5,900 tokens of it, and the API
+  // places tools AHEAD of the system prompt - so a breakpoint there caches
+  // cleanly without touching a word of the prompt. Two variants exist, one per
+  // value of excludeAmbiguous, which is two cache entries and no more.
+  const contextualSystemPrompt =
+    SYSTEM_PROMPT +
+    CAPABILITIES +
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     todayBlock +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
@@ -977,11 +983,6 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     (supersededSince ? SUPERSEDED_TURN_BLOCK : '') +
     (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +
     (isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : '');
-
-  // The whole thing as one string, for the rare second call that appends the
-  // goal-safety instruction to it. That path re-runs a turn to rewrite one
-  // reply and is not worth a cache breakpoint of its own.
-  const contextualSystemPrompt = staticSystemPrompt + turnSystemPrompt;
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
     // The spotlight (build item 23). Free-form on the wire, validated below
@@ -1313,16 +1314,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // and stops. The latency note above concerns tokens READ, not tokens
       // allowed, and is unaffected.
       max_tokens: 2000,
-      // Two blocks, and the breakpoint sits on the first. Everything up to and
-      // including it is cached: the tool schema (which the API places ahead of
-      // the system prompt) and the static instructions. The turn's own context
-      // follows uncached, because it is different every time by definition.
-      system: [
-        { type: 'text', text: staticSystemPrompt, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: turnSystemPrompt },
-      ],
+      system: contextualSystemPrompt,
       messages,
-      tools: [tool],
+      // The breakpoint. Everything up to here is the tool schema, which is the
+      // same bytes on every turn - see the note where the prompt is assembled
+      // for why the prompt itself cannot take one yet.
+      tools: [{ ...tool, cache_control: { type: 'ephemeral' } }],
       tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
     });
   } catch (err) {
@@ -1333,6 +1330,20 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   }
 
   timing.mark('modelAnswered');
+
+  // WHETHER THE CACHE ACTUALLY HIT, rather than whether we asked it to. The
+  // first attempt at caching on this route put the breakpoint after a prompt
+  // that only looked static, which would have missed every turn and paid the
+  // write surcharge for it, and nothing in the log would have said so.
+  console.log(
+    'TURN TOKENS',
+    JSON.stringify({
+      in: response.usage.input_tokens,
+      cacheWrite: response.usage.cache_creation_input_tokens ?? 0,
+      cacheRead: response.usage.cache_read_input_tokens ?? 0,
+      out: response.usage.output_tokens,
+    })
+  );
 
   if (pendingCard) await markCardImageSent(supabase, pendingCard.messageId);
 
