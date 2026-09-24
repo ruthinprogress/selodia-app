@@ -29,7 +29,7 @@ import {
 import { logActivityFromText } from '../../lib/activity-logging';
 import {
   choosePlan,
-  loadPlans,
+  resolvePlans,
   recordPlanSession,
   sessionSummary,
 } from '../../lib/workout-session';
@@ -57,10 +57,10 @@ import {
   whichReadingMessage,
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
-import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
+import { buildAllergyPrompt, recordAllergies, type Allergy } from '../../lib/allergies';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
-import { buildDayState, buildDayStatePrompt, loadDayStateRows } from '../../lib/daily-targets';
+import { buildDayState, buildDayStatePrompt } from '../../lib/daily-targets';
 import {
   applyPendingFocus,
   clearPendingFocus,
@@ -97,7 +97,7 @@ import {
   isCardMediaType,
   isDiscussEntryType,
   loadDiscussEntryFacts,
-  loadPendingCardImage,
+  fetchPendingCardImage,
   markCardImageSent,
   discussEntryName,
   resolveDiscussTag,
@@ -144,6 +144,58 @@ function humanDate(value: string | null | undefined): string {
 // adapter and directly by a typed message, so both need it or typing still
 // runs in Virginia.
 export const preferredRegion = 'lhr1';
+
+// The shape turn_context() returns.
+//
+// Written out rather than left loose because this replaced twenty typed reads
+// with one jsonb blob, and the compiler was the only thing standing between a
+// renamed column and a prompt that quietly lost a section. Every field here
+// matches a select list in the migration; change one and change both.
+type TurnContext = {
+  lastAssistantTurn: {
+    classification: string | null;
+    escalation_step: string | null;
+    distress_revisit_count: number | null;
+  } | null;
+  recentHistory: { role: string; content: string }[];
+  contextRows: { category: string; content: string }[];
+  recentFood: { happened_at: string; raw_text: string; kcal: number | null; protein_g: number | null }[];
+  recentActivity: {
+    happened_at: string;
+    activity_type: string | null;
+    duration_min: number | null;
+    kcal_burned: number | null;
+    eccentric_load: string | null;
+    intensity: string | null;
+  }[];
+  recentDailyBurn: {
+    date: string;
+    steps: number | null;
+    kcal_burned: number | null;
+    active_kcal: number | null;
+    active_minutes: number | null;
+    distance_km: number | null;
+  }[];
+  recentDrinks: { ml: number | null; happened_at: string }[];
+  recentSleep: {
+    night_of: string;
+    duration_min: number | null;
+    quality: string | null;
+    awakenings: number | null;
+  }[];
+  recentMeasurements: { measured_at: string; weight_kg: number | null; body_fat_pct: number | null }[];
+  healthContextRow: Record<string, unknown> | null;
+  lastPeriodRow: { event_date: string } | null;
+  yesterdaySummary: { summary_date: string; mediating_factor: string | null } | null;
+  profileRow: Record<string, unknown> | null;
+  allergies: Allergy[];
+  planRows: { id: string; title: string; content: unknown }[];
+  insightRows: { kind: string; title: string; created_at: string }[];
+  meRows: { title: string; category: string | null; content: unknown }[];
+  pendingCardRow: { id: string; image_path: string } | null;
+  dayFood: { kcal: number | null; protein_g: number | null }[];
+  latestMeasurement: { weight_kg: number | null; body_fat_pct: number | null; bmr: number | null } | null;
+};
 
 // WHERE THE SECONDS GO, written down rather than guessed at.
 //
@@ -346,190 +398,71 @@ export async function POST(request: NextRequest) {
   // turn is inserted, because recentHistory has to include the message just
   // sent. The previous-tag read above must run BEFORE it, or it would read the
   // row being written. Only the mutual independence within this batch is new.
-  const [
-    { data: lastAssistantTurn },
-    { data: recentHistory },
-    { data: contextRows },
-    { data: recentFood },
-    { data: recentActivity },
-    { data: recentDailyBurn },
-    { data: recentDrinks },
-    { data: recentSleep },
-    { data: recentMeasurements },
-    { data: healthContextRow },
-    { data: lastPeriodRow },
-    { data: yesterdaySummary },
-    { data: profileRow },
-    disclosedAllergies,
-    // MERGED UP FROM A SECOND BATCH (2026-09-24). These four were already
-    // batched together on the 23rd, with a note saying "anything added here
-    // belongs in this batch, not after it" - and the batch itself still sat
-    // after this one, waiting on it for nothing. None of the four needs a
-    // single value from the reads above: they want supabase and user.id, both
-    // of which exist before either batch starts. Measured at 300ms to 330ms of
-    // a turn spent waiting on that ordering.
-    savedPlans,
-    { data: insightRows },
-    { data: meRows },
-    pendingCard,
-    dayStateRows,
-  ] = await Promise.all([
-    supabase
-      .from('chat_messages')
-      .select('classification, escalation_step, distress_revisit_count')
-      .eq('user_id', user.id)
-      .eq('source', 'chat')
-      .eq('role', 'assistant')
-      // Read-hardening: only safety-classified turns carry escalation state. Skip
-      // pure logging turns (classification null, e.g. the photo/direct food-log
-      // path) so a food log dropped mid-escalation cannot null out an active
-      // C-SSRS ladder by simply being the most recent assistant row.
-      .not('classification', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    // Descending + limit to get the most recent 40, then reverse to
-    // chronological order - ascending + limit would take the OLDEST 40
-    // instead, silently dropping the just-inserted current turn once the
-    // conversation passes 40 messages and leaving the array ending on an
-    // assistant turn, which the model rejects outright. (Confirmed as the
-    // real cause of onboarding-chat's 500s, via live Vercel logs - this
-    // route shares the identical bug, just hadn't hit 40 messages yet.)
-    supabase
-      .from('chat_messages')
-      .select('role, content')
-      .eq('user_id', user.id)
-      .eq('source', 'chat')
-      .order('created_at', { ascending: false })
-      .limit(40),
-    supabase.from('user_context').select('*').order('category', { ascending: true }),
-    supabase
-      .from('food_logs')
-      // Only the four fields the summary below reads. select('*') pulled every
-      // column of every row for a week and then used four of them.
-      .select('happened_at, raw_text, kcal, protein_g')
-      .gte('happened_at', contextSince.toISOString())
-      .order('happened_at', { ascending: false }),
-    supabase
-      .from('activity_logs')
-      // eccentric_load and intensity joined the select on 2026-09-09. They were
-      // classified at log time (item 27) and then never read here, so the prompt
-      // could see THAT somebody trained but not whether it was the kind of
-      // training that makes legs hurt two days later - which is the whole
-      // question a symptom query is asking.
-      .select('happened_at, activity_type, duration_min, kcal_burned, eccentric_load, intensity')
-      .gte('happened_at', contextSince.toISOString())
-      .order('happened_at', { ascending: false }),
-    // Whole-day tracker totals, kept in their own table and their own context
-    // line because they are not sessions. These used to arrive inside
-    // activity_logs as an activity called "Daily Summary", which read to the
-    // model as a single 1063 kcal workout and was narrated back to the person
-    // as one.
-    supabase
-      .from('daily_activity_summaries')
-      .select('date, steps, kcal_burned, active_kcal, active_minutes, distance_km')
-      .gte('date', contextSince.toISOString().slice(0, 10))
-      .order('date', { ascending: false }),
-    // WATER (2026-09-19). Logged since the hydration card was built and read
-    // nowhere, so "how much have I drunk this week?" had nothing behind it and
-    // a day's drinking could not be connected to anything else. Every drink
-    // with its time, totalled per day below.
-    supabase
-      .from('hydration_logs')
-      .select('ml, happened_at')
-      .gte('happened_at', contextSince.toISOString())
-      .order('happened_at', { ascending: false }),
-    // SLEEP (2026-09-20). A symptom is a result, and the night before it is
-    // one of the few things that explains fatigue, low mood or a heavy session
-    // going badly - so it belongs beside the food and the training, not in a
-    // table nobody reads.
-    supabase
-      .from('sleep_logs')
-      .select('night_of, duration_min, quality, awakenings')
-      .gte('night_of', contextSince.toISOString().slice(0, 10))
-      .order('night_of', { ascending: false }),
-    supabase
-      .from('body_measurements')
-      .select('measured_at, weight_kg, body_fat_pct')
-      .gte('measured_at', contextSince.toISOString())
-      .order('measured_at', { ascending: false }),
-    supabase.from('health_context').select('*').maybeSingle(),
-    supabase
-      .from('cycle_events')
-      .select('event_date')
-      .eq('event_type', 'period_start')
-      .order('event_date', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    // Yesterday's stored summary (Part Nine, next-morning mechanism). Read on
-    // every turn rather than only on a measurement, because the spiral this
-    // exists to pre-empt can start with "I feel huge today" just as easily as
-    // with a number.
-    supabase
-      .from('daily_summaries')
-      .select('summary_date, mediating_factor')
-      .not('mediating_factor', 'is', null)
-      .order('summary_date', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    // Item 43. Height to assess a stated goal against, and whether an unsafe one
-    // has already been raised - which decides both the one-time resource and the
-    // standing instruction below.
-    supabase
-      .from('user_profile')
-      .select(
-        'height_cm, unsafe_goal_flagged_at, date_of_birth, biological_sex, ' +
-          'activity_level, fat_focus_state, muscle_focus_state, protein_target_g, ' +
-          'pending_fat_focus, pending_muscle_focus, pending_focus_asked_at, ' +
-          'fat_focus_since, muscle_focus_since, consolidation_offered_at, lite_mode_since, ' +
-          'pending_save, pending_save_asked_at'
-      )
-      .maybeSingle(),
-    // Not a { data } shape - loadAllergies returns the rows directly. Positional
-    // destructuring above, so it stays last of the original set.
-    loadAllergies(supabase),
+  // ONE ROUND TRIP, NOT TWENTY (2026-09-24).
+  //
+  // These reads already went out together, so on paper the batch cost whatever
+  // the slowest of them cost: about 127ms, timed individually against the real
+  // database. In production the phase measured two to four seconds, which for
+  // parallel reads is not arithmetic that works.
+  //
+  // The distance was the answer. X-Vercel-Id reads `lhr1::iad1`, so the
+  // function runs in Washington DC while the database is in London, and every
+  // read crossed the Atlantic. Parallel does not rescue that: each connection
+  // pays its own TLS handshake, which is two more crossings, and twenty
+  // requests do not share one connection. Vercel's free plan pins the function
+  // to a region we cannot choose, so the distance is fixed and the only thing
+  // left to change is how often we travel it.
+  //
+  // turn_context() is security invoker, so every RLS policy applies exactly as
+  // it did when these were twenty separate reads, and it returns raw rows
+  // rather than prompt text - the wording stays in TypeScript where it can be
+  // read. probe-turn-context-rpc.mjs compares the two paths field for field on
+  // real data and was green on all twenty before this was wired in.
+  const { data: ctx, error: ctxError } = await supabase.rpc('turn_context', {
+    p_since: contextSince.toISOString(),
+    p_day_start: dayStartForState.toISOString(),
+  });
 
-    // The four that used to be a second batch. Kept in this order because the
-    // destructuring above is positional.
-    //
-    //  - THEIR OWN SAVED ROUTINES, by name, so "I did the gym workout today"
-    //    can find the plan it means (2026-09-18).
-    //  - WHAT IS ALREADY IN HER INSIGHTS (2026-09-19). Without this the model
-    //    could not know a knee flare had been recorded the day before, so it
-    //    offered it again as a second symptom - and could never notice that
-    //    something keeps coming back, which is exactly when a symptom becomes
-    //    worth an insight. Titles, kinds and dates only; the newest few,
-    //    because a long list of old entries is a prompt about things the
-    //    conversation is not about.
-    //  - HER ME CARDS, by name and current status, so "I've stopped the
-    //    magnesium" can name the card it means. Titles only: the why stays in
-    //    the card, and quoting every reason on every turn would be a long
-    //    prompt about decisions the conversation is not about.
-    //  - The card image reaches the model exactly ONCE (decision, 2026-08-21):
-    //    re-sending it every turn would charge vision tokens for the rest of
-    //    the conversation to no benefit, since the reply it produces is already
-    //    in the text history. Attached to the newest user turn so "this" is
-    //    unambiguous.
-    loadPlans(supabase, user.id),
-    supabase
-      .from('almanac_entries')
-      .select('kind, title, created_at')
-      .eq('user_id', user.id)
-      .in('kind', ['symptom', 'insight'])
-      .order('created_at', { ascending: false })
-      .limit(15),
-    supabase
-      .from('almanac_entries')
-      .select('title, category, content')
-      .eq('user_id', user.id)
-      .eq('kind', 'me'),
-    loadPendingCardImage(supabase, user.id),
+  // FAIL LOUDLY RATHER THAN ANSWER WITHOUT HER RECORD. Twenty separate reads
+  // used to fail one at a time and the turn carried on with a hole in it. One
+  // read means one failure takes everything, and a reply composed with no food,
+  // no history and no health context would still SOUND fine - which is worse
+  // than saying so.
+  if (ctxError || !ctx) {
+    console.log('TURN CONTEXT FAILED:', ctxError?.message ?? 'no rows');
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+  }
 
-    // The day's food and the latest measurement. These are the two reads
-    // inside loadDayState, and neither of them needs the profile - only the
-    // arithmetic afterwards does. See loadDayStateRows for why that mattered.
-    loadDayStateRows(supabase, dayStartForState.toISOString()),
-  ]);
+  const {
+    lastAssistantTurn,
+    recentHistory,
+    contextRows,
+    recentFood,
+    recentActivity,
+    recentDailyBurn,
+    recentDrinks,
+    recentSleep,
+    recentMeasurements,
+    healthContextRow,
+    lastPeriodRow,
+    yesterdaySummary,
+    profileRow,
+    allergies: disclosedAllergyRows,
+    planRows,
+    insightRows,
+    meRows,
+    pendingCardRow,
+    dayFood,
+    latestMeasurement,
+  } = ctx as TurnContext;
+
+  const disclosedAllergies = (disclosedAllergyRows ?? []) as Allergy[];
+  const savedPlans = resolvePlans(planRows);
+  const dayStateRows = { todayFood: dayFood, latest: latestMeasurement };
+  // Only downloaded when something is actually waiting, which is rare. The row
+  // itself came with everything else.
+  const pendingCard = await fetchPendingCardImage(supabase, pendingCardRow);
+
   timing.mark('contextLoaded');
 
   const previousEscalationStep: EscalationStep =

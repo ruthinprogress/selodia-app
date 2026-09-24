@@ -110,8 +110,19 @@ export async function loadPlans(
     console.log('workout-session: plan read failed -', error.message);
     return [];
   }
+  return resolvePlans(data);
+}
+
+/**
+ * The parsing half of loadPlans, for a caller that already has the rows.
+ *
+ * SPLIT FROM THE READ (2026-09-24), so the rows can arrive with the rest of a
+ * turn's context in a single round trip instead of a query of their own. Same
+ * rule as loadDayStateRows: the fetching moves, the logic does not.
+ */
+export function resolvePlans(rows: unknown): ResolvedPlan[] {
   const out: ResolvedPlan[] = [];
-  for (const row of (data ?? []) as { id: string; title: string; content: unknown }[]) {
+  for (const row of (rows ?? []) as { id: string; title: string; content: unknown }[]) {
     const plan = prepareWorkoutPlan(row.content);
     if (plan && plan.exercises.length > 0) {
       out.push({ id: row.id, title: row.title, exercises: plan.exercises });

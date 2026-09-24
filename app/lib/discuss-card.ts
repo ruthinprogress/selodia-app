@@ -109,6 +109,21 @@ export async function loadPendingCardImage(
     .limit(1)
     .maybeSingle();
 
+  return fetchPendingCardImage(supabase, row);
+}
+
+/**
+ * The download half, for a caller that already has the row.
+ *
+ * SPLIT FROM THE READ (2026-09-24). The row now arrives with the rest of a
+ * turn's context in one round trip, and this only runs at all when there IS a
+ * card waiting - which is rare. Before, every turn paid for the lookup whether
+ * or not anything was pending.
+ */
+export async function fetchPendingCardImage(
+  supabase: SupabaseClient,
+  row: { id?: unknown; image_path?: unknown } | null
+): Promise<PendingCardImage | null> {
   if (!row?.image_path) return null;
 
   const { data: blob, error } = await supabase.storage
