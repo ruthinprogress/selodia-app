@@ -99,7 +99,7 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 |---|---|---|
 | App icon | 512×512 PNG, 32-bit | **Still needed.** The Seed Mark exists in the brand pack and needs exporting at size. |
 | Feature graphic | 1024×500 PNG or JPG | **Still needed. Not designed.** Appears at the top of the listing. |
-| Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | **DONE, 23 Sept 2026.** Six at 1080×1920, which is 9:16 and well over the minimum: `1-chat`, `2-today`, `3-log`, `4-hydration`, `5-cycle`, `6-almanac`. Filed in Build Specs › Branding & Assets › Visual Assets › "2026-09-23 Play Store screenshots". |
+| Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | **DONE, 23 Sept 2026.** Six at 1080×1920, which is 9:16 and well over the minimum: `1-chat`, `2-today`, `3-log`, `4-hydration`, `5-cycle`, `6-almanac`. **[Open the folder in Drive](https://drive.google.com/drive/folders/1fUjqZY4VmBCsb78CsRcLQ6PW_uiauZhi)** — Build Specs › Branding & Assets › Visual Assets › "2026-09-23 Play Store screenshots". |
 | Tablet screenshots | Optional | Skip |
 
 **This table said the screenshots were "not taken" for a day after they were taken**, which is the third time a row in this document has described work that was already finished. Checked against the folder on 24 September rather than against memory.
@@ -123,7 +123,7 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Config done 10 Sept (`app.config.js`, 5ca248c). **No dev-variant build has run yet**, so its FCM credentials entry cannot exist yet either |
 | 10 | Set up FCM push credentials for `app.selodia` | Ruth in the consoles, Claude the repo | Firebase project `selodia-app`, `google-services.json` and the EAS key all done 10 Sept. **Push verified on a device on 12 Sept**, preview build `1291e191`: token saved, test push delivered and seen. It needed a code fix as well as the setup (`3732881`). (The old wording, "regenerate", was wrong: there were never any credentials to regenerate.) |
 | 11 | Promote to production | Ruth | A separate, deliberate decision |
-| 12 | Account deletion web page, support page, privacy policy update, consent screen AI wording | Claude | **DONE and live.** This row said the work was held on a branch called `store-wording` awaiting approval. That branch does not exist, on this machine or the remote: the work was merged and has been serving from production since. Verified 23 Sept — `/privacy`, `/support` and `/delete-account` all return 200. Four days were spent believing finished work was waiting on a decision |
+| 12 | Account deletion web page, support page, privacy policy update, consent screen AI wording | Claude | **DONE and live.** This row said the work was held on a branch called `store-wording` awaiting approval. That branch does not exist, on this machine or the remote: the work was merged and has been serving from production since. Four days were spent believing finished work was waiting on a decision. Re-verified 24 Sept, all three returning 200: **[/privacy](https://selodia.app/privacy)** · **[/support](https://selodia.app/support)** · **[/delete-account](https://selodia.app/delete-account)**. They also answer on `api.selodia.app`, but `selodia.app` is the one to give Google |
 
 ---
 
