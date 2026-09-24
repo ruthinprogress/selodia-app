@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/chat-bubble';
+import { MacroChoices } from '@/components/macro-choices';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { ResourceCard } from '@/components/resource-card';
@@ -130,6 +131,23 @@ export default function TechnicalScreen() {
           ))}
 
           {sending && <ChatBubble role="assistant">…</ChatBubble>}
+
+          {/* WHAT I TRACK, IN ONBOARDING (Ruth, 24 September 2026: "Same
+              toggles appear in onboarding").
+
+              HERE RATHER THAN AS AN ELEVENTH STEP. Every step after the
+              account is a conversation, so a screen of tick boxes would have
+              been a new one - and onboarding is already ten, for a preference
+              most people will leave exactly as it is. This step is "How
+              tracking works", which is where the question belongs anyway: it
+              is the same component Settings uses, so the two cannot drift.
+
+              Below the thread, not above it: the conversation is the step, and
+              this is something to notice on the way past rather than a gate. */}
+          <ThemedView style={styles.tracking}>
+            <ThemedText type="smallBold">What you will see on a food entry</ThemedText>
+            <MacroChoices />
+          </ThemedView>
         </ScrollView>
 
         <ThemedView style={styles.inputRow}>
@@ -171,6 +189,8 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  // Air above it, so it reads as a section rather than another message.
+  tracking: { gap: 8, paddingTop: 20 },
   scrollContent: {
     alignSelf: 'center',
     width: '100%',

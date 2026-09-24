@@ -60,6 +60,15 @@ export default function SettingsHub() {
           detail="Your details and goals"
           onPress={() => router.push('/settings/profile')}
         />
+        {/* WHAT I TRACK (Ruth, 24 September 2026). Directly under Profile,
+            because it is the same kind of thing: what this app is for her
+            rather than what it does in general. */}
+        <SettingsRow
+          icon="nutrition-outline"
+          label="What I track"
+          detail="Which figures show on a food entry"
+          onPress={() => router.push('/settings/tracking')}
+        />
         <SettingsRow
           icon="phone-portrait-outline"
           label="Connected devices"
