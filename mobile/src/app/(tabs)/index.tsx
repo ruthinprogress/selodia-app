@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 
+import { ThreeSeedsMark } from '@/components/seed-marks';
+
 import { ChatBubble } from '@/components/chat-bubble';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
 import { DocumentTray } from '@/components/document-tray';
@@ -881,12 +883,16 @@ ${result.message}`;
           <Pressable
             onPress={() => router.push('/settings')}
             accessibilityRole="button"
-            accessibilityLabel="Account settings"
+            accessibilityLabel="More"
             style={({ pressed }) => [styles.settingsEntry, pressed && styles.settingsPressed]}
           >
-            <ThemedText type="small" themeColor="textSecondary" style={{ minWidth: 96, textAlign: 'right' }} textBreakStrategy="simple">
-              Settings
-            </ThemedText>
+            {/* The same three seeds every other screen carries. Chat draws its
+                own rather than using SettingsLink, because this one is a
+                spotlight target and has to sit inside the layout - so when the
+                word became a mark on 24 September, this was the copy that had
+                to be changed by hand. Two implementations of one control is
+                the reason it was missed. */}
+            <ThreeSeedsMark size={22} />
           </Pressable>
         </SpotlightTarget>
 
