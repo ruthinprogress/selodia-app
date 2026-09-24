@@ -285,3 +285,107 @@ I garbled my follow-up question live, because of background noise. Felt silly. W
 The call existed because it is cheap to run. The email was always going to be better. Nobody told me any of this in advance, and the format was called "Meet the Team".
 
 ---
+
+## 24 September 2026 — Voice answered her six times and she heard none of them
+
+I opened voice in a library with my toddler beside me and said something. The
+server wrote six complete replies in thirty seconds. Not one of them was spoken.
+Each answer was ready a few seconds after I had carried on talking, so the agent
+had already moved to the newer version of the sentence and threw the finished
+one away. Six answers generated, billed, and written into my own chat history,
+and from where I sat the app had simply gone quiet. I reported it as "voice is
+not working, it didn't respond to me", which was exactly wrong and exactly what
+it looked like.
+
+---
+
+## 24 September 2026 — The fix we were about to build would have saved seven milliseconds
+
+The plan was to stream the reply out as the model wrote it, so the speech could
+start on the first words instead of the last. It had been the top item for a
+week. Measured first, against the real prompt and the real tool: time to the
+first spoken character 3,239ms, turn complete at 3,246ms. Seven milliseconds
+apart. There was nothing to stream, because the time was never spent writing the
+answer - it was spent reading a 21,000 token prompt to produce 150 tokens back.
+A day saved by twenty minutes of measurement, and the measurement was only run
+because the question was "how much would this help" rather than "let's do it".
+
+---
+
+## 24 September 2026 — The queries were never slow, the function was in the wrong country
+
+Loading a person's context took two to four seconds, and it made no sense:
+twenty database reads that all went out together, and parallel reads cannot be
+slower than the slowest one, which measured 127ms. Reading the SQL was never
+going to show it. The answer was in an HTTP header - `lhr1::iad1`. The request
+arrived at the London edge and the function ran in Washington DC, while the
+database sat in London. Every read crossed the Atlantic and came back. The free
+plan pins the region, so the distance could not be changed; what could be
+changed was how often we travelled it. Twenty round trips became one.
+
+---
+
+## 24 September 2026 — My own test data made the code look faster than it was
+
+I reported that a turn had gone from 8.6 seconds to 5.9 and put it in the notes
+for a meeting. It had not. The measurement runs had filled the test account's
+chat history with forty short repeated probe questions, and the app reads the
+last forty messages back into every prompt - so my testing had quietly shrunk
+the thing being measured. Cleared out and measured against a real history, the
+improvement was inside the noise. The only solid win was half a second from
+somewhere else entirely. A benchmark that writes to the system it benchmarks is
+not a benchmark.
+
+---
+
+## 24 September 2026 — The spec contained the exact defect it warned about
+
+One line said the tagline typeface was Work Sans Italic. Three paragraphs below,
+a table marked "confirmed final, supersedes every earlier decision" said
+Comfortaa. Sitting between them was a paragraph explaining that two adjacent
+entries naming different typefaces for the same element is the most expensive
+kind of spec defect, and recording that it had already cost a landing page and
+an Instagram post. The correction that added that warning fixed the punctuation
+and left the wrong typeface standing. Three weeks later somebody read the stale
+line and proposed rebuilding the app's typography around it.
+
+---
+
+## 24 September 2026 — Recorded is not the same as tested
+
+The spec listed the wordmark colour as charcoal and described it as confirmed by
+comparison testing with four named people. What those four had actually been
+shown was a set of typefaces. The colour was in the same images, was never the
+thing being judged, and got written down with the same confidence as the thing
+that was. It was meant to be terracotta the whole time. A year of documents
+carrying a claim nobody had ever made on purpose, because "we looked at this"
+and "we decided this" were recorded in the same sentence.
+
+---
+
+## 24 September 2026 — The platform had the feature we had built a workaround for
+
+Voice sometimes said "Bear with me a moment" before answering, which was ours: a
+holding line written because a slow turn left people listening to silence. It
+fired at the wrong times and said so in her words - "it doesn't put anything
+together". The platform has had exactly this built in from the start, fires it
+three seconds earlier, speaks it in the agent's own voice instead of splicing it
+onto the front of the answer, and the setting was sitting at minus one. We had
+written a worse version of a feature we had switched off without noticing.
+
+---
+
+## 24 September 2026 — The biggest delay was never ours
+
+A day spent halving the server's half of a spoken turn - caching, one round trip
+instead of twenty, verifying identity from the token instead of asking an auth
+server. All real. Then I read the platform's own per-turn metrics and found a
+field called time-spent-in-silence-before-starting: 0.38 seconds, then 3.81,
+then 6.59. That is the agent waiting to see whether she had finished talking,
+before our server is asked anything at all. On the worst turn it was six and a
+half seconds of an eleven second wait, larger than the entire pipeline we had
+been optimising. The number had been sitting in their API the whole time.
+
+---
+
+---

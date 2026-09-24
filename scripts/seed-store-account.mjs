@@ -88,6 +88,7 @@ const TABLES = [
   'chat_messages', 'food_logs', 'activity_logs', 'hydration_logs', 'sleep_logs',
   'body_measurements', 'daily_activity_summaries', 'almanac_entries', 'user_context',
   'daily_summaries', 'cycle_events', 'user_profile', 'allergies', 'daily_ratings',
+  'consent_records',
 ];
 
 if (process.argv.includes('--wipe')) {
@@ -105,8 +106,37 @@ const put = async (table, rows) => {
 };
 
 // ---- who she is --------------------------------------------------------
-await admin.from('user_profile').upsert({
+// PAST THE TWO GATES, or every route bounces to onboarding step 1 of 10.
+//
+// The auth guard checks two things before it lets anybody into the app, and a
+// freshly created account fails both. First a consent record, which must match
+// the CURRENT privacy policy version - an older one counts as "outdated" and
+// asks again. Then user_profile.onboarding_step, which has to read 'complete'.
+//
+// Found by shooting the whole set and getting six identical pictures of the
+// consent screen.
+// source is CHECK-constrained to onboarding | reconfirm | settings, so a
+// descriptive value like 'seed-store-account' is rejected. The first version of
+// this did exactly that, did not check the error, and printed "recorded" - and
+// the whole screenshot run then photographed the consent screen six times.
+// Every write here is asserted now, for that reason.
+const { error: consentError } = await admin.from('consent_records').insert({
   user_id: uid,
+  core_consent: true,
+  marketing_opt_in: false,
+  research_opt_in: false,
+  policy_version: '19 September 2026',
+  source: 'onboarding',
+});
+if (consentError) {
+  console.error('  consent_records            FAILED:', consentError.message);
+  process.exit(1);
+}
+console.log('  consent_records            recorded');
+
+const { error: profileError } = await admin.from('user_profile').upsert({
+  user_id: uid,
+  onboarding_step: 'complete',
   height_cm: 167,
   date_of_birth: '1981-04-12',
   biological_sex: 'female',
@@ -115,6 +145,10 @@ await admin.from('user_profile').upsert({
   muscle_focus_state: 'increase',
   protein_target_g: 95,
 });
+if (profileError) {
+  console.error('  user_profile               FAILED:', profileError.message);
+  process.exit(1);
+}
 console.log('  user_profile               set');
 
 // ---- the week of movement, which is what fills the flower --------------
