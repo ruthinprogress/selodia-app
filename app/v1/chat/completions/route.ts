@@ -156,7 +156,23 @@ const SUPERSEDE_WINDOW_MS = 30_000;
 // seconds - most of them, once the context grew - earned a holding line it did
 // not need. 8s still sits well below the point where silence reads as a dropped
 // call, and now only the genuinely long turns cross it.
-const HOLDING_AFTER_MS = 8_000;
+//
+// RAISED AGAIN TO 14s (24 September), because this is now the SECOND holding
+// line rather than the only one.
+//
+// The platform has had its own all along and it was switched off. ElevenLabs'
+// soft timeout speaks a short filler when a custom LLM takes longer than a set
+// threshold, and their documented recommendation for an LLM in the 3-5s range
+// is 3.0 seconds. Ours was disabled at -1, so a person heard nothing at all
+// while the server worked - and we had built this line to paper over a gap the
+// platform was already willing to cover, three seconds earlier and in the
+// agent's own voice rather than spliced onto the front of the answer.
+//
+// So theirs now covers the ordinary wait and this one is a backstop. 14s sits
+// beyond any normal turn and beyond their first filler, so the only time both
+// are heard is a genuinely long generation - a workout plan takes 13-15s - and
+// on those the silence is the thing worth breaking twice.
+const HOLDING_AFTER_MS = 14_000;
 
 // IT MUST NOT PROMISE A THING (Ruth, 18 September: "even when it says, let me
 // put that together for you, it doesn't put anything together"). The old line
