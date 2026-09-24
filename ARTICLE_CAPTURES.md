@@ -273,3 +273,15 @@ A clean demo message was sent through the real app: chicken salad with avocado a
 Six separate times in a week, a regular expression written through a shell command arrived in the file with its backslashes eaten or turned into invisible control characters. Each time it looked like a logic bug. Each time it was a typing bug that happened between the keyboard and the disk. The fix is a rule now: never write a regex through a shell.
 
 ---
+
+## 24 September 2026 — The call that should have been an email, called "Meet the Team"
+
+**Parked. Do not publish while the Demo Day application is live, decision 7 October.**
+
+I prepared for a video call. Foundation on, questions rehearsed, and I had already emailed them warmly to say I was looking forward to meeting the team. It was a text chat. One host answering a queue of technical questions from strangers who could only react to each other with emojis.
+
+I garbled my follow-up question live, because of background noise. Felt silly. Wrote a better email afterwards and got what I needed.
+
+The call existed because it is cheap to run. The email was always going to be better. Nobody told me any of this in advance, and the format was called "Meet the Team".
+
+---
