@@ -97,10 +97,12 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 
 | Asset | Spec | Status |
 |---|---|---|
-| App icon | 512×512 PNG, 32-bit | The Seed Mark exists in the brand pack — needs exporting at size |
-| Feature graphic | 1024×500 PNG or JPG | **Not designed.** Appears at the top of the listing. |
-| Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | **Not taken.** Suggest: Chat mid-conversation, the Body summary, an Almanac plan with its safety note, the Measurements week. |
+| App icon | 512×512 PNG, 32-bit | **Still needed.** The Seed Mark exists in the brand pack and needs exporting at size. |
+| Feature graphic | 1024×500 PNG or JPG | **Still needed. Not designed.** Appears at the top of the listing. |
+| Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | **DONE, 23 Sept 2026.** Six at 1080×1920, which is 9:16 and well over the minimum: `1-chat`, `2-today`, `3-log`, `4-hydration`, `5-cycle`, `6-almanac`. Filed in Build Specs › Branding & Assets › Visual Assets › "2026-09-23 Play Store screenshots". |
 | Tablet screenshots | Optional | Skip |
+
+**This table said the screenshots were "not taken" for a day after they were taken**, which is the third time a row in this document has described work that was already finished. Checked against the folder on 24 September rather than against memory.
 
 **Screenshot caution:** they are public even while the app is in internal testing. Use seeded or invented data, never Ruth's real measurements, food logs or chat history.
 
@@ -112,10 +114,10 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 |---|---|---|---|
 | 1 | Play Console account as Selodía Ltd, $25 | Ruth | **PAID 23 Sept 2026** — £18.77 ($25.00), order PDS.1166-5377-9708-29527, personal Monzo card. One-off, never renews. Registered as an organisation, which also avoids the 12-testers-for-14-days rule a personal account would face |
 | 2 | D-U-N-S number | Ruth | **DONE — 235125707.** Issued and emailed 10 Sept 2026; found in the promotions tab on 22 Sept, having been the stated blocker for twelve days |
-| 3 | Google verification | Ruth | **NOW THE NEXT STEP.** Account paid and D-U-N-S in hand, so this is the organisation verification itself: the legal name must match the D-U-N-S record and Companies House EXACTLY — Selodía Ltd. A mismatch is the usual reason an organisation verification is rejected, and it can take a few days to come back |
+| 3 | Google verification | Ruth | **Submitted, waiting on Google.** Terms accepted 23 Sept and filed to Drive. The console is opened under **helloselodia@gmail.com**, not unflumpapp — that was corrected on 23 Sept after being stated wrongly here from inference. As of the evening of 24 Sept the account was not yet active; only Ruth can see the current state, as it is her console login. The legal name must match the D-U-N-S record and Companies House EXACTLY — Selodía Ltd — and a mismatch is the usual reason an organisation verification is rejected |
 | 4 | App content declarations | Ruth, from §2 | Drafted |
 | 5 | Store listing copy | Ruth approves §3 | Drafted |
-| 6 | Icon, feature graphic, screenshots | Ruth | Not started |
+| 6 | Icon, feature graphic, screenshots | Ruth | **Screenshots done** (six, 23 Sept, in Visual Assets). **Icon and feature graphic outstanding** — these two are now the only listing assets missing, and with verification they are what stands between here and an upload |
 | 7 | AAB from the `production` profile, upload to internal testing | Claude | Waiting on 1–6 |
 | 8 | Add testers by email | Ruth | — |
 | 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Config done 10 Sept (`app.config.js`, 5ca248c). **No dev-variant build has run yet**, so its FCM credentials entry cannot exist yet either |
