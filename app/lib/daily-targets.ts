@@ -96,19 +96,26 @@ export type DayState = {
  * failure Part Eight already recorded once, when a protein figure derived from
  * bodyweight was displayed as though it had been measured.
  */
-export async function loadDayState(
+/** What the day state is worked out FROM: two reads, and nothing else. */
+export type DayStateRows = {
+  todayFood: { kcal: number | null; protein_g: number | null }[] | null;
+  latest: { weight_kg: number | null; body_fat_pct: number | null; bmr: number | null } | null;
+};
+
+/**
+ * The two reads on their own, so a caller can start them early.
+ *
+ * SPLIT FROM THE ARITHMETIC (2026-09-24). Neither read needs the profile -
+ * it is only used for the sums afterwards - but loadDayState took the profile
+ * as an argument, so every caller had to wait for the profile query to come
+ * back before these two could even be sent. In ask-selodia that made it the
+ * last of three sequential round trips in front of the model call, worth 130ms
+ * to 540ms of a spoken turn spent waiting on an ordering that was never real.
+ */
+export async function loadDayStateRows(
   supabase: SupabaseClient,
-  profile: {
-    height_cm?: number | null;
-    date_of_birth?: string | null;
-    biological_sex?: string | null;
-    activity_level?: string | null;
-    fat_focus_state?: string | null;
-    muscle_focus_state?: string | null;
-    protein_target_g?: number | null;
-  } | null,
   dayStartISO: string
-): Promise<DayState> {
+): Promise<DayStateRows> {
   const [{ data: todayFood }, { data: latest }] = await Promise.all([
     supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStartISO),
     supabase
@@ -118,7 +125,22 @@ export async function loadDayState(
       .limit(1)
       .maybeSingle(),
   ]);
+  return { todayFood, latest } as DayStateRows;
+}
 
+export type DayStateProfile = {
+  height_cm?: number | null;
+  date_of_birth?: string | null;
+  biological_sex?: string | null;
+  activity_level?: string | null;
+  fat_focus_state?: string | null;
+  muscle_focus_state?: string | null;
+  protein_target_g?: number | null;
+} | null;
+
+/** The sums, once both the rows and the profile are in hand. */
+export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): DayState {
+  const { todayFood, latest } = rowsIn;
   const rows = (todayFood ?? []) as { kcal: number | null; protein_g: number | null }[];
   const kcalEaten = Math.round(rows.reduce((n, r) => n + (r.kcal ?? 0), 0));
   const proteinEaten = Math.round(rows.reduce((n, r) => n + (r.protein_g ?? 0), 0));
@@ -147,6 +169,15 @@ export async function loadDayState(
     }),
     protein: proteinTarget(profile?.protein_target_g ?? null, m?.weight_kg ?? null, m?.body_fat_pct ?? null),
   };
+}
+
+/** Both halves, for a caller with nothing to gain from starting the reads early. */
+export async function loadDayState(
+  supabase: SupabaseClient,
+  profile: DayStateProfile,
+  dayStartISO: string
+): Promise<DayState> {
+  return buildDayState(await loadDayStateRows(supabase, dayStartISO), profile);
 }
 
 /**

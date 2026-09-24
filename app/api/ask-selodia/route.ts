@@ -60,7 +60,7 @@ import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, loadAllergies, recordAllergies } from '../../lib/allergies';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
-import { buildDayStatePrompt, loadDayState } from '../../lib/daily-targets';
+import { buildDayState, buildDayStatePrompt, loadDayStateRows } from '../../lib/daily-targets';
 import {
   applyPendingFocus,
   clearPendingFocus,
@@ -313,6 +313,12 @@ export async function POST(request: NextRequest) {
   const contextSince = new Date();
   contextSince.setDate(contextSince.getDate() - (isVoice ? 3 : 7));
 
+  // Hoisted so the day's two reads can join the batch below. Same boundary as
+  // before - midnight local - and the one place it is computed, so "today"
+  // cannot come to mean two different things in one route.
+  const dayStartForState = new Date();
+  dayStartForState.setHours(0, 0, 0, 0);
+
   // Every read below is independent of the others, so they go out together
   // rather than as eight sequential round trips. Each one previously cost its
   // own latency before the model call had even started.
@@ -336,6 +342,18 @@ export async function POST(request: NextRequest) {
     { data: yesterdaySummary },
     { data: profileRow },
     disclosedAllergies,
+    // MERGED UP FROM A SECOND BATCH (2026-09-24). These four were already
+    // batched together on the 23rd, with a note saying "anything added here
+    // belongs in this batch, not after it" - and the batch itself still sat
+    // after this one, waiting on it for nothing. None of the four needs a
+    // single value from the reads above: they want supabase and user.id, both
+    // of which exist before either batch starts. Measured at 300ms to 330ms of
+    // a turn spent waiting on that ordering.
+    savedPlans,
+    { data: insightRows },
+    { data: meRows },
+    pendingCard,
+    dayStateRows,
   ] = await Promise.all([
     supabase
       .from('chat_messages')
@@ -449,52 +467,30 @@ export async function POST(request: NextRequest) {
       )
       .maybeSingle(),
     // Not a { data } shape - loadAllergies returns the rows directly. Positional
-    // destructuring above, so it stays last.
+    // destructuring above, so it stays last of the original set.
     loadAllergies(supabase),
-  ]);
 
-  const previousEscalationStep: EscalationStep =
-    (lastAssistantTurn?.escalation_step as EscalationStep) ?? null;
-  const previousClassification: Classification | null =
-    (lastAssistantTurn?.classification as Classification) ?? null;
-  const previousRevisitCount: number = lastAssistantTurn?.distress_revisit_count ?? 0;
-
-  const messages: Anthropic.MessageParam[] = (recentHistory ?? [])
-    .slice()
-    .reverse()
-    .map((m) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content as string,
-    }));
-
-  // FOUR READS, ONE WAIT (2026-09-23). These were four separate awaits in a row
-  // immediately after the Promise.all above, and none of them needs anything
-  // from the others: saved plans, insight titles, Me cards, pending card. Timed
-  // against the real database they cost 275ms one after another and 149ms
-  // together, so more than a third of this stretch was the route waiting on
-  // itself. Anything added here belongs in this batch, not after it.
-  //
-  // What each one is for:
-  //  - THEIR OWN SAVED ROUTINES, by name, so "I did the gym workout today" can
-  //    find the plan it means (2026-09-18).
-  //  - WHAT IS ALREADY IN HER INSIGHTS (2026-09-19). Without this the model
-  //    could not know a knee flare had been recorded the day before, so it
-  //    offered it again as a second symptom - and could never notice that
-  //    something keeps coming back, which is exactly when a symptom becomes
-  //    worth an insight. Titles, kinds and dates only; the newest few, because
-  //    a long list of old entries is a prompt about things the conversation is
-  //    not about.
-  //  - HER ME CARDS, by name and current status, so "I've stopped the
-  //    magnesium" can name the card it means. Titles only: the why stays in the
-  //    card, and quoting every reason on every turn would be a long prompt
-  //    about decisions the conversation is not about.
-  //  - The card image reaches the model exactly ONCE (decision, 2026-08-21):
-  //    re-sending it every turn would charge vision tokens for the rest of the
-  //    conversation to no benefit, since the reply it produces is already in
-  //    the text history. Attached to the newest user turn so "this" is
-  //    unambiguous.
-  timing.mark('contextLoaded');
-  const [savedPlans, { data: insightRows }, { data: meRows }, pendingCard] = await Promise.all([
+    // The four that used to be a second batch. Kept in this order because the
+    // destructuring above is positional.
+    //
+    //  - THEIR OWN SAVED ROUTINES, by name, so "I did the gym workout today"
+    //    can find the plan it means (2026-09-18).
+    //  - WHAT IS ALREADY IN HER INSIGHTS (2026-09-19). Without this the model
+    //    could not know a knee flare had been recorded the day before, so it
+    //    offered it again as a second symptom - and could never notice that
+    //    something keeps coming back, which is exactly when a symptom becomes
+    //    worth an insight. Titles, kinds and dates only; the newest few,
+    //    because a long list of old entries is a prompt about things the
+    //    conversation is not about.
+    //  - HER ME CARDS, by name and current status, so "I've stopped the
+    //    magnesium" can name the card it means. Titles only: the why stays in
+    //    the card, and quoting every reason on every turn would be a long
+    //    prompt about decisions the conversation is not about.
+    //  - The card image reaches the model exactly ONCE (decision, 2026-08-21):
+    //    re-sending it every turn would charge vision tokens for the rest of
+    //    the conversation to no benefit, since the reply it produces is already
+    //    in the text history. Attached to the newest user turn so "this" is
+    //    unambiguous.
     loadPlans(supabase, user.id),
     supabase
       .from('almanac_entries')
@@ -509,7 +505,27 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('kind', 'me'),
     loadPendingCardImage(supabase, user.id),
+
+    // The day's food and the latest measurement. These are the two reads
+    // inside loadDayState, and neither of them needs the profile - only the
+    // arithmetic afterwards does. See loadDayStateRows for why that mattered.
+    loadDayStateRows(supabase, dayStartForState.toISOString()),
   ]);
+  timing.mark('contextLoaded');
+
+  const previousEscalationStep: EscalationStep =
+    (lastAssistantTurn?.escalation_step as EscalationStep) ?? null;
+  const previousClassification: Classification | null =
+    (lastAssistantTurn?.classification as Classification) ?? null;
+  const previousRevisitCount: number = lastAssistantTurn?.distress_revisit_count ?? 0;
+
+  const messages: Anthropic.MessageParam[] = (recentHistory ?? [])
+    .slice()
+    .reverse()
+    .map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content as string,
+    }));
 
   const insightsBlock =
     (insightRows ?? []).length > 0
@@ -680,11 +696,13 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   // Item 22's foundation. Server-local midnight, matching daily-roundup exactly,
   // so "today" means the same day here as it does in the roundup - two different
   // day boundaries in one app would eventually disagree in front of somebody.
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-  timing.mark('almanacLoaded');
-  const dayState = await loadDayState(supabase, profile, dayStart.toISOString());
-  timing.mark('dayStateLoaded');
+  // Computed once, up where the reads are sent: see dayStartForState.
+  //
+  // No await here any more. The two reads went out with the rest of the
+  // context; this is the arithmetic over them, which needs the profile and
+  // nothing from the database.
+  const dayState = buildDayState(dayStateRows, profile);
+  timing.mark('dayStateBuilt');
 
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => humanDate(f.happened_at) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
