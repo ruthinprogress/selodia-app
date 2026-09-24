@@ -97,8 +97,22 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 
 | Asset | Spec | Status |
 |---|---|---|
-| App icon | 512×512 PNG, 32-bit | **Still needed.** The Seed Mark exists in the brand pack and needs exporting at size. |
-| Feature graphic | 1024×500 PNG or JPG | **Still needed. Not designed.** Appears at the top of the listing. |
+| App icon | 512×512 PNG, 32-bit | **DONE, 24 Sept 2026.** The seed mark in terracotta on cream. Every 512 in the brand pack is the mark on TRANSPARENCY, which cannot be used: Play rounds the corners itself and places the icon on its own surfaces, so a transparent icon lands on whatever is behind it and vanishes in dark mode. It needed a ground. `Build Specs › Play Store Submission › App icon 512x512 - FINAL.png` |
+| Feature graphic | 1024×500 PNG or JPG | **DONE, 24 Sept 2026.** Watercolour wash with the mark, wordmark and tagline on the left third, centre deliberately clear. `Build Specs › Play Store Submission › Feature graphic 1024x500 - FINAL.png` |
+
+**WHERE THE FEATURE GRAPHIC IS ACTUALLY SEEN, checked against live listings on
+24 September rather than assumed.** It is the **poster for a promo video**, and
+without a video most people never see it at all. Signal's listing shows icon,
+title, install, then straight to screenshots - no banner anywhere, and Signal
+certainly has one uploaded, because Play will not let a release through without
+it. Fitbit's listing shows theirs, with a **Trailer play button sitting dead
+centre on top of it**.
+
+Two things follow. It is **mandatory but largely invisible**, so it is not worth
+many rounds. And whatever is used must **keep its centre clear**, because the
+day a trailer is added, a play button lands in the middle of it. The chosen
+banner does; the microphone version that was considered did not, which is why it
+is in the archive.
 | Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | **DONE, 23 Sept 2026.** Six at 1080×1920, which is 9:16 and well over the minimum: `1-chat`, `2-today`, `3-log`, `4-hydration`, `5-cycle`, `6-almanac`. **[Open the folder in Drive](https://drive.google.com/drive/folders/1fUjqZY4VmBCsb78CsRcLQ6PW_uiauZhi)** — Build Specs › Branding & Assets › Visual Assets › "2026-09-23 Play Store screenshots". |
 | Tablet screenshots | Optional | Skip |
 
@@ -138,7 +152,7 @@ not eating. The account exists to be photographed and holds nothing real.
 | 3 | Google verification | Ruth | **Submitted, waiting on Google.** Terms accepted 23 Sept and filed to Drive. The console is opened under **helloselodia@gmail.com**, not unflumpapp — that was corrected on 23 Sept after being stated wrongly here from inference. As of the evening of 24 Sept the account was not yet active; only Ruth can see the current state, as it is her console login. The legal name must match the D-U-N-S record and Companies House EXACTLY — Selodía Ltd — and a mismatch is the usual reason an organisation verification is rejected |
 | 4 | App content declarations | Ruth, from §2 | Drafted |
 | 5 | Store listing copy | Ruth approves §3 | Drafted |
-| 6 | Icon, feature graphic, screenshots | Ruth | **Screenshots done** (six, 23 Sept, in Visual Assets). **Icon and feature graphic outstanding** — these two are now the only listing assets missing, and with verification they are what stands between here and an upload |
+| 6 | Icon, feature graphic, screenshots | Ruth | **Icon and feature graphic DONE 24 Sept**, both in `Build Specs › Play Store Submission`. **Screenshots being reshot** to Ruth's 24 Sept brief (see the table above): the 23 Sept six all predate the More glyph and two were the wrong screens. Shot from a separate seeded account, never the demo one |
 | 7 | AAB from the `production` profile, upload to internal testing | Claude | Waiting on 1–6 |
 | 8 | Add testers by email | Ruth | — |
 | 9 | `app.selodia.dev` variant so debugging never costs the real app | Claude | Config done 10 Sept (`app.config.js`, 5ca248c). **No dev-variant build has run yet**, so its FCM credentials entry cannot exist yet either |
