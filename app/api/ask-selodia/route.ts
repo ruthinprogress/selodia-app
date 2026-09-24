@@ -164,6 +164,17 @@ function phaseTimer() {
       // Vercel log with a single grep.
       console.log(`TURN TIMINGS ${label}`, JSON.stringify({ ...marks, total }));
     },
+    // THE SAME NUMBERS, HANDED BACK TO A CALLER THAT ASKS FOR THEM.
+    //
+    // The log line above is the right place for these and was not enough: the
+    // log tail returns a buffered window that went stale mid-investigation, so
+    // an afternoon of measurements could not be told apart from each other. A
+    // probe that has to ask a second system what the first system just did will
+    // eventually be lied to.
+    //
+    // Durations only, on an already-authenticated request, and only when asked
+    // for by header - so it costs nothing and tells a stranger nothing.
+    taken: () => ({ ...marks, total: Date.now() - start }),
   };
 }
 
@@ -2442,6 +2453,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   timing.report(isVoice ? 'voice' : 'typed');
 
   return NextResponse.json({
+    // Absent unless a caller asked, so nothing in the app ever sees this field.
+    ...(request.headers.get('x-selodia-timing') ? { timings: timing.taken() } : {}),
     reply: finalReply,
     navigationTarget,
     savedContext,

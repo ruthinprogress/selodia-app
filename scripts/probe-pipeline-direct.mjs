@@ -68,16 +68,32 @@ for (let i = 0; i < RUNS; i++) {
   const t0 = performance.now();
   const res = await fetch(`${API}/api/ask-selodia`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      // Ask the route to hand its own phase timings back with the reply, so
+      // this does not depend on a log tail that returns a stale window.
+      'x-selodia-timing': '1',
+    },
     body: JSON.stringify({ message: utterance, voice: true }),
   });
   const took = performance.now() - t0;
   const data = res.ok ? await res.json() : null;
   times.push(took);
+  const t = data?.timings;
   console.log(
-    `  ${i + 1}  ${String(Math.round(took)).padStart(6)}ms  ${res.status}  "${utterance}"\n` +
-      `        -> ${(data?.reply ?? '(no reply)').slice(0, 76)}...`
+    `  ${i + 1}  ${String(Math.round(took)).padStart(6)}ms wall  ${res.status}  "${utterance}"`
   );
+  if (t) {
+    console.log(
+      `        server ${String(t.total).padStart(5)}ms` +
+        `   auth ${String(t.authorised ?? '-').padStart(4)}` +
+        `   context ${String(t.contextLoaded ?? '-').padStart(5)}` +
+        `   model ${String(t.modelAnswered ?? '-').padStart(5)}` +
+        `   network ${Math.round(took) - t.total}ms`
+    );
+  }
+  console.log(`        -> ${(data?.reply ?? '(no reply)').slice(0, 70)}...`);
   if (i < RUNS - 1) await new Promise((r) => setTimeout(r, GAP));
 }
 
