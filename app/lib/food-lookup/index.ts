@@ -65,6 +65,12 @@ export type LookupResult = {
   carbs_g: number | null;
   fat_g: number | null;
   sodium_mg: number | null;
+  // Null from the Open Food Facts branch, which is not asked for them, and
+  // often null from CoFID, which did not measure every food. Optional would be
+  // the wrong type here: the caller must see an explicit "not known".
+  saturated_fat_g: number | null;
+  sugar_g: number | null;
+  fibre_g: number | null;
   source: string;
   confidence: number;
   tier: 1 | 2;
@@ -96,6 +102,15 @@ export async function lookupFoodEntry(
     (await lookupWeighedFromComposition(supabase, rawText)) ?? (await lookupWeighedEntry(rawText));
   if (!found) return null;
 
+  // The Open Food Facts branch returns four macros and no more, so the three
+  // are read off it as undefined and normalised to null once, here, rather than
+  // left to every caller to remember.
+  const extra = {
+    saturated_fat_g: 'saturated_fat_g' in found ? (found.saturated_fat_g ?? null) : null,
+    sugar_g: 'sugar_g' in found ? (found.sugar_g ?? null) : null,
+    fibre_g: 'fibre_g' in found ? (found.fibre_g ?? null) : null,
+  };
+
   // Remembered as the person's own, so the second time costs nothing at all.
   await writeCache(supabase, userId, rawText, {
     kcal: found.kcal,
@@ -103,9 +118,10 @@ export async function lookupFoodEntry(
     carbs_g: found.carbs_g,
     fat_g: found.fat_g,
     sodium_mg: found.sodium_mg,
+    ...extra,
     source: found.source,
     confidence: found.confidence,
   });
 
-  return { ...found, tier: 2 };
+  return { ...found, ...extra, tier: 2 };
 }

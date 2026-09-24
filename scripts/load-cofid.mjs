@@ -35,6 +35,10 @@ const rows = foods.map((f) => ({
   fat_g: f.fat_g,
   carbs_g: f.carbs_g,
   sodium_mg: f.sodium_mg,
+  saturated_fat_g: f.saturated_fat_g ?? null,
+  sugar_g: f.sugar_g ?? null,
+  fibre_g: f.fibre_g ?? null,
+  fibre_basis: f.fibre_basis ?? null,
   search_name: f.name.toLowerCase(),
 }));
 

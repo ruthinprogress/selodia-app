@@ -48,6 +48,13 @@ export type CachedFood = {
   carbs_g: number | null;
   fat_g: number | null;
   sodium_mg: number | null;
+  // Cached alongside the rest, or the second log of the same food comes back
+  // missing exactly the three macros "What I track" can switch on - and a
+  // column that was never written is indistinguishable from a food nobody
+  // measured. See the migration beside this for the full reasoning.
+  saturated_fat_g: number | null;
+  sugar_g: number | null;
+  fibre_g: number | null;
   source: string;
   confidence: number;
 };
@@ -67,7 +74,9 @@ export async function readCache(
   // salad sandwich" are 0.86 similar and 400 kcal apart.
   const { data, error } = await supabase
     .from('food_cache')
-    .select('kcal, protein_g, carbs_g, fat_g, sodium_mg, source, confidence')
+    .select(
+      'kcal, protein_g, carbs_g, fat_g, sodium_mg, saturated_fat_g, sugar_g, fibre_g, source, confidence'
+    )
     .eq('user_id', userId)
     .eq('food_name', key)
     .maybeSingle();
@@ -96,6 +105,9 @@ export async function writeCache(
       carbs_g: macros.carbs_g,
       fat_g: macros.fat_g,
       sodium_mg: macros.sodium_mg,
+      saturated_fat_g: macros.saturated_fat_g,
+      sugar_g: macros.sugar_g,
+      fibre_g: macros.fibre_g,
       source: macros.source,
       confidence: macros.confidence ?? 0.9,
       last_used: new Date().toISOString(),

@@ -32,6 +32,13 @@ export type CompositionRow = {
   fat_g: number | null;
   carbs_g: number | null;
   sodium_mg: number | null;
+  // The three "What I track" can switch on. Measured, not estimated - and
+  // frequently null, because CoFID measured 2,610 foods for saturated fat and
+  // 2,639 for fibre out of 2,886. Null must stay null all the way through: a
+  // food nobody measured is not a food with none of it.
+  saturated_fat_g: number | null;
+  sugar_g: number | null;
+  fibre_g: number | null;
   similarity: number;
 };
 
@@ -162,8 +169,17 @@ export async function lookupWeighedFromComposition(supabase: SupabaseClient, raw
     sodium_mg: match.row.sodium_mg,
   };
 
+  // Scaled here rather than in scaleToQuantity, which belongs to the Open Food
+  // Facts client and takes ITS per100 shape. Same arithmetic, one decimal, and
+  // null survives the multiplication instead of becoming zero.
+  const f = quantity.grams / 100;
+  const per = (v: number | null) => (v == null ? null : Math.round(v * f * 10) / 10);
+
   return {
     ...scaleToQuantity(per100, quantity.grams),
+    saturated_fat_g: per(match.row.saturated_fat_g),
+    sugar_g: per(match.row.sugar_g),
+    fibre_g: per(match.row.fibre_g),
     source: 'mcwiddowson' as const,
     confidence: match.score,
     matchedName: match.row.name,

@@ -74,6 +74,18 @@ for r in prox:
     code = r[col['Food Code']]
     name = r[col['Food Name']]
     if not code or not name: continue
+
+    # FIBRE IS MEASURED TWO WAYS AND THEY ARE NOT THE SAME NUMBER. AOAC is the
+    # international method and what a label in the shops reports; NSP is the
+    # older UK one and reads about a third lower because it leaves out resistant
+    # starch and lignin. AOAC covers 1,548 foods, NSP covers 2,538. Preferring
+    # AOAC and falling back to NSP gets 2,640 of 2,887 - and fibre_basis says
+    # which, so a number is never silently one method wearing the other's name.
+    aoac = num(r[col['AOAC fibre (g)']])
+    nsp = num(r[col['NSP (g)']])
+    fibre = aoac if aoac is not None else nsp
+    basis = 'AOAC' if aoac is not None else ('NSP' if nsp is not None else None)
+
     foods[str(code)] = {
         'code': str(code),
         'name': str(name).strip(),
@@ -83,6 +95,15 @@ for r in prox:
         'fat_g': num(r[col['Fat (g)']]),
         'carbs_g': num(r[col['Carbohydrate (g)']]),
         'sodium_mg': None,
+        # "Satd FA /100g fd" is saturated fat in grams per 100g OF FOOD, which
+        # is what a food log wants. The column beside it, "Satd FA /100g FA",
+        # is the saturated share of the FAT - so for a lean food it reads high
+        # and for an oil it reads near its true value. Taking the wrong one
+        # produces numbers that look reasonable and are a different quantity.
+        'saturated_fat_g': num(r[col['Satd FA /100g fd (g)']]),
+        'sugar_g': num(r[col['Total sugars (g)']]),
+        'fibre_g': fibre,
+        'fibre_basis': basis,
     }
 
 # Sodium lives in its own sheet, in milligrams per 100g.
@@ -117,9 +138,12 @@ const foods = JSON.parse(json);
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify(foods, null, 0));
 
-const withKcal = foods.filter((f) => f.kcal != null).length;
-const withSodium = foods.filter((f) => f.sodium_mg != null).length;
+const has = (k) => foods.filter((f) => f[k] != null).length;
+const basis = (b) => foods.filter((f) => f.fibre_basis === b).length;
 console.log(`\n  ${foods.length} foods written to ${out}`);
-console.log(`    with energy:  ${withKcal}`);
-console.log(`    with sodium:  ${withSodium}`);
+console.log(`    with energy:         ${has('kcal')}`);
+console.log(`    with sodium:         ${has('sodium_mg')}`);
+console.log(`    with saturated fat:  ${has('saturated_fat_g')}`);
+console.log(`    with sugar:          ${has('sugar_g')}`);
+console.log(`    with fibre:          ${has('fibre_g')}  (AOAC ${basis('AOAC')}, NSP ${basis('NSP')})`);
 console.log('\n  Contains public sector information licensed under the Open Government Licence v3.0.\n');
