@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getSupabaseForRequest } from '../../lib/supabase';
+import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // Describes the app's screens, tabs and controls so the model can point
 // somebody at where a thing lives. About 2,100 tokens, and OMITTED ON A SPOKEN
 // TURN: nobody in a voice conversation is looking at the screen, the
@@ -170,13 +170,15 @@ function phaseTimer() {
 export async function POST(request: NextRequest) {
   const timing = phaseTimer();
   const supabase = getSupabaseForRequest(request);
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
+  // Verified from the token's own signature rather than by asking the Auth
+  // server, which cost 500ms to 760ms at the front of every spoken turn. See
+  // userIdForRequest for what that trades and why RLS is unaffected.
+  const userId = await userIdForRequest(request);
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const user = { id: userId };
+  timing.mark('authorised');
 
   const {
     message,
