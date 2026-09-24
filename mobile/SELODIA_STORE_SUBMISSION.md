@@ -8,6 +8,8 @@
 
 ## 1. Data Safety — the answers
 
+**APPROVED by Ruth, 24 September 2026.** The answers below are signed off and can be entered as written. If any of them changes, the privacy policy at selodia.app/privacy has to change in the same pass - Google compares the two, and a Data Safety form that contradicts the policy is a rejection.
+
 Google's Data Safety form asks, for each data type: is it **collected**, is it **shared**, is it **processed ephemerally**, is it **required or optional**, and **why**. "Shared" has a specific meaning — transferred to a *third party*, which does **not** include a service provider processing on your behalf. Supabase, Anthropic, ElevenLabs and Expo are all processors, so the honest answer to "shared" is **No** throughout.
 
 **Overall answers**
@@ -75,7 +77,7 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 
 *(65 characters. It is the tagline, which is confirmed copy in the marketing spec.)*
 
-**Full description (4000 characters max) — draft, needs Ruth's approval**
+**Full description (4000 characters max) — APPROVED by Ruth, 24 September 2026**
 
 > Selodía is a body-literacy app for women in their forties and beyond.
 >
@@ -150,8 +152,8 @@ not eating. The account exists to be photographed and holds nothing real.
 | 1 | Play Console account as Selodía Ltd, $25 | Ruth | **PAID 23 Sept 2026** — £18.77 ($25.00), order PDS.1166-5377-9708-29527, personal Monzo card. One-off, never renews. Registered as an organisation, which also avoids the 12-testers-for-14-days rule a personal account would face |
 | 2 | D-U-N-S number | Ruth | **DONE — 235125707.** Issued and emailed 10 Sept 2026; found in the promotions tab on 22 Sept, having been the stated blocker for twelve days |
 | 3 | Google verification | Ruth | **Submitted, waiting on Google.** Terms accepted 23 Sept and filed to Drive. The console is opened under **helloselodia@gmail.com**, not unflumpapp — that was corrected on 23 Sept after being stated wrongly here from inference. As of the evening of 24 Sept the account was not yet active; only Ruth can see the current state, as it is her console login. The legal name must match the D-U-N-S record and Companies House EXACTLY — Selodía Ltd — and a mismatch is the usual reason an organisation verification is rejected |
-| 4 | App content declarations | Ruth, from §2 | Drafted |
-| 5 | Store listing copy | Ruth approves §3 | Drafted |
+| 4 | App content declarations | Ruth, from §2 | **APPROVED 24 Sept 2026.** Ready to enter in the console |
+| 5 | Store listing copy | Ruth approves §3 | **APPROVED 24 Sept 2026.** Name, short description and full description all signed off as written |
 | 6 | Icon, feature graphic, screenshots | Ruth | **Icon and feature graphic DONE 24 Sept**, both in `Build Specs › Play Store Submission`. **Screenshots being reshot** to Ruth's 24 Sept brief (see the table above): the 23 Sept six all predate the More glyph and two were the wrong screens. Shot from a separate seeded account, never the demo one |
 | 7 | AAB from the `production` profile, upload to internal testing | Claude | Waiting on 1–6 |
 | 8 | Add testers by email | Ruth | — |
