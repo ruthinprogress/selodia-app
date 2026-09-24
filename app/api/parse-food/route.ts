@@ -5,6 +5,7 @@ import { buildFoodLogFields, logFoodFromText, writeItems } from '../../lib/food-
 import { loadRememberedFoods, rememberedFoodsBlock } from '../../lib/food-memory';
 import {
   FOOD_PARSE_CLASSIFICATION_RULES,
+  FOOD_PARSE_OMIT_RATHER_THAN_GUESS,
   FOOD_PARSE_JSON_SCHEMA,
   type ParsedItem,
   type ParsedMacros,
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
     FOOD_PARSE_JSON_SCHEMA +
     ' Set confidence to "uncertain" if any image was blurry, glare made text hard to read, or you had to guess at any number. For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack"). Keep it short - 1-3 words. ' +
     FOOD_PARSE_CLASSIFICATION_RULES +
+    FOOD_PARSE_OMIT_RATHER_THAN_GUESS +
     // Only her note can be matched before the photo is seen; a photo with no
     // note gets no memory rather than a guess at what might be on the plate.
     rememberedFoodsBlock(await loadRememberedFoods(supabase, user.id, foodText ?? ''));

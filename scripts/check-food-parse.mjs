@@ -168,5 +168,32 @@ console.log('  (no rows are written; the database is a stub)\n');
   check('fifty grams of omelette is not 385 kcal', kcal > 0 && kcal < 220, `${kcal} kcal`);
 }
 
+// ---- THE THREE NEW MACROS, and their right to be absent ------------------
+//
+// 24 September 2026, with "What I track". The risk here is not that the model
+// omits saturated fat, sugar or fibre - it is that it INVENTS them. A made-up
+// 4g of fibre is indistinguishable on a row from a measured one, and somebody
+// who switched fibre on did it in order to watch it.
+{
+  const w = await parse('Two slices of wholemeal toast with butter');
+  const f = w.food_logs[0] ?? {};
+  console.log(`\n  "Two slices of wholemeal toast with butter"`);
+  console.log(`    sat fat: ${f.saturated_fat_g}  sugar: ${f.sugar_g}  fibre: ${f.fibre_g}`);
+  check('wholemeal bread has fibre, and it came through', typeof f.fibre_g === 'number' && f.fibre_g > 0, String(f.fibre_g));
+  check('butter has saturated fat, and it came through', typeof f.saturated_fat_g === 'number' && f.saturated_fat_g > 0, String(f.saturated_fat_g));
+  check(
+    'each is a number or null, never a string or NaN',
+    [f.saturated_fat_g, f.sugar_g, f.fibre_g].every((v) => v === null || Number.isFinite(v)),
+    JSON.stringify([f.saturated_fat_g, f.sugar_g, f.fibre_g])
+  );
+}
+
+{
+  const w = await parse('black coffee');
+  const f = w.food_logs[0] ?? {};
+  console.log(`\n  "black coffee"\n    sat fat: ${f.saturated_fat_g}  sugar: ${f.sugar_g}  fibre: ${f.fibre_g}`);
+  check('a genuine none may be zero; an unknown must be null', f.fibre_g === null || f.fibre_g === 0, String(f.fibre_g));
+}
+
 console.log(`\n  ${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

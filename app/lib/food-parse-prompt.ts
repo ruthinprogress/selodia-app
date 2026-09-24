@@ -16,6 +16,12 @@ export type ParsedItem = {
   protein_g?: number;
   carbs_g?: number;
   fat_g?: number;
+  // ADDED 24 September 2026 with "What I track". Optional like every other
+  // field here: the model may omit any, and a figure it did not work out must
+  // stay absent rather than become a zero.
+  saturated_fat_g?: number;
+  sugar_g?: number;
+  fibre_g?: number;
   sodium_mg?: number;
   protein_source?: string;
   amino_profile?: string;
@@ -30,6 +36,9 @@ export type ParsedMacros = {
   protein_g?: number;
   carbs_g?: number;
   fat_g?: number;
+  saturated_fat_g?: number;
+  sugar_g?: number;
+  fibre_g?: number;
   sodium_mg?: number;
   protein_source?: string;
   amino_profile?: string;
@@ -73,10 +82,31 @@ export const aminoProfile = (s: unknown): AminoProfileValue | null =>
     ? s
     : null;
 
+// A FIGURE YOU DID NOT WORK OUT IS NOT A ZERO (24 September 2026, with the
+// three macros added for "What I track").
+//
+// saturated_fat_g, sugar_g and fibre_g are genuinely harder to estimate than
+// the four above them, and the temptation for a model asked for a number is to
+// produce a plausible one. Here that is the worst answer available: a person
+// who switches fibre on is switching it on BECAUSE she wants to watch it, and
+// a fabricated 4g is indistinguishable on the row from a real one.
+//
+// So the instruction is to omit rather than guess, and the app leaves an absent
+// macro off the row entirely rather than printing 0g - because it cannot tell
+// "this meal had no fibre" from "nobody worked the fibre out", and a zero
+// asserts the first.
+export const FOOD_PARSE_OMIT_RATHER_THAN_GUESS =
+  ' SATURATED FAT, SUGAR AND FIBRE: give saturated_fat_g, sugar_g and fibre_g only where the food genuinely tells you ' +
+  '- a named whole food, a dish whose components you know, a figure stated on a label the person quoted. ' +
+  'OMIT THE FIELD ENTIRELY when you would be guessing. Leaving it out is correct and expected; the app shows nothing ' +
+  'for a macro it does not have, and it does not show zero. A plausible invented figure is worse than a blank, because ' +
+  'somebody who has switched that macro on has done so in order to watch it, and cannot tell your estimate from a real ' +
+  'one. Never write 0 to mean "unknown": 0 means the food genuinely contains none, as black coffee contains no fibre.';
+
 // The exact JSON shape every food-parse call must return. Add a field here once
 // and both paths inherit it (also update ParsedItem and buildFoodLogFields).
 export const FOOD_PARSE_JSON_SCHEMA =
-  '{"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null}], "meal_label": string, "confidence": "clear" or "uncertain", "drinks": [string]}';
+  '{"kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "saturated_fat_g": number, "sugar_g": number, "fibre_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null, "breakdown_type": "simple" | "multi_component" | "consistent_ratio" | "high_variability", "items": [{"name": string, "quantity": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "saturated_fat_g": number, "sugar_g": number, "fibre_g": number, "sodium_mg": number, "protein_source": "animal" | "plant" | "collagen" | null, "amino_profile": "complete" | "limiting_lysine" | "limiting_methionine" | "limiting_tryptophan" | null}], "meal_label": string, "confidence": "clear" or "uncertain", "drinks": [string]}';
 
 // ONE MESSAGE CAN BE SEVERAL DAYS OF FOOD (2026-09-16).
 //

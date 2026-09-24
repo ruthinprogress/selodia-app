@@ -7,6 +7,7 @@ import {
 } from './food-dedupe';
 import {
   FOOD_PARSE_CLASSIFICATION_RULES,
+  FOOD_PARSE_OMIT_RATHER_THAN_GUESS,
   FOOD_PARSE_ENTRIES_SCHEMA,
   FOOD_PARSE_JSON_SCHEMA,
   aminoProfile, proteinSource,
@@ -45,6 +46,10 @@ export function buildFoodLogFields(macros: ParsedMacros) {
     carbs_g: macros.carbs_g,
     fat_g: macros.fat_g,
     sodium_mg: macros.sodium_mg ?? null,
+    // Null, never zero: see FOOD_PARSE_OMIT_RATHER_THAN_GUESS.
+    saturated_fat_g: macros.saturated_fat_g ?? null,
+    sugar_g: macros.sugar_g ?? null,
+    fibre_g: macros.fibre_g ?? null,
     protein_source: proteinSource(macros.protein_source),
     amino_profile: aminoProfile(macros.amino_profile),
     breakdown_type: macros.breakdown_type ?? null,
@@ -73,6 +78,9 @@ export async function writeItems(
       carbs_g: it.carbs_g ?? null,
       fat_g: it.fat_g ?? null,
       sodium_mg: it.sodium_mg ?? null,
+      saturated_fat_g: it.saturated_fat_g ?? null,
+      sugar_g: it.sugar_g ?? null,
+      fibre_g: it.fibre_g ?? null,
       protein_source: proteinSource(it.protein_source),
       amino_profile: aminoProfile(it.amino_profile),
     }))
@@ -241,6 +249,7 @@ export async function logFoodFromText(
       FOOD_PARSE_JSON_SCHEMA +
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
+    FOOD_PARSE_OMIT_RATHER_THAN_GUESS +
       ' For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
       ' EVERY DRINK ALSO GOES IN "drinks", verbatim and with its quantity, one string each - "1lt water", "black coffee", "two mugs of tea with milk", "a pint of cider", "a glass of orange juice". ALL of them, whatever they contain: water, tea, coffee, squash, juice, milk, a smoothie, a fizzy drink, alcohol. A caloric drink still belongs in "items" as well, with its macros, because it is food too - being in "drinks" is about the volume, not the calories. The one thing that is not a drink is a food that merely borrows the name of one: a coffee cake is not a coffee. Return an empty array when there were none. The app decides what each drink counts toward and converts the volumes itself, so do not estimate a volume and do not leave a drink out for any reason: a litre of water somebody typed and never saw recorded is the failure this field exists to stop.' +
       memory +
