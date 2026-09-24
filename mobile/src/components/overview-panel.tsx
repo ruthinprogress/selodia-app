@@ -449,7 +449,7 @@ export function OverviewPanel({
         {/* Straight to the view, not to the Log's list (2026-09-20): tapping
             Food on Today means "show me my food", and a list in between would
             be a step that answers nothing. */}
-        <Square id="body.food" title="Food" href="/log/entries?view=food">
+        <Square id="body.food" title="Food" href="/log/food-history">
           {data.todayKcal === 0 && data.todayProtein === 0 ? (
             /* One line rather than two zeros stacked. Nothing was logged, and
                two separate noughts make more of that than it deserves. */

@@ -15,7 +15,15 @@ import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 // of the same twenty lines would have been four places to forget the
 // SpotlightScroll wrapper, which fails quietly: a target that cannot scroll
 // itself into view is measured off-screen and simply never highlights.
-export function BodyScreen({ children }: { children: React.ReactNode }) {
+export function BodyScreen({
+  children,
+  settingsInHeader = false,
+}: {
+  children: React.ReactNode;
+  /** True when this screen's stack header carries the mark itself, so the
+      in-content one would be a second copy sitting under the header. */
+  settingsInHeader?: boolean;
+}) {
   const scrollRef = useRef<ScrollView>(null);
   // This shell does not pad for the status bar (edges below exclude 'top'), so
   // the Settings link is told how tall it is. See settings-link.tsx.
@@ -27,7 +35,7 @@ export function BodyScreen({ children }: { children: React.ReactNode }) {
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
           {/* Every Log screen, including the week-by-week ones, from one place
               (bug list item 13). */}
-          <SettingsLink topInset={insets.top} />
+          {!settingsInHeader && <SettingsLink topInset={insets.top} />}
           <SpotlightScroll scrollRef={scrollRef}>{children}</SpotlightScroll>
         </ScrollView>
       </SafeAreaView>

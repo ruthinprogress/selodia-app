@@ -67,7 +67,9 @@ const ROWS: Row[] = [
     icon: 'silverware-fork-knife',
     label: 'Food and drink',
     detail: "Today's meals, and the week behind them",
-    go: () => router.push('/log/entries?view=food'),
+    // The redesigned Food screen (24 September 2026), which carries Today
+    // AND the week. The old Food segment of /log/entries showed today only.
+    go: () => router.push('/log/food-history'),
   },
   {
     id: 'water',

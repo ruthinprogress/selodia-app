@@ -42,6 +42,8 @@ export function QuickLogBar({
   kind,
   onLogged,
   onNoteChange,
+  actionLabel = 'Save',
+  surface = 'page',
 }: {
   kind: 'food' | 'activity' | 'measurement';
   // Fired after anything lands, so the view above can re-read itself. The point
@@ -52,8 +54,17 @@ export function QuickLogBar({
   // carries the reading's interpretation, because bodyAckFacts composes it from
   // the same function the standalone note does.
   onNoteChange?: (showing: boolean) => void;
+  /** The word on the button. "Save" everywhere except the Food log, whose
+      redesign asks for "Add" (Ruth, 24 September 2026). */
+  actionLabel?: string;
+  /** What the bar is sitting on. The field and the button are drawn in the
+      app's element tone, which is the same sand a card is - so inside the Food
+      log's Today card they disappeared into it. On a card they take the page's
+      own cream instead, which is what her mockup shows. */
+  surface?: 'page' | 'card';
 }) {
   const theme = useTheme();
+  const field = surface === 'card' ? theme.background : theme.backgroundElement;
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -169,8 +180,11 @@ export function QuickLogBar({
     }
   }
 
+  // Transparent, so it sits on whatever holds it - the page on the Log tabs, a
+  // sand card inside the Food log's Today. A default cream ThemedView drew a
+  // pale band across that card.
   return (
-    <ThemedView style={styles.wrap}>
+    <ThemedView style={[styles.wrap, styles.clear]}>
       <View style={styles.row}>
         <Pressable
           onPress={() => setAddOpen(true)}
@@ -180,7 +194,7 @@ export function QuickLogBar({
           hitSlop={Spacing.two}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <ThemedView type="backgroundElement" style={[styles.addButton, busy && styles.disabled]}>
+          <ThemedView style={[styles.addButton, { backgroundColor: field }, busy && styles.disabled]}>
             <ThemedText type="smallBold">+</ThemedText>
           </ThemedView>
         </Pressable>
@@ -190,7 +204,7 @@ export function QuickLogBar({
           onChangeText={setInput}
           placeholder={placeholder}
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+          style={[styles.input, { color: theme.text, backgroundColor: field }]}
           editable={!busy}
           onSubmitEditing={send}
           returnKeyType="send"
@@ -200,14 +214,17 @@ export function QuickLogBar({
           onPress={send}
           disabled={!input.trim() || busy}
           accessibilityRole="button"
-          accessibilityLabel="Save this"
+          accessibilityLabel={`${actionLabel} this`}
           style={({ pressed }) => pressed && styles.pressed}
         >
           <ThemedView
-            type="backgroundElement"
-            style={[styles.sendButton, (!input.trim() || busy) && styles.disabled]}
+            style={[
+              styles.sendButton,
+              { backgroundColor: field },
+              (!input.trim() || busy) && styles.disabled,
+            ]}
           >
-            <ThemedText type="smallBold">{busy ? '…' : 'Save'}</ThemedText>
+            <ThemedText type="smallBold">{busy ? '…' : actionLabel}</ThemedText>
           </ThemedView>
         </Pressable>
       </View>
@@ -246,6 +263,7 @@ export function QuickLogBar({
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two, marginBottom: Spacing.three },
+  clear: { backgroundColor: 'transparent' },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   addButton: {
     width: 40,

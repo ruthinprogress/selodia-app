@@ -1,4 +1,7 @@
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { Pressable } from 'react-native';
+
+import { ThreeSeedsMark } from '@/components/seed-marks';
 
 import { BodyFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -26,7 +29,29 @@ export default function LogLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="food-history" options={{ title: 'Food log' }} />
+      {/* "Food", not "Food log": the screen IS the log, and the shorter
+          word is what her redesign titles it (24 September 2026). */}
+      {/* THE MARK GOES IN THE HEADER ON THIS ONE (24 September 2026). Her
+          redesign puts it top right, level with the title - and on a screen
+          that HAS a stack header, the in-content link lands underneath it,
+          floating in the gap above the week bar. The header is where a
+          top-right control belongs when there is a header. */}
+      <Stack.Screen
+        name="food-history"
+        options={{
+          title: 'Food',
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="More"
+              hitSlop={12}
+            >
+              <ThreeSeedsMark size={22} />
+            </Pressable>
+          ),
+        }}
+      />
       <Stack.Screen name="activity-history" options={{ title: 'Activity log' }} />
       {/* WITHOUT A TITLE THE HEADER SHOWS THE FILE NAME (Ruth, 22 September
           2026, from a screenshot reading "water-history"). Every screen reached

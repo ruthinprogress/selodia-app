@@ -5,6 +5,7 @@
 //   npx tsx scripts/probe-tracked-macros.mjs
 
 import {
+  averageLine,
   MACROS,
   OPTIONAL,
   isAlwaysOn,
@@ -99,6 +100,39 @@ console.log('\n  WHAT I TRACK\n');
 {
   check('each macro names a column', MACROS.every((m) => typeof m.column === 'string' && m.column.length > 0));
   check('no two macros share a key', new Set(MACROS.map((m) => m.key)).size === MACROS.length);
+}
+
+// ---- the week line, which is an average over days logged -----------------
+{
+  const week = [
+    [{ kcal: 1000, protein_g: 50 }, { kcal: 455, protein_g: 45 }], // 1455 / 95
+    [], // not logged
+    [{ kcal: 971, protein_g: 31 }], // 971 / 31
+    [],
+    [],
+    [],
+    [],
+  ];
+  const { line, daysLogged } = averageLine(week, trackedMacros(null));
+  check('averaged over days logged, not over seven', line === '1,213 kcal · 63g protein', line);
+  check('and it says how many days that was', daysLogged === 2, String(daysLogged));
+
+  const none = averageLine([[], [], []], trackedMacros(null));
+  check('a week with nothing in it says nothing', none.line === '' && none.daysLogged === 0, JSON.stringify(none));
+}
+
+// ---- a macro worked out on some days only ---------------------------------
+{
+  const week = [
+    [{ kcal: 500, protein_g: 20, fibre_g: 6 }],
+    [{ kcal: 500, protein_g: 20 }],
+  ];
+  const { line } = averageLine(week, trackedMacros(['fibre']));
+  check(
+    'fibre averages over the days it was known, not over both',
+    line === '500 kcal · 20g protein · 6g fibre',
+    line
+  );
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed\n`);

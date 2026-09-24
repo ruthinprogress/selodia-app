@@ -57,7 +57,7 @@ export function ActivityView() {
   const theme = useTheme();
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
-  // See food-today-view: the quick-log bar bumps this so the list re-reads.
+  // See food-log-view: the quick-log bar bumps this so the list re-reads.
   const [reloadKey, setReloadKey] = useState(0);
   // Re-read on arrival and shortly after - see hooks/use-focus-reload.ts.
   useFocusReload(setReloadKey);

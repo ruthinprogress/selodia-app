@@ -121,6 +121,48 @@ export function macroLine(row: Record<string, unknown>, tracked: MacroKey[]): st
     .join(' · ');
 }
 
+/**
+ * The week line: "avg 1,213 kcal · 63g protein".
+ *
+ * AVERAGED OVER DAYS THAT WERE LOGGED, never over a fixed seven. An unlogged
+ * day is missing data, not a day somebody ate nothing, and dividing by seven
+ * would quietly invent a downward trend for anyone who forgets a Tuesday. The
+ * rule is older than this screen and is why the line says how many days it is
+ * an average of.
+ */
+export function averageLine(
+  days: Record<string, unknown>[][],
+  tracked: MacroKey[]
+): { line: string; daysLogged: number } {
+  const logged = days.filter((rows) => rows.length > 0);
+  if (logged.length === 0) return { line: '', daysLogged: 0 };
+
+  const sums: Record<string, number> = {};
+  const seen: Record<string, number> = {};
+  for (const rows of logged) {
+    for (const key of tracked) {
+      let dayHas = false;
+      let dayTotal = 0;
+      for (const row of rows) {
+        const v = amount(key, row);
+        if (v === null) continue;
+        dayTotal += v;
+        dayHas = true;
+      }
+      if (!dayHas) continue;
+      sums[key] = (sums[key] ?? 0) + dayTotal;
+      // Counted per macro, not per day: a week where fibre was worked out on
+      // two days of five is an average of those two, not two fifths of one.
+      seen[key] = (seen[key] ?? 0) + 1;
+    }
+  }
+
+  const line = MACROS.filter((m) => tracked.includes(m.key) && seen[m.key])
+    .map((m) => say(m.key, sums[m.key] / seen[m.key]))
+    .join(' · ');
+  return { line, daysLogged: logged.length };
+}
+
 /** The same line for a day or a week, from rows that have already been summed. */
 export function totalLine(rows: Record<string, unknown>[], tracked: MacroKey[]): string {
   const sums: Record<string, number> = {};

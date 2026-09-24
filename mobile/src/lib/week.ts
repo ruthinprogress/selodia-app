@@ -123,6 +123,19 @@ export function dayLabel(d: Date): string {
   return `${SHORT_DAYS[d.getDay()]} ${d.getDate()}`;
 }
 
+// "Tuesday". The Food log's collapsed days, which her redesign labels by name
+// alone (24 September 2026) - inside a week that is already named above them,
+// the number adds nothing and the full word reads calmer.
+//
+// Built by hand, like every other date in this file: Hermes on Android ships a
+// variable ICU build, so toLocaleDateString can return a different string on a
+// different phone.
+const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export function weekdayName(d: Date): string {
+  return LONG_DAYS[d.getDay()];
+}
+
 // "17 Sept", with the year only when it is not this one. The app's one human
 // date (UI brief, Part 3: never ISO). Built by hand for the same reason
 // formatLogDate is: Hermes on Android ships a variable ICU build, so

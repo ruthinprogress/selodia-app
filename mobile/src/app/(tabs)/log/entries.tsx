@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ActivityView } from '@/components/activity-view';
 import { BodyScreen } from '@/components/body-screen';
-import { FoodTodayView } from '@/components/food-today-view';
+import { FoodLogView } from '@/components/food-log-view';
 import { LogTabs, type LogView } from '@/components/log-tabs';
 import { MeasurementsView } from '@/components/measurements-view';
 import { ThemedText } from '@/components/themed-text';
@@ -33,7 +33,9 @@ export default function LogEntriesScreen() {
       <View style={styles.tabs}>
         <LogTabs value={view} onChange={setView} />
       </View>
-      {view === 'food' && <FoodTodayView />}
+      {/* The same redesigned screen the Food row opens, rather than a
+          second, older drawing of the same data (24 September 2026). */}
+      {view === 'food' && <FoodLogView />}
       {view === 'activity' && <ActivityView />}
       {view === 'measurements' && <MeasurementsView initialWeekStart={initialWeekStart} />}
     </BodyScreen>
