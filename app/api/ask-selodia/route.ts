@@ -139,6 +139,12 @@ function humanDate(value: string | null | undefined): string {
   return d.getFullYear() === new Date().getFullYear() ? spoken : `${spoken} ${d.getFullYear()}`;
 }
 
+// Run in London, beside the database. See the note in v1/chat/completions,
+// which carries the measurement - this route is reached both through that
+// adapter and directly by a typed message, so both need it or typing still
+// runs in Virginia.
+export const preferredRegion = 'lhr1';
+
 // WHERE THE SECONDS GO, written down rather than guessed at.
 //
 // On 24 September a spoken turn measured 8.6s to its first word, and the

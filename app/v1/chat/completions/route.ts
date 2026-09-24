@@ -50,6 +50,23 @@ import { offeredTools, wasHeard, words } from '../../../lib/voice-turns';
 
 export const dynamic = 'force-dynamic';
 
+// RUN WHERE THE DATABASE IS (2026-09-24).
+//
+// Measured: X-Vercel-Id read `lhr1::iad1`, meaning the request arrives at the
+// London edge and the function then executes in Washington DC - while Supabase
+// sits in eu-west-2, London. Every database read in a turn therefore crossed
+// the Atlantic and came back.
+//
+// That is the missing time. Timed individually from London, not one context
+// read costs more than 127ms and the whole set would be under a second run
+// end to end; in production the same batch measured two to four seconds. The
+// queries were never slow. The distance was.
+//
+// THE MODEL CALL PREFERS THE OTHER SIDE, and it still comes out ahead. Anthropic
+// is US-hosted, so moving to London adds roughly one Atlantic crossing to that
+// one request - against removing one from each of about twenty database reads.
+export const preferredRegion = 'lhr1';
+
 type ChatMessage = {
   role?: string;
   // OpenAI allows content to be a string or an array of parts. ElevenLabs sends
