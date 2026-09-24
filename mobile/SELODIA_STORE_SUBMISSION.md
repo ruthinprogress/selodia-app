@@ -106,6 +106,27 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 
 **Screenshot caution:** they are public even while the app is in internal testing. Use seeded or invented data, never Ruth's real measurements, food logs or chat history.
 
+### The set to shoot, and why (Ruth, 24 September 2026)
+
+The 23 September six are being replaced. They were taken before the More
+glyph landed, so every one of them still shows the word "Settings", and two
+of the screens were not the right screens to be showing at all.
+
+| # | Screen | What it must show |
+|---|---|---|
+| 1 | Chat | **The voice mic and the waves.** The old one showed neither, so the listing's first image hid the feature the app is actually for |
+| 2 | Today | Filled in, not empty: a **5k run** logged, and **hydration part-filled** |
+| 3 | Food log | The redesigned one. The old shot predates it |
+| 4 | Plans | **Replaces Hydration**, which was cut entirely. More relevant to somebody deciding whether to install |
+| 5 | Barbell deadlift, with the animatic character | **Replaces Cycle**, which was not a finished-looking screen. Pairs with 4: here is the programme, here is what a movement looks like |
+| 6 | Almanac | A **fuller Health Flower**. A sparse one reads as broken rather than as early |
+
+**Shot from a separate seeded account, decided 24 September.** Not the demo
+account: that one holds Ruth's real food logs, her knee pain and a real
+conversation. A store listing is public the moment it is, and the 23
+September set had already been rejected once for showing a frank chat about
+not eating. The account exists to be photographed and holds nothing real.
+
 ---
 
 ## 4. Progress

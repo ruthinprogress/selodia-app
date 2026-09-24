@@ -90,6 +90,22 @@ In brief, for orientation only:
 
 - **Palette:** Cream, Sand, Terracotta, Sage, Forest, Charcoal. Terracotta is an accent, never the wallpaper. Cream is the ground.
 - **Typeface:** Comfortaa throughout. Weight 300 for the wordmark and the tagline, 400 for the category line. Confirmed 2 September 2026 after testing with real readers.
+
+  > **"Throughout" means throughout the LOCKUP, not throughout the app.** The
+  > app stopped using Comfortaa as its body face on 18 September 2026. It now
+  > runs **Cormorant Infant 400** for display and **Manrope** for body, UI and
+  > data, keeping Comfortaa for the wordmark and the splash because those are
+  > the logo rather than the text. The reasoning, and Ruth's words for it, are
+  > in `mobile/src/constants/theme.ts` beside `DisplayFont` and `BodyFont` —
+  > the short version is that Comfortaa is rounded and wide, which is warm at
+  > display size and expensive at 14px, where a data row in a rounded face is a
+  > data row that wraps.
+  >
+  > **This note exists because somebody read this line and proposed the app go
+  > back to Comfortaa** (24 September 2026), which would have undone a decision
+  > made on a real phone. A marketing spec that describes a logo is not a
+  > description of an interface, and this is the paragraph that gets found
+  > first. `theme.ts` is the source of truth for what the app renders.
 - **Seed Mark:** the one true logo. It is never redrawn, recoloured outside the approved colourways, or set alongside a different mark.
 - **Tone:** calm, unhurried, generous whitespace. If a layout feels busy, it is wrong.
 - **No photography of bodies, anywhere.** Principle 16 of the build spec, added 20 September 2026, and it binds marketing as tightly as the app: line drawings, botanical marks and the seed, never a photographed body, gym, model or styled plate. A photograph of a body in a health product is a silent argument about which body is correct, made to somebody looking at their own. The practical gain is that a product made of drawings does not date the way a particular year's photography does.

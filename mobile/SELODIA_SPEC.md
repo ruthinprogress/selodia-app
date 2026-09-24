@@ -1914,7 +1914,7 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 **Category line:** *"A body literacy app for women 40+"* — Comfortaa regular, forest `#37584A`. Consistent with existing internal language: the onboarding goals prompt already describes Unflump as "a body literacy app".
 
-**Tagline (CONFIRMED FINAL, 2026-08-31):** *"Your body isn't a problem to solve. It's something to get to know."* This is **existing manifesto copy**, carried over verbatim; it is not new and is not up for redrafting here. **The typeface is Work Sans Italic — see the next paragraph for the exact setting.**
+**Tagline (CONFIRMED FINAL, 2026-08-31):** *"Your body isn't a problem to solve. It's something to get to know."* This is **existing manifesto copy**, carried over verbatim; it is not new and is not up for redrafting here. **The typeface is Comfortaa 300 — see the table below for the exact setting.**
 
 > *Corrected 2026-09-02 during a spec reconciliation pass.* This line previously ended "— Lora italic", directly contradicting the Work Sans Italic decision recorded immediately below it and dated the same day. Lora was a candidate from an earlier draft; the sentence was never updated when the head-to-head was resolved. **Two adjacent paragraphs naming different typefaces for the same element is the most expensive kind of spec defect** — a reader scanning for "the tagline typeface" can land on either and be confident in the wrong one, which is exactly what happened on 2026-09-01, when the landing page and the first Instagram post were both built with the tagline's setting applied to the wordmark.
 
@@ -1924,11 +1924,25 @@ The wordmark is **"unflump" set in Comfortaa, lowercase**. Chosen against four a
 
 | Element | Setting |
 |---|---|
-| Wordmark `selodía` | **Comfortaa 300**, upright, no tracking, charcoal `#2D2B28` |
+| Wordmark `selodía` | **Comfortaa 300**, upright, no tracking, **terracotta `#C97458`** |
 | Tagline | **Comfortaa 300**, charcoal `#2D2B28` |
 | Category line | **Comfortaa 400**, forest `#37584A` |
 
-**Confirmed by comparison testing with real users** — Fiona, Carol, Auguste and Ruth — against rendered full lockups rather than descriptions.
+**What was actually tested, and what only rode along (corrected 2026-09-24).** The
+comparison with Fiona, Carol, Auguste and Ruth was a **typeface** test, run
+against rendered full lockups rather than descriptions. Comfortaa is the part
+that was chosen by that testing.
+
+The colours were not. This table said charcoal for the wordmark, and Ruth's own
+account of it is that "it was never tested, we were actually testing fonts and
+it got washed in with that" — the wordmark was always intended to be terracotta,
+and charcoal was recorded rather than decided. The table now says terracotta.
+
+Worth keeping the distinction in view: **"recorded" and "confirmed by testing"
+are different claims**, and this table made the stronger one for a year about a
+value nobody had ever looked at on purpose. The landing page still renders the
+wordmark charcoal (`app/page.tsx`), so that is now a known divergence to settle
+rather than a discrepancy to be surprised by.
 
 ### The app's typography, settled 2026-09-18
 
