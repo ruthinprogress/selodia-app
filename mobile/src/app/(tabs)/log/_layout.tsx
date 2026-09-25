@@ -63,7 +63,7 @@ export default function LogLayout() {
       />
       <Stack.Screen name="activity-history" options={{ headerTitle: () => null }} />
       <Stack.Screen name="water-history" options={{ headerTitle: () => null }} />
-      <Stack.Screen name="entries" options={{ headerTitle: () => null }} />
+      <Stack.Screen name="measurements" options={{ headerTitle: () => null }} />
       <Stack.Screen name="sleep" options={{ headerTitle: () => null }} />
       <Stack.Screen name="cycle" options={{ headerTitle: () => null }} />
       <Stack.Screen name="feeling" options={{ headerTitle: () => null }} />

@@ -488,7 +488,7 @@ export function OverviewPanel({
             (Part One, Internationalisation), and when it lands these values
             must pass through a conversion utility before display rather than
             being formatted here. One place converts; this place renders. */}
-        <Square id="body.measurements" title="Body" href="/log/entries?view=measurements">
+        <Square id="body.measurements" title="Body" href="/log/measurements">
           <SpotlightTarget id="overview.stats">
             {data.bodyAsOf == null ? (
               /* Nothing has ever been recorded. ONE dash, not three: three
@@ -544,7 +544,7 @@ export function OverviewPanel({
             lib/steps.ts: a refusal, a phone with no health platform, and a quiet
             morning are indistinguishable, and a zero would pick the one reading
             that accuses somebody of not moving. */}
-        <Square id="body.activity" title="Activity" href="/log/entries?view=activity">
+        <Square id="body.activity" title="Activity" href="/log/activity-history">
           {data.activityCount === 0 && data.steps == null ? (
             <ThemedText type="small" themeColor="textSecondary">
               Nothing logged yet

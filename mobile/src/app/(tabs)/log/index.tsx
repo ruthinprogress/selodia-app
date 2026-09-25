@@ -121,14 +121,14 @@ const ROWS: Row[] = [
     icon: 'scale-bathroom',
     label: 'Body measurements',
     detail: 'Weight, body fat, muscle, and the rest',
-    go: () => router.push('/log/entries?view=measurements'),
+    go: () => router.push('/log/measurements'),
   },
   {
     id: 'activity',
     icon: 'run',
     label: 'Activity',
     detail: 'Sessions, classes, walks',
-    go: () => router.push('/log/entries?view=activity'),
+    go: () => router.push('/log/activity-history'),
   },
   // THESE TWO OPEN CHAT, AND SAY SO, AND ARRIVE DOING SOMETHING (2026-09-20).
   // Ruth: "the logging going straight to chat for photo needs some kind of
