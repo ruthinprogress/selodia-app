@@ -757,7 +757,13 @@ const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${
 // 195 in both arrangements, deliberately: the flower is the thing this whole
 // change is for, so it is not the variable. The only difference between the two
 // is which small thing keeps its place beside it.
-const FLOWER_SIZE = 195;
+// 158, down from 200 over the course of 25 September, and every point of it
+// went to something on this screen: first the greeting fix, then the sentence
+// underneath. That sentence wraps to TWO lines at this width in every case but
+// one - measured, after a version budgeted for one and put the second line
+// under the tab bar - so the flower is sized for the sentence at its longest
+// rather than at its shortest.
+const FLOWER_SIZE = 158;
 
 const styles = StyleSheet.create({
   weekSection: {
@@ -814,6 +820,12 @@ const styles = StyleSheet.create({
   // it belongs to the section, not to the drawing.
   weekNote: {
     marginTop: Spacing.two,
+    // CLEAR OF THE FLOATING TAB BAR, not merely above it. The first version
+    // landed this sentence about fourteen points off the bar, which is not a
+    // margin - it is a near miss, and a phone one size smaller turns it into
+    // a hit. The flower gave up seventeen points for it, which is the right
+    // way round: the sentence is what makes the drawing mean something.
+    marginBottom: Spacing.three,
   },
   stat: {
     flexDirection: 'row',

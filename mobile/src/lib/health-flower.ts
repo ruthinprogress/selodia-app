@@ -190,28 +190,68 @@ export function allDimensionsFull(c: FlowerCoverage): boolean {
 // held to. Naming what led the week is an observation; recommending the
 // remedy is every other health app.
 //
-// FOUR CASES, AND EACH SAYS SOMETHING DIFFERENT:
+// NO "THIS WEEK" IN ANY OF THEM. The section heading two lines above says
+// "This week", and a sentence that says it again is the app talking twice. It
+// also costs a line: every one of these wraps at 296 points, and the line it
+// saves is a line of Health Flower.
+//
+// FIVE CASES, AND EACH SAYS SOMETHING DIFFERENT:
 //
 //   nothing logged      no sentence at all. There is no observation to make,
 //                       and "you have done nothing this week" is not one.
-//   one clear leader    it is named.
-//   a close top two     the week is called evenly spread, which is true and is
-//                       not a lesser answer than naming a winner by one point.
 //   every one full      the bloom already says it; the sentence says what the
 //                       bloom means rather than repeating the word.
+//   all six close        the week is called evenly spread.
+//   one clear leader    it is named.
+//   two or more tied    both are named, rather than one picked by a point.
+//
+// "EVENLY SPREAD" IS ABOUT ALL SIX, NOT THE TOP TWO. The first version of this
+// asked only whether the leader was clear of the runner-up, which said "fairly
+// evenly spread" over a week with a full strength petal and almost no
+// flexibility - because the top two happened to be close to each other. The
+// sentence is a claim about somebody's week and it has to be true of the
+// drawing it sits under, so the test is the whole RANGE: highest minus lowest.
+// Caught by looking at the screenshot beside the sentence, which is the only
+// reason it was caught at all.
 //
 // The gap that counts as "clear" is 10 points of a 100-point scale. Below that
-// the leader is an artefact of rounding, and naming it would be the app being
-// confident about a difference it cannot really see.
+// a difference is an artefact of rounding, and naming a leader would be the
+// app being confident about something it cannot really see.
 const CLEAR_LEAD = 10;
 
 export function weekObservation(c: FlowerCoverage): string | null {
   const ranked = [...DIMENSIONS].sort((a, b) => c[b] - c[a]);
   const top = ranked[0];
-  const second = ranked[1];
+  const lowest = ranked[ranked.length - 1];
 
   if (c[top] <= 0) return null;
-  if (allDimensionsFull(c)) return 'All six have had your attention this week.';
-  if (c[top] - c[second] < CLEAR_LEAD) return 'Your week has been fairly evenly spread.';
-  return `${DIMENSION_LABEL[top]} has had most of your attention this week.`;
+  if (allDimensionsFull(c)) return 'All six have had your attention.';
+  if (c[top] - c[lowest] < CLEAR_LEAD) return 'Your week has been fairly evenly spread.';
+
+  // Everyone within a rounding error of the leader shares the sentence.
+  //
+  // AND A TIE AT THE TOP IS NOT AN EVEN WEEK. The version before this one sent
+  // three joint leaders back to "fairly evenly spread", which printed exactly
+  // that over the store account's week: strength, bone and recovery all at 100
+  // with flexibility at 57. Three dimensions full and three not is a shape, and
+  // calling it even is the same untruth the range test was added to stop -
+  // reached the other way round. Only the range decides evenness; past that
+  // every branch names what led.
+  const leaders = ranked.filter((d) => c[top] - c[d] < CLEAR_LEAD);
+  const named = leaders.slice(0, 3).map((d) => DIMENSION_LABEL[d]);
+
+  if (leaders.length === 1) {
+    return `${named[0]} has had most of your attention.`;
+  }
+  if (leaders.length === 2) {
+    return `${named[0]} and ${named[1]} have had most of your attention.`;
+  }
+  if (leaders.length === 3) {
+    return `${named[0]}, ${named[1]} and ${named[2]} have had most of your attention.`;
+  }
+  // Four or five joint leaders over a spread week. Listing them all reads as a
+  // recital, and the one or two left out are the only real information in it -
+  // which is a sentence about what somebody did NOT do, and this app does not
+  // write those.
+  return 'Most of the six have had your attention.';
 }
