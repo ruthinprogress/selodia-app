@@ -38,6 +38,10 @@ export default function PlansScreen() {
   const [rows, setRows] = useState<AlmanacRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Bumped when a plan is deleted from the list, so the screen re-reads
+  // itself. useFocusEffect alone does not cover it: the delete happens
+  // while this screen is already focused, so focus never changes.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -56,7 +60,11 @@ export default function PlansScreen() {
       return () => {
         cancelled = true;
       };
-    }, [])
+    // reloadKey is not read inside this callback, and that is the point: it
+    // changing is what makes the effect run again after a delete. The rule
+    // cannot see a dependency used for its identity rather than its value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reloadKey])
   );
 
   // The same split the Almanac uses, so an entry is never in both places: what
@@ -77,7 +85,11 @@ export default function PlansScreen() {
                 {plans.length > 0 ? (
                   // The library introduces itself (movement-library.tsx), so
                   // this screen does not say it a second time.
-                  <MovementLibrary entries={plans} onOpen={setOpenId} />
+                  <MovementLibrary
+                    entries={plans}
+                    onOpen={setOpenId}
+                    onDeleted={() => setReloadKey((k) => k + 1)}
+                  />
                 ) : (
                   <AlmanacEmptyState heading={PLANS_EMPTY_HEADING} body={PLANS_EMPTY_BODY} />
                 )}

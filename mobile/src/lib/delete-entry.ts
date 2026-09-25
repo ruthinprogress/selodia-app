@@ -18,7 +18,19 @@ export type DeletableTable =
   | 'body_measurements'
   | 'personal_metrics'
   | 'hydration_logs'
-  | 'sleep_logs';
+  | 'sleep_logs'
+  // PLANS AND ANYTHING ELSE KEPT IN THE ALMANAC (2026-09-25). Until today
+  // nothing anywhere in this codebase deleted one: not a control, not the
+  // chat pipeline, not an admin path. Ruth asked Selodía to remove a duplicate
+  // workout, was told it was done, and both copies are still there - because
+  // there was no mechanism for it to use and nothing stopped it saying yes.
+  //
+  // SAFE AS A PLAIN ROW DELETE, which is worth stating because a plan is
+  // referenced by history. workout_completion_log.plan_id and
+  // workout_weight_log.plan_id are both ON DELETE SET NULL, so the record of
+  // what somebody actually did survives and only the link to the deleted plan
+  // is cleared. Checked against the live schema rather than assumed.
+  | 'almanac_entries';
 
 /** True when the row is gone. Never throws: the caller says so on screen. */
 export async function deleteEntry(table: DeletableTable, id: string): Promise<boolean> {

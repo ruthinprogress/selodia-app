@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityIcon } from '@/components/activity-icon';
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
@@ -41,9 +42,14 @@ import { loadLastDoneByPlan, summarise } from '@/lib/movement-library';
 export function MovementLibrary({
   entries,
   onOpen,
+  onDeleted,
 }: {
   entries: AlmanacRow[];
   onOpen: (id: string) => void;
+  /** Fired once a plan is gone, so the screen above can re-read itself.
+      (Ruth, 25 September 2026: "each plan has no delete button. Please add
+      the swipe left to delete, same as everywhere else.") */
+  onDeleted?: () => void;
 }) {
   const [lastDone, setLastDone] = useState<Map<string, string>>(new Map());
 
@@ -79,8 +85,18 @@ export function MovementLibrary({
         // distinguishable before either is opened.
         const mark = activityIcon(`${s.kind} ${entry.title}`);
         return (
-          <Pressable
+          // SAME GESTURE AS EVERY OTHER ROW IN THE APP, and the same reasoning:
+          // it reveals a Delete rather than firing on the swipe, because a
+          // swipe far enough to delete is a swipe that can happen in a pocket.
+          // See swipe-to-delete.tsx.
+          <SwipeToDelete
             key={entry.id}
+            table="almanac_entries"
+            id={entry.id}
+            what={entry.title}
+            onDeleted={onDeleted}
+          >
+          <Pressable
             onPress={() => onOpen(entry.id)}
             accessibilityRole="button"
             accessibilityLabel={`Open ${entry.title}`}
@@ -109,6 +125,7 @@ export function MovementLibrary({
               </View>
             </ThemedView>
           </Pressable>
+          </SwipeToDelete>
         );
       })}
     </View>

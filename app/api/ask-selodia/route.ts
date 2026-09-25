@@ -58,6 +58,7 @@ import {
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, recordAllergies, type Allergy } from '../../lib/allergies';
+import { planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
 import { buildDayState, buildDayStatePrompt } from '../../lib/daily-targets';
@@ -812,6 +813,8 @@ DO NOT STATE ANY FIGURE YOURSELF, and do not say what the answer is. You have no
 
 AND DO NOT PROMISE A VERDICT. The table shows the days and says how many there were; it does not declare a cause, and neither do you, on this turn or a later one. If they come back and ask what it means, the honest answer is what is in front of them both and how few or many days it rests on.
 
+REMOVING A SAVED PLAN: set removePlanTitled when they ask for one of their own saved plans to be deleted. This is NOT a correction and has nothing to do with correctionKind, which is for something just logged: a plan is named and can be months old. The app matches the title, works out for itself what to do when two plans share a name, removes it and states the outcome - including when it could not. So never say a plan has been deleted, and never say which copy went; acknowledge, and let the app report. If you cannot tell which plan they mean, leave it unset and ask.
+
 CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
@@ -1142,6 +1145,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "With reminderRepeat 'weekly'. The day, 0 for Sunday through 6 for Saturday.",
     },
+    removePlanTitled: {
+      type: 'string',
+      description:
+        "The exact title of one of their SAVED PLANS they are asking to remove - \"delete the inner thigh routine\", \"get rid of the duplicate thigh workout\", \"I don't want that plan any more\". Use the plan's own title as it appears in the list above, not their paraphrase of it. The app finds it, decides what to do about duplicates, removes it and SAYS SO ITSELF - so acknowledge naturally and never state in your reply that it is gone, because you do not know whether it was. Leave unset for anything that is not a saved plan, and for a plan they are only talking about.",
+    },
     correctionKind: {
       type: 'string',
       enum: ['food', 'activity', 'measurement', 'personal_metric'],
@@ -1417,6 +1425,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     reminderTime?: string;
     reminderRepeat?: 'daily' | 'weekly';
     reminderWeekday?: number;
+    removePlanTitled?: string;
     correctionKind?: string;
     correctionAction?: string;
     correctionScope?: string;
@@ -1570,6 +1579,26 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // A correction or deletion of something just logged (build item 10d). Runs
   // BEFORE the logging branches so a corrected value can never also be stored
   // as a second, new entry.
+  // REMOVING A SAVED PLAN, which is its own thing and not a correction.
+  //
+  // Runs before the correction branch for the same reason that one runs before
+  // logging: whatever the turn is doing to existing data should happen before
+  // anything new is written, so the two cannot interleave.
+  //
+  // The app says what happened, always - including "I could not find it" and
+  // "there are two and they differ, which did you mean". The model is told not
+  // to claim anything, and this is the half of that instruction that does not
+  // depend on the model obeying it.
+  let planNote: string | null = null;
+  if (typeof result.removePlanTitled === 'string' && result.removePlanTitled.trim()) {
+    const outcome = await removePlanTitled(supabase, user.id, result.removePlanTitled.trim());
+    planNote = planRemovalMessage(outcome);
+    console.log(
+      'PLAN REMOVAL:',
+      outcome.done ? `removed ${outcome.removed}, kept ${outcome.kept}` : outcome.reason
+    );
+  }
+
   let correctionNote: string | null = null;
   const correction = resolveCorrection(result.correctionKind, result.correctionAction);
   if (correction) {
@@ -2394,7 +2423,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
 
   // The offer goes last, so the reply ends on the question it is waiting on.
   const offerLine = offered ? offerQuestion(safeReplyText, offeredType) : null;
-  const trailingLines = [correctionNote, focusNote, saveNote, meNote, honestyNote, offerLine].filter(
+  const trailingLines = [planNote, correctionNote, focusNote, saveNote, meNote, honestyNote, offerLine].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
   const finalReply =
