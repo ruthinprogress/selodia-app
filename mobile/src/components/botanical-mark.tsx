@@ -19,6 +19,17 @@ import { useTheme } from '@/hooks/use-theme';
 //
 // Sage, never terracotta. Terracotta is reserved for what you can act on, and an
 // empty state is not asking for anything.
+//
+// NOTHING RENDERS THIS YET, and it is kept deliberately rather than deleted as
+// dead code (2026-09-26). It is finished artwork waiting on a decision that is
+// not mine: the note above says the Almanac keeps its own Shoot until Ruth says
+// otherwise, because that one is approved and replacing it quietly is not
+// something to do on a Friday night. The settings pages draw a third sprig of
+// their own, inline, in sand rather than sage - see settings-page.tsx - so the
+// app currently has three botanical drawings and uses two of them.
+//
+// Flagged to her rather than resolved. Whichever way she goes, two of the three
+// should stop existing.
 
 export function BotanicalMark({ size = 72 }: { size?: number }) {
   const theme = useTheme();
