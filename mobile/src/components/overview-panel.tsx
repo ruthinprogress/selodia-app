@@ -1,19 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, type Href } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { useHealthFlower } from '@/hooks/use-health-flower';
-import { weekObservation } from '@/lib/health-flower';
+import { DisplayFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
-import { HealthFlower } from '@/components/health-flower';
 import { hydrationToday } from '@/lib/hydration';
 import { hydrationGoal } from '@/lib/hydration-goal';
 import { formatLogDate, toLocalDateKey } from '@/lib/week';
@@ -90,6 +87,11 @@ type OverviewData = {
   proteinTargetLabel: string | null;
   activityCount: number;
   activityMinutes: number;
+  // The NAMES of today's sessions, for the Movement row (Ruth, item 7:
+  // "7,414 · Run · Ballet"). Sessions only - a tracker's whole-day summary is
+  // not something somebody did, it is a day added up, and listing it beside a
+  // run would be the app inventing an activity.
+  activityNames: string[];
   // Today's steps from the phone's own health platform, or null when it has no
   // answer - a refusal, a phone without one, or a genuinely quiet morning that
   // cannot be told apart from either. Null renders nothing; it is never a zero,
@@ -178,8 +180,6 @@ export function OverviewPanel({
   onWaterRemoved?: (id: string) => void;
   waterUndone?: { ml: number; id: string } | null;
 } = {}) {
-  const flower = useHealthFlower();
-  const { reload: reloadFlower } = flower;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
 
@@ -224,12 +224,6 @@ export function OverviewPanel({
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      // THE FLOWER REFRESHES WITH THE CARDS (2026-09-17). It has its own hook,
-      // which reads once on mount, and this effect never asked it to read again.
-      // So the week's petals stayed as they were when the Overview first opened:
-      // sessions logged afterwards appeared in the Activity card and not in the
-      // flower, which sat empty until the app was restarted.
-      reloadFlower();
       (async () => {
       const dayStart = startOfToday();
 
@@ -381,6 +375,17 @@ export function OverviewPanel({
         proteinTargetLabel: proteinTargetLabel(proteinTarget),
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
+        // Sentence case, de-duplicated, in the order they were logged. Two
+        // runs in a day is one word on this row: the row says WHAT she did,
+        // and the Movement log says how many and how long.
+        activityNames: [
+          ...new Set(
+            acts
+              .map((a) => (a.activity_type ?? '').trim())
+              .filter(Boolean)
+              .map((n) => n.charAt(0).toUpperCase() + n.slice(1))
+          ),
+        ],
         steps: stepsToday,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
         cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
@@ -397,7 +402,7 @@ export function OverviewPanel({
       return () => {
         cancelled = true;
       };
-    }, [reloadFlower])
+    }, [])
   );
 
   if (loading || !data) {
@@ -446,9 +451,9 @@ export function OverviewPanel({
         </View>
       </View>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.focusLine}>
-        {data.personalLine}
-      </ThemedText>
+      {/* The daily line is NOT here any more - see the foot of this screen
+          (Ruth, item 9). It reads as a closing thought rather than a subtitle,
+          which is what it always was. */}
 
       {/* THE CARDS BECAME A LINE OF FIGURES (Ruth, 25 September 2026: "I'd
           happily remove 20% of the content ... Apple don't fill screens.
@@ -486,9 +491,10 @@ export function OverviewPanel({
               <SpotlightTarget id="overview.calories">
                 <Stat value={String(Math.round(data.todayKcal))} unit="kcal" />
               </SpotlightTarget>
-              <Dot />
               <SpotlightTarget id="overview.protein">
-                <Stat value={`${Math.round(data.todayProtein)}g`} unit="protein" />
+                <Piece>
+                  <Stat value={`${Math.round(data.todayProtein)}g`} unit="protein" />
+                </Piece>
               </SpotlightTarget>
             </>
           )}
@@ -520,7 +526,7 @@ export function OverviewPanel({
             must pass through a conversion utility before display rather than
             being formatted here. One place converts; this place renders. */}
         <FigureRow id="body.measurements" label="Body" href="/log/measurements">
-          <SpotlightTarget id="overview.stats">
+          <SpotlightTarget id="overview.stats" style={styles.stretch}>
             {data.bodyAsOf == null ? (
               /* Nothing has ever been recorded. ONE dash, not three: three
                  says three separate readings failed, when in fact none has
@@ -529,7 +535,7 @@ export function OverviewPanel({
                 {'—'}
               </ThemedText>
             ) : (
-              <View style={styles.inlineStats}>
+              <View style={[styles.inlineStats, styles.stretch]}>
                 {/* A FIGURE THAT DOES NOT EXIST IS NOT SHOWN AS A DASH ANY MORE
                     (Ruth, 25 September 2026, looking at "64.2 kg · — muscle ·
                     27.8% fat": "i said to add muscle figure previously - looks
@@ -550,37 +556,57 @@ export function OverviewPanel({
                     Measurements screen keeps all three slots, where the fixed
                     shape is real and the argument still holds. */}
                 {data.weight.value != null ? (
-                  <>
-                    <Stat value={fmt(data.weight.value, '')} unit="kg" />
-                    {(data.muscle.value != null || data.bodyFat.value != null) && <Dot />}
-                  </>
+                  <Stat value={fmt(data.weight.value, '')} unit="kg" />
                 ) : null}
                 {data.muscle.value != null ? (
-                  <>
+                  <Piece>
                     <Stat value={fmt(data.muscle.value, '')} unit="muscle" />
-                    {data.bodyFat.value != null && <Dot />}
-                  </>
+                  </Piece>
                 ) : null}
                 {data.bodyFat.value != null ? (
-                  <Stat value={`${round1(data.bodyFat.value)}%`} unit="fat" />
+                  <Piece>
+                    <Stat value={`${round1(data.bodyFat.value)}%`} unit="fat" />
+                  </Piece>
                 ) : null}
                 {/* Only when the reading is not from today. A date on today's
                     own numbers is noise; a date on Tuesday's is the difference
                     between a current reading and an old one. It wraps onto a
                     second line when it has to, which is the one case on this
                     screen worth an extra line. */}
+                {/* NO DOT BEFORE IT (Ruth, item 6: "Remove the trailing '·'
+                    after 'fat'"). The row wraps, and a separator that can end
+                    up last on a line is a mark pointing at nothing. The date
+                    is muted and simply follows, with its own space. */}
                 {!isToday(data.bodyAsOf) ? (
-                  <>
-                    <Dot />
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {formatLogDate(new Date(data.bodyAsOf))}
-                    </ThemedText>
-                  </>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.asOf}>
+                    {formatLogDate(new Date(data.bodyAsOf))}
+                  </ThemedText>
                 ) : null}
               </View>
             )}
           </SpotlightTarget>
         </FigureRow>
+
+        <Hairline />
+
+        {/* MOVEMENT (Ruth, item 7): "Small foot icon + today's step count (no
+            'steps' label), then each activity logged today, joined with middle
+            dots ... Nothing logged: steps only."
+
+            THE ICON IS THE LABEL for the number beside it. A foot beside 7,414
+            says steps to anybody who has ever used a phone, and the word was
+            costing a third of the room on a row that also has to carry the
+            names of what she did.
+
+            A DAY WITH NEITHER draws no row at all rather than a row of
+            nothing. A zero step count is an accusation and not a measurement
+            (lib/steps.ts), and "no activity" under a Food and a Body figure
+            reads as a third thing she failed to do. */}
+        {data.steps != null || data.activityNames.length > 0 ? (
+          <FigureRow id="body.activity" label="Movement" href="/log/activity-history">
+            <MovementFigures steps={data.steps} names={data.activityNames} />
+          </FigureRow>
+        ) : null}
 
         {/* STEPS DO NOT APPEAR HERE. They are on the "This week" heading, which
             is where the Activity square's one irreplaceable figure went when
@@ -609,72 +635,36 @@ export function OverviewPanel({
         />
       </SpotlightTarget>
 
-      {/* THIS WEEK. A peer of Today rather than a subsection of it, which is why
-          the heading takes the same treatment: the spec describes the Overview
-          as two sections, and two headings at one weight is what says so.
-          Nothing else lives in here, and steps stay in Today's Activity card.
+      {/* THE WEEK LEFT TODAY ENTIRELY (Ruth, 25 September 2026, item 8:
+          "Remove the 'This week' heading and the balance flower chart from
+          Today entirely. Today shows today only. Move the balance flower to
+          Almanac > Insights as a 6-week rolling view").
 
-          The flower renders only once coverage has loaded. An unloaded week and
-          an empty week are different things, and six absent petals popping into
-          shape is the second one telling a lie about the first. The wrapper
-          holds its height either way, so nothing below it moves when the data
-          lands. */}
-      <View style={styles.weekSection}>
-        {/* Smaller than "Today" (2026-09-04). At title size it dominated the
-            lower half of the screen; at subtitle it still reads as the second
-            section without shouting over the flower it introduces. */}
-        {/* STEPS SIT WITH THE WEEK, NOT IN A SQUARE OF THEIR OWN. They were
-            the only thing in the Activity square the flower does not draw, so
-            rather than keeping a whole card alive for one figure they read as
-            a quiet line beside the heading - the same relationship the date
-            has to the greeting. Null still draws nothing at all: a zero step
-            count is an accusation, not a measurement (see lib/steps.ts). */}
-        <View style={styles.weekHead}>
-          <ThemedText type="sectionTitle">This week</ThemedText>
-          {data.steps != null && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {formatSteps(data.steps)} steps today
-            </ThemedText>
-          )}
-        </View>
-        <View style={styles.flowerWrap}>
-          {flower.coverage && (
-            <HealthFlower
-              coverage={flower.coverage}
-              size={FLOWER_SIZE}
-              // Typed-routes form: the pathname is the file, the segment is a
-              // param. Building the string by hand would not typecheck.
-              onSelectDimension={(d) =>
-                router.push({ pathname: '/today/[dimension]', params: { dimension: d } })
-              }
-            />
-          )}
-        </View>
+          This undoes most of a morning's work and the reasoning is better than
+          the work was. Today is a screen about today; a week's balance is a
+          pattern, and patterns are what the Almanac is for. The size fight -
+          the flower down from 200 to 158 to make room for a sentence - was the
+          screen telling us the section did not belong on it, and I read it as
+          a layout problem for several hours.
 
-        {/* WHAT THE WHEEL SAYS, IN WORDS (Ruth, 25 September 2026: the wheel
-            "feels stranded ... now the wheel teaches, not decorates").
+          THE SENTENCE UNDER THE WHEEL WENT WITH IT, to the same place. It is
+          about the drawing, and it follows the drawing. weekObservation() in
+          lib/health-flower.ts is unchanged and now called from the Almanac.
 
-            It names what led the week and stops. The note that asked for this
-            carried a second sentence recommending a session to even things up,
-            and that half is deliberately not here - see weekObservation() in
-            lib/health-flower.ts for the whole argument. Briefly: a line the
-            app prints has to keep the rule the model is held to, and that rule
-            is ACKNOWLEDGE, DO NOT EVALUATE.
+          STEPS MOVED RATHER THAN WENT. They were on the "This week" heading
+          line, which no longer exists; they are now the first figure on the
+          Movement row above, which is where item 7 puts them. */}
 
-            Nothing logged draws nothing at all, rather than a sentence about
-            an empty week. */}
-        {flower.coverage && weekObservation(flower.coverage) ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.weekNote}>
-            {weekObservation(flower.coverage)}
-          </ThemedText>
-        ) : null}
-      </View>
+      {/* THE CLOSING LINE (Ruth, item 9): "Move 'Your life is the context.'
+          from under the date to the bottom of the page ... Cormorant Infant
+          italic, around 22-24pt, centered, muted warm grey, generous space
+          above. Nothing else in this space for now."
 
-      {/* Moved here from the foot of Activity, where Ruth said it was too
-          hidden. Collapsed it is one row, which is all this screen can spare -
-          see the no-scroll note above. The figures come from the resolveTDEE
-          call this screen already makes for the calorie target, so nothing is
-          computed twice. */}
+          It was a subtitle under the date, where it read as a caption on the
+          day. At the foot, alone, in the display face's italic, it reads as
+          what it is: the thought the screen closes on. The italic is loaded
+          for this and nothing else - see DisplayFont in constants/theme.ts. */}
+      <ThemedText style={styles.epigraph}>{data.personalLine}</ThemedText>
     </View>
   );
 }
@@ -700,7 +690,7 @@ function FigureRow({
   href,
   children,
 }: {
-  id: 'body.food' | 'body.measurements';
+  id: 'body.food' | 'body.measurements' | 'body.activity';
   label: string;
   href: Href;
   children: React.ReactNode;
@@ -738,14 +728,59 @@ function Hairline() {
   return <View style={[styles.hairline, { backgroundColor: theme.backgroundSelected }]} />;
 }
 
-// The separator between figures on a line. A middle dot in the secondary
-// colour, with its own spacing, so the numbers either side keep theirs.
-function Dot() {
+// TODAY'S MOVEMENT, AS ONE LINE: the step count behind a foot, then the name
+// of each session, joined by the same dot the other rows use.
+//
+// Both halves are optional and the row above only draws when at least one of
+// them exists. A step count with no sessions is an ordinary day; sessions with
+// no step count is an ordinary phone, or a refused permission (lib/steps.ts).
+function MovementFigures({ steps, names }: { steps: number | null; names: string[] }) {
+  const theme = useTheme();
   return (
-    <ThemedText type="small" themeColor="textSecondary">
-      ·
-    </ThemedText>
+    <>
+      {steps != null ? (
+        <View style={styles.stepPair}>
+          <Ionicons name="footsteps-outline" size={15} color={theme.textSecondary} />
+          <ThemedText type="smallBold" style={styles.statValue}>
+            {formatSteps(steps)}
+          </ThemedText>
+        </View>
+      ) : null}
+      {names.map((name) => (
+        <Piece key={name}>
+          <ThemedText type="smallBold" style={styles.statValue}>
+            {name}
+          </ThemedText>
+        </Piece>
+      ))}
+    </>
   );
+}
+
+// ONE FIGURE ON A ROW THAT MIGHT WRAP.
+//
+// NO MIDDLE DOTS ON THESE THREE ROWS, and it is a deliberate deviation from
+// her item 7, which says the Movement row's figures are "joined with middle
+// dots". Three attempts at the dots is what earned it:
+//
+//   1. Dots as their own children. Her item 6: a dot left dangling after
+//      "fat" when the date wrapped below it.
+//   2. Dot bound to the figure BEFORE it. The Body row then ended a line on
+//      "38.2 muscle ·" - the same fault, one line down.
+//   3. Dot bound to the figure AFTER it. The wrap then STARTED a line with
+//      "· 27.8% fat", which is no better.
+//
+// None of those can work, because a dot is a CHARACTER. Whichever word it is
+// attached to, it goes where that word goes, and at a line break it lands on
+// an edge. What a separator has to do at a break is DISAPPEAR, and only space
+// does that.
+//
+// So the figures are spaced rather than punctuated. It reads more editorially
+// than a dotted list anyway, which is where the whole screen went today, and
+// the Body row can carry all three of her scale figures and wrap without
+// leaving a mark pointing at nothing.
+function Piece({ children }: { children: React.ReactNode }) {
+  return <View style={styles.piece}>{children}</View>;
 }
 
 // A number and its unit on one line. Compact by necessity: three of these have
@@ -774,30 +809,7 @@ const isToday = (iso: string): boolean =>
 
 const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${round1(v)}${unit}`);
 
-// Deliberately smaller than the component's 220 default. This screen does not
-// scroll (see body/index.tsx), so every pixel spent here is taken from
-// something already on it - which is exactly the trade the two variants above
-// make explicit.
-// 195 in both arrangements, deliberately: the flower is the thing this whole
-// change is for, so it is not the variable. The only difference between the two
-// is which small thing keeps its place beside it.
-// 158, down from 200 over the course of 25 September, and every point of it
-// went to something on this screen: first the greeting fix, then the sentence
-// underneath. That sentence wraps to TWO lines at this width in every case but
-// one - measured, after a version budgeted for one and put the second line
-// under the tab bar - so the flower is sized for the sentence at its longest
-// rather than at its shortest.
-const FLOWER_SIZE = 158;
-
 const styles = StyleSheet.create({
-  weekSection: {
-    gap: Spacing.three,
-  },
-  flowerWrap: {
-    height: FLOWER_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   screen: {
     flex: 1,
     // Tightened from Spacing.four (2026-09-04), then from Spacing.three
@@ -825,32 +837,75 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     minHeight: 40,
   },
-  // Wide enough for "Body" and "Food" at this size, and fixed so the two rows
-  // line up. A hair over, rather than exactly: a label that just fits is a
-  // label that wraps on a phone with larger text.
+  // Wide enough for the LONGEST of them, which is "Movement" since item 7 -
+  // at 44 it broke as "Move / ment", which is the kind of thing a fixed column
+  // does the moment a new row arrives. Fixed so the three rows line up: ragged
+  // right is how text sits, a ragged left edge under a label is how a table
+  // looks broken.
+  //
+  // The cost is real and taken knowingly: a Body row carrying all three scale
+  // figures now wraps onto a second line. A wrapped row is honest; a label
+  // broken mid-word is not.
   figureLabel: {
-    width: 44,
+    width: 76,
   },
   // The figures themselves, which take the slack so the chevron keeps the
   // right edge. They wrap rather than clip - see the as-of date above.
+  // ANYTHING BETWEEN A ROW AND ITS FIGURES HAS TO PASS THE SHRINK ON.
+  // minWidth:0 on the figures is useless if a wrapper above them refuses to
+  // give ground - and SpotlightTarget draws a View of its own, which is what
+  // was actually holding the Body row open over its chevron. Two wrappers deep
+  // and the fix has to be applied at every one of them.
+  stretch: { flex: 1, minWidth: 0 },
+  // One figure, kept whole. See Piece.
+  piece: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.one },
+  // The foot and its number, which travel together when the row wraps.
+  stepPair: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  // The date of a reading that is not today's. Muted, with its own space
+  // rather than a separator, so nothing can be left pointing at nothing when
+  // the row wraps (Ruth, item 6).
+  asOf: { marginLeft: Spacing.one },
+  // THE CLOSING EPIGRAPH (Ruth, item 9). The one italic in the app, centred,
+  // with the largest space on the screen above it - which is what makes it
+  // read as a close rather than as another line of content. The size is the
+  // middle of the 22-24 she asked for; the leading is above the size, unlike
+  // the greeting's, because this is a sentence rather than a composition.
+  epigraph: {
+    fontFamily: DisplayFont.italic,
+    fontSize: 23,
+    lineHeight: 30,
+    textAlign: 'center',
+    // AUTO, NOT A FIXED GAP. "Generous space above. If the page is short, it
+    // sits in the lower third of the screen." A fixed margin left it floating
+    // in the middle with a void underneath, which reads as a page that ran
+    // out; pushed to the foot, the space above it IS the generous space and
+    // the void is gone because it is on the other side.
+    marginTop: 'auto',
+    paddingHorizontal: Spacing.three,
+    opacity: 0.75,
+  },
   inlineStats: {
     flex: 1,
+    // WITHOUT THIS THE ROW OVERRUNS ITS CHEVRON. A flex child will not shrink
+    // below its own content width unless it is told it may, so a Body row
+    // carrying all three scale figures simply ran past the right edge and
+    // printed "27.8% fa>" over the arrow - it never got the chance to wrap.
+    //
+    // This is the second time today: quick-log-bar.tsx carries the same note
+    // about the same trap, written this morning about the Add button, and I
+    // still wrote a flex:1 without it this afternoon.
+    minWidth: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'baseline',
-    gap: Spacing.one,
+    // The separator. Clearly wider than the 4 inside a figure, so "64.2 kg"
+    // reads as one thing and the next figure as another - and it costs
+    // nothing at a line break, because space is what a break already is.
+    columnGap: Spacing.three,
+    rowGap: Spacing.half,
   },
   // The sentence under the wheel. Indented by nothing and centred by nothing:
   // it belongs to the section, not to the drawing.
-  weekNote: {
-    marginTop: Spacing.two,
-    // CLEAR OF THE FLOATING TAB BAR, not merely above it. The first version
-    // landed this sentence about fourteen points off the bar, which is not a
-    // margin - it is a near miss, and a phone one size smaller turns it into
-    // a hit. The flower gave up seventeen points for it, which is the right
-    // way round: the sentence is what makes the drawing mean something.
-    marginBottom: Spacing.three,
-  },
   stat: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -905,9 +960,6 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   dateRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.three },
-  // The heading and today's steps on one line, so the figure costs no
-  // vertical space at all on a screen that does not scroll.
-  weekHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   // The date takes the room and the link keeps its own width, so a long date
   // with a cycle day wraps rather than pushing Settings off the edge.
   dateText: { flex: 1 },

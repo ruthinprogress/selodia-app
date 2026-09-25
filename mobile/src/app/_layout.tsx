@@ -5,7 +5,13 @@ import {
   Comfortaa_700Bold,
   useFonts,
 } from '@expo-google-fonts/comfortaa';
-import { CormorantInfant_400Regular } from '@expo-google-fonts/cormorant-infant';
+import {
+  CormorantInfant_400Regular,
+  // The italic is only for the closing epigraph on Today (Ruth, item 9). One
+  // more font file, loaded the same way as the roman, and it rides an update
+  // rather than needing a build because expo-font loads at runtime.
+  CormorantInfant_400Regular_Italic,
+} from '@expo-google-fonts/cormorant-infant';
 import {
   Manrope_400Regular,
   Manrope_500Medium,
@@ -74,6 +80,7 @@ export default function RootLayout() {
     Manrope_500Medium,
     Manrope_600SemiBold,
     CormorantInfant_400Regular,
+    CormorantInfant_400Regular_Italic,
     Comfortaa_400Regular,
     Comfortaa_500Medium,
     Comfortaa_600SemiBold,

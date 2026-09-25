@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThreeSeedsMark } from '@/components/seed-marks';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { PageInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 // THE "MORE" MARK - three seeds, top right, on every screen.
 //
@@ -63,6 +64,7 @@ const MARK_SIZE = 22;
 
 export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   const button = (
     <Pressable
@@ -86,7 +88,16 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
   // depends on whether it happens to be highlightable is exactly the class of
   // bug this file was rewritten to end.
   return (
-    <View style={[styles.mark, { top: insets.top + TOP_GAP }]}>
+    // THE GROUND UNDER IT IS THE PAGE'S OWN (2026-09-25). A mark pinned to
+    // the screen does not move when the page does, so scrolled content passes
+    // BEHIND it - on the Almanac a line of the portrait ran straight through
+    // the seeds. That is the cost of "fixed", which is what she asked for, and
+    // the fix is not to unpin it but to give it something to sit on. A disc in
+    // the page colour is invisible where the page is plain, which is the top of
+    // every screen at rest, and hides whatever passes under it once scrolled.
+    <View
+      style={[styles.mark, { top: insets.top + TOP_GAP, backgroundColor: theme.background }]}
+    >
       {spotlight ? (
         // THE ONE POINTABLE CROSS-SCREEN STEP (build item 23): "where do I get
         // my data" pulses this, the tap opens Settings, and the export
@@ -105,6 +116,16 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
 const styles = StyleSheet.create({
   mark: {
     position: 'absolute',
+    // Round, and a little larger than the mark, so the ground reads as a disc
+    // rather than as a square of background that has gone wrong.
+    width: MARK_SIZE + 12,
+    height: MARK_SIZE + 12,
+    borderRadius: (MARK_SIZE + 12) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // The disc is centred on where the bare mark used to sit, so nothing moved.
+    marginTop: -6,
+    marginRight: -6,
     // The page margin, once, measured from the screen's right edge - which is
     // what lines it up with every heading and card edge on every screen.
     right: PageInset.horizontal,

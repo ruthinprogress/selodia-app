@@ -115,5 +115,32 @@ if (offending.length) {
   console.log('  pass  no sentence suggests, praises or scolds');
 }
 
+// THE SIX-WEEK WINDOW HAS ITS OWN SENTENCES (2026-09-25). The flower moved to
+// the Almanac as a six-week view, and substituting the period into one
+// template produced "Your six weeks HAS been fairly evenly spread" - which
+// reached a screenshot before anybody read it. English does not let one noun
+// stand in for another, so each window writes its own clause and a new window
+// cannot be added without writing one.
+const SIX = { strength: 40, cardio: 38, flexibility: 42, balance: 39, bone: 41, recovery: 40 };
+
+const sixEven = weekObservation(SIX, 'six weeks');
+if (sixEven === 'These six weeks have been fairly evenly spread.') {
+  console.log('  pass  the six-week even sentence agrees with its subject');
+} else {
+  failed++;
+  console.log('  FAIL  the six-week even sentence is wrong');
+  console.log(`          got ${JSON.stringify(sixEven)}`);
+}
+
+const sixLed = weekObservation({ ...SIX, strength: 95 }, 'six weeks');
+if (sixLed === 'Strength has had most of your attention.') {
+  console.log('  pass  a six-week leader reads the same as a week of one');
+} else {
+  failed++;
+  console.log('  FAIL  the six-week leader sentence is wrong');
+  console.log(`          got ${JSON.stringify(sixLed)}`);
+}
+
 console.log(failed === 0 ? '\n  all cases pass\n' : `\n  ${failed} FAILED\n`);
 process.exit(failed === 0 ? 0 : 1);
+

@@ -48,7 +48,15 @@ export type HealthFlowerState = {
   reload: () => void;
 };
 
-export function useHealthFlower(): HealthFlowerState {
+// HOW MANY WEEKS THE FLOWER COVERS (2026-09-25). One until today, when the
+// drawing moved off Today and onto the Almanac as a six-week rolling view
+// (Ruth, item 8: "Today shows today only. Move the balance flower to Almanac >
+// Insights as a 6-week rolling view").
+//
+// The window is the rows AND the target together - see coverageFromRows. Six
+// weeks of sessions against one week's target would fill every petal and the
+// drawing would say nothing.
+export function useHealthFlower(weeks = 1): HealthFlowerState {
   const [coverage, setCoverage] = useState<FlowerCoverage | null>(null);
   const [loading, setLoading] = useState(true);
   const [unclassifiedCount, setUnclassified] = useState(0);
@@ -69,9 +77,14 @@ export function useHealthFlower(): HealthFlowerState {
     (async () => {
       try {
         setError(null);
-        const weekStart = currentWeekStart();
-        const weekEnd = new Date(weekStart);
+        const span = Math.max(1, weeks);
+        // Ends at the end of THIS week and reaches back `span` weeks, so a
+        // six-week view always includes the week somebody is in rather than
+        // stopping at last Sunday.
+        const weekEnd = new Date(currentWeekStart());
         weekEnd.setDate(weekEnd.getDate() + 7);
+        const weekStart = new Date(weekEnd);
+        weekStart.setDate(weekStart.getDate() - span * 7);
 
         const { data, error: readError } = await supabase
           .from('activity_logs')
@@ -112,11 +125,21 @@ export function useHealthFlower(): HealthFlowerState {
 
         if (cancelled) return;
 
+        // EVERY DAY IN THE WINDOW, not the first week's seven. daysOfWeek
+        // returns exactly seven, which was the whole window until today; on a
+        // six-week flower it would have counted rest days in the oldest week
+        // and none of the other five.
+        const allDays = Array.from({ length: span }, (_, w) => {
+          const start = new Date(weekStart);
+          start.setDate(start.getDate() + w * 7);
+          return daysOfWeek(start);
+        }).flat();
+
         const earned =
           recoveryFromSleep((sleepRows ?? []) as SleepNight[]) +
-          recoveryFromRestDays(rows as unknown as LoadedSession[], daysOfWeek(weekStart));
+          recoveryFromRestDays(rows as unknown as LoadedSession[], allDays);
 
-        setCoverage(withExtraRecovery(coverageFromRows(rows), earned));
+        setCoverage(withExtraRecovery(coverageFromRows(rows, span), earned, span));
         setUnclassified(rows.filter((r) => r.cover_strength == null).length);
       } catch (err) {
         if (!cancelled) {
@@ -133,7 +156,7 @@ export function useHealthFlower(): HealthFlowerState {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey, todayKey]);
+  }, [reloadKey, todayKey, weeks]);
 
   return { coverage, loading, error, unclassifiedCount, reload };
 }

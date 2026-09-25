@@ -9,7 +9,7 @@ import { RowDelete } from '@/components/row-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WaterDroplet } from '@/components/water-droplet';
-import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
+import { DisplayFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { currentUserId } from '@/lib/current-user';
 import { QUICK_MEASURES } from '@/lib/hydration';
@@ -20,13 +20,21 @@ import { supabase } from '@/lib/supabase';
 // Personal. Effortless." Three states, as the brief drew them:
 //
 //   1. Collapsed - the droplet, today's amount, and "of 1.8 L today", with a +.
+//      STATE 1 CHANGED ON 25 SEPTEMBER, at her instruction: no card, no goal
+//      line, no separate + button. The droplet carries the + and is the
+//      control; the amount sits under it; nothing else is drawn. See the note
+//      where it is built.
 //   2. Quick add - the + opens four drinks and "Other amount..."; one tap logs.
 //   3. After logging - the droplet eases up, and "Added 500 ml" appears with
 //      an undo, then fades on its own.
 //
 // And two decisions of hers that the brief did not draw:
-//   - THE GOAL IS PERSONAL AND SAYS WHY. Tapping "of 1.8 L today" opens the
+//   - THE GOAL IS PERSONAL AND SAYS WHY. Tapping "of 1.8 L today" opened the
 //     reasons, from lib/hydration-goal.ts. No number without its evidence.
+//     BOTH ARE GONE FROM THE SCREEN as of 25 September - she called the goal
+//     arbitrary, which it is - and the rule survives them: there is now no
+//     number on this control that anybody has to justify. The goal still sets
+//     how full the drop LOOKS, and only that.
 //   - NOTHING MARKS SUCCESS. No tick at the goal, no colour change, no "goal
 //     reached". The droplet sits at about four-fifths at the goal and carries
 //     on filling past it: "Here's where you are today", not a verdict.
@@ -57,6 +65,11 @@ const UNDO_WINDOW_MS = 5000;
 /** A drink just added, which can still be undone. */
 export type WaterAction = { id: string; ml: number; label: string };
 
+// HOW BIG THE DROP IS DRAWN. 56 originally, 64 at her instruction this
+// afternoon, and 76 now that the card is gone from around it and it is the
+// only thing holding this part of the screen.
+const DROPLET = 76;
+
 export function HydrationCard({
   ml,
   goal,
@@ -74,7 +87,6 @@ export function HydrationCard({
 }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const [why, setWhy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [other, setOther] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -111,63 +123,62 @@ export function HydrationCard({
 
   return (
     <View style={styles.outer}>
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <View style={styles.row}>
-          {/* 15% LARGER (Ruth, 25 September 2026). The droplet is the one
-              drawing on this screen that is not the flower, and at 56 it sat
-              level with the type beside it rather than anchoring the strip.
-              64 is the same shape with the authority the strip was missing,
-              and the card keeps its height because the two lines of type
-              beside it were always the taller side of the row. */}
-          <WaterDroplet fill={dropletFill(ml, goal.ml)} size={64} />
+      <ThemedView type="background" style={styles.card}>
+        {/* THE BOX IS GONE, AND THE DROPLET IS THE CONTROL (Ruth, 25 September
+            2026: "what if the water droplet has no box around it? Just the
+            droplet, the cross inside it" - and then "Just the total amount
+            below, no guidance to how much since it's arbitrary").
 
-          <View style={styles.amounts}>
-            <Pressable
-              onPress={() => setDay(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`${formatVolume(ml)} so far. See today's drinks.`}
-              hitSlop={Spacing.one}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <ThemedText style={styles.amount}>{formatVolume(ml)}</ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={() => setWhy((v) => !v)}
-              accessibilityRole="button"
-              accessibilityLabel={`Of ${formatVolume(goal.ml)} today. ${why ? 'Hide' : 'Show'} why the goal is ${formatVolume(goal.ml)}.`}
-              hitSlop={Spacing.one}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <ThemedText type="small" themeColor="textSecondary">
-                of {formatVolume(goal.ml)} today
-              </ThemedText>
-            </Pressable>
+            Three things became one. There was a filled card, a droplet inside
+            it, and a + button off in the corner; now the droplet IS the way to
+            add a drink, and nothing is drawn around it. It also does what her
+            item 5 asked for - a smaller hydration card - by removing the card
+            rather than shrinking it.
+
+            THE GOAL LINE WENT WITH IT, and that is the more honest version of a
+            rule she already held. "of 1.9 L today" is a target written softly;
+            her morning list had the card right BECAUSE it was "a guide, not a
+            target", and a guide computed from a formula is still a number to
+            fall short of. "800 ml" is a fact. The `why` panel that explained
+            where the goal came from went too - it explains something nobody is
+            shown any more.
+
+            THE FILL IS UNTOUCHED ("Don't change fill, it's lovely"). The goal
+            still decides how full the droplet looks; it simply is not stated.
+            A shape filling up does not accuse anybody of anything the way
+            "800 of 1900" does. */}
+        <Pressable
+          onPress={() => {
+            setOpen((v) => !v);
+            setOther(null);
+            setFailed(false);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={open ? 'Close the drinks' : `Add a drink. ${formatVolume(ml)} so far today.`}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.droplet, pressed && styles.pressed]}
+        >
+          <WaterDroplet fill={dropletFill(ml, goal.ml)} size={DROPLET} />
+          {/* INSIDE THE DROP, at the centre of its belly rather than the centre
+              of its box - a drop is top-heavy with air, so the two are not the
+              same place. accentDeep rather than accent: it has to read on the
+              pale cream of an empty drop AND on the pale green of a full one,
+              which full-strength terracotta does on neither. */}
+          <View style={styles.dropletMark} pointerEvents="none">
+            <Ionicons name={open ? 'close' : 'add'} size={26} color={theme.accentDeep} />
           </View>
+        </Pressable>
 
-          <Pressable
-            onPress={() => {
-              setOpen((v) => !v);
-              setOther(null);
-              setFailed(false);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={open ? 'Close the drinks' : 'Add a drink'}
-            hitSlop={Spacing.two}
-            style={({ pressed }) => [styles.plus, pressed && styles.pressed]}
-          >
-            <Ionicons name={open ? 'close' : 'add'} size={26} color={theme.accent} />
-          </Pressable>
-        </View>
-
-        {why && (
-          <View style={styles.why}>
-            {goal.reasons.map((r) => (
-              <ThemedText key={r} type="small" themeColor="textSecondary" style={styles.whyText}>
-                {r}
-              </ThemedText>
-            ))}
-          </View>
-        )}
+        {/* The total, and nothing else. Tapping it still opens today's drinks. */}
+        <Pressable
+          onPress={() => setDay(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`${formatVolume(ml)} so far. See today's drinks.`}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <ThemedText style={styles.amount}>{formatVolume(ml)}</ThemedText>
+        </Pressable>
 
         {open && (
           <View style={styles.panel}>
@@ -264,14 +275,26 @@ export function HydrationCard({
 
 const styles = StyleSheet.create({
   outer: { gap: Spacing.two },
+  // NOT A CARD ANY MORE, just the space the drop and its figure stand in.
+  // Centred, because it is now one object on a screen of left-aligned rows and
+  // the only thing on Today you can DO - so it reads as the object it is.
   card: {
-    borderRadius: CardRadius,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.two,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  amounts: { flex: 1, gap: 2 },
+  droplet: { alignItems: 'center', justifyContent: 'center' },
+  // The belly's centre in the drawing's own box: the drop spans 130 units tall
+  // and its round part is centred near y 84, which is 65% down rather than 50%.
+  dropletMark: {
+    position: 'absolute',
+    top: DROPLET * 1.3 * 0.65 - 13,
+    left: DROPLET * 0.5 - 13,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   amount: { fontFamily: DisplayFont.regular, fontSize: 28, lineHeight: 32 },
   // THE PLUS MOVED INWARD (Ruth, 25 September 2026). It was pressed against
   // the card's own padding at the right edge, which read as a control that had
@@ -279,7 +302,6 @@ const styles = StyleSheet.create({
   // padding stays for the touch target and the margin brings the mark itself
   // back off the edge.
   plus: { padding: Spacing.one, marginRight: Spacing.one },
-  why: { gap: Spacing.one, paddingTop: Spacing.one },
   whyText: { lineHeight: 20 },
   panel: { gap: Spacing.two, paddingTop: Spacing.one },
   tiles: { flexDirection: 'row', gap: Spacing.two },

@@ -153,6 +153,11 @@ export const BrandFont = {
 // while still remaining elegant".
 export const DisplayFont = {
   regular: 'CormorantInfant_400Regular',
+  // ONE USE, AND IT IS NAMED HERE SO THERE IS ONLY EVER ONE. The closing
+  // epigraph at the foot of Today (Ruth, 25 September 2026, item 9). The
+  // display face is otherwise always roman: an italic serif is a voice, not a
+  // style, and it is worth it being rare enough to mean something.
+  italic: 'CormorantInfant_400Regular_Italic',
 } as const;
 
 // The display face's own measurements, kept here so no screen has to re-derive

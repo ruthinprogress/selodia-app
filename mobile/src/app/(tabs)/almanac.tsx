@@ -7,6 +7,7 @@ import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { AlmanacIntro } from '@/components/almanac-intro';
 import { AlmanacTabs } from '@/components/almanac-tabs';
+import { BalanceFlowerSection } from '@/components/balance-flower-section';
 import { ReportLink } from '@/components/report-link';
 import { InsightsLog } from '@/components/insights-log';
 import { InsightsPortrait } from '@/components/insights-portrait';
@@ -141,6 +142,12 @@ export default function AlmanacScreen() {
                     wrote them. No roundups yet means no statements, and the
                     portrait says it is early rather than inventing a picture. */}
                 <InsightsPortrait statements={portrait.statements} range={portrait.range} />
+
+                {/* THE BALANCE FLOWER LIVES HERE NOW (Ruth, 25 September 2026,
+                    item 8). Under the portrait, because both are pictures of a
+                    stretch of time and the portrait is the one written in
+                    words. See balance-flower-section.tsx. */}
+                <BalanceFlowerSection />
                 {loaded && byTab.insights.length > 0 && (
                   <SpotlightTarget id="almanac.insights">
                     {/* The same block the Plans tab opens with, so the two

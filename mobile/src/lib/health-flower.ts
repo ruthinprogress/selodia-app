@@ -141,7 +141,15 @@ export const EMPTY_COVERAGE: FlowerCoverage = {
 
 // Sum, divide, cap. Rounded to a whole percent because the petal is drawn from
 // it and a fractional percent is a difference nobody can see.
-export function coverageFromRows(rows: CoverageRow[]): FlowerCoverage {
+//
+// THE TARGET SCALES WITH THE WINDOW (2026-09-25). The flower moved off Today
+// and onto the Almanac as a six-week rolling view (Ruth, item 8), and six
+// weeks of sessions over ONE week's target would peg every petal at 100 and
+// make the drawing say nothing at all. `weeks` is how many weeks the rows
+// span, so a six-week flower asks for six weeks of work to fill. One week
+// behaves exactly as before.
+export function coverageFromRows(rows: CoverageRow[], weeks = 1): FlowerCoverage {
+  const target = WEEKLY_TARGET * Math.max(1, weeks);
   const out = { ...EMPTY_COVERAGE };
   for (const d of DIMENSIONS) {
     const col = COLUMN_FOR[d];
@@ -152,7 +160,7 @@ export function coverageFromRows(rows: CoverageRow[]): FlowerCoverage {
       // Supabase can hand a numeric back as a string, so this is not paranoia.
       if (typeof v === 'number' && Number.isFinite(v)) sum += v;
     }
-    out[d] = Math.min(100, Math.round((sum / WEEKLY_TARGET) * 100));
+    out[d] = Math.min(100, Math.round((sum / target) * 100));
   }
   return out;
 }
@@ -165,9 +173,11 @@ export function coverageFromRows(rows: CoverageRow[]): FlowerCoverage {
  * here rather than invented as fake activity rows, because a night's sleep is
  * not a workout and the Movement log must never show one.
  */
-export function withExtraRecovery(c: FlowerCoverage, points: number): FlowerCoverage {
+export function withExtraRecovery(c: FlowerCoverage, points: number, weeks = 1): FlowerCoverage {
   if (!Number.isFinite(points) || points <= 0) return c;
-  const asPercent = Math.round((points / WEEKLY_TARGET) * 100);
+  // Against the same scaled target as everything else, or a six-week flower
+  // would fill its recovery petal six times as fast as its cardio one.
+  const asPercent = Math.round((points / (WEEKLY_TARGET * Math.max(1, weeks))) * 100);
   return { ...c, recovery: Math.min(100, c.recovery + asPercent) };
 }
 
@@ -219,14 +229,25 @@ export function allDimensionsFull(c: FlowerCoverage): boolean {
 // app being confident about something it cannot really see.
 const CLEAR_LEAD = 10;
 
-export function weekObservation(c: FlowerCoverage): string | null {
+// The window's name AND its sentence, because English does not let one word
+// stand in for the other: "Your six weeks has been fairly evenly spread" is
+// what a substituted noun gets you. Each window writes its own clause, and a
+// new window cannot be added without writing one.
+const EVENLY_SPREAD: Record<FlowerPeriod, string> = {
+  week: 'Your week has been fairly evenly spread.',
+  'six weeks': 'These six weeks have been fairly evenly spread.',
+};
+
+export type FlowerPeriod = 'week' | 'six weeks';
+
+export function weekObservation(c: FlowerCoverage, period: FlowerPeriod = 'week'): string | null {
   const ranked = [...DIMENSIONS].sort((a, b) => c[b] - c[a]);
   const top = ranked[0];
   const lowest = ranked[ranked.length - 1];
 
   if (c[top] <= 0) return null;
   if (allDimensionsFull(c)) return 'All six have had your attention.';
-  if (c[top] - c[lowest] < CLEAR_LEAD) return 'Your week has been fairly evenly spread.';
+  if (c[top] - c[lowest] < CLEAR_LEAD) return EVENLY_SPREAD[period];
 
   // Everyone within a rounding error of the leader shares the sentence.
   //
