@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   allDimensionsFull,
   DIMENSION_COLOUR,
+  DIMENSION_DEEP,
   DIMENSION_LABEL,
   DIMENSIONS,
   type Dimension,
@@ -56,12 +57,32 @@ const FULL_RX = 10;
 const TIP_Y = CENTRE - 72; // 38
 const ASPECT = FULL_RY / FULL_RX; // 3.8
 
-// The labels sit wider than the 220 square, so the drawing gets 26 units of
-// margin either side, as the approved file does. The centre stays at 110, the
-// midpoint of -26..246, which is what keeps the seed overlay (positioned at 50%
-// of the wrapper) exactly on the flower's centre.
-const VIEW_X = -26;
-const VIEW_W = 272;
+// The labels sit wider than the 220 square, so the drawing gets a margin either
+// side, as the approved file does. The centre stays at 110, the midpoint of the
+// range, which is what keeps the seed overlay (positioned at 50% of the
+// wrapper) exactly on the flower's centre - so any change here must stay
+// symmetric about 110.
+//
+// WIDENED FROM 26 TO 38 (2026-09-25), to pay for readable labels. See
+// LABEL_SIZE: at 9 units the longest of them, "Flexibility", ended at 225 and
+// had room to spare. At a size somebody over forty can actually read it ends
+// near 248, and a label clipped by the viewBox is a dimension with no name.
+const VIEW_X = -38;
+const VIEW_W = 296;
+
+// THE LABELS WERE THE SMALLEST TEXT IN THE APP BY A LONG WAY (2026-09-25).
+//
+// One unit of this drawing renders at size/220 points, so on Today - where the
+// flower is 195 - a 9-unit label arrived at about 8 points on the glass. The
+// app's own floor is 12 (`detail` in themed-text.tsx), and this is an app whose
+// whole audience is women over forty; it has already rejected a 4.39:1 contrast
+// as too low for that reader. Eight-point type is the same mistake wearing a
+// different face, and nobody caught it because the flower is looked at as a
+// drawing rather than read.
+//
+// 13.5 units renders at 12 on Today and 13.5 on the Almanac, where the flower
+// is drawn at its full 220. The floor, not a compromise with it.
+const LABEL_SIZE = 13.5;
 
 // A nonzero petal is never invisible. A strictly proportional oval would be
 // under a pixel tall at low coverage, which reads as nothing logged rather than
@@ -106,10 +127,11 @@ function petalFor(coverage: number): { rx: number; ry: number; cy: number } | nu
 // Where each label sits, taken from the approved design. The tips moved 4 units
 // further out, so every label moved out with them, and all still clear the tips.
 //
-// ONE DELIBERATE DIFFERENCE FROM THE DECK: colour and size. The deck sets labels
-// at 8pt in #9C948A, which is under 3:1 on cream and fails AA for text. The app
-// keeps textSecondary at 9, which passes; the approval was for the bloom, and a
-// label nobody can read is not part of it.
+// TWO DELIBERATE DIFFERENCES FROM THE DECK: colour and size. The deck sets
+// labels at 8pt in #9C948A, which is under 3:1 on cream and fails AA for text.
+// The app now sets them at 13.5 units in each petal's own deep tone - see
+// LABEL_SIZE and the fill below. The approval was for the bloom, and a label
+// nobody can read is not part of it.
 const LABEL_POS: Record<Dimension, { x: number; y: number; anchor: 'start' | 'middle' | 'end' }> = {
   strength: { x: 110, y: 24, anchor: 'middle' },
   cardio: { x: 182, y: 66, anchor: 'start' },
@@ -280,9 +302,32 @@ export function HealthFlower({
               x={pos.x}
               y={pos.y}
               textAnchor={pos.anchor}
+              /* THE BODY FACE, NOT THE DISPLAY ONE, and it was close. The
+                 serif would say "illustration" harder, which is the note this
+                 change answers - but at 12 points the serif's smaller x-height
+                 costs real legibility, and this reader is the whole reason the
+                 size went up in the first place. The colour below does the
+                 work the face would have done. */
               fontFamily={BodyFont.regular}
-              fontSize={9}
-              fill={theme.textSecondary}
+              fontSize={LABEL_SIZE}
+              /* EACH WORD IN ITS OWN PETAL'S COLOUR (Ruth, 25 September 2026:
+                 the wheel should feel "less like a chart and more like an
+                 illustration of balance").
+
+                 The petals were never the chart-like part. Six grey words set
+                 in the body face, evenly spaced around a circle, is the visual
+                 grammar of a radar plot's axis labels - and that is what a
+                 reader recognises first, before any of the reasoning about
+                 inward-growing petals and starting rings gets a chance.
+
+                 In its petal's colour each word belongs to the thing it names,
+                 which is a botanical plate rather than a plot. DIMENSION_DEEP
+                 rather than the petal colour itself: those are the same six
+                 hues darkened until cream clears 5.5:1 on them, and contrast
+                 is symmetric, so every one of them also clears 5.5:1 AS text on
+                 this cream. Measured once, for the buttons, and true here for
+                 the same reason. */
+              fill={DIMENSION_DEEP[d]}
             >
               {DIMENSION_LABEL[d]}
             </SvgText>

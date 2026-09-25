@@ -32,6 +32,22 @@ export const PERSONAL_LINE_MVP: string[] = [
   "Your experiences are being held.",
   "Understanding yourself is a lifelong practice.",
   "Every person is different. That's the point.",
+  // FIVE MORE, 25 September 2026, and they are better than most of the
+  // twenty-six above them. They pass the same test the set was written to: an
+  // observation about how bodies and understanding work, never a slogan and
+  // never an instruction. "Your body isn't asking to be fixed today" is the
+  // whole app in seven words.
+  //
+  // "Small observations become lifelong knowledge" sits down here rather than
+  // beside "Small moments become understanding", which it nearly is: the
+  // rotation walks this array in order, so two near-twins placed together
+  // would come up on consecutive mornings and read as the app repeating
+  // itself.
+  "Your body has remembered how to keep you alive for decades.",
+  "Bodies whisper long before they shout.",
+  "Your body isn't asking to be fixed today.",
+  "Data becomes understanding through patience.",
+  "Small observations become lifelong knowledge.",
 ];
 
 // A genuine exception, not a rotation member: the true day-one line, shown only

@@ -7,9 +7,9 @@ import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
+import { weekObservation } from '@/lib/health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
@@ -452,17 +452,31 @@ export function OverviewPanel({
         {data.personalLine}
       </ThemedText>
 
-      {/* THREE SQUARES, ONE ROW. Replaces three stacked full-width cards
-          (2026-09-04). The screen does not scroll, so vertical space is the
-          scarcest thing on it: the old cards spent about 270px saying what
-          these say in about 110, and the flower could not fit underneath them.
-          Equal width, equal height, so the row reads as one object rather than
-          three competing ones. */}
-      <View style={styles.squareRow}>
+      {/* THE CARDS BECAME A LINE OF FIGURES (Ruth, 25 September 2026: "I'd
+          happily remove 20% of the content ... Apple don't fill screens.
+          Neither should Selodia").
+
+          WHY THESE TWO AND NOT SOMETHING ELSE. Food and Body are the only
+          things on Today that are also one tap away in the tab bar - Log ->
+          Food and drink, Log -> Measurements. The Health Flower and the water
+          strip exist nowhere else in the app, so they are the two that had to
+          keep their room. Nothing has been taken away from the screen: every
+          figure that was in the two squares is still on it, and still goes to
+          the same place when tapped.
+
+          WHAT WENT IS THE CHROME. Two filled tiles with their own headings,
+          chevrons and padding spent about 108 points drawing boxes around
+          figures that read perfectly well as a line under a serif date. That
+          is the twenty per cent, and it bought the air above and the sentence
+          under the wheel.
+
+          The figures keep their spotlight ids, so the guided tour still has
+          somewhere to point. */}
+      <View style={styles.figures}>
         {/* Straight to the view, not to the Log's list (2026-09-20): tapping
             Food on Today means "show me my food", and a list in between would
             be a step that answers nothing. */}
-        <Square id="body.food" title="Food" href="/log/food-history">
+        <FigureRow id="body.food" label="Food" href="/log/food-history">
           {data.todayKcal === 0 && data.todayProtein === 0 ? (
             /* One line rather than two zeros stacked. Nothing was logged, and
                two separate noughts make more of that than it deserves. */
@@ -472,17 +486,17 @@ export function OverviewPanel({
           ) : (
             <>
               <SpotlightTarget id="overview.calories">
-                <Stat value={String(Math.round(data.todayKcal))} unit="kcal" big />
+                <Stat value={String(Math.round(data.todayKcal))} unit="kcal" />
               </SpotlightTarget>
+              <Dot />
               <SpotlightTarget id="overview.protein">
-                {/* The same fix as the Body square, for the same width: the
-                    gram sits on its number, so "protein" is the only word the
-                    line has to fit beside it. */}
                 <Stat value={`${Math.round(data.todayProtein)}g`} unit="protein" />
               </SpotlightTarget>
             </>
           )}
-        </Square>
+        </FigureRow>
+
+        <Hairline />
 
         {/* ALL THREE ALWAYS SHOW, dashed where the latest reading did not carry
             that value (2026-09-04, Ruth's call).
@@ -496,12 +510,18 @@ export function OverviewPanel({
             fields exist is harder to scan than one with three fixed slots, and
             a dash is honest about the gap rather than hiding it.
 
+            THE CLIPPING THAT FORCED THE OLD WORDING IS GONE. In a square a
+            third of the screen wide, "38.5 kg muscle" needed about 93 points
+            and had 78, which is how a unit became "m..." on her phone. On a
+            full-width line there are about 250 points for all three, so
+            nothing has to be abbreviated to fit any more.
+
             METRIC ONLY, FOR NOW. kg straight from the column. The unit
             preference toggle - metric, imperial, stones - is a spec build item
             (Part One, Internationalisation), and when it lands these values
             must pass through a conversion utility before display rather than
             being formatted here. One place converts; this place renders. */}
-        <Square id="body.measurements" title="Body" href="/log/measurements">
+        <FigureRow id="body.measurements" label="Body" href="/log/measurements">
           <SpotlightTarget id="overview.stats">
             {data.bodyAsOf == null ? (
               /* Nothing has ever been recorded. ONE dash, not three: three
@@ -511,63 +531,40 @@ export function OverviewPanel({
                 {'—'}
               </ThemedText>
             ) : (
-              <>
-                {/* WORDS THAT FIT, NOT WORDS THAT CLIP (Ruth's bug list, item
-                    14: "38.5 kg m...", "27.7 % bo..."). In a square a third of
-                    the screen wide, "38.5 kg muscle" needs about 93 points and
-                    has about 78. The unit used to be set to shrink and clip
-                    first, on purpose - which is exactly the ellipsis she saw.
-                    Now: the percent sits on its own number, where it belongs,
-                    and the muscle line drops "kg" because the weight line
-                    directly above it already says it. The Measurements log
-                    carries every unit in full. */}
+              <View style={styles.inlineStats}>
                 <Stat value={fmt(data.weight.value, '')} unit="kg" />
+                <Dot />
                 <Stat value={fmt(data.muscle.value, '')} unit="muscle" />
+                <Dot />
                 <Stat
                   value={data.bodyFat.value != null ? `${round1(data.bodyFat.value)}%` : '—'}
                   unit="fat"
                 />
                 {/* Only when the reading is not from today. A date on today's
                     own numbers is noise; a date on Tuesday's is the difference
-                    between a current reading and an old one. */}
+                    between a current reading and an old one. It wraps onto a
+                    second line when it has to, which is the one case on this
+                    screen worth an extra line. */}
                 {!isToday(data.bodyAsOf) ? (
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.asOf}>
-                    {formatLogDate(new Date(data.bodyAsOf))}
-                  </ThemedText>
+                  <>
+                    <Dot />
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {formatLogDate(new Date(data.bodyAsOf))}
+                    </ThemedText>
+                  </>
                 ) : null}
-              </>
+              </View>
             )}
           </SpotlightTarget>
-        </Square>
+        </FigureRow>
 
-        {/* STEPS ARRIVE HERE (2026-09-16). This square carried a comment saying
-            steps were specified for it and deliberately absent, because nothing
-            in the app read one - true since the permission was first asked for.
-            lib/steps.ts reads them now.
-
-            "NOTHING LOGGED YET" NOW HAS TO ACCOUNT FOR THEM. It was true while
-            sessions were the only thing this square could know about. Beside
-            four thousand steps it would be false, and falser than a blank: the
-            person HAS moved, the app can see it, and it would be telling them
-            otherwise. So the empty state belongs to a day with no sessions AND
-            no step figure, which is also exactly the day when there is genuinely
-            nothing to say.
-
-            A null step count draws nothing at all rather than a zero. See
-            lib/steps.ts: a refusal, a phone with no health platform, and a quiet
-            morning are indistinguishable, and a zero would pick the one reading
-            that accuses somebody of not moving. */}
-        {/* THE ACTIVITY SQUARE WENT (Ruth, 25 September 2026: "activity
-            doesn't need to be there since it shows in the flower").
-
-            She is right, and it was the square saying the least: a session
-            count and a minute total, directly above a drawing of the same
-            week broken into six dimensions. Two squares leave the row wider
-            and the screen shorter, which is the other half of her note - the
-            flower was being cut off at the bottom.
-
-            Steps were the one thing here the flower does not carry, so they
-            moved rather than went. See the line beside "This week" below. */}
+        {/* STEPS DO NOT APPEAR HERE. They are on the "This week" heading, which
+            is where the Activity square's one irreplaceable figure went when
+            the square came out - see that heading below. A null step count
+            still draws nothing at all rather than a zero: a refusal, a phone
+            with no health platform and a quiet morning are indistinguishable,
+            and a zero would pick the one reading that accuses somebody of not
+            moving (lib/steps.ts). */}
       </View>
 
       {/* Hydration has no header because it is not a view to go into. It is the
@@ -629,6 +626,24 @@ export function OverviewPanel({
             />
           )}
         </View>
+
+        {/* WHAT THE WHEEL SAYS, IN WORDS (Ruth, 25 September 2026: the wheel
+            "feels stranded ... now the wheel teaches, not decorates").
+
+            It names what led the week and stops. The note that asked for this
+            carried a second sentence recommending a session to even things up,
+            and that half is deliberately not here - see weekObservation() in
+            lib/health-flower.ts for the whole argument. Briefly: a line the
+            app prints has to keep the rule the model is held to, and that rule
+            is ACKNOWLEDGE, DO NOT EVALUATE.
+
+            Nothing logged draws nothing at all, rather than a sentence about
+            an empty week. */}
+        {flower.coverage && weekObservation(flower.coverage) ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.weekNote}>
+            {weekObservation(flower.coverage)}
+          </ThemedText>
+        ) : null}
       </View>
 
       {/* Moved here from the foot of Activity, where Ruth said it was too
@@ -646,40 +661,66 @@ export function OverviewPanel({
 // One of the three squares. The label and the chevron sit on one line at the
 // top, the numbers beneath, and the whole thing is the link - a separate "see
 // more" control would be a second thing to explain.
-function Square({
+// ONE ROW OF THE FIGURES BLOCK: a label, its figures, and a chevron, with no
+// fill and no box. The whole row is the link, for the same reason the squares
+// it replaced were - a separate "see more" control would be a second thing to
+// explain.
+//
+// FORTY POINTS TALL, which is under the 44 a free-floating control wants and
+// is the deliberate trade. The target runs the full width of the text column,
+// which is the mitigation every list row on this phone already relies on, and
+// two rows at 44 would have cost most of what removing the boxes saved.
+function FigureRow({
   id,
-  title,
+  label,
   href,
   children,
 }: {
-  id: 'body.food' | 'body.measurements' | 'body.activity';
-  title: string;
+  id: 'body.food' | 'body.measurements';
+  label: string;
   href: Href;
   children: React.ReactNode;
 }) {
   const theme = useTheme();
   return (
-    <ThemedView type="backgroundElement" style={styles.square}>
-      <SpotlightTarget id={id} onActivate={() => router.push(href)}>
-        <Pressable
-          onPress={() => router.push(href)}
-          accessibilityRole="link"
-          accessibilityLabel={`${title}, open detail`}
-          style={({ pressed }) => pressed && styles.pressed}
-        >
-          <View style={styles.headerRow}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {title}
-            </ThemedText>
-            {/* accentDeep, not accent. Full-strength terracotta on sand is
-                2.43:1, under even the 3:1 a non-text control needs; the deeper
-                tone is 4.76:1 and reads as the same terracotta. */}
-            <Ionicons name="chevron-forward" size={16} color={theme.accentDeep} />
-          </View>
-        </Pressable>
-      </SpotlightTarget>
-      <View style={styles.squareBody}>{children}</View>
-    </ThemedView>
+    <SpotlightTarget id={id} onActivate={() => router.push(href)}>
+      <Pressable
+        onPress={() => router.push(href)}
+        accessibilityRole="link"
+        accessibilityLabel={`${label}, open detail`}
+        style={({ pressed }) => [styles.figureRow, pressed && styles.pressed]}
+      >
+        {/* A fixed column, so Food's figures and Body's start at the same x.
+            Ragged right is how text sits; a ragged left edge under a label is
+            how a table looks broken. */}
+        <ThemedText type="small" themeColor="textSecondary" style={styles.figureLabel}>
+          {label}
+        </ThemedText>
+        <View style={styles.inlineStats}>{children}</View>
+        {/* accentDeep, not accent. Full-strength terracotta on sand is 2.43:1,
+            under even the 3:1 a non-text control needs; the deeper tone is
+            4.76:1 and reads as the same terracotta. */}
+        <Ionicons name="chevron-forward" size={16} color={theme.accentDeep} />
+      </Pressable>
+    </SpotlightTarget>
+  );
+}
+
+// The one rule on the screen: between Food and Body, and nowhere else. A
+// component rather than a style so it can read the theme without the panel
+// above growing a hook for one line.
+function Hairline() {
+  const theme = useTheme();
+  return <View style={[styles.hairline, { backgroundColor: theme.backgroundSelected }]} />;
+}
+
+// The separator between figures on a line. A middle dot in the secondary
+// colour, with its own spacing, so the numbers either side keep theirs.
+function Dot() {
+  return (
+    <ThemedText type="small" themeColor="textSecondary">
+      ·
+    </ThemedText>
   );
 }
 
@@ -737,29 +778,42 @@ const styles = StyleSheet.create({
     // because each one is a different shape.
     gap: 12,
   },
-  squareRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
+  // AIR BEFORE THE FIGURES BEGIN (Ruth, 25 September 2026: "then another
+  // 24-32px before the cards begin. It feels much more editorial"). The
+  // screen's own gap is 12, so 16 more puts 28 between the daily line and the
+  // first figure - the largest gap on the screen, which is what makes the
+  // header read as a masthead rather than as the first of six things.
+  figures: {
+    marginTop: Spacing.three,
   },
-  square: {
+  hairline: {
+    height: 1,
+  },
+  figureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    minHeight: 40,
+  },
+  // Wide enough for "Body" and "Food" at this size, and fixed so the two rows
+  // line up. A hair over, rather than exactly: a label that just fits is a
+  // label that wraps on a phone with larger text.
+  figureLabel: {
+    width: 44,
+  },
+  // The figures themselves, which take the slack so the chevron keeps the
+  // right edge. They wrap rather than clip - see the as-of date above.
+  inlineStats: {
     flex: 1,
-    // Equal width comes from flex; equal HEIGHT has to be said, or a square
-    // with two numbers would sit shorter than one with three and the row would
-    // read as three things instead of one.
-    //
-    // 96, down from 112 (2026-09-25). With the Activity square gone the
-    // remaining two are half the row each rather than a third, so nothing
-    // inside them wraps any more and the extra 16 points were empty.
-    minHeight: 96,
-    // ONE RADIUS ON THIS SCREEN (UI brief): the squares, the water strip and
-    // "What you burn" all sit at CardRadius, so the row of cards reads as one
-    // material rather than three shapes.
-    borderRadius: CardRadius,
-    padding: Spacing.three,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
     gap: Spacing.one,
   },
-  squareBody: {
-    gap: Spacing.half,
+  // The sentence under the wheel. Indented by nothing and centred by nothing:
+  // it belongs to the section, not to the drawing.
+  weekNote: {
+    marginTop: Spacing.two,
   },
   stat: {
     flexDirection: 'row',
@@ -774,10 +828,6 @@ const styles = StyleSheet.create({
   },
   statValueBig: {
     fontSize: 22,
-  },
-  asOf: {
-    fontSize: 10,
-    marginTop: Spacing.half,
   },
   statUnit: {
     fontSize: 11,
@@ -828,25 +878,6 @@ const styles = StyleSheet.create({
   focusLine: {
     // No rule, no card. See the header block above.
     paddingRight: Spacing.four,
-  },
-  card: {
-    borderRadius: CardRadius,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  figures: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.four,
-    rowGap: Spacing.two,
-  },
-  figure: {
-    minWidth: 0,
   },
   // A strip, not a card. One line: the reading on the left, the taps on the
   // right, everything on one baseline.

@@ -177,3 +177,41 @@ export function withExtraRecovery(c: FlowerCoverage, points: number): FlowerCove
 export function allDimensionsFull(c: FlowerCoverage): boolean {
   return DIMENSIONS.every((d) => c[d] >= 100);
 }
+
+// ONE SENTENCE UNDER THE WHEEL (Ruth, 25 September 2026: the wheel "feels
+// stranded ... now the wheel teaches, not decorates").
+//
+// IT OBSERVES AND STOPS THERE. The note it answers carried a second sentence -
+// "adding one strength session would create a more balanced week" - and that
+// half is not built, on purpose and with her agreement. It is a prescription,
+// and it tells somebody their week is unbalanced before they have said whether
+// they minded. ACKNOWLEDGE, DO NOT EVALUATE is written in capitals in the
+// app's own prompt, and a line the app prints has to keep the rule the model is
+// held to. Naming what led the week is an observation; recommending the
+// remedy is every other health app.
+//
+// FOUR CASES, AND EACH SAYS SOMETHING DIFFERENT:
+//
+//   nothing logged      no sentence at all. There is no observation to make,
+//                       and "you have done nothing this week" is not one.
+//   one clear leader    it is named.
+//   a close top two     the week is called evenly spread, which is true and is
+//                       not a lesser answer than naming a winner by one point.
+//   every one full      the bloom already says it; the sentence says what the
+//                       bloom means rather than repeating the word.
+//
+// The gap that counts as "clear" is 10 points of a 100-point scale. Below that
+// the leader is an artefact of rounding, and naming it would be the app being
+// confident about a difference it cannot really see.
+const CLEAR_LEAD = 10;
+
+export function weekObservation(c: FlowerCoverage): string | null {
+  const ranked = [...DIMENSIONS].sort((a, b) => c[b] - c[a]);
+  const top = ranked[0];
+  const second = ranked[1];
+
+  if (c[top] <= 0) return null;
+  if (allDimensionsFull(c)) return 'All six have had your attention this week.';
+  if (c[top] - c[second] < CLEAR_LEAD) return 'Your week has been fairly evenly spread.';
+  return `${DIMENSION_LABEL[top]} has had most of your attention this week.`;
+}

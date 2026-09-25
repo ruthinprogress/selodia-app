@@ -113,7 +113,13 @@ export function HydrationCard({
     <View style={styles.outer}>
       <ThemedView type="backgroundElement" style={styles.card}>
         <View style={styles.row}>
-          <WaterDroplet fill={dropletFill(ml, goal.ml)} />
+          {/* 15% LARGER (Ruth, 25 September 2026). The droplet is the one
+              drawing on this screen that is not the flower, and at 56 it sat
+              level with the type beside it rather than anchoring the strip.
+              64 is the same shape with the authority the strip was missing,
+              and the card keeps its height because the two lines of type
+              beside it were always the taller side of the row. */}
+          <WaterDroplet fill={dropletFill(ml, goal.ml)} size={64} />
 
           <View style={styles.amounts}>
             <Pressable
@@ -267,7 +273,12 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   amounts: { flex: 1, gap: 2 },
   amount: { fontFamily: DisplayFont.regular, fontSize: 28, lineHeight: 32 },
-  plus: { padding: Spacing.one },
+  // THE PLUS MOVED INWARD (Ruth, 25 September 2026). It was pressed against
+  // the card's own padding at the right edge, which read as a control that had
+  // been pushed out of the way rather than one belonging to the strip. The
+  // padding stays for the touch target and the margin brings the mark itself
+  // back off the edge.
+  plus: { padding: Spacing.one, marginRight: Spacing.one },
   why: { gap: Spacing.one, paddingTop: Spacing.one },
   whyText: { lineHeight: 20 },
   panel: { gap: Spacing.two, paddingTop: Spacing.one },
