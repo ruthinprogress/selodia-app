@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HydrationCard, type WaterAction } from '@/components/hydration-card';
-import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -431,13 +430,12 @@ export function OverviewPanel({
           card around it. It is a quiet observation, not a notice: the border it
           used to carry made it look like something the app wanted her to act
           on. */}
-      {/* THE MARK GOES TO THE CORNER (Ruth, 25 September 2026: "It has the
-          'More' seeds in the wrong place"). It used to sit at the end of the
-          date line, which put it halfway down the screen beside a date, level
-          with nothing. Every other screen in the app carries it top right, and
-          a control that moves between screens is one somebody has to look for
-          twice. */}
-      <SettingsLink />
+      {/* The More mark is NOT drawn here any more. It belongs to the screen,
+          not to this panel - see today/index.tsx, and settings-link.tsx for
+          why (Ruth, 25 September 2026: it "must sit at the same fixed vertical
+          position on every screen"). Drawn inside this panel it was inside the
+          scroller, and inside a container already carrying the page margin,
+          which put it 64 points from the edge of the screen instead of 32. */}
       <View style={styles.header}>
         <ThemedText type="display" style={styles.greeting}>{greeting(name)}</ThemedText>
         <View style={styles.dateRow}>

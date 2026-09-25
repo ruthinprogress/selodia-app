@@ -21,7 +21,7 @@ export default function BodyFoodHistoryScreen() {
   const initialWeekStart = parseWeekStartParam(week) ?? undefined;
 
   return (
-    <BodyScreen settingsInHeader title="Food & Drink">
+    <BodyScreen title="Food & Drink">
       <FoodLogView initialWeekStart={initialWeekStart} />
       {/* Her brief: a quiet text link, not a button. */}
       <ReportLink start={['food']} label="Build a report" />

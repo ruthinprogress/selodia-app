@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HydrationToast, type WaterAction } from '@/components/hydration-card';
 import { OverviewPanel } from '@/components/overview-panel';
+import { SettingsLink } from '@/components/settings-link';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset } from '@/constants/theme';
 
@@ -50,6 +51,11 @@ export default function BodyOverviewScreen() {
           onDone={clearWater}
         />
       </SafeAreaView>
+
+      {/* OUTSIDE THE SCROLLER AND OUTSIDE THE SAFE AREA. It positions itself
+          against the screen; this is the one thing a screen has to get right.
+          See settings-link.tsx. */}
+      <SettingsLink />
     </ThemedView>
   );
 }

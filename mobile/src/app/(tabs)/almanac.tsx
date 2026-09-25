@@ -116,7 +116,6 @@ export default function AlmanacScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
-          <SettingsLink />
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Almanac</ThemedText>
 
@@ -193,6 +192,13 @@ export default function AlmanacScreen() {
           }}
         />
       </SafeAreaView>
+
+      {/* OUTSIDE THE SCROLLER AND OUTSIDE THE SAFE AREA (Ruth, 25 September
+          2026): the mark "must sit at the same fixed vertical position on every
+          screen, flush top right, not relative to the page heading". It
+          positions itself against the screen, so this is the one thing a screen
+          has to get right - see settings-link.tsx. */}
+      <SettingsLink />
     </ThemedView>
   );
 }

@@ -1,11 +1,10 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { ThreeSeedsMark } from '@/components/seed-marks';
 
 import { ChatBubble } from '@/components/chat-bubble';
 import { ComposerAddSheet } from '@/components/composer-add-sheet';
@@ -25,6 +24,7 @@ import { ChatLandingChips } from '@/components/chat-landing-chips';
 import { RotatingPlaceholder } from '@/components/rotating-placeholder';
 import { SaveConfirmation } from '@/components/save-confirmation';
 import { useSpotlight } from '@/components/spotlight-provider';
+import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -127,7 +127,6 @@ function sameThread(a: Message[], b: Message[]): boolean {
 }
 
 export default function ChatScreen() {
-  const router = useRouter();
   // Destructured here rather than read as chatScroll.ref inside the JSX:
   // with the React Compiler on, a property access on the returned object
   // during render trips react-hooks/refs, which cannot tell it apart from
@@ -869,33 +868,15 @@ ${result.message}`;
   return (
     <ConversationLayout>
       <SafeAreaView style={styles.safeArea}>
-        {/* The single entry to account settings (build item 41). On Chat because
-            it is the home screen and the one surface everyone lands on; not a
-            fourth tab, because Part Five keeps the app to three destinations;
-            and not in the Almanac, which Part Ten sets aside from standard
-            account items. Quiet and top-aligned so it never competes with the
-            conversation. */}
-        {/* The one pointable step that actually crosses a screen (item 23):
-            "where do I get my data" pulses this link, the tap opens Settings,
-            and the export highlights on arrival. Every other cross-screen route
-            in the app runs through a tab icon, which cannot be pointed at. */}
-        <SpotlightTarget id="chat.settings" onActivate={() => router.push('/settings')}>
-          <Pressable
-            onPress={() => router.push('/settings')}
-            accessibilityRole="button"
-            accessibilityLabel="More"
-            style={({ pressed }) => [styles.settingsEntry, pressed && styles.settingsPressed]}
-          >
-            {/* The same three seeds every other screen carries. Chat draws its
-                own rather than using SettingsLink, because this one is a
-                spotlight target and has to sit inside the layout - so when the
-                word became a mark on 24 September, this was the copy that had
-                to be changed by hand. Two implementations of one control is
-                the reason it was missed. */}
-            <ThreeSeedsMark size={22} />
-          </Pressable>
-        </SpotlightTarget>
-
+        {/* CHAT'S OWN COPY OF THE MARK IS GONE (Ruth, 25 September 2026).
+            It lived here, laid out in the page with 16 points of padding
+            inside a column already inset 32, which put it 48 from the edge of
+            the screen - a third offset, alongside 64 on the other tabs and 16
+            in the Log's header. Its own comment said what was wrong with it:
+            "Two implementations of one control is the reason it was missed."
+            It is now the same component as everywhere else, at the bottom of
+            this file's tree so it sits over the conversation rather than
+            above it. */}
         {/* HIDDEN UNTIL IT IS PLACED (Ruth, 21 September 2026: "crazy scroll
             entry still happening"). The thread lays out as normal behind this,
             and appears once it has stopped arriving - by which point the view
@@ -1178,20 +1159,21 @@ ${result.message}`;
           onCancel={() => setAddOpen(false)}
         />
       </SafeAreaView>
+
+      {/* OUTSIDE THE SCROLLER AND OUTSIDE THE SAFE AREA. It positions itself
+          against the screen; this is the one thing a screen has to get right.
+          See settings-link.tsx.
+
+          STILL THE ONE POINTABLE CROSS-SCREEN STEP (item 23): "where do I get
+          my data" pulses this, the tap opens Settings, and the export
+          highlights on arrival. Every other cross-screen route in the app runs
+          through a tab icon, which cannot be pointed at. */}
+      <SettingsLink spotlight />
     </ConversationLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  // Deliberately understated: a text link, not a button or an icon badge. The
-  // account surface should be findable without advertising itself above the
-  // conversation the screen exists for.
-  settingsEntry: {
-    alignSelf: 'flex-end',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  settingsPressed: { opacity: 0.6 },
   safeArea: {
     flex: 1,
   },
