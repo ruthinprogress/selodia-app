@@ -2,18 +2,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { MetricMark } from '@/components/metric-mark';
 import { ReorderableRows } from '@/components/reorderable-rows';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
-import {
-  METRIC_ICONS,
-  metricKeyFor,
-  resolveTrackedMetrics,
-  type TrackedMetric,
-} from '@/lib/tracked-metrics';
+import { metricKeyFor, resolveTrackedMetrics, type TrackedMetric } from '@/lib/tracked-metrics';
 import { loadTrackedMetrics, saveTrackedMetrics } from '@/lib/tracked-metrics-store';
 
 // WHICH MEASUREMENTS SHE TRACKS, AND IN WHAT ORDER (Ruth, 25 September 2026,
@@ -99,7 +95,9 @@ export function MetricChoices() {
               type="backgroundElement"
               style={[styles.row, i < list.length - 1 && styles.spaced, m.hidden && styles.dim]}
             >
-              <Ionicons name={m.icon as never} size={20} color={theme.accentDeep} style={styles.icon} />
+              <View style={styles.icon}>
+                <MetricMark metric={m} size={20} />
+              </View>
               <View style={styles.body}>
                 <ThemedText type="smallBold">{m.label}</ThemedText>
                 <ThemedText type="detail" themeColor="textSecondary">
@@ -216,7 +214,6 @@ function MetricForm({
   const theme = useTheme();
   const [label, setLabel] = useState(metric?.label ?? '');
   const [unit, setUnit] = useState(metric?.unit ?? '');
-  const [icon, setIcon] = useState<string>(metric?.icon ?? METRIC_ICONS[3]);
 
   const trimmed = label.trim();
   // A new metric cannot take the name of one that already exists, or the two
@@ -231,7 +228,6 @@ function MetricForm({
         key: metricKeyFor(trimmed),
         label: trimmed,
         unit: unit.trim(),
-        icon,
         source: 'personal',
         // The name rows are stored under. Lower case, because that is what the
         // conversation writes and what readingsFor matches on.
@@ -239,7 +235,7 @@ function MetricForm({
       });
       return;
     }
-    if (metric) onSave({ ...metric, label: trimmed, unit: unit.trim(), icon });
+    if (metric) onSave({ ...metric, label: trimmed, unit: unit.trim() });
   };
 
   return (
@@ -273,28 +269,11 @@ function MetricForm({
               style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
             />
 
-            <ThemedText type="small" themeColor="textSecondary">
-              A mark for it
-            </ThemedText>
-            <View style={styles.icons}>
-              {METRIC_ICONS.map((name) => (
-                <Pressable
-                  key={name}
-                  onPress={() => setIcon(name)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: icon === name }}
-                  accessibilityLabel={`Use the ${name.replace('-outline', '')} mark`}
-                  style={({ pressed }) => pressed && styles.pressed}
-                >
-                  <ThemedView
-                    type={icon === name ? 'backgroundSelected' : 'backgroundElement'}
-                    style={[styles.iconChoice, icon === name && { borderColor: theme.accentDeep }]}
-                  >
-                    <Ionicons name={name as never} size={20} color={theme.accentDeep} />
-                  </ThemedView>
-                </Pressable>
-              ))}
-            </View>
+            {/* NO ICON PICKER ANY MORE. A metric's mark is derived from its
+                name - see metric-mark.tsx - so "waist" draws the waist outline
+                without anybody choosing it, and a mark saved today cannot be
+                the wrong one in a year. One fewer control, and one fewer thing
+                that can disagree with itself. */}
 
             {clashes ? (
               <ThemedText type="small" themeColor="danger">

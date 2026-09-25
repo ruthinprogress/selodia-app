@@ -40,8 +40,8 @@ export type TrackedMetric = {
   label: string;
   /** "kg", "%", "cm". Empty is allowed - not every count has a unit. */
   unit: string;
-  /** A name from the app's own set; see METRIC_ICONS. */
-  icon: string;
+  /** Kept for entries saved before icons were derived; unused now. */
+  icon?: string;
   source: MetricSource;
   /** Set when source is 'scale'. */
   field?: ScaleField;
@@ -51,31 +51,37 @@ export type TrackedMetric = {
   hidden?: boolean;
 };
 
-// THE ICONS ARE THE APP'S, NOT A FREE FIELD. Her brief asks for an icon per
-// metric; letting somebody type an icon name is a control that fails silently
-// when they get it wrong. This is the set a picker offers, and anything else
-// falls back to the last one.
+// THE ICONS ARE THE APP'S OWN, AND THEY ALREADY EXISTED (2026-09-25).
 //
-// Ionicons names rather than a drawn family, and that is a stand-in rather than
-// a decision: the app's own line art is the six activity marks and the log
-// rows' objects, and five more drawn to match is a real piece of work. Flagged
-// to her rather than quietly shipped as finished.
-export const METRIC_ICONS = [
-  'speedometer-outline',
-  'pie-chart-outline',
-  'barbell-outline',
-  'resize-outline',
-  'body-outline',
-  'fitness-outline',
-  'heart-outline',
-  'ellipse-outline',
-] as const;
+// I wrote here, and said to Ruth, that the app had no drawn family for these
+// and that Ionicons were a stand-in until somebody drew one. That was wrong.
+// components/measurement-icon.tsx holds exactly that family - chest, waist,
+// hips, thigh, arm, calf, neck and a plain tape - drawn to the UI brief's
+// instruction, "body outline icons for thigh and waist - functional, not
+// decorative", and carrying a careful note about saying nothing whatever about
+// what a body should look like. It had been orphaned when the old Measurements
+// screen was replaced, which is why a search for what was in use did not find
+// it.
+//
+// So these are the marks, and a metric's icon is its NAME resolved through
+// measurementIcon() rather than a string somebody picked. That also removes a
+// whole class of fault: an icon name cannot be wrong, because it is derived.
+//
+// The three the scale writes - weight, body fat, muscle - are not tape
+// measurements and have no mark in that family. They keep an Ionicon each, and
+// that IS a stand-in: three more drawn to match is the outstanding piece of
+// work, and it is flagged rather than pretended finished.
+export const SCALE_ICONS: Record<ScaleField, string> = {
+  weight_kg: 'speedometer-outline',
+  body_fat_pct: 'pie-chart-outline',
+  muscle_kg: 'barbell-outline',
+};
 
 /** The scale's three, as they are labelled when nobody has said otherwise. */
 const SCALE_DEFAULTS: TrackedMetric[] = [
-  { key: 'weight', label: 'Weight', unit: 'kg', icon: 'speedometer-outline', source: 'scale', field: 'weight_kg' },
-  { key: 'body_fat', label: 'Body fat', unit: '%', icon: 'pie-chart-outline', source: 'scale', field: 'body_fat_pct' },
-  { key: 'muscle', label: 'Muscle', unit: 'kg', icon: 'barbell-outline', source: 'scale', field: 'muscle_kg' },
+  { key: 'weight', label: 'Weight', unit: 'kg', source: 'scale', field: 'weight_kg' },
+  { key: 'body_fat', label: 'Body fat', unit: '%', source: 'scale', field: 'body_fat_pct' },
+  { key: 'muscle', label: 'Muscle', unit: 'kg', source: 'scale', field: 'muscle_kg' },
 ];
 
 /** Case, spacing and punctuation are not what makes two metric names different. */
@@ -126,7 +132,6 @@ export function resolveTrackedMetrics(
       // The unit is read from the rows themselves at render time; this is only
       // the fallback for a metric with no unit recorded.
       unit: '',
-      icon: 'resize-outline',
       source: 'personal' as const,
       name,
     })
@@ -155,7 +160,6 @@ export function readTrackedMetrics(value: unknown): TrackedMetric[] | null {
       key: m.key,
       label: m.label,
       unit: typeof m.unit === 'string' ? m.unit : '',
-      icon: typeof m.icon === 'string' ? m.icon : 'resize-outline',
       source: m.source,
       field: m.source === 'scale' ? (m.field as ScaleField) : undefined,
       name: m.source === 'personal' ? m.name : undefined,

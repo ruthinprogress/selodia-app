@@ -104,15 +104,19 @@ check(
   readTrackedMetrics([{ key: 'x', label: 'X', source: 'scale', field: 'shoe_size' }]),
   null
 );
+// NO ICON IN THE STORED SHAPE ANY MORE. A metric's mark is derived from its
+// name - see metric-mark.tsx - so there is nothing to store and nothing that
+// can be stored wrongly. An `icon` saved by an older build is simply ignored.
 check(
-  'a good entry survives, with its gaps filled',
-  readTrackedMetrics([{ key: 'weight', label: 'Weight', source: 'scale', field: 'weight_kg' }]),
+  'a good entry survives, with its gaps filled and no icon',
+  readTrackedMetrics([
+    { key: 'weight', label: 'Weight', source: 'scale', field: 'weight_kg', icon: 'whatever-outline' },
+  ]),
   [
     {
       key: 'weight',
       label: 'Weight',
       unit: '',
-      icon: 'resize-outline',
       source: 'scale',
       field: 'weight_kg',
       name: undefined,

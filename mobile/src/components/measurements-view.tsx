@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ExportLink } from '@/components/data-export-link';
+import { MetricMark } from '@/components/metric-mark';
 import { MonthYearPicker } from '@/components/month-year-picker';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
@@ -10,7 +12,9 @@ import { ReportLink } from '@/components/report-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { WhatYouBurn } from '@/components/what-you-burn';
 import { Spacing } from '@/constants/theme';
+import { useBurnFigures } from '@/hooks/use-burn-figures';
 import { useFocusReload } from '@/hooks/use-focus-reload';
 import { useTheme } from '@/hooks/use-theme';
 import type { MeasurementRow } from '@/lib/overview-metrics';
@@ -97,6 +101,8 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [weekPersonal, setWeekPersonal] = useState<PersonalRow[]>([]);
 
   useFocusReload(setReloadKey);
+  // Same key, so a weight logged from the bar above moves the burn figures too.
+  const burn = useBurnFigures(reloadKey);
 
   const weekKey = toLocalDateKey(weekStart);
   const isPresent = weekKey === toLocalDateKey(currentWeekStart());
@@ -323,6 +329,22 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
 
       <ThenAndNow metrics={metrics} scale={allScale} personal={allPersonal} />
 
+      {/* WHAT YOU BURN. Her item 12 lists the sections this screen has and
+          this is not among them - but she never asked for it to go, and the
+          last thing she said about it (16 September) was that it was too
+          HIDDEN at the foot of the Activity screen.
+
+          It very nearly vanished. It moved off Today this morning to make room
+          for the Health Flower, onto this screen; this screen was then rebuilt
+          from her written spec tonight, and a spec that does not mention
+          something is not a spec that removes it. For a few hours it was in
+          the app in no place at all, which is the exact fault this codebase
+          keeps a list of: an absent thing presenting as a working one.
+
+          Here rather than anywhere else because BMR comes off these readings -
+          the scale's own, when it takes one. Collapsed it is a single row. */}
+      <WhatYouBurn figures={burn} />
+
       {/* A report first, the takeout second. Somebody browsing their weeks is
           far more often preparing for an appointment than backing up, and the
           two links say plainly which is which. */}
@@ -353,7 +375,9 @@ function MetricRow({
 
   return (
     <View style={[styles.row, rule && { borderTopWidth: 1, borderTopColor: theme.backgroundSelected }]}>
-      <Ionicons name={metric.icon as never} size={18} color={theme.accentDeep} style={styles.icon} />
+      <View style={styles.icon}>
+        <MetricMark metric={metric} />
+      </View>
       <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
         {metric.label}
       </ThemedText>
@@ -420,6 +444,35 @@ function DayRow({
                   {loggedAt(at)}
                 </ThemedText>
               ) : null}
+
+              {/* EDIT (her item 12: "Tap to expand to full detail with Edit").
+                  It hands the day to Chat rather than opening a form, and that
+                  is deliberate: a measurement is written by the conversation
+                  and corrected by it, through machinery that already knows how
+                  to find the right row and say what it changed. A second
+                  writer for body readings is a second thing that can put a
+                  wrong number in somebody's record.
+                  The Me cards DO get a form (item 15) because those are words
+                  somebody typed about themselves, not readings. */}
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/',
+                    params: {
+                      prefill: `I need to correct my measurements from ${shortDay(date)}: `,
+                    },
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Correct the readings from ${shortDay(date)}`}
+                hitSlop={Spacing.two}
+                style={({ pressed }) => [styles.editLink, pressed && styles.pressed]}
+              >
+                <Ionicons name="create-outline" size={14} color={theme.accentDeep} />
+                <ThemedText type="detail" themeColor="accentDeep">
+                  Edit
+                </ThemedText>
+              </Pressable>
             </>
           ) : (
             <ThemedText type="small">{summary}</ThemedText>
@@ -483,7 +536,9 @@ function ThenAndNow({
             key={r.metric.key}
             style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: theme.backgroundSelected }]}
           >
-            <Ionicons name={r.metric.icon as never} size={18} color={theme.accentDeep} style={styles.icon} />
+            <View style={styles.icon}>
+              <MetricMark metric={r.metric} />
+            </View>
             <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
               {r.metric.label}
             </ThemedText>
@@ -558,5 +613,6 @@ const styles = StyleSheet.create({
   chevron: { marginTop: 2 },
   expandedRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   expandedLabel: { flex: 1 },
+  editLink: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: Spacing.one },
   pressed: { opacity: 0.7 },
 });
