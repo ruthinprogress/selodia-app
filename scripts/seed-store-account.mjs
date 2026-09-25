@@ -195,7 +195,6 @@ await put('activity_logs', activities.map((a) => ({
 const FOOD = [
   [0, 8, 'porridge with blueberries and a spoon of almond butter', 340, 11],
   [0, 13, 'chicken and avocado salad with seeds', 480, 38],
-  [0, 16, 'greek yoghurt and a handful of walnuts', 210, 14],
   [1, 8, 'two poached eggs on rye toast', 360, 20],
   [1, 13, 'lentil and squash soup with sourdough', 420, 18],
   [1, 19, 'salmon, new potatoes and green beans', 560, 42],

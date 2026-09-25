@@ -7,7 +7,6 @@ import { BodyScreen } from '@/components/body-screen';
 import { FoodLogView } from '@/components/food-log-view';
 import { LogTabs, type LogView } from '@/components/log-tabs';
 import { MeasurementsView } from '@/components/measurements-view';
-import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { parseWeekStartParam } from '@/lib/week';
 
@@ -29,7 +28,6 @@ export default function LogEntriesScreen() {
 
   return (
     <BodyScreen title="Log">
-      <ThemedText type="display">Log</ThemedText>
       <View style={styles.tabs}>
         <LogTabs value={view} onChange={setView} />
       </View>

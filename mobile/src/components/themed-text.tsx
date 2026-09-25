@@ -82,7 +82,22 @@ const styles = StyleSheet.create({
   // why the weight is regular and the tracking is zero.
   display: {
     fontSize: DisplayType.size,
-    lineHeight: DisplayType.leading,
+    // LEADING LOOSE ENOUGH FOR A DESCENDER (Ruth, 25 September 2026: the Log
+    // screen was STILL drawing its own name as "Loq", a week after a fix for
+    // exactly that).
+    //
+    // The old fix added paddingBottom, which cannot work. Android clips the
+    // glyph inside the LINE BOX and padding sits outside it, so with leading of
+    // 47 on a size of 50 the box is shorter than the letter and the tail of a g
+    // is cut before any padding is reached. It only ever showed on the LAST
+    // line, which is why the two-line greeting looked fine and every
+    // single-line title with a descender did not.
+    //
+    // DisplayType.leading is still what the greeting uses - overview-panel asks
+    // for it explicitly - because tight leading is what makes two lines read as
+    // one block, and that was chosen on a real screen. Everything else using
+    // this style is a single-line title, which has no block to keep tight.
+    lineHeight: 64,
     letterSpacing: DisplayType.tracking,
     fontFamily: DisplayFont.regular,
     // ROOM FOR THE DESCENDER (Ruth, 2026-09-18: the Log screen drew its own name
@@ -106,7 +121,9 @@ const styles = StyleSheet.create({
   // Log screen once drew its own name as "Loq".
   pageTitle: {
     fontSize: 40,
-    lineHeight: 42,
+    // Room for the descender, for the reason spelled out on display above.
+    // These are always one line, so there is no block to keep tight.
+    lineHeight: 52,
     letterSpacing: DisplayType.tracking,
     fontFamily: DisplayFont.regular,
     paddingBottom: 8,

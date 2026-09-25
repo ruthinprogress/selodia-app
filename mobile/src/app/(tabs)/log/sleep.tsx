@@ -73,7 +73,6 @@ export default function SleepScreen() {
 
   return (
     <BodyScreen title="Sleep">
-      <ThemedText type="display">Sleep</ThemedText>
 
       <SectionIntro title="Last night">
         {`${nightLabel(night)}. Tell me what you know, and leave the rest.`}

@@ -8,7 +8,7 @@ import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { CardRadius, DisplayType, Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
@@ -397,7 +397,7 @@ export function OverviewPanel({
         {/* The same header as the loaded screen, so nothing moves or changes
             size when the data arrives. */}
         <View style={styles.header}>
-          <ThemedText type="display">{greeting(name)}</ThemedText>
+          <ThemedText type="display" style={styles.greeting}>{greeting(name)}</ThemedText>
           <View style={styles.dateRow}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
               {todayLabel()}
@@ -423,7 +423,7 @@ export function OverviewPanel({
           used to carry made it look like something the app wanted her to act
           on. */}
       <View style={styles.header}>
-        <ThemedText type="display">{greeting(name)}</ThemedText>
+        <ThemedText type="display" style={styles.greeting}>{greeting(name)}</ThemedText>
         {/* Settings at the end of the date line rather than in the corner (bug
             list item 13): see settings-link.tsx for why this screen differs. */}
         <View style={styles.dateRow}>
@@ -757,6 +757,15 @@ const styles = StyleSheet.create({
     // Not shrinkable: a shrinking Text breaks inside its word. The row wraps
     // instead (see stat), so the whole unit drops a line when it must.
     flexShrink: 0,
+  },
+  // THE ONE PLACE THE TIGHT LEADING IS WANTED (2026-09-25). The greeting is
+  // the only display-face text in the app that runs to two lines, and 47 on 50
+  // is what makes those two lines read as one block rather than as two
+  // sentences. Every other use of this face is a single-line title, where the
+  // same leading cut the tail off a g - so the shared style now has room and
+  // this asks for the tight version back.
+  greeting: {
+    lineHeight: DisplayType.leading,
   },
   header: {
     // 10px higher than the page inset puts it (Ruth, 2026-09-18: "move the
