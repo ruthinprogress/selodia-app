@@ -274,6 +274,15 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    // WITHOUT THIS THE ADD BUTTON GETS PUSHED OFF THE CARD (Ruth, 25 September
+    // 2026, from a store screenshot: "a floating error on the Add button").
+    //
+    // A flex child will not shrink below its own content width unless it is
+    // told it may, and a text input's content width is its intrinsic one. So
+    // inside the Food log's Today card - which is narrower than a full-width
+    // row, because the card has its own padding - the input refused to give
+    // ground and the button was carried past the right edge.
+    minWidth: 0,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,

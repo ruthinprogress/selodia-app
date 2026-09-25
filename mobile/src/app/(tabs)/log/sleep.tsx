@@ -72,7 +72,7 @@ export default function SleepScreen() {
   }
 
   return (
-    <BodyScreen>
+    <BodyScreen title="Sleep">
       <ThemedText type="display">Sleep</ThemedText>
 
       <SectionIntro title="Last night">

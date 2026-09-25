@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightScroll } from '@/components/spotlight-provider';
+import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 
@@ -18,11 +19,18 @@ import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 export function BodyScreen({
   children,
   settingsInHeader = false,
+  title,
 }: {
   children: React.ReactNode;
   /** True when this screen's stack header carries the mark itself, so the
       in-content one would be a second copy sitting under the header. */
   settingsInHeader?: boolean;
+  /** The screen's own name, in the display face (Ruth, 25 September 2026).
+      Lives here rather than in seven screens, because it is one line in each
+      and seven places to word it differently. The stack header no longer
+      carries a title at all - see the Log's _layout - so this is the only
+      name these screens have. */
+  title?: string;
 }) {
   const scrollRef = useRef<ScrollView>(null);
   // This shell does not pad for the status bar (edges below exclude 'top'), so
@@ -36,6 +44,7 @@ export function BodyScreen({
           {/* Every Log screen, including the week-by-week ones, from one place
               (bug list item 13). */}
           {!settingsInHeader && <SettingsLink topInset={insets.top} />}
+          {title ? <ThemedText type="pageTitle">{title}</ThemedText> : null}
           <SpotlightScroll scrollRef={scrollRef}>{children}</SpotlightScroll>
         </ScrollView>
       </SafeAreaView>

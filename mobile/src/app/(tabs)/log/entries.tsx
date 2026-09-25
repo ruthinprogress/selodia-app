@@ -28,7 +28,7 @@ export default function LogEntriesScreen() {
   const initialWeekStart = parseWeekStartParam(params.week) ?? undefined;
 
   return (
-    <BodyScreen>
+    <BodyScreen title="Log">
       <ThemedText type="display">Log</ThemedText>
       <View style={styles.tabs}>
         <LogTabs value={view} onChange={setView} />

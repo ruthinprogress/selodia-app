@@ -570,7 +570,7 @@ export default function CycleScreen() {
   };
 
   return (
-    <BodyScreen>
+    <BodyScreen title="Cycle">
       <ThemedText type="display">Cycle</ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         Log what&apos;s relevant, for any day. You can always say it in chat instead.

@@ -14,7 +14,7 @@ export default function BodyActivityHistoryScreen() {
   const initialWeekStart = parseWeekStartParam(week) ?? undefined;
 
   return (
-    <BodyScreen>
+    <BodyScreen title="Activity">
       <ActivityHistoryView initialWeekStart={initialWeekStart} />
       <ReportLink start={['activity']} label="Build a report from this" />
     </BodyScreen>

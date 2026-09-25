@@ -16,7 +16,7 @@ export default function WaterHistoryScreen() {
   // re-read rather than sit on what it fetched when the screen opened.
   const [added, setAdded] = useState(0);
   return (
-    <BodyScreen>
+    <BodyScreen title="Hydration">
       <HydrationQuickLog onLogged={() => setAdded((n) => n + 1)} />
       <WaterHistoryView key={added} />
       <ReportLink start={['water']} label="Build a report from this" />

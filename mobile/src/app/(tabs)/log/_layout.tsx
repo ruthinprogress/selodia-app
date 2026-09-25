@@ -29,8 +29,17 @@ export default function LogLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      {/* "Food", not "Food log": the screen IS the log, and the shorter
-          word is what her redesign titles it (24 September 2026). */}
+      {/* NO HEADER TITLE ON ANY SCREEN ONE LEVEL IN (Ruth, 25 September
+          2026): "Remove the titles on the back buttons ... they don't make
+          any sense. Arrow is sufficient and could be more beautiful." Each
+          screen now names itself in the display face instead, through
+          BodyScreen's title prop, which is how the tabs have always done it.
+
+          RENDERED AS () => null RATHER THAN AN EMPTY STRING. The note below
+          records what happens when a title is simply missing - the route name
+          leaks, and a screenshot once read "water-history". An empty string is
+          falsy, so a component that draws nothing is the unambiguous way to
+          say nothing. */}
       {/* THE MARK GOES IN THE HEADER ON THIS ONE (24 September 2026). Her
           redesign puts it top right, level with the title - and on a screen
           that HAS a stack header, the in-content link lands underneath it,
@@ -39,7 +48,7 @@ export default function LogLayout() {
       <Stack.Screen
         name="food-history"
         options={{
-          title: 'Food',
+          headerTitle: () => null,
           headerRight: () => (
             <Pressable
               onPress={() => router.push('/settings')}
@@ -52,15 +61,12 @@ export default function LogLayout() {
           ),
         }}
       />
-      <Stack.Screen name="activity-history" options={{ title: 'Activity log' }} />
-      {/* WITHOUT A TITLE THE HEADER SHOWS THE FILE NAME (Ruth, 22 September
-          2026, from a screenshot reading "water-history"). Every screen reached
-          from the Log needs one, or the route name leaks into the app. */}
-      <Stack.Screen name="water-history" options={{ title: 'Hydration' }} />
-      <Stack.Screen name="entries" options={{ title: 'Log' }} />
-      <Stack.Screen name="sleep" options={{ title: 'Sleep' }} />
-      <Stack.Screen name="cycle" options={{ title: 'Cycle' }} />
-      <Stack.Screen name="feeling" options={{ title: 'How you felt' }} />
+      <Stack.Screen name="activity-history" options={{ headerTitle: () => null }} />
+      <Stack.Screen name="water-history" options={{ headerTitle: () => null }} />
+      <Stack.Screen name="entries" options={{ headerTitle: () => null }} />
+      <Stack.Screen name="sleep" options={{ headerTitle: () => null }} />
+      <Stack.Screen name="cycle" options={{ headerTitle: () => null }} />
+      <Stack.Screen name="feeling" options={{ headerTitle: () => null }} />
     </Stack>
   );
 }

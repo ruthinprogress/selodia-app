@@ -171,7 +171,7 @@ export default function FeelingScreen() {
   }
 
   return (
-    <BodyScreen>
+    <BodyScreen title="How you felt">
       <ThemedText type="display">How you felt</ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         Two taps. It is here so that if Selodía ever notices a pattern in how you feel, there is something real to

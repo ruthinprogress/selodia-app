@@ -7,6 +7,7 @@ export type ThemedTextProps = TextProps & {
   type?:
     | 'default'
     | 'display'
+    | 'pageTitle'
     | 'title'
     | 'small'
     | 'smallBold'
@@ -28,6 +29,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         { color: theme[themeColor ?? 'text'] },
         type === 'default' && styles.default,
         type === 'display' && styles.display,
+        type === 'pageTitle' && styles.pageTitle,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
@@ -92,6 +94,22 @@ const styles = StyleSheet.create({
     // exactly as close as she chose, and only the space beneath the last one
     // changes.
     paddingBottom: 10,
+  },
+  // A SCREEN ONE LEVEL IN (Ruth, 25 September 2026). The Log's Food, Activity,
+  // Hydration and the rest had no name of their own at all: the stack header
+  // carried a small sans "Food" and that was it, so they were the only screens
+  // in the app that did not introduce themselves the way the tabs do.
+  //
+  // Smaller than a tab's own name, which is hers: "perhaps slightly smaller
+  // than the main pages". 50 is a page you arrived at, 40 is a page you opened
+  // from one. It keeps display's descender padding for the same reason - the
+  // Log screen once drew its own name as "Loq".
+  pageTitle: {
+    fontSize: 40,
+    lineHeight: 42,
+    letterSpacing: DisplayType.tracking,
+    fontFamily: DisplayFont.regular,
+    paddingBottom: 8,
   },
   sectionTitle: {
     fontSize: 30,
