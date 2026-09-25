@@ -323,13 +323,25 @@ await put('almanac_entries', [
 ]);
 
 // ---- a clean conversation for the chat screenshot ----------------------
+// THE THREAD THE LISTING SHOWS (Ruth, 25 September 2026).
+//
+// The first version had the agent say "that's your cardio petal filling up
+// nicely", which is exactly what the system prompt forbids in capitals:
+// ACKNOWLEDGE, DO NOT EVALUATE, never praise a number for being bigger. Seed
+// copy that breaks the product's own rule is worse than dull seed copy.
+//
+// It also had the person ask "what should I think about for the rest of
+// today?", which Ruth called fake, and she is right - nobody talks like that.
+// This shape is hers: log a thing, ask a real question, get a specific answer.
+// That is the product, and it is what somebody deciding whether to install
+// needs to see in one screen.
 const CHAT = [
-  ['user', 'I went for a run this morning, 5k', 0, 7, 40],
-  ['assistant', "Logged, 5k this morning. That is your cardio petal filling up nicely this week.", 0, 7, 41],
-  ['user', 'Porridge with blueberries and almond butter for breakfast', 0, 8, 12],
-  ['assistant', 'Got that down. Good start on protein, and the oats will sit well after a run.', 0, 8, 13],
-  ['user', 'What should I think about for the rest of today?', 0, 9, 5],
-  ['assistant', "You are at 340 kcal and 11g of protein so far, so protein is the one to build on. You have had water three times, which is a good start. Strength is the quietest petal this week if you fancy something short this evening.", 0, 9, 6],
+  ['user', 'Did a 5k run in the park', 0, 8, 12],
+  ['assistant', 'Got it, 5k in the park. How did it feel?', 0, 8, 13],
+  ['user', 'Felt good, starving now. Porridge for breakfast with blueberries and milk', 0, 8, 21],
+  ['assistant', 'Good to hear. Porridge is down as well.', 0, 8, 22],
+  ['user', 'How can I get more protein into that?', 0, 8, 26],
+  ['assistant', 'A spoon of nut butter stirred through, or a dollop of Greek yoghurt on top. Both sit well with porridge and would nudge your protein up for the day.', 0, 8, 27],
 ];
 await put('chat_messages', CHAT.map(([role, content, back, h, m]) => ({
   role, content, source: 'chat', created_at: iso(day(back, h, m)),
