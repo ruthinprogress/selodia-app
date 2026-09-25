@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -100,10 +101,23 @@ export function SwipeToDelete({
           accessibilityLabel={`Delete ${what}`}
           style={({ pressed }) => [styles.deleteHit, pressed && styles.pressed]}
         >
+          {/* A MARK, NOT THE WORD (Ruth, 25 September 2026: "I think the
+              'Delete' word is unnecessary reading. Please replace with a quiet
+              delete icon where it appears.")
+
+              It reads without being read. The panel is already the danger
+              colour and the person deliberately pulled the row back to uncover
+              it, so the word was restating what the red had said. The
+              accessible label still says "Delete <the thing>", which is what a
+              screen reader announces - quieter is not the same as silent. */}
           <ThemedView style={[styles.deleteBox, { backgroundColor: theme.danger }]}>
-            <ThemedText type="smallBold" style={{ color: theme.background }}>
-              {busy ? '…' : 'Delete'}
-            </ThemedText>
+            {busy ? (
+              <ThemedText type="smallBold" style={{ color: theme.background }}>
+                …
+              </ThemedText>
+            ) : (
+              <Ionicons name="trash-outline" size={22} color={theme.background} />
+            )}
           </ThemedView>
         </Pressable>
       </Animated.View>
