@@ -478,12 +478,26 @@ export async function POST(request: NextRequest) {
   // food/activity parse to after(). It changes nothing about the reply or the
   // safety classification - only which work must finish before we can speak.
   // `supersedes` tells it this message continues a half-answered one.
+  // THE CALLER'S ABORT TRAVELS WITH THE TURN (2026-09-25).
+  //
+  // When somebody carries on talking, ElevenLabs abandons the generation it
+  // asked for and sends the longer sentence instead. On 24 September that
+  // happened six times in thirty seconds, and every one of those abandoned
+  // turns ran the whole pipeline to completion anyway: six Claude calls, six
+  // replies written into her history, and not one of them spoken. She reported
+  // it as the app going silent.
+  //
+  // Passing the request's own signal down means an abandoned turn stops being
+  // worked on. If the platform does not actually close the connection this
+  // changes nothing and costs nothing, which is the right way round for a
+  // guess about somebody else's client.
   const ask = (supersedes?: string) =>
     askSelodia(
       new NextRequest(new URL('/api/ask-selodia', request.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: utterance, voice: true, ...(supersedes ? { supersedes } : {}) }),
+        signal: request.signal,
       })
     );
 

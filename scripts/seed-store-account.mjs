@@ -278,6 +278,40 @@ await put('almanac_entries', [
     },
   },
   {
+    kind: 'plan',
+    title: 'Morning mobility, most days',
+    content: {
+      programType: 'flexibility',
+      goal: 'Keep hips and shoulders easy through a desk day',
+      exercises: [
+        { name: 'Cat cow', group: 'spine', sets: 2, reps: '8', eccentricLoad: 'low', intensity: 'light',
+          safetyNote: 'Move within the range that is comfortable today rather than the one you had last week. This is a warm-up, not a stretch to win.' },
+        { name: 'World greatest stretch', group: 'hips', sets: 2, reps: '5 each side', eccentricLoad: 'low', intensity: 'light',
+          safetyNote: 'The back knee takes weight here. On a hard floor put something under it.' },
+        { name: 'Shoulder pass through', group: 'shoulders', sets: 2, reps: '10', eccentricLoad: 'low', intensity: 'light',
+          safetyNote: 'Widen your grip until it is easy. Forcing a narrow grip is where shoulders get pinched.' },
+      ],
+    },
+  },
+  {
+    kind: 'plan',
+    title: 'Twenty minutes, no equipment',
+    content: {
+      programType: 'general strength',
+      goal: 'A session that works in a hotel room or a front room',
+      exercises: [
+        { name: 'Sit to stand', group: 'quadriceps', sets: 3, reps: '12', eccentricLoad: 'moderate', intensity: 'moderate',
+          safetyNote: 'Lower under control rather than dropping onto the chair. The slow half is the half that builds anything.' },
+        { name: 'Incline press up', group: 'chest', sets: 3, reps: '10', eccentricLoad: 'moderate', intensity: 'moderate',
+          safetyNote: 'Raise the hands higher if the lower back starts to sag. A clean rep on a kitchen counter beats a poor one on the floor.' },
+        { name: 'Split squat', group: 'quadriceps', sets: 3, reps: '8 each side', eccentricLoad: 'high', intensity: 'moderate',
+          safetyNote: 'Hold something for balance to begin with. Wobbling recruits the wrong things and teaches nothing.' },
+        { name: 'Dead bug', group: 'core', sets: 3, reps: '10', eccentricLoad: 'low', intensity: 'light',
+          safetyNote: 'The lower back stays flat to the floor. When it lifts, the set is finished whatever the count says.' },
+      ],
+    },
+  },
+  {
     kind: 'insight', category: 'Sleep',
     title: 'Short nights land the next afternoon, not the next morning',
     content: { condition: 'Under six and a half hours', expectation: 'Energy holds until about three, then drops sharply' },

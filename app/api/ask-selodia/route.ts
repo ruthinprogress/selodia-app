@@ -1291,8 +1291,22 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // for why the prompt itself cannot take one yet.
       tools: [{ ...tool, cache_control: { type: 'ephemeral' } }],
       tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
+    }, {
+      // ABANDONED TURNS STOP COSTING (2026-09-25). When somebody keeps talking,
+      // the voice adapter's caller walks away from the generation it asked for.
+      // Until now this call ran to the end regardless, wrote a reply into the
+      // thread, and nobody ever heard it - six times in thirty seconds on
+      // 24 September. Undefined on a typed message, where nothing changes.
+      signal: request.signal,
     });
   } catch (err) {
+    // A turn the caller walked away from is not a failure. It is the expected
+    // end of work nobody is waiting for, so it is not logged as an API error
+    // and does not become a 500 that the adapter would speak an apology for.
+    if (request.signal?.aborted || (err as { name?: string })?.name === 'AbortError') {
+      console.log('ASK-SELODIA: turn abandoned by the caller, stopping');
+      return NextResponse.json({ error: 'Abandoned' }, { status: 499 });
+    }
     console.log('ANTHROPIC API ERROR:', err instanceof Error ? err.message : err);
     // Deliberately NOT marking the card sent here: a failed call must not
     // consume the one chance the image had to be seen.
