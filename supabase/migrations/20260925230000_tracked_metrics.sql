@@ -1,0 +1,37 @@
+-- WHICH MEASUREMENTS SOMEBODY ACTUALLY TRACKS (Ruth, 25 September 2026,
+-- item 11: "Remove hardcoded metrics and the separate scale / tape measure
+-- sections. The user chooses which metrics they track (name, unit, icon,
+-- order) once in settings. Every section below renders exactly that list, for
+-- any number of metrics.")
+--
+-- WHY IT IS A LIST AND NOT A SET OF COLUMNS. Weight, body fat and muscle are
+-- columns on body_measurements because a scale writes all three at once.
+-- Waist and thighs are rows in personal_metrics because a tape measure writes
+-- whatever somebody chose to measure. The Measurements screen has been
+-- rendering those two shapes as two tables, which is the split she asked to
+-- remove - and it could only ever show the three columns the schema happens to
+-- have. A stored list lets the screen render five metrics or one, in her
+-- order, whatever their shape underneath.
+--
+-- EACH ENTRY SAYS WHERE ITS VALUE COMES FROM, which is the whole trick:
+--
+--   { "key": "weight",  "label": "Weight",  "unit": "kg", "icon": "scale",
+--     "source": "scale", "field": "weight_kg" }
+--   { "key": "waist",   "label": "Waist",   "unit": "cm", "icon": "tape",
+--     "source": "personal", "name": "waist" }
+--
+-- So nothing is hardcoded in the screen, and adding a metric is adding an
+-- entry rather than adding a column.
+--
+-- NULL MEANS "NOT CHOSEN YET", and the app derives a sensible list from what
+-- the person already has: their scale's three where readings exist, plus every
+-- personal metric they have ever recorded. Nobody is asked to configure
+-- anything before they can see their own numbers - see lib/tracked-metrics.ts.
+-- Writing the list is what turns the default into a choice.
+--
+-- JSONB ON user_profile rather than a table of its own, following log_layout,
+-- cycle_layout and plans_layout: it is a preference, it is read whole every
+-- time, and it is never queried across users.
+
+alter table public.user_profile
+  add column if not exists tracked_metrics jsonb;

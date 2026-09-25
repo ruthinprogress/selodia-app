@@ -178,7 +178,11 @@ export default function AlmanacScreen() {
                   // A protocol, not a list: sections that came into being by
                   // their first card arriving, and a why behind each one. See
                   // me-protocol.tsx.
-                  <MeProtocol entries={byTab.me} onDeleted={() => setReloadKey((k) => k + 1)} />
+                  <MeProtocol
+                    entries={byTab.me}
+                    onDeleted={() => setReloadKey((k) => k + 1)}
+                    onChanged={() => setReloadKey((k) => k + 1)}
+                  />
                 ) : (
                   <AlmanacEmptyState heading={ME_EMPTY_HEADING} body={ME_EMPTY_BODY} />
                 )}
