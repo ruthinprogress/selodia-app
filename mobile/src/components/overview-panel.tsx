@@ -532,14 +532,40 @@ export function OverviewPanel({
               </ThemedText>
             ) : (
               <View style={styles.inlineStats}>
-                <Stat value={fmt(data.weight.value, '')} unit="kg" />
-                <Dot />
-                <Stat value={fmt(data.muscle.value, '')} unit="muscle" />
-                <Dot />
-                <Stat
-                  value={data.bodyFat.value != null ? `${round1(data.bodyFat.value)}%` : '—'}
-                  unit="fat"
-                />
+                {/* A FIGURE THAT DOES NOT EXIST IS NOT SHOWN AS A DASH ANY MORE
+                    (Ruth, 25 September 2026, looking at "64.2 kg · — muscle ·
+                    27.8% fat": "i said to add muscle figure previously - looks
+                    wrong").
+
+                    Both halves of that are right, and they are not in conflict.
+                    She DID ask for all three to always show, on 4 September, and
+                    the reason was good: a CARD that changes shape depending on
+                    which fields exist is harder to scan than one with three
+                    fixed slots, and a dash is honest about the gap rather than
+                    hiding it. That argument was about a card with three stacked
+                    slots. There are no slots on a line - a dash between two
+                    middle dots is not an honest gap, it is an orphan mark - and
+                    the shape it was protecting no longer exists.
+
+                    So on THIS line a figure appears when there is a reading
+                    behind it and the pair goes when there is not. The
+                    Measurements screen keeps all three slots, where the fixed
+                    shape is real and the argument still holds. */}
+                {data.weight.value != null ? (
+                  <>
+                    <Stat value={fmt(data.weight.value, '')} unit="kg" />
+                    {(data.muscle.value != null || data.bodyFat.value != null) && <Dot />}
+                  </>
+                ) : null}
+                {data.muscle.value != null ? (
+                  <>
+                    <Stat value={fmt(data.muscle.value, '')} unit="muscle" />
+                    {data.bodyFat.value != null && <Dot />}
+                  </>
+                ) : null}
+                {data.bodyFat.value != null ? (
+                  <Stat value={`${round1(data.bodyFat.value)}%`} unit="fat" />
+                ) : null}
                 {/* Only when the reading is not from today. A date on today's
                     own numbers is noise; a date on Tuesday's is the difference
                     between a current reading and an old one. It wraps onto a

@@ -17,7 +17,7 @@ import { ThenAndNowTable } from '@/components/then-and-now';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WhatYouBurn } from '@/components/what-you-burn';
-import { Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useBurnFigures } from '@/hooks/use-burn-figures';
 import {
   buildWeekRows,
@@ -47,10 +47,11 @@ import {
 // today's-log view replaces it, so nothing is broken in passing.
 //
 // Week-stepping is the calm default for browsing (Part Five, Historical
-// Browsing): one week at a time, seven rows at most, with a back-to-present
-// control that appears only once you have moved away. The far-jump month/year
-// picker is deliberately NOT here - it is item 44, and a picker that opened
-// onto nothing would be a dead control.
+// Browsing): one week at a time, seven rows at most, with ONE back-to-present
+// control - a quiet link beside the stepper it undoes - that appears only once
+// you have moved away. There were two of them until 25 September, a link above
+// the table and a filled button below it, doing exactly the same thing under
+// two different names.
 //
 // No eye icon on the rows yet. It needs the discuss-card capture path (item 30
 // slice 4) which rides the next native build; an icon that opened nothing would
@@ -231,18 +232,15 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
         </ThemedText>
       ) : null}
 
-      {!isPresent ? (
-        <Pressable
-          onPress={() => setWeekStart(currentWeekStart())}
-          accessibilityRole="button"
-          accessibilityLabel="Back to this week"
-          style={({ pressed }) => pressed && styles.pressed}
-        >
-          <ThemedView type="backgroundElement" style={styles.backToPresent}>
-            <ThemedText type="smallBold">Back to this week</ThemedText>
-          </ThemedView>
-        </Pressable>
-      ) : null}
+      {/* THERE WERE TWO OF THESE (Ruth, 25 September 2026: the Measurements
+          screen wants "one more simplification pass").
+
+          "Back to today" as a quiet link above the table and "Back to this
+          week" as a filled button below it: two controls, two names, one
+          behaviour - both called setWeekStart(currentWeekStart()). They
+          arrived separately, weeks apart, and nothing ever looked at the
+          screen with both on it at once. The link above stays, because it sits
+          beside the week stepper it undoes; the button is gone. */}
 
       {/* The second table, stacked directly under the scale one on the same
           continuous screen - both visible together, no toggle (Ruth, 2026-08-27).
@@ -392,7 +390,14 @@ const styles = StyleSheet.create({
   table: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    // CardRadius, not Spacing.three (Ruth, 25 September 2026: this screen is
+    // "totally out of sync visually with the rest of the app"). The UI brief of
+    // 17 September asked for one corner radius throughout and CardRadius is it
+    // - 20 rather than 16, because at 16 a full-width card still reads as a
+    // panel. This table was at 16, sitting on a screen reached from cards at
+    // 20. It is a small thing that is wrong on most of the app; see the note
+    // to her rather than fixing forty files in passing.
+    borderRadius: CardRadius,
     gap: Spacing.two,
   },
   headerRow: {
@@ -414,12 +419,6 @@ const styles = StyleSheet.create({
   },
   delta: {
     marginTop: 1,
-  },
-  backToPresent: {
-    alignSelf: 'flex-start',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
   },
   disabled: {
     opacity: 0.35,
