@@ -9,6 +9,7 @@ import { SpotlightScroll } from '@/components/spotlight-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
+import { closeOpenSwipe } from '@/lib/open-swipe';
 import { useTheme } from '@/hooks/use-theme';
 
 // The shell every screen in the Log stack sits inside.
@@ -64,6 +65,8 @@ export function BodyScreen({
       <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         <ScrollView
           ref={scrollRef}
+          // Scrolling closes an open swipe (Ruth, item 2).
+          onScrollBeginDrag={closeOpenSwipe}
           contentContainerStyle={[
             styles.content,
             // Below the status bar, then below the arrow-and-mark row, then the

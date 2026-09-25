@@ -14,6 +14,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { splitByTab, type AlmanacRow } from '@/lib/insights';
+import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
@@ -75,7 +76,12 @@ export default function PlansScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+        {/* Scrolling closes an open swipe (Ruth, item 2). */}
+        <ScrollView
+          ref={scrollRef}
+          onScrollBeginDrag={closeOpenSwipe}
+          contentContainerStyle={styles.content}
+        >
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Plans</ThemedText>
 

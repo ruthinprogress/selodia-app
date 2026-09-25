@@ -21,6 +21,7 @@ import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { hasSeenAlmanacIntro, markAlmanacIntroSeen } from '@/lib/almanac-intro';
 import { splitByTab, type AlmanacRow, type AlmanacTab } from '@/lib/insights';
 import { portraitFrom } from '@/lib/roundup';
+import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 
 // The Almanac (build spec, Part Ten): what has been learned. Two views of one
@@ -115,7 +116,12 @@ export default function AlmanacScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+        {/* Scrolling closes an open swipe (Ruth, item 2). */}
+        <ScrollView
+          ref={scrollRef}
+          onScrollBeginDrag={closeOpenSwipe}
+          contentContainerStyle={styles.content}
+        >
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Almanac</ThemedText>
 
