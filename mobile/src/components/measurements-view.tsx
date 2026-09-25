@@ -16,7 +16,9 @@ import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThenAndNowTable } from '@/components/then-and-now';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { WhatYouBurn } from '@/components/what-you-burn';
 import { Spacing } from '@/constants/theme';
+import { useBurnFigures } from '@/hooks/use-burn-figures';
 import {
   buildWeekRows,
   formatMetric,
@@ -77,6 +79,8 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [ackShowing, setAckShowing] = useState(false);
   // Re-read on arrival and shortly after - see hooks/use-focus-reload.ts.
   useFocusReload(setReloadKey);
+  // Same key, so a weight logged from the bar above moves the burn figures too.
+  const burn = useBurnFigures(reloadKey);
 
   // Stable primitive dep: a fresh Date each render would refire the effect.
   const weekKey = toLocalDateKey(weekStart);
@@ -254,6 +258,18 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           setPickerOpen(false);
         }}
       />
+
+      {/* WHAT YOU BURN LIVES HERE NOW (Ruth, 25 September 2026).
+          It was at the foot of the Activity screen until 16 September, when she
+          said it was "too hidden" and asked for it on Today. Today then ran out
+          of room: the Health Flower was being cut off, and shown the choice
+          between this panel and the daily line she kept the line.
+          Back to Activity would be back to the complaint. This is the screen
+          the figures are actually about - the scale's own BMR comes from these
+          readings - and it is one tap from the Body square on Today, which is
+          where somebody looking at a weight already is. Collapsed it is still
+          one row; nothing about the panel itself changed. */}
+      <WhatYouBurn figures={burn} />
 
       <PersonalMetricsView />
 

@@ -30,11 +30,14 @@ import { PageInset, Spacing } from '@/constants/theme';
 // positioned against, and why it scrolls away with the page rather than
 // floating over the content as it is read.
 //
-// EXCEPT ON TODAY, which is why there is an inline form. The Today greeting is
-// two lines at 50pt, and "Good afternoon," is long enough to run under a
-// top-right corner on a phone. So there the mark sits at the end of the date
-// line beneath it - a short line with room to spare - and it is the same mark
-// at the same size, so it still reads as the same thing it is everywhere else.
+// TODAY USED THE INLINE FORM UNTIL 25 SEPTEMBER, because the greeting there was
+// two lines at 50pt and "Good afternoon," ran under a top-right corner. Ruth's
+// note - "It has the 'More' seeds in the wrong place" - was right, and so was
+// the diagnosis underneath it: the greeting was too big for its own column, not
+// the mark too far over. The greeting came down to 32pt with room kept clear on
+// its right, and Today now carries the corner mark like every other screen. The
+// inline form stays available, unused, because it is three lines of styling and
+// deleting it would cost the next screen that needs it more than keeping it.
 
 // UNDER THE STATUS BAR, ON SOME SCREENS. The Log screens let their content run
 // up behind the phone's status bar - only their top padding keeps the heading

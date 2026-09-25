@@ -8,7 +8,7 @@ import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, DisplayType, Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
@@ -30,7 +30,6 @@ import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { readSnapshot, saveSnapshot } from '@/lib/snapshot';
 import { supabase } from '@/lib/supabase';
-import { WhatYouBurn, type BurnFigures } from '@/components/what-you-burn';
 
 // The Body tab's landing screen (rewritten 2026-09-03).
 //
@@ -44,10 +43,32 @@ import { WhatYouBurn, type BurnFigures } from '@/components/what-you-burn';
 // half-empty one reads as a failure at a glance in a way "1,450" does not. The
 // figures are the same; what has gone is the judgement drawn around them.
 //
-// NO SCROLLING. This screen is a glance, and a glance that scrolls is a screen.
-// It renders in a plain View rather than the scroller the detail routes use, so
-// there is nothing to scroll even if content grows. That is a constraint worth
-// keeping: anything that will not fit here belongs in a detail screen.
+// IT CAN SCROLL, BUT NOTHING HERE SHOULD NEED IT. The no-scroll rule was
+// retired on 16 September so "What you burn" could live here at all (see
+// today/index.tsx for that reasoning), and the budget immediately stopped being
+// enforced by anything: the screen simply grew and the flower went below the
+// fold, which is what Ruth reported on 25 September. The rule that replaces it
+// is softer and has to be kept by hand - everything down to and including the
+// flower fits above the fold on a 360x800 phone, and anything that will not
+// belongs in a detail screen.
+
+// WHAT CAME OFF THIS SCREEN, AND WHAT DID NOT (Ruth, 25 September 2026: "The
+// whole thing feels too big for the screen as health flower is cut off").
+//
+// The greeting was the cause, not the flower - see the greeting style below.
+// Fixing it, dropping the Activity square and putting steps on the "This week"
+// line gave back about 130 points, which is room for the flower and for exactly
+// ONE of the two small things that used to sit under it. She was shown both and
+// chose the daily line:
+//
+//   kept  "Understanding yourself is a lifelong practice." - the one warm
+//         sentence on the screen, and the app's own voice
+//   gone  "What you burn", which is a reference panel behind a chevron and now
+//         lives on the Body screen, one tap from the Body square above
+//
+// The alternative is recorded because it was close: keeping the burn panel here
+// meant the flower at 172 and six points of clearance over the tab bar, which
+// is not clearance at all on a shorter phone.
 
 type Metric = { value: number | null; delta: string | null };
 type OverviewData = {
@@ -80,10 +101,6 @@ type OverviewData = {
   // has ever been logged. Read, never inferred: a cycle day guessed from an
   // average would be a number about somebody's body that nobody measured.
   cycleDay: number | null;
-  // BMR and TDEE for the "What you burn" panel. Null when there is not enough
-  // to compute them, which the panel says by showing nothing rather than a
-  // dash: an estimate nobody can make is not a figure with a gap in it.
-  burn: BurnFigures;
 };
 
 type ProfileRow = {
@@ -366,13 +383,6 @@ export function OverviewPanel({
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
         steps: stepsToday,
-        burn: tdee
-          ? {
-              bmr: tdee.bmrKcal,
-              tdee: tdee.tdeeKcal,
-              estimated: tdee.bmrSource === 'estimated_bmr',
-            }
-          : null,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
         cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
       };
@@ -402,7 +412,6 @@ export function OverviewPanel({
             <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
               {todayLabel()}
             </ThemedText>
-            <SettingsLink placement="inline" />
           </View>
         </View>
       </View>
@@ -422,16 +431,20 @@ export function OverviewPanel({
           card around it. It is a quiet observation, not a notice: the border it
           used to carry made it look like something the app wanted her to act
           on. */}
+      {/* THE MARK GOES TO THE CORNER (Ruth, 25 September 2026: "It has the
+          'More' seeds in the wrong place"). It used to sit at the end of the
+          date line, which put it halfway down the screen beside a date, level
+          with nothing. Every other screen in the app carries it top right, and
+          a control that moves between screens is one somebody has to look for
+          twice. */}
+      <SettingsLink />
       <View style={styles.header}>
         <ThemedText type="display" style={styles.greeting}>{greeting(name)}</ThemedText>
-        {/* Settings at the end of the date line rather than in the corner (bug
-            list item 13): see settings-link.tsx for why this screen differs. */}
         <View style={styles.dateRow}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
             {todayLabel()}
             {data.cycleDay != null ? `  ·  Day ${data.cycleDay}` : ''}
           </ThemedText>
-          <SettingsLink placement="inline" />
         </View>
       </View>
 
@@ -544,26 +557,17 @@ export function OverviewPanel({
             lib/steps.ts: a refusal, a phone with no health platform, and a quiet
             morning are indistinguishable, and a zero would pick the one reading
             that accuses somebody of not moving. */}
-        <Square id="body.activity" title="Activity" href="/log/activity-history">
-          {data.activityCount === 0 && data.steps == null ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              Nothing logged yet
-            </ThemedText>
-          ) : (
-            <>
-              {data.steps != null && <Stat value={formatSteps(data.steps)} unit="steps" />}
-              {data.activityCount > 0 && (
-                <>
-                  <Stat
-                    value={String(data.activityCount)}
-                    unit={data.activityCount === 1 ? 'session' : 'sessions'}
-                  />
-                  <Stat value={String(data.activityMinutes)} unit="min" />
-                </>
-              )}
-            </>
-          )}
-        </Square>
+        {/* THE ACTIVITY SQUARE WENT (Ruth, 25 September 2026: "activity
+            doesn't need to be there since it shows in the flower").
+
+            She is right, and it was the square saying the least: a session
+            count and a minute total, directly above a drawing of the same
+            week broken into six dimensions. Two squares leave the row wider
+            and the screen shorter, which is the other half of her note - the
+            flower was being cut off at the bottom.
+
+            Steps were the one thing here the flower does not carry, so they
+            moved rather than went. See the line beside "This week" below. */}
       </View>
 
       {/* Hydration has no header because it is not a view to go into. It is the
@@ -598,7 +602,20 @@ export function OverviewPanel({
         {/* Smaller than "Today" (2026-09-04). At title size it dominated the
             lower half of the screen; at subtitle it still reads as the second
             section without shouting over the flower it introduces. */}
-        <ThemedText type="sectionTitle">This week</ThemedText>
+        {/* STEPS SIT WITH THE WEEK, NOT IN A SQUARE OF THEIR OWN. They were
+            the only thing in the Activity square the flower does not draw, so
+            rather than keeping a whole card alive for one figure they read as
+            a quiet line beside the heading - the same relationship the date
+            has to the greeting. Null still draws nothing at all: a zero step
+            count is an accusation, not a measurement (see lib/steps.ts). */}
+        <View style={styles.weekHead}>
+          <ThemedText type="sectionTitle">This week</ThemedText>
+          {data.steps != null && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {formatSteps(data.steps)} steps today
+            </ThemedText>
+          )}
+        </View>
         <View style={styles.flowerWrap}>
           {flower.coverage && (
             <HealthFlower
@@ -619,7 +636,6 @@ export function OverviewPanel({
           see the no-scroll note above. The figures come from the resolveTDEE
           call this screen already makes for the calorie target, so nothing is
           computed twice. */}
-      <WhatYouBurn figures={data.burn} />
     </View>
   );
 }
@@ -695,8 +711,12 @@ const fmt = (v: number | null, unit: string): string => (v == null ? '—' : `${
 
 // Deliberately smaller than the component's 220 default. This screen does not
 // scroll (see body/index.tsx), so every pixel spent here is taken from
-// something already on it.
-const FLOWER_SIZE = 200;
+// something already on it - which is exactly the trade the two variants above
+// make explicit.
+// 195 in both arrangements, deliberately: the flower is the thing this whole
+// change is for, so it is not the variable. The only difference between the two
+// is which small thing keeps its place beside it.
+const FLOWER_SIZE = 195;
 
 const styles = StyleSheet.create({
   weekSection: {
@@ -709,10 +729,13 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    // Tightened from Spacing.four (2026-09-04). Six children means five gaps,
-    // and 24 apiece was 120px of a 591px budget on a screen that cannot
-    // scroll. 16 buys back 40px, which is most of a flower.
-    gap: Spacing.three,
+    // Tightened from Spacing.four (2026-09-04), then from Spacing.three
+    // (2026-09-25). Six children means five gaps, and 24 apiece was 120px of a
+    // 591px budget on a screen that cannot scroll. 12 is off the scale on
+    // purpose: it is the one place in the app where four points bought back
+    // are four points of flower, and the sections are still plainly separate
+    // because each one is a different shape.
+    gap: 12,
   },
   squareRow: {
     flexDirection: 'row',
@@ -723,7 +746,11 @@ const styles = StyleSheet.create({
     // Equal width comes from flex; equal HEIGHT has to be said, or a square
     // with two numbers would sit shorter than one with three and the row would
     // read as three things instead of one.
-    minHeight: 112,
+    //
+    // 96, down from 112 (2026-09-25). With the Activity square gone the
+    // remaining two are half the row each rather than a third, so nothing
+    // inside them wraps any more and the extra 16 points were empty.
+    minHeight: 96,
     // ONE RADIUS ON THIS SCREEN (UI brief): the squares, the water strip and
     // "What you burn" all sit at CardRadius, so the row of cards reads as one
     // material rather than three shapes.
@@ -758,14 +785,27 @@ const styles = StyleSheet.create({
     // instead (see stat), so the whole unit drops a line when it must.
     flexShrink: 0,
   },
-  // THE ONE PLACE THE TIGHT LEADING IS WANTED (2026-09-25). The greeting is
-  // the only display-face text in the app that runs to two lines, and 47 on 50
-  // is what makes those two lines read as one block rather than as two
-  // sentences. Every other use of this face is a single-line title, where the
-  // same leading cut the tail off a g - so the shared style now has room and
-  // this asks for the tight version back.
+  // THE TWO-LINE COMPOSITION AT A SIZE THAT ACTUALLY HOLDS TWO LINES
+  // (2026-09-25). Her brief of 18 September asked for "Good morning," over
+  // "Ruth", with leading tighter than the size, because "the two-line
+  // composition gives the page presence and creates a stronger editorial
+  // rhythm". That is kept. What is not kept is 50pt, which never fitted the
+  // composition it was set in: the text column is 312 points wide and "Good
+  // afternoon," at 50pt is about 405, so from midday onward the greeting
+  // silently became THREE lines - "Good" / "afternoon," / "Ruth" - and pushed
+  // the flower off the bottom of a screen that cannot scroll. It is the top of
+  // the screen that was too big, not the flower.
+  //
+  // 32 on 38 is the largest size at which "Good afternoon," fits on one line
+  // with the three-seeds mark clear of it in the corner, and it keeps the
+  // leading tighter than the size, which is the part of the brief that carries
+  // the rhythm. The block costs 76 points instead of 141.
   greeting: {
-    lineHeight: DisplayType.leading,
+    fontSize: 32,
+    lineHeight: 38,
+    // Clear of the three seeds, which now sit in the top-right corner on this
+    // screen as they do on every other one.
+    paddingRight: Spacing.five,
   },
   header: {
     // 10px higher than the page inset puts it (Ruth, 2026-09-18: "move the
@@ -779,6 +819,9 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   dateRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.three },
+  // The heading and today's steps on one line, so the figure costs no
+  // vertical space at all on a screen that does not scroll.
+  weekHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   // The date takes the room and the link keeps its own width, so a long date
   // with a cycle day wraps rather than pushing Settings off the edge.
   dateText: { flex: 1 },
