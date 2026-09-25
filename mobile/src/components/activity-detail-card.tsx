@@ -85,7 +85,7 @@ export function ActivityDetailCard({
 
   if (!activity) return null;
 
-  const title = activity.activity_type ?? 'Activity';
+  const title = activity.activity_type ?? 'Movement';
   const rows: [string, string][] = [
     ['When', formatLogDate(new Date(activity.happened_at))],
     ...(activity.duration_min != null

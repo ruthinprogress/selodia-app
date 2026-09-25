@@ -312,7 +312,7 @@ export function activityAckFacts(
     // As for food: no grounds for a comparison, so none may be claimed.
     recent: null,
     entries: saved.map((e) => ({
-      activityType: e.activity_type ?? 'Activity',
+      activityType: e.activity_type ?? 'Movement',
       durationMin: e.duration_min,
       kcalBurned: e.kcal_burned,
       source: e.source,

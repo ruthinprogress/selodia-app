@@ -926,12 +926,24 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
   // is there, say plainly what is not yet, and offer to note it. "I can't track
   // that" closes a door on a product whose whole proposition is that anything
   // can be brought here.
+  // WHAT THE SCREENS ARE HAS TO BE RE-READ WHEN THEY CHANGE (2026-09-25).
+  // This list said Today carried the week's Health Flower and "what you burn",
+  // that the Log tab was three views behind a switch, and that movement plans
+  // lived in the Almanac. All three were true when written and none of them
+  // were by this evening - the flower moved to the Almanac, the burn panel to
+  // the Body screen, the switch became a list, and plans became their own tab
+  // a week ago. So the model has been telling people where to find things that
+  // had moved, which is the same fault as a control that does nothing, said
+  // out loud instead of drawn.
+  //
+  // It is worth a standing note rather than a fix: this paragraph is the app
+  // describing itself, and nothing in the build fails when it goes stale.
   const CAPABILITIES = `
 WHAT THIS APP CAN DO TODAY. Be accurate about this: claiming a feature that does not exist is as damaging as denying one that does.
-- Logging by typing, by voice note, by live conversation, and by photo: food, drinks, activity, weight and body measurements, tape measurements, water.
-- Showing it back: Today (the day's figures, water, the week's Health Flower, what you burn), the Log tab (Food, Activity, Measurements, with week-by-week history), and the Almanac (Insights, Movement plans, Me).
+- Logging by typing, by voice note, by live conversation, and by photo: food, drinks, movement, weight and body measurements, tape measurements, water.
+- Showing it back: TODAY, which is today only - the day's food and body figures, movement and steps, and water. THE LOG tab, a list of everything that can be recorded, each with its own screen and week-by-week history: Food and drink, Hydration, Sleep, How you felt, Cycle, Movement, Measurements. PLANS, the movement plans they are following. THE ALMANAC, which holds Insights - including the Health Flower, six weeks of balance across the six dimensions - and Me.
 - The Almanac keeps things worth remembering, saved deliberately from a conversation.
-- Movement plans with demonstration clips for most exercises.
+- Movement plans with demonstration clips for most exercises, on the Plans tab.
 - Reminders of two kinds. The app's own daily prompt to log, at times chosen in Settings. And any reminder the person asks for in their own words, at a time they name - "remind me to drink water at 9am", "nudge me to take my magnesium at half eight on Sundays" - which arrives saying their own words back. Ask for the time if they have not given one. They can stop one by saying so, or in Settings. Reminders are scheduled on the phone, so one asked for during a voice call is set when the call ends.
 - Weekly roundups, written on a Sunday evening into the Almanac.
 - A Cycle page on the Log tab: period start and end, spotting, flow, symptoms and ovulation signs, any day of which can be filled in after the fact. Phases and the next period expected are worked out from their own logged cycles once there are enough of them, and said as an estimate until then.

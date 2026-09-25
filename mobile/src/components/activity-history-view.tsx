@@ -187,7 +187,7 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
                     <ActivityIcon kind={activityIcon(r.activity_type)} size={18} />
                     <View style={styles.rowMain}>
                       <ThemedText type="small" selectable>
-                        {r.activity_type ?? 'Activity'}
+                        {r.activity_type ?? 'Movement'}
                       </ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
                         {r.duration_min != null ? `${Math.round(r.duration_min)} min` : 'no duration'}

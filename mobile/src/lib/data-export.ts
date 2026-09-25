@@ -48,7 +48,7 @@ export const EXPORT_TABLES: ExportTable[] = [
   { table: 'chat_messages', label: 'Conversations', dateColumn: 'created_at' },
   { table: 'food_logs', label: 'Food logs', dateColumn: 'happened_at' },
   { table: 'food_items', label: 'Food breakdown items', dateColumn: 'created_at' },
-  { table: 'activity_logs', label: 'Activity logs', dateColumn: 'happened_at' },
+  { table: 'activity_logs', label: 'Movement logs', dateColumn: 'happened_at' },
   { table: 'body_measurements', label: 'Body measurements', dateColumn: 'measured_at' },
   { table: 'personal_metrics', label: 'Your own measurements', dateColumn: 'measured_at' },
   { table: 'hydration_logs', label: 'Drinks', dateColumn: 'happened_at' },

@@ -38,11 +38,27 @@ import { useTheme } from '@/hooks/use-theme';
 //     only real fix: give the segment more room than its word needs and there is
 //     nothing to clip, whichever face does the measuring.
 //
-// The radii are exact rather than 999: a segment is 36 tall (8 + 20 + 8) so 18,
-// and the track adds 3 either side, so 21. A rounded segment inside a rounded
-// track needs the two to agree, because nothing clips them into place. The
-// height is unchanged on purpose - "I actually quite like the height now. I
-// wouldn't make it taller. Just wider." 
+// THE RADII ARE NOW FULLY ROUND, AND THE OLD REASONING IS WHY (Ruth, 25
+// September 2026, item 3: "the selected segment is a hard-cornered rectangle
+// that overruns and clips the track's rounded ends").
+//
+// They used to be exact numbers, with this argument: a segment is 36 tall
+// (8 + 20 + 8) so 18, the track adds 3 either side so 21, and a rounded
+// segment inside a rounded track needs the two to agree because nothing clips
+// them into place. All of that is correct - AT ONE TEXT SIZE. The moment the
+// control is taller than 42, which the font scaling allowed for up to 1.3,
+// 21 stops being half the track's height and 18 stops being half the
+// segment's. The track keeps ends that are nearly round while the segment
+// becomes a rounded RECTANGLE inside it, which is exactly what she described
+// and exactly what would never appear on a machine set to the default size.
+//
+// 999 on both makes each one a pill at whatever height it happens to be, so
+// they agree by construction rather than by arithmetic that was true once.
+// The inset still does the rest: a pill inset evenly inside a pill is
+// concentric at any size.
+//
+// The height is unchanged on purpose - "I actually quite like the height now.
+// I wouldn't make it taller. Just wider." 
 
 export type SegmentedTabItem<T extends string> = { id: T; label: string };
 
@@ -105,7 +121,7 @@ export function SegmentedTabs<T extends string>({
 const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
-    borderRadius: 21,
+    borderRadius: 999,
     padding: 3,
     gap: 2,
     // FULL WIDTH OF WHAT IT IS GIVEN, and its callers give it the screen less a
@@ -118,7 +134,7 @@ const styles = StyleSheet.create({
   // exactly what she saw.
   tab: { flex: 1 },
   segment: {
-    borderRadius: 18,
+    borderRadius: 999,
     paddingVertical: 8,
     // Small on purpose. At 12 either side the claim below ("room to spare")
     // was false: about 100 points a third, 76 left for the word, and

@@ -152,7 +152,7 @@ export function ActivityView() {
               <ActivityIcon kind={activityIcon(r.activity_type)} size={20} />
               <View style={styles.rowMain}>
                 <ThemedText type="small" selectable>
-                  {r.activity_type ?? 'Activity'}
+                  {r.activity_type ?? 'Movement'}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {formatLogDate(new Date(r.happened_at))}

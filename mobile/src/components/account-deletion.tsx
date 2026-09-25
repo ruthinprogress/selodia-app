@@ -154,7 +154,7 @@ export function AccountDeletion() {
       ) : (
         <>
           <ThemedText type="small" style={styles.body}>
-            This removes everything you have recorded: your conversations, food and activity logs,
+            This removes everything you have recorded: your conversations, food and movement logs,
             measurements, drinks, cycle events, Almanac entries, workout history, reminder settings
             and any images you saved.
           </ThemedText>

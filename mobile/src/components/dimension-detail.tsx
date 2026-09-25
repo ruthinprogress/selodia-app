@@ -57,7 +57,7 @@ export function DimensionDetail({
             ) : (
               rows.map((a) => (
                 <View key={a.id} style={styles.row}>
-                  <Text style={styles.activity}>{a.activity_type ?? 'Activity'}</Text>
+                  <Text style={styles.activity}>{a.activity_type ?? 'Movement'}</Text>
                   <Text style={styles.meta}>
                     {formatLogDate(new Date(a.happened_at))}
                     {/* Duration only where it is known. A row without one says

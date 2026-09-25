@@ -105,7 +105,7 @@ export function EntrySummaryCard({
             data.kcal_burned != null ? `${Math.round(data.kcal_burned)} kcal` : null,
           ].filter((p): p is string => p !== null);
           setSummary({
-            title: data.activity_type ?? 'Activity',
+            title: data.activity_type ?? 'Movement',
             detail: parts.length > 0 ? parts.join(' · ') : null,
             when: data.happened_at ? formatLogDate(new Date(data.happened_at)) : null,
           });

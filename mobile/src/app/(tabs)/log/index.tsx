@@ -124,9 +124,16 @@ const ROWS: Row[] = [
     go: () => router.push('/log/measurements'),
   },
   {
+    // MOVEMENT, NOT ACTIVITY (Ruth, 25 September 2026, item 4: "Everywhere
+    // users see it: Log tab, Today row, settings, chat prompts, empty states.
+    // Display change only; keep internal data keys if renaming would need a
+    // migration.") The id stays `activity` so nobody's saved arrangement of
+    // this list breaks over a label - the same reasoning that kept `water`
+    // when Hydration was renamed - and so does the route, the table and every
+    // column on it.
     id: 'activity',
     icon: 'run',
-    label: 'Activity',
+    label: 'Movement',
     detail: 'Sessions, classes, walks',
     go: () => router.push('/log/activity-history'),
   },
