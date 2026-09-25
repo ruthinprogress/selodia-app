@@ -1,6 +1,10 @@
-import { currentUserId } from '@/lib/current-user';
 import type { MeasurementRow } from '@/lib/overview-metrics';
-import { supabase } from '@/lib/supabase';
+
+// NOTHING IS IMPORTED HERE THAT NEEDS A BUNDLER. This file decides which
+// numbers about somebody's own body appear on a screen, so it has a probe -
+// and a probe is plain Node, which knows nothing about the `@/` alias or
+// Supabase. Reading and writing the list lives in tracked-metrics-store.ts for
+// exactly that reason. The type import above is erased at compile time.
 
 // WHICH MEASUREMENTS SOMEBODY TRACKS, AND WHERE EACH ONE COMES FROM.
 //
@@ -167,8 +171,8 @@ function isScaleField(v: unknown): v is ScaleField {
   return v === 'weight_kg' || v === 'body_fat_pct' || v === 'muscle_kg';
 }
 
-/** One reading of one metric, already formatted. */
-export type MetricReading = { value: number; text: string; at: string };
+/** One reading of one metric, already formatted, with the unit it was in. */
+export type MetricReading = { value: number; text: string; at: string; unit: string };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
@@ -208,6 +212,7 @@ export function readingsFor(
         value: r[field] as number,
         text: formatMetricValue(r[field] as number, metric.unit),
         at: r.measured_at,
+        unit: metric.unit,
       }))
       .sort((a, b) => b.at.localeCompare(a.at));
   }
@@ -219,6 +224,11 @@ export function readingsFor(
       value: p.value as number,
       text: formatMetricValue(p.value as number, p.unit ?? metric.unit),
       at: p.measured_at ?? p.created_at,
+      // THE ROW'S OWN UNIT, not the list's. A tape measurement's unit is
+      // whatever was said at the time, and the derived entry for a personal
+      // metric carries no unit at all - so asking the list gave "" and a
+      // centimetre change came out as a percentage. See changeLabel.
+      unit: p.unit ?? metric.unit,
     }))
     .sort((a, b) => b.at.localeCompare(a.at));
 }
@@ -231,56 +241,21 @@ export function readingsFor(
  * PERCENT FOR kg AND %, ABSOLUTE FOR cm, which is her rule and a good one. A
  * centimetre is a thing you can picture; 1.8% of a waist is not.
  */
-export function changeLabel(readings: MetricReading[], unit: string): string | null {
+export function changeLabel(readings: MetricReading[], fallbackUnit = ''): string | null {
   if (readings.length < 2) return null;
   const [latest, previous] = readings;
+  // THE READING'S UNIT DECIDES, not the list's. A metric derived from what
+  // somebody has recorded carries no unit of its own - the unit is on each row
+  // - so taking it from the list printed "-0.9%" against a pair of thighs
+  // measured in centimetres.
+  const unit = latest.unit || fallbackUnit;
   const delta = latest.value - previous.value;
   if (delta === 0) return 'no change';
   const sign = delta > 0 ? '+' : '−';
-  if (unit === 'cm' || unit === 'in') {
+  if (unit === 'cm' || unit === 'in' || unit === 'mm') {
     return `${sign}${round1(Math.abs(delta))} ${unit}`;
   }
   if (previous.value === 0) return null;
   const pct = Math.abs((delta / previous.value) * 100);
   return `${sign}${round1(pct)}%`;
-}
-
-// ---- reading and writing her list -------------------------------------
-//
-// Kept here beside the rules, as log-layout.ts does, so a caller never has to
-// know which column it lives in.
-
-export async function loadTrackedMetrics(): Promise<TrackedMetric[] | null> {
-  try {
-    const userId = await currentUserId();
-    if (!userId) return null;
-    const { data } = await supabase
-      .from('user_profile')
-      .select('tracked_metrics')
-      .eq('user_id', userId)
-      .maybeSingle();
-    return readTrackedMetrics((data as { tracked_metrics?: unknown } | null)?.tracked_metrics);
-  } catch {
-    // Her own arrangement failing to load must never cost her the screen: the
-    // derived list is a perfectly good one.
-    return null;
-  }
-}
-
-/** Returns false when nothing was written, so a caller can say so. */
-export async function saveTrackedMetrics(list: TrackedMetric[]): Promise<boolean> {
-  try {
-    const userId = await currentUserId();
-    if (!userId) return false;
-    const { error } = await supabase
-      .from('user_profile')
-      .upsert({ user_id: userId, tracked_metrics: list }, { onConflict: 'user_id' });
-    if (error) {
-      console.log('TRACKED METRICS: could not save -', error.message);
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
 }

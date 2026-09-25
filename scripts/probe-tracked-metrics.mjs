@@ -173,9 +173,20 @@ check(
   changeLabel(readingsFor(waist, SCALE, PERSONAL), 'cm'),
   '−1 cm'
 );
+// THE BUG THIS MISSED THE FIRST TIME. Above, the metric is handed 'cm' as its
+// unit - but a metric DERIVED from what somebody has recorded carries no unit
+// at all, because the unit is on each row. Asking the list gave '' and a pair
+// of thighs measured in centimetres printed "-0.9%". The reading's own unit
+// decides now, and this is that case: no unit on the metric, cm on the rows.
+const derivedWaist = { key: 'personal:waist', label: 'Waist', unit: '', icon: '', source: 'personal', name: 'waist' };
+check(
+  'a metric with no unit of its own still reads its rows in centimetres',
+  changeLabel(readingsFor(derivedWaist, SCALE, PERSONAL)),
+  '−1 cm'
+);
 check(
   'no change says so rather than showing a nought',
-  changeLabel([{ value: 5, text: '', at: 'b' }, { value: 5, text: '', at: 'a' }], 'kg'),
+  changeLabel([{ value: 5, text: '', at: 'b', unit: 'kg' }, { value: 5, text: '', at: 'a', unit: 'kg' }]),
   'no change'
 );
 

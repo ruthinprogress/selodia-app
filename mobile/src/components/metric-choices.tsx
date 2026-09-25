@@ -9,13 +9,12 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 import {
-  loadTrackedMetrics,
   METRIC_ICONS,
   metricKeyFor,
   resolveTrackedMetrics,
-  saveTrackedMetrics,
   type TrackedMetric,
 } from '@/lib/tracked-metrics';
+import { loadTrackedMetrics, saveTrackedMetrics } from '@/lib/tracked-metrics-store';
 
 // WHICH MEASUREMENTS SHE TRACKS, AND IN WHAT ORDER (Ruth, 25 September 2026,
 // item 11: "The user chooses which metrics they track (name, unit, icon,
