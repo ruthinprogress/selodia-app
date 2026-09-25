@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityIcon } from '@/components/activity-icon';
+import { ReorderableRows } from '@/components/reorderable-rows';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
 import { activityIcon } from '@/lib/activity-icon';
 import type { AlmanacRow } from '@/lib/insights';
+import { arrange, layoutOf, loadLayout, saveLayout, type LogLayout } from '@/lib/log-layout';
 import { loadLastDoneByPlan, summarise } from '@/lib/movement-library';
 
 // MOVEMENT: a library of practices, not a list of workouts (Ruth's brief,
@@ -64,6 +66,50 @@ export function MovementLibrary({
     };
   }, [entries.length]);
 
+  // HELD IN HAND AND MOVED, LIKE THE LOG AND THE CYCLE CARDS (Ruth, 25
+  // September 2026, item 6). This is the list where it does the most work:
+  // the Log ships seven rows in an order somebody chose once, but a plans
+  // shelf grows as she makes plans and is sorted newest-first, which puts the
+  // routine she does every Monday at the bottom the moment she saves anything.
+  //
+  // DERIVED, NOT STORED. The order is recomputed from the plans plus her saved
+  // arrangement on every render rather than kept in state beside them, so a
+  // plan deleted or created elsewhere can never leave this list disagreeing
+  // with the screen above it.
+  const [layout, setLayout] = useState<LogLayout | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const saved = await loadLayout('plans_layout');
+      if (!cancelled) setLayout(saved);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Her order until it has loaded is the app's order, not an empty list: this
+  // renders immediately and settles a moment later, and the plans are the same
+  // plans either way.
+  const ordered = useMemo(() => {
+    if (!layout) return entries;
+    // No plan is ever hidden - a plan she does not want is deleted, which is
+    // what the swipe below is for - but a stale `hidden` from a hand-edited or
+    // future layout must not silently swallow one, so both halves are shown.
+    const { shown, hidden } = arrange(entries, layout);
+    return [...shown, ...hidden];
+  }, [entries, layout]);
+
+  // SAVED WHEN IT CHANGES, not on a Done button. Same reasoning as the Log:
+  // there is no moment where somebody has finished arranging a list, and a
+  // Done they forget to press is an arrangement thrown away.
+  const reorder = (next: AlmanacRow[]) => {
+    const l = layoutOf(next.map((e) => e.id), []);
+    setLayout(l);
+    void saveLayout('plans_layout', l);
+  };
+
   return (
     <View style={styles.wrap}>
       {/* THE HEADING WENT (Ruth, 24 September 2026: "Plans is the title. Remove
@@ -79,55 +125,68 @@ export function MovementLibrary({
         Saved practices, ready whenever they fit your day.
       </ThemedText>
 
-      {entries.map((entry) => {
-        const s = summarise(entry.content, entry.category, lastDone.get(entry.id) ?? null);
-        // The kind decides the mark, so a yoga flow and a barbell plan are
-        // distinguishable before either is opened.
-        const mark = activityIcon(`${s.kind} ${entry.title}`);
-        return (
-          // SAME GESTURE AS EVERY OTHER ROW IN THE APP, and the same reasoning:
-          // it reveals a Delete rather than firing on the swipe, because a
-          // swipe far enough to delete is a swipe that can happen in a pocket.
-          // See swipe-to-delete.tsx.
-          <SwipeToDelete
-            key={entry.id}
-            table="almanac_entries"
-            id={entry.id}
-            what={entry.title}
-            onDeleted={onDeleted}
-          >
-          <Pressable
-            onPress={() => onOpen(entry.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${entry.title}`}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedView type="backgroundElement" style={styles.card}>
-              {/* BIGGER, AND ON ITS OWN GROUND (2026-09-20). At 18 points
-                  beside a serif title the drawing read as a bullet; the plans
-                  are the one place in the app where a picture does real work,
-                  telling a barbell plan from a ballet one before either is
-                  opened. Line art in the app's own hand - no photography,
-                  here or anywhere. */}
-              <ThemedView type="background" style={styles.mark}>
-                <ActivityIcon kind={mark} size={26} />
-              </ThemedView>
-              <View style={styles.body}>
-                <ThemedText style={styles.title}>{entry.title}</ThemedText>
-                <ThemedText type="detail" themeColor="textSecondary">
-                  {[s.kind, s.duration, s.movements].filter(Boolean).join('  ·  ')}
-                </ThemedText>
-                {s.lastDone && (
-                  <ThemedText type="detail" themeColor="textSecondary">
-                    {s.lastDone}
-                  </ThemedText>
-                )}
-              </View>
-            </ThemedView>
-          </Pressable>
-          </SwipeToDelete>
-        );
-      })}
+      {/* TWO GESTURES ON ONE CARD, and they do not fight. The swipe only
+          claims a touch once it is plainly horizontal and at least 12 points
+          along; the drag only starts after the card has been held still for
+          220ms. A quick sideways flick is a delete, a press-and-hold is a move,
+          and a plain tap reaches the card and opens the plan. */}
+      <ReorderableRows
+        items={ordered}
+        onReorder={reorder}
+        renderRow={(entry, index, dragging) => {
+          const s = summarise(entry.content, entry.category, lastDone.get(entry.id) ?? null);
+          // The kind decides the mark, so a yoga flow and a barbell plan are
+          // distinguishable before either is opened.
+          const mark = activityIcon(`${s.kind} ${entry.title}`);
+          return (
+            // SAME GESTURE AS EVERY OTHER ROW IN THE APP, and the same reasoning:
+            // it reveals a Delete rather than firing on the swipe, because a
+            // swipe far enough to delete is a swipe that can happen in a pocket.
+            // See swipe-to-delete.tsx.
+            <SwipeToDelete
+              table="almanac_entries"
+              id={entry.id}
+              what={entry.title}
+              onDeleted={onDeleted}
+            >
+              <Pressable
+                onPress={() => onOpen(entry.id)}
+                // A card in hand is being moved, not tapped.
+                disabled={dragging}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${entry.title}. Hold to move it.`}
+                style={({ pressed }) => pressed && !dragging && styles.pressed}
+              >
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.card, index < ordered.length - 1 && styles.spaced]}
+                >
+                  {/* BIGGER, AND ON ITS OWN GROUND (2026-09-20). At 18 points
+                      beside a serif title the drawing read as a bullet; the plans
+                      are the one place in the app where a picture does real work,
+                      telling a barbell plan from a ballet one before either is
+                      opened. Line art in the app's own hand - no photography,
+                      here or anywhere. */}
+                  <ThemedView type="background" style={styles.mark}>
+                    <ActivityIcon kind={mark} size={26} />
+                  </ThemedView>
+                  <View style={styles.body}>
+                    <ThemedText style={styles.title}>{entry.title}</ThemedText>
+                    <ThemedText type="detail" themeColor="textSecondary">
+                      {[s.kind, s.duration, s.movements].filter(Boolean).join('  ·  ')}
+                    </ThemedText>
+                    {s.lastDone && (
+                      <ThemedText type="detail" themeColor="textSecondary">
+                        {s.lastDone}
+                      </ThemedText>
+                    )}
+                  </View>
+                </ThemedView>
+              </Pressable>
+            </SwipeToDelete>
+          );
+        }}
+      />
     </View>
   );
 }
@@ -146,6 +205,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     alignItems: 'flex-start',
   },
+  // The air between cards, which used to come from the wrap's gap. Inside the
+  // reorderable list each card is its own row in a plain container, so the
+  // spacing belongs to the card - and to every card but the last, or the list
+  // ends with a gap under it.
+  spaced: { marginBottom: Spacing.two },
   // A round, quiet ground for the drawing, the size of two lines of the title.
   mark: {
     width: 44,

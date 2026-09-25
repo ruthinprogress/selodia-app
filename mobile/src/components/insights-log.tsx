@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
@@ -37,9 +38,14 @@ import {
 export function InsightsLog({
   rows,
   onOpen,
+  onDeleted,
 }: {
   rows: AlmanacRow[];
   onOpen: (id: string) => void;
+  /** Fired once an entry is gone, so the screen above can re-read itself.
+      (Ruth, 25 September 2026, item 6: every card on a main list should be
+      deletable where it sits.) */
+  onDeleted?: () => void;
 }) {
   const theme = useTheme();
   const [filter, setFilter] = useState<InsightType | 'all'>('all');
@@ -66,9 +72,33 @@ export function InsightsLog({
         ))}
       </View>
 
+      {/* THE SAME GESTURE AS EVERY OTHER ROW IN THE APP (Ruth, 25 September
+          2026). An observation kept about somebody is the entry they are most
+          likely to want gone - a symptom noted on the wrong day, a pattern the
+          app read into a week that was really a holiday - and until now the
+          only way to remove one was to ask in chat.
+
+          IT REVEALS A DELETE, IT DOES NOT DELETE. See swipe-to-delete.tsx: the
+          swipe uncovers the mark and the mark is a tap, which is the version
+          that survives a pocket.
+
+          NOT REORDERABLE, and that is a decision rather than an omission. This
+          log is a record in time, newest first, with pills that filter it. A
+          hand-sorted chronology is no longer a chronology, and an order saved
+          over a filtered subset would rearrange entries she could not see. The
+          Plans list is the opposite case - a shelf of things to choose from -
+          and that one does reorder. */}
       <View style={styles.cards}>
         {shown.map((r) => (
-          <EntryCard key={r.id} row={r} onPress={() => onOpen(r.id)} />
+          <SwipeToDelete
+            key={r.id}
+            table="almanac_entries"
+            id={r.id}
+            what={r.title}
+            onDeleted={onDeleted}
+          >
+            <EntryCard row={r} onPress={() => onOpen(r.id)} />
+          </SwipeToDelete>
         ))}
       </View>
     </View>

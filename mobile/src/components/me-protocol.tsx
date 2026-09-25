@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { SectionIntro } from '@/components/section-intro';
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
@@ -47,7 +48,15 @@ function orderSections(names: string[]): string[] {
   return [...known, ...rest];
 }
 
-export function MeProtocol({ entries }: { entries: AlmanacRow[] }) {
+export function MeProtocol({
+  entries,
+  onDeleted,
+}: {
+  entries: AlmanacRow[];
+  /** Fired once a card is gone, so the screen above can re-read itself.
+      (Ruth, 25 September 2026, item 6.) */
+  onDeleted?: () => void;
+}) {
   const theme = useTheme();
   const [exporting, setExporting] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
@@ -115,8 +124,25 @@ export function MeProtocol({ entries }: { entries: AlmanacRow[] }) {
           <ThemedText type="sectionTitle" style={styles.heading}>
             {section.name}
           </ThemedText>
+          {/* SWIPE TO DELETE, AS EVERYWHERE ELSE (Ruth, 25 September 2026,
+              item 6). A protocol card is a decision somebody made about how
+              they live, and decisions get reversed: a supplement stopped for
+              good, a routine that never became one. Pausing is already in the
+              card's own history and says something different - still part of
+              the record, no longer part of the routine - so this is for the
+              entries that should not be in the record at all.
+              It reveals a Delete rather than firing on the swipe; see
+              swipe-to-delete.tsx. */}
           {section.rows.map((row) => (
-            <MeCardRow key={row.id} row={row} />
+            <SwipeToDelete
+              key={row.id}
+              table="almanac_entries"
+              id={row.id}
+              what={row.title}
+              onDeleted={onDeleted}
+            >
+              <MeCardRow row={row} />
+            </SwipeToDelete>
           ))}
         </View>
       ))}

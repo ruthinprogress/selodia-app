@@ -30,8 +30,17 @@ import { EMPTY, readLayout, type LogLayout } from '@/lib/log-layout-rules';
 export type { LogLayout };
 export { arrange, layoutOf } from '@/lib/log-layout-rules';
 
+// THREE SCREENS NOW (Ruth, 25 September 2026, item 6: "Make sure all cards
+// have been treated with the ability to be reordered and deleted at the main
+// menu page, eg, log, plans, etc.").
+//
+// The Plans list is the first one whose ids are HER OWN ROWS rather than a
+// fixed list the app ships, which is why the two rules above earn their keep
+// here: a plan she deletes leaves a stale id in the saved order, and a plan she
+// makes tomorrow is not in it at all. Ignored and appended respectively, with
+// no special case needed for either.
 /** Which list: each screen keeps its arrangement in its own column. */
-export type LayoutKey = 'log_layout' | 'cycle_layout';
+export type LayoutKey = 'log_layout' | 'cycle_layout' | 'plans_layout';
 
 export async function loadLayout(key: LayoutKey): Promise<LogLayout> {
   try {

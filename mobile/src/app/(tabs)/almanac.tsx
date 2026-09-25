@@ -61,6 +61,11 @@ export default function AlmanacScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   // Starts false so the card can never flash before the stored flag is read.
   const [showIntro, setShowIntro] = useState(false);
+  // Bumped when an entry is deleted from one of the lists below, so the screen
+  // re-reads itself. useFocusEffect alone does not cover it: the delete happens
+  // while this screen is already focused, so focus never changes. Same shape as
+  // plans.tsx, for the same reason.
+  const [reloadKey, setReloadKey] = useState(0);
 
   // REFETCHES ON FOCUS, not only on mount. The Almanac is a TAB: it mounts once
   // and stays mounted, so an entry saved from Chat afterwards never appeared
@@ -90,7 +95,10 @@ export default function AlmanacScreen() {
       return () => {
         cancelled = true;
       };
-    }, [])
+    // reloadKey is not read inside this callback, and that is the point: it
+    // changing is what makes the effect run again after a delete.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reloadKey])
   );
 
   const byTab = splitByTab(rows);
@@ -136,7 +144,11 @@ export default function AlmanacScreen() {
                     <SectionIntro title={"What you've noticed"}>
                       Symptoms, patterns and notes worth keeping.
                     </SectionIntro>
-                    <InsightsLog rows={byTab.insights} onOpen={setOpenId} />
+                    <InsightsLog
+                      rows={byTab.insights}
+                      onOpen={setOpenId}
+                      onDeleted={() => setReloadKey((k) => k + 1)}
+                    />
                   </SpotlightTarget>
                 )}
                 {/* Her example, exactly: reading her symptoms and wanting to
@@ -154,7 +166,7 @@ export default function AlmanacScreen() {
                   // A protocol, not a list: sections that came into being by
                   // their first card arriving, and a why behind each one. See
                   // me-protocol.tsx.
-                  <MeProtocol entries={byTab.me} />
+                  <MeProtocol entries={byTab.me} onDeleted={() => setReloadKey((k) => k + 1)} />
                 ) : (
                   <AlmanacEmptyState heading={ME_EMPTY_HEADING} body={ME_EMPTY_BODY} />
                 )}
