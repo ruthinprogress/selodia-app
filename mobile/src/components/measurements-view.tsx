@@ -19,7 +19,12 @@ import { WhatYouBurn } from '@/components/what-you-burn';
 import { Spacing } from '@/constants/theme';
 import { useBurnFigures } from '@/hooks/use-burn-figures';
 import { useFocusReload } from '@/hooks/use-focus-reload';
-import { deleteReading, deleteReadingMessage } from '@/lib/delete-reading';
+import {
+  deleteReading,
+  deleteReadingMessage,
+  restoreReading,
+  type ReadingRestore,
+} from '@/lib/delete-reading';
 import { useTheme } from '@/hooks/use-theme';
 import type { MeasurementRow } from '@/lib/overview-metrics';
 import { supabase } from '@/lib/supabase';
@@ -57,6 +62,9 @@ import { addWeeks, currentWeekStart, daysOfWeek, toLocalDateKey, weekLabel, week
 // DATES ARE "4 Jul 2026" AND "Thu 24" (item 13), never ISO. Built by hand for
 // the same reason week.ts is: Hermes on Android ships a variable ICU build, so
 // toLocaleDateString can return a different string on a different phone.
+
+/** How long a removed reading can be brought back. Ruth's figure, item 8. */
+const UNDO_WINDOW_MS = 10_000;
 
 /** How far the row slides to uncover its mark. */
 const SWIPE_OPEN = 56;
@@ -110,6 +118,7 @@ function loggedAt(at: string | null): string | null {
 export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const [weekStart, setWeekStart] = useState<Date>(initialWeekStart ?? currentWeekStart());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const theme = useTheme();
   const [reloadKey, setReloadKey] = useState(0);
   const [ackShowing, setAckShowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -158,6 +167,27 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
       cancelled = true;
     };
   }, [reloadKey]);
+
+  // WHAT WAS JUST REMOVED, AND FOR HOW LONG IT CAN COME BACK.
+  //
+  // Held in memory only, deliberately. An undo that survives a reload would be
+  // a second delete queue to keep correct, and the window is ten seconds - if
+  // the screen has gone, so has the moment. Anything older is recovered through
+  // the conversation, which can see the longer history.
+  const [undo, setUndo] = useState<{ restore: ReadingRestore; label: string } | null>(null);
+
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), UNDO_WINDOW_MS);
+    return () => clearTimeout(t);
+  }, [undo]);
+
+  const undoDelete = useCallback(async () => {
+    if (!undo) return;
+    const ok = await restoreReading(undo.restore);
+    setUndo(null);
+    if (ok) setReloadKey((k) => k + 1);
+  }, [undo]);
 
   // The displayed week.
   useEffect(() => {
@@ -239,6 +269,28 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
 
   return (
     <ThemedView style={styles.wrap}>
+      {/* UNDO, BECAUSE SHE LOST A DAY TO THIS (item 8). The figures travel out
+          of the delete itself - see lib/delete-reading.ts - so this puts back
+          what was actually there, not what anyone remembers. Ten seconds, her
+          figure, and it sits at the bottom where a thumb already is. */}
+      {undo ? (
+        <View style={[styles.undo, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="detail" themeColor="textSecondary" style={styles.undoText}>
+            {undo.label}
+          </ThemedText>
+          <Pressable
+            onPress={() => void undoDelete()}
+            accessibilityRole="button"
+            accessibilityLabel={`Undo removing ${undo.label}`}
+            hitSlop={Spacing.three}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedText type="smallBold" themeColor="accentDeep">
+              Undo
+            </ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
       <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
         Track the measurements that matter to you.
       </ThemedText>
@@ -338,6 +390,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
                 key={d.key}
                 date={d.date}
                 values={d.values}
+                onRemoved={(restore, label) => setUndo({ restore, label })}
                 at={d.at}
                 rule={i > 0}
                 expanded={openDay === d.key}
@@ -444,6 +497,7 @@ function DayRow({
   expanded,
   onToggle,
   onDeleted,
+  onRemoved,
 }: {
   date: Date;
   values: { metric: TrackedMetric; text: string; at: string }[];
@@ -452,6 +506,8 @@ function DayRow({
   expanded: boolean;
   onToggle: () => void;
   onDeleted: () => void;
+  /** What was just removed, so the screen can offer to put it back. */
+  onRemoved: (restore: ReadingRestore, label: string) => void;
 }) {
   const theme = useTheme();
   const [busy, setBusy] = useState<string | null>(null);
@@ -471,8 +527,10 @@ function DayRow({
     setFailed(null);
     const outcome = await deleteReading(v.metric, v.at);
     setBusy(null);
-    if (outcome.done) onDeleted();
-    else setFailed(deleteReadingMessage(v.metric, outcome));
+    if (outcome.done) {
+      onRemoved(outcome.restore, `${v.metric.label} from ${shortDay(date)} removed.`);
+      onDeleted();
+    } else setFailed(deleteReadingMessage(v.metric, outcome));
   };
 
   const removeDay = async () => {
@@ -481,6 +539,10 @@ function DayRow({
     setFailed(null);
     // One at a time, because two of them can be columns of the same row and
     // the second has to see what the first left behind.
+    // EVERY ONE OF THEM IS KEPT, not just the last. A day is several readings
+    // and an undo that restored one of five would be worse than none - it would
+    // look like it had worked.
+    const undoable: ReadingRestore[] = [];
     for (const v of values) {
       const outcome = await deleteReading(v.metric, v.at);
       if (!outcome.done) {
@@ -488,8 +550,15 @@ function DayRow({
         setFailed(deleteReadingMessage(v.metric, outcome));
         return;
       }
+      undoable.push(outcome.restore);
     }
     setBusy(null);
+    if (undoable.length > 0) {
+      onRemoved(
+        { kind: 'several', items: undoable },
+        `${shortDay(date)} removed, ${undoable.length} ${undoable.length === 1 ? 'reading' : 'readings'}.`
+      );
+    }
     onDeleted();
   };
 
@@ -850,6 +919,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_OPEN,
   },
+  // The undo strip. Floating at the foot of the screen, above the content and
+  // below nothing - a thumb is already down there after a swipe.
+  undo: {
+    position: 'absolute',
+    left: Spacing.three,
+    right: Spacing.three,
+    bottom: Spacing.three,
+    zIndex: 20,
+    elevation: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 999,
+  },
+  undoText: { flex: 1, minWidth: 0 },
   swipeHit: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7 },
 });

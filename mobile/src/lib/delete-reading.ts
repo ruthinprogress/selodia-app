@@ -35,8 +35,33 @@ import type { TrackedMetric } from '@/lib/tracked-metrics';
 const scaleColumns = ['weight_kg', 'body_fat_pct', 'muscle_kg'] as const;
 type ScaleColumn = (typeof scaleColumns)[number];
 
+/**
+ * Everything needed to put a reading back exactly as it was.
+ *
+ * WHY THE VALUES TRAVEL WITH THE DELETE (Ruth, 26 September 2026, item 8): "I
+ * deleted Thu 24 Sept's readings by mistake and had no way to get them back.
+ * Re-entering them through chat isn't a real fallback: users don't remember
+ * exact values (I re-entered from memory and rounded, so that day's record is
+ * now less accurate than the original)."
+ *
+ * That last clause is the whole argument. An undo that asks somebody to retype
+ * a number is not an undo, it is a second chance to be wrong - and a body
+ * record that has been rounded from memory is worse than one with a gap in it,
+ * because the gap is honest and the rounding is not.
+ *
+ * So the figures are carried out of the delete itself, before anything is
+ * written, and the restore puts back what was actually there rather than what
+ * anyone remembers.
+ */
+export type ReadingRestore =
+  | { kind: 'scale-value'; id: string; column: ScaleColumn; value: number }
+  | { kind: 'scale-row'; row: Record<string, unknown> }
+  | { kind: 'personal-row'; row: Record<string, unknown> }
+  /** A whole day: every reading that was removed, restored together. */
+  | { kind: 'several'; items: ReadingRestore[] };
+
 export type DeleteOutcome =
-  | { done: true; what: 'value' | 'row' }
+  | { done: true; what: 'value' | 'row'; restore: ReadingRestore }
   | { done: false; reason: 'not-found' | 'failed' };
 
 /**
@@ -58,7 +83,10 @@ async function deleteScaleValue(column: ScaleColumn | undefined, at: string): Pr
   // RLS scopes this to the signed-in person's own rows.
   const { data, error } = await supabase
     .from('body_measurements')
-    .select('id, weight_kg, body_fat_pct, muscle_kg, bmr')
+    // EVERYTHING, not the four columns this function reasons about: a row that
+    // gets deleted has to be restorable whole, and a column left out here is a
+    // column silently lost on undo.
+    .select('*')
     .eq('measured_at', at)
     .maybeSingle();
 
@@ -79,8 +107,10 @@ async function deleteScaleValue(column: ScaleColumn | undefined, at: string): Pr
       console.log('DELETE READING: could not remove the empty row -', delError.message);
       return { done: false, reason: 'failed' };
     }
-    return { done: true, what: 'row' };
+    return { done: true, what: 'row', restore: { kind: 'scale-row', row } };
   }
+
+  const previous = row[column];
 
   const { error: updError } = await supabase
     .from('body_measurements')
@@ -90,7 +120,11 @@ async function deleteScaleValue(column: ScaleColumn | undefined, at: string): Pr
     console.log('DELETE READING: could not clear the value -', updError.message);
     return { done: false, reason: 'failed' };
   }
-  return { done: true, what: 'value' };
+  return {
+    done: true,
+    what: 'value',
+    restore: { kind: 'scale-value', id: String(row.id), column, value: Number(previous) },
+  };
 }
 
 async function deletePersonalValue(name: string, at: string): Promise<DeleteOutcome> {
@@ -102,7 +136,8 @@ async function deletePersonalValue(name: string, at: string): Promise<DeleteOutc
   // arrive - the conversation writes them.
   const { data, error } = await supabase
     .from('personal_metrics')
-    .select('id, metric_name, measured_at, created_at')
+    // The whole row, for the same reason as the scale read above.
+    .select('*')
     .or(`measured_at.eq.${at},created_at.eq.${at}`);
 
   if (error) {
@@ -110,8 +145,8 @@ async function deletePersonalValue(name: string, at: string): Promise<DeleteOutc
     return { done: false, reason: 'failed' };
   }
 
-  const match = ((data ?? []) as { id: string; metric_name: string }[]).find(
-    (r) => r.metric_name.trim().toLowerCase() === wanted
+  const match = ((data ?? []) as Record<string, unknown>[]).find(
+    (r) => String(r.metric_name ?? '').trim().toLowerCase() === wanted
   );
   if (!match) return { done: false, reason: 'not-found' };
 
@@ -120,7 +155,40 @@ async function deletePersonalValue(name: string, at: string): Promise<DeleteOutc
     console.log('DELETE READING: could not remove the row -', delError.message);
     return { done: false, reason: 'failed' };
   }
-  return { done: true, what: 'row' };
+  return { done: true, what: 'row', restore: { kind: 'personal-row', row: match } };
+}
+
+/**
+ * Put back exactly what was removed.
+ *
+ * Idempotent by shape rather than by check: a restored row carries its original
+ * id, so pressing undo twice writes the same row twice and the second is a
+ * no-op conflict rather than a duplicate reading.
+ */
+export async function restoreReading(restore: ReadingRestore): Promise<boolean> {
+  if (restore.kind === 'several') {
+    // Sequential, because two of them can be columns of the same row and the
+    // second has to see what the first put back. All or nothing is reported:
+    // a partial restore is exactly the silent half-success this app keeps
+    // finding, so it is said plainly instead.
+    let all = true;
+    for (const item of restore.items) if (!(await restoreReading(item))) all = false;
+    return all;
+  }
+
+  if (restore.kind === 'scale-value') {
+    const { error } = await supabase
+      .from('body_measurements')
+      .update({ [restore.column]: restore.value })
+      .eq('id', restore.id);
+    if (error) console.log('RESTORE READING: could not put the value back -', error.message);
+    return !error;
+  }
+
+  const table = restore.kind === 'scale-row' ? 'body_measurements' : 'personal_metrics';
+  const { error } = await supabase.from(table).upsert(restore.row);
+  if (error) console.log('RESTORE READING: could not put the row back -', error.message);
+  return !error;
 }
 
 /** What the screen says afterwards. Never the model, and never a guess. */
