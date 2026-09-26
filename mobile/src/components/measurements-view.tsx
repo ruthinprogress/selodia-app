@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ExportLink } from '@/components/data-export-link';
 import { MetricMark } from '@/components/metric-mark';
@@ -16,6 +18,7 @@ import { WhatYouBurn } from '@/components/what-you-burn';
 import { Spacing } from '@/constants/theme';
 import { useBurnFigures } from '@/hooks/use-burn-figures';
 import { useFocusReload } from '@/hooks/use-focus-reload';
+import { deleteReading, deleteReadingMessage } from '@/lib/delete-reading';
 import { useTheme } from '@/hooks/use-theme';
 import type { MeasurementRow } from '@/lib/overview-metrics';
 import { supabase } from '@/lib/supabase';
@@ -54,6 +57,9 @@ import { addWeeks, currentWeekStart, daysOfWeek, toLocalDateKey, weekLabel, week
 // the same reason week.ts is: Hermes on Android ships a variable ICU build, so
 // toLocaleDateString can return a different string on a different phone.
 
+/** How far the row slides to uncover its mark. */
+const SWIPE_OPEN = 56;
+
 /** The comparison reaches outside the week, so the query has to as well. */
 const LOOKBACK_DAYS = 12;
 
@@ -81,6 +87,24 @@ function loggedAt(at: string | null): string | null {
   h = h % 12 === 0 ? 12 : h % 12;
   return `Logged ${h}:${String(m).padStart(2, '0')} ${suffix}`;
 }
+
+// HOW ONE READING IS REMOVED (Ruth, 26 September 2026, having looked at four).
+//
+// She chose the third: a mark on every line once a day is open, and the day
+// row itself swipes left to clear the lot. The visible marks stay whatever the
+// gesture does, which is her standing rule - "Good call keeping a visible one
+// for my demographic."
+//
+// WHAT A DELETE ACTUALLY REMOVES is the part worth knowing; see
+// lib/delete-reading.ts. The old eye-icon control was blunter than it looked:
+// it deleted a whole scale row, so removing "Thursday's weight" took the body
+// fat and muscle measured in the same moment with it. A mark on a line clears
+// one column and only removes the row when the last figure in it goes.
+//
+// "Eventually we will need to decide on one uniform system across the whole
+// app, this stage is experimentation with best flows." So this is a candidate
+// for the Food log, the Movement log and the drinks list, which currently do
+// it three different ways.
 
 export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const [weekStart, setWeekStart] = useState<Date>(initialWeekStart ?? currentWeekStart());
@@ -190,19 +214,21 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
     const out: {
       key: string;
       date: Date;
-      values: { metric: TrackedMetric; text: string }[];
+      // Each value carries the moment it was recorded, because that is how a
+      // single reading is found again when somebody asks for it to go.
+      values: { metric: TrackedMetric; text: string; at: string }[];
       at: string | null;
     }[] = [];
     for (const date of daysOfWeek(weekStart)) {
       const key = toLocalDateKey(date);
-      const values: { metric: TrackedMetric; text: string }[] = [];
+      const values: { metric: TrackedMetric; text: string; at: string }[] = [];
       let newest: string | null = null;
       for (const m of metrics) {
         const onDay = readingsFor(m, weekScale, weekPersonal).filter(
           (r) => toLocalDateKey(new Date(r.at)) === key
         );
         if (onDay.length === 0) continue;
-        values.push({ metric: m, text: onDay[0].text });
+        values.push({ metric: m, text: onDay[0].text, at: onDay[0].at });
         if (!newest || onDay[0].at > newest) newest = onDay[0].at;
       }
       if (values.length > 0) out.push({ key, date, values, at: newest });
@@ -315,6 +341,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
                 rule={i > 0}
                 expanded={openDay === d.key}
                 onToggle={() => setOpenDay((k) => (k === d.key ? null : d.key))}
+                onDeleted={() => setReloadKey((k) => k + 1)}
               />
             ))}
           </View>
@@ -400,8 +427,63 @@ function MetricRow({
   );
 }
 
-// ONE DAY. Collapsed it is the date and the day's figures on one line; tapping
-// opens the same figures with their names, and the time they were logged.
+/**
+ * The quiet mark that removes something, at whichever level it is offered.
+ *
+ * MODULE LEVEL, not inside the row. A component defined during a render is a
+ * different type every render, so React throws the old one away and mounts a
+ * new one - losing its state and its focus. It was written inline first and
+ * the lint rule caught it.
+ *
+ * `cross` draws the tiny x she recognised from elsewhere in the app rather than
+ * a bin; see variant 4.
+ */
+function DeleteMark({
+  label,
+  onPress,
+  working,
+  cross = false,
+  size = 17,
+}: {
+  label: string;
+  onPress: () => void;
+  working: boolean;
+  cross?: boolean;
+  size?: number;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={working}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={Spacing.two}
+      style={({ pressed }) => pressed && styles.pressed}
+    >
+      {working ? (
+        <ThemedText type="detail" themeColor="accentDeep">
+          {'\u2026'}
+        </ThemedText>
+      ) : (
+        <Ionicons
+          name={cross ? 'close-circle-outline' : 'trash-outline'}
+          size={size}
+          color={cross ? theme.textSecondary : theme.accentDeep}
+        />
+      )}
+    </Pressable>
+  );
+}
+
+// ONE DAY, in whichever of the three shapes is being looked at.
+//
+// WHAT A DELETE ACTUALLY REMOVES is the whole question here - see
+// lib/delete-reading.ts. A day can hold five readings living in two different
+// shapes underneath, so "delete this line" means one thing on a weight and
+// another on a waist, and the old eye-icon control was blunter than it looked:
+// it removed a scale row entire, taking the body fat and muscle measured in
+// the same moment with it.
 function DayRow({
   date,
   values,
@@ -409,87 +491,259 @@ function DayRow({
   rule,
   expanded,
   onToggle,
+  onDeleted,
 }: {
   date: Date;
-  values: { metric: TrackedMetric; text: string }[];
+  values: { metric: TrackedMetric; text: string; at: string }[];
   at: string | null;
   rule: boolean;
   expanded: boolean;
   onToggle: () => void;
+  onDeleted: () => void;
 }) {
   const theme = useTheme();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
   const summary = values.map((v) => v.text).join('   ');
 
-  return (
-    <Pressable
-      onPress={onToggle}
-      accessibilityRole="button"
-      accessibilityState={{ expanded }}
-      accessibilityLabel={`${shortDay(date)}. ${summary}`}
-      style={({ pressed }) => pressed && styles.pressed}
-    >
-      <View style={[styles.row, rule && { borderTopWidth: 1, borderTopColor: theme.backgroundSelected }]}>
+  const removeOne = async (v: { metric: TrackedMetric; at: string }) => {
+    if (busy) return;
+    setBusy(v.metric.key);
+    setFailed(null);
+    const outcome = await deleteReading(v.metric, v.at);
+    setBusy(null);
+    if (outcome.done) onDeleted();
+    else setFailed(deleteReadingMessage(v.metric, outcome));
+  };
+
+  const removeDay = async () => {
+    if (busy) return;
+    setBusy('day');
+    setFailed(null);
+    // One at a time, because two of them can be columns of the same row and
+    // the second has to see what the first left behind.
+    for (const v of values) {
+      const outcome = await deleteReading(v.metric, v.at);
+      if (!outcome.done) {
+        setBusy(null);
+        setFailed(deleteReadingMessage(v.metric, outcome));
+        return;
+      }
+    }
+    setBusy(null);
+    onDeleted();
+  };
+
+  const toChat = (prefill: string) => router.push({ pathname: '/', params: { prefill } });
+
+  // NOT ONE BUTTON WRAPPING EVERYTHING. The row was a single Pressable with
+  // marks inside it, which is a button inside a button: React refuses it on the
+  // web - "<button> cannot contain a nested button" - and a screen reader
+  // cannot offer the inner one at all. It took three goes to get right, because
+  // the first fix left the expanded detail nested and the second reintroduced
+  // the fault in the swipe wrapper. The shape below cannot have the problem:
+  // the opener holds nothing interactive, and everything pressable is its
+  // sibling.
+  const row = (
+    <View style={[styles.row, rule && { borderTopWidth: 1, borderTopColor: theme.backgroundSelected }]}>
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${shortDay(date)}. ${summary}`}
+        style={({ pressed }) => [expanded ? styles.dayLabelOnly : styles.dayOpener, pressed && styles.pressed]}
+      >
         <ThemedText type="small" themeColor="textSecondary" style={styles.dayLabel}>
           {shortDay(date)}
         </ThemedText>
-        <View style={styles.figures}>
-          {expanded ? (
-            <>
-              {values.map((v) => (
-                <View key={v.metric.key} style={styles.expandedRow}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.expandedLabel}>
-                    {v.metric.label}
-                  </ThemedText>
-                  <ThemedText type="smallBold">{v.text}</ThemedText>
-                </View>
-              ))}
-              {loggedAt(at) ? (
-                <ThemedText type="detail" themeColor="textSecondary">
-                  {loggedAt(at)}
-                </ThemedText>
-              ) : null}
-
-              {/* EDIT (her item 12: "Tap to expand to full detail with Edit").
-                  It hands the day to Chat rather than opening a form, and that
-                  is deliberate: a measurement is written by the conversation
-                  and corrected by it, through machinery that already knows how
-                  to find the right row and say what it changed. A second
-                  writer for body readings is a second thing that can put a
-                  wrong number in somebody's record.
-                  The Me cards DO get a form (item 15) because those are words
-                  somebody typed about themselves, not readings. */}
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: '/',
-                    params: {
-                      prefill: `I need to correct my measurements from ${shortDay(date)}: `,
-                    },
-                  })
-                }
-                accessibilityRole="button"
-                accessibilityLabel={`Correct the readings from ${shortDay(date)}`}
-                hitSlop={Spacing.two}
-                style={({ pressed }) => [styles.editLink, pressed && styles.pressed]}
-              >
-                <Ionicons name="create-outline" size={14} color={theme.accentDeep} />
-                <ThemedText type="detail" themeColor="accentDeep">
-                  Edit
-                </ThemedText>
-              </Pressable>
-            </>
-          ) : (
+        {!expanded ? (
+          <View style={styles.figures}>
             <ThemedText type="small">{summary}</ThemedText>
-          )}
+          </View>
+        ) : null}
+      </Pressable>
+
+      {expanded ? (
+        <View style={styles.figures}>
+          {values.map((v) => (
+            <View key={v.metric.key} style={styles.expandedRow}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.expandedLabel}>
+                {v.metric.label}
+              </ThemedText>
+              <ThemedText type="smallBold">{v.text}</ThemedText>
+              {/* A MARK PER LINE, which is what she asked for: it removes THIS
+                  reading and nothing measured beside it. */}
+              <DeleteMark
+                label={`Delete ${v.metric.label} from ${shortDay(date)}`}
+                onPress={() => void removeOne(v)}
+                working={busy === v.metric.key}
+              />
+            </View>
+          ))}
+
+          {loggedAt(at) ? (
+            <ThemedText type="detail" themeColor="textSecondary">
+              {loggedAt(at)}
+            </ThemedText>
+          ) : null}
+
+          {failed ? (
+            <ThemedText type="detail" themeColor="danger">
+              {failed}
+            </ThemedText>
+          ) : null}
+
+          {/* ONE CHAT MARK, NOT TWO NAMED LINKS (Ruth, 26 September 2026).
+              She first said "edit shouldn't replace 'Ask about this' - how can
+              we make sure to show the user they can ask questions about entries
+              as well as just edit", and then, better: "How about just the chat
+              icon".
+
+              She is right twice over. BOTH things open the conversation -
+              there is no form for a measurement, because the conversation is
+              the only thing that writes one - so two links were two doors into
+              one room, and calling either of them "Edit" promised a form that
+              does not exist AND implied the only reason to open an entry is to
+              fix it. A record you can only correct is a filing cabinet.
+
+              ONE DOOR, BUT NAMED. Her next thought was "Or is that too vague
+              for the user...?" and it was - a bare chat bubble says "talk",
+              which is exactly the thing an unlabelled icon cannot make
+              discoverable, and making asking discoverable was the whole point.
+              So the chat mark keeps a short label and the bin does not, because
+              a bin explains itself and a speech bubble does not say what you
+              might say into it.
+
+              "ASK ABOUT OR CHANGE THIS" IS HERS, and the verb is the whole
+              reason it works. She tried "Ask about this, or edit" first, and
+              EDIT is the word that cannot go here: it promises a form with
+              fields, and there is no form anywhere in this app for a
+              measurement. CHANGE promises only that the thing can be changed,
+              which is true, and says nothing about how - which is right,
+              because the how is a sentence you type.
+
+              The prefill leans neither way: she finishes it with a question or
+              a correction, whichever she came for. */}
+          <View style={styles.rowActions}>
+            <Pressable
+              onPress={() => toChat(`About my measurements from ${shortDay(date)}: `)}
+              accessibilityRole="button"
+              accessibilityLabel={`Ask about or change the readings from ${shortDay(date)}`}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => [styles.editLink, pressed && styles.pressed]}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.accentDeep} />
+              <ThemedText type="detail" themeColor="accentDeep">
+                Ask about or change this
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              onPress={() => void removeDay()}
+              disabled={busy != null}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete everything from ${shortDay(date)}`}
+              hitSlop={Spacing.three}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              {busy === 'day' ? (
+                <ThemedText type="detail" themeColor="accentDeep">
+                  {'…'}
+                </ThemedText>
+              ) : (
+                <Ionicons name="trash-outline" size={17} color={theme.accentDeep} />
+              )}
+            </Pressable>
+          </View>
         </View>
+      ) : null}
+
+      {/* The chevron is its own control, and it is the way back out of an
+          opened row - the opener above holds only the date once the row is
+          open, so there has to be something obvious to press. */}
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? `Close ${shortDay(date)}` : `Open ${shortDay(date)}`}
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.chevron, pressed && styles.pressed]}
+      >
         <Ionicons
           name={expanded ? 'chevron-down' : 'chevron-forward'}
           size={16}
           color={theme.textSecondary}
-          style={styles.chevron}
         />
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <SwipeableDay onDelete={() => void removeDay()} label={`Delete everything from ${shortDay(date)}`}>
+      {row}
+    </SwipeableDay>
+  );
+}
+
+
+// The day row's swipe, in the shape swipe-to-delete.tsx established: the row
+// translates whole, the mark sits behind it, and the mark is a tap.
+//
+// A REAL GESTURE, NOT A LONG PRESS ON A PRESSABLE. The first version wrapped
+// the row in a Pressable to catch a long press, which put a button around a
+// row that already contains buttons - the same nesting fault as the row
+// itself, reintroduced by the fix for it. A GestureDetector draws a plain View
+// and has no such problem, and it is also what the rest of the app does.
+function SwipeableDay({
+  children,
+  onDelete,
+  label,
+}: {
+  children: React.ReactNode;
+  onDelete: () => void;
+  label: string;
+}) {
+  const theme = useTheme();
+  const x = useSharedValue(0);
+  const [open, setOpen] = useState(false);
+
+  const settle = useCallback((next: boolean) => setOpen(next), []);
+
+  const pan = Gesture.Pan()
+    // Only once it is clearly sideways: a vertical scroll must still scroll and
+    // a tap must still reach the row.
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-10, 10])
+    .onUpdate((e) => {
+      const from = open ? -SWIPE_OPEN : 0;
+      x.set(Math.min(0, Math.max(-SWIPE_OPEN, from + e.translationX)));
+    })
+    .onEnd(() => {
+      const shouldOpen = x.get() < -SWIPE_OPEN / 2;
+      x.set(withSpring(shouldOpen ? -SWIPE_OPEN : 0, { damping: 18, stiffness: 180 }));
+      runOnJS(settle)(shouldOpen);
+    });
+
+  const sliding = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
+  const revealed = useAnimatedStyle(() => ({ opacity: x.get() < -1 ? 1 : 0 }));
+
+  return (
+    <View>
+      <Animated.View style={[styles.swipeBin, revealed]} pointerEvents={open ? 'auto' : 'none'}>
+        <Pressable
+          onPress={onDelete}
+          disabled={!open}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          style={({ pressed }) => [styles.swipeHit, pressed && styles.pressed]}
+        >
+          <Ionicons name="trash-outline" size={20} color={theme.accentDeep} />
+        </Pressable>
+      </Animated.View>
+
+      <GestureDetector gesture={pan}>
+        <Animated.View style={sliding}>{children}</Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
@@ -597,6 +851,7 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: -Spacing.two },
   section: { gap: Spacing.two },
   historyHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  historyTitle: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.three },
   weekBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   backToToday: { alignSelf: 'flex-start' },
   // NO CARD FILL ANYWHERE ON THIS SCREEN ("less like lots of filled squares").
@@ -610,13 +865,28 @@ const styles = StyleSheet.create({
   icon: { width: 20, marginTop: 1 },
   label: { width: 84 },
   dayLabel: { width: 56 },
+  // The part of the row that opens it: everything but the marks and the
+  // chevron, which are its siblings rather than its children.
+  dayOpener: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   // Takes the slack, and may shrink - see the note in overview-panel about
   // what a flex child does without minWidth.
   figures: { flex: 1, minWidth: 0, gap: 2 },
   change: { minWidth: 56, textAlign: 'right' },
   chevron: { marginTop: 2 },
+  // The opener once the row is open: just the date, holding nothing pressable.
+  dayLabelOnly: { flexDirection: 'row' },
   expandedRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   expandedLabel: { flex: 1 },
-  editLink: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: Spacing.one },
+  editLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  rowActions: { flexDirection: 'row', gap: Spacing.four, paddingTop: Spacing.one },
+  marks: { flexDirection: 'row', gap: Spacing.four, paddingVertical: 2 },
+  swipeBin: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: SWIPE_OPEN,
+  },
+  swipeHit: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7 },
 });
