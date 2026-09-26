@@ -5,6 +5,24 @@ import type { AddSource } from '@/lib/composer-add';
 import { activityAckFacts, bodyAckFacts, foodAckFacts } from '@/lib/log-acknowledgment-facts';
 import { persistLogTurn } from '@/lib/log-turn';
 
+/**
+ * The day a reading belongs to, as a person would say it - "Thu 24 Sept", or
+ * "today" when it really is today. Null when there is no date to name, so the
+ * caller can fall back rather than print an invalid one.
+ */
+function readingDay(at: string | null): string | null {
+  if (!at) return null;
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date();
+  const sameDay =
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate();
+  if (sameDay) return 'today';
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 // Logging by photo (build item 10b, step 3).
 //
 // Pick an image, classify it once, and hand it to whichever parse path already
@@ -60,6 +78,8 @@ export type ImageLogResult =
         body_fat_pct?: number | null;
         muscle_kg?: number | null;
       } | null;
+      /** What the photograph said, for comparing against what already stands. */
+      incoming: { measured_at?: string | null; weight_kg?: number | null } | null;
     }
   // A MEDICAL DOCUMENT IS NOT LOGGED, IT IS GATHERED. Every other kind here is
   // written the moment it is recognised, because a plate of food is one
@@ -164,6 +184,13 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
           body_fat_pct?: number | null;
           muscle_kg?: number | null;
         };
+        // WHAT THE IMAGE ACTUALLY SAID. The route has always returned this and
+        // nothing read it, which is why a clash could only ever be reported as
+        // "I've left it as it is" - there was nothing to compare against.
+        newData?: {
+          measured_at?: string | null;
+          weight_kg?: number | null;
+        };
       }>('/api/parse-body-measurement', {
         imageBase64: image.base64,
         mediaType: image.mediaType,
@@ -177,6 +204,7 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
           status: 'duplicate',
           kind: 'body_measurement',
           existing: saved.existingEntry ?? null,
+          incoming: saved.newData ?? null,
         };
       }
 
@@ -238,13 +266,41 @@ export function messageForResult(result: ImageLogResult): string | null {
       // See app/lib/log-acknowledgment.ts for the full reasoning.
       return result.message;
     case 'duplicate': {
-      // Short, and it names what stands rather than what did not happen. The
-      // reading is already there; that is the whole of the news.
+      // THE DAY IN THE PHOTOGRAPH, NOT TODAY (Ruth, 26 September 2026). She
+      // re-uploaded a scale screenshot from the 24th to replace a reading she
+      // had deleted by mistake, and was told "You've already got today's
+      // reading logged, at 55.6 kg. I've left it as it is." Both halves were
+      // wrong: it was not today's, and leaving it was not what she wanted.
+      //
+      // The route has always compared against the date IN THE IMAGE - it reads
+      // it out of the screenshot and looks for a reading on THAT day. Only this
+      // sentence said "today", hard-coded, and it turned a correct check into a
+      // message that could not be argued with because it described the wrong
+      // day.
       const w = result.existing?.weight_kg;
-      const figure = typeof w === 'number' ? `${Math.round(w * 10) / 10} kg` : null;
-      return figure
-        ? `You've already got today's reading logged, at ${figure}. I've left it as it is.`
-        : "You've already got a reading logged for today, so I've left it as it is.";
+      const existingFigure = typeof w === 'number' ? `${Math.round(w * 10) / 10} kg` : null;
+      const when = readingDay(result.existing?.measured_at ?? result.incoming?.measured_at ?? null);
+      const day = when ?? 'that day';
+
+      // A DIFFERENT NUMBER ON THE SAME DAY IS A QUESTION, NOT A DUPLICATE.
+      // Same day, same value is genuinely nothing to do. Same day, different
+      // value means one of them is wrong and only she knows which - so it asks
+      // rather than keeping whichever happened to be there first.
+      const incoming = result.incoming?.weight_kg;
+      const clash =
+        typeof w === 'number' &&
+        typeof incoming === 'number' &&
+        Math.round(w * 10) !== Math.round(incoming * 10);
+      if (clash) {
+        return (
+          `You've already got a reading for ${day}, at ${existingFigure}, and this one says ` +
+          `${Math.round(incoming * 10) / 10} kg. Which of those should I keep?`
+        );
+      }
+
+      return existingFigure
+        ? `You've already got ${day}'s reading logged, at ${existingFigure}. I've left it as it is.`
+        : `You've already got a reading logged for ${day}, so I've left it as it is.`;
     }
     // The tray says everything that needs saying, and is on screen. A line in
     // the thread as well would be the app narrating its own UI.

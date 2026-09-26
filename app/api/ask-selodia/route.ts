@@ -9,6 +9,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
+import { buildLongHistory } from '../../lib/long-history';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
 import {
   CLASSIFY_TOOL_NAME,
@@ -353,14 +354,26 @@ export async function POST(request: NextRequest) {
     console.log('ASK-SELODIA USER TURN INSERT FAILED:', userInsertError.message);
   }
 
-  // THE SAME TURN, TWICE AT ONCE - voice only. See earlierTwin in
-  // lib/voice-supersede.ts. The later copy writes nothing - no model call, no
-  // log - and answers with what the first copy says, so the voice hears one
-  // reply, and its own row is removed so the thread shows the turn once. If the
-  // first copy never answers (it failed), this copy runs the turn itself rather
-  // than speaking an error: a failure must not take its retry down with it.
+  // THE SAME TURN, TWICE AT ONCE. See earlierTwin in lib/voice-supersede.ts.
+  // The later copy writes nothing - no model call, no log - and answers with
+  // what the first copy says, so only one reply is produced, and its own row is
+  // removed so the thread shows the turn once. If the first copy never answers
+  // (it failed), this copy runs the turn itself rather than erroring: a failure
+  // must not take its retry down with it.
+  //
+  // NO LONGER VOICE ONLY (Ruth, 26 September 2026). She saw doubled messages in
+  // TEXT chat as well, where this check was skipped entirely. The cause was a
+  // stale-state guard in the app letting two requests leave in one tick - fixed
+  // there too - but a guard belongs at the write, which is her standing rule
+  // and the reason this now runs whatever the source. The client can be wrong,
+  // retried, or replaced; the row is written here.
+  //
+  // It is safe for typed turns because it is not merely matching on words: the
+  // same sentence said again ON PURPOSE - "Yes." and, after an answer, "Yes."
+  // again - has an assistant reply between the two, and earlierTwin checks for
+  // exactly that before calling anything a duplicate.
   timing.mark('userRowWritten');
-  const twin = isVoice ? await earlierTwin(supabase, userRow?.id ?? null, message) : null;
+  const twin = await earlierTwin(supabase, userRow?.id ?? null, message);
   if (twin && userRow?.id) {
     const reply = await answerWrittenAfter(supabase, twin.created_at);
     if (reply) {
@@ -457,6 +470,11 @@ export async function POST(request: NextRequest) {
     dayFood,
     latestMeasurement,
   } = ctx as TurnContext;
+
+  // SIX MONTHS, SUMMARISED. Separate from turn_context deliberately: that RPC
+  // is one read bounded by a few days, and widening it would widen every block
+  // hanging off it. See app/lib/long-history.ts.
+  const longHistoryBlock = await buildLongHistory(supabase, user.id);
 
   const disclosedAllergies = (disclosedAllergyRows ?? []) as Allergy[];
   const savedPlans = resolvePlans(planRows);
@@ -878,6 +896,9 @@ Hydration genuinely moves what the scale says, along with salt, food volume, and
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
+${longHistoryBlock ? `
+${longHistoryBlock}
+` : ''}
 ${plansBlock}${meCardsBlock}${insightsBlock}
 ${allergyBlock}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
 

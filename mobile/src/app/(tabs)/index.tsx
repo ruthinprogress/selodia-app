@@ -301,7 +301,10 @@ export default function ChatScreen() {
   const sendingRef = useRef(false);
   const inputRef = useRef('');
   useEffect(() => {
-    sendingRef.current = sending;
+    // Only ever mirrors the CLEARING of `sending`. Setting it is done
+    // synchronously in handleSend, and this effect running on the next render
+    // must not walk that back before the state has caught up.
+    if (!sending) sendingRef.current = false;
   }, [sending]);
   useEffect(() => {
     inputRef.current = input;
@@ -732,7 +735,22 @@ ${result.message}`;
 
   async function handleSend(override?: string, tagOverride?: DiscussTag) {
     const trimmed = (override ?? input).trim();
-    if (!trimmed || sending) return;
+    // THE REF, NOT THE STATE (Ruth, 26 September 2026: "each message appears
+    // twice in the chat thread... It also happens in text chat").
+    //
+    // `sending` is React state, so it does not change until the next render.
+    // Two calls in the same tick - a fast double tap, or a chip pick landing on
+    // the same frame as the auto-send effect - both read `false`, both pass,
+    // and both post the turn. ask-selodia then writes the user row and the
+    // assistant row once per call, which is two of each in the thread. The two
+    // effects below already guard on `sendingRef` for exactly this reason; the
+    // function they call did not, which made the guards look complete while the
+    // hole was underneath them.
+    //
+    // The ref is set HERE and synchronously, before any await, so the second
+    // caller in the same tick sees it. setSending still runs for the UI.
+    if (!trimmed || sendingRef.current) return;
+    sendingRef.current = true;
     // THE TAG IS PASSED, NOT READ BACK (2026-09-16). "Ask about this" sets the
     // tag and the auto-send in one render pass, and the effect that sends fires
     // before that state has committed - so the turn was built with a null tag
