@@ -9,6 +9,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
+import { statesATrackedMetric } from '../../lib/stated-measurement';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -1072,7 +1073,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'string',
       enum: ['none', 'food', 'activity', 'measurement', 'hydration', 'sleep'],
       description:
-        "'food' ONLY when the message actually describes food or drink they consumed - a message ABOUT the log is not a meal (\"it's not gone into the log\", \"did that save?\", \"my log is empty\"), and gets an answer rather than an entry. 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (a weight, body fat percentage, or muscle mass - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText. A REST DAY IS THE ONE EXCEPTION: \"rest day today\", \"taking it easy today\", \"no training today\" is an activity log with no duration to ask for, so set 'activity' straight away and put \"rest day\" in logText. The duration rule exists because a calorie figure cannot be invented from a guess, and a rest day burns nothing to guess at.",
+        "'food' ONLY when the message actually describes food or drink they consumed - a message ABOUT the log is not a meal (\"it's not gone into the log\", \"did that save?\", \"my log is empty\"), and gets an answer rather than an entry. 'activity' if it describes exercise/physical activity done, 'measurement' if it states a body measurement they took (ANY body measurement they have taken, not only the ones a scale gives. That means a weight, a body fat percentage or a muscle mass, and EQUALLY a waist, a thigh, a hip, a chest, a calf, an arm, a blood pressure or a resting heart rate. A single writer handles all of them and works out which is which, so NEVER answer 'none' merely because the thing measured is not a weight - a tape measurement is a measurement - e.g. \"55.2 this morning\", \"8 stone 9 today\", \"scales said 55.4 and 29% fat\"), else 'none'. A weight they are AIMING for is a goal, not a measurement - use 'none'. INDEPENDENT of the safety classification - a distress disclosure can also be a log; set this to whatever is loggable regardless of emotional content. ACTIVITY HAS A CONDITION: only set 'activity' once you know HOW LONG it lasted. \"I went for a run\" on its own is not enough - leave logIntent 'none', ask how long in your reply, and set it to 'activity' on the turn where they tell you, passing the whole thing in logText. A REST DAY IS THE ONE EXCEPTION: \"rest day today\", \"taking it easy today\", \"no training today\" is an activity log with no duration to ask for, so set 'activity' straight away and put \"rest day\" in logText. The duration rule exists because a calorie figure cannot be invented from a guess, and a rest day burns nothing to guess at.",
     },
     logText: {
       type: 'string',
@@ -1834,9 +1835,36 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // food/activity branch below because it has no clarification loop and its own
   // failure mode: a message that reads like a weight but yields no usable
   // number saves nothing at all rather than writing an empty row.
-  if (result.logIntent === 'measurement') {
+  //
+  // AND THE CLASSIFIER DOES NOT GET THE LAST WORD ON THIS (Ruth, 26 September
+  // 2026: a thigh measurement "recorded in chat but did not actually get
+  // logged"). `logIntent` has no value meaning waist or thigh, and its
+  // instruction defined 'measurement' as a weight, a body fat or a muscle mass
+  // - so 'none' was the obedient answer for a thigh, and 'none' runs nothing.
+  // The writer below has always handled personal metrics; it was never asked.
+  // See app/lib/stated-measurement.ts for why the guard is code and not a
+  // prompt line.
+  //
+  // Only consulted when the model said 'none': a message already routed to food
+  // keeps its route, which is what stops "chicken thighs, 200g" being read as a
+  // tape measurement. And a correction is left alone, since it aims at a row
+  // that already exists.
+  let measurementIntent = result.logIntent === 'measurement';
+  if (!measurementIntent && result.logIntent === 'none' && !correction) {
     try {
-      const { reading, personal } = await logMeasurementFromText(supabase, user.id, message);
+      measurementIntent = await statesATrackedMetric(supabase, user.id, message);
+    } catch (err) {
+      console.log('TRACKED METRIC GUARD FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  if (measurementIntent) {
+    try {
+      const { reading, personal, missedPersonal } = await logMeasurementFromText(
+        supabase,
+        user.id,
+        message
+      );
       if (reading) {
         saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
         attempt.landed.push('reading');
@@ -1846,6 +1874,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // `landed` so a partial miss can say which ones made it, rather than the
       // whole turn reading as one undifferentiated "reading".
       for (const m of personal) attempt.landed.push(m.metric_name);
+      // AND WHAT DID NOT LAND. Until now this line had no counterpart: `missed`
+      // was initialised empty at the top of the turn and never written to, so
+      // save-honesty's partial-miss branch - the one whose comment reads "a
+      // weight saves while a waist does not" - could never fire. A thigh whose
+      // insert failed left `landed` holding only 'reading', which reads as a
+      // clean save, and the turn went quiet.
+      for (const name of missedPersonal) attempt.missed.push(name);
       // The toast says something either way. Its summary is the scale reading
       // when there is one, since that is the headline number; otherwise it names
       // what was actually kept.

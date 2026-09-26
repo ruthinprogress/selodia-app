@@ -129,9 +129,17 @@ export async function logMeasurementFromText(
   // model pick one bucket would silently drop the other. `ambiguous` is set
   // instead of `reading` when a correction could not be aimed safely - nothing
   // is written in that case, and the caller asks.
+  // `missedPersonal` names the metrics this function MEANT to write and did
+  // not - a failed insert, or a correction that had no route for them. It
+  // exists because save-honesty.ts has always had a branch for "a weight saves
+  // while a waist does not" and nothing ever filled it in: `missed` was
+  // initialised empty in ask-selodia and never pushed to, so that branch was
+  // dead code from the day it was written. The caller cannot work this out for
+  // itself - only the code that built the rows knows what it was carrying.
 ): Promise<{
   reading: MeasurementEntry | null;
   personal: PersonalMetricEntry[];
+  missedPersonal: string[];
   ambiguous?: MeasurementAmbiguity | null;
 }> {
   // The names this person ALREADY tracks, handed to the model so it reuses them.
@@ -221,6 +229,17 @@ export async function logMeasurementFromText(
   // not touch these - correcting a personal metric is not yet a thing the
   // correction path knows how to do, and half-doing it would be worse.
   const personal: PersonalMetricEntry[] = [];
+  const missedPersonal: string[] = [];
+  if (updateId && Array.isArray(parsed.personal) && parsed.personal.length > 0) {
+    // A CORRECTION CARRYING A PERSONAL METRIC IS A KNOWN GAP, and until now it
+    // was a SILENT one: the branch below is skipped, nothing is written, and
+    // the turn reads as a success. Naming them here does not correct anything -
+    // it just stops the app pretending it did.
+    for (const m of parsed.personal) {
+      const name = String(m?.name ?? '').trim();
+      if (name) missedPersonal.push(name);
+    }
+  }
   if (!updateId && Array.isArray(parsed.personal)) {
     const rows = parsed.personal
       .map((m) => ({
@@ -246,9 +265,19 @@ export async function logMeasurementFromText(
         .insert(rows)
         .select('id, metric_name, value, unit');
       if (error) {
+        // NON-FATAL TO THE TURN, NOT INVISIBLE TO THE PERSON. This used to be
+        // the end of it: a log line on a server she cannot read, and a reply
+        // already written saying it was noted.
         console.log('personal_metrics insert failed (non-fatal):', error.message);
+        for (const r of rows) missedPersonal.push(r.metric_name);
       } else {
-        personal.push(...((data ?? []) as PersonalMetricEntry[]));
+        const wrote = (data ?? []) as PersonalMetricEntry[];
+        personal.push(...wrote);
+        // A PARTIAL INSERT IS POSSIBLE and would otherwise read as a clean
+        // success, since `error` is null and some rows came back. Anything sent
+        // that did not return is missing, and is named as such.
+        const returned = new Set(wrote.map((w) => w.metric_name));
+        for (const r of rows) if (!returned.has(r.metric_name)) missedPersonal.push(r.metric_name);
       }
     }
   }
@@ -258,7 +287,7 @@ export async function logMeasurementFromText(
   // downstream - breaking a trend chain, and satisfying "they logged today"
   // when they did not. Any personal metrics above still stand.
   if (weightKg == null && bodyFatPct == null && muscleKg == null) {
-    return { reading: null, personal };
+    return { reading: null, personal, missedPersonal };
   }
 
   // ASK, DON'T ASSUME (2026-08-28). A correction carrying one bare number and
@@ -280,7 +309,7 @@ export async function logMeasurementFromText(
     if (stated.length === 1) {
       const candidates = candidateFields(stated[0], targetRow);
       if (candidates.length > 1) {
-        return { reading: null, personal, ambiguous: { value: stated[0], candidates } };
+        return { reading: null, personal, missedPersonal, ambiguous: { value: stated[0], candidates } };
       }
     }
   }
@@ -317,7 +346,7 @@ export async function logMeasurementFromText(
       .eq('user_id', userId)
       .select();
     if (error) throw new Error('body_measurements update failed: ' + error.message);
-    return { reading: (data?.[0] as MeasurementEntry) ?? null, personal };
+    return { reading: (data?.[0] as MeasurementEntry) ?? null, personal, missedPersonal };
   }
 
   const { data, error } = await supabase
@@ -333,7 +362,7 @@ export async function logMeasurementFromText(
     .select();
 
   if (error) throw new Error('body_measurements insert failed: ' + error.message);
-  return { reading: (data?.[0] as MeasurementEntry) ?? null, personal };
+  return { reading: (data?.[0] as MeasurementEntry) ?? null, personal, missedPersonal };
 }
 
 // The toast line, matching foodSaveSummary / activitySaveSummary: label plus
