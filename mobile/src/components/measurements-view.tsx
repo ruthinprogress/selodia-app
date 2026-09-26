@@ -166,7 +166,11 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   }, [weekKey, reloadKey]);
 
   const metrics = useMemo(
-    () => resolveTrackedMetrics(stored, allPersonal.map((p) => p.metric_name)).filter((m) => !m.hidden),
+    () =>
+      resolveTrackedMetrics(
+        stored,
+        allPersonal.map((p) => ({ name: p.metric_name, unit: p.unit }))
+      ).filter((m) => !m.hidden),
     [stored, allPersonal]
   );
 

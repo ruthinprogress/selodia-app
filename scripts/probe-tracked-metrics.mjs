@@ -52,14 +52,20 @@ check(
 
 check(
   'nothing stored: personal metrics follow the scale ones',
-  labels(resolveTrackedMetrics(null, ['waist', 'thighs'])),
+  labels(resolveTrackedMetrics(null, [{ name: 'waist', unit: 'cm' }, { name: 'thighs', unit: 'cm' }])),
   ['Weight', 'Body fat', 'Muscle', 'Waist', 'Thighs']
 );
 
+// AND THE UNIT COMES WITH IT. Leaving it empty here made the settings list
+// print "Waist - no unit" beside a Measurements screen reading "79 cm". The
+// first spelling still wins, so the label is the person's own, but a unit from
+// a later row fills a gap an earlier one left.
 check(
-  'a name recorded twice appears once',
-  labels(resolveTrackedMetrics(null, ['waist', 'Waist ', 'waist'])),
-  ['Weight', 'Body fat', 'Muscle', 'Waist']
+  'a name recorded twice appears once, and picks up its unit',
+  resolveTrackedMetrics(null, [{ name: 'waist' }, { name: 'Waist ', unit: 'cm' }, { name: 'waist' }])
+    .filter((m) => m.source === 'personal')
+    .map((m) => `${m.label} in ${m.unit || 'nothing'}`),
+  ['Waist in cm']
 );
 
 // ---- her order is kept, and new things still arrive -------------------
@@ -70,19 +76,19 @@ const hers = [
 
 check(
   'her order is honoured exactly',
-  labels(resolveTrackedMetrics(hers, ['waist'])).slice(0, 2),
+  labels(resolveTrackedMetrics(hers, [{ name: 'waist', unit: 'cm' }])).slice(0, 2),
   ['Waist', 'Weight']
 );
 
 check(
   'a metric she records TOMORROW appears at the end, unasked',
-  labels(resolveTrackedMetrics(hers, ['waist', 'calf'])).includes('Calf'),
+  labels(resolveTrackedMetrics(hers, [{ name: 'waist', unit: 'cm' }, { name: 'calf', unit: 'cm' }])).includes('Calf'),
   true
 );
 
 check(
   'the scale metrics she has not listed are still offered, after hers',
-  labels(resolveTrackedMetrics(hers, ['waist'])),
+  labels(resolveTrackedMetrics(hers, [{ name: 'waist', unit: 'cm' }])),
   ['Waist', 'Weight', 'Body fat', 'Muscle']
 );
 

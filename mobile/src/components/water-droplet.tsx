@@ -50,8 +50,15 @@ export function WaterDroplet({ fill, size = 56 }: { fill: number; size?: number 
     transform: [{ translateY: level.get() }],
   }));
 
+  // NO accessible={false} ON THESE SVGs (2026-09-26). react-native-svg passes
+  // it straight through to the DOM on web, where `accessible` is not a boolean
+  // attribute, so React logs "Received `false` for a non-boolean attribute" -
+  // which the app's own error toast then shows over the page. A decorative
+  // drawing with no text in it announces nothing to a screen reader anyway, so
+  // the prop was buying nothing and costing a warning on every screen that
+  // draws one.
   return (
-    <Svg width={size} height={size * 1.3} viewBox="0 0 100 130" accessible={false}>
+    <Svg width={size} height={size * 1.3} viewBox="0 0 100 130">
       <Defs>
         <ClipPath id="drop">
           <Path d={DROP} />

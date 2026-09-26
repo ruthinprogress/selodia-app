@@ -107,9 +107,11 @@ function labelFor(name: string): string {
  * metric she starts measuring tomorrow must appear without her going back to
  * settings, or the settings screen becomes a thing you have to remember.
  */
+export type KnownPersonalMetric = { name: string; unit?: string | null };
+
 export function resolveTrackedMetrics(
   stored: TrackedMetric[] | null,
-  knownPersonalNames: string[]
+  known: KnownPersonalMetric[]
 ): TrackedMetric[] {
   // ONE ENTRY PER NAME, WHATEVER THE CAPITALS. These names are written by the
   // conversation, so "waist" and "Waist" both occur in real data - and two
@@ -117,25 +119,30 @@ export function resolveTrackedMetrics(
   // each missing the other's readings. Deduplicated on the same normalised key
   // that readingsFor matches on, keeping the first spelling seen so the label
   // is the person's own.
-  const byKey = new Map<string, string>();
-  for (const raw of knownPersonalNames) {
-    const name = raw.trim();
+  const byKey = new Map<string, KnownPersonalMetric>();
+  for (const raw of known) {
+    const name = raw.name.trim();
     if (!name) continue;
     const key = metricKeyFor(name);
-    if (!byKey.has(key)) byKey.set(key, name);
+    const held = byKey.get(key);
+    // First spelling wins, so the label is the person's own - but a unit from
+    // a later row fills a gap left by an earlier one that had none.
+    if (!held) byKey.set(key, { name, unit: raw.unit ?? null });
+    else if (!held.unit && raw.unit) byKey.set(key, { ...held, unit: raw.unit });
   }
 
-  const personal: TrackedMetric[] = [...byKey.values()].map(
-    (name) => ({
-      key: metricKeyFor(name),
-      label: labelFor(name),
-      // The unit is read from the rows themselves at render time; this is only
-      // the fallback for a metric with no unit recorded.
-      unit: '',
-      source: 'personal' as const,
-      name,
-    })
-  );
+  const personal: TrackedMetric[] = [...byKey.values()].map((m) => ({
+    key: metricKeyFor(m.name),
+    label: labelFor(m.name),
+    // THE UNIT THE ROWS WERE MEASURED IN. It used to be left empty here, with
+    // a note that the screen reads it from each row - which is true of the
+    // Measurements screen and false of everywhere else. The settings list read
+    // the entry and printed "Waist - no unit" beside a Measurements screen
+    // saying "79 cm".
+    unit: m.unit ?? '',
+    source: 'personal' as const,
+    name: m.name,
+  }));
 
   if (!stored || stored.length === 0) return [...SCALE_DEFAULTS, ...personal];
 

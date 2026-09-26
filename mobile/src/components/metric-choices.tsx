@@ -42,11 +42,14 @@ export function MetricChoices() {
     void (async () => {
       const [stored, { data: personal }] = await Promise.all([
         loadTrackedMetrics(),
-        supabase.from('personal_metrics').select('metric_name').limit(400),
+        supabase.from('personal_metrics').select('metric_name, unit').limit(400),
       ]);
       if (cancelled) return;
-      const names = ((personal ?? []) as { metric_name: string }[]).map((p) => p.metric_name);
-      setList(resolveTrackedMetrics(stored, names));
+      const known = ((personal ?? []) as { metric_name: string; unit: string | null }[]).map((p) => ({
+        name: p.metric_name,
+        unit: p.unit,
+      }));
+      setList(resolveTrackedMetrics(stored, known));
     })();
     return () => {
       cancelled = true;

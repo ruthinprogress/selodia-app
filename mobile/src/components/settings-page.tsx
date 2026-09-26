@@ -195,8 +195,15 @@ export function SettingsRow({
 // the serif.
 function Sprig() {
   const theme = useTheme();
+  // NO accessible={false} ON THESE SVGs (2026-09-26). react-native-svg passes
+  // it straight through to the DOM on web, where `accessible` is not a boolean
+  // attribute, so React logs "Received `false` for a non-boolean attribute" -
+  // which the app's own error toast then shows over the page. A decorative
+  // drawing with no text in it announces nothing to a screen reader anyway, so
+  // the prop was buying nothing and costing a warning on every screen that
+  // draws one.
   return (
-    <Svg width={54} height={70} viewBox="0 0 54 70" accessible={false}>
+    <Svg width={54} height={70} viewBox="0 0 54 70">
       <Path
         d="M40 4 C 30 22, 24 42, 22 66"
         fill="none"
