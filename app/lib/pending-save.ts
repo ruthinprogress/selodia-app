@@ -202,6 +202,44 @@ export function offerQuestion(reply: string, type: SaveType = 'note'): string | 
  * Record an offer and when it was made. Saves nothing. Returns whether it was
  * stored, because the question is only asked about an offer that exists.
  */
+/**
+ * How long after an offer the app stays quiet. One conversation, roughly.
+ *
+ * Ruth, 26 September 2026: "After I mentioned cold symptoms, voice asked
+ * whether to save them to the Almanac... Only offer an Almanac save when the
+ * user describes an ongoing practice or a decision, and at most once per
+ * conversation."
+ */
+const OFFER_QUIET_HOURS = 3;
+
+/**
+ * Has an offer already been made recently enough that another would be nagging?
+ *
+ * THE GUARD IS HERE AND NOT IN THE PROMPT, which is her standing rule: never
+ * ask the model not to do a thing twice, enforce it where the row is written.
+ * The instruction already said not to offer a passing symptom - "Not every
+ * passing 'I'm tired'" - and a cold was offered anyway. A second sentence
+ * saying the same thing more firmly would be the third time of asking.
+ *
+ * It reads `last_save_offer_at`, which is deliberately NOT the same field as
+ * `pending_save_asked_at`: that one is cleared the moment an offer is answered,
+ * so it can only ever say "is one waiting", never "have I just asked".
+ */
+export async function offeredRecently(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('user_profile')
+    .select('last_save_offer_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const at = data?.last_save_offer_at;
+  if (typeof at !== 'string') return false;
+  const since = Date.now() - Date.parse(at);
+  return isFinite(since) && since < OFFER_QUIET_HOURS * 60 * 60 * 1000;
+}
+
 export async function storePendingSave(
   supabase: SupabaseClient,
   userId: string,
@@ -211,6 +249,8 @@ export async function storePendingSave(
     user_id: userId,
     pending_save: proposal,
     pending_save_asked_at: new Date().toISOString(),
+    // Never cleared. See offeredRecently above.
+    last_save_offer_at: new Date().toISOString(),
   });
   if (error) console.log('PENDING SAVE: could not store the offer —', error.message);
   return !error;

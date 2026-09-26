@@ -83,6 +83,7 @@ import {
   prepareNote,
   readPendingSave,
   saveAppliedNote,
+  offeredRecently,
   storePendingSave,
 } from '../../lib/pending-save';
 import {
@@ -2343,7 +2344,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     } else if (!pendingSave.proposal) {
       // A new offer is stored only when none is waiting: one question at a time.
       const proposal = coerceProposal(result.proposedSave);
-      if (proposal) {
+      // AT MOST ONE OFFER PER CONVERSATION (Ruth, item 3c). A 'me' card is a
+      // decision she has actually made and is exempt - those arrive at a
+      // decision moment and are the point of the tab. What is rate-limited is
+      // the app noticing something and asking to keep it, which is the shape
+      // that turned a cold into an Almanac prompt.
+      const tooSoon = proposal && proposal.type !== 'me' && (await offeredRecently(supabase, user.id));
+      if (proposal && !tooSoon) {
         offered = await storePendingSave(supabase, user.id, proposal);
         if (offered) offeredType = proposal.type;
       }
