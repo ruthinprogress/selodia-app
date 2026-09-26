@@ -58,7 +58,32 @@ import { useTheme } from '@/hooks/use-theme';
 // concentric at any size.
 //
 // The height is unchanged on purpose - "I actually quite like the height now.
-// I wouldn't make it taller. Just wider." 
+// I wouldn't make it taller. Just wider."
+//
+// AND THE RADIUS WAS NEVER THE BUG (Ruth, 26 September 2026). The note above is
+// still true and still worth keeping, but it was a fix for a fault she did not
+// have. Her words are what found the real one: "Pill is fine until I select it
+// and it reverts back to square."
+//
+// SELECTION was doing it. The segment used to take its colour from
+// `selected && { backgroundColor: theme.background }`, so an unselected segment
+// had NO background at all - nothing drawn, nothing to round - and Android
+// built the background drawable at the moment it was first given a colour,
+// without the corner radius that was sitting in the stylesheet all along. The
+// track, three lines up, has a colour from the instant it mounts and is a
+// flawless pill on the same value. That asymmetry was the whole fault.
+//
+// It also explains the two days spent on the number. At 18 it was square, at
+// 999 it was square, because the radius was never reaching the drawable. Any
+// value would have been square, and changing it was always going to fail.
+//
+// So the colour is now unconditional - transparent when unselected, cream when
+// selected - and the drawable exists from the first render with its corners
+// already in it. Only the colour changes afterwards, never the shape.
+//
+// The rule this leaves behind is worth more than the fix: on Android, a
+// conditional background and a border radius do not reliably arrive together.
+// Give the view a background from the start and change its colour.
 
 export type SegmentedTabItem<T extends string> = { id: T; label: string };
 
@@ -89,7 +114,13 @@ export function SegmentedTabs<T extends string>({
             accessibilityLabel={item.label}
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
           >
-            <View style={[styles.segment, selected && { backgroundColor: theme.background }]}>
+            <View
+              style={[
+                styles.segment,
+                // ALWAYS A COLOUR, NEVER SOMETIMES A COLOUR. See the note above.
+                { backgroundColor: selected ? theme.background : 'transparent' },
+              ]}
+            >
               {/* SHRINK RATHER THAN CUT (2026-09-19). "Activit" and "Measurement
                   / s" came back on her phone: a third of the track is about 100
                   points, less the segment padding, and a phone set to a larger
