@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SpotlightTarget } from '@/components/spotlight-target';
@@ -152,15 +152,31 @@ function greeting(name: string | null, now: Date = new Date()): string {
 // she would say it out loud. Anything older than a long cycle is not shown at
 // all rather than counted up forever: "Day 96" says the log stopped, not where
 // she is.
-function cycleDayFrom(lastStart: string | null): number | null {
+//
+// VERIFIED AND CAPPED AT 45 (Ruth, 26 September 2026). She asked whether this
+// counts from the last logged period start or from the start of the WEEK,
+// having seen "Day 6" on Friday the 25th and Saturday the 26th, where it
+// happened to match the weekday. It counts from the period start - the row it
+// reads is cycle_events with event_type 'period_start', most recent first - so
+// the number was right and the match was a coincidence. What was wrong is that
+// nothing SAID so, which is item 5a's real point: an unlabelled number beside a
+// date reads as part of the date.
+//
+// The ceiling comes down from 60 to 45, her figure. Past that the last logged
+// start is too old to mean anything, and a number that is probably wrong is
+// worse than no number.
+export function cycleDayFrom(lastStart: string | null): number | null {
   if (!lastStart) return null;
   const start = new Date(`${lastStart}T00:00:00`);
   if (isNaN(start.getTime())) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const day = Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
-  return day >= 1 && day <= 60 ? day : null;
+  return day >= 1 && day <= MAX_CYCLE_DAY ? day : null;
 }
+
+/** Past this, the last logged start is too old to count from. Her figure. */
+const MAX_CYCLE_DAY = 45;
 
 function startOfToday(): string {
   const d = new Date();
@@ -180,6 +196,15 @@ export function OverviewPanel({
   onWaterRemoved?: (id: string) => void;
   waterUndone?: { ml: number; id: string } | null;
 } = {}) {
+  // SPACING THAT SCALES WITH THE SCREEN (Ruth, item 4: "Spacing should scale
+  // with screen height, so this also looks balanced on shorter phones"). Fixed
+  // numbers tuned on one handset are exactly how a screen ends up top-heavy on
+  // another, which is the fault being fixed. Clamped at both ends so a very
+  // small phone keeps a usable gap and a tablet does not open a chasm.
+  const { height: screenHeight } = useWindowDimensions();
+  const topGap = Math.max(16, Math.min(48, Math.round(screenHeight * 0.035)));
+  const blockGap = Math.max(12, Math.min(40, Math.round(screenHeight * 0.025)));
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OverviewData | null>(null);
 
@@ -441,12 +466,12 @@ export function OverviewPanel({
           position on every screen"). Drawn inside this panel it was inside the
           scroller, and inside a container already carrying the page margin,
           which put it 64 points from the edge of the screen instead of 32. */}
-      <View style={styles.header}>
+      <View style={[styles.header, { marginTop: topGap }]}>
         <ThemedText type="display" style={styles.greeting}>{greeting(name)}</ThemedText>
         <View style={styles.dateRow}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.dateText}>
             {todayLabel()}
-            {data.cycleDay != null ? `  ·  Day ${data.cycleDay}` : ''}
+            {data.cycleDay != null ? `  ·  Cycle day ${data.cycleDay}` : ''}
           </ThemedText>
         </View>
       </View>
@@ -620,7 +645,16 @@ export function OverviewPanel({
       {/* Hydration has no header because it is not a view to go into. It is the
           one thing on this screen you can DO, so it sits inline as an action -
           now a single strip rather than a card, for the same reason the squares
-          replaced the tall sections. */}
+          replaced the tall sections.
+
+          THE GAP ABOVE IT IS PART OF ITEM 4. Her reading of the screen was that
+          everything sat high with one large hole between the droplet and the
+          closing line. All the slack was collecting in one place, because the
+          epigraph's `marginTop: 'auto'` swallowed every spare point on the
+          screen. Giving the droplet its own proportional gap above spends some
+          of that slack higher up, which is what "distributed evenly" means
+          here. */}
+      <View style={{ height: blockGap }} />
       <SpotlightTarget id="overview.water">
         {/* The personal goal and its reasons come from what was logged today -
             see lib/hydration-goal.ts and components/hydration-card.tsx. */}
@@ -864,7 +898,13 @@ const styles = StyleSheet.create({
   // The date of a reading that is not today's. Muted, with its own space
   // rather than a separator, so nothing can be left pointing at nothing when
   // the row wraps (Ruth, item 6).
-  asOf: { marginLeft: Spacing.one },
+  // AT THE END OF THE ROW, NOT IN THE MIDDLE OF IT (Ruth, 26 September 2026,
+  // item 5c): "The date ('24 Sept') sits mid-row. Put it at the end in muted
+  // text." It was last in source order already, so on a row that wrapped it
+  // landed wherever the figures left it - which reads as belonging to the
+  // figure beside it rather than to the row. marginLeft:'auto' pushes it to the
+  // far right of whichever line it ends on, where a date on a record belongs.
+  asOf: { marginLeft: 'auto' },
   // THE CLOSING EPIGRAPH (Ruth, item 9). The one italic in the app, centred,
   // with the largest space on the screen above it - which is what makes it
   // read as a close rather than as another line of content. The size is the
@@ -910,9 +950,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 3,
-    // A unit that does not fit beside its number moves beneath it whole,
-    // rather than breaking mid-word - "8,465 step / s" on her phone.
-    flexWrap: 'wrap',
+    // A VALUE AND ITS UNIT DO NOT COME APART (Ruth, 26 September 2026, item
+    // 5b): "'112g' and 'protein' are wrapping onto separate lines. Keep each
+    // value and its unit together; wrap only whole value-unit pairs."
+    //
+    // This used to wrap, to stop a unit breaking mid-word - "8,465 step / s".
+    // That fixed the break by moving the unit to its own line, which is the
+    // same fault one step further out: 112g on one line and "protein" on the
+    // next is a number with nothing attached to it.
+    //
+    // Wrapping belongs one level up and already lives there: inlineStats wraps
+    // between whole figures, with a column gap wide enough to read as a
+    // separator. So a pair that will not fit drops to the next line ENTIRE,
+    // which is exactly what she asked for.
+    flexWrap: 'nowrap',
+    flexShrink: 0,
   },
   statValue: {
     fontSize: 15,
@@ -942,18 +994,30 @@ const styles = StyleSheet.create({
   // leading tighter than the size, which is the part of the brief that carries
   // the rhythm. The block costs 76 points instead of 141.
   greeting: {
-    fontSize: 32,
-    lineHeight: 38,
+    // UP FROM 32 (Ruth, 26 September 2026, item 4: "Enlarge the greeting by
+    // around 15-20%, keeping Cormorant Infant"). 38 is 19% up, and the leading
+    // stays just under a 1.2 ratio, which is what keeps a two-line greeting
+    // reading as one composition rather than two sentences.
+    //
+    // It was 50 until the 25th, which put "Good afternoon," on three lines in a
+    // 312pt column - a bug only ever visible after midday. 38 clears that with
+    // room: the longest greeting is about 300pt at this size.
+    fontSize: 38,
+    lineHeight: 45,
     // Clear of the three seeds, which now sit in the top-right corner on this
     // screen as they do on every other one.
     paddingRight: Spacing.five,
   },
   header: {
-    // 10px higher than the page inset puts it (Ruth, 2026-09-18: "move the
-    // entire heading block 8-12px higher ... so the page feels more balanced").
-    // A negative margin rather than a smaller inset, so every other screen keeps
-    // the same top margin as this one.
-    marginTop: -10,
+    // THE TOP GAP IS SET AT RUNTIME, from the screen's own height - see
+    // `topGap` in the panel. It used to be -10, pulling the heading block above
+    // the page inset (Ruth, 2026-09-18: "move the entire heading block 8-12px
+    // higher"). That was right when the greeting was the only thing competing
+    // for the top of the screen; with the seeds now pinned up there on every
+    // screen, and her item 4 on the 26th - "Add more space above the greeting,
+    // roughly double the current top margin" - it goes the other way, and it
+    // scales rather than being one number that suits one phone.
+    marginTop: 0,
     // The display face now carries 10 points of padding for its descenders (see
     // themed-text.tsx), so the gap under the greeting is taken back here to keep
     // this block exactly where she approved it.
