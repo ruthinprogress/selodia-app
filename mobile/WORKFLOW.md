@@ -107,6 +107,18 @@ Pull the current build order and spec state fresh at the start of every real ses
 ### Same-day pause vs. a genuine session close
 If a session is pausing only briefly (e.g. a usage-limit reset a few hours away, a lunch break) rather than genuinely ending for the day, a full close-out ceremony is unnecessary token/time spend — a light note is enough. The full ceremony below is for when a session is genuinely wrapping up.
 
+### An overnight run IS a session close (added 2026-09-26, after Session 54 had none)
+
+**When Ruth goes to bed and the agent keeps working, the close-out is owed at that handover — not at some later ending that never comes.**
+
+Session 54 has no rows in the workbook. It was not skipped by accident and no automation failed: **the ceremony's steps are automated, its trigger is not.** Step 6 below is "the gate on the whole ceremony" and needs four facts that "none of is inferable", so the ceremony only ever begins because a person says the session is ending. S54 never had that moment — she said "I will be going to sleep now", asked for the list to be finished overnight, and the session ran through the night and straight into Session 55 the next morning. By the letter of the rule above it was a pause, so nothing was owed. Twenty-four commits went unrecorded, and it was found two days later by Ruth noticing the file's timestamp, not by any check.
+
+So the rule above is not wrong, it is incomplete. A pause is a pause when **the work pauses too**. An overnight run is the opposite: the human stops and the work accelerates, which is precisely when a record is most needed, because nobody was watching it happen.
+
+**What to do.** When she hands over for the night, run the ceremony **before starting the overnight work**, covering the day just finished, and number it as that session. The overnight run then belongs to the NEXT session, which is what it is — a different session number, a different set of hands on the wheel. If the overnight work is itself substantial, it gets its own close-out when she wakes, rather than being folded silently into the previous day.
+
+**Do not wait to be asked.** The four facts at step 6 are still not inferable, so ask for them as part of accepting the overnight work — the same message in which she says goodnight is the right moment, and the cost of asking is one line.
+
 ### Closing a session — the full ceremony
 1. Confirm everything is committed and the working tree is clean (`git status`).
 2. Get a brief current folder/file structure summary from Claude Code (path/type/purpose/layer — lightweight, not exhaustive; a full detailed nested visualization is only generated on request for a specific external reason, like a handover).

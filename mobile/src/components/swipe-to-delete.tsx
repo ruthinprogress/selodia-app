@@ -63,13 +63,27 @@ export function SwipeToDelete({
   table,
   id,
   what,
+  onDelete,
   onDeleted,
   children,
 }: {
-  table: DeletableTable;
-  id: string;
+  /** Omitted when `onDelete` does the removing. */
+  table?: DeletableTable;
+  id?: string;
   /** Named in the accessible label, so the control says what it removes. */
   what: string;
+  /**
+   * REMOVING SOMETHING THAT IS NOT A ROW (2026-09-26). Everything this
+   * component handled until now was one row in one table, so `table` and `id`
+   * were enough. A single measurement is not: weight, body fat and muscle are
+   * three COLUMNS of one row a scale wrote, so removing "Thursday's weight"
+   * clears a column and only deletes the row when the last figure in it goes.
+   *
+   * Rather than fork the gesture - which would be a second place for the
+   * one-open-at-a-time store, the catch distance and the reveal timing to drift
+   * apart - the caller may supply the removal itself. See lib/delete-reading.ts.
+   */
+  onDelete?: () => Promise<void> | void;
   onDeleted?: () => void;
   children: React.ReactNode;
 }) {
@@ -130,7 +144,8 @@ export function SwipeToDelete({
     if (busy) return;
     setBusy(true);
     setOpenSwipe(null);
-    await deleteEntry(table, id);
+    if (onDelete) await onDelete();
+    else if (table && id) await deleteEntry(table, id);
     onDeleted?.();
   }
 

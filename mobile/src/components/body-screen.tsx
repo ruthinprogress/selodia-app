@@ -91,7 +91,7 @@ export function BodyScreen({
           hitSlop={Spacing.three}
           style={({ pressed }) => [
             styles.back,
-            { top: insets.top + TOP_ROW },
+            { top: insets.top + TOP_ROW, backgroundColor: theme.background },
             pressed && styles.pressed,
           ]}
         >
@@ -124,6 +124,28 @@ const styles = StyleSheet.create({
     left: PageInset.horizontal,
     zIndex: 10,
     elevation: 10,
+    // A PAGE-COLOURED DISC BEHIND IT (Ruth, 26 September 2026, item 10: "the
+    // back arrow sits on top of the calf icon when scrolled. Keep the back
+    // arrow clear of content").
+    //
+    // The arrow is pinned and the page scrolls beneath it, which is correct -
+    // it must stay reachable. But a bare glyph over moving content reads as two
+    // drawings on top of each other, and a measurement mark passing behind a
+    // chevron is exactly the collision she saw. zIndex was already winning;
+    // winning was never the problem, having nothing behind it was.
+    //
+    // The seeds mark on the other side of the same row has solved this since
+    // the 25th, with a disc a little larger than the glyph so the ground reads
+    // as deliberate rather than as a square of background gone wrong. Same
+    // treatment, same reasoning, same row - see settings-link.tsx.
+    width: ARROW_SIZE + 12,
+    height: ARROW_SIZE + 12,
+    borderRadius: (ARROW_SIZE + 12) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Centred on where the bare arrow used to sit, so nothing moved.
+    marginLeft: -6,
+    marginTop: -6,
   },
   pressed: { opacity: 0.6 },
   content: {

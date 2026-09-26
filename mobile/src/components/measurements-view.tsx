@@ -12,6 +12,7 @@ import { QuickLogBar } from '@/components/quick-log-bar';
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { ReportLink } from '@/components/report-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WhatYouBurn } from '@/components/what-you-burn';
@@ -427,55 +428,6 @@ function MetricRow({
   );
 }
 
-/**
- * The quiet mark that removes something, at whichever level it is offered.
- *
- * MODULE LEVEL, not inside the row. A component defined during a render is a
- * different type every render, so React throws the old one away and mounts a
- * new one - losing its state and its focus. It was written inline first and
- * the lint rule caught it.
- *
- * `cross` draws the tiny x she recognised from elsewhere in the app rather than
- * a bin; see variant 4.
- */
-function DeleteMark({
-  label,
-  onPress,
-  working,
-  cross = false,
-  size = 17,
-}: {
-  label: string;
-  onPress: () => void;
-  working: boolean;
-  cross?: boolean;
-  size?: number;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={working}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={Spacing.two}
-      style={({ pressed }) => pressed && styles.pressed}
-    >
-      {working ? (
-        <ThemedText type="detail" themeColor="accentDeep">
-          {'\u2026'}
-        </ThemedText>
-      ) : (
-        <Ionicons
-          name={cross ? 'close-circle-outline' : 'trash-outline'}
-          size={size}
-          color={cross ? theme.textSecondary : theme.accentDeep}
-        />
-      )}
-    </Pressable>
-  );
-}
-
 // ONE DAY, in whichever of the three shapes is being looked at.
 //
 // WHAT A DELETE ACTUALLY REMOVES is the whole question here - see
@@ -504,7 +456,14 @@ function DayRow({
   const theme = useTheme();
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const summary = values.map((v) => v.text).join('   ');
+  // NAME THE METRIC (Ruth, 26 September 2026, item 10): "History rows must name
+  // the metric: 'Sat 26 . 25 cm' should read 'Sat 26 . Calf 25 cm'."
+  //
+  // A figure with no name is only readable when there is exactly one thing it
+  // could be. On a day with a single tape reading it was a bare "25 cm", which
+  // is a number the reader has to guess at - and the guess gets harder the more
+  // metrics she adds, which is the direction this feature goes.
+  const summary = values.map((v) => `${v.metric.label} ${v.text}`).join('   ');
 
   const removeOne = async (v: { metric: TrackedMetric; at: string }) => {
     if (busy) return;
@@ -565,20 +524,36 @@ function DayRow({
 
       {expanded ? (
         <View style={styles.figures}>
+          {/* SWIPE, NOT A ROW OF BINS (Ruth, 26 September 2026, item 7). She
+              chose visible marks per line on the 26th and changed her mind the
+              same evening, having lived with them: "Remove all of these.
+              Instead, make each reading line swipeable using the shared
+              swipe-to-delete component."
+
+              She is right, and the reason is arithmetic. A bin on every line
+              plus one beside the link put SIX delete controls on a five-reading
+              day, on a screen whose job is to show her body changing over time.
+              The gesture costs nothing until it is wanted, and the shared
+              component already closes any other open row, so only one bin is
+              ever on screen.
+
+              It uses lib/delete-reading.ts rather than a table and an id,
+              because a reading is not a row: weight, body fat and muscle are
+              three columns of one row a scale wrote. */}
           {values.map((v) => (
-            <View key={v.metric.key} style={styles.expandedRow}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.expandedLabel}>
-                {v.metric.label}
-              </ThemedText>
-              <ThemedText type="smallBold">{v.text}</ThemedText>
-              {/* A MARK PER LINE, which is what she asked for: it removes THIS
-                  reading and nothing measured beside it. */}
-              <DeleteMark
-                label={`Delete ${v.metric.label} from ${shortDay(date)}`}
-                onPress={() => void removeOne(v)}
-                working={busy === v.metric.key}
-              />
-            </View>
+            <SwipeToDelete
+              key={v.metric.key}
+              what={`${v.metric.label} from ${shortDay(date)}`}
+              onDelete={() => removeOne(v)}
+              onDeleted={onDeleted}
+            >
+              <View style={styles.expandedRow}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.expandedLabel}>
+                  {v.metric.label}
+                </ThemedText>
+                <ThemedText type="smallBold">{v.text}</ThemedText>
+              </View>
+            </SwipeToDelete>
           ))}
 
           {loggedAt(at) ? (
@@ -638,22 +613,10 @@ function DayRow({
               </ThemedText>
             </Pressable>
 
-            <Pressable
-              onPress={() => void removeDay()}
-              disabled={busy != null}
-              accessibilityRole="button"
-              accessibilityLabel={`Delete everything from ${shortDay(date)}`}
-              hitSlop={Spacing.three}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              {busy === 'day' ? (
-                <ThemedText type="detail" themeColor="accentDeep">
-                  {'…'}
-                </ThemedText>
-              ) : (
-                <Ionicons name="trash-outline" size={17} color={theme.accentDeep} />
-              )}
-            </Pressable>
+            {/* NO BIN HERE EITHER. Deleting the whole day is the day row's own
+                swipe, which is where it belongs - a control that removes five
+                readings should not sit inside the list of those five readings,
+                a thumb's width from the one that removes one. */}
           </View>
         </View>
       ) : null}
