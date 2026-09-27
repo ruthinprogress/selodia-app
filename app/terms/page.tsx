@@ -19,6 +19,29 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // explanation for her asking is that the URL was entered into a store listing,
 // where a 404 is a submission problem rather than a cosmetic one.
 //
+// A PARAGRAPH REMOVED 2026-09-27, and worth recording because it was the kind
+// of mistake a terms page makes easily. It read: "It will not set you a weight
+// target or tell you a number to aim for." Ruth: "targets are definitely part
+// of selodia if the user wants it, this part is not true."
+//
+// She is right, and goal-safety.ts says so plainly - the app ACCEPTS a stated
+// goal weight and assesses it, declining to coach toward one only when it
+// calculates below the WHO underweight threshold. I had written the paragraph
+// from the safety architecture's stance rather than from its behaviour, which
+// is the same error as writing a spec claim from intent.
+//
+// It looked like it was doing legal work, propping up the not-a-medical-device
+// framing. It was not: that framing is carried by the sentences around it, and
+// a contract promising the app will never do something it does on request is a
+// misrepresentation - more risk than it removed. Nothing replaced it. If a
+// narrower true version is wanted later, the defensible line is the underweight
+// refusal, because the code actually enforces it.
+//
+// The short version carried the same claim in miniature - "it will not tell
+// you what to weigh" - and went with it. Worth noticing that a summary had
+// quietly inherited the error: a false sentence tends to appear twice,
+// because the summary is written from the section rather than from the app.
+//
 // WRITTEN FROM THE APP, NOT FROM A TEMPLATE, exactly as the privacy policy was.
 // Every claim below describes something the code actually does. In particular
 // the medical section is not boilerplate: it restates, in the language a terms
@@ -26,12 +49,25 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // SAFETY_ARCHITECTURE.md and Part Two, principle 1.
 //
 // WHAT STILL NEEDS DECIDING, and is marked in the text:
-//   - The legal entity. Same open question as the privacy policy: whether this
-//     is Ruth personally or a company. It changes who is being contracted with.
+//   - SETTLED 2026-09-27: the contract is with SELODÍA LTD, not with Ruth
+//     personally. "Contract is with Selodía Ltd. Not me." The privacy policy
+//     still names her personally and now disagrees with this page - it is
+//     flagged in the close-out and needs the same change once the ICO
+//     registration and controller line are checked, which is not a rename I
+//     should make unilaterally on a data-protection document.
 //   - Governing law. England and Wales is assumed, being where she is.
-//   - Whether there will ever be a paid tier. The payment section is written to
-//     be honest about there not being one yet rather than to reserve rights
-//     over a thing that does not exist.
+//   - SETTLED 2026-09-27. There IS a paid tier and it ships with the public
+//     launch: "Paid tier will be shipped from the moment it's public, it will
+//     only be free for Beta-users and they will receive their own separate
+//     contract attached directly to their account." So the payment section
+//     describes a subscription rather than an absence, and names the beta
+//     agreement as the thing that overrides this page for those users.
+//
+//     WHAT IS NOT WRITTEN YET, and is a build item rather than a wording one:
+//     the beta agreement itself, the mechanism attaching it to an account, and
+//     the billing this page now refers to. See the Beta-ready list in
+//     SELODIA_SPEC.md - a terms page describing a subscription that cannot yet
+//     be bought is fine while the app is not public, and is not fine after.
 //
 // NO CLIENT JAVASCRIPT, matching the privacy policy and the landing page.
 
@@ -40,13 +76,13 @@ export const metadata: Metadata = {
   description: 'The agreement between you and Selodía, in plain English.',
 };
 
-const UPDATED = '26 September 2026';
+const UPDATED = '27 September 2026';
 
 const SECTIONS: PlainSection[] = [
   {
     heading: 'The short version',
     body: [
-      'Selodía helps you understand your own body. It is not a doctor, it does not diagnose anything, and it will not tell you what to weigh.',
+      'Selodía helps you understand your own body. It is not a doctor and it does not diagnose anything.',
       'Your data is yours. You can take it out or delete it whenever you like.',
       'Use it sensibly, do not try to break it, and do not rely on it for anything medical. If something it says worries you, speak to your GP.',
     ],
@@ -54,7 +90,7 @@ const SECTIONS: PlainSection[] = [
   {
     heading: 'Who you are agreeing with',
     body: [
-      'Selodía is run by Ruth Christianson-Monroy. Using the app means accepting these terms. If you do not accept them, do not use it.',
+      'Selodía is operated by Selodía Ltd. Using the app means accepting these terms, which are an agreement between you and Selodía Ltd. If you do not accept them, do not use it.',
       'Questions about anything here go to hello@selodia.app.',
     ],
   },
@@ -63,7 +99,6 @@ const SECTIONS: PlainSection[] = [
     body: [
       'Selodía is a body-literacy app. It shows you what you have recorded, describes what has changed, and helps you notice patterns in your own life. That is all it does.',
       'It does not diagnose, treat, or monitor any medical condition. It is not a medical device and has not been assessed as one. Nothing it says should be used to make a decision you would otherwise take to a doctor, and it will tell you so itself when a question strays that way.',
-      'Some things it deliberately will not do. It will not set you a weight target or tell you a number to aim for. It will not praise or criticise a figure you record. It will not encourage you to eat less than your body needs. These are not gaps waiting to be filled in a later version; they are the point of it.',
       'If you have or have had an eating disorder, or you are being treated for any condition affected by food, weight or exercise, please talk to whoever is treating you before using an app that asks you to record those things every day.',
       'If you are ever in crisis, contact your GP, call 111, or call 999 in an emergency. In the UK the Samaritans are on 116 123, free, at any hour.',
     ],
@@ -95,8 +130,9 @@ const SECTIONS: PlainSection[] = [
   {
     heading: 'What it costs',
     body: [
-      'Selodía is free to use at the moment. There is no paid tier, no subscription and nothing to buy inside it.',
-      'If that ever changes, you will be told before anything is charged, and using it without paying will remain possible or the app will stop rather than quietly start billing you.',
+      'Selodía is a paid subscription. What it costs, and what is included, is shown before you subscribe and you are told before anything is charged.',
+      'Beta testers are the exception. If you are taking part in the beta, Selodía is free to you, and the terms of that are set out in a separate agreement attached to your own account rather than on this page. Where that agreement and this page disagree, that agreement is the one that applies to you.',
+      'You can cancel at any time. Cancelling stops the next payment; it does not delete your record, which stays yours until you delete it.',
     ],
   },
   {
