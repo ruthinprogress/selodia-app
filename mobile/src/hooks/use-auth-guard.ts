@@ -94,15 +94,29 @@ export function useAuthGuard(): { ready: boolean } {
     // signed-in app, wherever it lives in the router, is gated the same way.
     const inApp = inTabs || group === 'settings';
     const onConversation = inOnboarding && CONVERSATION_SCREENS.has(screen);
+    // A RECOVERY SESSION IS A REAL SESSION, and that is the trap here. The link
+    // in a password-reset email authenticates the person BEFORE they choose a
+    // new password, so without this line the guard would see a valid session,
+    // decide they are signed in, and send them into the app with the password
+    // they could not remember still on the account. They would be in once and
+    // locked out again next time - which is a worse failure than having no
+    // reset at all, because it looks like it worked.
+    const onPasswordReset = inOnboarding && screen === 'reset-password';
     const onAuthEntry = inOnboarding && (screen === 'consent' || screen === 'account');
 
     if (!session) {
+      // The reset screen opens from a cold start with no session at all: it is
+      // reading the tokens out of the link as this runs, and the session
+      // appears a beat later. Redirecting on that beat would close the screen
+      // the email just opened.
+      if (onPasswordReset) return;
       console.log('[BOOT] no session; inApp =', inApp, ' -> redirecting =', inApp);
       if (inApp) router.replace('/onboarding/consent');
       return;
     }
-    // Signed in: never police the linear conversation chain.
-    if (onConversation) return;
+    // Signed in: never police the linear conversation chain, and never move
+    // somebody off the screen where they are setting a new password.
+    if (onConversation || onPasswordReset) return;
     if (confirmedComplete.current) {
       if (inOnboarding) router.replace('/');
       return;

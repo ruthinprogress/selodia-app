@@ -139,6 +139,42 @@ export default function AccountScreen() {
     }
   }
 
+  // THE SAME ANSWER WHETHER OR NOT THE ADDRESS IS REGISTERED, deliberately.
+  // "No account with that email" tells anybody who asks which addresses have
+  // accounts here - on an app holding health data that is a real disclosure,
+  // and it is the reason Supabase's own call does not distinguish either.
+  //
+  // So the message below is written to be true in both cases: it says what was
+  // sent IF there is an account, and asks nothing of somebody who has mistyped
+  // their address beyond looking.
+  async function handleForgotten() {
+    setError(null);
+    setInfo(null);
+
+    if (!email.trim()) {
+      setError('Enter your email address first, and I will send you a link.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        // Straight back into the app rather than a web page. A browser tab that
+        // asks for a new password and then says "now open the app" is two steps
+        // and a lost thread; this opens the screen that does it.
+        redirectTo: makeRedirectUri({ path: 'onboarding/reset-password' }),
+      });
+      if (resetError) throw resetError;
+      setInfo(
+        'If there is an account with that address, a link is on its way. It opens Selodía and lets you set a new password.'
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That did not send. Try once more in a moment.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleContinue() {
     if (mode === 'signin') return handleSignIn();
 
@@ -339,6 +375,29 @@ export default function AccountScreen() {
               </ThemedText>
             </ThemedView>
           </Pressable>
+
+          {/* FORGETTING A PASSWORD WAS UNRECOVERABLE UNTIL NOW (found 2026-09-12,
+              built 2026-09-27 at Ruth's instruction: "build it now, before any
+              beta tester is on the app").
+
+              Somebody who forgot theirs had no way back in except Google, and
+              Google sign-in is still in Testing - so for most people there was
+              no way back at all. For Ruth that is an inconvenience; for a
+              stranger it is the end of their account and of the record in it,
+              which is the single most likely way a beta tester is lost.
+
+              Shown in sign-in mode only: on the sign-up form it would be an
+              offer to recover an account that does not exist yet. */}
+          {mode === 'signin' && (
+            <Pressable
+              onPress={() => void handleForgotten()}
+              disabled={submitting}
+              style={({ pressed }) => pressed && styles.pressed}>
+              <ThemedText type="small" themeColor="accentDeep" style={styles.dividerText}>
+                Forgotten your password?
+              </ThemedText>
+            </Pressable>
+          )}
 
           <Pressable onPress={toggleMode} style={({ pressed }) => pressed && styles.pressed}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.dividerText}>
