@@ -19,6 +19,7 @@ import { WhatYouBurn } from '@/components/what-you-burn';
 import { Spacing } from '@/constants/theme';
 import { useBurnFigures } from '@/hooks/use-burn-figures';
 import { useFocusReload } from '@/hooks/use-focus-reload';
+import { archiveDeleted, purgeExpired } from '@/lib/recoverable';
 import {
   deleteReading,
   deleteReadingMessage,
@@ -528,7 +529,13 @@ function DayRow({
     const outcome = await deleteReading(v.metric, v.at);
     setBusy(null);
     if (outcome.done) {
-      onRemoved(outcome.restore, `${v.metric.label} from ${shortDay(date)} removed.`);
+      const label = `${v.metric.label} from ${shortDay(date)}`;
+      // TEN SECONDS AND SEVEN DAYS ARE DIFFERENT PROMISES. The toast below
+      // catches the wrong tap; the archive catches the regret, days later,
+      // with the numbers it actually had. See lib/recoverable.ts.
+      void archiveDeleted('reading', label, outcome.restore);
+      void purgeExpired();
+      onRemoved(outcome.restore, `${label} removed.`);
       onDeleted();
     } else setFailed(deleteReadingMessage(v.metric, outcome));
   };
@@ -554,8 +561,11 @@ function DayRow({
     }
     setBusy(null);
     if (undoable.length > 0) {
+      const together: ReadingRestore = { kind: 'several', items: undoable };
+      void archiveDeleted('reading', `everything from ${shortDay(date)}`, together);
+      void purgeExpired();
       onRemoved(
-        { kind: 'several', items: undoable },
+        together,
         `${shortDay(date)} removed, ${undoable.length} ${undoable.length === 1 ? 'reading' : 'readings'}.`
       );
     }

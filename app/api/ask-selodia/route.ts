@@ -10,6 +10,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
+import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
 import {
   CLASSIFY_TOOL_NAME,
@@ -477,6 +478,13 @@ export async function POST(request: NextRequest) {
   // hanging off it. See app/lib/long-history.ts.
   const longHistoryBlock = await buildLongHistory(supabase, user.id);
 
+  // WHAT SHE DELETED AND COULD STILL HAVE BACK. See app/lib/recover-deleted.ts.
+  // Read every turn rather than only when asked, because the asking is the
+  // thing that has to work - a list fetched only once she has already been told
+  // it cannot be done is no use.
+  const recoverableRows = await listRecoverable(supabase, user.id);
+  const recoverableBlock = recoverablePrompt(recoverableRows);
+
   const disclosedAllergies = (disclosedAllergyRows ?? []) as Allergy[];
   const savedPlans = resolvePlans(planRows);
   const dayStateRows = { todayFood: dayFood, latest: latestMeasurement };
@@ -897,6 +905,9 @@ Hydration genuinely moves what the scale says, along with salt, food volume, and
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
+${recoverableBlock ? `
+${recoverableBlock}
+` : ''}
 ${longHistoryBlock ? `
 ${longHistoryBlock}
 ` : ''}
@@ -1090,6 +1101,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'boolean',
       description:
         "Set true only when this reply's food guidance actually drew on the person's stored health context (the HEALTH CONTEXT block, if present). Leave false otherwise.",
+    },
+    restoreId: {
+      type: 'string',
+      description:
+        'ONLY when she has asked for something back that appears in the "THINGS SHE DELETED AND CAN STILL GET BACK" list: the id from the matching line, copied exactly. Never invent one, never guess between two, and never set it unless she asked. Leave it out otherwise.',
     },
     logIntent: {
       type: 'string',
@@ -1467,6 +1483,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     rememberCategory?: string;
     rememberContent?: string;
     healthGuidanceApplied?: boolean;
+    /** An id from the recoverable list, when she has asked for one back. */
+    restoreId?: string;
     logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep';
     logText?: string;
     cycleEvent?: string;
@@ -2388,6 +2406,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   const honestyNote =
     correctionNote === null && !deferredLog ? unsavedNote(attempt) : null;
 
+  // PUTTING SOMETHING BACK. The model picked an id out of the list above; the
+  // app does the writing and states the result, which is the same split every
+  // other write in this route follows - a fact about her stored data is the
+  // app's to state, never the model's to promise.
+  let restoreNote: string | null = null;
+  if (typeof result.restoreId === 'string' && result.restoreId.trim()) {
+    const outcome = await recoverDeleted(supabase, user.id, result.restoreId.trim());
+    restoreNote = recoverNote(outcome);
+  }
+
   // FOCUS CAPTURE: infer, then confirm (2026-09-09).
   //
   // Order matters. An ANSWER to an outstanding offer is handled before a new
@@ -2522,7 +2550,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
 
   // The offer goes last, so the reply ends on the question it is waiting on.
   const offerLine = offered ? offerQuestion(safeReplyText, offeredType) : null;
-  const trailingLines = [planNote, correctionNote, focusNote, saveNote, meNote, honestyNote, offerLine].filter(
+  const trailingLines = [planNote, correctionNote, restoreNote, focusNote, saveNote, meNote, honestyNote, offerLine].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
   const finalReply =
