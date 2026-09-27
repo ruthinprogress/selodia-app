@@ -1,8 +1,6 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-
-import { MeasurementIcon, measurementIcon } from '@/components/measurement-icon';
+import { MeasurementIcon, measurementIcon, type MeasurementIconKind } from '@/components/measurement-icon';
 import { useTheme } from '@/hooks/use-theme';
-import { SCALE_ICONS, type TrackedMetric } from '@/lib/tracked-metrics';
+import type { TrackedMetric } from '@/lib/tracked-metrics';
 
 // THE MARK FOR ONE TRACKED MEASUREMENT, decided in one place.
 //
@@ -15,20 +13,28 @@ import { SCALE_ICONS, type TrackedMetric } from '@/lib/tracked-metrics';
 // wrong: somebody who starts measuring their calf gets the calf drawing without
 // choosing anything, and an icon name saved years ago cannot rot.
 //
-// THE SCALE'S THREE HAVE NO DRAWING YET and use an Ionicon each. That is the
-// one outstanding piece: three marks in the same hand as the tape family.
+// THE SCALE'S THREE NOW HAVE ONE TOO (Ruth, 26 September 2026). They used to
+// borrow an Ionicon each - a speedometer, a pie chart and a barbell - which were
+// stand-ins from three different drawing sets sitting in a row beside a family
+// built on purpose. The barbell was the worst of them: it is a picture of
+// exercise standing in for a reading taken standing still.
+//
+// The whole point of that family is that every mark is the same hand, so a
+// borrowed glyph is not a small inconsistency, it is the one thing the family
+// exists to prevent. See measurement-icon.tsx for why these three are drawn
+// differently from the tape marks rather than copying their band.
+const SCALE_MARKS: Record<string, MeasurementIconKind> = {
+  weight_kg: 'weight',
+  body_fat_pct: 'body_fat',
+  muscle_kg: 'muscle',
+};
+
 export function MetricMark({ metric, size = 18 }: { metric: TrackedMetric; size?: number }) {
   const theme = useTheme();
 
-  if (metric.source === 'scale' && metric.field) {
-    return (
-      <Ionicons
-        name={SCALE_ICONS[metric.field] as never}
-        size={size}
-        color={theme.accentDeep}
-      />
-    );
-  }
+  const kind: MeasurementIconKind =
+    (metric.source === 'scale' && metric.field ? SCALE_MARKS[metric.field] : undefined) ??
+    measurementIcon(metric.name ?? metric.label);
 
-  return <MeasurementIcon kind={measurementIcon(metric.name ?? metric.label)} size={size} color={theme.accentDeep} />;
+  return <MeasurementIcon kind={kind} size={size} color={theme.accentDeep} />;
 }

@@ -71,12 +71,6 @@ export type TrackedMetric = {
 // measurements and have no mark in that family. They keep an Ionicon each, and
 // that IS a stand-in: three more drawn to match is the outstanding piece of
 // work, and it is flagged rather than pretended finished.
-export const SCALE_ICONS: Record<ScaleField, string> = {
-  weight_kg: 'speedometer-outline',
-  body_fat_pct: 'pie-chart-outline',
-  muscle_kg: 'barbell-outline',
-};
-
 /** The scale's three, as they are labelled when nobody has said otherwise. */
 const SCALE_DEFAULTS: TrackedMetric[] = [
   { key: 'weight', label: 'Weight', unit: 'kg', source: 'scale', field: 'weight_kg' },
