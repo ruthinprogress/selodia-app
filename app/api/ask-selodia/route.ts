@@ -2687,23 +2687,54 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       : safeReplyText;
 
   timing.mark('allergyGateDone');
-  const { error: insertError } = await supabase.from('chat_messages').insert({
-    user_id: user.id,
-    role: 'assistant',
+  // ONE REPLY PER TURN, ENFORCED BY THE DATABASE (Ruth, 27 September 2026).
+  //
+  // A duplicate pair of ASSISTANT rows was written at 09:24 that morning, after
+  // two earlier fixes had shipped - and it survived both because it is a
+  // different shape. Saturday's work stopped the APP sending one turn twice,
+  // and the server's twin check matches on USER rows. Neither sees two replies
+  // to a single user turn.
+  //
+  // The path is the voice adapter's own documented fallback: when a turn
+  // arrives twice and the first copy has not answered yet, the second copy runs
+  // the turn itself rather than speaking an error. That trade is deliberate and
+  // still right - losing what she said is worse than a repeat - but nobody
+  // considered that both copies then write an answer.
+  //
+  // So the rule moves somewhere neither copy can be wrong about it. Each reply
+  // carries the id of the turn it answers, and a partial unique index makes a
+  // second one impossible. `ignoreDuplicates` means the loser of that race is a
+  // no-op rather than an error, which is exactly what it should be: the reply
+  // already exists, and the person gets it.
+  //
+  // PARTIAL, so the rows that legitimately answer nothing still write - the
+  // weekly roundup, a photo acknowledgment - because Postgres allows many NULLs
+  // in a unique index. That is the whole reason this is a column rather than a
+  // constraint on content.
+  const { error: insertError } = await supabase
+    .from('chat_messages')
+    .upsert(
+      {
+        answers_id: userRow?.id ?? null,
+        user_id: user.id,
+        role: 'assistant',
     // What was actually shown, including any deletion line. Storing replyText
     // instead would leave the model unaware on the next turn that an entry it
     // can no longer see was removed at its own request.
-    content: finalReply,
-    source: 'chat',
-    // Tagged alongside the user turn so pulling one entry's history back out
-    // yields both halves of the exchange, not a column of unanswered questions.
-    discuss_entry_id: resolvedTag?.entryId ?? null,
-    discuss_entry_type: resolvedTag?.entryType ?? null,
-    classification: nextClassification,
-    escalation_step: nextEscalationStep,
-    distress_revisit_count: nextRevisitCount,
-    food_log_id: breakdownFoodLogId,
-  });
+        content: finalReply,
+        source: 'chat',
+        // Tagged alongside the user turn so pulling one entry's history back
+        // out yields both halves of the exchange, not a column of unanswered
+        // questions.
+        discuss_entry_id: resolvedTag?.entryId ?? null,
+        discuss_entry_type: resolvedTag?.entryType ?? null,
+        classification: nextClassification,
+        escalation_step: nextEscalationStep,
+        distress_revisit_count: nextRevisitCount,
+        food_log_id: breakdownFoodLogId,
+      },
+      { onConflict: 'answers_id', ignoreDuplicates: true }
+    );
   if (insertError) {
     console.log('ASK-SELODIA ASSISTANT TURN INSERT FAILED:', insertError.message);
   }
