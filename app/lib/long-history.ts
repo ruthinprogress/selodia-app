@@ -53,21 +53,54 @@ function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-/** One line per week: the average of whatever was recorded that week. */
-function weekly(rows: Row[], when: string, field: string, dp: number): string[] {
-  const buckets = new Map<string, number[]>();
+/** How far back stays weekly. Older than this is summarised by month. */
+const WEEKLY_WEEKS = 8;
+
+/**
+ * One line per period: weekly while it is recent, monthly once it is not.
+ *
+ * WHY IT IS NOT ALL WEEKLY (27 September 2026). It was, and 26 weeks of weekly
+ * lines across every metric she tracks ran to a few thousand tokens - in the
+ * PERSON'S half of the prompt, which sits after the cache breakpoint and is
+ * therefore re-read in full on every single turn. Spoken turns went from about
+ * 3.2 seconds on Wednesday to between 3.8 and 5.9 by Sunday, and this block is
+ * one of the two things that changed.
+ *
+ * The information lost is real but small: at four months out, what a body was
+ * doing in one particular week is not the question anybody asks. The question
+ * is the shape of the trend, and a monthly figure carries that at a fifth of
+ * the size. Recent weeks stay weekly because that IS where the question lives.
+ */
+function byPeriod(rows: Row[], when: string, field: string, dp: number): string[] {
+  const weeklyFrom = Date.now() - WEEKLY_WEEKS * 7 * 86_400_000;
+  const buckets = new Map<string, { values: number[]; monthly: boolean }>();
+
   for (const r of rows) {
     const v = r[field];
     const t = r[when];
     if (typeof v !== 'number' || !isFinite(v) || typeof t !== 'string') continue;
-    const k = weekKey(t);
-    const list = buckets.get(k) ?? [];
-    list.push(v);
-    buckets.set(k, list);
+    const monthly = Date.parse(t) < weeklyFrom;
+    const k = monthly ? t.slice(0, 7) : weekKey(t);
+    const bucket = buckets.get(k) ?? { values: [], monthly };
+    bucket.values.push(v);
+    buckets.set(k, bucket);
   }
+
   return [...buckets.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([k, vs]) => `  w/c ${pretty(k)}: ${mean(vs).toFixed(dp)} (${vs.length} ${vs.length === 1 ? 'reading' : 'readings'})`);
+    .map(([k, b]) => {
+      const label = b.monthly ? monthName(k) : `w/c ${pretty(k)}`;
+      const n = b.values.length;
+      return `  ${label}: ${mean(b.values).toFixed(dp)} (${n} ${n === 1 ? 'reading' : 'readings'})`;
+    });
+}
+
+function monthName(key: string): string {
+  return new Date(key + '-01T00:00:00Z').toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 function span(rows: Row[], when: string): string {
@@ -120,7 +153,7 @@ export async function buildLongHistory(
     const lines: string[] = [];
 
     lines.push(
-      `THE LONGER RECORD - the last ${DAYS} days, summarised by week. The blocks above cover only the last few days; this is the rest of what is stored. When they ask anything about a trend, a change over time, or an estimate that needs weeks of data - a TDEE, a rate of loss, whether something is actually moving - THIS is the data to use, and you must not say you have only one reading without reading it first. If a figure they ask for genuinely is not here, say what you CAN see and over what dates rather than guessing or refusing flatly.`
+      `THE LONGER RECORD - the last ${DAYS} days, summarised by week for the last two months and by month before that. The blocks above cover only the last few days; this is the rest of what is stored. When they ask anything about a trend, a change over time, or an estimate that needs weeks of data - a TDEE, a rate of loss, whether something is actually moving - THIS is the data to use, and you must not say you have only one reading without reading it first. If a figure they ask for genuinely is not here, say what you CAN see and over what dates rather than guessing or refusing flatly.`
     );
 
     // Weight, body fat, muscle.
@@ -131,7 +164,7 @@ export async function buildLongHistory(
       ['body_fat_pct', 'Body fat (%)', 1],
       ['muscle_kg', 'Muscle (kg)', 1],
     ] as const) {
-      const w = weekly(scaleRows, 'measured_at', field, dp);
+      const w = byPeriod(scaleRows, 'measured_at', field, dp);
       if (w.length > 0) {
         lines.push(`${label}:`);
         lines.push(...w);
@@ -150,7 +183,7 @@ export async function buildLongHistory(
       for (const name of names) {
         const mine = personalRows.filter((r) => r.metric_name === name);
         const unit = mine.map((r) => r.unit).find((u) => typeof u === 'string' && u) ?? '';
-        const w = weekly(mine, 'measured_at', 'value', 1);
+        const w = byPeriod(mine, 'measured_at', 'value', 1);
         if (w.length > 0) {
           lines.push(`${name}${unit ? ` (${unit})` : ''}:`);
           lines.push(...w);
@@ -175,7 +208,7 @@ export async function buildLongHistory(
       lines.push(
         `Food: ${dayRows.length} days with anything logged, ${span(foodRows, 'happened_at')}. Weekly average of the DAILY total, counting only days that have something on them - a week with two days logged is two days of data, not a week of low eating, and must never be read as one:`
       );
-      lines.push(...weekly(dayRows.map((d) => ({ day: d.day + 'T00:00:00Z', kcal: d.kcal })), 'day', 'kcal', 0));
+      lines.push(...byPeriod(dayRows.map((d) => ({ day: d.day + 'T00:00:00Z', kcal: d.kcal })), 'day', 'kcal', 0));
     }
 
     return lines.join('\n');

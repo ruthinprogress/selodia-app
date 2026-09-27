@@ -9,6 +9,7 @@ import {
   recordVoiceConsent,
   requestMicPermission,
 } from '@/lib/voice-consent';
+import { clearDrop, dropToCarry, noteDrop, noteSpeaking } from '@/lib/voice-drop';
 import { VOICE_START_FAILED, buildVoiceSessionConfig } from '@/lib/voice-session';
 
 // The order of the gates, which is the whole of this file.
@@ -38,7 +39,22 @@ export type VoiceStart = {
 };
 
 export function useVoiceStart(): VoiceStart {
-  const { startSession } = useConversation();
+  // WHY THE SESSION ENDED, RECORDED ON THE DEVICE (Ruth, 27 September 2026).
+  // Eight conversations that morning all ended "Client disconnected: 1000" -
+  // a clean close from this side - and from the other end a deliberate tap and
+  // a dropped SDK look exactly the same. Only the device can tell them apart,
+  // and the device was recording nothing. See lib/voice-drop.ts.
+  const { startSession } = useConversation({
+    onDisconnect: (details) => noteDrop(details?.reason ?? 'unknown'),
+    onError: (message) => {
+      console.log('VOICE ERROR:', message);
+      noteDrop('error');
+    },
+    // Whether the agent was mid-sentence when it went. That is what makes the
+    // next session useful rather than merely informed: an answer cut off is an
+    // answer she does not have.
+    onModeChange: ({ mode }) => noteSpeaking(mode === 'speaking'),
+  });
   const [consentVisible, setConsentVisible] = useState(false);
   const [consentBusy, setConsentBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -55,10 +71,23 @@ export function useVoiceStart(): VoiceStart {
 
     try {
       const config = await buildVoiceSessionConfig();
+      // CARRYING THE THREAD OVER A DROP. "If a session does drop, the next one
+      // should carry the thread forward rather than starting blank." The server
+      // already reads her recent turns out of chat_messages, so the WORDS are
+      // never lost - what is lost is that she may not have HEARD the last one,
+      // which nothing on either side could previously know. This tells it.
+      //
+      // Only for an unexpected end. A session she closed herself needs no
+      // explanation, and offering to repeat something she walked away from
+      // would be the app arguing with her.
+      const dropped = dropToCarry();
       startSession({
         conversationToken: config.conversationToken,
-        customLlmExtraBody: config.customLlmExtraBody,
+        customLlmExtraBody: dropped
+          ? { ...config.customLlmExtraBody, selodia_resumed_after_drop: dropped.midSpeech ? 'mid_reply' : 'between_turns' }
+          : config.customLlmExtraBody,
       });
+      clearDrop();
     } catch (err) {
       // The reason is for us; the person hears one plain sentence. Never the
       // status code, and never the token - which is why the error carries a

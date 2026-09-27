@@ -263,6 +263,8 @@ export async function POST(request: NextRequest) {
     entryType,
     voice,
     supersedes,
+    // Set by the app when the PREVIOUS voice session ended unexpectedly.
+    resumedAfterDrop,
     // She closed the anchored topic herself, from its card (2026-09-19). One of
     // the three ways a discussion ends - see resolveDiscussTag.
     closeDiscussion,
@@ -436,10 +438,47 @@ export async function POST(request: NextRequest) {
   // rather than prompt text - the wording stays in TypeScript where it can be
   // read. probe-turn-context-rpc.mjs compares the two paths field for field on
   // real data and was green on all twenty before this was wired in.
-  const { data: ctx, error: ctxError } = await supabase.rpc('turn_context', {
-    p_since: contextSince.toISOString(),
-    p_day_start: dayStartForState.toISOString(),
-  });
+  //
+  // AND THE THREE READS BESIDE IT GO IN THE SAME BREATH (27 September 2026).
+  // They were added over the last two days as three more `await`s in a row -
+  // six months of history, today's sodium, and what she can still recover -
+  // which put FOUR sequential network hops where this work had just reduced
+  // twenty to one. None of them needs anything from turn_context; they only
+  // need her id. Measured on her phone this morning, a turn took 3.8 to 5.9
+  // seconds against 3.2 on Wednesday.
+  //
+  // Worth naming the mistake rather than just fixing it: each one looked free
+  // at the time BECAUSE it was one small read, and the cost only exists in the
+  // sequence. That is the same shape as the argument-list trap already written
+  // up in DECISION_PATTERNS - a thing that reads plausibly on its own line.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [ctxResult, longHistoryBlock, sodiumResult, recoverableRows] = await Promise.all([
+    supabase.rpc('turn_context', {
+      p_since: contextSince.toISOString(),
+      p_day_start: dayStartForState.toISOString(),
+    }),
+    // SIX MONTHS, SUMMARISED. Separate from turn_context deliberately: that RPC
+    // is bounded by a few days, and widening it would widen every block hanging
+    // off it. See app/lib/long-history.ts.
+    buildLongHistory(supabase, user.id),
+    // TODAY'S SODIUM, which the turn context does not carry. It is what makes
+    // "a salty day" checkable rather than a plausible story - see
+    // app/lib/weigh-in-facts.ts.
+    supabase
+      .from('food_logs')
+      .select('happened_at, sodium_mg')
+      .eq('user_id', user.id)
+      .gte('happened_at', todayStart.toISOString()),
+    // WHAT SHE DELETED AND COULD STILL HAVE BACK. Read every turn rather than
+    // only when asked, because the asking is the thing that has to work.
+    listRecoverable(supabase, user.id),
+  ]);
+
+  const { data: ctx, error: ctxError } = ctxResult;
+  const sodiumRows = sodiumResult.data;
+  const recoverableBlock = recoverablePrompt(recoverableRows);
 
   // FAIL LOUDLY RATHER THAN ANSWER WITHOUT HER RECORD. Twenty separate reads
   // used to fail one at a time and the turn carried on with a hole in it. One
@@ -473,29 +512,6 @@ export async function POST(request: NextRequest) {
     dayFood,
     latestMeasurement,
   } = ctx as TurnContext;
-
-  // SIX MONTHS, SUMMARISED. Separate from turn_context deliberately: that RPC
-  // is one read bounded by a few days, and widening it would widen every block
-  // hanging off it. See app/lib/long-history.ts.
-  const longHistoryBlock = await buildLongHistory(supabase, user.id);
-
-  // WHAT SHE DELETED AND COULD STILL HAVE BACK. See app/lib/recover-deleted.ts.
-  // Read every turn rather than only when asked, because the asking is the
-  // thing that has to work - a list fetched only once she has already been told
-  // it cannot be done is no use.
-  // TODAY'S SODIUM, which the turn context does not carry. One cheap read, and
-  // it is what makes "a salty day" checkable rather than a plausible story -
-  // see app/lib/weigh-in-facts.ts.
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const { data: sodiumRows } = await supabase
-    .from('food_logs')
-    .select('happened_at, sodium_mg')
-    .eq('user_id', user.id)
-    .gte('happened_at', todayStart.toISOString());
-
-  const recoverableRows = await listRecoverable(supabase, user.id);
-  const recoverableBlock = recoverablePrompt(recoverableRows);
 
   const disclosedAllergies = (disclosedAllergyRows ?? []) as Allergy[];
   const savedPlans = resolvePlans(planRows);
@@ -776,6 +792,17 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   // (Ruth, 27 September 2026, item 1). It invented a hard session she had not
   // done and got its own arithmetic wrong in the same reply. Both because it
   // was handed prose and asked to be helpful.
+  // THE LAST SESSION ENDED WITHOUT HER MEANING IT. Only ever set on a voice
+  // turn, by the app, when the previous session dropped - see
+  // mobile/src/lib/voice-drop.ts.
+  const resumedRaw = resumedAfterDrop;
+  const resumedNote =
+    resumedRaw === 'mid_reply'
+      ? 'THE LAST VOICE SESSION ENDED WHILE YOU WERE STILL SPEAKING, so she almost certainly did not hear the end of your last answer - it is in the history above, and she has not got it. If it mattered, give her the short version of it again in a sentence, woven into whatever she says now. Do not apologise for the connection, do not explain what happened, and do not repeat it word for word: she was there for the first half.'
+      : resumedRaw === 'between_turns'
+        ? 'THE LAST VOICE SESSION ENDED UNEXPECTEDLY between turns. Carry on from where the history above leaves off rather than greeting her as though this were the start of something. Say nothing about the session having ended.'
+        : null;
+
   const weighIn = weighInFacts(
     (recentMeasurements ?? []) as never,
     (recentActivity ?? []) as never,
@@ -897,6 +924,21 @@ WHAT CAN BE LOGGED HERE. If somebody asks what they can log, what this is for, o
 
 LOGGING INTENT: Set logIntent to 'food' if the message describes something the person ate or drank, 'activity' if it describes physical activity or exercise they did, 'measurement' if it states a body measurement they have taken (a weight, a body fat percentage, a muscle mass), 'hydration' ONLY when the drink has NO CALORIES IN IT - plain or sparkling water, black coffee, black tea, herbal or fruit tea, sugar-free squash. ANY DRINK CARRYING CALORIES IS FOOD, not hydration: tea or coffee with milk, anything with sugar, honey or syrup in it, a latte, a hot chocolate, juice, a smoothie, milk, a fizzy drink, alcohol. Beware of "a mug of tea" and "a cuppa", which in British usage mean tea WITH MILK unless they say otherwise - that is food. "Green tea", "peppermint tea" and "black tea" are not. When you genuinely cannot tell whether there was milk in it, ask rather than guess; the calories are small but they are wrong every cup, all day. Nothing is lost by choosing food: the app records the volume of any drink as water in the same pass.  'sleep' if it describes how they slept - how long, what time they went to bed or woke, how it felt, how often they woke - or 'none' otherwise - INDEPENDENT of the safety classification (a genuine distress disclosure can also be a food/activity log). The app saves the data and shows the person a brief save confirmation itself, separately from your reply, so NEVER write a "Logged: ..." line, a macro breakdown, or any "I've saved that" text yourself. AND NEVER LIST BACK WHAT WENT IN. Not "the almonds and the coffee are logged as food and the litre of water is in too" - you do not know what landed, the app does, and a sentence like that one told somebody her water was recorded on a day it was lost. Water and other drinks mentioned alongside food are handled by the app in the same pass; say nothing about them either way. For a plain food/activity log with nothing more to it, a short, warm, natural reply is right (a friend's easy acknowledgement), never a functional receipt. HOW THAT REPLY OPENS MATTERS, and it is the one thing this app has got measurably wrong: across her real threads, 39% of replies in the last week began with the words "Got it", up from 3% in August. Nobody wrote that phrase into these instructions. It grew because the last forty turns are in your context, most of them opened that way, and you copied yourself - so the more it happens the more it happens. THE PREVIOUS ASSISTANT TURNS IN THIS THREAD ARE YOURS, NOT A HOUSE STYLE: never take an opening from them, and if several of them start the same way, that is the strongest possible reason not to start that way again. OPEN ON WHAT SHE SAID, not on a word for having heard it. The app already prints its own confirmation that something was saved, so an acknowledging phrase at the front of your reply is doing no work at all - it is a throat-clear. If she mentioned the cafe, the weather, being knackered, the friend she ate with, start there. If there is genuinely nothing to pick up, one plain sentence about the thing itself beats a receipt-word every time. When a food log is itemised, the app renders the full breakdown as a real table beneath your reply, from the stored data - so do not restate the items, do not announce the table, and do not comment on what it shows; your reply is to what the person SAID, and the table speaks for itself. When you classify a genuine-distress tier (eating_related_distress, grief_related_distress, acute_crisis) for a message that also logs food or activity, give the complete care-first response to the emotional content only; you may, as genuine care, gently note there is no pressure to keep logging while they are feeling like this, but only woven in naturally as care, never as a saving confirmation.
 
+NOTHING ABOUT HER LIFE THAT IS NOT IN HER RECORD. This is the rule the whole app rests on, and it has been broken twice in one day, so it is written out in full.
+
+On 27 September she weighed in, and the reply explained the rise with "you had a hard session a day or two ago". There was no hard session: her movement log for that week held two minutes of pushups. The same morning, in voice, she was told "today's ballet went fine without aggravating it" - she had said she was THINKING OF GOING TOMORROW. Her words afterwards: "the app is only useful if people can trust that what it says about their body comes from their own record."
+
+SO: YOU MAY ONLY STATE SOMETHING SHE DID - a session, a meal, a walk, a night's sleep, how something went - WHEN IT IS IN THE DATA ABOVE, ON THAT DATE. Not when it is likely. Not when it would explain the number nicely. Not when she mentioned it as a plan, an intention or a maybe. A plan is not an event: "I might do ballet tomorrow" becomes "ballet tomorrow, if you go", never "today's ballet".
+
+THE ABSENCE OF A LOG IS INFORMATION, NOT A GAP TO FILL. An empty movement log for three days means nothing was recorded, and the honest sentence is that nothing is recorded - never a guess at what she probably did. The data blocks above tell you plainly when something is empty, precisely so you do not have to notice.
+
+GENERAL POSSIBILITIES ARE ALLOWED AND MUST SOUND LIKE ONE. The scale genuinely moves with salt, hydration, the cycle and hard training, and saying so is useful. The difference is grammatical and it is absolute:
+  ALLOWED: "a salty day or a hard session can do this - anything like that in the last few days?"
+  FORBIDDEN: "you had a hard session a day or two ago"
+The first describes bodies. The second describes HER life, and if it is wrong she has to correct her own app about what she did with her week. Ask when you want to know; never assert to fill the silence.
+
+AND THE SAME FOR NUMBERS. Where a figure has been worked out for you above, use that one exactly. Do not recompute it, do not round it differently, and do not state an interval in days unless it is given. A number she cannot reproduce by looking at her own screen is wrong even when the arithmetic is right.
+
 ${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}`;
 
   // THE PERSON'S OWN HALF. Different on every turn by definition, so it sits
@@ -929,6 +971,8 @@ Here are their body measurements from the last 7 days:
 ${measurementSummary}
 ${weighIn ? `
 ${weighIn}
+` : ''}${resumedNote ? `
+${resumedNote}
 ` : ''}
 ${recoverableBlock ? `
 ${recoverableBlock}

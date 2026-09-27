@@ -365,6 +365,9 @@ export async function POST(request: NextRequest) {
   }
 
   const extra = (body.elevenlabs_extra_body ?? {}) as Record<string, unknown>;
+  const resumedRaw = extra.selodia_resumed_after_drop;
+  const resumedAfterDrop =
+    resumedRaw === 'mid_reply' || resumedRaw === 'between_turns' ? resumedRaw : null;
   const token = TOKEN_KEYS.map((k) => extra[k]).find(
     (v): v is string => typeof v === 'string' && v.length > 0
   );
@@ -496,7 +499,17 @@ export async function POST(request: NextRequest) {
       new NextRequest(new URL('/api/ask-selodia', request.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: utterance, voice: true, ...(supersedes ? { supersedes } : {}) }),
+        body: JSON.stringify({
+          message: utterance,
+          voice: true,
+          // SHE MAY NOT HAVE HEARD THE LAST ANSWER (27 September 2026). Set by
+          // the app when the previous session ended unexpectedly - see
+          // mobile/src/lib/voice-drop.ts. Carried here rather than inferred,
+          // because from this end a dropped session and a closed one look
+          // identical, which is exactly what cost her an answer about her knee.
+          ...(resumedAfterDrop ? { resumedAfterDrop } : {}),
+          ...(supersedes ? { supersedes } : {}),
+        }),
         signal: request.signal,
       })
     );
