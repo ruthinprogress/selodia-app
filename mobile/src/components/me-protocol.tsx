@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { SectionIntro } from '@/components/section-intro';
+import { ReorderableRows } from '@/components/reorderable-rows';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,6 +12,7 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
+import { arrange, layoutOf, loadLayout, saveLayout, type LogLayout } from '@/lib/log-layout';
 import { ME_STATUSES, readMeCard, sectionOf, type MeCard, type MeStatus } from '@/lib/me-card';
 import { updateMeCard } from '@/lib/me-card-write';
 import { humanDate } from '@/lib/week';
@@ -104,12 +105,41 @@ export function MeProtocol({
     [sections]
   );
 
+  // HER ORDER, NOT THE APP'S (item 6: "Sections are reorderable like the rest
+  // of the app"). Same store and same component as the Log, Cycle and Plans
+  // lists - a fourth way of arranging a list would be a fourth place for the
+  // next arranging bug to live. The ids here are section NAMES, which the
+  // store's rules already cover: see log-layout.ts.
+  const [layout, setLayout] = useState<LogLayout>({ order: [], hidden: [] });
+  useEffect(() => {
+    let cancelled = false;
+    void loadLayout('me_layout').then((l) => {
+      if (!cancelled) setLayout(l);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const ordered = useMemo(
+    () => arrange(sections.map((sec) => ({ ...sec, id: sec.name })), layout).shown,
+    [sections, layout]
+  );
+
+  const keep = useCallback((next: { id: string }[]) => {
+    const order = next.map((n) => n.id);
+    setLayout({ order, hidden: [] });
+    void saveLayout('me_layout', layoutOf(order, []));
+  }, []);
+
   return (
     <View style={styles.wrap}>
-      <SectionIntro title="Your own record">
-        How you have decided to look after yourself, and why.
-      </SectionIntro>
-
+      {/* THE INTRODUCTION MOVED UP TO THE PAGE HEADER (Ruth, 26 September 2026,
+          item 6): "Header: 'Almanac' title, with the subtitle 'Your own
+          record.' directly beneath it, replacing the separate bold 'Your own
+          record' block." It is in almanac.tsx now, under the masthead and above
+          the switch, which is where her mockup puts it - a deck belongs to the
+          page, not to the list below the control. */}
       {/* Quiet, and above the sections rather than after them: it is how the
           whole document leaves the app, so it belongs to the document, not to
           whichever section happens to be last. */}
@@ -132,9 +162,20 @@ export function MeProtocol({
         </ThemedText>
       )}
 
-      {sections.map((section) => (
+      <ReorderableRows
+        items={ordered}
+        onReorder={keep}
+        renderRow={(section, i) => (
         <View key={section.name} style={styles.section}>
-          <ThemedText type="sectionTitle" style={styles.heading}>
+          {/* A THIN RULE BETWEEN SECTIONS, NOT AROUND EACH CARD (item 6:
+              "Cormorant headings with thin dividers between sections, no cards
+              or pills"). One line per boundary rather than a border per entry
+              is the whole difference between a record and a list of widgets -
+              and it is the same move Today made when its cards became rows. */}
+          {i > 0 ? (
+            <View style={[styles.rule, { backgroundColor: theme.backgroundSelected }]} />
+          ) : null}
+          <ThemedText type="display" style={styles.heading}>
             {section.name}
           </ThemedText>
           {/* SWIPE TO DELETE, AS EVERYWHERE ELSE (Ruth, 25 September 2026,
@@ -158,9 +199,32 @@ export function MeProtocol({
             </SwipeToDelete>
           ))}
         </View>
-      ))}
+        )}
+      />
     </View>
   );
+}
+
+/** About two lines at this size, cut on a word so it never ends mid-syllable. */
+const PREVIEW_CHARS = 96;
+
+/**
+ * The first line or two of what an entry actually says.
+ *
+ * TRUNCATED, NEVER SUMMARISED (Ruth, item 6: "taken from its actual content,
+ * ideally the user's own words... never invent text"). A generated summary
+ * would be the app putting words in her mouth on a page whose entire claim is
+ * that it holds HER decisions in HER language - and she would have no way of
+ * telling which sentences were hers.
+ *
+ * So this only ever cuts. If it cannot fit, the ellipsis says so.
+ */
+function previewOf(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= PREVIEW_CHARS) return flat;
+  const cut = flat.slice(0, PREVIEW_CHARS);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > PREVIEW_CHARS * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 }
 
 function MeCardRow({
@@ -177,6 +241,9 @@ function MeCardRow({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const card = readMeCard(row.content);
+
+  // Two lines at most, and cut on a word so it does not end mid-syllable.
+  const preview = previewOf(card.why || card.detail || '');
 
   // ACTIVE AND PAUSED TOGGLE FROM THE COLLAPSED CARD (Ruth, item 15). Only
   // those two: the others - Taking, Ordered, Dietary source, As needed - are
@@ -197,11 +264,29 @@ function MeCardRow({
   const expandable = !!(card.why || card.detail);
 
   const body = (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.surface}>
-        <ThemedText type="small" style={styles.name}>
-          {row.title}
-        </ThemedText>
+        <View style={styles.naming}>
+          <ThemedText type="small" style={styles.name}>
+            {row.title}
+          </ThemedText>
+          {/* HER OWN WORDS, TRUNCATED, NEVER INVENTED (item 6: "a one- or
+              two-line preview of what the entry says (taken from its actual
+              content, ideally the user's own words; truncate with an ellipsis,
+              never invent text)").
+              The `why` is the right field: it is the reason the decision was
+              made, in her language, and it is the thing the title alone cannot
+              tell her months later. `detail` is the fallback, and when there is
+              neither there is no preview rather than a summary of nothing. */}
+          {preview ? (
+            <ThemedText type="detail" themeColor="textSecondary" style={styles.preview}>
+              {preview}
+            </ThemedText>
+          ) : null}
+          <ThemedText type="detail" themeColor="textSecondary">
+            Updated {humanDate(new Date(row.updated_at ?? row.created_at))}
+          </ThemedText>
+        </View>
         {/* THE STATUS IS A WORD, NEVER A TICK (Ruth's answer 5). Paused reads
             quieter than the rest, because it is still part of the record and
             not still part of the routine. */}
@@ -322,7 +407,7 @@ function MeCardRow({
           }}
         />
       ) : null}
-    </ThemedView>
+    </View>
   );
 
   if (!expandable) return body;
@@ -552,14 +637,15 @@ const styles = StyleSheet.create({
   export: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
   section: { gap: 6, paddingTop: Spacing.three },
   heading: { paddingBottom: 2 },
-  card: {
-    borderRadius: CardRadius,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: Spacing.two,
-  },
-  surface: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  name: { flex: 1 },
+  // NO FILL AND NO RADIUS. An entry is a row on a page now, not a tile.
+  card: { paddingVertical: Spacing.two, gap: Spacing.two },
+  rule: { height: 1, marginBottom: Spacing.three },
+  surface: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
+  // The title, its preview and its date travel together and take the width;
+  // status and chevron sit against the right edge whatever the title does.
+  naming: { flex: 1, minWidth: 0, gap: 2 },
+  name: {},
+  preview: {},
   // Right-aligned against the chevron, so a column of statuses reads down the
   // page as its own line of information.
   status: { textAlign: 'right' },

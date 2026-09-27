@@ -40,7 +40,14 @@ export { arrange, layoutOf } from '@/lib/log-layout-rules';
 // makes tomorrow is not in it at all. Ignored and appended respectively, with
 // no special case needed for either.
 /** Which list: each screen keeps its arrangement in its own column. */
-export type LayoutKey = 'log_layout' | 'cycle_layout' | 'plans_layout';
+export type LayoutKey = 'log_layout' | 'cycle_layout' | 'plans_layout' | 'me_layout';
+//
+// me_layout added 2026-09-26 (Ruth, item 6: "Sections are reorderable like
+// the rest of the app"). Its ids are SECTION NAMES rather than row ids, and
+// the two rules above cover that without a special case: a section she empties
+// leaves a stale name in the saved order and is ignored, and a section that
+// comes into being when the first card lands in it is appended in the app's
+// own order until she moves it.
 
 export async function loadLayout(key: LayoutKey): Promise<LogLayout> {
   try {

@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
@@ -126,6 +126,33 @@ export default function AlmanacScreen() {
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Almanac</ThemedText>
 
+            {/* THE DECK, DIRECTLY UNDER THE MASTHEAD (Ruth, 26 September 2026,
+                item 6): "Header: 'Almanac' title, with the subtitle 'Your own
+                record.' directly beneath it, replacing the separate bold 'Your
+                own record' block."
+
+                It used to be a bold SectionIntro sitting below the switch,
+                inside the Me list. Moving it above the switch is what makes it
+                read as belonging to the page rather than to the list - which is
+                what her mockup shows, and the same reasoning that made Today's
+                greeting a masthead rather than a first row.
+
+                ONLY ON ME, and that is a compromise rather than a decision:
+                these are Me's words and would be untrue over Insights. The cost
+                is that the switch sits slightly lower on Me than on Insights.
+                Giving Insights its own deck would fix it and would mean writing
+                copy she has not asked for, so it is flagged instead. */}
+            {tab === 'me' ? (
+              <View style={styles.deck}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Your own record.
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  How you have decided to look after yourself, and why.
+                </ThemedText>
+              </View>
+            ) : null}
+
             {/* Two labels since the plans left (2026-09-20), and still allowed
                 past the page margin: a switch is a control, not a sentence, and
                 the margin exists so prose has room to breathe. */}
@@ -231,6 +258,7 @@ const styles = StyleSheet.create({
   // Inside the page margin again (2026-09-20). The negative margin was bought
   // for three labels; with two, it pushed the switch off both edges of the
   // screen.
+  deck: { gap: 2, paddingTop: Spacing.one },
   tabs: { marginHorizontal: 0 },
   content: {
     // Horizontal padding matches the Body screens at 24; vertical stays at 16.

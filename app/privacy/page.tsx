@@ -19,8 +19,15 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // TWO THINGS NEED CONFIRMING BEFORE LAUNCH and are marked in the text:
 //   - ElevenLabs' retention settings for this specific account. The claim below
 //     is deliberately cautious rather than confident.
-//   - Whether Selodía Ltd (or whatever the Companies House entity is) is the
-//     data controller, which changes the name and the ICO registration line.
+//   - SETTLED 2026-09-27. SELODÍA LTD is the data controller, not Ruth
+//     personally: "Always Selodía Ltd, not me personally." This now matches
+//     app/terms/page.tsx, which was changed the same day and had been
+//     disagreeing with this page since it was written.
+//
+//     STILL OUTSTANDING and carried on the Beta-ready checklist: the ICO
+//     registration is in whose name, and does it exist. Naming a controller in
+//     a policy is not the same as being registered as one, and only one of
+//     those is a thing code can change.
 //
 // BROUGHT UP TO DATE 2026-09-19 for the store submissions. The 10 September
 // text had fallen behind the app in five places: error reports from the phone
@@ -53,7 +60,7 @@ const SECTIONS: PlainSection[] = [
   {
     heading: 'Who is responsible',
     body: [
-      'Selodía is run by Ruth Christianson-Monroy. If you have a question about your data, or want to exercise any of the rights below, email hello@selodia.app.',
+      'Selodía is operated by Selodía Ltd, which is the data controller for everything described here. If you have a question about your data, or want to exercise any of the rights below, email hello@selodia.app.',
       'If you are not satisfied with how a request is handled, you can complain to the Information Commissioner’s Office (ICO) at ico.org.uk.',
     ],
   },

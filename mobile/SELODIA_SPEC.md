@@ -3135,8 +3135,9 @@ Three consequences, and they are build items rather than wording:
 
 - [ ] **The beta agreement itself.** Does not exist. It is the document that makes a beta tester's free access contractual, and it needs to say what beta means: that things break, that data may be lost, that the app is not finished, and what happens to their record when the beta ends.
 - [ ] **A mechanism attaching an agreement to an account.** Does not exist. `consent_records` is the nearest thing and is about health-data consent, not contract acceptance. Needs deciding whether this is a new table or a column.
-- [ ] **Terms of Service reviewed by a solicitor.** Live at selodia.app/terms since 2026-09-26, written from the app rather than a template, **never seen by a lawyer**. The medical and liability sections are the ones that matter.
-- [ ] **Privacy policy: change the controller to Selodía Ltd.** It still names Ruth personally, so it now disagrees with the terms page. Not changed unilaterally because it also affects the ICO registration line.
+- [x] **Terms of Service — legal review deliberately deferred.** Ruth, 2026-09-27: *"I think it's fine without a solicitor at this stage, pre-funding. At 100 subscribers I'll get it all reviewed."* So this is a decision with a trigger rather than an outstanding task, and the trigger is **100 subscribers** — at which point the terms, the privacy policy and the beta agreement all go to a solicitor together. Recorded here so the deferral does not quietly become a forgetting. The medical and liability sections are the ones to point at when it happens.
+- [x] **Privacy policy controller changed to Selodía Ltd** (2026-09-27). *"Always Selodía Ltd, not me personally."*
+- [ ] **ICO registration.** Naming a controller in a policy is not the same as being registered as one, and only one of those is a thing code can change. In whose name, and does it exist.
 - [ ] **Governing law confirmed.** England and Wales is assumed in the terms.
 - [ ] **Record consent** — item 51. Built 2026-09-19.
 - [ ] **Account deletion reachable without the app** — live at selodia.app/delete-account.
