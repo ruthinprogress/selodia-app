@@ -64,6 +64,16 @@ export type LogDay = {
   date: Date;
   /** One line, every value labelled. A node so a foot icon can lead it. */
   summary: React.ReactNode;
+  /**
+   * The summary to show when the day is OPEN, where that differs.
+   *
+   * Ruth, 27 September 2026, item 8: Movement's collapsed summary lists what
+   * she did, and repeating that above the entries meant reading the same
+   * sessions twice on one screen. Open, it shows the steps alone - the one
+   * figure the entries below do not contain. Food has no such split, because
+   * its summary is totals and its entries are the things totalled.
+   */
+  openSummary?: React.ReactNode;
   /** When the first of the day's entries was recorded. */
   at?: string | null;
   entries: DayEntry[];
@@ -119,9 +129,30 @@ export function DayLog({
     return [...today, ...rest];
   }, [days, todayKey]);
 
-  const [open, setOpen] = useState<Set<string>>(() => new Set([todayKey]));
+  // WHICH DAY IS OPEN, DERIVED RATHER THAN STORED (Ruth, 27 September 2026,
+  // item 8: "Today (Sun 27) is still collapsed").
+  //
+  // It used to be a Set seeded with today's key at mount, and that is the bug:
+  // seeding cannot open a row that does not exist yet. The list is built from a
+  // read, so on a slow load or a week snap today's row appears AFTER the
+  // seeding has happened, and a row that arrives late arrives shut.
+  //
+  // The fix is to stop storing which days are open and store only which ones
+  // she has TOUCHED. Today is open by default whenever it is present - no
+  // timing involved, because nothing has to happen in the right order - and a
+  // day she has tapped is the opposite of its default. Her taps still stick,
+  // including closing today.
+  const [toggled, setToggled] = useState<Set<string>>(() => new Set());
   const [undo, setUndo] = useState<Undo | null>(null);
 
+  const isOpen = useCallback(
+    (key: string) => (key === todayKey) !== toggled.has(key),
+    [todayKey, toggled]
+  );
+
+  // The toast clears itself. Ten seconds is her figure, and it is the window
+  // the whole soft-delete design hangs off - see lib/recoverable.ts for the
+  // seven days behind it.
   useEffect(() => {
     if (!undo) return;
     const t = setTimeout(() => setUndo(null), UNDO_WINDOW_MS);
@@ -129,7 +160,7 @@ export function DayLog({
   }, [undo]);
 
   const toggle = useCallback((key: string) => {
-    setOpen((prev) => {
+    setToggled((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -184,7 +215,7 @@ export function DayLog({
               key={day.key}
               day={day}
               rule={i > 0}
-              expanded={open.has(day.key)}
+              expanded={isOpen(day.key)}
               onToggle={() => toggle(day.key)}
               onChanged={onChanged}
               onRemoved={setUndo}
@@ -277,7 +308,7 @@ function DayRow({
           {/* STILL THE SUMMARY, ABOVE THE ENTRIES (item 7). Opening a day used
               to replace its totals with its parts, so the one figure she came
               for vanished at the moment she asked for more. */}
-          <View style={styles.openSummary}>{day.summary}</View>
+          <View style={styles.openSummary}>{day.openSummary ?? day.summary}</View>
           {groups.map((group, gi) => (
             <View key={`${group.name ?? 'all'}-${gi}`} style={styles.group}>
               {group.name ? (

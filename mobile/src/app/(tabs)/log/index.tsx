@@ -250,7 +250,18 @@ export default function LogScreen() {
                 <MaterialCommunityIcons name={r.icon} size={22} color={theme.accent} />
                 <View style={styles.text}>
                   <ThemedText type="smallBold">{r.label}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.detail}>
+                  {/* ONE LINE, THEN AN ELLIPSIS, which is her call: "Subtitles
+                      can truncate to one line with an ellipsis if needed." The
+                      subtitle names what the row holds; the title already said
+                      what it is, so a clipped second line costs less than a row
+                      three times the height of its neighbours. */}
+                  <ThemedText
+                    type="small"
+                    themeColor="textSecondary"
+                    style={styles.detail}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {r.detail}
                   </ThemedText>
                 </View>
@@ -338,10 +349,23 @@ const styles = StyleSheet.create({
   arrangeBar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: Spacing.two },
   intro: { lineHeight: 20, maxWidth: 300 },
   card: { borderRadius: CardRadius, paddingHorizontal: Spacing.three },
-  // Still a fixed height, though the drag no longer needs it to be: seven rows
-  // of the same size is what makes this list scannable.
+  // A MINIMUM, NOT A HEIGHT (Ruth, 27 September 2026, item 8: at the largest
+  // font size "titles and subtitles draw on top of each other").
+  //
+  // 64 was chosen because seven rows of the same size is what makes a list
+  // scannable, and that is still true - but a fixed height is a promise about
+  // how tall TEXT is, and this app cannot make that promise: the system font
+  // scale is the reader's, not ours, and at the top of its range two lines of
+  // 64 points of text do not fit in 64 points of row. They drew over each
+  // other rather than pushing the row open, because a fixed height has no way
+  // to push.
+  //
+  // minHeight keeps the rhythm at ordinary sizes - every row is 64 until its
+  // text needs more - and lets the row grow when it must. Padding rather than
+  // centring alone, so a grown row still has air top and bottom.
   row: {
-    height: 64,
+    minHeight: 64,
+    paddingVertical: Spacing.two,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,

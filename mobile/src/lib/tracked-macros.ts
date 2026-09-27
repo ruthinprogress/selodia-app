@@ -31,7 +31,7 @@ export type MacroSpec = {
   key: MacroKey;
   /** As it reads in Settings, and in onboarding. */
   label: string;
-  /** As it reads on a row: "34g protein", "445 kcal". */
+  /** As it reads on a row: "34 g protein", "445 kcal". */
   unit: 'kcal' | 'g';
   /** The column on a food row that carries it. */
   column: string;
@@ -101,11 +101,19 @@ function say(key: MacroKey, value: number): string {
   if (key === 'kcal') return `${Math.round(value).toLocaleString('en-GB')} kcal`;
   // A figure under ten grams reads better with one decimal; above it, none.
   const n = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
-  return `${n}g ${spec.label.toLowerCase()}`;
+  // A SPACE BEFORE THE UNIT, EVERYWHERE (Ruth, 27 September 2026, item 8:
+  // "Spacing of units is inconsistent ('10 g protein' in rows, '62g' in the
+  // footer). Use '62 g' everywhere.")
+  //
+  // It was "34g" here and "34 g" in the day summary, which is the kind of
+  // difference nobody can name and everybody notices - it makes two numbers on
+  // one screen look like they came from two places, which on a screen ABOUT
+  // trusting your own record is worth more than the character it saves.
+  return `${n} g ${spec.label.toLowerCase()}`;
 }
 
 /**
- * The line under a food name: "445 kcal · 34g protein".
+ * The line under a food name: "445 kcal · 34 g protein".
  *
  * A macro with no figure is LEFT OUT rather than shown as zero. The app cannot
  * tell "this meal had no fibre" from "nobody worked out the fibre", and a zero
@@ -122,7 +130,7 @@ export function macroLine(row: Record<string, unknown>, tracked: MacroKey[]): st
 }
 
 /**
- * The week line: "avg 1,213 kcal · 63g protein".
+ * The week line: "avg 1,213 kcal · 63 g protein".
  *
  * AVERAGED OVER DAYS THAT WERE LOGGED, never over a fixed seven. An unlogged
  * day is missing data, not a day somebody ate nothing, and dividing by seven

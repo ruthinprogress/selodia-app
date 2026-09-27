@@ -162,11 +162,25 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
                   {stepCount == null ? '—' : stepCount.toLocaleString('en-GB')}
                 </ThemedText>
               </View>
+              {/* NAMES ONLY (item 8). It used to carry every session's
+                  duration, intensity and calories, which made the collapsed
+                  line longer than the expanded one it was summarising - and
+                  then repeated all of it below when the day was opened. A
+                  summary that contains everything is not a summary. */}
               {list.length > 0 ? (
-                <ThemedText type="small">
-                  {list.map((r) => [name(r), detailOf(r)].filter(Boolean).join(' ')).join('  ·  ')}
-                </ThemedText>
+                <ThemedText type="small">{list.map((r) => name(r)).join('  ·  ')}</ThemedText>
               ) : null}
+            </View>
+          ),
+          // OPEN, IT IS THE STEPS AND NOTHING ELSE. The entries below carry
+          // the sessions; the step count is the only thing on this line they
+          // do not already say.
+          openSummary: (
+            <View style={styles.stepPair}>
+              <Ionicons name="footsteps-outline" size={14} color={theme.textSecondary} />
+              <ThemedText type="small" themeColor={stepCount == null ? 'textSecondary' : 'text'}>
+                {stepCount == null ? '—' : stepCount.toLocaleString('en-GB')}
+              </ThemedText>
             </View>
           ),
           at: list[0]?.happened_at ?? null,

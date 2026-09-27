@@ -257,7 +257,11 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
 
       {week.line ? (
         <ThemedText type="detail" themeColor="textSecondary">
-          {`This week: ${week.line}  ·  ${week.daysLogged} of 7 days logged`}
+          {/* "Daily average this week", not "This week" (item 8). It reads
+              as a weekly total otherwise, and 1,326 kcal for a week would be a
+              frightening number to show somebody about their own eating. The
+              figure never changed; the label was doing the lying. */}
+          {`Daily average this week: ${week.line}  ·  ${week.daysLogged} of 7 days logged`}
         </ThemedText>
       ) : null}
     </View>
