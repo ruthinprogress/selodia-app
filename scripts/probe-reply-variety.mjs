@@ -107,6 +107,93 @@ for (const [o, n] of ranked.slice(0, 8)) {
   console.log(`  ${String(share).padStart(5)}%  ${bar.padEnd(25)} ${o}  (${n})`);
 }
 
+// -------------------------------------------------------------------------
+// REPEATS INSIDE ONE CONVERSATION (Ruth, 26 September 2026, item 1: "Test
+// against a 10-minute real conversation and log every repeated phrase.")
+//
+// WHY THIS IS A DIFFERENT MEASUREMENT from everything above, and the more
+// important one for voice. The opener count is an average over a fortnight: it
+// says the app leans on a phrase, which is a drift worth catching but which
+// nobody EXPERIENCES. What a person experiences is hearing the same words twice
+// in ten minutes, and that can be true in a conversation while the fortnight
+// average looks fine.
+//
+// A CONVERSATION IS A GAP, NOT A FIELD. Nothing in the schema marks where one
+// conversation ends, so it is inferred: replies more than GAP_MINUTES apart are
+// different conversations. That is a judgement, and it is the right shape of
+// judgement - somebody who comes back after lunch has started again, and
+// somebody answering thirty seconds later has not.
+const GAP_MINUTES = 30;
+
+/** Three or more words in a row, lowercased - long enough to be a phrase. */
+const PHRASE_WORDS = 3;
+
+function phrasesIn(text) {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const out = [];
+  for (let i = 0; i + PHRASE_WORDS <= words.length; i++) {
+    out.push(words.slice(i, i + PHRASE_WORDS).join(' '));
+  }
+  return out;
+}
+
+// Oldest first, so a conversation reads in the order it happened.
+const inOrder = (data ?? [])
+  .map((r) => ({ text: (r.content ?? '').trim(), at: Date.parse(r.created_at) }))
+  .filter((r) => r.text.length > 0)
+  .sort((a, b) => a.at - b.at);
+
+const sessions = [];
+for (const reply of inOrder) {
+  const last = sessions[sessions.length - 1];
+  if (last && reply.at - last[last.length - 1].at <= GAP_MINUTES * 60_000) last.push(reply);
+  else sessions.push([reply]);
+}
+
+const worst = [];
+for (const session of sessions) {
+  if (session.length < 3) continue; // Two replies cannot establish a habit.
+  const seen = new Map();
+  for (const reply of session) {
+    // Once per reply: a phrase repeated inside one long answer is a writing
+    // tic, not the thing she is describing, which is hearing it turn after turn.
+    for (const phrase of new Set(phrasesIn(reply.text))) {
+      seen.set(phrase, (seen.get(phrase) ?? 0) + 1);
+    }
+  }
+  const repeats = [...seen.entries()]
+    .filter(([, n]) => n > 1)
+    .sort((a, b) => b[1] - a[1]);
+  if (repeats.length > 0) {
+    worst.push({
+      when: new Date(session[0].at),
+      turns: session.length,
+      minutes: Math.round((session[session.length - 1].at - session[0].at) / 60_000),
+      repeats,
+    });
+  }
+}
+
+console.log(`
+  REPEATED PHRASES WITHIN ONE CONVERSATION  (${sessions.length} conversations)
+`);
+if (worst.length === 0) {
+  console.log('  none - no three-word phrase was used twice in one conversation.\n');
+} else {
+  for (const w of worst.sort((a, b) => b.repeats[0][1] - a.repeats[0][1]).slice(0, 5)) {
+    const day = w.when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    console.log(`  ${day}, ${w.turns} replies over ${w.minutes} min:`);
+    for (const [phrase, n] of w.repeats.slice(0, 6)) {
+      console.log(`     ${n}x  "${phrase}"`);
+    }
+    console.log();
+  }
+}
+
 const [topOpening, topCount] = ranked[0];
 const topPct = pct(topCount);
 
