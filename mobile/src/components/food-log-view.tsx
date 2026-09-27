@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
-import { FoodCategoryIcon } from '@/components/food-category-icon';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useFocusReload } from '@/hooks/use-focus-reload';
-import { foodCategory } from '@/lib/food-category';
 import { entryLabel } from '@/lib/food-today';
 import { removeEntry } from '@/lib/remove-entry';
 import { supabase } from '@/lib/supabase';
@@ -79,6 +77,39 @@ function summaryOf(rows: FoodRow[]): string {
 /** "Pushups", not "pushups" - her rule, and it applies to food too. */
 function capitalised(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Meal labels that say nothing. "Meal" is the commonest thing the parser writes. */
+const VAGUE_MEAL = /^(meal|food|entry|other|unknown)$/i;
+
+/**
+ * The heading a group of entries sits under.
+ *
+ * Ruth, item 7: "Replace the vague 'Meal' label with the actual meal name, or
+ * the time if unknown." A heading that says "Meal" above a list of meals is
+ * doing no work at all - the time at least tells her when she ate.
+ */
+function mealHeading(label: string | null, at: string): string {
+  const name = (label ?? '').trim();
+  if (name && !VAGUE_MEAL.test(name)) return capitalised(name);
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return 'Earlier';
+  return d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+}
+
+/**
+ * The entry without the heading it already sits under.
+ *
+ * "Breakfast: half cheese sandwich" under a Breakfast heading is the word
+ * twice, and it is the longer word - so it is the one that pushes the name
+ * into a second line and then into an ellipsis.
+ */
+function withoutMealPrefix(text: string, heading: string): string {
+  const colon = text.indexOf(':');
+  if (colon < 1 || colon > 24) return text;
+  const prefix = text.slice(0, colon).trim().toLowerCase();
+  if (prefix !== heading.trim().toLowerCase()) return text;
+  return text.slice(colon + 1).trim() || text;
 }
 
 export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
@@ -159,25 +190,34 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
     const todayKey = toLocalDateKey(new Date());
     return daysOfWeek(weekStart)
       .map((date) => ({ date, key: toLocalDateKey(date) }))
-      // NOTHING LOGGED, NOTHING SHOWN. Her rule, and the reason it is right:
-      // a week of seven rows where four say nothing teaches the reader to skim.
-      .filter(({ key }) => (byDay.get(key) ?? []).length > 0)
-      .sort((a, b) =>
-        a.key === todayKey ? -1 : b.key === todayKey ? 1 : b.date.getTime() - a.date.getTime()
-      )
+      // NOTHING LOGGED, NOTHING SHOWN - EXCEPT TODAY, which is always a row
+      // (item 7). A week of seven rows where four say nothing teaches the
+      // reader to skim; today with nothing on it is a different thing, because
+      // it is the row she came to the screen to add to.
+      .filter(({ key }) => key === todayKey || (byDay.get(key) ?? []).length > 0)
       .map(({ date, key }) => {
         const list = byDay.get(key) ?? [];
-        const entries: DayEntry[] = list.map((row) => {
-          const label = capitalised(entryLabel(row));
+        // IN THE ORDER SHE ATE THEM (item 7). Breakfast, then lunch, then
+        // dinner - which is the order the rows already come back in, and was
+        // being undone by nothing more than the grouping running over an
+        // unsorted list. Sorted explicitly here so it cannot come undone again.
+        const inOrder = [...list].sort((a, b) => a.happened_at.localeCompare(b.happened_at));
+        const entries: DayEntry[] = inOrder.map((row) => {
+          const heading = mealHeading(row.meal_label, row.happened_at);
+          const label = capitalised(withoutMealPrefix(entryLabel(row), heading));
           return {
             id: row.id,
             label,
             detail: macroLine(row as unknown as Record<string, unknown>, tracked) || null,
-            // GROUPED BY MEAL WHERE SHE RECORDED ONE, in time order otherwise.
-            // Her spec, and the fallback matters: most entries arrive through
-            // the conversation, which rarely names a meal.
-            group: row.meal_label ?? null,
-            mark: <FoodCategoryIcon category={foodCategory(row)} size={18} />,
+            // GROUPED BY MEAL WHERE SHE RECORDED ONE, by time otherwise. Most
+            // entries arrive through the conversation, which rarely names a
+            // meal, so the fallback is the common case rather than the edge.
+            group: heading,
+            // NO ICON HERE ANY MORE (item 7: "Drop the meal icons unless
+            // they're the same ones used elsewhere in the app and clearly mean
+            // something"). FoodCategoryIcon was used on this screen and nowhere
+            // else, which is the test failed. The measurement marks stay,
+            // because they appear in Settings too and name a real thing.
             remove: () => removeEntry('food_logs', row.id, label),
           };
         });

@@ -85,11 +85,16 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
           .gte('happened_at', startISO)
           .lt('happened_at', endISO)
           .order('happened_at', { ascending: true }),
+        // THE EXACT DAYS, NOT A SLICED ISO RANGE (Ruth, item 7: "Thu 24 shows
+        // pushups but not its steps"). `date` here is a plain calendar day and
+        // startISO is a local midnight, so slicing ten characters off it gives
+        // the day BEFORE in British Summer Time - the window was a day out all
+        // summer. Asking for the seven keys the rows are grouped by cannot
+        // drift, because it is the same function that builds them.
         supabase
           .from('daily_activity_summaries')
           .select('date, steps')
-          .gte('date', startISO.slice(0, 10))
-          .lte('date', endISO.slice(0, 10)),
+          .in('date', daysOfWeek(weekStart).map((d) => toLocalDateKey(d))),
       ]);
       if (cancelled) return;
       // A PHONE'S WHOLE-DAY SUMMARY IS NOT A SESSION. It arrives in the same
@@ -128,11 +133,10 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
     return daysOfWeek(weekStart)
       .map((date) => ({ date, key: toLocalDateKey(date) }))
       // A day with steps and no session still HAPPENED, so it is shown. A day
-      // with neither is not.
-      .filter(({ key }) => (byDay.get(key) ?? []).length > 0 || stepsByDay.has(key))
-      .sort((a, b) =>
-        a.key === todayKey ? -1 : b.key === todayKey ? 1 : b.date.getTime() - a.date.getTime()
-      )
+      // with neither is not - except today, which is always a row (item 7:
+      // "Movement has no row for today at all"). Today is the row she came to
+      // the screen to add to, and an absent one reads as a broken screen.
+      .filter(({ key }) => key === todayKey || (byDay.get(key) ?? []).length > 0 || stepsByDay.has(key))
       .map(({ date, key }) => {
         const list = byDay.get(key) ?? [];
         const stepCount = stepsByDay.get(key) ?? null;
@@ -148,12 +152,16 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
           date,
           summary: (
             <View style={styles.summary}>
-              {stepCount != null ? (
-                <View style={styles.stepPair}>
-                  <Ionicons name="footsteps-outline" size={14} color={theme.textSecondary} />
-                  <ThemedText type="small">{stepCount.toLocaleString('en-GB')}</ThemedText>
-                </View>
-              ) : null}
+              {/* EVERY DAY STARTS WITH STEPS (item 7). A dash rather than a
+                  missing figure when the phone recorded none: the column then
+                  reads down the page as one thing, and a gap says "not
+                  recorded" rather than looking like a layout that failed. */}
+              <View style={styles.stepPair}>
+                <Ionicons name="footsteps-outline" size={14} color={theme.textSecondary} />
+                <ThemedText type="small" themeColor={stepCount == null ? 'textSecondary' : 'text'}>
+                  {stepCount == null ? '—' : stepCount.toLocaleString('en-GB')}
+                </ThemedText>
+              </View>
               {list.length > 0 ? (
                 <ThemedText type="small">
                   {list.map((r) => [name(r), detailOf(r)].filter(Boolean).join(' ')).join('  ·  ')}

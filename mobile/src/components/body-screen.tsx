@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SettingsLink } from '@/components/settings-link';
@@ -55,6 +55,9 @@ export function BodyScreen({
   // dead control principle 8 rules out. Asked of the router rather than passed
   // in as a prop: the router already knows, and a prop is a thing to get wrong.
   const canGoBack = router.canGoBack();
+  // Enough for the first frame, replaced by the real figure on layout. Too
+  // small would flash the content under the header; too large would drop it.
+  const [headerHeight, setHeaderHeight] = useState(insets.top + TOP_ROW + ARROW_SIZE + 44);
 
   return (
     <ThemedView style={styles.container}>
@@ -69,42 +72,63 @@ export function BodyScreen({
           onScrollBeginDrag={closeOpenSwipe}
           contentContainerStyle={[
             styles.content,
-            // Below the status bar, then below the arrow-and-mark row, then the
-            // page's own top margin. Written as a sum rather than a number so
-            // that changing the mark's size cannot silently push a title under
-            // it.
-            { paddingTop: insets.top + TOP_ROW + ARROW_SIZE + PageInset.top },
+            // MEASURED, NOT CALCULATED (Ruth, 27 September 2026, item 7: "the
+            // page title scrolls under the status bar... give the input row its
+            // own space below the header").
+            //
+            // This used to be a sum - status bar plus arrow plus margin - which
+            // was right about everything except that the TITLE was inside the
+            // scroller. So it scrolled, and on a screen whose first element is
+            // a control (the Food log's + row) the control arrived under the
+            // back arrow. The header is pinned now, and the padding is whatever
+            // it actually measures, because a sum cannot know how tall a page
+            // title is at her font size and she asked for this checked at a
+            // large one.
+            { paddingTop: headerHeight + PageInset.top },
           ]}
         >
-          {title ? <ThemedText type="pageTitle">{title}</ThemedText> : null}
           <SpotlightScroll scrollRef={scrollRef}>{children}</SpotlightScroll>
         </ScrollView>
       </SafeAreaView>
 
+      {/* THE HEADER, OVER THE PAGE RATHER THAN IN IT. Opaque, so content
+          passing beneath it disappears instead of showing through the status
+          bar. It holds the arrow and the name; the seeds mark is pinned
+          separately and draws last, which keeps it in the same place on every
+          screen in the app. */}
+      <View
+        onLayout={(e: LayoutChangeEvent) => setHeaderHeight(e.nativeEvent.layout.height)}
+        style={[styles.header, { paddingTop: insets.top + TOP_ROW, backgroundColor: theme.background }]}
+        pointerEvents="box-none"
+      >
+        <View style={styles.headerRow} pointerEvents="box-none">
+          {canGoBack ? (
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={Spacing.three}
+              style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+            >
+              {/* THE ARROW ALONE (Ruth, 25 September 2026): "Remove the titles
+                  on the back buttons on all screens for going back to log
+                  screen home page, they dont make any sense. Arrow is
+                  sufficient and could be more beautiful." */}
+              <Ionicons name="chevron-back" size={ARROW_SIZE} color={theme.text} />
+            </Pressable>
+          ) : (
+            <View style={{ height: ARROW_SIZE }} />
+          )}
+        </View>
+        {title ? (
+          <ThemedText type="pageTitle" style={styles.title}>
+            {title}
+          </ThemedText>
+        ) : null}
+      </View>
+
       {/* BOTH OUTSIDE THE SCROLLER, so they stay in the corner while the page
           moves under them. */}
-      {canGoBack ? (
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={Spacing.three}
-          style={({ pressed }) => [
-            styles.back,
-            { top: insets.top + TOP_ROW, backgroundColor: theme.background },
-            pressed && styles.pressed,
-          ]}
-        >
-          {/* THE ARROW ALONE (Ruth, 25 September 2026): "Remove the titles on
-              the back buttons on all screens for going back to log screen home
-              page, they dont make any sense. Arrow is sufficient and could be
-              more beautiful." And on the title beside it: "the title is for
-              that page, a smaller section of Measurements, the arrow is to go
-              back, not to go back to Measurements as we're still there." */}
-          <Ionicons name="chevron-back" size={ARROW_SIZE} color={theme.text} />
-        </Pressable>
-      ) : null}
-
       <SettingsLink />
     </ThemedView>
   );
@@ -117,36 +141,24 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  back: {
+  header: {
     position: 'absolute',
-    // The page margin, the same one the mark uses on the other side and every
-    // heading below uses on this one.
-    left: PageInset.horizontal,
+    top: 0,
+    left: 0,
+    right: 0,
     zIndex: 10,
     elevation: 10,
-    // A PAGE-COLOURED DISC BEHIND IT (Ruth, 26 September 2026, item 10: "the
-    // back arrow sits on top of the calf icon when scrolled. Keep the back
-    // arrow clear of content").
-    //
-    // The arrow is pinned and the page scrolls beneath it, which is correct -
-    // it must stay reachable. But a bare glyph over moving content reads as two
-    // drawings on top of each other, and a measurement mark passing behind a
-    // chevron is exactly the collision she saw. zIndex was already winning;
-    // winning was never the problem, having nothing behind it was.
-    //
-    // The seeds mark on the other side of the same row has solved this since
-    // the 25th, with a disc a little larger than the glyph so the ground reads
-    // as deliberate rather than as a square of background gone wrong. Same
-    // treatment, same reasoning, same row - see settings-link.tsx.
-    width: ARROW_SIZE + 12,
-    height: ARROW_SIZE + 12,
-    borderRadius: (ARROW_SIZE + 12) / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Centred on where the bare arrow used to sit, so nothing moved.
-    marginLeft: -6,
-    marginTop: -6,
+    paddingHorizontal: PageInset.horizontal,
+    // The page's own column, so a title lines up with the content beneath it
+    // on a wide screen exactly as it did when it was inside the scroller.
+    alignItems: 'stretch',
   },
+  headerRow: { flexDirection: 'row', alignItems: 'center', minHeight: ARROW_SIZE },
+  // THE DISC IS GONE WITH THE FLOAT. It existed because the arrow hung over
+  // moving content and a measurement mark could pass behind it; the header is
+  // opaque now, so there is nothing behind it to show through.
+  back: { marginLeft: -4 },
+  title: { paddingTop: Spacing.one },
   pressed: { opacity: 0.6 },
   content: {
     alignSelf: 'center',

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { SwipeToDelete } from '@/components/swipe-to-delete';
@@ -107,8 +107,18 @@ export function DayLog({
   const theme = useTheme();
   const todayKey = toLocalDateKey(new Date());
 
-  // TODAY IS OPEN, EVERYTHING ELSE IS SHUT (her rule). Keyed by day rather than
-  // held as a single id, so opening Tuesday does not close today.
+  // TODAY IS FIRST AND TODAY IS OPEN (item 7), and this is the list's job
+  // rather than each caller's. Food had today collapsed with Saturday open and
+  // Movement had no row for today at all - two screens, two different wrong
+  // answers, which is what happens when three callers each sort their own days.
+  const ordered = useMemo(() => {
+    const today = days.filter((d) => d.key === todayKey);
+    const rest = days
+      .filter((d) => d.key !== todayKey)
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    return [...today, ...rest];
+  }, [days, todayKey]);
+
   const [open, setOpen] = useState<Set<string>>(() => new Set([todayKey]));
   const [undo, setUndo] = useState<Undo | null>(null);
 
@@ -163,13 +173,13 @@ export function DayLog({
         />
       </View>
 
-      {days.length === 0 ? (
+      {ordered.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
           {empty}
         </ThemedText>
       ) : (
         <View>
-          {days.map((day, i) => (
+          {ordered.map((day, i) => (
             <DayRow
               key={day.key}
               day={day}
@@ -264,6 +274,10 @@ function DayRow({
 
       {expanded ? (
         <View style={styles.figures}>
+          {/* STILL THE SUMMARY, ABOVE THE ENTRIES (item 7). Opening a day used
+              to replace its totals with its parts, so the one figure she came
+              for vanished at the moment she asked for more. */}
+          <View style={styles.openSummary}>{day.summary}</View>
           {groups.map((group, gi) => (
             <View key={`${group.name ?? 'all'}-${gi}`} style={styles.group}>
               {group.name ? (
@@ -272,16 +286,39 @@ function DayRow({
                 </ThemedText>
               ) : null}
               {group.entries.map((entry) => (
-                <SwipeToDelete
-                  key={entry.id}
-                  what={entry.label}
-                  onDelete={() => remove(entry)}
-                >
+                /* THE DATE COLUMN DOES NOT MOVE (item 7). Without this the
+                   sliding entry travelled straight over the day and date on
+                   its left, because nothing was stopping it - and the bin
+                   appeared as a block of its own beside the row rather than
+                   behind it. Clipping the swipe to its own box keeps the
+                   movement inside the entry's area and puts the bin exactly
+                   where the entry was.
+                   `overflow: hidden` has bitten this app before, on the tab
+                   strip, where it chopped a WORD. Here it is the right tool for
+                   the opposite reason: the thing being clipped is a shape that
+                   is supposed to leave, not a word that is supposed to fit. */
+                <View key={entry.id} style={styles.swipeBox}>
+                <SwipeToDelete what={entry.label} onDelete={() => remove(entry)}>
                   <View style={styles.entry}>
-                    {entry.mark ? <View style={styles.entryMark}>{entry.mark}</View> : null}
-                    <ThemedText type="small" style={styles.entryLabel}>
-                      {entry.label}
-                    </ThemedText>
+                    {/* TWO LINES, NOT TWO COLUMNS (Ruth, 27 September 2026,
+                        item 7). The details used to take a fixed column on the
+                        right, which left the name a narrow one - and a narrow
+                        column breaks words rather than lines: "Pushup/s",
+                        "cheesebu/rger", "Raffaell/o-sty...".
+                        The name now has the full width and the figures sit
+                        under it. Two lines then an ellipsis, her rule, because
+                        a five-line entry is a paragraph. */}
+                    <View style={styles.entryName}>
+                      {entry.mark ? <View style={styles.entryMark}>{entry.mark}</View> : null}
+                      <ThemedText
+                        type="small"
+                        style={styles.entryLabel}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {entry.label}
+                      </ThemedText>
+                    </View>
                     {entry.detail ? (
                       <ThemedText type="detail" themeColor="textSecondary">
                         {entry.detail}
@@ -289,6 +326,7 @@ function DayRow({
                     ) : null}
                   </View>
                 </SwipeToDelete>
+                </View>
               ))}
             </View>
           ))}
@@ -378,9 +416,15 @@ const styles = StyleSheet.create({
   dayLabel: { minWidth: 58 },
   figures: { flex: 1, minWidth: 0, gap: Spacing.one },
   group: { gap: 2 },
-  entry: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two, paddingVertical: 2 },
-  entryLabel: { flexShrink: 1 },
-  entryMark: { width: 22, alignItems: 'center' },
+  entry: { gap: 1, paddingVertical: Spacing.one },
+  swipeBox: { overflow: 'hidden' },
+  entryName: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.one },
+  // WITHOUT minWidth THE NAME WILL NOT WRAP AT ALL beside a mark - a flex child
+  // refuses to go below its own content width unless told it may, which is the
+  // trap already written up twice in this codebase.
+  entryLabel: { flex: 1, minWidth: 0 },
+  entryMark: { width: 22, alignItems: 'center', paddingTop: 1 },
+  openSummary: { paddingBottom: Spacing.one },
   chevron: { paddingTop: 2 },
   chatLink: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: Spacing.one },
   undo: {
