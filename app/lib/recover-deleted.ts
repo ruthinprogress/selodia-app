@@ -28,7 +28,10 @@ type ReadingRestore =
   | { kind: 'scale-value'; id: string; column: ScaleColumn; value: number }
   | { kind: 'scale-row'; row: Record<string, unknown> }
   | { kind: 'personal-row'; row: Record<string, unknown> }
-  | { kind: 'several'; items: ReadingRestore[] };
+  | { kind: 'several'; items: ReadingRestore[] }
+  // A whole row - a meal, a session. Everything except a scale reading, which
+  // is a column of a shared row rather than a row of its own.
+  | { kind: 'table-row'; table: string; row: Record<string, unknown> };
 
 export type RecoverableRow = { id: string; label: string; deleted_at: string };
 
@@ -78,6 +81,11 @@ async function put(supabase: SupabaseClient, restore: ReadingRestore): Promise<b
     let all = true;
     for (const item of restore.items) if (!(await put(supabase, item))) all = false;
     return all;
+  }
+  if (restore.kind === 'table-row') {
+    const { error } = await supabase.from(restore.table).upsert(restore.row);
+    if (error) console.log('RECOVER: could not put the row back -', error.message);
+    return !error;
   }
   if (restore.kind === 'scale-value') {
     const { error } = await supabase

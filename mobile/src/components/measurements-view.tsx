@@ -1,9 +1,5 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ExportLink } from '@/components/data-export-link';
 import { MetricMark } from '@/components/metric-mark';
@@ -12,7 +8,7 @@ import { QuickLogBar } from '@/components/quick-log-bar';
 import { ReadingInterpretationNote } from '@/components/reading-interpretation';
 import { ReportLink } from '@/components/report-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
-import { SwipeToDelete } from '@/components/swipe-to-delete';
+import { DayLog, type LogDay } from '@/components/day-log';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WhatYouBurn } from '@/components/what-you-burn';
@@ -22,7 +18,6 @@ import { useFocusReload } from '@/hooks/use-focus-reload';
 import { archiveDeleted, purgeExpired } from '@/lib/recoverable';
 import {
   deleteReading,
-  deleteReadingMessage,
   restoreReading,
   type ReadingRestore,
 } from '@/lib/delete-reading';
@@ -38,7 +33,7 @@ import {
   type PersonalRow,
   type TrackedMetric,
 } from '@/lib/tracked-metrics';
-import { addWeeks, currentWeekStart, daysOfWeek, toLocalDateKey, weekLabel, weekRange } from '@/lib/week';
+import { currentWeekStart, daysOfWeek, toLocalDateKey, weekRange } from '@/lib/week';
 
 // MEASUREMENTS (Ruth, 25 September 2026, items 11-14), rebuilt to her written
 // spec and in the row style Today uses - her words on the mockups: "Your
@@ -87,16 +82,6 @@ export function longDate(d: Date): string {
 }
 
 /** "Logged 8:13 am", or null when nothing is known about the time. */
-function loggedAt(at: string | null): string | null {
-  if (!at) return null;
-  const d = new Date(at);
-  if (isNaN(d.getTime())) return null;
-  let h = d.getHours();
-  const m = d.getMinutes();
-  const suffix = h < 12 ? 'am' : 'pm';
-  h = h % 12 === 0 ? 12 : h % 12;
-  return `Logged ${h}:${String(m).padStart(2, '0')} ${suffix}`;
-}
 
 // HOW ONE READING IS REMOVED (Ruth, 26 September 2026, having looked at four).
 //
@@ -123,7 +108,6 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
   const [reloadKey, setReloadKey] = useState(0);
   const [ackShowing, setAckShowing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [openDay, setOpenDay] = useState<string | null>(null);
 
   // Everything, for the metric list and for Then & now; and the displayed
   // week, for History. Two reads rather than one because they answer different
@@ -268,6 +252,40 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
     return out.reverse();
   }, [metrics, weekScale, weekPersonal, weekStart]);
 
+  // READINGS AS SHARED ENTRIES. The only thing the shared list cannot know is
+  // that removing one of these is not a row delete: weight, body fat and muscle
+  // are three COLUMNS of one row a scale wrote, so "delete Thursday's weight"
+  // clears a column and only removes the row when the last figure goes. That
+  // stays here, in the screen that understands it.
+  const logDays: LogDay[] = useMemo(
+    () =>
+      days.map((d) => ({
+        key: d.key,
+        date: d.date,
+        at: d.at,
+        summary: (
+          <ThemedText type="small">
+            {d.values.map((v) => `${v.metric.label} ${v.text}`).join('   ')}
+          </ThemedText>
+        ),
+        entries: d.values.map((v) => ({
+          id: v.metric.key,
+          label: v.metric.label,
+          detail: v.text,
+          mark: <MetricMark metric={v.metric} size={18} />,
+          remove: async () => {
+            const outcome = await deleteReading(v.metric, v.at);
+            if (!outcome.done) return null;
+            const label = `${v.metric.label} from ${shortDay(d.date)}`;
+            void archiveDeleted('reading', label, outcome.restore);
+            void purgeExpired();
+            return { label, restore: () => restoreReading(outcome.restore) };
+          },
+        })),
+      })),
+    [days]
+  );
+
   return (
     <ThemedView style={styles.wrap}>
       {/* UNDO, BECAUSE SHE LOST A DAY TO THIS (item 8). The figures travel out
@@ -330,32 +348,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
 
       {/* HISTORY. The week stepper, then a row per day that has entries. */}
       <View style={styles.section}>
-        <View style={styles.historyHead}>
-          <ThemedText type="sectionTitle">History</ThemedText>
-          <View style={styles.weekBar}>
-            <Step label="‹" hint="Previous week" onPress={() => setWeekStart(addWeeks(weekStart, -1))} />
-            {/* The one far-jump entry point. Ordinary browsing never needs it -
-                week stepping is the calm default - so it is one quiet control
-                on the label rather than a persistent picker. */}
-            <Pressable
-              onPress={() => setPickerOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Jump to another month"
-              hitSlop={Spacing.two}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <ThemedText type="small" themeColor="textSecondary">
-                {weekLabel(weekStart)}
-              </ThemedText>
-            </Pressable>
-            <Step
-              label="›"
-              hint="Next week"
-              disabled={isPresent}
-              onPress={() => setWeekStart(addWeeks(weekStart, 1))}
-            />
-          </View>
-        </View>
+        <ThemedText type="sectionTitle">History</ThemedText>
 
         {!isPresent ? (
           <Pressable
@@ -375,31 +368,33 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
           <ThemedText type="small" themeColor="textSecondary">
             …
           </ThemedText>
-        ) : days.length === 0 ? (
-          // Sparse and empty are the normal cases early on, so the empty state
-          // is the primary path here. It says what is missing without implying
-          // anybody has fallen behind.
-          <ThemedText type="small" themeColor="textSecondary">
-            {isPresent
-              ? 'No readings this week yet. Tell me a measurement any time and it lands here.'
-              : 'Nothing was recorded this week.'}
-          </ThemedText>
         ) : (
-          <View>
-            {days.map((d, i) => (
-              <DayRow
-                key={d.key}
-                date={d.date}
-                values={d.values}
-                onRemoved={(restore, label) => setUndo({ restore, label })}
-                at={d.at}
-                rule={i > 0}
-                expanded={openDay === d.key}
-                onToggle={() => setOpenDay((k) => (k === d.key ? null : d.key))}
-                onDeleted={() => setReloadKey((k) => k + 1)}
-              />
-            ))}
-          </View>
+          /* THE SAME DAY LIST FOOD AND MOVEMENT USE (Ruth, 27 September 2026,
+             item 2). This screen was the reference for the other two, so it had
+             the pattern first and its own copy of it - which is exactly the
+             arrangement her instruction rules out. The week bar, the rules
+             between days, which day is open, the logged time, the chat link,
+             the swipe and the toast are all in components/day-log.tsx now.
+
+             What stays here is what is genuinely about measurements: which
+             metrics she tracks, how a reading reads, and that removing one is a
+             COLUMN operation rather than a row delete - see lib/delete-reading.ts. */
+          <DayLog
+            days={logDays}
+            weekStart={weekStart}
+            onWeekStart={setWeekStart}
+            isPresent={isPresent}
+            onJump={() => setPickerOpen(true)}
+            onChanged={() => setReloadKey((k) => k + 1)}
+            subject={(date) =>
+              `About my measurements from ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}: `
+            }
+            empty={
+              isPresent
+                ? 'No readings this week yet. Tell me a measurement any time and it lands here.'
+                : 'Nothing was recorded this week.'
+            }
+          />
         )}
       </View>
 
@@ -482,313 +477,6 @@ function MetricRow({
   );
 }
 
-// ONE DAY, in whichever of the three shapes is being looked at.
-//
-// WHAT A DELETE ACTUALLY REMOVES is the whole question here - see
-// lib/delete-reading.ts. A day can hold five readings living in two different
-// shapes underneath, so "delete this line" means one thing on a weight and
-// another on a waist, and the old eye-icon control was blunter than it looked:
-// it removed a scale row entire, taking the body fat and muscle measured in
-// the same moment with it.
-function DayRow({
-  date,
-  values,
-  at,
-  rule,
-  expanded,
-  onToggle,
-  onDeleted,
-  onRemoved,
-}: {
-  date: Date;
-  values: { metric: TrackedMetric; text: string; at: string }[];
-  at: string | null;
-  rule: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-  onDeleted: () => void;
-  /** What was just removed, so the screen can offer to put it back. */
-  onRemoved: (restore: ReadingRestore, label: string) => void;
-}) {
-  const theme = useTheme();
-  const [busy, setBusy] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
-  // NAME THE METRIC (Ruth, 26 September 2026, item 10): "History rows must name
-  // the metric: 'Sat 26 . 25 cm' should read 'Sat 26 . Calf 25 cm'."
-  //
-  // A figure with no name is only readable when there is exactly one thing it
-  // could be. On a day with a single tape reading it was a bare "25 cm", which
-  // is a number the reader has to guess at - and the guess gets harder the more
-  // metrics she adds, which is the direction this feature goes.
-  const summary = values.map((v) => `${v.metric.label} ${v.text}`).join('   ');
-
-  const removeOne = async (v: { metric: TrackedMetric; at: string }) => {
-    if (busy) return;
-    setBusy(v.metric.key);
-    setFailed(null);
-    const outcome = await deleteReading(v.metric, v.at);
-    setBusy(null);
-    if (outcome.done) {
-      const label = `${v.metric.label} from ${shortDay(date)}`;
-      // TEN SECONDS AND SEVEN DAYS ARE DIFFERENT PROMISES. The toast below
-      // catches the wrong tap; the archive catches the regret, days later,
-      // with the numbers it actually had. See lib/recoverable.ts.
-      void archiveDeleted('reading', label, outcome.restore);
-      void purgeExpired();
-      onRemoved(outcome.restore, `${label} removed.`);
-      onDeleted();
-    } else setFailed(deleteReadingMessage(v.metric, outcome));
-  };
-
-  const removeDay = async () => {
-    if (busy) return;
-    setBusy('day');
-    setFailed(null);
-    // One at a time, because two of them can be columns of the same row and
-    // the second has to see what the first left behind.
-    // EVERY ONE OF THEM IS KEPT, not just the last. A day is several readings
-    // and an undo that restored one of five would be worse than none - it would
-    // look like it had worked.
-    const undoable: ReadingRestore[] = [];
-    for (const v of values) {
-      const outcome = await deleteReading(v.metric, v.at);
-      if (!outcome.done) {
-        setBusy(null);
-        setFailed(deleteReadingMessage(v.metric, outcome));
-        return;
-      }
-      undoable.push(outcome.restore);
-    }
-    setBusy(null);
-    if (undoable.length > 0) {
-      const together: ReadingRestore = { kind: 'several', items: undoable };
-      void archiveDeleted('reading', `everything from ${shortDay(date)}`, together);
-      void purgeExpired();
-      onRemoved(
-        together,
-        `${shortDay(date)} removed, ${undoable.length} ${undoable.length === 1 ? 'reading' : 'readings'}.`
-      );
-    }
-    onDeleted();
-  };
-
-  const toChat = (prefill: string) => router.push({ pathname: '/', params: { prefill } });
-
-  // NOT ONE BUTTON WRAPPING EVERYTHING. The row was a single Pressable with
-  // marks inside it, which is a button inside a button: React refuses it on the
-  // web - "<button> cannot contain a nested button" - and a screen reader
-  // cannot offer the inner one at all. It took three goes to get right, because
-  // the first fix left the expanded detail nested and the second reintroduced
-  // the fault in the swipe wrapper. The shape below cannot have the problem:
-  // the opener holds nothing interactive, and everything pressable is its
-  // sibling.
-  const row = (
-    <View style={[styles.row, rule && { borderTopWidth: 1, borderTopColor: theme.backgroundSelected }]}>
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={`${shortDay(date)}. ${summary}`}
-        style={({ pressed }) => [expanded ? styles.dayLabelOnly : styles.dayOpener, pressed && styles.pressed]}
-      >
-        <ThemedText type="small" themeColor="textSecondary" style={styles.dayLabel}>
-          {shortDay(date)}
-        </ThemedText>
-        {!expanded ? (
-          <View style={styles.figures}>
-            <ThemedText type="small">{summary}</ThemedText>
-          </View>
-        ) : null}
-      </Pressable>
-
-      {expanded ? (
-        <View style={styles.figures}>
-          {/* SWIPE, NOT A ROW OF BINS (Ruth, 26 September 2026, item 7). She
-              chose visible marks per line on the 26th and changed her mind the
-              same evening, having lived with them: "Remove all of these.
-              Instead, make each reading line swipeable using the shared
-              swipe-to-delete component."
-
-              She is right, and the reason is arithmetic. A bin on every line
-              plus one beside the link put SIX delete controls on a five-reading
-              day, on a screen whose job is to show her body changing over time.
-              The gesture costs nothing until it is wanted, and the shared
-              component already closes any other open row, so only one bin is
-              ever on screen.
-
-              It uses lib/delete-reading.ts rather than a table and an id,
-              because a reading is not a row: weight, body fat and muscle are
-              three columns of one row a scale wrote. */}
-          {values.map((v) => (
-            <SwipeToDelete
-              key={v.metric.key}
-              what={`${v.metric.label} from ${shortDay(date)}`}
-              onDelete={() => removeOne(v)}
-              onDeleted={onDeleted}
-            >
-              <View style={styles.expandedRow}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.expandedLabel}>
-                  {v.metric.label}
-                </ThemedText>
-                <ThemedText type="smallBold">{v.text}</ThemedText>
-              </View>
-            </SwipeToDelete>
-          ))}
-
-          {loggedAt(at) ? (
-            <ThemedText type="detail" themeColor="textSecondary">
-              {loggedAt(at)}
-            </ThemedText>
-          ) : null}
-
-          {failed ? (
-            <ThemedText type="detail" themeColor="danger">
-              {failed}
-            </ThemedText>
-          ) : null}
-
-          {/* ONE CHAT MARK, NOT TWO NAMED LINKS (Ruth, 26 September 2026).
-              She first said "edit shouldn't replace 'Ask about this' - how can
-              we make sure to show the user they can ask questions about entries
-              as well as just edit", and then, better: "How about just the chat
-              icon".
-
-              She is right twice over. BOTH things open the conversation -
-              there is no form for a measurement, because the conversation is
-              the only thing that writes one - so two links were two doors into
-              one room, and calling either of them "Edit" promised a form that
-              does not exist AND implied the only reason to open an entry is to
-              fix it. A record you can only correct is a filing cabinet.
-
-              ONE DOOR, BUT NAMED. Her next thought was "Or is that too vague
-              for the user...?" and it was - a bare chat bubble says "talk",
-              which is exactly the thing an unlabelled icon cannot make
-              discoverable, and making asking discoverable was the whole point.
-              So the chat mark keeps a short label and the bin does not, because
-              a bin explains itself and a speech bubble does not say what you
-              might say into it.
-
-              "ASK ABOUT OR CHANGE THIS" IS HERS, and the verb is the whole
-              reason it works. She tried "Ask about this, or edit" first, and
-              EDIT is the word that cannot go here: it promises a form with
-              fields, and there is no form anywhere in this app for a
-              measurement. CHANGE promises only that the thing can be changed,
-              which is true, and says nothing about how - which is right,
-              because the how is a sentence you type.
-
-              The prefill leans neither way: she finishes it with a question or
-              a correction, whichever she came for. */}
-          <View style={styles.rowActions}>
-            <Pressable
-              onPress={() => toChat(`About my measurements from ${shortDay(date)}: `)}
-              accessibilityRole="button"
-              accessibilityLabel={`Ask about or change the readings from ${shortDay(date)}`}
-              hitSlop={Spacing.two}
-              style={({ pressed }) => [styles.editLink, pressed && styles.pressed]}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.accentDeep} />
-              <ThemedText type="detail" themeColor="accentDeep">
-                Ask about or change this
-              </ThemedText>
-            </Pressable>
-
-            {/* NO BIN HERE EITHER. Deleting the whole day is the day row's own
-                swipe, which is where it belongs - a control that removes five
-                readings should not sit inside the list of those five readings,
-                a thumb's width from the one that removes one. */}
-          </View>
-        </View>
-      ) : null}
-
-      {/* The chevron is its own control, and it is the way back out of an
-          opened row - the opener above holds only the date once the row is
-          open, so there has to be something obvious to press. */}
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityLabel={expanded ? `Close ${shortDay(date)}` : `Open ${shortDay(date)}`}
-        hitSlop={Spacing.two}
-        style={({ pressed }) => [styles.chevron, pressed && styles.pressed]}
-      >
-        <Ionicons
-          name={expanded ? 'chevron-down' : 'chevron-forward'}
-          size={16}
-          color={theme.textSecondary}
-        />
-      </Pressable>
-    </View>
-  );
-
-  return (
-    <SwipeableDay onDelete={() => void removeDay()} label={`Delete everything from ${shortDay(date)}`}>
-      {row}
-    </SwipeableDay>
-  );
-}
-
-
-// The day row's swipe, in the shape swipe-to-delete.tsx established: the row
-// translates whole, the mark sits behind it, and the mark is a tap.
-//
-// A REAL GESTURE, NOT A LONG PRESS ON A PRESSABLE. The first version wrapped
-// the row in a Pressable to catch a long press, which put a button around a
-// row that already contains buttons - the same nesting fault as the row
-// itself, reintroduced by the fix for it. A GestureDetector draws a plain View
-// and has no such problem, and it is also what the rest of the app does.
-function SwipeableDay({
-  children,
-  onDelete,
-  label,
-}: {
-  children: React.ReactNode;
-  onDelete: () => void;
-  label: string;
-}) {
-  const theme = useTheme();
-  const x = useSharedValue(0);
-  const [open, setOpen] = useState(false);
-
-  const settle = useCallback((next: boolean) => setOpen(next), []);
-
-  const pan = Gesture.Pan()
-    // Only once it is clearly sideways: a vertical scroll must still scroll and
-    // a tap must still reach the row.
-    .activeOffsetX([-12, 12])
-    .failOffsetY([-10, 10])
-    .onUpdate((e) => {
-      const from = open ? -SWIPE_OPEN : 0;
-      x.set(Math.min(0, Math.max(-SWIPE_OPEN, from + e.translationX)));
-    })
-    .onEnd(() => {
-      const shouldOpen = x.get() < -SWIPE_OPEN / 2;
-      x.set(withSpring(shouldOpen ? -SWIPE_OPEN : 0, { damping: 18, stiffness: 180 }));
-      runOnJS(settle)(shouldOpen);
-    });
-
-  const sliding = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
-  const revealed = useAnimatedStyle(() => ({ opacity: x.get() < -1 ? 1 : 0 }));
-
-  return (
-    <View>
-      <Animated.View style={[styles.swipeBin, revealed]} pointerEvents={open ? 'auto' : 'none'}>
-        <Pressable
-          onPress={onDelete}
-          disabled={!open}
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          style={({ pressed }) => [styles.swipeHit, pressed && styles.pressed]}
-        >
-          <Ionicons name="trash-outline" size={20} color={theme.accentDeep} />
-        </Pressable>
-      </Animated.View>
-
-      <GestureDetector gesture={pan}>
-        <Animated.View style={sliding}>{children}</Animated.View>
-      </GestureDetector>
-    </View>
-  );
-}
-
 // THEN & NOW. Her spec: "one line at the top with the two dates, then one row
 // per configured metric: label, then -> now, change at the right."
 //
@@ -856,34 +544,6 @@ function ThenAndNow({
         ))}
       </View>
     </View>
-  );
-}
-
-function Step({
-  label,
-  hint,
-  onPress,
-  disabled,
-}: {
-  label: string;
-  hint: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={hint}
-      accessibilityState={{ disabled: !!disabled }}
-      hitSlop={Spacing.two}
-      style={({ pressed }) => pressed && styles.pressed}
-    >
-      <ThemedText type="smallBold" themeColor={disabled ? 'textSecondary' : 'text'}>
-        {label}
-      </ThemedText>
-    </Pressable>
   );
 }
 

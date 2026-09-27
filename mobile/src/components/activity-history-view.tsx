@@ -1,106 +1,103 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { ActivityDetailCard } from '@/components/activity-detail-card';
-import { RowDelete } from '@/components/row-delete';
-import { Tag } from '@/components/tag';
+import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
 import { ActivityIcon } from '@/components/activity-icon';
-import { activityIcon } from '@/lib/activity-icon';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useFocusReload } from '@/hooks/use-focus-reload';
 import { useTheme } from '@/hooks/use-theme';
+import { activityIcon } from '@/lib/activity-icon';
 import { withoutDailySummaries } from '@/lib/daily-summary-rows';
+import { removeEntry } from '@/lib/remove-entry';
 import { supabase } from '@/lib/supabase';
-import {
-  addWeeks,
-  currentWeekStart,
-  dayLabel,
-  daysOfWeek,
-  toLocalDateKey,
-  weekLabel,
-  weekRange,
-  weekStartFor,
-} from '@/lib/week';
+import { currentWeekStart, daysOfWeek, toLocalDateKey, weekRange } from '@/lib/week';
 
-// The activity log, week by week (Ruth, 2026-09-16: "let's roll out the weekly
-// back scrolling to Activity tab too").
+// THE MOVEMENT LOG, ON THE SHARED DAY LIST (Ruth, 27 September 2026, item 2).
 //
-// The food history's shape, ported: addressed by a week and never by "today",
-// the stepper moves that one value, Next stops at the current week, and it opens
-// on the most recent week that actually holds sessions so it never greets
-// somebody with seven empty days.
+// Her summary line, exactly: "Thu 24 · 7,414 · Pushups 2 min" - steps first
+// behind the foot, then the sessions. The foot IS the label for the number, the
+// same decision Today's movement row made on the 25th, and it is what buys the
+// room for the names of what she actually did.
 //
-// ONE DIFFERENCE FROM FOOD, because activity is a different thing.
-//   - Daily tracker totals are filtered out, the same rule the Activity segment
-//     already applies: a whole-day step total is not a session somebody did, and
-//     listing one beside real workouts is what made incidental walking read as a
-//     1063 kcal session.
+// STEPS AND SESSIONS ARE DIFFERENT KINDS OF THING and the screen has to keep
+// saying so. A step count is a whole day of ordinary moving about, recorded by
+// a phone; a session is something she set out to do. They share a row because
+// they share a day, never because they are comparable - which is why the steps
+// figure is not an entry, has no swipe, and cannot be deleted here: it is not
+// hers to delete, it is what the phone counted.
+//
+// WHAT WENT: the tap-to-open detail card and the visible delete control on each
+// row, both replaced by the shared line and the shared swipe. Nothing else
+// here was doing anything the other two logs do not now do identically.
 
 type ActivityRow = {
   id: string;
+  happened_at: string;
   activity_type: string | null;
   duration_min: number | null;
   kcal_burned: number | null;
   intensity: string | null;
   source: string | null;
-  happened_at: string;
   notes: string | null;
 };
+
+type StepRow = { date: string; steps: number | null };
+
+/** "Pushups", not "pushups" - her rule. */
+function capitalised(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function name(row: ActivityRow): string {
+  return capitalised((row.activity_type ?? 'Movement').trim() || 'Movement');
+}
+
+/** Name, duration, intensity, kcal - her order, and anything missing is left out. */
+function detailOf(row: ActivityRow): string | null {
+  const parts: string[] = [];
+  if (row.duration_min != null) parts.push(`${Math.round(row.duration_min)} min`);
+  if (row.intensity) parts.push(String(row.intensity));
+  if (row.kcal_burned != null) parts.push(`${Math.round(row.kcal_burned)} kcal`);
+  return parts.length > 0 ? parts.join('  ·  ') : null;
+}
 
 export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const theme = useTheme();
   const [weekStart, setWeekStart] = useState<Date>(() => initialWeekStart ?? currentWeekStart());
   const [rows, setRows] = useState<ActivityRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  // Which session is open in the detail card, and a key the card bumps when it
-  // deletes one so this week re-reads (2026-09-18). The note above used to say
-  // this log had no eye because there was nothing to open; ActivityDetailCard
-  // now exists, so it does.
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [steps, setSteps] = useState<StepRow[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
+  useFocusReload(setReloadKey);
 
   const weekKey = toLocalDateKey(weekStart);
   const isCurrentWeek = weekKey === toLocalDateKey(currentWeekStart());
 
-  // Opens where the sessions are. Only when no week was asked for: a link into a
-  // particular week is an instruction, not a suggestion.
-  useEffect(() => {
-    if (initialWeekStart) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('happened_at, source')
-        .order('happened_at', { ascending: false })
-        .limit(20);
-      const sessions = withoutDailySummaries((data ?? []) as ActivityRow[]);
-      const latest = sessions[0]?.happened_at;
-      if (cancelled || typeof latest !== 'string') return;
-      const week = weekStartFor(new Date(latest));
-      if (toLocalDateKey(week) !== toLocalDateKey(currentWeekStart())) setWeekStart(week);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialWeekStart]);
-
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
+    void (async () => {
       const { startISO, endISO } = weekRange(weekStart);
-      // RLS scopes the read to the signed-in user.
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('id, activity_type, duration_min, kcal_burned, intensity, source, happened_at, notes')
-        .gte('happened_at', startISO)
-        .lt('happened_at', endISO)
-        .order('happened_at', { ascending: true });
+      const [sessions, daily] = await Promise.all([
+        supabase
+          .from('activity_logs')
+          .select('id, activity_type, duration_min, kcal_burned, intensity, source, happened_at, notes')
+          .gte('happened_at', startISO)
+          .lt('happened_at', endISO)
+          .order('happened_at', { ascending: true }),
+        supabase
+          .from('daily_activity_summaries')
+          .select('date, steps')
+          .gte('date', startISO.slice(0, 10))
+          .lte('date', endISO.slice(0, 10)),
+      ]);
       if (cancelled) return;
-      setRows(withoutDailySummaries((data ?? []) as ActivityRow[]));
-      setLoading(false);
+      // A PHONE'S WHOLE-DAY SUMMARY IS NOT A SESSION. It arrives in the same
+      // table from a photographed Samsung screen, and showing it beside real
+      // sessions would count an entire day of walking about as something she
+      // set out to do.
+      setRows(withoutDailySummaries((sessions.data ?? []) as ActivityRow[]));
+      setSteps((daily.data ?? []) as StepRow[]);
     })();
     return () => {
       cancelled = true;
@@ -120,183 +117,75 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
     return map;
   }, [rows]);
 
-  const weekMinutes = rows.reduce((sum, r) => sum + (r.duration_min ?? 0), 0);
+  const stepsByDay = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of steps) if (typeof s.steps === 'number') map.set(s.date, s.steps);
+    return map;
+  }, [steps]);
 
-  return (
-    <>
-      <View style={styles.stepper}>
-        <StepButton
-          label="Previous week"
-          icon="chevron-back"
-          onPress={() => setWeekStart((w) => addWeeks(w, -1))}
-        />
-        <ThemedText type="smallBold">{weekLabel(weekStart)}</ThemedText>
-        <StepButton
-          label="Next week"
-          icon="chevron-forward"
-          disabled={isCurrentWeek}
-          onPress={() => setWeekStart((w) => addWeeks(w, 1))}
-        />
-      </View>
-
-      {/* The way home, same as the food log: stepping back six weeks otherwise
-          costs six presses to return, and the arrows give no sense of how far
-          from this week you have gone. Only when away from it. */}
-      {!isCurrentWeek && (
-        <Pressable
-          onPress={() => setWeekStart(currentWeekStart())}
-          accessibilityRole="button"
-          accessibilityLabel="Back to today"
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [styles.backToToday, pressed && styles.pressed]}
-        >
-          <ThemedText type="small" themeColor="accentDeep">
-            Back to today
-          </ThemedText>
-        </Pressable>
-      )}
-
-      {loading ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          …
-        </ThemedText>
-      ) : (
-        daysOfWeek(weekStart).map((day) => {
-          const entries = byDay.get(toLocalDateKey(day)) ?? [];
-          const minutes = entries.reduce((sum, r) => sum + (r.duration_min ?? 0), 0);
-          return (
-            <ThemedView key={toLocalDateKey(day)} type="backgroundElement" style={styles.dayCard}>
-              <View style={styles.dayHeader}>
-                <ThemedText type="smallBold">{dayLabel(day)}</ThemedText>
-                {minutes > 0 && (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {Math.round(minutes)} min
-                  </ThemedText>
-                )}
-              </View>
-
-              {entries.length === 0 ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  Nothing logged.
+  const days: LogDay[] = useMemo(() => {
+    const todayKey = toLocalDateKey(new Date());
+    return daysOfWeek(weekStart)
+      .map((date) => ({ date, key: toLocalDateKey(date) }))
+      // A day with steps and no session still HAPPENED, so it is shown. A day
+      // with neither is not.
+      .filter(({ key }) => (byDay.get(key) ?? []).length > 0 || stepsByDay.has(key))
+      .sort((a, b) =>
+        a.key === todayKey ? -1 : b.key === todayKey ? 1 : b.date.getTime() - a.date.getTime()
+      )
+      .map(({ date, key }) => {
+        const list = byDay.get(key) ?? [];
+        const stepCount = stepsByDay.get(key) ?? null;
+        const entries: DayEntry[] = list.map((row) => ({
+          id: row.id,
+          label: name(row),
+          detail: detailOf(row),
+          mark: <ActivityIcon kind={activityIcon(row.activity_type)} size={18} />,
+          remove: () => removeEntry('activity_logs', row.id, name(row)),
+        }));
+        return {
+          key,
+          date,
+          summary: (
+            <View style={styles.summary}>
+              {stepCount != null ? (
+                <View style={styles.stepPair}>
+                  <Ionicons name="footsteps-outline" size={14} color={theme.textSecondary} />
+                  <ThemedText type="small">{stepCount.toLocaleString('en-GB')}</ThemedText>
+                </View>
+              ) : null}
+              {list.length > 0 ? (
+                <ThemedText type="small">
+                  {list.map((r) => [name(r), detailOf(r)].filter(Boolean).join(' ')).join('  ·  ')}
                 </ThemedText>
-              ) : (
-                entries.map((r) => (
-                  <View key={r.id} style={styles.row}>
-                    {/* Same mark as today's list, so a session looks the same
-                        wherever it is met. */}
-                    <ActivityIcon kind={activityIcon(r.activity_type)} size={18} />
-                    <View style={styles.rowMain}>
-                      <ThemedText type="small" selectable>
-                        {r.activity_type ?? 'Movement'}
-                      </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {r.duration_min != null ? `${Math.round(r.duration_min)} min` : 'no duration'}
-                        {r.kcal_burned != null ? ` · ${Math.round(r.kcal_burned)} kcal` : ''}
-                      </ThemedText>
-                    </View>
-                    {/* Classified at log time (item 33), so an older row with no
-                        intensity renders no tag rather than a guess. */}
-                    <Tag context="intensity" value={r.intensity} />
-                    <Pressable
-                      onPress={() => setOpenId(r.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Look closer at ${r.activity_type ?? 'this session'}`}
-                      hitSlop={Spacing.two}
-                      style={({ pressed }) => [styles.eye, pressed && styles.pressed]}
-                    >
-                      <Ionicons name="eye-outline" size={16} color={theme.textSecondary} />
-                    </Pressable>
-                    <RowDelete
-                      table="activity_logs"
-                      id={r.id}
-                      what={r.activity_type ?? 'this session'}
-                      onDeleted={() => setReloadKey((k) => k + 1)}
-                    />
-                  </View>
-                ))
-              )}
-            </ThemedView>
-          );
-        })
-      )}
+              ) : null}
+            </View>
+          ),
+          at: list[0]?.happened_at ?? null,
+          entries,
+        };
+      });
+  }, [byDay, stepsByDay, weekStart, theme.textSecondary]);
 
-      {weekMinutes > 0 && (
-        <ThemedText type="small" themeColor="textSecondary">
-          {Math.round(weekMinutes)} minutes this week
-        </ThemedText>
-      )}
-
-      <ActivityDetailCard
-        activity={rows.find((r) => r.id === openId) ?? null}
-        onClose={() => setOpenId(null)}
-        onDeleted={() => {
-          setOpenId(null);
-          setReloadKey((k) => k + 1);
-        }}
-      />
-    </>
-  );
-}
-
-function StepButton({
-  label,
-  icon,
-  onPress,
-  disabled = false,
-}: {
-  label: string;
-  icon: 'chevron-back' | 'chevron-forward';
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  const theme = useTheme();
   return (
-    <Pressable
-      onPress={disabled ? undefined : onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      hitSlop={Spacing.three}
-      style={({ pressed }) => [styles.step, pressed && styles.pressed]}
-    >
-      <Ionicons name={icon} size={20} color={disabled ? theme.backgroundSelected : theme.text} />
-    </Pressable>
+    <View style={styles.wrap}>
+      <DayLog
+        days={days}
+        weekStart={weekStart}
+        onWeekStart={setWeekStart}
+        isPresent={isCurrentWeek}
+        onChanged={() => setReloadKey((k) => k + 1)}
+        subject={(date) =>
+          `About my movement from ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}: `
+        }
+        empty="Nothing logged this week."
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  step: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
-  },
-  backToToday: {
-    alignSelf: 'center',
-  },
-  dayCard: {
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
-  },
-  dayHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  rowMain: { flex: 1, gap: Spacing.half },
-  eye: { width: 24, alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.6 },
+  wrap: { gap: Spacing.three },
+  summary: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: Spacing.three, rowGap: 2 },
+  stepPair: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

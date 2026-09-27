@@ -35,7 +35,16 @@ import { supabase } from '@/lib/supabase';
 /** How long a deleted record can be brought back. Her figure. */
 export const RECOVERY_DAYS = 7;
 
-export type RecoverableKind = 'reading';
+export type RecoverableKind = 'reading' | 'entry';
+
+/**
+ * A whole row from one table, for a food or movement entry.
+ *
+ * Readings need their own shape because a scale reading is a COLUMN of a shared
+ * row - see delete-reading.ts. Everything else in the app genuinely is one row,
+ * and pretending otherwise would be the more complicated lie.
+ */
+export type TableRowRestore = { kind: 'table-row'; table: string; row: Record<string, unknown> };
 
 export type Recoverable = {
   id: string;
@@ -55,7 +64,7 @@ export type Recoverable = {
 export async function archiveDeleted(
   kind: RecoverableKind,
   label: string,
-  payload: ReadingRestore
+  payload: ReadingRestore | TableRowRestore
 ): Promise<void> {
   try {
     const userId = await currentUserId();
@@ -103,10 +112,13 @@ export async function recover(id: string): Promise<boolean> {
       .eq('user_id', userId)
       .gte('deleted_at', since)
       .maybeSingle();
-    const payload = (data as { payload?: ReadingRestore } | null)?.payload;
+    const payload = (data as { payload?: ReadingRestore | TableRowRestore } | null)?.payload;
     if (!payload) return false;
 
-    const ok = await restoreReading(payload);
+    const ok =
+      payload.kind === 'table-row'
+        ? !(await supabase.from(payload.table).upsert(payload.row)).error
+        : await restoreReading(payload);
     // The archive row goes only on success. A restore that failed and then
     // forgot what it was trying to restore would lose the record twice.
     if (ok) await supabase.from('deleted_records').delete().eq('id', id).eq('user_id', userId);
