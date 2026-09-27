@@ -3113,6 +3113,90 @@ Two fields the design depends on exist by name, and were confirmed in the shippe
 
 ---
 
+# PART NINETEEN: HOW A CHAT TURN IS ACTUALLY BUILT
+
+*Written 2026-09-27, after an audit Ruth asked for: "audit why the in-app chat behaves worse than the same model used directly."*
+
+**Why this part exists.** The answer was not the model, and it was not one thing. It was the shape of everything around the model, and that shape had never been written down anywhere — it had accumulated. This part is the record of what the turn does now and why each step is where it is, so the next person to ask "why is the chat worse than the model" has something to read instead of a codebase to infer it from.
+
+## What the audit found
+
+All three surfaces — typed chat, voice, the weekly roundup — run `claude-sonnet-5`. Extraction runs `claude-haiku-4-5-20251001`. **The model was never the difference.** Four things around it were.
+
+1. **The reply was a field in a tool.** `classify_and_reply` has 49 fields. The reply was one of them, written in the same call that decided whether the message was a food log, whether it was a distress disclosure, whether a plan was being saved, and forty-odd other things. Writing prose in the same breath as filling in a form produces form-filling prose.
+2. **Roughly 16,000 tokens of instruction in front of it.** `GENERAL_CONDUCT` alone reached 11,666. Every line had an incident behind it, which is exactly why nothing was ever removed.
+3. **Unrounded numbers, as prose.** Six of the eight data blocks were raw rows turned into sentences. The measurement block interpolated `m.weight_kg` unrounded, so the model saw 55.58 where her screen said 55.6, did its own arithmetic against 56.9, and printed 1.4 against the screen's 1.3.
+4. **Up to eight notes appended after the model finished.** A save confirmation, a correction, a deletion, an honesty note, an Almanac offer. Two authors in one message.
+
+**The incident notes are in `docs/chat-prompt-history.md`**, moved out of the prompt at Ruth's instruction. Six incidents, five of which had been answered with a prompt rule when the cause was a missing field, a missing fact, an unrounded number or a vendor's configuration setting. Worth reading once: it is the strongest argument in this project for not adding a rule.
+
+## The shape now
+
+**One: the numbers are worked out in code.** `app/lib/turn-facts.ts` computes all eight blocks, rounds each figure the way the screen rounds it, and labels every one. Two rules it keeps, both of which came from a real reply:
+
+- **Round first, then compare.** A figure she cannot reproduce from her own screen is wrong even when the arithmetic is right.
+- **An absence is a fact and is said out loud.** "Nothing logged" is never left to be inferred from a short list, because a list somebody has to *notice* is empty is what produced "you had a hard session a day or two ago" over two minutes of pushups.
+
+**Two: the prompt was rebuilt from a baseline upwards**, not trimmed. `app/lib/reply-prompt.ts` starts from a 277-token baseline that had already beaten the live app on all four of that week's failures, and a rule is added back only when a test case fails without it. Six earned a place. Each one names the failing test in its own docblock, and the rule dies if the test does.
+
+The whole prompt is **770 tokens on a typed turn, 884 spoken, 838 for the roundup**, against 12,593 for `GENERAL_CONDUCT + CAPABILITIES`. The safety block is untouched and still sits last: none of the week's failures came from it, and it is not a thing to rebuild while rebuilding everything around it.
+
+**Three: the reply is written after the saving, on its own.** `app/lib/chat-path.ts`. The classification still runs and still drives every save; its reply field is discarded. Then what the app *did* goes in as labelled facts, and the reply is written once, as plain assistant text. **Nothing is appended.**
+
+The one exception is deliberate: the Almanac offer is a question that must be asked exactly once, because an offer stored and never asked can be answered by a yes to something else. It is recomputed against whatever reply comes back, and `offerQuestion()` returns null when the reply already asks it.
+
+**Four: it is behind a switch, and the switch is off.** `REPLY_WRITTEN_AFTER_THE_SAVES` in `app/lib/chat-path.ts`. Off means every turn runs the path that has been running all week, unchanged. A failure in the new path falls back to the old reply rather than costing a turn, so the switch is a change of author rather than a new way to fail. A constant rather than an environment variable, deliberately: an environment variable is a production setting and those are Ruth's, while a constant is a commit she can see and revert.
+
+## The test set
+
+`scripts/chat-eval.mjs`. Eight cases: the four failures from her own transcripts that week, quoted from her bug reports, and four ordinary turns that already worked, so nothing that works gets worse. Same facts and same model down both columns; only the prompt and the shape differ.
+
+**What each column is told, because it is the whole basis of the comparison.** What actually happened to her data on that turn goes to *both* — the old prompt had that too, and withholding it would rig the result. The rounded, worked-out figure goes to the **new column only**, because that is the thing being tested.
+
+**The suite refuses to run until the checks prove they can fail.** Before a token is spent, every check runs against an empty reply, and a case that scores full marks on nothing stops the run. Any check containing a control character is rejected, because that is always an escape mangled by a shell. Both guards exist because this suite twice reported PASS on replies that plainly failed — see `DECISION_PATTERNS.md`, "A test that cannot fail is worse than no test".
+
+## The weekly roundup
+
+The roundup is its own route with its own prompt, and it was never written by the chat's conduct block. Two things about it are worth having in the spec.
+
+**Its prompt asks for a theme.** Step 4 of its numbered ORDER list is "one thematic observation drawn across the week". The sentence Ruth reported — *"the thread running through this week is permission: you've been letting yourself off the hook in small ways"* — is that instruction being obeyed. Run three times over the same week it produced "unevenness", "patchiness" and "incompleteness in the record itself". No rule about tone overrides a numbered step telling it to do the thing.
+
+**The card's rows are computed, not parsed.** `app/lib/roundup-figures.ts` builds the rows from her own stored rows; the model's words sit underneath as observations. Splitting the prose into rows would have produced tidy rows of the same wrong figures. Every absence is a row saying so rather than a row left out, and each confidence note sits with its own figure rather than at the top of the card.
+
+**The roundup had never read her step counts.** Not in any version of that route. The week it described as "almost no movement to speak of" held a 32-minute run, 45 minutes of yoga, and days between 2,262 and 9,820 steps; the sessions were in the prompt and the steps were not read at all. `daily_activity_summaries` is now read in the same `Promise.all`, and the prompt says plainly that a day with steps and no session is not a day without movement.
+
+`chat_messages` carries a nullable `kind` and `meta` so a roundup row can be drawn as its own card. Not `source`: Chat reads `.eq('source','chat')`, so 'roundup' there would have removed the roundup from the thread it belongs in.
+
+---
+
+# PART TWENTY: THE LOG, THE BUNDLER, AND THREE THINGS FIXED ON 27 SEPTEMBER
+
+## One day-list pattern, used by all three Log tabs
+
+Ruth's instruction: *"Build it as one shared day-list pattern used by all three, not three copies."* `mobile/src/components/day-log.tsx`. Food, Movement and Measurements are the same list with different rows in it.
+
+**The open state is derived, never stored.** `(key === todayKey) !== toggled.has(key)` — today is open unless it has been toggled, every other day is closed unless it has been. Storing "which days are open" and then also storing "which day is today" is two sources for one fact, and it broke the first time a thread crossed midnight. It is also what `react-hooks/set-state-in-effect` was objecting to.
+
+**`flex: 1` needs `minWidth: 0`.** A row that must shrink below its content width will otherwise push the row wider than the screen instead of wrapping. This is the fault behind the mid-word wrapping and the header collisions at her maximum font size, and it is the single most repeated layout bug in this project.
+
+## Soft delete, undo, and what a reading was worth
+
+A deleted reading is recoverable for seven days, and the conversation can bring it back by name. **The figures travel out of the delete itself**, so undo restores what was actually there.
+
+Her reason, and it is the whole design: *"users don't remember exact values (I re-entered from memory and rounded, so that day's record is now less accurate than the original)"*. A body record rounded from memory is **worse** than one with a gap in it, because the gap is honest. An undo that asks for the number again is not an undo.
+
+## A back-filled reading shows the time of the measurement
+
+A reading entered later for an earlier moment was showing the time it was typed. That is not a display preference: a weight at 07:10 and the same weight at 21:40 are different facts about a body, and the app was recording the second while she meant the first.
+
+## The bundler: nothing was ever cached
+
+Bundles had reached seven minutes and the answer all week had been to restart. `docs/bundler.md` has the full account. The cause was **two development servers sharing one Metro cache directory** in `%TEMP%\metro-cache`: every write collided, **54,817 of them failed**, and a failed cache write raises nothing anybody sees — so the cache stayed empty while looking exactly like a cache, and every bundle was a cold bundle. One server owning it takes a warm bundle to **27 seconds**.
+
+`.claude/launch.json` now defines one server. The web preview entry was removed, and that is a second finding in its own right: **the web preview cannot verify Android**, because it renders React Native styles as CSS while the phone renders them as Android drawables. Three wrong diagnoses of the segmented control came from trusting it.
+
+---
+
 # BETA-READY CHECKLIST
 
 *Started 2026-09-27 at Ruth's instruction: "start a list of items to prepare in the build spec for Beta-ready items, as it will include the feedback forms in the More section also."*
@@ -3139,8 +3223,8 @@ Three consequences, and they are build items rather than wording:
 - [x] **Privacy policy controller changed to Selodía Ltd** (2026-09-27). *"Always Selodía Ltd, not me personally."*
 - [ ] **ICO registration.** Naming a controller in a policy is not the same as being registered as one, and only one of those is a thing code can change. In whose name, and does it exist.
 - [ ] **Governing law confirmed.** England and Wales is assumed in the terms.
-- [ ] **Record consent** — item 51. Built 2026-09-19.
-- [ ] **Account deletion reachable without the app** — live at selodia.app/delete-account.
+- [x] **Record consent** — item 51. Built 2026-09-19. *(Box was unticked beside its own "built" note until 2026-09-27, which is the drift this list exists to catch.)*
+- [x] **Account deletion reachable without the app** — live at selodia.app/delete-account.
 
 ## Billing
 
@@ -3158,10 +3242,29 @@ Ruth, 2026-09-27: the beta *"will include the feedback forms in the More section
 
 ## Product gaps that block a stranger, not Ruth
 
-- [ ] **No password reset anywhere in the app.** Found 2026-09-12. Somebody who forgets their password has no way back in except Google. This is the single most likely way a beta tester is lost permanently.
+- [~] **Password reset — built 2026-09-27, not yet proved on a phone.** The app half is done: a forgotten-password route, the email, and the screen that takes the new password. **Two things are still outstanding and both are outside the code.** (1) The Supabase redirect URL and email template have to be set, which needs a personal access token rather than the service role key — `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/supabase-auth-config.mjs`, and Ruth is creating the token at her next laptop session. (2) The end-to-end test on a real phone is hers. Until both are done a beta tester who forgets their password is still stuck, so this line stays open rather than ticked.
 - [ ] **Google sign-in consent screen still in Testing**, so only listed test users can use it, and it reads "continue to jwyzpkxcaxdnjkykoahn.supabase.co" rather than Selodía.
 - [ ] **Product analytics and its consent screen** — item 50, deliberately deferred until there are users, which is now.
 - [ ] **Mobility and yoga illustration coverage** — item 49. 113 of 770 clips match what the app actually prescribes.
+
+## What the chat says about her body
+
+Added 2026-09-27, after a week in which the chat told her about a workout she had not done and a weight change of 1.4 kg her screen said was 1.3.
+
+Her words, and they are the standard this app is held to: *"the app is only useful if people can trust that what it says about their body comes from their own record."*
+
+- [x] **Every number the app states about her is computed in code, rounded as the screen rounds, and passed as a labelled fact.** `app/lib/turn-facts.ts`, all eight data blocks. Part Nineteen.
+- [x] **An empty log says so explicitly rather than being a short list.** This is what stopped the invented session: a list somebody has to notice is empty is what produced it.
+- [x] **A test proves a weigh-in with no activity produces no exercise claim.** `scripts/chat-eval.mjs`, and the suite refuses to run if its own checks cannot fail.
+- [~] **The rebuilt chat path is behind a switch and the switch is OFF.** `REPLY_WRITTEN_AFTER_THE_SAVES`. Ruth turns it on after reading the before-and-after replies, uses it for a day, and the old path comes out after that. Beta cannot start with two paths.
+- [ ] **The roundup's content half.** The card's figures are computed (item 9's layout half, done 2026-09-27). The prose still comes from a prompt whose numbered ORDER list asks for a thematic observation, which is where "the thread running through this week is permission" came from. Not yet changed.
+
+## The record of the build itself
+
+Added 2026-09-27. Not a beta blocker, and on this list because it was found the same day and has the same shape as everything else here: a claim nobody was checking.
+
+- [x] **Both written logs verified and backfilled.** The build log was missing sessions 45 to 53; the article log was missing 25 to 27 September. `scripts/closeout_check.py` now blocks a close-out whose session is not in the build log, whose day has no article entry, or whose workbook has no rows.
+- [x] **WORKFLOW's claim that the build log is written automatically, corrected.** It never was.
 
 ## Standing question
 
