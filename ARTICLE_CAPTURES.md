@@ -389,3 +389,57 @@ been optimising. The number had been sitting in their API the whole time.
 ---
 
 ---
+
+---
+
+## 25 September 2026 — "It sounds robotic" turned out to be measurable
+
+A complaint about tone is the easiest thing in the world to nod at and file under taste. This one was counted instead. Replies opening with the words "Got it" had gone from 3% in August to 39% in the week of 21 September, with the average reply length unchanged at about 45 words. Nothing had got terser. The opening had collapsed onto one phrase. And the phrase appears in no prompt anywhere: the last forty turns go into the model's context, a fifth of them opened that way, and it was copying itself. A feeling, made into a number, stopped being a matter of opinion.
+
+---
+
+## 25 September 2026 — A pair of thighs measured in centimetres was reading "-0.9%"
+
+The unit came from the kind of measurement the code expected rather than from the measurement itself. Weight and body fat were the only things the app had ever been asked to store, so a percentage was a safe assumption right up until the first tape measure arrived. The lesson is not about units. It is that a default only looks like a default until the day something outside its original list shows up, and then it looks like a bug that has always been there.
+
+---
+
+## 26 September 2026 — The pill that turned back into a square, four times
+
+A selected tab was meant to be a rounded capsule and kept rendering as a rectangle. Two fixes were claimed on the strength of a web preview, which cannot show what Android does, because a browser draws a border radius and Android draws a background. Then the font scale was blamed. Then the update not landing was blamed. What actually fixed it was one sentence from Ruth: "Pill is fine until I select it and it reverts back to square." On Android a background arriving with a state change and a border radius do not reliably arrive together. So the shape is now drawn once, at full size, and only ever moved. Three wrong diagnoses, all of them mine, and the person using the app named the cause in twelve words.
+
+---
+
+## 26 September 2026 — The voice was not padding for time, the platform was
+
+"Hold on", "just a sec", "let me see" were reported as the assistant stalling, and a rule went into the prompt telling it never to say them. That rule could not have worked for a single turn. The words are literal strings in a configuration field on the voice platform, fired after a silent wait, and no instruction to a model can stop a different system from speaking. The setting was changed instead. It is worth sitting with how confidently the wrong fix was written up as a win.
+
+---
+
+## 26 September 2026 — The session that never ended, so it never got recorded
+
+A close-out ceremony has a trigger, and the trigger is a person saying the session is over. Session 54 did not end: she went to sleep and the work carried on overnight into the next session. Twenty-four commits went unrecorded, and it was found because she noticed a file timestamp. A pause is only a pause when the work pauses too, and the moment the human stops while the work accelerates is precisely when the record matters most, because nobody is watching it happen.
+
+---
+
+## 27 September 2026 — The bundler was slow because nothing was ever cached
+
+Bundles had crept to seven minutes and the honest answer all week had been to restart it. The cause was two development servers sharing one cache directory: every write collided, 54,817 of them failed, and because a failed write is not an error anybody sees, the cache stayed empty while looking exactly like a cache. Every bundle was a cold bundle. Once one server owned it, a warm bundle came back in 27 seconds. Restarting something is not a fix, it is a way of not finding out.
+
+---
+
+## 27 September 2026 — The app told her about a workout she had not done
+
+After a weigh-in, the chat explained the rise with "you had a hard session a day or two ago". Her movement log for that week held two minutes of pushups. In the same reply it said she was up 1.4 kg since a reading two days earlier, when her screen said 1.3 and the reading was three days back. The 1.4 had a mechanism: the app handed the model an unrounded 55.58 where the screen showed 55.6, and left it to do the subtraction itself. Her words afterwards are the whole brief for a body-literacy app: the app is only useful if people can trust that what it says about their body comes from their own record.
+
+---
+
+## 27 September 2026 — Less is more: the day the scaffolding was the problem
+
+The in-app chat was noticeably worse than the same model asked the same question directly, and the audit found no single culprit because there was not one. The reply was a field in a forty-nine-field classification tool, written in the same breath as deciding whether the message was a food log. In front of it sat roughly 16,000 tokens of accumulated instruction. Behind it, eight different notes could be bolted onto the end of a reply the model had already finished, which is how one message came to say an entry had both saved and not saved. Five of six incidents had been fixed with a prompt rule when the real cause was a missing field, a missing fact, an unrounded number or a platform setting. The rule never fixed it; it only made the prompt longer. Rebuilt from a minimal baseline upwards, where a rule earns its place by a test failing without it, the whole prompt came to 770 tokens and scored better.
+
+---
+
+## 27 September 2026 — The tests were green because they were testing nothing
+
+Twice in one evening a test suite reported PASS on a reply that plainly failed, for two different reasons, and both times it took reading the reply by hand to notice. Two checks had been written through a shell, which turned a backslash into an invisible control character, so neither could ever match and both passed on a reply that said "Got it, 56.9 kg logged". And a whole case's checks were negatives, every one asking whether something wrong was absent, so all five passed on the answer "What's on your mind?". Nothing was there to be wrong. The fix was not to promise more care, because care was already being taken both times. The suite now refuses to run until every case proves it can fail an empty answer, and rejects any check with a control character in it. It found two more unfailable cases on its first run.

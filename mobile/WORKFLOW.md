@@ -125,7 +125,9 @@ So the rule above is not wrong, it is incomplete. A pause is a pause when **the 
 3. Sync the current spec documents (SPEC, LANGUAGE_RULES, and now WORKFLOW) to the Drive folder, overwriting in place. **Check first whether this session can actually do that — see below.**
 4. ~~Still manual: the session log in the Google Sheet.~~ **RETIRED 2026-09-09. Nothing in the close-out is manual any more.** The Checklist and Decisions Log are appended automatically (see **Automated close-out** below), and the session log this step described turned out to be **the one artefact that could not be automated and also did not exist**. Two separate reasons, and both are worth keeping:
 
-   **It was pointing at the wrong artefact.** The session log is `Selodia-Build-Log.docx` — a **Word document**, appended automatically at step 5 of the automated close-out below, and has been for some time. This step named the Google Sheet instead. "Selodia App builder Mastersheet" was read in full on 2026-09-09 to check: no session-log table exists in it — no session number, location, start/end or duration columns anywhere in 186,000 characters. So the step asked for a manual write into a sheet that has never held this, while the thing it describes was already being written, in prose, somewhere else. That is the worst shape a ceremony step can have: it reads as an outstanding chore every session, for work that is already done.
+   **It was pointing at the wrong artefact.** The session log is `Selodia-Build-Log.docx` — a **Word document**, written at step 5 of the close-out below. This step named the Google Sheet instead. "Selodia App builder Mastersheet" was read in full on 2026-09-09 to check: no session-log table exists in it — no session number, location, start/end or duration columns anywhere in 186,000 characters. So the step asked for a manual write into a sheet that has never held this, while the thing it describes was already being written, in prose, somewhere else. That is a bad shape for a ceremony step: it reads as an outstanding chore every session, for work that is already done.
+
+   **And the sentence that replaced it created the opposite fault, which is worth keeping visible.** It said the build log was "appended automatically", and it was not — no script for it existed anywhere in the repository until 2026-09-27. Sessions 45 to 53 are missing from it as a result: nine sessions, 16 to 24 September, every one of which has a full block in the close-out workbook. A chore that reads as *already done* every session is the more dangerous of the two shapes, because the first one nags and the second one is silent. Backfilled 2026-09-27, and `scripts/closeout_check.py` now refuses a close-out whose session is not in the file.
 
    **It could not have been written anyway.** The Drive connector can READ a Google Sheet and cannot write cells to one — `update_file` supports title and parent only. So this was never automatable in place, whatever it had contained.
 
@@ -206,7 +208,21 @@ It renders **all six** working documents, plus the articles:
 
 `H:\My Drive\Selodia App Project Master Folder\Build Specs\Selodia-Build-Log.docx`
 
-If the file does not exist, create it with a table of contents at the top. Append in this shape, and update the table of contents afterwards:
+```bash
+python scripts/build_log_append.py entry.txt
+```
+
+**The prose is written by hand; only the filing is automated**, and that split is deliberate. This is the one artefact in the close-out that is written rather than tabulated, and a generated paragraph would defeat the reason it exists. The script takes a header line and one paragraph per line, puts them into the document correctly, backs the file up first, refuses a session number that is already there, and **rebuilds the Contents list from the document's own headers** — which had gone stale at session 44 while the body ran to 55.
+
+Pass `--before N` for a backfilled session, so it lands in date order rather than on the end.
+
+The header line takes five fields separated by `|`, and `?` for any that is genuinely unknown:
+
+```
+Session 56 | 27 September 2026 | Laptop, Felix's room | 08:30 | both
+```
+
+Append in this shape:
 
 ```
 Session [N] · [Date] · [Location] · [Start time] · [Tools: Claude / Claude Code / both]

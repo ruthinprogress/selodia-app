@@ -40,8 +40,14 @@ Plus the mechanical half of ceremony step 1 - working tree, push state, and the
 five Drive documents byte-identical - which was previously done by hand.
 
     python scripts/closeout_check.py
+    python scripts/closeout_check.py --session 56
+
+Pass --session so the log checks can say whether THIS session is in the build
+log. Without it they report the latest entry and leave the judgement to you,
+because a session number is not inferable - see step 6 of the ceremony.
 """
 
+import datetime as dt
 import io
 import json
 import re
@@ -49,11 +55,20 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SYNCED = Path(r"H:\My Drive\Selodia App Project Master Folder\Build Specs"
               r"\Claude Code Working Build Specs")
+
+# THE TWO WRITTEN LOGS AND THE WORKBOOK, which nothing checked until 27 September
+# 2026 and which had between them lost nine sessions and three days.
+DRIVE = SYNCED.parent
+BUILD_LOG = DRIVE / "Selodia-Build-Log.docx"
+CAPTURES_DOCX = DRIVE / "Selodia Article Captures.docx"
+WORKBOOK = DRIVE / "Selodia-Session-Closeouts.xlsx"
+CAPTURES_MD = REPO / "ARTICLE_CAPTURES.md"
 
 SYNC_PAIRS = [
     ("mobile/SELODIA_SPEC.md", "selodia-build-specification.md"),
@@ -129,7 +144,102 @@ def artefact_exists(kind, name, tables):
     return None
 
 
-def main():
+def docx_text(path):
+    """Every run of text in a .docx, joined. Enough to ask whether a date is in it."""
+    try:
+        with zipfile.ZipFile(path) as z:
+            xml = z.read("word/document.xml").decode("utf-8")
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return None
+    return " ".join(re.findall(r"<w:t[^>]*>(.*?)</w:t>", xml, re.S))
+
+
+def xlsx_text(path):
+    """Every inline string across every sheet. Same purpose as docx_text."""
+    try:
+        with zipfile.ZipFile(path) as z:
+            sheets = [n for n in z.namelist() if n.startswith("xl/worksheets/sheet")]
+            xml = " ".join(z.read(n).decode("utf-8") for n in sheets)
+    except (OSError, zipfile.BadZipFile):
+        return None
+    return " ".join(re.findall(r"<t[^>]*>(.*?)</t>", xml, re.S))
+
+
+def check_logs(session):
+    """The two written logs and the workbook. Returns the number of blocking items.
+
+    EVERY ONE OF THESE BLOCKS, deliberately. The information was always available -
+    anybody could have opened the build log and seen it end at session 44 - and
+    nobody did for nine sessions. A check that prints a note at the end of a long
+    report is the same as no check.
+    """
+    blocking = 0
+    today = dt.date.today()
+    # "27 September 2026", the form both logs actually use.
+    human = f"{today.day} {today.strftime('%B')} {today.year}"
+
+    print("\n  THE WRITTEN LOGS  (nothing checked these until 27 September 2026)\n")
+
+    # 1. The build log, by session number.
+    text = docx_text(BUILD_LOG)
+    if text is None:
+        print("    SKIPPED          build log unreadable or no H: drive")
+    else:
+        found = sorted({int(n) for n in re.findall(r"Session (\d+)", text)})
+        latest = max(found) if found else None
+        gaps = [n for n in range(min(found), max(found) + 1) if n not in found] if found else []
+        if session is None:
+            print(f"    latest entry     Session {latest} (pass --session N to check this one)")
+        elif session in found:
+            print(f"    in the log       Session {session}")
+        else:
+            print(f"    MISSING          Session {session} is not in the build log (latest is {latest})")
+            print("                     python scripts/build_log_append.py entry.txt")
+            blocking += 1
+        if gaps:
+            print(f"    GAPS             sessions absent from the run: {gaps}")
+            blocking += 1
+
+    # 2. The article log, by today's date.
+    if not CAPTURES_MD.exists():
+        print("    MISSING          ARTICLE_CAPTURES.md")
+        blocking += 1
+    else:
+        md = CAPTURES_MD.read_text(encoding="utf-8")
+        dates = re.findall(r"^## (\d+ \w+ \d{4})", md, re.M)
+        if human in md:
+            print(f"    in the log       article entries for {human}")
+        else:
+            print(f"    MISSING          no article entry for {human} (last was {dates[-1] if dates else 'none'})")
+            blocking += 1
+
+        # 3. And the Word copy, which is what she can actually read.
+        docx = docx_text(CAPTURES_DOCX)
+        if docx is None:
+            print("    SKIPPED          article captures .docx unreadable or no H: drive")
+        elif dates and dates[-1] in docx:
+            print("    rendered         article captures .docx is up to date")
+        else:
+            print("    STALE            article captures .docx does not have the newest entry")
+            print("                     python scripts/make-captures-docx.py ARTICLE_CAPTURES.md \"<drive path>\"")
+            blocking += 1
+
+    # 4. The workbook, by today's date. This one has never drifted, and is checked
+    #    anyway: the reason it has not drifted is that a script writes it, and a
+    #    script can start failing.
+    book = xlsx_text(WORKBOOK)
+    if book is None:
+        print("    SKIPPED          workbook unreadable or no H: drive")
+    elif today.isoformat() in book:
+        print(f"    in the workbook  rows dated {today.isoformat()}")
+    else:
+        print(f"    MISSING          no workbook rows dated {today.isoformat()}")
+        blocking += 1
+
+    return blocking
+
+
+def main(session=None):
     blocking = 0
     print("\n" + "=" * 74)
     print("  CLOSE-OUT CHECK")
@@ -158,6 +268,8 @@ def main():
                 state = "same"
             print(f"    {state:<17} {drive_name}")
             blocking += state != "same"
+
+    blocking += check_logs(session)
 
     tables = live_tables()
     claims, verified, contradicted, unknown = [], 0, [], 0
@@ -222,4 +334,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    args = sys.argv[1:]
+    session_arg = None
+    if "--session" in args:
+        session_arg = int(args[args.index("--session") + 1])
+    sys.exit(main(session_arg))
