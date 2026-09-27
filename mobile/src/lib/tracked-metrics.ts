@@ -177,7 +177,14 @@ function isScaleField(v: unknown): v is ScaleField {
 }
 
 /** One reading of one metric, already formatted, with the unit it was in. */
-export type MetricReading = { value: number; text: string; at: string; unit: string };
+export type MetricReading = {
+  value: number;
+  text: string;
+  at: string;
+  /** False when `at` carries the moment it was typed rather than measured. */
+  timed: boolean;
+  unit: string;
+};
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
@@ -203,6 +210,40 @@ export type PersonalRow = {
  * scale one, because a tape measure's unit is whatever was said at the time
  * and a scale's is fixed by the column.
  */
+/**
+ * Is a reading's TIME something that was observed, or the moment it was typed?
+ *
+ * Ruth, 27 September 2026, item 5: "Thu 24's readings show 'Logged 10:18 pm',
+ * which is when I re-entered them through chat, not when I weighed. A reading
+ * added for a past date should show the time from the original source (e.g. the
+ * scale screenshot), or no time at all, never the time it was typed in."
+ *
+ * The cause is in the writer: when a date is detected in what she said, the
+ * DATE is taken from her words and the TIME is taken from the clock. So a
+ * reading back-dated to Thursday carries Sunday evening's time, and the screen
+ * printed it as though she had weighed herself at ten past ten at night.
+ *
+ * WHAT MAKES A TIME BELIEVABLE. If the row was created on the same day it says
+ * it was measured, she logged it as it happened and the time is real. A
+ * screenshot is the other honest case: the time came off the scale's own
+ * display, which is exactly the source she names. Anything else is the clock at
+ * the moment of typing, and the right thing to print is nothing.
+ *
+ * NOTHING, RATHER THAN A GUESS. There is no "about Thursday teatime" here. The
+ * app knows the day and does not know the hour, and saying so by omission is
+ * the only version of this that cannot be wrong.
+ */
+export function timeObserved(row: {
+  measured_at: string;
+  created_at?: string | null;
+  source_app?: string | null;
+}): boolean {
+  if (row.source_app) return true;
+  if (!row.created_at) return true;
+  const day = (iso: string) => new Date(iso).toDateString();
+  return day(row.created_at) === day(row.measured_at);
+}
+
 export function readingsFor(
   metric: TrackedMetric,
   scaleRows: MeasurementRow[],
@@ -217,6 +258,7 @@ export function readingsFor(
         value: r[field] as number,
         text: formatMetricValue(r[field] as number, metric.unit),
         at: r.measured_at,
+        timed: timeObserved(r),
         unit: metric.unit,
       }))
       .sort((a, b) => b.at.localeCompare(a.at));
@@ -229,6 +271,7 @@ export function readingsFor(
       value: p.value as number,
       text: formatMetricValue(p.value as number, p.unit ?? metric.unit),
       at: p.measured_at ?? p.created_at,
+      timed: timeObserved({ measured_at: p.measured_at ?? p.created_at, created_at: p.created_at }),
       // THE ROW'S OWN UNIT, not the list's. A tape measurement's unit is
       // whatever was said at the time, and the derived entry for a personal
       // metric carries no unit at all - so asking the list gave "" and a

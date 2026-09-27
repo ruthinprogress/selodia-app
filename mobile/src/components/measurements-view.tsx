@@ -134,7 +134,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
         supabase.from('user_profile').select('tracked_metrics').maybeSingle(),
         supabase
           .from('body_measurements')
-          .select('id, measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
+          .select('id, measured_at, created_at, source_app, weight_kg, body_fat_pct, muscle_kg, bmr')
           .order('measured_at', { ascending: false })
           .limit(400),
         supabase
@@ -184,7 +184,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
       const [{ data: scale }, { data: personal }] = await Promise.all([
         supabase
           .from('body_measurements')
-          .select('id, measured_at, weight_kg, body_fat_pct, muscle_kg, bmr')
+          .select('id, measured_at, created_at, source_app, weight_kg, body_fat_pct, muscle_kg, bmr')
           .gte('measured_at', from)
           .lt('measured_at', endISO),
         supabase
@@ -245,7 +245,11 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
         );
         if (onDay.length === 0) continue;
         values.push({ metric: m, text: onDay[0].text, at: onDay[0].at });
-        if (!newest || onDay[0].at > newest) newest = onDay[0].at;
+        // ONLY A TIME SHE COULD HAVE SEEN (item 5). A reading back-dated by
+        // chat carries the clock at the moment of typing, and printing that as
+        // "Logged 10:18 pm" told her she had weighed herself at night. The day
+        // is known; the hour is not; so the hour is not shown.
+        if (onDay[0].timed && (!newest || onDay[0].at > newest)) newest = onDay[0].at;
       }
       if (values.length > 0) out.push({ key, date, values, at: newest });
     }

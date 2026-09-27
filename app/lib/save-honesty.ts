@@ -40,6 +40,28 @@ export type LogAttempt = {
   // them specifically. Empty is normal - a whole-message miss is carried by
   // `landed` being empty instead, since we often cannot name what was lost.
   missed: string[];
+  /**
+   * Did a writer actually TRY to store something and fail?
+   *
+   * Ruth, 27 September 2026, item 6. She logged two black coffees, and then
+   * asked "The two black coffees, you mean?" - and got one message saying both
+   * "that's logged fine, no need to repeat it" AND "it looks like that entry
+   * didn't save for some reason. Would you mind re-entering it?". She repeated
+   * it and got the identical pair back. It looped.
+   *
+   * Nothing had failed. Her QUESTION was classified as a drink log, the writer
+   * looked for a drink in "The two black coffees, you mean?", correctly found
+   * nothing to store, and `landed` stayed empty - which this module read as a
+   * save that had gone missing. Meanwhile the model was answering about the
+   * EARLIER log, which really had saved. Two components answering two different
+   * questions in one message, and both of them right.
+   *
+   * The distinction was already in the code and was not being used: a writer
+   * THROWS when a write fails and returns null when there is nothing to write.
+   * So this is set only in the catch, and a message that simply had nothing in
+   * it can no longer be reported as a loss.
+   */
+  attempted: boolean;
 };
 
 function list(names: string[]): string {
@@ -89,10 +111,19 @@ export function unsavedNote(attempt: LogAttempt): string | null {
   // Something landed and nothing is known to be missing: silence is right.
   if (landed.length > 0) return null;
 
-  // A whole-message miss. "that entry" rather than naming anything, because in
-  // this branch we genuinely do not know what was lost.
+  // NOTHING WAS EVEN ATTEMPTED, so nothing was lost. This is the coffee loop:
+  // a question ABOUT a log is not a log, and a writer finding nothing to store
+  // is the correct outcome rather than a failure to report.
+  if (!attempt.attempted) return null;
+
+  // A whole-message miss, and this time something genuinely did fail.
+  //
+  // IT NO LONGER ASKS HER TO TYPE IT AGAIN (item 6). The app has her words and
+  // has already retried with them, so asking would be asking her to repeat the
+  // thing that just did not work - which is precisely what she did, twice,
+  // getting the same answer both times. It says what happened, once.
   return (
-    "Hmm, it looks like that entry didn't save for some reason. " +
-    'Would you mind re-entering it so we can make sure it\'s properly logged for you?'
+    "That one didn't save, and I've tried twice. " +
+    'None of it is in your log, so it is worth another go in a moment.'
   );
 }

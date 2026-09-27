@@ -1679,7 +1679,48 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // Kept separate from `saved` because `saved` drives the toast and carries one
   // headline summary, while this has to survive a PARTIAL landing - a weight
   // stored while a waist was not.
-  const attempt: LogAttempt = { intent: result.logIntent ?? 'none', landed: [], missed: [] };
+  const attempt: LogAttempt = {
+    intent: result.logIntent ?? 'none',
+    landed: [],
+    missed: [],
+    attempted: false,
+  };
+
+  /**
+   * Run a write, and if it fails, run it again before giving up.
+   *
+   * Ruth, item 6: "The chat already has the text. If a save fails, retry it
+   * from the message it already has; never ask the user to type it again."
+   *
+   * She is right, and the old behaviour was worse than useless: it asked her to
+   * re-enter the thing, she re-entered it, and the same failure produced the
+   * same request. A retry costs a second; asking her costs her the belief that
+   * the app is keeping her record.
+   *
+   * A writer THROWS when a write fails and returns null when there is nothing
+   * to write, so only the first case reaches here - and reaching here is what
+   * sets `attempted`, which is what lets the honesty note tell a real loss from
+   * a message that never contained a log at all.
+   */
+  async function saving<T>(what: string, run: () => Promise<T>): Promise<T | null> {
+    try {
+      return await run();
+    } catch (first) {
+      attempt.attempted = true;
+      console.log(`SAVE FAILED (${what}), retrying:`, first instanceof Error ? first.message : first);
+      try {
+        const out = await run();
+        console.log(`SAVE RECOVERED (${what}) on the second attempt`);
+        return out;
+      } catch (second) {
+        // LOGGED WITH ITS REASON, which is her last bullet: "Log every save
+        // failure with the reason, so this shows up in the logs rather than
+        // only in my screenshots."
+        console.log(`SAVE FAILED TWICE (${what}):`, second instanceof Error ? second.message : second);
+        return null;
+      }
+    }
+  }
   // REMINDERS SHE ASKED FOR (2026-09-18). "Remind me to drink water at 9am" was
   // refused twice before this existed.
   //
@@ -1975,11 +2016,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
 
   if (measurementIntent) {
     try {
-      const { reading, personal, missedPersonal } = await logMeasurementFromText(
-        supabase,
-        user.id,
-        message
+      const measured = await saving('measurement', () =>
+        logMeasurementFromText(supabase, user.id, message)
       );
+      const { reading, personal, missedPersonal } = measured ?? {
+        reading: null,
+        personal: [],
+        missedPersonal: [] as string[],
+      };
       if (reading) {
         saved = { kind: 'measurement', summary: measurementSaveSummary(reading) };
         attempt.landed.push('reading');
@@ -2019,7 +2063,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // and folding it in would put one in every table.
   if (result.logIntent === 'hydration') {
     try {
-      const entry = await logHydrationFromText(supabase, user.id, message);
+      const entry = await saving('hydration', () => logHydrationFromText(supabase, user.id, message));
       if (entry) {
         saved = { kind: 'hydration', summary: hydrationSaveSummary(entry) };
         attempt.landed.push('water');
@@ -2170,15 +2214,18 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // lib/voice-supersede.ts. Save first, then tidy: a parse that fails
         // must never have removed anything.
         const voiceTurnId = isVoice ? userRow?.id ?? undefined : undefined;
-        const entries = await logFoodFromText(
-          supabase,
-          user.id,
-          result.logText?.trim() || message,
-          undefined,
-          undefined,
-          undefined,
-          voiceTurnId
-        );
+        const entries =
+          (await saving('food', () =>
+            logFoodFromText(
+              supabase,
+              user.id,
+              result.logText?.trim() || message,
+              undefined,
+              undefined,
+              undefined,
+              voiceTurnId
+            )
+          )) ?? [];
         if (voiceTurnId && entries.length > 0) {
           await settleVoiceSentence(
             supabase,
@@ -2266,11 +2313,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       } else {
         // logText carries the description assembled across turns, so the answer
         // to "how long was that?" logs the run rather than logging the answer.
-        const entries = await logActivityFromText(
-          supabase,
-          user.id,
-          result.logText?.trim() || message
-        );
+        const entries =
+          (await saving('activity', () =>
+            logActivityFromText(supabase, user.id, result.logText?.trim() || message)
+          )) ?? [];
         if (entries[0]) {
           saved = { kind: 'activity', summary: activitySaveSummary(entries) };
           attempt.landed.push('activity');
