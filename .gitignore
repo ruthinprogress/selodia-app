@@ -65,3 +65,4 @@ scratchpad/
 
 # An export of a food log is health data. Never in the repo.
 scripts/data/
+audit-out/
