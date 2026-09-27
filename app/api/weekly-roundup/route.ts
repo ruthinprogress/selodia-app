@@ -30,6 +30,7 @@ import {
   type Reading,
 } from '../../lib/weekly-roundup';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
+import { roundupFigures } from '../../lib/roundup-figures';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-5';
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
     { data: priorRoundups },
     { data: chat },
     { data: context },
+    { data: dailyBurn },
   ] = await Promise.all([
     supabase
       .from('food_logs')
@@ -195,6 +197,18 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: true })
       .limit(MAX_CHAT_LINES),
     supabase.from('user_context').select('category, content'),
+    // STEPS, WHICH THIS ROUTE HAS NEVER READ (added 27 September 2026). The
+    // roundup told her there was "almost no movement to speak of" in a week whose
+    // steps ran from 2,262 to 9,820. The sessions were in the prompt; the steps
+    // were not read by any version of this route, so no instruction about
+    // fairness could have helped. A day with steps and no session is not a day
+    // without movement.
+    supabase
+      .from('daily_activity_summaries')
+      .select('date, steps')
+      .gte('date', dates[0])
+      .lte('date', dates[WEEK_DAYS - 1])
+      .order('date', { ascending: true }),
   ]);
 
   // Bucket the week's food by calendar day. A day is "full" on food alone, per
@@ -329,6 +343,23 @@ export async function POST(req: NextRequest) {
           .map(([day, ml]) => `${day} ${Math.round(ml)} ml`)
           .join(', ')}. A day with nothing logged is a day nobody recorded, not a day without drinking.`;
 
+  // THE CARD'S ROWS. Same inputs as the prose above, so the two cannot disagree
+  // about a number - only about what it means, which is the model's job.
+  const stepDays = (dailyBurn ?? [])
+    .map((d) => Number((d as { steps: number | null }).steps) || 0)
+    .filter((n) => n > 0);
+
+  const figures = roundupFigures({
+    fullDays: gate.fullDays,
+    avgKcal,
+    avgProtein,
+    delta,
+    readingCount: readings.length,
+    activity: (activity ?? []) as never,
+    drinkDayTotals: drinkTotals,
+    stepDays,
+  });
+
   const kept =
     (noticed ?? [])
       .map((n) => `${String(n.created_at ?? '').slice(0, 10)} [${n.kind}] ${n.title}`)
@@ -372,6 +403,14 @@ export async function POST(req: NextRequest) {
         }. Do not omit the subject and do not hedge into a direction anyway.`,
     '',
     `MOVEMENT THIS WEEK:\n${movement}`,
+    '',
+    stepDays.length > 0
+      ? `STEPS THIS WEEK: recorded on ${stepDays.length} of ${WEEK_DAYS} days, from ${Math.min(
+          ...stepDays
+        ).toLocaleString('en-GB')} to ${Math.max(...stepDays).toLocaleString('en-GB')}, averaging ${Math.round(
+          stepDays.reduce((a, b) => a + b, 0) / stepDays.length
+        ).toLocaleString('en-GB')} a day. A DAY WITH STEPS AND NO SESSION IS NOT A DAY WITHOUT MOVEMENT, and must never be described as one.`
+      : 'STEPS THIS WEEK: none were recorded. That is a gap in the record and says nothing about how much she moved.',
     '',
     water,
     '',
@@ -463,6 +502,7 @@ ${EVIDENCE_PRINCIPLE}`;
     title: roundupTitle(weekEnding),
     content: roundupContent({
       reply,
+      figures,
       weekEnding,
       theme: typeof result.theme === 'string' ? result.theme : null,
       statements,
@@ -497,11 +537,20 @@ ${EVIDENCE_PRINCIPLE}`;
 
   // Persisted into the thread like any other turn, so it is there next week and
   // the model can see what it already said (Ruth, 2026-09-16: Almanac and chat).
+  // MARKED AS A ROUNDUP, so Chat can draw it as its own card rather than as
+  // another paragraph in the thread. `source` stays 'chat' because that is what
+  // Chat reads; `kind` is a separate, nullable column, so every existing row and
+  // every ordinary turn is untouched.
   await supabase.from('chat_messages').insert({
     user_id: user.id,
     role: 'assistant',
     content: reply,
     source: 'chat',
+    kind: 'roundup',
+    // The week as well as the figures: the card's heading names it, and reading
+    // it off this row means a thread loaded months later does not have to go and
+    // find the matching Almanac entry to know which week it is looking at.
+    meta: { figures, weekEnding },
   });
 
   return NextResponse.json({
@@ -509,6 +558,7 @@ ${EVIDENCE_PRINCIPLE}`;
     weekEnding,
     fullDays: gate.fullDays,
     roundup: reply,
+    figures,
     theme: typeof result.theme === 'string' ? result.theme.trim() || null : null,
     statements,
     entryId: entry?.id ?? null,

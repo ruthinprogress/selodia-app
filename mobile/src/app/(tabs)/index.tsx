@@ -20,6 +20,8 @@ import type { PatternPayload } from '@/lib/pattern-table';
 import { HealthDisclaimer } from '@/components/health-disclaimer';
 import { ReminderOffer } from '@/components/reminder-offer';
 import { ResourceCard } from '@/components/resource-card';
+import { RoundupCard, type RoundupPayload } from '@/components/roundup-card';
+import { figuresFrom, weekEndingOf } from '@/lib/roundup-figures';
 import { ChatLandingChips } from '@/components/chat-landing-chips';
 import { RotatingPlaceholder } from '@/components/rotating-placeholder';
 import { SaveConfirmation } from '@/components/save-confirmation';
@@ -86,6 +88,12 @@ type Message = {
   // which is right: a table of somebody's days three weeks later, silently
   // stale, is worse than the sentence that accompanied it.
   patternCheck?: PatternPayload | null;
+  // THE WEEK, when this turn is the weekly roundup (Ruth's item 9). Like the
+  // pattern check it carries the FIGURES rather than a reference, because they
+  // are arithmetic over a window rather than a row - and unlike the pattern
+  // check it MUST survive a reload, because the roundup is written by a hook at
+  // launch and she is always looking at a reloaded row.
+  roundup?: RoundupPayload | null;
   // A session or a reading this turn is ABOUT ("Ask about this", 2026-09-16).
   // Food is not carried here: it has the richer itemised table above, and two
   // components drawing one entry differently is how they drift.
@@ -313,7 +321,7 @@ export default function ChatScreen() {
   const loadThread = useCallback(async () => {
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('role, content, image_path, food_log_id, discuss_entry_id, discuss_entry_type')
+      .select('role, content, image_path, food_log_id, discuss_entry_id, discuss_entry_type, kind, meta')
       .eq('source', 'chat')
       .order('created_at', { ascending: true });
     if (error || !data) return;
@@ -350,6 +358,15 @@ export default function ChatScreen() {
         entry:
           opensDiscussion && (tagType === 'activity' || tagType === 'measurement' || tagType === 'plan')
             ? { type: tagType, id: tagId }
+            : null,
+        // THE ROUNDUP IS ALWAYS A RELOADED ROW, never a live turn: it is written
+        // by use-weekly-roundup at launch, not by her typing. So this is the only
+        // place its card can come from, and figuresFrom is deliberately forgiving
+        // - a roundup from before 27 September 2026 carries no figures and is
+        // still a whole roundup.
+        roundup:
+          m.kind === 'roundup'
+            ? { weekEnding: weekEndingOf(m.meta), figures: figuresFrom(m.meta) }
             : null,
       };
     });
@@ -962,6 +979,11 @@ ${result.message}`;
                 />
               )}
               {m.patternCheck && <PatternTable payload={m.patternCheck} />}
+              {/* The week's figures, under the roundup's own words. The card
+                  draws nothing when a roundup has no stored figures, which every
+                  roundup written before 27 September 2026 does not - those are
+                  still whole roundups and the bubble above has said all of it. */}
+              {m.roundup && <RoundupCard payload={m.roundup} />}
               {/* A session or a reading has no items and so no table. It gets a
                   summary card instead, so "Ask about this" shows its subject
                   whatever kind of entry it was asked about. */}

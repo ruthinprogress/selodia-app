@@ -1,3 +1,5 @@
+import type { RoundupFigure } from './roundup-figures';
+
 // Which week a roundup belongs to, and whether one is owed (Insights slice 3).
 //
 // THE WEEK IS MONDAY TO SUNDAY, named by its Sunday. A roundup is a Sunday
@@ -113,6 +115,16 @@ export type RoundupContent = {
   __theme: string | null;
   __statements: string[];
   __statementsRange: string;
+  /**
+   * The week's figures as rows, worked out in code - item 9's card. Stored on the
+   * entry rather than only returned, so the card can be drawn again next month
+   * from the row that is kept rather than from a response that is long gone.
+   *
+   * Optional because every roundup written before 27 September 2026 has none, and
+   * those entries are still perfectly good roundups: the card falls back to the
+   * prose it has always shown.
+   */
+  __figures?: RoundupFigure[];
 };
 
 export function roundupContent(input: {
@@ -120,6 +132,7 @@ export function roundupContent(input: {
   weekEnding: string;
   theme?: string | null;
   statements: string[];
+  figures?: RoundupFigure[];
 }): RoundupContent {
   return {
     summary: input.reply.trim(),
@@ -127,6 +140,7 @@ export function roundupContent(input: {
     __theme: input.theme?.trim() || null,
     __statements: input.statements,
     __statementsRange: PORTRAIT_RANGE_LABEL,
+    ...(input.figures && input.figures.length > 0 ? { __figures: input.figures } : {}),
   };
 }
 
