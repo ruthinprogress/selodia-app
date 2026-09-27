@@ -10,6 +10,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
+import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
 import {
@@ -482,6 +483,17 @@ export async function POST(request: NextRequest) {
   // Read every turn rather than only when asked, because the asking is the
   // thing that has to work - a list fetched only once she has already been told
   // it cannot be done is no use.
+  // TODAY'S SODIUM, which the turn context does not carry. One cheap read, and
+  // it is what makes "a salty day" checkable rather than a plausible story -
+  // see app/lib/weigh-in-facts.ts.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const { data: sodiumRows } = await supabase
+    .from('food_logs')
+    .select('happened_at, sodium_mg')
+    .eq('user_id', user.id)
+    .gte('happened_at', todayStart.toISOString());
+
   const recoverableRows = await listRecoverable(supabase, user.id);
   const recoverableBlock = recoverablePrompt(recoverableRows);
 
@@ -760,6 +772,16 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
         .join('\n')
     : 'No daily tracker totals in this period.';
 
+  // THE FACTS BEHIND A WEIGH-IN, WORKED OUT HERE RATHER THAN BY THE MODEL
+  // (Ruth, 27 September 2026, item 1). It invented a hard session she had not
+  // done and got its own arithmetic wrong in the same reply. Both because it
+  // was handed prose and asked to be helpful.
+  const weighIn = weighInFacts(
+    (recentMeasurements ?? []) as never,
+    (recentActivity ?? []) as never,
+    (sodiumRows ?? []) as never
+  );
+
   const measurementSummary = recentMeasurements && recentMeasurements.length > 0
     ? recentMeasurements.map((m) => humanDate(m.measured_at) + ': weight ' + m.weight_kg + 'kg, body fat ' + m.body_fat_pct + '%').join('\n')
     : 'No body measurements in the last 7 days.';
@@ -905,6 +927,9 @@ Hydration genuinely moves what the scale says, along with salt, food volume, and
 
 Here are their body measurements from the last 7 days:
 ${measurementSummary}
+${weighIn ? `
+${weighIn}
+` : ''}
 ${recoverableBlock ? `
 ${recoverableBlock}
 ` : ''}
@@ -1589,7 +1614,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // visual toast in the client (the `saved` field), never in the reply text.
   // On storage failure `saved` stays null - we never signal a save that didn't
   // happen.
-  let saved: { kind: 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep' | 'cycle' | 'feeling'; summary: string } | null = null;
+  // 'measurement' means the SCALE's three. A waist or a thigh is
+  // 'personal_metric', which the app reads to decide whether the reading
+  // interpretation applies - see item 3, 27 September 2026.
+  let saved: {
+    kind: 'food' | 'activity' | 'measurement' | 'personal_metric' | 'hydration' | 'sleep' | 'cycle' | 'feeling';
+    summary: string;
+  } | null = null;
   // TWO THINGS CAN LAND IN ONE MESSAGE, and the toast has one line. Rather than
   // let the second write silently replace the first one's confirmation - which
   // would tell her the mood saved and say nothing about the period - both are
@@ -1772,7 +1803,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           }
         }
         if (personal.length > 0) {
-          saved = { kind: 'measurement', summary: personalSaveSummary(personal) };
+          saved = { kind: 'personal_metric', summary: personalSaveSummary(personal) };
         }
         // A correction that WROTE is a landing, and has to be recorded as one.
         // Until 2026-08-28 these branches set `saved` but left `landed` empty,
@@ -1925,7 +1956,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // when there is one, since that is the headline number; otherwise it names
       // what was actually kept.
       if (!saved && personal.length > 0) {
-        saved = { kind: 'measurement', summary: personalSaveSummary(personal) };
+        // NOT 'measurement' (Ruth, 27 September 2026, item 3). A waist or a
+        // thigh is not a scale reading, and calling both by one name is what
+        // let a thigh log pull back the commentary from an earlier WEIGH-IN:
+        // the app shows the latest interpretation after a 'measurement' save,
+        // and the interpretation layer only ever reads body_measurements. She
+        // logged "Thighs today 54cm" and got a word-for-word repeat of the
+        // morning's weight reply, invented hard session and all.
+        saved = { kind: 'personal_metric', summary: personalSaveSummary(personal) };
       }
     } catch (err) {
       console.log('ASK-SELODIA MEASUREMENT LOG FAILED:', err instanceof Error ? err.message : err);

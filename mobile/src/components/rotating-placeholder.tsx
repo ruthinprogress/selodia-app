@@ -25,11 +25,24 @@ import { useTheme } from '@/hooks/use-theme';
 // a real phone on 2026-09-16, and the field got narrower the same day when Send
 // moved inside the box. A hint that gets cut off teaches the wrong thing about
 // the field twice over - it looks broken, and it stops naming the third option.
-const HINTS = [
-  'Log food or activity...',
-  'Send a photo...',
-  'Type anything...',
-];
+// ONE HINT, NOT THREE (Ruth, 27 September 2026): "the chat input placeholder
+// switches between 'Type anything...' and 'Log food or activity...'. Pick one;
+// 'Type anything...' fits better."
+//
+// She is right, and the reason is worth keeping. A rotating hint teaches the
+// field by listing what it accepts, which is what you do when a field accepts a
+// FEW things. This one accepts anything, so the list was undercutting the
+// message: naming food and activity makes somebody wonder whether a question
+// about their knee belongs here. "Type anything" says the true thing, and the
+// photo button is visible beside the field anyway.
+//
+// It also said "activity" where the whole app now says "movement", which had
+// been true since the Plans tab took that word on 20 September.
+//
+// The rotation machinery below is kept rather than torn out: it costs one array
+// entry and nothing else, and the day a second hint earns its place it is one
+// line. Nothing rotates with a single hint.
+const HINTS = ['Type anything...'];
 
 const EVERY_MS = 4000;
 const FADE_MS = 320;

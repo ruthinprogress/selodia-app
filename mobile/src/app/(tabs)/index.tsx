@@ -786,6 +786,9 @@ ${result.message}`;
         seed: tag?.seed ?? null,
       },
     ]);
+    // When this turn began, so a reading older than it is never described as
+    // though it were the one just logged.
+    const sentAt = new Date().toISOString();
     setSending(true);
 
     try {
@@ -862,9 +865,21 @@ ${result.message}`;
       // Only the interpretation, deliberately: no facts block and no second
       // model call. The photo path needs a facts block because a photo has no
       // words attached; a typed message already has the person's own.
+      // A SCALE READING ONLY, AND ONLY A FRESH ONE (Ruth, 27 September 2026,
+      // item 3). This used to fire on any save the server called a
+      // 'measurement', which included a waist or a thigh - and the
+      // interpretation layer reads body_measurements, so a thigh log posted
+      // the morning's weigh-in commentary again, word for word, invented hard
+      // session and all. "Logging thighs must not bring back weight
+      // commentary."
+      //
+      // Two locks, because one would have been the kind of half-fix this
+      // codebase keeps finding: the server no longer calls a personal metric a
+      // measurement, and the loader refuses to describe a reading taken before
+      // this turn began.
       if (saved?.kind === 'measurement') {
         try {
-          const note = await loadLatestInterpretation();
+          const note = await loadLatestInterpretation(sentAt);
           // Null is a real answer - a clean drop, or too little history to say
           // anything honest. Nothing is shown rather than filler.
           if (note) setMessages((prev) => [...prev, { role: 'assistant', content: note }]);

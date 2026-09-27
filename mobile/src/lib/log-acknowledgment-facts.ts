@@ -120,7 +120,20 @@ function recentWeightLines(rows: MeasurementRow[], excludeMeasuredAt: string): s
 // Shared by three surfaces so they can never disagree about the same reading:
 // the Measurements screen, the photo acknowledgment, and - since 2026-08-26 -
 // text weight logging in chat.
-export async function loadLatestInterpretation(): Promise<string | null> {
+// `freshSince` refuses to describe a reading older than that moment, and it
+// exists because of a real failure (Ruth, 27 September 2026, item 3). The chat
+// shows this note after a measurement save; a THIGH counted as a measurement,
+// so logging "Thighs today 54cm" fetched the latest interpretation - which
+// reads body_measurements and knows nothing about thighs - and posted the
+// morning's weigh-in commentary again, word for word.
+//
+// The kind is fixed at the source now, so the thigh no longer asks. This is the
+// second lock: any caller that asks for a fresh note gets silence rather than
+// an old one, because a note about Sunday's weight shown on Tuesday is wrong
+// whatever route it arrived by. The Measurements screen calls this WITHOUT the
+// argument, deliberately - it is describing whatever the latest reading is, and
+// age is not a fault there.
+export async function loadLatestInterpretation(freshSince?: string): Promise<string | null> {
   // RLS scopes every read to the signed-in user.
   const [{ data: readings }, { data: lastPeriod }] = await Promise.all([
     supabase
@@ -140,6 +153,8 @@ export async function loadLatestInterpretation(): Promise<string | null> {
 
   const split = splitReadings((readings ?? []) as RawReading[]);
   if (!split) return null;
+
+  if (freshSince && Date.parse(split.latest.measured_at) < Date.parse(freshSince)) return null;
 
   // Both windows are anchored to the reading, so they can only be queried once
   // it is known.
