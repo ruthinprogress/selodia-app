@@ -13,6 +13,7 @@ import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
+import { REPLY_WRITTEN_AFTER_THE_SAVES, writeReplyAfterSaves } from '../../lib/chat-path';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -2676,15 +2677,71 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // dropping them would trade one honesty problem for another.
   const safeReplyText = gate.safe ? goalSafeReply : blockedSuggestionMessage(gate.allergen);
 
-  // The offer goes last, so the reply ends on the question it is waiting on.
-  const offerLine = offered ? offerQuestion(safeReplyText, offeredType) : null;
-  const trailingLines = [planNote, correctionNote, restoreNote, focusNote, saveNote, meNote, honestyNote, offerLine].filter(
+  // ── WHERE THE NEW CHAT PATH GOES IN (Ruth, 27 September 2026, points 1 and 4) ──
+  //
+  // These seven notes are statements about what the app DID with her data, and
+  // until now every one of them was glued onto the end of a reply the model had
+  // already written. That is two authors in one message, and it is the whole
+  // mechanism behind the reply that told her an entry had both saved and not
+  // saved: the model wrote "that's logged fine" and the app appended "it looks
+  // like that entry didn't save".
+  //
+  // Point 4 is that they go IN INSTEAD, before anything is written, so one voice
+  // says all of it once. See app/lib/chat-path.ts for the switch.
+  const appendedNotes = [planNote, correctionNote, restoreNote, focusNote, saveNote, meNote, honestyNote].filter(
+    (line): line is string => typeof line === 'string' && line.length > 0
+  );
+
+  let replyBody = safeReplyText;
+  let notesStillToAppend = appendedNotes;
+
+  // NEVER OVER A BLOCKED REPLY. When the allergy gate blocks a suggestion the
+  // text is a fixed safety message, not a reply to be rewritten, and the same
+  // goes for anything else that replaced the model's words on purpose.
+  if (REPLY_WRITTEN_AFTER_THE_SAVES && gate.safe) {
+    const written = await writeReplyAfterSaves({
+      anthropic,
+      model: MODEL,
+      // Already ends with her current message: turn_context reads the history
+      // after her turn is inserted. See the note at that read.
+      messages,
+      data: {
+        food: recentFood ?? [],
+        activity: recentActivity ?? [],
+        dailyBurn: recentDailyBurn ?? [],
+        drinks: recentDrinks ?? [],
+        sleep: recentSleep ?? [],
+        measurements: recentMeasurements ?? [],
+        lastPeriodStart: lastPeriodRow?.event_date ?? null,
+        // Three days spoken, seven typed - the same window the reads used, so
+        // the facts cannot describe a week the query never fetched.
+        days: isVoice ? 3 : 7,
+      },
+      voice: isVoice,
+      didLines: appendedNotes,
+      safetyBlock: SAFETY_PROMPT_BLOCK,
+    });
+    // A failure here is a fallback, not a lost turn: the old path's reply is
+    // already sitting in safeReplyText with its notes ready to append.
+    if (written) {
+      replyBody = written;
+      notesStillToAppend = [];
+    }
+  }
+
+  // THE OFFER IS NOT JUST ANOTHER NOTE, so it is recomputed rather than passed
+  // in. It is a question that must be asked exactly once: an offer stored and
+  // never asked leaves her yes to something else able to answer it. Whichever
+  // path wrote the reply, offerQuestion() returns null if that reply already
+  // asks, and the app's own line otherwise.
+  const offerLine = offered ? offerQuestion(replyBody, offeredType) : null;
+  const trailingLines = [...notesStillToAppend, offerLine].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
   const finalReply =
     trailingLines.length > 0
-      ? `${safeReplyText}\n\n${trailingLines.join('\n\n')}`
-      : safeReplyText;
+      ? `${replyBody}\n\n${trailingLines.join('\n\n')}`
+      : replyBody;
 
   timing.mark('allergyGateDone');
   // ONE REPLY PER TURN, ENFORCED BY THE DATABASE (Ruth, 27 September 2026).

@@ -101,10 +101,19 @@ export function unsavedNote(attempt: LogAttempt): string | null {
   // one the two-table split makes common: a weight saves while a waist does not.
   if (landed.length > 0 && missed.length > 0) {
     const plural = missed.length > 1;
+    // ITEM 6's FIX HAD ONLY REACHED THE OTHER BRANCH (found 27 September 2026,
+    // testing the new reply path). This one still said "Would you mind
+    // re-entering it so we can make sure it's properly logged for you?" - which
+    // is the exact sentence Ruth reported, and this is the COMMON case, not the
+    // rare one: a weight saves while a waist does not, because they go to two
+    // different tables.
+    //
+    // The app has her words and has already retried with them, so asking her to
+    // type them again asks her to repeat the thing that just failed. It says
+    // what happened, once, and names what is missing so she knows which part.
     return (
-      `Hmm, it looks like the ${list(missed)} didn't save for some reason. ` +
-      `Would you mind re-entering ${plural ? 'those' : 'it'} so we can make sure ` +
-      `${plural ? "they're" : "it's"} properly logged for you?`
+      `The ${list(missed)} didn't save, and I've tried twice. ` +
+      `${plural ? 'Those are' : "That's"} not in your log, so ${plural ? 'they are' : 'it is'} worth another go in a moment.`
     );
   }
 

@@ -94,6 +94,25 @@ const ROUNDUP = `WHEN WRITING THE WEEK'S ROUNDUP: the figures first, plainly, on
  */
 const ONLY_WHAT_WAS_ASKED = `THE RECORD IS THERE SO YOU DO NOT GET THINGS WRONG, NOT SO YOU READ IT OUT. Answer what she actually said or asked, and nothing else. Do not list what is empty, do not summarise her week because the figures are in front of you, and do not add an observation she did not ask for. If she logs one thing, the reply is about that one thing.`;
 
+/**
+ * FAILED TEST: "weigh-in", checks "no throat-clear opener" and "does not read
+ * the figure back as a receipt".
+ *
+ * The rebuilt prompt opened with *"Got it — 56.9 kg this morning, logged."*
+ * Both halves of that are wrong and both are invisible from inside the model:
+ * the app prints its own save confirmation on screen, so saying it is logged is
+ * the second time she has been told; and "Got it" is the precise tic measured
+ * at 39% of replies in the week of 21 September, which grew because the model
+ * reads its own last forty turns and copies itself.
+ *
+ * This is the one rule here that also existed in the old block, and it is worth
+ * noting WHY it had to come back: it is not a rule about voice, it is a fact
+ * about the app that the model has no other way of knowing. The old block spent
+ * several hundred words and a statistic on it. This is two sentences, because
+ * the reason is stated rather than argued.
+ */
+const NO_RECEIPTS = `THE APP SHOWS ITS OWN SAVE CONFIRMATION, so she has already been told her entry is in. Never say it is logged or saved, and never read her figures back to her as a receipt. Do not open with a word for having heard her - not "Got it", not "Noted", not "Okay". Open on what she actually said.`;
+
 export type ReplyPromptOptions = {
   /** Spoken turns get the voice rules; typed ones do not. */
   voice?: boolean;
@@ -120,11 +139,11 @@ One thought per turn, then stop and let her speak. Do not read her own words bac
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NOT_A_DOCTOR];
+  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
 }
 
 /** For the audit tooling, so the count in the report is the real one. */
-export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NOT_A_DOCTOR, ROUNDUP, VOICE };
+export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, ROUNDUP, VOICE };
