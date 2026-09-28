@@ -2948,8 +2948,36 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // types text as string, so an empty one would not narrow and both branches
     // would look possible to the compiler. The reason is the discriminant.
     if (written.fellBack === null) {
-      replyBody = written.text;
-      notesStillToAppend = [];
+      // THE NEW REPLY GOES THROUGH THE ALLERGY GATE TOO (2026-09-28).
+      //
+      // This was a hole and it was mine. The gate above runs on the OLD path's
+      // reply, and `turnIsOrdinary` only asks whether THAT one passed. Then this
+      // branch replaces it with a sentence the gate has never seen. For anybody
+      // with a declared food allergy, every reply the rebuilt path wrote was
+      // ungated - the check was being done on a draft that was then thrown away.
+      //
+      // It short-circuits to safe for anybody with no edible exclusions, which is
+      // most people, so this costs nothing on nearly every turn. When it does
+      // run, the trade is plain: a second Haiku call against suggesting somebody
+      // a dish that will hurt them.
+      const reGate = await runAllergyGate(
+        anthropic,
+        written.text,
+        disclosedAllergies,
+        result.suggestsFood === true
+      );
+      if (reGate.safe) {
+        replyBody = written.text;
+        notesStillToAppend = [];
+      } else {
+        // THE NOTES SURVIVE A BLOCK, same as above and for the same reason: they
+        // are statements about what the app DID with her data, still true and
+        // still owed to her. They were woven into the blocked reply, so they go
+        // back to being appended rather than being lost with it.
+        console.log(`ASK-SELODIA: the rebuilt reply was blocked by the allergy gate - ${reGate.allergen}`);
+        replyBody = blockedSuggestionMessage(reGate.allergen);
+        notesStillToAppend = appendedNotes;
+      }
     } else {
       // RECORDED WHERE IT CAN BE COUNTED, not only logged. The console line goes
       // to Vercel, which is not somewhere the question "how often is this
