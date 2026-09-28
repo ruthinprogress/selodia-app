@@ -24,9 +24,14 @@ import { turnFacts, type TurnData } from './turn-facts';
 //      the mechanism behind the reply that said an entry both saved and did
 //      not. The facts now go IN, before the model writes, and it writes once.
 //
-// THE SWITCH IS OFF. Ruth reads the before-and-after replies first and turns it
-// on herself. Off means every turn runs exactly the path that has been running
-// all week, with not one line of it changed.
+// THE SWITCH IS ON, since 28 September 2026. Ruth read the before-and-after
+// replies overnight: "I've read the before-and-after doc and the new version is
+// clearly better."
+//
+// THE OLD PATH IS STILL HERE AND STILL WORKS, which is the whole point of the
+// switch. Setting this back to false is one line, one commit and one web deploy,
+// and every turn goes back to the path that ran all of last week. It comes out
+// for good once she has used this one for a while, and not before.
 //
 // WHY A CONSTANT AND NOT AN ENVIRONMENT VARIABLE. An environment variable is a
 // Vercel production setting, and those are hers to change, not mine. A constant
@@ -43,7 +48,7 @@ import { turnFacts, type TurnData } from './turn-facts';
  * Either way a failure in the new path falls back to the old reply rather than
  * failing the turn, so turning this on cannot cost her a message.
  */
-export const REPLY_WRITTEN_AFTER_THE_SAVES = false;
+export const REPLY_WRITTEN_AFTER_THE_SAVES = true;
 
 export type ReplyRequest = {
   anthropic: Anthropic;
@@ -79,8 +84,20 @@ export type ReplyRequest = {
  * change of author, not a new way for a turn to fail.
  */
 export async function writeReplyAfterSaves(req: ReplyRequest): Promise<string | null> {
-  const blocks = [
-    replyPrompt({ voice: req.voice }),
+  // THE STATIC HALF FIRST, SO IT CAN BE CACHED. The rebuilt prompt and the safety
+  // block are identical on every turn of the same kind - 3,093 tokens of the
+  // roughly 4,000 this call sends - and a cache entry is keyed on everything
+  // BEFORE its breakpoint, so anything that varies has to sit after it. That is
+  // the same lesson the classify call learned on 25 September, where the first
+  // attempt cached a prompt that only looked static and would have missed on
+  // every single turn.
+  //
+  // The safety block moving above the record is a change of ORDER, not of
+  // content: it is still the last instruction before her own words, and nothing
+  // in it refers to the record by position.
+  const staticHalf = [replyPrompt({ voice: req.voice }), req.safetyBlock].join('\n\n');
+
+  const turnHalf = [
     `THE RECORD:\n${turnFacts(req.data)}`,
     req.didLines.length > 0
       ? `WHAT THE APP HAS ALREADY DONE WITH HER DATA ON THIS TURN, and she has not been told any of it yet. Say what matters of it in your own words, once, inside your reply - never as a list bolted on the end, because you are the only person writing this message:\n${req.didLines
@@ -88,8 +105,9 @@ export async function writeReplyAfterSaves(req: ReplyRequest): Promise<string | 
           .join('\n')}`
       : null,
     ...(req.extraBlocks ?? []),
-    req.safetyBlock,
-  ].filter((b): b is string => typeof b === 'string' && b.trim().length > 0);
+  ]
+    .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+    .join('\n\n');
 
   try {
     const res = await req.anthropic.messages.create({
@@ -99,7 +117,10 @@ export async function writeReplyAfterSaves(req: ReplyRequest): Promise<string | 
       // only ever writes prose, so the ceiling exists to catch a runaway rather
       // than to shape the answer.
       max_tokens: 700,
-      system: blocks.join('\n\n'),
+      system: [
+        { type: 'text' as const, text: staticHalf, cache_control: { type: 'ephemeral' as const } },
+        { type: 'text' as const, text: turnHalf },
+      ],
       messages: req.messages,
     });
     if (res.stop_reason === 'max_tokens') return null;
