@@ -40,11 +40,33 @@ export const CLASSIFY_TOOL_NAME = 'classify_and_reply';
 // extraProperties/extraRequired let a route add its own tool-schema
 // fields (e.g. onboarding's extractedGoal) without forking the shared
 // safety fields.
+/**
+ * WHAT THE `reply` FIELD IS FOR, WHICH DEPENDS ON THE PATH (2026-09-28).
+ *
+ * When the reply is written afterwards by app/lib/chat-path.ts, this field is a
+ * FALLBACK: read only if that call fails. Generating forty to sixty words of
+ * careful prose that nothing reads is pure latency on the critical path, and
+ * output is the slow part of a model call - her turns went from a 3.3s median to
+ * 7.0s the day the second call went live.
+ *
+ * IT IS NOT SHORTENED ON A TURN THAT IS NOT ORDINARY. A distress turn never
+ * reaches the new path (see turnIsOrdinary), so this field IS the reply there,
+ * and the safety architecture depends on it being whole.
+ */
+const REPLY_AS_FALLBACK =
+  'A SHORT FALLBACK, normally discarded. The app writes the real reply in a separate step ' +
+  'immediately after this one, so one or two plain sentences is enough here and long careful ' +
+  'prose is wasted. ONE EXCEPTION, and it is absolute: if the classification is anything other ' +
+  'than the ordinary non-distress one, or you are asking a screening question, write the FULL ' +
+  'reply exactly as the language rules require - that path does not run for those turns and ' +
+  'this is what the person will actually read.';
+
 export function buildClassifyTool<T extends string>(
   nonDistressClassifications: readonly T[],
   excludeAmbiguous: boolean,
   extraProperties: Record<string, unknown> = {},
-  extraRequired: string[] = []
+  extraRequired: string[] = [],
+  replyIsFallback = false
 ): Tool {
   const tiers = excludeAmbiguous
     ? DISTRESS_TIERS.filter((t) => t !== 'ambiguous_distress')
@@ -60,7 +82,9 @@ export function buildClassifyTool<T extends string>(
         classification: { type: 'string', enum: classifications },
         reply: {
           type: 'string',
-          description: "Your natural-language response, following the language rules exactly",
+          description: replyIsFallback
+            ? REPLY_AS_FALLBACK
+            : 'Your natural-language response, following the language rules exactly',
         },
         resourceCardTitle: {
           type: 'string',

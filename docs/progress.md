@@ -80,7 +80,16 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
       could not do was say whether things are improving, so it now splits at the
       27 September rebuild. **"Got it" was 27% of 359 replies before; since the
       rebuild the commonest opening is 10% of 42.**
-- [ ] **10. Voice speed** — is a turn back to about 3.2s.
+- [x] **10. Voice speed — measured from her own turns, not a probe.** Median
+      time from her message to the reply: **3.3s on the 26th (49 turns), 3.3s on
+      the 27th (32 turns), 7.0s today (8 turns)**. So yes, the speed work landed
+      and turns WERE back to about 3.2s. The new path then doubled them, which is
+      the second model call. Part of that is recoverable and now is: the
+      classification call was still writing a full reply that nothing reads, and
+      it is asked for a short fallback instead - except on a distress turn, where
+      it is still the real reply. Needs re-measuring tomorrow on real turns.
+      **Note: chat rows do not record whether a turn was spoken**, so this is all
+      turns rather than voice specifically.
 - [ ] **11. Research only, no building:** UK/EU store rules for subscriptions;
       ICO registration for Selodía Ltd; a draft beta agreement. Each to Drive.
       Plus the billing proposal including complimentary access, and how to find

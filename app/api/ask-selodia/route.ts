@@ -1494,7 +1494,15 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         'Only alongside almanacKind: the entry content as an object. For an INSIGHT use { "condition": ..., "expectation": ... } so it can inform future readings; for a plan, the plan\'s structure; otherwise a { "summary": ... }.',
     },
-  });
+  },
+  [],
+  // THE REPLY IS A FALLBACK WHEN THE NEW PATH IS ON, so it is asked for short.
+  // Generating forty to sixty words of careful prose that nothing reads is pure
+  // latency on the critical path of every turn: her median went from 3.3s to
+  // 7.0s the day the second call went live. The field cannot be removed - it is
+  // what she gets when the writer fails - and on a distress turn it is still the
+  // real reply, which the instruction says in as many words.
+  REPLY_WRITTEN_AFTER_THE_SAVES);
 
   let response;
   try {
