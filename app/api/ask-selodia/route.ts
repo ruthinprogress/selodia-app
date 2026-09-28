@@ -21,6 +21,7 @@ import {
 } from '../../lib/chat-path';
 import { voiceSinkFor } from '../../lib/voice-sink';
 import { recordModelUsage } from '../../lib/usage-record';
+import { recordRouteError, recordTurnTiming } from '../../lib/turn-diagnostics';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -1679,11 +1680,25 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       'ASK-SELODIA TRUNCATED: hit max_tokens before finishing the tool block.' +
         ' Raise max_tokens; the reply and any save in this turn are lost.'
     );
+    recordRouteError({
+      userId,
+      turnId,
+      voice: isVoice,
+      label: 'classification truncated',
+      detail: { stop_reason: response.stop_reason, output_tokens: response.usage?.output_tokens ?? null },
+    });
     return NextResponse.json({ error: 'Response was cut short' }, { status: 500 });
   }
 
   const toolUse = response.content.find((block) => block.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') {
+    recordRouteError({
+      userId,
+      turnId,
+      voice: isVoice,
+      label: 'no classification block',
+      detail: { stop_reason: response.stop_reason, blocks: response.content.map((b) => b.type) },
+    });
     return NextResponse.json({ error: 'Model did not return a classification' }, { status: 500 });
   }
 
@@ -3154,6 +3169,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   sink?.finish(finalReply);
 
   timing.report(isVoice ? 'voice' : 'typed');
+  // AND KEPT. The console line goes to Vercel, which on this tier retains
+  // nothing - it is a live stream and no history, so a question asked an hour
+  // later cannot be answered. Twice on 28 September that stopped an
+  // investigation. See app/lib/turn-diagnostics.ts.
+  recordTurnTiming({ userId, turnId, voice: isVoice, marks: timing.taken() });
 
   return NextResponse.json({
     // Absent unless a caller asked, so nothing in the app ever sees this field.

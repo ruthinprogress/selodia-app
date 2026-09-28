@@ -150,8 +150,8 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 
 | | Priority |
 | --- | --- |
-| **ICO registration** — tier 1, £52, Selodía Ltd. **Moved to a wave-zero blocker** (Ruth, 28 September): she registers just before inviting Nikki and Carol rather than at launch. | **Before wave zero** |
-| **Leaked-password protection** — a Supabase setting, possibly paid. | **Before wave one** |
+| **ICO registration** — tier 1, £52, Selodía Ltd. Done **after the controller's own week of daily use and before Nikki and Carol are invited** (Ruth, 28 September), which is the moment anybody else's health data enters the system. | **Before the first invitation** |
+| **Leaked-password protection** — confirmed 28 September to need the **Supabase Pro plan at $25/month**, so it is a cost decision rather than a toggle. **No longer treated as a wave-one blocker** (Ruth, 28 September, agreeing it was too strong): it is a real improvement and not the line between lawful and unlawful processing, and a dozen beta testers is a defensible time not to have it. Revisited if Pro is taken for other reasons. | When Pro is taken |
 | **Password reset proved end to end on a phone.** | **Before wave one** |
 | ~~International transfer mechanism for Anthropic and ElevenLabs~~ — **done, 28 September.** SCCs plus the UK Addendum in both DPAs, both automatic. Section 3. | Closed |
 | **A transfer risk assessment** for the two US processors — the clauses are in place, the documented judgement that they are effective is not. | 100-subscriber review |
@@ -166,7 +166,7 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 
 **Two risks are not closed and are named above**: the database breach case, and the model saying something untrue about somebody's body. The transfer mechanism was the third and is now closed — both US processors carry the UK Addendum, and neither needed Selodía to sign anything. What is left of it is the transfer risk assessment, which is a solicitor's job.
 
-**One thing blocks wave zero: ICO registration**, and it is the only item here that the "two people she knows" reasoning does not reach, because it is a duty owed to a regulator rather than to a tester. Everything else on this page can be carried by hand for two people the controller can telephone. **Two things block wave one** and are marked: **leaked-password protection**, a Supabase setting, and **password reset proved end to end on a phone**. Both are hers — the code for the second is shipped and cannot work until two settings are changed with a personal access token.
+**Nothing on this page blocks the controller's own week of daily use**, which is what actually gates wave zero. **ICO registration is done between that week and the first invitation**, because that is the moment somebody other than the controller has health data in the system. Everything else here can be carried by hand for two people the controller can telephone. **One thing blocks wave one** and is marked: **password reset proved end to end on a phone**. The code is shipped and cannot work until two settings are changed with a personal access token. Leaked-password protection was the second and has been stood down — it needs a paid plan, and calling it a blocker was stronger than the facts supported.
 
 ---
 
