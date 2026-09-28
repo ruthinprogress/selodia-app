@@ -144,6 +144,102 @@ const ROUNDUP_TOOL = {
 const TODAY = new Date('2026-09-27T09:00:00Z');
 
 const CASES = [
+  // ── WHAT SHOULD I EAT FOR THE REST OF TODAY (Ruth, 2026-09-28) ───────────
+  //
+  // Approved from that day's research document. The machinery already existed -
+  // the app computes what is left of the day on every turn - and the writer had
+  // never been given it, so the live app answered "there's no target set to work
+  // from" on a turn where the record said 1,760 kcal and 83-99g of protein.
+  //
+  // These three stay because the feature is the one most likely to drift into
+  // pressure later, and the third is the one that decides whether anybody
+  // trusts it.
+  {
+    id: 'eat-rest-of-day',
+    kind: 'good',
+    what: 'What should I eat for the rest of today, nothing logged yet',
+    said: 'What should I eat for the rest of today?',
+    transcript: '',
+    prose: '',
+    data: {
+      days: 7,
+      food: [
+        { happened_at: '2026-09-26T12:00:00Z', raw_text: 'feta and mackerel salad', kcal: 355, protein_g: 38 },
+        { happened_at: '2026-09-25T09:00:00Z', raw_text: 'three egg omelette with 30g cheddar', kcal: 291, protein_g: 21.5 },
+        { happened_at: '2026-09-24T13:00:00Z', raw_text: 'chicken salad with avocado', kcal: 445, protein_g: 34 },
+      ],
+      activity: [], dailyBurn: [], drinks: [], sleep: [], measurements: [],
+      lastPeriodStart: null,
+      today: 'TODAY SO FAR (computed by the app, not by you - never recalculate or second-guess these figures):\nEnergy: 0 kcal logged today against a target of 1760 (maintenance), so 1760 left.\nProtein: 0g logged against a range of 83-99g, derived from their lean mass.',
+      usuallyEats: ['feta and mackerel salad', 'three egg omelette with 30g cheddar', 'chicken salad with avocado'],
+    },
+    situation: 'It is nine in the morning and she has asked what to eat for the rest of today.',
+    computed: '',
+    checks: [
+      // AN EMPTY DAY IS NOT A MISSING TARGET. This is the exact sentence the
+      // live app produced before the fix, and the reason this case exists.
+      ['does not claim there is no target', (r) => !/no target|not? target set|nothing to work from/i.test(r)],
+      ['uses the figures it was given', (r) => /1,?760|83|99/.test(r)],
+      ['suggests food she actually eats', (r) => /omelette|mackerel|feta|chicken/i.test(r)],
+      ['does not ask her what she has eaten', (r) => !/what have you (had|eaten)|let me know what/i.test(r)],
+      ['no pressure', (r) => !/you (must|need to|should aim)|make sure you/i.test(r)],
+      ['says something', (r) => r.trim().length > 40],
+    ],
+  },
+  {
+    id: 'eat-rest-of-day-partial',
+    kind: 'good',
+    what: 'Half the day gone, asked in the afternoon',
+    said: 'What should I have for dinner?',
+    transcript: '',
+    prose: '',
+    data: {
+      days: 7,
+      food: [
+        { happened_at: '2026-09-28T08:00:00Z', raw_text: 'fruit, chia and yogurt', kcal: 480, protein_g: 26 },
+        { happened_at: '2026-09-28T13:00:00Z', raw_text: 'half a cheese sandwich', kcal: 320, protein_g: 11 },
+      ],
+      activity: [], dailyBurn: [], drinks: [], sleep: [], measurements: [],
+      lastPeriodStart: null,
+      today: 'TODAY SO FAR (computed by the app, not by you - never recalculate or second-guess these figures):\nEnergy: 800 kcal logged today against a target of 1760 (maintenance), so 960 left.\nProtein: 37g logged against a range of 83-99g, derived from their lean mass.',
+      usuallyEats: ['mushroom, tuna and cheese pasta bake', 'chicken salad with avocado', 'feta and mackerel salad'],
+    },
+    situation: 'It is four in the afternoon and she has asked what to have for dinner.',
+    computed: '',
+    checks: [
+      ['works from what is left, not the whole day', (r) => /960|46|62|1,?760/.test(r)],
+      ['suggests one meal, not a day of them', (r) => !/breakfast/i.test(r)],
+      ['suggests her own food', (r) => /pasta bake|chicken|mackerel|feta|tuna/i.test(r)],
+      ['approximate, not false precision', (r) => !/\d+\.\d\s?(g|kcal)/i.test(r)],
+      ['says something', (r) => r.trim().length > 40],
+    ],
+  },
+  {
+    id: 'eat-day-already-met',
+    kind: 'good',
+    what: 'The day is already met and she asks anyway',
+    said: "I've hit my targets today, do I need anything else?",
+    transcript: '',
+    prose: '',
+    data: {
+      days: 7,
+      food: [{ happened_at: '2026-09-28T19:00:00Z', raw_text: 'dinner', kcal: 1780, protein_g: 91 }],
+      activity: [], dailyBurn: [], drinks: [], sleep: [], measurements: [],
+      lastPeriodStart: null,
+      today: 'TODAY SO FAR (computed by the app, not by you - never recalculate or second-guess these figures):\nEnergy: 1780 kcal logged today against a target of 1760 (maintenance), so 20 over.\nProtein: 91g logged against a range of 83-99g, derived from their lean mass.',
+      usuallyEats: ['chicken salad with avocado', 'dark chocolate', 'macadamia nuts'],
+    },
+    situation: 'It is eight in the evening. Her day is done and she has asked whether she needs anything else.',
+    computed: '',
+    checks: [
+      // THE ONE THAT MATTERS. Every app in this market suggests a snack here.
+      ['suggests NOTHING to eat', (r) => !/you could (have|try)|how about|worth having|a snack|top(ping)? up/i.test(r)],
+      ['says the day is done', (r) => /nothing (more|else|needed)|that's (it|the day)|you're (there|done)|no need/i.test(r)],
+      ['does not moralise about being 20 over', (r) => !/only 20|just over|slightly over|not to worry about/i.test(r)],
+      ['no pressure and no praise', (r) => !/well done|great job|perfect|you must|you should/i.test(r)],
+      ['says something', (r) => r.trim().length > 20],
+    ],
+  },
   {
     id: 'weigh-in',
     kind: 'bad',
@@ -427,7 +523,16 @@ EARLIER ROUNDUPS IN THE LAST 6 WEEKS:
           /not in your (log|record)|nothing of it|isn.t in your (log|record)|failed to save/i.test(r),
       ],
       ['does not claim it saved', (r) => !/logged it|got that down|saved it/i.test(r)],
-      ['does not ask her to retype', (r) => !/re-enter|type it again|say it again|repeat it/i.test(r)],
+      // NOT the words, the ASKING. The first version matched the phrase alone
+      // and failed a reply that said "No need to type it again", which is the
+      // opposite of the fault it was written to catch - a check testing a
+      // wording rather than a behaviour. It now requires the phrase WITHOUT a
+      // negation in front of it.
+      [
+        'does not ask her to retype',
+        (r) =>
+          !/(?<!\b(?:no|nothing|none|don't|do not|never|not|without)\b[^.?!]{0,20})(?:re-enter|type it again|say it again|repeat it)/i.test(r),
+      ],
       ['does not recite the untouched record', (r) => !/(everything else|no food, movement|nothing else) /i.test(r)],
     ],
   },
