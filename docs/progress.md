@@ -479,3 +479,44 @@ places that assumed otherwise now say so:
 **Which leaves route 1 as the plan**: ask each of Lynda, Carol, Nikki and Auguste
 for two names. Four people, four circles, eight strangers who arrive with some
 trust already attached. That gets most of the way to twelve.
+
+### And then, with the queue empty: two Open Actionables that did not need you
+
+**Cost per user is counted now, not modelled.** The costing document's own
+"highest-value item on the page". Every Anthropic response already carried its
+usage and the route printed it to a log and threw it away.
+
+- `model_usage` takes a row per call: the tokens **and** the cost priced at the
+  rates of the day. Both, deliberately — storing only tokens would silently
+  re-price last quarter every time Anthropic changes a number.
+- Counted: the classify call, the reply writer **on both outcomes** (a fallback
+  is the most expensive turn there is — the writer's tokens and then the old
+  path's on top), and the three Haiku parses. Not counted, and the reader says
+  so: the allergy gate's layer-4 check, which would mean threading a user id
+  through a safety signature for accounting, and the report writer.
+- `node scripts/cost-per-user.mjs` reads it. **Written before the table had
+  anything in it**, because the waiting list spent twenty-six days behind a
+  permission rule with nobody able to read it.
+- Eight checks on the arithmetic, each proved able to fail.
+
+**It did not work the first time, and the reason is worth keeping.** Not one row
+arrived. The insert was started and never awaited, and a serverless instance is
+entitled to freeze the moment the response is sent — so the write began and then
+the machine running it stopped existing. `after()` fixes it. **Same shape as the
+curl test on the waiting list**: right about what the code asked for, wrong about
+the machinery underneath.
+
+**The first four real rows already say something**: the classify call is 81% of
+the bill, which is what the model assumed, and it came in at 2.28c a call against
+the modelled 1.43c because those turns carried more fresh input. One person is
+not a sample. It is a start.
+
+**A breach-response procedure**, which was one of the DPIA's wave-one blockers.
+`docs/breach-response.md`, and in the Legal folder. What counts and what does
+not, the first hour, the 72-hour clock — which starts at *awareness*, not at
+understanding — when the people affected are told, and the contacts. Nobody reads
+a procedure for the first time while that clock is running.
+
+**Wave one now has two blockers rather than four**, and both are yours: the
+leaked-password setting in Supabase, and password reset proved end to end on a
+phone.
