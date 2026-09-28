@@ -13,7 +13,7 @@ import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
-import { REPLY_WRITTEN_AFTER_THE_SAVES, turnIsOrdinary, writeReplyAfterSaves } from '../../lib/chat-path';
+import { newPathWrites, turnIsOrdinary, writeReplyAfterSaves } from '../../lib/chat-path';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -1502,7 +1502,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // 7.0s the day the second call went live. The field cannot be removed - it is
   // what she gets when the writer fails - and on a distress turn it is still the
   // real reply, which the instruction says in as many words.
-  REPLY_WRITTEN_AFTER_THE_SAVES);
+  newPathWrites(isVoice));
 
   let response;
   try {
@@ -2830,7 +2830,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     nonDistress: NON_DISTRESS_CLASSIFICATIONS,
   });
 
-  if (REPLY_WRITTEN_AFTER_THE_SAVES && ordinary) {
+  if (newPathWrites(isVoice) && ordinary) {
     const written = await writeReplyAfterSaves({
       anthropic,
       model: MODEL,

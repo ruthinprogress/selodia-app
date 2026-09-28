@@ -24,31 +24,53 @@ import { turnFacts, type TurnData } from './turn-facts';
 //      the mechanism behind the reply that said an entry both saved and did
 //      not. The facts now go IN, before the model writes, and it writes once.
 //
-// THE SWITCH IS ON, since 28 September 2026. Ruth read the before-and-after
-// replies overnight: "I've read the before-and-after doc and the new version is
-// clearly better."
+// THE SWITCH IS ON FOR TEXT AND OFF FOR VOICE, since 28 September 2026.
 //
-// THE OLD PATH IS STILL HERE AND STILL WORKS, which is the whole point of the
-// switch. Setting this back to false is one line, one commit and one web deploy,
-// and every turn goes back to the path that ran all of last week. It comes out
-// for good once she has used this one for a while, and not before.
+// She read the before-and-after replies overnight - "the new version is clearly
+// better" - and it went on for everything. Then the latency was measured on her
+// real turns: a median of 3.3s on the 26th and the 27th, and 7.0s on the day the
+// second call went live. Her instruction the same afternoon: "switch voice to the
+// old path until latency is back to about 3.3s; keep text on the new path."
+//
+// WHY THAT IS THE RIGHT SPLIT and not simply turning it off. The cost is a second
+// sequential model call, and it is felt completely differently on the two
+// surfaces. Seven seconds of typed reply is a pause with a typing indicator in
+// it. Seven seconds of spoken reply is silence on a phone call - the failure this
+// project spent the whole of 24 September measuring, and the reason the
+// platform's own filler line is set to eight seconds: because the turn used to
+// finish before it.
+//
+// THE OLD PATH IS STILL HERE AND STILL WORKS. That is the point of the switch.
 //
 // WHY A CONSTANT AND NOT AN ENVIRONMENT VARIABLE. An environment variable is a
 // Vercel production setting, and those are hers to change, not mine. A constant
 // in a file is a commit, a deploy and a rollback she can see in the history.
 
 /**
- * OFF. The reply comes from the classification tool and the app appends its
- * notes, exactly as it has all week.
+ * Which surfaces write the reply after the saving, rather than inside the tool.
  *
- * ON. The classification tool still runs and still drives every save; its reply
- * field is discarded. The reply is written afterwards, in its own call, from the
- * rebuilt prompt, with computed facts and with what the app actually did.
+ * OFF for a surface. The reply comes from the classification tool and the app
+ * appends its notes, exactly as it did before 28 September.
+ *
+ * ON for a surface. The classification tool still runs and still drives every
+ * save; its reply field becomes a fallback. The reply is written afterwards, in
+ * its own call, from the rebuilt prompt, with computed facts and with what the
+ * app actually did.
  *
  * Either way a failure in the new path falls back to the old reply rather than
- * failing the turn, so turning this on cannot cost her a message.
+ * failing the turn, so this can never cost somebody a message.
+ *
+ * VOICE IS FALSE UNTIL THE LATENCY IS BACK TO ABOUT 3.3s, at which point it
+ * becomes true and this comment goes. It is not a permanent difference in how the
+ * two surfaces work, and it must not be allowed to become one - two chat paths is
+ * the thing a beta cannot start with.
  */
-export const REPLY_WRITTEN_AFTER_THE_SAVES = true;
+export const REPLY_WRITTEN_AFTER_THE_SAVES = { typed: true, voice: false };
+
+/** Does the rebuilt path write this turn's reply, before anything else is asked? */
+export function newPathWrites(voice: boolean): boolean {
+  return voice ? REPLY_WRITTEN_AFTER_THE_SAVES.voice : REPLY_WRITTEN_AFTER_THE_SAVES.typed;
+}
 
 /**
  * Is this a turn the rebuilt path may write, at all?
@@ -102,6 +124,8 @@ export type ReplyRequest = {
    * her current message as its last entry. turn_context deliberately reads the
    * history after her turn has been inserted, so it is already in there; adding
    * it again would ask her question twice.
+   *
+   * Trimmed to the last RUN_UP_TURNS before it is sent - see that constant.
    */
   messages: Anthropic.MessageParam[];
   /** Everything the app knows about her week, computed and rounded in code. */
@@ -132,6 +156,27 @@ export type WrittenReply =
   | { text: null; fellBack: FallbackReason; detail: string };
 
 /**
+ * HOW MUCH OF THE CONVERSATION THE WRITER SEES, and why it is not all of it.
+ *
+ * Measured 28 September 2026, when her turns had gone from a 3.3s median to 7.0s.
+ * The input barely matters - the three configurations tried sent 5,138, 4,220 and
+ * 4,058 tokens, and the static 3,351 of that is cached either way. What varied by
+ * a factor of seven was the OUTPUT: 276 tokens with forty turns of run-up against
+ * 39 with six, which at roughly sixty tokens a second is four and a half seconds
+ * against under one.
+ *
+ * The writer does not need the history the way the classifier does. The record
+ * reaches it as computed, labelled facts - that is what turn-facts.ts is for -
+ * and what the run-up buys is knowing what is being discussed RIGHT NOW: a
+ * correction, a question about something a turn or two back, a thing she is still
+ * answering. That lives in the last few exchanges.
+ *
+ * THE CLASSIFY CALL STILL GETS ALL OF IT, because it is the one deciding whether
+ * this message corrects an earlier one, and it is not the call that was slow.
+ */
+const RUN_UP_TURNS = 8;
+
+/**
  * Write the whole reply, once, after the saving is done.
  *
  * NEVER THROWS, and never leaves the caller without a reply: any failure comes
@@ -157,9 +202,17 @@ export async function writeReplyAfterSaves(req: ReplyRequest): Promise<WrittenRe
   const turnHalf = [
     `THE RECORD:\n${turnFacts(req.data)}`,
     req.didLines.length > 0
-      ? `WHAT THE APP HAS ALREADY DONE WITH HER DATA ON THIS TURN, and she has not been told any of it yet. Say what matters of it in your own words, once, inside your reply - never as a list bolted on the end, because you are the only person writing this message:\n${req.didLines
-          .map((l) => `- ${l}`)
-          .join('\n')}`
+      ? `WHAT THE APP HAS ALREADY DONE WITH HER DATA ON THIS TURN. You are the only person writing this message, so anything she needs to know has to come from you - but MOST OF THIS NEEDS NO MENTION AT ALL.
+
+A save that WORKED is not news: the app prints its own confirmation and she has already seen it, so saying it again is the receipt this reply exists to avoid. Say nothing about it.
+
+ANYTHING THAT DID NOT WORK IS ALWAYS SAID. A save that failed, an entry removed, a value changed - she has no other way of finding out, and a reply that leaves it out is the app quietly letting her believe something false. One plain sentence, woven in rather than listed, and never more than one.
+
+If every line below is something that simply worked, say nothing about any of it and just answer her.
+
+Whatever you do say, the whole reply stays what it always is: a sentence or two.
+
+${req.didLines.map((l) => `- ${l}`).join('\n')}`
       : null,
     ...(req.extraBlocks ?? []),
   ]
@@ -169,16 +222,29 @@ export async function writeReplyAfterSaves(req: ReplyRequest): Promise<WrittenRe
   try {
     const res = await req.anthropic.messages.create({
       model: req.model,
-      // A SENTENCE OR TWO IS THE TARGET, and this is not a budget. The old call
-      // asked for enough room for a 500-exercise plan in a tool field; this one
-      // only ever writes prose, so the ceiling exists to catch a runaway rather
-      // than to shape the answer.
+      // A CEILING TO CATCH A RUNAWAY, and NOT a way to make replies shorter.
+      //
+      // Lowered to 400 on 28 September to claw back latency, and put straight back
+      // when the probe showed what that actually does: it truncates a reply that
+      // was going to be long, and a truncated reply is discarded in favour of the
+      // old path's. So the change turned a slow turn into a FALLBACK - the same
+      // wait, and then the reply the new path exists to replace. Two of three
+      // probe cases hit it.
+      //
+      // The lever for latency is output LENGTH, which is asked for in the prompt,
+      // not cut off here. A ceiling only ever decides what happens after
+      // everything has already gone wrong.
       max_tokens: 700,
       system: [
         { type: 'text' as const, text: staticHalf, cache_control: { type: 'ephemeral' as const } },
         { type: 'text' as const, text: turnHalf },
       ],
-      messages: req.messages,
+      // THE LAST FEW EXCHANGES, not the last forty. See RUN_UP_TURNS.
+      //
+      // Taken from the END of the array, which is where her current message is -
+      // turn_context returns the history with her turn already in it, so slicing
+      // from the front would cut off the thing she just said.
+      messages: req.messages.slice(-RUN_UP_TURNS),
     });
     if (res.stop_reason === 'max_tokens') {
       // Truncated mid-sentence. Unusable as a reply and worse than the old

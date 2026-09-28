@@ -62,21 +62,58 @@ const DATA = {
   lastPeriodStart: '2026-09-21',
 };
 
-// Forty turns of history, which is what a real thread carries into the call. An
-// empty history would measure a call this route never makes.
-const HISTORY = [];
-for (let i = 0; i < 20; i += 1) {
-  HISTORY.push({ role: 'user', content: 'Had porridge with blueberries and a coffee' });
-  HISTORY.push({ role: 'assistant', content: 'Sounds like a warm start. How is the morning going?' });
-}
+// A VARIED THREAD, and the reason is a lesson rather than a detail.
+//
+// This was twenty copies of one exchange, and a model handed twenty identical
+// short turns writes something unlike anything it writes in a real conversation.
+// That fixture produced 39 output tokens in one run and 400 in another the same
+// afternoon, which is not a measurement, it is a coin. A probe whose numbers
+// cannot be reproduced is worse than no probe: it produces confident conclusions
+// about nothing.
+const HISTORY = [
+  { role: 'user', content: 'Had porridge with blueberries and a coffee with oat milk' },
+  { role: 'assistant', content: 'Porridge and blueberries is a proper start to a cold morning.' },
+  { role: 'user', content: 'Walked to the station rather than getting the bus' },
+  { role: 'assistant', content: 'That will have added a fair few steps before nine.' },
+  { role: 'user', content: 'Chicken salad and a flat white for lunch' },
+  { role: 'assistant', content: 'A solid lunch. How is the afternoon looking?' },
+  { role: 'user', content: 'Busy. I might not get out again today' },
+  { role: 'assistant', content: 'Some days are like that. The morning walk still counted.' },
+  { role: 'user', content: 'Did the barbell routine last night, skipped the deadlifts' },
+  { role: 'assistant', content: 'Noted on the deadlifts. How did the rest of it feel?' },
+  { role: 'user', content: 'Heavy, but fine. Shoulder held up' },
+  { role: 'assistant', content: "Good to hear the shoulder held. That's the one that was bothering you." },
+  { role: 'user', content: 'Slept badly though, woke about three' },
+  { role: 'assistant', content: 'A three a.m. wake is its own kind of tired. Did you get back off?' },
+  { role: 'user', content: 'Eventually. Two black coffees this morning to make up for it' },
+  { role: 'assistant', content: 'That tracks. Anything else worth putting down?' },
+  { role: 'user', content: 'Not really. Quiet day otherwise' },
+  { role: 'assistant', content: 'Quiet days are worth logging too.' },
+  { role: 'user', content: 'Waist 78cm this morning' },
+  { role: 'assistant', content: "That's the first waist measurement in a while." },
+];
 
+// EACH CASE'S FACTS MATCH THE MESSAGE IT IS ANSWERING, which the second one did
+// not and which made this probe lie twice in one afternoon. Her message was
+// "56.9 this morning" and the app was supposedly reporting a saved porridge and a
+// failed waist - a turn that cannot happen. Asked to reconcile a weigh-in with
+// facts about breakfast, the model wrote several hundred words trying, hit the
+// ceiling and fell back, and I twice read that as a fault in the code.
+//
+// A fixture that describes an impossible turn measures how a model copes with
+// nonsense, which is not a number anybody needs.
 const CASES = [
-  { what: 'typed, nothing for the app to report', voice: false, didLines: [] },
-  { what: 'typed, a save and a failure to report', voice: false, didLines: [
-    'The porridge and coffee saved to her food log.',
-    'A waist measurement in the same message did NOT save, after two attempts.',
-  ] },
-  { what: 'spoken, nothing to report', voice: true, didLines: [] },
+  { what: 'typed, nothing for the app to report', said: '56.9 this morning', voice: false, didLines: [] },
+  {
+    what: 'typed, a save and a failure to report',
+    said: 'Two black coffees, and waist 78cm',
+    voice: false,
+    didLines: [
+      'Two black coffees saved to her food log.',
+      'The waist measurement did NOT save, after two attempts. Nothing of it is in her log.',
+    ],
+  },
+  { what: 'spoken, nothing to report', said: '56.9 this morning', voice: true, didLines: [] },
 ];
 
 const RUNS = 2;
@@ -95,14 +132,17 @@ for (const c of CASES) {
     const reply = await writeReplyAfterSaves({
       anthropic,
       model: 'claude-sonnet-5',
-      messages: [...HISTORY, { role: 'user', content: '56.9 this morning' }],
+      messages: [...HISTORY, { role: 'user', content: c.said }],
       data: DATA,
       voice: c.voice,
       didLines: c.didLines,
       safetyBlock: SAFETY_PROMPT_BLOCK,
     });
     times.push(Date.now() - t0);
-    if (reply) sample = reply;
+    // THE REASON, NOT JUST THE TEXT. A run that falls back is the most
+    // interesting result this probe can produce and the first version threw it
+    // away, printing an empty sample that looked like a formatting bug.
+    sample = reply.fellBack === null ? reply.text : `FELL BACK: ${reply.fellBack} (${reply.detail})`;
   }
   const best = Math.min(...times);
   const worst = Math.max(...times);
