@@ -315,7 +315,9 @@ function spokenCompletion(
             let pending = '';
             for await (const piece of sink.read()) {
               pending += piece;
-              const { cuts, rest } = splitSpeakable(pending);
+              // EAGER, because waiting for a full stop was measured and bought
+              // 124ms on a median turn. See splitSpeakable.
+              const { cuts, rest } = splitSpeakable(pending, { eager: true });
               pending = rest;
               for (const cut of cuts) {
                 if (saidEarly === 0) {

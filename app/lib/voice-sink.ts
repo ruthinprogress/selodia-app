@@ -156,13 +156,53 @@ export function voiceSinkFor(request: object): VoiceSink | null {
 // splitter that quietly dropped the space after a full stop would make every
 // multi-sentence reply look like a divergence - and the offer line at the end of
 // it would never be spoken. The first version did exactly that.
-export function splitSpeakable(pending: string): { cuts: string[]; rest: string } {
+/**
+ * The shortest thing worth handing to a voice on its own.
+ *
+ * Cutting at every comma would hand the voice "Yes," on its own, which sounds
+ * like a fault. Waiting for a long one means never cutting at all.
+ *
+ * SIXTY WAS THE FIRST GUESS AND IT WAS TOO HIGH: the opening clause of a real
+ * reply - "Food is logged three of three days this week," - is forty-three
+ * characters, so a sixty-character floor would have left the eager cut doing
+ * nothing on exactly the replies it was added for. Thirty-five is about two
+ * thirds of a second of speech and clears "Yes," and "Food's logged," by a
+ * wide margin.
+ */
+const MIN_CLAUSE = 35;
+
+export function splitSpeakable(
+  pending: string,
+  // CUT AT CLAUSES TOO, not only at sentences.
+  //
+  // Waiting for a full stop bought almost nothing. Measured across ten real
+  // turns on 28 September 2026: 124ms on the median turn, 806ms on the best,
+  // against a prediction of about two seconds. The prediction was wrong in a
+  // specific way worth remembering - it assumed the writer's output would be
+  // spread across the wait, when almost all of the wait happens BEFORE the first
+  // sentence exists. There was nothing to say early because nothing had been
+  // written yet.
+  //
+  // So the cut moves earlier, to a comma, semicolon, colon or dash with at least
+  // a phrase in front of it. The pauses it introduces fall where a person pauses
+  // anyway.
+  { eager = false }: { eager?: boolean } = {}
+): { cuts: string[]; rest: string } {
   const cuts: string[] = [];
   let rest = pending;
   for (;;) {
     // A terminator followed by whitespace, or one at the very end of what has
     // arrived so far. Anything else is mid-sentence and waits.
-    const at = rest.search(/[.!?\n]\s|[.!?]$/);
+    let at = rest.search(/[.!?\n]\s|[.!?]$/);
+
+    // No sentence yet, but perhaps a clause long enough to be worth saying. The
+    // clause mark must be FOLLOWED by whitespace, so a comma the model is still
+    // typing past is not mistaken for the end of anything.
+    if (at < 0 && eager) {
+      const clause = rest.search(/[,;:—]\s/);
+      if (clause >= MIN_CLAUSE) at = clause;
+    }
+
     if (at < 0) break;
     cuts.push(rest.slice(0, at + 1));
     rest = rest.slice(at + 1);

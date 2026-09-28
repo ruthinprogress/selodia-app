@@ -168,6 +168,76 @@ const SPLITS = [
   { name: 'a decimal point is not a full stop', input: 'You averaged 69.4g of protein' },
 ];
 
+// ── THE EAGER CUT, which is what the adapter actually uses ─────────────────
+//
+// Waiting for a full stop was measured at 124ms of benefit on a median turn, so
+// the cut moves to a clause. These say where it may and may not fall.
+const EAGER = [
+  {
+    name: 'a long clause is said without waiting for the full stop',
+    input: 'Food is logged three of three days this week, averaging 1,993 kcal and 69g of protein',
+    firstCut: 'Food is logged three of three days this week,',
+  },
+  {
+    name: 'a short opening clause waits - "Yes," is not a thing to say on its own',
+    input: 'Yes, that is all in',
+    firstCut: null,
+  },
+  {
+    name: 'a comma at the very end is the model still typing',
+    input: 'Food is logged three of three days this week and the protein averaged,',
+    firstCut: null,
+  },
+  {
+    name: 'a clause just under the floor still waits',
+    // 'Water is low today and sleep was' is 32 characters, under MIN_CLAUSE.
+    input: 'Water is low today and sleep was, by your own account, short',
+    firstCut: null,
+  },
+  {
+    name: 'the thousands separator in a number is not a clause',
+    input: 'You averaged 1,993 kcal across the three days you logged food this week',
+    firstCut: null,
+  },
+  {
+    name: 'a sentence still wins when there is one',
+    input: 'Water is low today. Food is logged three of three days, averaging well',
+    firstCut: 'Water is low today.',
+  },
+];
+
+let eagerFailures = 0;
+for (const c of EAGER) {
+  const { cuts, rest } = splitSpeakable(c.input, { eager: true });
+  const got = cuts.length > 0 ? cuts[0] : null;
+  const lost = cuts.join('') + rest !== c.input;
+  const ok = got === c.firstCut && !lost;
+  if (!ok) eagerFailures += 1;
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${c.name}`);
+  if (!ok) console.log(`        expected ${JSON.stringify(c.firstCut)}, got ${JSON.stringify(got)}${lost ? ' AND LOST TEXT' : ''}`);
+}
+
+// The cases about waiting have to fail against a splitter that cuts at any
+// comma, or they are not checking the length rule.
+const reckless = (pending) => {
+  const cuts = [];
+  let rest = pending;
+  for (;;) {
+    const at = rest.search(/[.!?\n]\s|[.!?]$|[,;:]/);
+    if (at < 0) break;
+    cuts.push(rest.slice(0, at + 1));
+    rest = rest.slice(at + 1);
+  }
+  return { cuts, rest };
+};
+const waitCases = EAGER.filter((c) => c.firstCut === null);
+const recklessCaught = waitCases.filter((c) => (reckless(c.input).cuts[0] ?? null) !== c.firstCut);
+if (recklessCaught.length !== waitCases.length) {
+  console.error('\n  THE EAGER CHECKS ARE NOT REAL. A splitter that cuts at any comma passed them.\n');
+  process.exit(1);
+}
+console.log(`\n  the ${waitCases.length} waiting cases fail against a splitter that cuts at any comma\n`);
+
 let splitFailures = 0;
 for (const c of SPLITS) {
   const { cuts, rest } = splitSpeakable(c.input);

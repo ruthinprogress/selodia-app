@@ -173,6 +173,23 @@ if (rows.length > 0) {
   console.log(`    response opens      ${ms(median(rows.map((r) => r.open)))}`);
   console.log(`    first real words    ${ms(withWords.length ? median(withWords.map((r) => r.words)) : null)}   <- when TTS can start`);
   console.log(`    turn complete       ${ms(median(rows.map((r) => r.done)))}`);
+  // HOW MUCH OF THE TURN WAS SPENT SPEAKING RATHER THAN WAITING.
+  //
+  // A within-turn measure, and the only honest way to see what streaming bought:
+  // the total time swings between four and twelve seconds for reasons upstream
+  // of this code, so a median across runs says more about the day than about the
+  // change. The gap between the first word and the last says what streaming did
+  // on THAT turn, whatever the turn cost overall.
+  //
+  // Zero means the reply arrived as one piece - either it was one short sentence
+  // (there is no earlier word to say) or the stream was never opened.
+  const streamed = withWords.map((r) => r.done - r.words).sort((a, b) => a - b);
+  if (streamed.length > 0) {
+    console.log(
+      `    spoken while writing  ${ms(streamed[Math.floor(streamed.length / 2)])} median, ` +
+        `${ms(streamed[streamed.length - 1])} best, ${ms(streamed[0])} worst`
+    );
+  }
   console.log(`\n    holding line heard in ${rows.filter((r) => r.holding).length} of ${rows.length} turns (fires after 8s)`);
   console.log('\n  Everything above is OUR half. Whatever the whole turn measures');
   console.log('  on a real call, the difference is ASR plus TTS.\n');
