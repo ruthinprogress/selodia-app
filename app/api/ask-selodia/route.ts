@@ -343,9 +343,27 @@ export async function POST(request: NextRequest) {
     minutesSincePrevious,
   });
 
-  const { data: userRow, error: userInsertError } = await supabase
+  // THE TURN'S ID IS MINTED HERE, NOT ASKED FOR (Ruth's item 5, 2026-09-28).
+  //
+  // One reply per turn is enforced by a PARTIAL unique index on `answers_id`,
+  // partial because the rows that legitimately answer nothing - the weekly
+  // roundup, a photo acknowledgment - must still write, and Postgres permits any
+  // number of NULLs in a unique index.
+  //
+  // A chat reply is never one of those rows: it always answers something. It was
+  // getting a null only when this insert failed to hand an id back, which is the
+  // precise moment the turn is most likely to be retried and therefore the
+  // precise moment the guard was quietly not applying.
+  //
+  // So the id is decided before the write rather than read after it. It exists
+  // whether or not the row landed, the reply always carries it, and the index
+  // does the rest. Her words: "close the gap so a reply can't be written twice
+  // even with no user row attached."
+  const turnId = crypto.randomUUID();
+  const { error: userInsertError } = await supabase
     .from('chat_messages')
     .insert({
+      id: turnId,
       user_id: user.id,
       role: 'user',
       content: message,
@@ -353,12 +371,13 @@ export async function POST(request: NextRequest) {
       image_path: cardImagePath,
       discuss_entry_id: provisionalTag?.entryId ?? null,
       discuss_entry_type: provisionalTag?.entryType ?? null,
-    })
-    .select('id')
-    .maybeSingle();
+    });
   if (userInsertError) {
     console.log('ASK-SELODIA USER TURN INSERT FAILED:', userInsertError.message);
   }
+  // Kept so the rest of the route reads as it did. The id is now known even when
+  // the write failed, which is the whole point.
+  const userRow = { id: turnId };
 
   // THE SAME TURN, TWICE AT ONCE. See earlierTwin in lib/voice-supersede.ts.
   // The later copy writes nothing - no model call, no log - and answers with
@@ -2792,7 +2811,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     .from('chat_messages')
     .insert(
       {
-        answers_id: userRow?.id ?? null,
+        // NEVER NULL ON A CHAT REPLY. See where turnId is minted: this is what
+        // makes the one-reply-per-turn index actually cover this route.
+        answers_id: turnId,
         user_id: user.id,
         role: 'assistant',
     // What was actually shown, including any deletion line. Storing replyText
