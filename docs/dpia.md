@@ -150,7 +150,7 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 
 | | Priority |
 | --- | --- |
-| **ICO registration** — tier 1, £52. Being done 28 September 2026. | Done today |
+| **ICO registration** — tier 1, £52, Selodía Ltd. **Moved to a wave-zero blocker** (Ruth, 28 September): she registers just before inviting Nikki and Carol rather than at launch. | **Before wave zero** |
 | **Leaked-password protection** — a Supabase setting, possibly paid. | **Before wave one** |
 | **Password reset proved end to end on a phone.** | **Before wave one** |
 | ~~International transfer mechanism for Anthropic and ElevenLabs~~ — **done, 28 September.** SCCs plus the UK Addendum in both DPAs, both automatic. Section 3. | Closed |
@@ -166,7 +166,7 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 
 **Two risks are not closed and are named above**: the database breach case, and the model saying something untrue about somebody's body. The transfer mechanism was the third and is now closed — both US processors carry the UK Addendum, and neither needed Selodía to sign anything. What is left of it is the transfer risk assessment, which is a solicitor's job.
 
-**Nothing here blocks wave zero** — two people the controller knows personally. **Two things block wave one** and are marked: **leaked-password protection**, a Supabase setting, and **password reset proved end to end on a phone**. Both are hers — the code for the second is shipped and cannot work until two settings are changed with a personal access token.
+**One thing blocks wave zero: ICO registration**, and it is the only item here that the "two people she knows" reasoning does not reach, because it is a duty owed to a regulator rather than to a tester. Everything else on this page can be carried by hand for two people the controller can telephone. **Two things block wave one** and are marked: **leaked-password protection**, a Supabase setting, and **password reset proved end to end on a phone**. Both are hers — the code for the second is shipped and cannot work until two settings are changed with a personal access token.
 
 ---
 

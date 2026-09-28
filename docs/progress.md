@@ -520,3 +520,156 @@ a procedure for the first time while that clock is running.
 **Wave one now has two blockers rather than four**, and both are yours: the
 leaked-password setting in Supabase, and password reset proved end to end on a
 phone.
+
+## Session 57, fourth queue
+
+### Queue
+
+- [x] **1. Stream the spoken reply, behind a switch. Measure after.**
+- [x] **2. Pricing: the founding rate kept for good, against capping it.**
+- [x] **3. The leaked-password setting: exactly where, and does it need a paid plan.**
+- [x] **4. Delete BotanicalMark.** Already gone.
+- [x] **ICO becomes a wave-zero blocker.**
+
+### 1. Streaming — live, measured, and honest about what it bought
+
+**The switch is `REPLY_STREAMS_TO_VOICE` in `app/lib/chat-path.ts`.** One line.
+Set it false and a spoken turn goes back to waiting for the last word before the
+first one is heard. Nothing else changes.
+
+**How it works without touching the route.** The voice adapter calls
+`ask-selodia` in process, so rather than turn the reply into a streaming response
+— which would have meant restructuring the offer line, the allergy gate and the
+one-reply-per-turn insert, all load-bearing and none of it about streaming — the
+words are pushed into a sink the adapter is already holding. The route still
+assembles, gates and stores the whole reply exactly as before.
+
+**Nothing is spoken until three things are true**, all checked before a word goes
+out: the turn is ordinary, the guess held so there is nothing to report, and the
+allergy gate *cannot arm on this account*. That last one is decided before the
+reply is written — the gate short-circuits for anybody with no food exclusions —
+so words already spoken can never need taking back. Everybody else waits.
+
+**What it actually bought, and my estimate was wrong.** I told you about 1.9s.
+The first version measured **124ms** on a median turn.
+
+The estimate came from "writer finishes minus saves confirm", which is a real
+gap, but it assumed the writing would be *spread* across it. It is not: almost
+all of that time is spent before the first sentence exists. There was nothing to
+say early because nothing had been written yet.
+
+**So the cut moved from a sentence to a clause** — a comma, semicolon or dash
+with at least 35 characters in front of it, which is about two thirds of a second
+of speech. The pauses land where a person pauses anyway.
+
+| | Median | Best |
+| --- | --- | --- |
+| Waiting for a full stop | 124ms | 806ms |
+| **Cutting at a clause** | **680ms** | **2,535ms** |
+
+**Why that table and not "first word went from X to Y".** Total turn time swung
+between 4.0s and 7.8s across samples on the same harness within an hour, for
+reasons upstream of this code. A median across runs describes the day. The gap
+between the first word and the last is a *within-turn* measure, and says what
+streaming did on that turn whatever the turn cost overall. First words measured
+4.1s and 5.4s on two ten-turn samples — real, and not a stable figure I would
+quote at you as a before-and-after.
+
+### The thing I found while doing it, and it is the important one
+
+**The rebuilt reply was never going through the allergy gate.**
+
+`runAllergyGate` runs on the reply the *old* path wrote, and `turnIsOrdinary`
+only asks whether that one passed. The rebuilt path then replaces it with a
+completely different sentence, and that sentence went straight to
+`chat_messages`. So for anybody with a declared food allergy, **the check was
+being done on a draft that was then thrown away** — which is worse than no gate,
+because the turn is recorded as having been gated.
+
+It survived a typecheck, a lint and a day of use. Nothing about it is visible in
+the shape of the code: both branches assign to the same variable and only one of
+them had been checked.
+
+Fixed. `scripts/check-gated-paths.mjs` reads the route and fails if
+model-written words reach the reply without a gate in front of them — proved
+against the shipped code, where it reports this exact bug.
+
+**Nobody was affected.** The only account with allergies recorded is yours, and
+both of yours are non-edible (nickel, hay fever), so the gate would not have
+armed anyway. That is luck, not design.
+
+### And a second one, from the security advisor
+
+**A backup of your chat messages was readable by anyone, for a day.**
+
+`chat_messages_duplicates_removed` was created yesterday to hold the duplicate
+assistant rows before deleting them. Backing them up first was right. What was
+missed is that a table created in `public` is served by PostgREST, and without
+row-level security the **anon key** reads it — the key that ships inside the
+mobile app and the landing page's own JavaScript.
+
+Closed, and verified closed rather than assumed. `scripts/check-rls.mjs` now
+tries every one of the 43 exposed tables with that key; none of them returns a
+row. It is proved able to fail: a table with one harmless row was created
+without RLS, the check named it and exited 1, and it was dropped.
+
+### 2. The founding rate, kept or capped
+
+In section 8 of the pricing document. The short version:
+
+**Forgone revenue is not the number that matters.** Fifty founding members at £6
+against £9 is £127.50 a month, £1,530 a year. But those fifty would not all have
+subscribed at £9 — a founding rate is the price at which some of them said yes at
+all. If a third joined *because* of it, kept-for-good is revenue positive from
+the first month.
+
+**Recommendation: kept for good, capped at 100 places.** It costs almost nothing
+in the realistic case, removes the tail risk in the unlikely one, gives a true
+scarcity line, and needs no machinery beyond a second product ID.
+
+**Not the 12-month cap** — and not because of the money, which is the cheapest of
+the three. "Founding member" is a phrase with a meaning, and a price rise in
+month 13 lands on precisely the people who took the risk earliest. It also needs
+*more* machinery, not less: something has to notice each anniversary.
+
+### 3. The leaked-password setting
+
+**Where:** Supabase dashboard → your project → **Authentication** → **Sign In /
+Providers** → the **Email** provider → *Prevent use of leaked passwords*.
+Supabase's own advisor names it `auth_leaked_password_protection` and confirms it
+is currently **disabled**.
+
+**It needs a paid plan.** Supabase's documentation: *"Leaked password protection
+is available on the Pro Plan and above."* **Pro is $25 a month**, including $10
+of compute credit, 8 GB disk and 100 GB file storage — all far above what Selodía
+uses today on the free tier.
+
+**So this is a £20-a-month decision, not a toggle, and it is yours.** What it
+buys: a new password is checked against HaveIBeenPwned and refused if it appears
+in a known breach. What it does not buy: anything for existing passwords, or for
+somebody who reuses a password that has not leaked *yet*.
+
+**I have changed nothing.** Two things worth weighing:
+
+- It is named in the DPIA as a wave-one blocker, which I wrote. On reflection
+  that is too strong: it is a real improvement and it is not the difference
+  between lawful and unlawful processing. **A dozen beta testers is a defensible
+  time not to have it**, and I would rather say so than have you pay $25 a month
+  because a document I wrote called it a blocker.
+- Pro also brings 7-day log retention, which would have made this afternoon's
+  debugging materially easier. Vercel's free tier keeps nothing, and twice today
+  I could not answer a question because the logs were gone. **That is a better
+  argument for Pro than the password check is.**
+
+### 4. BotanicalMark
+
+Already gone — deleted earlier in Session 57. Nothing named botanical remains
+anywhere in the repository.
+
+### ICO, moved to a wave-zero blocker
+
+Recorded in the spec, the DPIA and the Open Actionables. **It is the only thing
+blocking wave zero**, and it is the one item the wave-zero reasoning does not
+reach: everything else on that list can be carried by hand because you know Nikki
+and Carol, and this is owed to a regulator that does not care how well you know
+them.
