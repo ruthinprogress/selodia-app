@@ -30,13 +30,19 @@
 // pipeline, so chat rows land, exactly as they would from a real call. Never
 // the other account.
 //
-//   node scripts/measure-voice-turn.mjs [runs]
+//   node scripts/measure-voice-turn.mjs [runs] [gapSeconds]
 
 import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
 const RUNS = Number(process.argv[2] ?? 3);
+// SECONDS BETWEEN TURNS. Back-to-back turns hit the adapter's supersede guard -
+// a turn arriving while the last is unanswered is treated as a continuation and
+// waits for it - so the measured time grows with the sample size and a long run
+// reads far worse than a short one for reasons that are not the pipeline.
+// Default 0 keeps the old behaviour for anyone reading old numbers.
+const GAP = Number(process.argv[3] ?? 0) * 1000;
 const API = 'https://api.selodia.app';
 const DEMO = 'unflumpapp@gmail.com';
 
@@ -145,6 +151,7 @@ const rows = [];
 
 for (let i = 0; i < RUNS; i += 1) {
   const utterance = UTTERANCES[i % UTTERANCES.length];
+  if (i > 0 && GAP > 0) await new Promise((r) => setTimeout(r, GAP));
   const r = await turn(token, utterance);
   if (r.error) {
     console.log(`  ${String(i + 1).padStart(2)}  FAILED  ${r.error}`);

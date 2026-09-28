@@ -10,7 +10,7 @@
 //
 //   node --import ./scripts/ts-paths.mjs scripts/check-voice-sink.mjs
 
-import { createVoiceSink } from '../app/lib/voice-sink.ts';
+import { createVoiceSink, splitSpeakable } from '../app/lib/voice-sink.ts';
 
 // A sink with the safety taken out: it speaks as soon as it is spoken to.
 function leakySink() {
@@ -149,6 +149,56 @@ async function run(make) {
   }
   return failures;
 }
+
+// ── THE SPLITTER, WHICH IS WHERE THE BUG WAS ────────────────────────────────
+//
+// The first version stripped the whitespace after each terminator, so the voice
+// said "your record.If something's going on" with no gap - and, far worse, what
+// had been spoken was no longer a PREFIX of what was stored, so the sink read
+// every multi-sentence reply as a divergence and never spoke the offer line at
+// the end of it. Heard in a real measured turn before it was read in the code.
+const SPLITS = [
+  {
+    name: 'nothing is lost, so what is spoken is a prefix of what is stored',
+    input: 'Food is logged. Protein averaged 69g. Water is low.',
+  },
+  { name: 'a newline between sentences survives', input: 'Done.\n\nWant me to save that?' },
+  { name: 'one sentence, no trailing space', input: 'Sleep was six hours.' },
+  { name: 'mid-sentence text waits', input: 'Food is logged and the prot' },
+  { name: 'a decimal point is not a full stop', input: 'You averaged 69.4g of protein' },
+];
+
+let splitFailures = 0;
+for (const c of SPLITS) {
+  const { cuts, rest } = splitSpeakable(c.input);
+  const rebuilt = cuts.join('') + rest;
+  const ok = rebuilt === c.input;
+  if (!ok) splitFailures += 1;
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${c.name}`);
+  if (!ok) console.log(`        in  ${JSON.stringify(c.input)}\n        out ${JSON.stringify(rebuilt)}`);
+}
+
+// The old splitter, exactly as it was, so the case above is known to catch it.
+function lossySplit(pending) {
+  const cuts = [];
+  let rest = pending;
+  for (;;) {
+    const at = rest.search(/[.!?\n]\s|[.!?]$/);
+    if (at < 0) break;
+    cuts.push(rest.slice(0, at + 1));
+    rest = rest.slice(at + 1).replace(/^\s+/, '');
+  }
+  return { cuts, rest };
+}
+const lossyCaught = SPLITS.filter((c) => {
+  const { cuts, rest } = lossySplit(c.input);
+  return cuts.join('') + rest !== c.input;
+});
+if (lossyCaught.length === 0) {
+  console.error('\n  THE SPLIT CHECKS ARE NOT REAL. The version that lost the space passed them.\n');
+  process.exit(1);
+}
+console.log(`\n  ${lossyCaught.length} of them fail against the splitter that lost the space\n`);
 
 const failures = await run(createVoiceSink);
 for (const c of CASES) {

@@ -143,3 +143,29 @@ export function attachVoiceSink(request: object, sink: VoiceSink): void {
 export function voiceSinkFor(request: object): VoiceSink | null {
   return sinks.get(request) ?? null;
 }
+
+// CUTTING A STREAM INTO THINGS WORTH SAYING.
+//
+// The model produces text a few characters at a time, and handing those straight
+// to a voice would have it sounding out fragments of words. This holds them until
+// a sentence has ended, which is the same rule the adapter's speakableChunks
+// applies to a finished reply, and for the same reason.
+//
+// IT NEVER LOSES A CHARACTER, and that is not tidiness. The sink checks that what
+// was spoken is a PREFIX of what was stored before it says the rest, so a
+// splitter that quietly dropped the space after a full stop would make every
+// multi-sentence reply look like a divergence - and the offer line at the end of
+// it would never be spoken. The first version did exactly that.
+export function splitSpeakable(pending: string): { cuts: string[]; rest: string } {
+  const cuts: string[] = [];
+  let rest = pending;
+  for (;;) {
+    // A terminator followed by whitespace, or one at the very end of what has
+    // arrived so far. Anything else is mid-sentence and waits.
+    const at = rest.search(/[.!?\n]\s|[.!?]$/);
+    if (at < 0) break;
+    cuts.push(rest.slice(0, at + 1));
+    rest = rest.slice(at + 1);
+  }
+  return { cuts, rest };
+}

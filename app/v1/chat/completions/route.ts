@@ -13,7 +13,12 @@ import { NextRequest, NextResponse } from 'next/server';
 // block, the Almanac flow - because it IS the same function, just reached
 // without leaving the process.
 import { POST as askSelodia } from '../../../api/ask-selodia/route';
-import { attachVoiceSink, createVoiceSink, type VoiceSink } from '../../../lib/voice-sink';
+import {
+  attachVoiceSink,
+  createVoiceSink,
+  splitSpeakable,
+  type VoiceSink,
+} from '../../../lib/voice-sink';
 import { getSupabaseForRequest } from '../../../lib/supabase';
 import { offeredTools, wasHeard, words } from '../../../lib/voice-turns';
 
@@ -310,12 +315,9 @@ function spokenCompletion(
             let pending = '';
             for await (const piece of sink.read()) {
               pending += piece;
-              for (;;) {
-                const end = pending.search(/[.!?\n]\s|[.!?]$/);
-                if (end < 0) break;
-                const cut = pending.slice(0, end + 1);
-                pending = pending.slice(end + 1).replace(/^\s+/, '');
-                if (!cut.trim()) continue;
+              const { cuts, rest } = splitSpeakable(pending);
+              pending = rest;
+              for (const cut of cuts) {
                 if (saidEarly === 0) {
                   clearTimeout(holding);
                   // The holding line went out before the words did, so this
