@@ -276,6 +276,16 @@ default for every session from now on, and it does not need restating.
   precisely the file that does not exist when it is needed.
 - **Close out fully** only when everything that does not need her is done, or
   before the session ends for any other reason.
+- **A CLOSE-OUT IS A CHECKPOINT, NOT AN ENDING.** The session is over when Ruth
+  says it is over, and not when the queue happens to be empty. After closing out:
+  go back to the "Not started" items in Open Actionables, or say in one line that
+  there is nothing left that does not need her. Never end a close-out with a long
+  summary and a stop - a summary is a report, and the first line of this rule is
+  not to stop in order to report.
+- **The queue can be added to at any time.** Work that arrives mid-session joins
+  the end of the queue and is worked in order, exactly like the rest. A new item
+  arriving is not a reason to close out, and a close-out already written is not a
+  reason to wait before starting one.
 
 **Why this rule exists.** Sessions had been stopping at the end of whatever was
 asked, reporting, and waiting — which is a habit rather than a limit, and it cost

@@ -161,6 +161,85 @@ one sentence, and the writer sees the last eight turns rather than forty.
 and it is the only one that counts. If it is near 3.3s, voice goes back on the new
 path and the per-surface split comes out.
 
+## Session 57, second queue
+
+### Decisions recorded
+- **Company email is hello@selodia.app** for all company documents. Already on
+  the landing page and the in-app support screen; what is needed to make it
+  RECEIVE mail is in the questions below.
+- **ICO:** she is registering Selodia Ltd herself today, tier 1, direct debit.
+- **Apple:** enrolment 3N9H5LB49A submitted. **Reminder owed the day it is
+  approved: apply for the Small Business Programme** - 30% to 15% from year one,
+  a form rather than a negotiation.
+- **Complimentary accounts:** a two-paragraph note, not the beta agreement.
+  Mechanism after wave one. List kept: Lynda, Carol, Nikki, Auguste.
+- **Beta is open-ended.** Testers leave any time with no notice; we give 30 days'
+  notice of changes. Continued free access for testers whose feedback drove real
+  change is discretionary and never promised.
+- **The three old Jotform forms** (two Unflump beta feedback, one Beta Tester
+  Coffee Chat Notes) are replaced by the in-app beta feedback. **Archive them
+  once it is built.**
+
+### Queue
+
+- [x] **1. Voice latency.** See the finding below. Voice is on the old path.
+- [x] **2. The waiting list.** Found, tested live, and readable.
+- [ ] **3. Running costs and pricing**, to Drive.
+- [ ] **4. DPIA**, Legal folder in Drive plus a repo copy.
+- [ ] **5. Beta agreement v1.1** to the Legal folder, and acceptance in the app.
+- [ ] **6. Beta feedback** - a wave-one blocker.
+- [ ] **7. Open Actionables items that do not need her.**
+
+### 2. The waiting list, answered
+
+**Where:** the `waitlist` table in Supabase, written by a Next.js Server Action on
+the landing page. **Not Jotform** - her three Jotform forms are the old Unflump
+beta feedback ones and have nothing to do with it.
+
+**How many: one.** Fiona, forestmab@hotmail.com, 2 September 2026.
+
+**Is it live and saving: yes**, and proved rather than assumed. I filled the real
+form in a browser on selodia.app, submitted it, saw "You're on the list", and
+found the row in the table a second later. Probe row removed. My first attempt -
+posting the form with curl - looked like a failure and was not: a Server Action
+needs the browser's own machinery, so a plain POST just re-renders the page. That
+nearly became a reported bug.
+
+**Why she could not see it.** The table is the only publicly writable one in the
+schema: RLS grants INSERT to anyone and **no SELECT at all**. That is the right
+way round for a list strangers add themselves to, and the consequence nobody
+thought through is that it is unreadable to her too. `node scripts/waitlist.mjs`
+now prints it, `--csv` for a sheet.
+
+### 1. Voice latency, and the honest position
+
+**3.3s is not reachable with two sequential calls**, and that is the finding
+rather than an excuse. Measured floors: the classify call is ~1.9s with the reply
+asked as a fallback, and the writer ~2s at its best. The old path WAS the classify
+call, which is why it measured 3.3s.
+
+The variance is the bigger problem: the same writer call measured 3.7s and 7.3s in
+one run while producing a fourteen-token reply, so most of the spread is upstream
+and not something this code controls.
+
+**What would actually get there: running the two calls at the same time.** On a
+turn with nothing for the app to report - most turns - the writer needs nothing
+the classifier produces. It needs her message and the record, both of which exist
+before the classify call starts. The cost is a discarded call on the turns where
+something DID need reporting. Not built; it is a real architectural change and
+wants her say-so first.
+
+**Her real turns since the fix are the missing measurement.** The last one before
+it was 11:50. Median across her 13 turns today, all pre-fix: 6.6s.
+
 ### Questions for Ruth
 
-- Nothing outstanding.
+- **hello@selodia.app does not receive mail yet** as far as I can tell - the
+  domain is on Vercel for web, and a mailbox is separate. Cheapest sensible
+  route: Google Workspace at about GBP 6/user/month, or Fastmail at about
+  GBP 4. Either needs two DNS records (MX and SPF) on selodia.app. **Which
+  provider, and shall I write the exact DNS records for you to paste?** I have
+  not touched DNS - that is a domain change and yours.
+- **Shall I build the parallel-call version of the chat turn?** It is the only
+  route to 3.3s, and it spends a wasted model call on the minority of turns that
+  have something to report.
