@@ -85,7 +85,19 @@ ONBOARDING_ORDER = [
     "/onboarding/intro",
     "/onboarding/consent",
     "/onboarding/account",
+    # The seven-screen tap spine, 28 September 2026. Goals is screen 1 and was
+    # a chat screen until tonight.
     "/onboarding/goals",
+    "/onboarding/skill",
+    "/onboarding/life-stage",
+    "/onboarding/activities",
+    "/onboarding/steer-around",
+    "/onboarding/guidance",
+    "/onboarding/first-draft",
+    # STILL ROUTES, NO LONGER IN THE CHAIN. The conversational steps the spine
+    # replaced. They are drawn after it because that is where they now sit:
+    # reachable, and not walked through. Two of them collected height and
+    # activity level, which the activities screen now asks for directly.
     "/onboarding/health-context",
     "/onboarding/nutrition",
     "/onboarding/activity",
