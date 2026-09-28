@@ -51,17 +51,23 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
 
 ### Queue, in order
 
-- [ ] **Prove or disprove the 10:34 fallback** — see Findings below; proven by
-      contradiction, now being confirmed by count.
-- [ ] **12a. The weigh-in card's commentary.** Separate code from the chat.
-      Compare against the most recent previous reading, not one six days old, and
-      say a known ordinary explanation plainly rather than framing it as
-      something to watch.
-- [ ] **12b. Pizza duplicates.** *The database is already clean* — see Findings.
-- [ ] **12c / 12d.** Duplicate reply covered by item 5; drinks estimates.
-- [ ] **6. Weekly roundup content half.** Remove the "one thematic observation"
-      step; rebuild the roundup prompt the way the chat prompt was rebuilt; test
-      on her real week, 21–27 September, not the demo account.
+- [x] **Prove or disprove the 10:32 fallback.** Proven, by contradiction rather
+      than logs — see Findings. `reply_path_fallbacks` now records reason, detail,
+      voice and turn for every fall back, so the count per day is a query.
+- [x] **12a. The weigh-in card.** Two faults, both fixed and shipped over the air.
+      It compared against the reading nearest SEVEN DAYS back rather than the most
+      recent one, reporting +1.4 kg over a day-on-day change of +0.1. And it called
+      that "worth a calm look rather than a shrug or a spiral". Now: the previous
+      reading, and when the record explains a rise the explanation leads and the
+      sentence stops. A big day is a flag at all for the first time.
+- [x] **12b. Pizza duplicates.** The database was already clean — see Findings.
+- [x] **12c / 12d.** The duplicate reply is covered by item 5's fix; the drinks
+      estimates are corrected in her log and recorded as an open item for the
+      estimator.
+- [x] **6. Weekly roundup content half.** Rebuilt from a baseline in
+      `app/lib/roundup-prompt.ts`; the numbered ORDER list and its "one thematic
+      observation" step are gone. Tested on her real week, 21–27 September, from
+      her own rows: 15 of 15.
 - [ ] **7. The red check** — an ordinary food log gets a reply that could follow
       anything.
 - [ ] **8. Plan logged as a session.**

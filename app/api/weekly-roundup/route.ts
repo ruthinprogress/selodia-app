@@ -31,6 +31,7 @@ import {
 } from '../../lib/weekly-roundup';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { roundupFigures } from '../../lib/roundup-figures';
+import { roundupPrompt } from '../../lib/roundup-prompt';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-5';
@@ -291,9 +292,39 @@ export async function POST(req: NextRequest) {
   const avgKcal = averageOverLoggedDays(days, (d) => d.kcal);
   const avgProtein = averageOverLoggedDays(days, (d) => d.proteinG);
 
-  const readings: Reading[] = (measurements ?? [])
-    .map((m) => ({ date: String(m.measured_at ?? '').slice(0, 10), value: Number(m.weight_kg) }))
-    .filter((r) => r.date && Number.isFinite(r.value));
+  // ONE WEIGH-IN PER CLUSTER (2026-09-28). Six of her eight rows for the week of
+  // 21 September were written within 28 seconds on the 24th - 58.0, 58.0, then
+  // 55.5 four times - which is one person on one scale while something wrote
+  // repeatedly. Counted raw, that is eight readings and a delta computed across
+  // values 2.5 kg apart, and "your 10 readings show a real trend" is precisely
+  // the failure this week's work exists to stop.
+  //
+  // Nothing is deleted: her rows are hers. They are collapsed for the purpose of
+  // counting and comparing, and the LAST of a cluster wins because a scale
+  // settles. Five minutes is narrow on purpose - two weigh-ins that close
+  // together is not a thing anybody does, and two hours apart still count twice.
+  const CLUSTER_MS = 5 * 60 * 1000;
+  const rawReadings = (measurements ?? [])
+    .map((m) => ({
+      at: new Date(String(m.measured_at ?? '')).getTime(),
+      date: String(m.measured_at ?? '').slice(0, 10),
+      value: Number(m.weight_kg),
+    }))
+    .filter((r) => r.date && Number.isFinite(r.value) && Number.isFinite(r.at))
+    .sort((a, b) => a.at - b.at);
+
+  const readings: Reading[] = [];
+  let lastAt: number | null = null;
+  for (const r of rawReadings) {
+    const sameCluster = lastAt != null && r.at - lastAt < CLUSTER_MS;
+    if (sameCluster) {
+      // Replace rather than append: the settled value is the later one.
+      readings[readings.length - 1] = { date: r.date, value: r.value };
+    } else {
+      readings.push({ date: r.date, value: r.value });
+    }
+    lastAt = r.at;
+  }
   const delta = weekDelta(readings);
   const trajectory = trajectoryPermission(
     delta,
@@ -423,27 +454,19 @@ export async function POST(req: NextRequest) {
     `EARLIER ROUNDUPS IN ${PORTRAIT_RANGE_LABEL.toUpperCase()}:\n${previous}`,
   ].join('\n');
 
-  const system = `You are Selodía, closing out someone's week with them. Steady and validating, never peppy - no exclamation marks, no emojis, no cheerleading.
-
-This is NOT a data report. They can already see the numbers. Your job is to interpret the week WITH its context woven in, drawing on what they actually said and did.
-
-ORDER for the roundup, and keep to it:
-1. A brief warm opening.
-2. The grounding data - the week's totals and any movement. Put each confidence note NEXT TO the number it belongs to, never as a blanket disclaimer.
-3. Interpretation, woven in - what the week's own record says about why it went as it did.
-4. One thematic observation drawn across the week, not a restatement of a single day.
-5. Trajectory - obey the TRAJECTORY instruction above exactly. If you may not state one, say so briefly and honestly rather than skipping it.
-6. A closing checkpoint in genuinely open phrasing, never a directive.
-
-EVERY WORD OF THIS IS SAID TO HER, NEVER ABOUT HER. Address her directly, as "you". Never write in the third person - not "she logged", not "her knee", not "she asked twice this week". On 2026-09-16 a statement came out as "She's asked twice this week why a protein target isn't showing", which reads as a case note written by somebody else about a patient. This is her own week, handed back to her.
-
-THE WITNESS STATEMENTS are a different thing from the roundup, and the rules are stricter. Two or three short lines for the top of her Almanac, covering ${PORTRAIT_RANGE_LABEL} rather than this week alone, drawing on the earlier roundups above as well as this one. They witness, they do not grade: "You've moved your body four times a week for six weeks", "Your energy and your sleep track together more than anything else". Never congratulate, never score, never compare her to a target, never use "good", "well done", "on track" or "behind". Each must be true of what is actually recorded above - if six weeks of evidence does not exist yet, write one or two statements about what does, or none at all. Never invent a number, a streak or a pattern to fill the space.
-
-Never moralise a food. Never use "bad", "good", "cheat", "guilty", "junk" or "clean" about anything they ate. Never praise restriction, and never frame a lower number as better. A missing day is not a failure and is never described as one.
-
-Do not invent numbers. If a figure above says there is not enough logged to say, say that instead of estimating.
-
-${EVIDENCE_PRINCIPLE}`;
+  // REBUILT FROM A BASELINE UPWARDS (Ruth's item 6, 2026-09-28), the same way the
+  // chat prompt was on the 27th. It now lives in app/lib/roundup-prompt.ts, with a
+  // note on each rule naming the test that earned it.
+  //
+  // THE NUMBERED ORDER LIST IS GONE, and its fourth step is the reason it had to
+  // be: "one thematic observation drawn across the week". That instruction is
+  // where "the thread running through this week is permission" came from. It was
+  // asked for a theme and it produced one, three times out of three on the same
+  // week.
+  const system = roundupPrompt({
+    portraitRange: PORTRAIT_RANGE_LABEL,
+    evidencePrinciple: EVIDENCE_PRINCIPLE,
+  });
 
   let response;
   try {
