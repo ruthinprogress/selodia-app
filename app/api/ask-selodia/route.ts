@@ -2760,17 +2760,37 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   //
   // So the rule moves somewhere neither copy can be wrong about it. Each reply
   // carries the id of the turn it answers, and a partial unique index makes a
-  // second one impossible. `ignoreDuplicates` means the loser of that race is a
-  // no-op rather than an error, which is exactly what it should be: the reply
-  // already exists, and the person gets it.
+  // second one impossible.
   //
   // PARTIAL, so the rows that legitimately answer nothing still write - the
   // weekly roundup, a photo acknowledgment - because Postgres allows many NULLs
   // in a unique index. That is the whole reason this is a column rather than a
   // constraint on content.
+  //
+  // AND A PLAIN INSERT, NOT AN UPSERT (fixed 2026-09-28, and this is the second
+  // half of the story).
+  //
+  // The first version used `.upsert(..., { onConflict: 'answers_id',
+  // ignoreDuplicates: true })`, which becomes ON CONFLICT (answers_id) DO
+  // NOTHING. Postgres cannot infer a PARTIAL index from that - the statement
+  // carries no matching WHERE clause - so it raised 42P10, "there is no unique
+  // or exclusion constraint matching the ON CONFLICT specification", on EVERY
+  // call rather than only on a conflict.
+  //
+  // This block logs a write failure and carries on, deliberately, because a
+  // failed write must never cost somebody their reply. The cost of that
+  // deliberate choice was three of Ruth's replies: they reached her phone and
+  // were never stored. The first was seven minutes after the commit deployed.
+  //
+  // The index was verified when it was applied. The CALL SITE was not, and one
+  // statement run against the real index would have shown it in ten seconds.
+  //
+  // A unique violation (23505) here is the loser of the race, which is a no-op
+  // and not a failure: the reply already exists and the person has it. Anything
+  // else is real and still gets logged.
   const { error: insertError } = await supabase
     .from('chat_messages')
-    .upsert(
+    .insert(
       {
         answers_id: userRow?.id ?? null,
         user_id: user.id,
@@ -2789,11 +2809,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         escalation_step: nextEscalationStep,
         distress_revisit_count: nextRevisitCount,
         food_log_id: breakdownFoodLogId,
-      },
-      { onConflict: 'answers_id', ignoreDuplicates: true }
+      }
     );
-  if (insertError) {
-    console.log('ASK-SELODIA ASSISTANT TURN INSERT FAILED:', insertError.message);
+  // 23505 is the partial unique index doing its job: another copy of this turn
+  // already wrote the reply. Expected, and not a failure.
+  if (insertError && insertError.code !== '23505') {
+    console.log('ASK-SELODIA ASSISTANT TURN INSERT FAILED:', insertError.code, insertError.message);
+  } else if (insertError) {
+    console.log('ASK-SELODIA: reply already written for this turn, second copy did nothing');
   }
 
   // Only surface the disclaimer when the model flagged health-informed guidance
