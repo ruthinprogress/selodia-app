@@ -729,16 +729,16 @@ loses nothing.
 
 ### Section 3 — onboarding and plans (highest priority)
 
-- [ ] 3a. Audit current onboarding against spec Part Seven and the live code: what each step asks, what it writes, what is broken, what is never persisted
-- [ ] 3b. Map the built machinery: focus states, My Week, My Plans, ladders, My Rules, execution view, notifications, Plans tab
-- [ ] 3c. Propose the new tap-based onboarding screen by screen, with exact wording and what each answer drives
-- [ ] 3d. Propose the Plans tab, sessions, start-session mode, quick session, exercise library, and where food sits in the plan
-- [ ] 3e. Rewrite principle 3 and Part Eleven (Graduation): never trap, build literacy, support for life
-- [ ] 3f. Rewrite principle 9: reactive by default, scheduled when the user asks
+- [x] 3a. Audit current onboarding against spec Part Seven and the live code: what each step asks, what it writes, what is broken, what is never persisted **Done.** Onboarding never sets the focus states, so everyone leaves on a maintenance target whatever they said.
+- [x] 3b. Map the built machinery: focus states, My Week, My Plans, ladders, My Rules, execution view, notifications, Plans tab **Done.** My Week, My Rules, My Plans by goal and the ladder are SPEC ONLY - not one identifier in the code. Plans tab already exists.
+- [x] 3c. Propose the new tap-based onboarding screen by screen, with exact wording and what each answer drives **Done.** Nine screens drafted with exact wording and what each answer writes.
+- [x] 3d. Propose the Plans tab, sessions, start-session mode, quick session, exercise library, and where food sits in the plan **Done.**
+- [x] 3e. Rewrite principle 3 and Part Eleven (Graduation): never trap, build literacy, support for life **Done.** Proposed wording written.
+- [x] 3f. Rewrite principle 9: reactive by default, scheduled when the user asks **Done.** Proposed wording written.
 - [ ] 3g. Spec: Plans out of Almanac into its own tab; information architecture matched to the app; My Week and My Rules given a clear home
 - [ ] 3h. Spec: note that the Exercise Animatic clips are animations of muscles, not photographs, so principle 16 holds
 - [ ] 3i. Decision patterns: "goals are welcome, shame is not"
-- [ ] 3j. Say what exists, what changes, what is new, and what would break
+- [x] 3j. Say what exists, what changes, what is new, and what would break **Done.**
 
 ### Section 4 — menopause and perimenopause
 
@@ -764,7 +764,7 @@ loses nothing.
 
 ### Still in flight from the earlier prompt
 
-- [ ] F1. The live app says "no target set" when asking what to eat, though the account has a measurement with a BMR. Find out why and fix: this is a wave-zero gate (b) failure
+- [x] F1. **Done.** Not a data bug: the route computes 1,760 kcal and 83-99g correctly and the writer receives them. The MODEL denied figures it had, because nothing was logged yet. One clause added to the what-to-eat rule, deployed and verified live.
 - [ ] F2. Add the three meal-suggestion examples to the chat test set as permanent cases
 - [ ] F3. Fix the blank space where a plan exercise has no demonstration clip
 - [ ] F4. Fix the stale line in the build spec about there being no video player
