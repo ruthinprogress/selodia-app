@@ -246,11 +246,43 @@ def main(session=None):
     print("=" * 74)
 
     print("\n  GIT\n")
-    dirty, ahead = sh("git", "status", "--porcelain"), sh("git", "log", "--oneline", "origin/main..HEAD")
+    dirty = sh("git", "status", "--porcelain")
+
+    # AGAINST THIS BRANCH'S OWN UPSTREAM, not against origin/main (fixed
+    # 2026-09-29). It compared `origin/main..HEAD`, so a session working on a
+    # branch - which is what the overnight brief asked for - reported nine
+    # unpushed commits and one blocking item AFTER the branch had been pushed
+    # and was byte-identical to its remote.
+    #
+    # That is this file's own stated failure mode, from the comment at the top:
+    # "a checker that cries wolf on its first run is one nobody runs twice".
+    # A false blocker is worse than a missing one, because the response to it is
+    # to stop believing the blockers.
+    upstream = sh("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    branch = sh("git", "rev-parse", "--abbrev-ref", "HEAD")
+    against = upstream if upstream else "origin/main"
+    ahead = sh("git", "log", "--oneline", f"{against}..HEAD")
+
     print(f"    working tree      {'DIRTY' if dirty else 'clean'}")
-    print(f"    pushed            {'NO (' + str(len(ahead.splitlines())) + ' unpushed)' if ahead else 'yes'}")
+    if ahead:
+        print(f"    pushed            NO ({len(ahead.splitlines())} unpushed vs {against})")
+    elif upstream:
+        print(f"    pushed            yes ({branch} -> {upstream})")
+    else:
+        # No upstream at all. Not pushed anywhere, and saying so is the point.
+        print(f"    pushed            NO UPSTREAM for {branch}")
     print(f"    head              {sh('git', 'log', '--oneline', '-1')}")
-    blocking += bool(dirty) + bool(ahead)
+    blocking += bool(dirty) + bool(ahead) + (0 if upstream else 1)
+
+    # A BRANCH THAT IS PUSHED IS NOT A BRANCH THAT IS MERGED, and the close-out
+    # should not let that blur. Stated rather than blocking: the decision to
+    # merge is Ruth's, and a session can legitimately close with work parked on
+    # a branch awaiting her review.
+    if branch != "main":
+        unmerged = sh("git", "log", "--oneline", f"origin/main..HEAD")
+        if unmerged:
+            print(f"\n    ON A BRANCH       {branch}, {len(unmerged.splitlines())} commit(s) not in main")
+            print("                      Not blocking. Merging is a decision, not a chore.")
 
     print("\n  DRIVE SYNC  (byte-identical, ceremony step 1)\n")
     if not SYNCED.is_dir():
