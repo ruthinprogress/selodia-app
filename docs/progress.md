@@ -742,10 +742,10 @@ loses nothing.
 
 ### Section 4 — menopause and perimenopause
 
-- [ ] 4a. Research from NICE, the British Menopause Society and the NHS, with citations
-- [ ] 4b. Audit cycle tracking, cycle day, phase interpretation, period logging, roundups and chat for irregular cycles, no periods, and HRT
-- [ ] 4c. Competitors: Balance and one or two others, and where Selodia could do better
-- [ ] 4d. Propose life-stage and HRT onboarding questions, symptom logging, how interpretation and targets adapt, and landing/store copy
+- [x] 4a. Research from NICE, the British Menopause Society and the NHS, with citations **Done.** NICE NG23, NHS and two BMS/WHC factsheets, with figures.
+- [x] 4b. Audit cycle tracking, cycle day, phase interpretation, period logging, roundups and chat for irregular cycles, no periods, and HRT **Done and demonstrated.** A woman five years post-menopause is described to the model as "cycle day 1826, luteal phase", with her weight explained as water retention. scripts/probe-cycle-no-periods.mjs proves it.
+- [x] 4c. Competitors: Balance and one or two others, and where Selodia could do better **Done.** Balance, Stella, Health & Her - all three silo symptoms away from food, sleep and movement.
+- [x] 4d. Propose life-stage and HRT onboarding questions, symptom logging, how interpretation and targets adapt, and landing/store copy **Done.** Life stage and HRT questions, a hard 45-day bound, symptom taps, and copy.
 
 ### Section 2 — pricing re-model
 
