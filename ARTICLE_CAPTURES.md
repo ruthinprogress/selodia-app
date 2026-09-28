@@ -527,3 +527,37 @@ So for anybody with a food allergy on file, the filter had been approving text t
 Nothing about it is visible in the code. Both paths assign to the same variable. The check sits above both of them, and a reader following the flow sees a check and then a reply. It survived a typecheck, a linter and a day of real use. It surfaced only because a separate piece of work — starting to speak a reply before it was finished — forced the question of at what exact moment a reply becomes final, which is the same question the filter should have been asked when it was written.
 
 The general form is worth carrying elsewhere: when a value is validated and then reassigned, the validation belongs to the reassignment rather than to the variable. A sanitiser followed by a formatter, a permission check followed by a retry with different arguments — the shape recurs. The question that finds it in a minute: of all the things that can end up in this variable, which have been through the check? If the answer is "the first one", the check is in the wrong place.
+
+---
+
+## 28 September 2026 — For the weeks you're not training
+
+*Ruth's own, captured Monday 28 September. Title options: "For the weeks you're not training" / "Selodía in my pyjamas" / "The app that stays when the plan stops".*
+
+Two weeks now with a knee that will not settle. Overuse, nothing dramatic. No ballet.
+
+The rest of it has stacked up at the same time. Work. Childcare. Family. Felix started nursery and this was the settling-in week, which is its own full-time job. I have been logging weigh-ins and food when I remember, or afterwards, or not at all.
+
+This afternoon I was in bed in my pyjamas with a bowl of banana, yoghurt, raisins and peanut butter, working. Feeling flat. I had just spent an hour going through BetterMe. Their Facebook ads, the funnel, the countdown timer, the scratch card offering me 61% off, the before-and-after photos. The whole look of it is clean and lively and very Pilates girl. It is also exhausting. The bodies in it are bodies most women cannot have, and I think we all know that and click anyway.
+
+Sitting there it felt completely out of reach. And then it turned over.
+
+Fitness apps are built for the weeks you are on the plan. They are designed around the version of you who trains four times and hits her macros and photographs the result. That is maybe a third of the year, if you are lucky and nothing goes wrong. The rest of the time the app is either a reminder of what you are not doing, or a charge on your card that you keep meaning to cancel.
+
+Selodía would still be useful to me right now. Today. Injured, off plan, no goal I am chasing, logging half of what I eat. It would notice how I am eating. It would notice how I am sleeping. It would keep track of how the knee is going and what I can still do without making it worse. And it would not make me feel behind, because there is nothing to be behind on.
+
+That is the thing nobody else is building. Not a better plan. Something that stays useful when the plan stops.
+
+**For the weeks you're training, and the weeks you're not.**
+
+I have been worried that Selodía is too niche. Women over forty who want to understand their own bodies rather than shrink them. It sounds small when you say it out loud.
+
+It is not small. Every woman I know is in the off-plan weeks far more than she is in the on-plan ones. The niche is not the audience. The niche is the honesty about which weeks these are.
+
+---
+
+*Supporting material from the same day, for whoever writes this up:*
+
+- *BetterMe: 6.2 million followers and 72% recommend. Public posts about charges continuing after cancellation, and refunds requiring proof that the product did not work.* **Both figures are from Ruth's own reading on the day and are not yet sourced. Find and cite the source before publishing, or cut them.** The argument stands without them.
+- *Nikki, one of the wave-zero testers, asked for exactly one thing: something that tells her what to eat for the rest of the day to hit her targets. That is the real demand, and it is that simple.*
+- *The funnel numbers, if a price comparison is wanted: £6.93 for the first week, then £38.95 every four weeks, which is about £506 a year.*
