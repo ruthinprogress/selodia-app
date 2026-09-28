@@ -673,3 +673,43 @@ blocking wave zero**, and it is the one item the wave-zero reasoning does not
 reach: everything else on that list can be carried by hand because you know Nikki
 and Carol, and this is owed to a regulator that does not care how well you know
 them.
+
+## Session 57, fifth queue
+
+- [x] **Wave-zero gate** at the top of the beta checklist.
+- [x] **BetterMe** in the pricing research, with the positioning contrast.
+- [x] **Feature gap analysis and the meal-suggestion design**, with three worked
+      examples from your real data.
+- [x] **Copy review**, three headline options.
+- [x] **Exercise library audit**, coverage table, gaps, four options compared.
+- [x] **Refinement pass**, 23 items in priority order.
+- [x] **Logs kept in our own database**, so Supabase Pro can wait.
+
+All six pieces are in **2026-09-28 Before wave zero - six pieces of research**
+in Build Specs, with a one-page summary at the top. Nothing in it is built.
+
+### The answer on Pro: yes, we can keep them ourselves
+
+`turn_diagnostics` now records the phase marks on every turn and the two
+failures the route catches after the model call. Fallbacks already had their own
+table. `node scripts/turn-log.mjs` reads all three:
+
+    voice   2 turns   median 6512ms   90th 6512ms   worst 6512ms
+
+    WHERE THE TIME GOES, median per phase
+      replyWritten      2456ms
+      modelAnswered     1785ms
+      contextLoaded     1082ms
+      userRowWritten     787ms
+
+And `--turn <id>` gives one turn across all three tables, including what its
+model calls cost. **That is more than Vercel's free tier could ever give**, which
+retains nothing, and more than Pro's seven days, which expire.
+
+**So Pro is not needed for logs.** It would still buy the leaked-password check,
+which you have agreed is not a wave-one blocker.
+
+**One number worth noticing**, now that it is measured rather than modelled: that
+turn's model calls cost **2.998c** against the 1.77c in the pricing document.
+Two turns is not a sample, but it is the first sign that the model was
+optimistic, and `scripts/cost-per-user.mjs` will say properly within a week.
