@@ -14,6 +14,7 @@ import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
 import { newPathWrites, turnIsOrdinary, writeReplyAfterSaves } from '../../lib/chat-path';
+import { recordModelUsage } from '../../lib/usage-record';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -1623,6 +1624,17 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     })
   );
 
+  // AND KEPT, not only printed. The console line above answers "did the cache
+  // hit on this turn"; the row answers "what does this person cost a month",
+  // which is the question the whole pricing document had to guess at.
+  recordModelUsage({
+    userId,
+    turnId,
+    call: 'classify',
+    model: MODEL,
+    usage: response.usage,
+  });
+
   if (pendingCard) await markCardImageSent(supabase, pendingCard.messageId);
 
   // A TRUNCATED RESPONSE IS A BROKEN CALL, NOT A JUDGEMENT ABOUT THE INPUT.
@@ -2924,6 +2936,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           didLines: appendedNotes,
           safetyBlock: SAFETY_PROMPT_BLOCK,
         });
+    // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
+    // expensive turn on this route - this call's tokens, and then the old path's
+    // reply on top of them - so leaving the failures out of the cost table would
+    // hide exactly the turns worth finding.
+    recordModelUsage({ userId, turnId, call: 'reply', model: MODEL, usage: written.usage });
+
     // A failure here is a fallback, not a lost turn: the old path's reply is
     // already sitting in safeReplyText with its notes ready to append.
     // DISCRIMINATED ON fellBack, not on the text being truthy: the success branch

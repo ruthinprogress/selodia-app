@@ -153,9 +153,26 @@ export type ReplyRequest = {
  */
 export type FallbackReason = 'error' | 'empty' | 'max_tokens';
 
+/**
+ * What the call cost, handed back rather than dropped.
+ *
+ * ON EVERY OUTCOME, INCLUDING THE FAILURES. A truncated reply is paid for in
+ * full and a fallback is the most expensive turn there is - the writer's tokens
+ * and then the old path's on top. A cost table that only counted the calls that
+ * worked would understate exactly the turns worth knowing about.
+ *
+ * Absent only when the call threw and there is genuinely no usage to report.
+ */
+type WriterUsage = {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+};
+
 export type WrittenReply =
-  | { text: string; fellBack: null }
-  | { text: null; fellBack: FallbackReason; detail: string };
+  | { text: string; fellBack: null; usage: WriterUsage | null }
+  | { text: null; fellBack: FallbackReason; detail: string; usage: WriterUsage | null };
 
 /**
  * HOW MUCH OF THE CONVERSATION THE WRITER SEES, and why it is not all of it.
@@ -251,7 +268,12 @@ ${req.didLines.map((l) => `- ${l}`).join('\n')}`
     if (res.stop_reason === 'max_tokens') {
       // Truncated mid-sentence. Unusable as a reply and worse than the old
       // path's, which at least finished.
-      return { text: null, fellBack: 'max_tokens', detail: `output_tokens=${res.usage?.output_tokens ?? '?'}` };
+      return {
+        text: null,
+        fellBack: 'max_tokens',
+        detail: `output_tokens=${res.usage?.output_tokens ?? '?'}`,
+        usage: res.usage ?? null,
+      };
     }
     const text = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
@@ -263,12 +285,14 @@ ${req.didLines.map((l) => `- ${l}`).join('\n')}`
         text: null,
         fellBack: 'empty',
         detail: `stop_reason=${res.stop_reason ?? '?'} blocks=${res.content.length}`,
+        usage: res.usage ?? null,
       };
     }
-    return { text, fellBack: null };
+    return { text, fellBack: null, usage: res.usage ?? null };
   } catch (err) {
     const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     console.log('REPLY WRITER ERROR, falling back to the old path:', detail);
-    return { text: null, fellBack: 'error', detail: detail.slice(0, 500) };
+    // Nothing to report: the call threw before any usage came back.
+    return { text: null, fellBack: 'error', detail: detail.slice(0, 500), usage: null };
   }
 }

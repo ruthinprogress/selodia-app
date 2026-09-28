@@ -253,11 +253,12 @@ Her decisions on 28 September, and what each one turned into.
 - [x] **1. Voice runs the two calls in parallel.** Text stays sequential. Live,
       measured, and it did not get to 3.3s. Below.
 - [x] **2. The email check: why it said that.** It was not a wrong test.
-- [ ] **3. Company details in every legal document.**
-- [ ] **4. The transfer mechanism in the two providers' DPAs.**
-- [ ] **5. Pricing: competitors, overheads, a founding rate, a recommendation.**
-- [ ] **6. The waiting list is empty for planning.**
-- [ ] **7. ICO: hers, today.**
+- [x] **3. Company details in every legal document.** And on the two public
+      pages, which named the company and stopped there.
+- [x] **4. The transfer mechanism.** Both have one. Neither needs a signature.
+- [x] **5. Pricing.** Rewritten. **£9 / £79, founding rate £6 / £59.**
+- [x] **6. The waiting list is empty for planning.** Both planning documents say so.
+- [ ] **7. ICO: hers, today.** Waiting on her word that it is done.
 
 ### 2. The email check - it was not a wrong test, it was no test
 
@@ -354,3 +355,127 @@ rate. Until then the bound is what can be said honestly: **between 0 and 19% of
 the voice turn cost, and nowhere near the top of the bill either way** — the
 ElevenLabs grant ending in September 2027 is still the largest number on that
 page by an order of magnitude.
+
+### 3. Where the company details went
+
+Selodía Ltd, 19 Campbell Road, London, E17 6RR, company number 12246794,
+hello@selodia.app.
+
+- **The beta agreement**, clause 15, and the note at the bottom updated.
+- **The DPIA**, in the controller block at the top.
+- **The privacy policy and the terms** — both named Selodía Ltd and stopped
+  there. The Companies Act and the E-Commerce Regulations want the number, the
+  place of registration and the registered office on a company's website, so
+  this was a real gap rather than tidiness. Live on selodia.app now.
+- **The Legal folder** on Drive: all four documents refiled.
+
+**One deliberate non-change.** `UPDATED` on the privacy page is still 19
+September, and it should be. That field is what re-asks every existing user to
+confirm their consent, and the statutory particulars change neither what is
+collected nor who sees it. **Making the whole userbase re-consent to learn
+Selodía's postcode is the wrong trade**, and the reason is written into the file
+so nobody tidies it later. The terms carry no consent version, so they are dated
+today.
+
+**The version date on the agreement is still blank, on purpose.** Your rule is
+the day it is first shown to a tester and that day has not come. It is filled by
+`node scripts/beta-agreement-date.mjs`, which reads the date from the earliest
+grant in `beta_members` rather than from whoever is typing.
+
+**Worth telling you, because it caught me out.** The first run of that script
+dated the agreement from *your* beta grant — made this morning so you could see
+the feedback screen. You are in the beta and you have never been shown the
+agreement; they are not the same fact. The script now excludes the founder, and
+why is written at the top of it.
+
+### 4. The transfer mechanism — both have one, neither needs signing
+
+| | Mechanism | How it attaches |
+| --- | --- | --- |
+| **Anthropic** | EU SCCs Module Two at section I.1, **plus the UK Addendum** at Schedule 3 section B, which applies to any processing subject to UK GDPR. | The DPA "is incorporated into and forms part of the Anthropic Commercial Terms of Service". Accepting the terms accepts it. **No form.** |
+| **ElevenLabs** | SCCs at 11.1, **UK Addendum completed at 11.4**, EU–US Data Privacy Framework offered as an alternative at 11.1(i). | "shall be deemed executed upon this DPA taking effect". **No signature.** |
+
+Read from the processors' own current documents, not from a summary of them.
+Recorded in section 3 of the DPIA, and **it closes the fourth wave-one blocker**
+— three left: leaked-password protection, password reset proved on a phone, and
+a breach-response procedure.
+
+**Two things I could not establish, and have said so rather than guessed.**
+Whether either company is certified under the Data Privacy Framework and whether
+that certification carries the UK Extension — the public list did not answer it
+today and the secondary write-ups contradict each other. It does not matter for
+the mechanism. And a **transfer risk assessment**, which is the documented
+judgement that the clauses are effective given US surveillance law: not done, and
+a solicitor's job rather than mine.
+
+**The other three processors are not settled by this.** Supabase is in an EU
+region and Vercel in London, but both companies are American and support access
+is itself a transfer. That is processor due diligence, and it is a separate line.
+
+### 5. Pricing — £9 a month, £79 a year, founding rate £6 / £59
+
+*2026-09-28 Running costs and pricing* is rewritten from section 6 down. Round
+numbers, no .99.
+
+**You were right that £7 was too low, and the overheads table is why.** Running
+cost per user is flat — £2.12 whether there are a hundred users or ten thousand.
+**The company's own costs are not.**
+
+| Subscribers | True cost per user/month |
+| --- | --- |
+| 25 | **£5.95** |
+| 100 | **£3.08** |
+| 1,000 | **£2.24** |
+| 10,000 | **£2.13** |
+
+About £1,150 a year of overheads — Apple's £79, ICO £52, Companies House £34,
+EAS £180, Claude £170, email, domain, storage, and an estimated £600 for an
+accountant — plus about £1,200 once for the solicitor. At 25 subscribers that is
+£3.83 a head a month on top of the running cost. **The first year is spent in the
+top of that table, not the bottom.**
+
+**Break-even on the overheads alone at £9: about 19 subscribers held for a year.**
+
+**What the market charges.** Nothing comparable is under £45 a year except
+MyFitnessPal, which has two hundred million downloads to spread its costs across.
+Balance+ — same audience, same stage of life — is **£9.99 a month, £89.99 a
+year**, and nobody finds that outrageous. The AI companions run £53–£81 a year.
+Selodía is in all three categories at once and costs more to run than any of the
+trackers, because every turn is a conversation with a model rather than a
+database lookup.
+
+**Why £9 and not £10.** They are the same decision to a customer and different
+decisions to you. £9 reads as "under a tenner". The extra 85p is not worth that
+threshold on a first product with no reviews.
+
+**The founding rate is what lets you launch at £9 at all.** £6 a month or £59 a
+year, kept for good, for everybody who subscribes in the first three months. Both
+stay profitable. It means you can put the real price on the page from day one —
+which you can never do later without a rise that reads as a betrayal — while the
+people who took the risk early pay what it was worth when they took it. **Your
+beta testers should be in that cohort without having to ask.**
+
+**One thing to write down somewhere that is not a document.** A grandfathered
+price means keeping a legacy product ID alive indefinitely on both stores. Five
+minutes now, confusing in three years.
+
+**The number that has not moved.** A heavy user costs £11.88 a month in models
+and at £9 you receive £7.65. **No sensible price covers a heavy user monthly** —
+it would take about £14. The answers are still: instrument cost per user, make
+the heavy path cheaper, push annual.
+
+**Decision is yours. Nothing is built.**
+
+### 6. The waiting list, treated as empty
+
+Fiona is your sister, so the list has nobody on it for planning purposes. Both
+places that assumed otherwise now say so:
+
+- *Billing, complimentary access and wave one* — route 3 was listed as a slow
+  source of testers. It is now written as the route that keeps working **after**
+  wave one, and explicitly not a source for it.
+- The Open Actionables.
+
+**Which leaves route 1 as the plan**: ask each of Lynda, Carol, Nikki and Auguste
+for two names. Four people, four circles, eight strangers who arrive with some
+trust already attached. That gets most of the way to twelve.

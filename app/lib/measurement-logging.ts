@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { recordModelUsage } from './usage-record';
 
 import { normalizeWeight } from './body-metrics';
 
@@ -193,6 +194,14 @@ export async function logMeasurementFromText(
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 400,
     messages: [{ role: 'user', content: instruction }],
+  });
+
+  // COUNTED, like the other two parses. See app/lib/model-cost.ts.
+  recordModelUsage({
+    userId,
+    call: 'extraction',
+    model: 'claude-haiku-4-5-20251001',
+    usage: message.usage,
   });
 
   const responseText = message.content[0].type === 'text' ? message.content[0].text : '';

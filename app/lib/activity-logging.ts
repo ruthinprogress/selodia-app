@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { recordModelUsage } from './usage-record';
 
 import { coverageFor } from './activity-weights';
 
@@ -60,6 +61,15 @@ export async function logActivityFromText(
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 800,
     messages: [{ role: 'user', content: instruction }],
+  });
+
+  // COUNTED. The Haiku parse is about an eighth of a logging turn, and a cost
+  // table that leaves it out is wrong in the same direction every time.
+  recordModelUsage({
+    userId,
+    call: 'extraction',
+    model: 'claude-haiku-4-5-20251001',
+    usage: message.usage,
   });
 
   const responseText = message.content[0].type === 'text' ? message.content[0].text : '';

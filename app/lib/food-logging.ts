@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { recordModelUsage } from './usage-record';
 import {
   FOOD_DEDUPE_WINDOW_MIN,
   findSameMeal,
@@ -337,6 +338,16 @@ export async function logFoodFromText(
     messages: [{ role: 'user', content: instruction }],
   });
 
+  // COUNTED. The Haiku parse is about an eighth of a logging turn, and a cost
+  // table that leaves it out is wrong in the same direction every time.
+  recordModelUsage({
+    userId,
+    turnId: sourceTurnId,
+    call: 'extraction',
+    model: 'claude-haiku-4-5-20251001',
+    usage: message.usage,
+  });
+
   const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
   const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
@@ -382,6 +393,16 @@ export async function logFoodFromText(
         max_tokens: 8000,
         messages: [{ role: 'user', content: instruction + SPLIT_AGAIN }],
       });
+      // ITS OWN ROW, not added to the first. How often the split retry fires
+      // and what it costs is a real question, and a summed row cannot answer it.
+      recordModelUsage({
+        userId,
+        turnId: sourceTurnId,
+        call: 'extraction',
+        model: 'claude-haiku-4-5-20251001',
+        usage: again.usage,
+      });
+
       const retryText = again.content[0].type === 'text' ? again.content[0].text : '';
       const retry = JSON.parse(
         retryText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
