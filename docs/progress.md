@@ -75,7 +75,11 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
       activity row, the text is matched against her own saved plan titles and a
       session is written instead. Stricter than the deliberate path, because
       nothing here has decided a routine happened. 13 checks.
-- [ ] **9. Repeated-phrase probe within a single conversation.**
+- [x] **9. Repeated-phrase probe within a single conversation.** It was already
+      built - the fourth item today found done and listed as not started. What it
+      could not do was say whether things are improving, so it now splits at the
+      27 September rebuild. **"Got it" was 27% of 359 replies before; since the
+      rebuild the commonest opening is 10% of 42.**
 - [ ] **10. Voice speed** — is a turn back to about 3.2s.
 - [ ] **11. Research only, no building:** UK/EU store rules for subscriptions;
       ICO registration for Selodía Ltd; a draft beta agreement. Each to Drive.

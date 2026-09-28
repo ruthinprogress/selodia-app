@@ -198,11 +198,62 @@ const [topOpening, topCount] = ranked[0];
 const topPct = pct(topCount);
 
 console.log();
+// ── IS IT GETTING BETTER? ────────────────────────────────────────────────────
+//
+// A fourteen-day window spans the rebuild, so a single percentage is an average
+// of two different apps. The new reply path went live at 09:55 on 28 September
+// 2026; the prompt it uses was rebuilt the evening before. Everything from the
+// 27th onwards is the new era and everything before it is the old one.
+//
+// SAID AS COUNTS, NOT ONLY PERCENTAGES. Four replies out of nine is 44% and means
+// almost nothing, and a percentage on its own invites exactly that mistake.
+const REBUILD = Date.parse('2026-09-27T00:00:00Z');
+
+const era = (rows) => {
+  const counts = new Map();
+  for (const t of rows) {
+    const o = opening(t);
+    if (o) counts.set(o, (counts.get(o) ?? 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  return { n: rows.length, top: top?.[0] ?? null, hits: top?.[1] ?? 0 };
+};
+
+const before = era(inOrder.filter((r) => r.at < REBUILD).map((r) => r.text));
+const after = era(inOrder.filter((r) => r.at >= REBUILD).map((r) => r.text));
+
+console.log('  BEFORE AND AFTER THE REBUILD (27 September)\n');
+for (const [label, e] of [['before', before], ['since ', after]]) {
+  if (e.n === 0) {
+    console.log(`    ${label}  no replies in this window`);
+  } else if (e.n < 10) {
+    console.log(
+      `    ${label}  ${e.n} replies - too few to read anything into. Commonest opening "${e.top}" (${e.hits}).`
+    );
+  } else {
+    console.log(
+      `    ${label}  ${e.n} replies, commonest opening "${e.top}" at ${e.hits} (${Math.round((e.hits / e.n) * 100)}%)`
+    );
+  }
+}
+console.log('');
+
 if (topPct > LIMIT_PCT) {
   console.log(`  FAIL  "${topOpening}" opens ${topPct}% of replies, over the ${LIMIT_PCT}% limit.`);
   console.log('        Length is not the problem - see the average above. The opening is.');
   console.log('        Remember what causes it: the model reads its own last forty turns and');
-  console.log('        copies them, so this accelerates on its own once it starts.\n');
+  console.log('        copies them, so this accelerates on its own once it starts.');
+  // THE WINDOW AVERAGE IS NOT THE CURRENT STATE when a fix landed inside it.
+  // Without this, a real improvement reads as a failure - and a measurement that
+  // reports failure after it has been fixed is a measurement nobody runs again.
+  if (after.n >= 10 && after.hits / after.n <= LIMIT_PCT / 100) {
+    const pct = Math.round((after.hits / after.n) * 100);
+    console.log('');
+    console.log('        But that average spans the rebuild of 27 September. Since then the');
+    console.log(`        commonest opening is "${after.top}" at ${pct}% of ${after.n} replies, under the limit.`);
+    console.log('        The fortnight figure will follow as the older replies age out.');
+  }
+  console.log('');
   process.exit(1);
 }
 
