@@ -17,6 +17,7 @@ import {
   type ParsedMacros,
 } from './food-parse-prompt';
 import { drinksNamedIn, mentionsDrink } from './caloric-drink';
+import { correctDrinkEstimates } from './drink-composition';
 import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
 import { checkStatedWeight, scaleMacros } from './stated-weight';
 import { entriesNeedingSplit, SPLIT_AGAIN } from './itemisation';
@@ -67,8 +68,27 @@ export async function writeItems(
   items: ParsedItem[]
 ) {
   if (items.length === 0) return;
+
+  // A DRINK IS MEASURED, NOT ESTIMATED (2026-09-28). Her half of lager was
+  // logged at 180 kcal and 6 g protein where CoFID makes it 68 and 0.9 - the
+  // protein seven times out. See app/lib/drink-composition.ts for why drinks are
+  // the one case where a reference table beats a model, and why this is a lookup
+  // rather than another sentence in the prompt.
+  //
+  // HERE BECAUSE BOTH PATHS MEET HERE. The text logger and the image parser both
+  // call writeItems, so a guard at this point covers every way food reaches the
+  // database - which is the same reasoning as the plan-as-session guard and the
+  // thigh measurement before it.
+  const { items: checked, corrections } = await correctDrinkEstimates(supabase, items);
+  for (const c of corrections) {
+    console.log(
+      `DRINK CORRECTED: "${c.name}" ${c.from.kcal ?? '?'}kcal/${c.from.protein_g ?? '?'}g -> ` +
+        `${c.to.kcal}kcal/${c.to.protein_g}g from ${c.source} (${c.measure})`
+    );
+  }
+
   const { error } = await supabase.from('food_items').insert(
-    items.map((it) => ({
+    checked.map((it) => ({
       food_log_id: foodLogId,
       user_id: userId,
       name: String(it.name ?? '').trim() || 'item',
@@ -86,6 +106,28 @@ export async function writeItems(
     }))
   );
   if (error) console.log('food_items insert failed (non-fatal):', error.message);
+
+  // THE PARENT HAS TO AGREE WITH ITS ITEMS. A corrected item otherwise leaves
+  // food_logs holding the old total, which is precisely the state her lager row
+  // was in this morning: the items said 68 kcal and the log still said 180.
+  //
+  // ONLY AFTER A REAL CORRECTION. An entry carrying a total with no itemisation
+  // is a legitimate shape, and recomputing every log from a sum over its items
+  // would zero those.
+  if (!error && corrections.length > 0) {
+    const sum = (pick: (i: ParsedItem) => number | undefined) =>
+      checked.reduce((n, i) => n + (pick(i) ?? 0), 0);
+    const { error: totalsError } = await supabase
+      .from('food_logs')
+      .update({
+        kcal: Math.round(sum((i) => i.kcal)),
+        protein_g: Math.round(sum((i) => i.protein_g) * 10) / 10,
+      })
+      .eq('id', foodLogId);
+    if (totalsError) {
+      console.log('food_logs totals not updated after a drink correction:', totalsError.message);
+    }
+  }
 }
 
 // IS THERE ANY FOOD IN THIS ENTRY AT ALL?
