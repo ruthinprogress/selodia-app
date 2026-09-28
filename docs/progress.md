@@ -735,9 +735,9 @@ loses nothing.
 - [x] 3d. Propose the Plans tab, sessions, start-session mode, quick session, exercise library, and where food sits in the plan **Done.**
 - [x] 3e. Rewrite principle 3 and Part Eleven (Graduation): never trap, build literacy, support for life **Done.** Proposed wording written.
 - [x] 3f. Rewrite principle 9: reactive by default, scheduled when the user asks **Done.** Proposed wording written.
-- [ ] 3g. Spec: Plans out of Almanac into its own tab; information architecture matched to the app; My Week and My Rules given a clear home
-- [ ] 3h. Spec: note that the Exercise Animatic clips are animations of muscles, not photographs, so principle 16 holds
-- [ ] 3i. Decision patterns: "goals are welcome, shame is not"
+- [x] 3g. Spec: Plans out of Almanac into its own tab; information architecture matched to the app; My Week and My Rules given a clear home **Done** - proposed in the document; the spec edit itself is below.
+- [x] 3h. Spec: note that the Exercise Animatic clips are animations of muscles, not photographs, so principle 16 holds **Done** - proposed; spec edit below.
+- [x] 3i. Decision patterns: "goals are welcome, shame is not" **Done** - proposed; pattern written below.
 - [x] 3j. Say what exists, what changes, what is new, and what would break **Done.**
 
 ### Section 4 — menopause and perimenopause
@@ -749,12 +749,12 @@ loses nothing.
 
 ### Section 2 — pricing re-model
 
-- [ ] 2a. Re-model at GBP 12 and GBP 15, annual GBP 99-120, founding GBP 8 / GBP 79 for the first 100
-- [ ] 2b. Use the real measured cost per turn (~3p, not 1.77p), heavy users included, plus overheads; margin and break-even at each price
-- [ ] 2c. Model Nikki's market reality: GBP 10 for a yoga app with five videos, GBP 2 for tracking. What Selodia needs to feel worth more than a tracker in week one
-- [ ] 2d. What a fuller library and guided sessions would change, and what they would cost
-- [ ] 2e. Draft the wave-zero willingness-to-pay questions
-- [ ] 2f. Recommend a price
+- [x] 2a. Re-model at GBP 12 and GBP 15, annual GBP 99-120, founding GBP 8 / GBP 79 for the first 100 **Done.**
+- [x] 2b. Use the real measured cost per turn (~3p, not 1.77p), heavy users included, plus overheads; margin and break-even at each price **Done.** Measured 3.30c a turn, not 1.77c. All-in GBP 3.87 at 1,000 subs, GBP 7.53 at 25.
+- [x] 2c. Model Nikki's market reality: GBP 10 for a yoga app with five videos, GBP 2 for tracking. What Selodia needs to feel worth more than a tracker in week one **Done.**
+- [x] 2d. What a fuller library and guided sessions would change, and what they would cost **Done.**
+- [x] 2e. Draft the wave-zero willingness-to-pay questions **Done.**
+- [x] 2f. Recommend a price **Done.** GBP 12 / GBP 120, founding GBP 8 / GBP 79. Break-even 15 subscribers.
 
 ### Section 1 — brand rule and evidence
 
