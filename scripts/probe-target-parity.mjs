@@ -21,7 +21,13 @@
 import { calculateCalorieTarget as server } from '../app/lib/daily-targets.ts';
 import { calculateCalorieTarget as client } from '../mobile/src/lib/calorie-target.ts';
 
-const FOCUS = ['reduce', 'maintain', 'increase'];
+// NULL AND UNDEFINED ARE IN THE MATRIX FROM 2026-09-28, and they are the
+// combinations that matter most now. Both files stopped treating an unset focus
+// as maintenance on that date, and a divergence there would mean one side
+// showing a maintenance target while the other correctly shows none - which is
+// worse than the drift this probe was written for, because it looks like data
+// rather than like a bug.
+const FOCUS = ['reduce', 'maintain', 'increase', null, undefined];
 
 // TDEE and bodyweight values chosen to exercise the branches rather than to be
 // realistic: a null TDEE, a null weight on the deficit path (which must return
@@ -51,14 +57,16 @@ for (const fatFocus of FOCUS) {
   }
 }
 
-// The nine documented combinations, spelled out, so a change to the matrix has to
-// be a deliberate edit here rather than something that slips through on totals.
-console.log('\n  The 3x3 matrix at TDEE 2000, 68kg:\n');
+// The documented combinations, spelled out, so a change to the matrix has to be
+// a deliberate edit here rather than something that slips through on totals.
+const show = (v) => (v === null ? 'null' : v === undefined ? 'unset' : v);
+console.log('\n  The matrix at TDEE 2000, 68kg:\n');
 for (const fatFocus of FOCUS) {
   for (const muscleFocus of FOCUS) {
     const r = server({ tdeeKcal: 2000, weightKg: 68, fatFocus, muscleFocus });
     const recomp = r?.isRecomposition ? '  (recomposition)' : '';
-    console.log(`    fat=${fatFocus.padEnd(8)} muscle=${muscleFocus.padEnd(8)} -> ${String(r?.targetKcal).padStart(5)} kcal  ${r?.mode}${recomp}`);
+    const outcome = r ? `${String(r.targetKcal).padStart(5)} kcal  ${r.mode}${recomp}` : '    no target';
+    console.log(`    fat=${show(fatFocus).padEnd(8)} muscle=${show(muscleFocus).padEnd(8)} -> ${outcome}`);
   }
 }
 

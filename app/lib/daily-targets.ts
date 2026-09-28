@@ -40,11 +40,26 @@ const roundTo = (n: number, step: number): number => Math.round(n / step) * step
 export function calculateCalorieTarget(params: {
   tdeeKcal: number | null | undefined;
   weightKg: number | null | undefined;
-  fatFocus: FocusState;
-  muscleFocus: FocusState;
+  fatFocus: FocusState | null | undefined;
+  muscleFocus: FocusState | null | undefined;
 }): CalorieTarget | null {
   const { tdeeKcal, weightKg, fatFocus, muscleFocus } = params;
   if (tdeeKcal == null || tdeeKcal <= 0) return null;
+
+  // A FOCUS NOBODY STATED IS NOT MAINTENANCE (2026-09-28).
+  //
+  // Until today both columns were NOT NULL DEFAULT 'maintain' and `asFocus`
+  // turned null into 'maintain' on both sides of the Next/Expo boundary. So a
+  // person who had never been asked, and never answered, was shown a
+  // maintenance target as though she had chosen it. All three accounts in the
+  // database carried it, including Ruth's, set to maintain while she trains for
+  // a muscle up.
+  //
+  // Null now means not stated, and not stated means there is no target to show.
+  // Maintenance remains reachable - "keep things steady" writes it - and that is
+  // the whole difference: a choice rather than a silence wearing a choice's
+  // clothes.
+  if (fatFocus == null || muscleFocus == null) return null;
 
   const wantsGrowth =
     fatFocus === 'increase' || (fatFocus === 'maintain' && muscleFocus === 'increase');
@@ -76,8 +91,17 @@ export function calculateCalorieTarget(params: {
   };
 }
 
-const asFocus = (v: unknown): FocusState =>
-  v === 'reduce' || v === 'increase' ? v : 'maintain';
+/**
+ * A stored focus, or null when nothing is stored.
+ *
+ * THIS USED TO ANSWER 'maintain' TO ANYTHING IT DID NOT RECOGNISE, including
+ * null, which is how everybody ended up on a maintenance target. It now
+ * recognises the three real states and says null to everything else, so an
+ * unset column reaches `calculateCalorieTarget` as unset and produces no target
+ * instead of a fabricated one.
+ */
+const asFocus = (v: unknown): FocusState | null =>
+  v === 'reduce' || v === 'increase' || v === 'maintain' ? v : null;
 
 export type DayState = {
   kcalEaten: number;

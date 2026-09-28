@@ -770,6 +770,34 @@ loses nothing.
 - [x] F4. Fix the stale line in the build spec about there being no video player **Done.** It claimed there was no player; there is, and it works.
 - [x] F5. Full close-out: build log, article log, decision log, build spec, beta checklist, Open Actionables, final summary with file times **Done.**
 
+### Flow map, 28 September (her evening ask)
+
+- [x] M1. Bring the shoot script's route list up to date from the router tree
+- [x] M2. Shoot every screen from the current build, demo account, 390x844 at 2x
+- [x] M3. Compose the new map and save it dated beside the old one, not over it
+- [x] M4. Write the notes doc
+- [x] M5. Propose where goals, Week, Sessions, Skills, Rules, post-session routines and food targets live
+- [x] M6. Wireframes laid onto the new map
+
+### Evening batch two, 28 September
+
+- [x] H1. Rewrite SAFETY_ARCHITECTURE §10 as layered safety, not a sources gate
+- [x] H2. Draft the red-flag list from NHS/clinician guidance, narrow and deterministic
+- [x] H3. Check how red flags fit the existing safety machine
+- [x] H4. Draft the health test set, run before every release
+- [x] H5. Sources on request, beta safeguards, and scope + cost a clinical advisor
+- [x] E1. Draft the Accelerating FemTech email from hello@selodia.app. Show before sending
+- [x] W1. Women in Innovation: find the guidance and scoring criteria, including any pitch or interview stage
+- [x] W2. Preparation plan working back from late November, with what wave zero must collect
+- [x] W3. Start the draft application document in Drive, filled in where material exists
+- [x] A1. Accessibility: scope against WCAG 2.2 AA for a mobile app
+- [x] A2. Run the automated checks that can be run
+- [x] A3. Write the 30-minute TalkBack test script for her phone
+- [x] A4. Prioritised fix list, dark mode on it, for after her test week
+- [x] L1. Life stage: separate surgical, induced and early menopause branches
+- [x] R1. GP-ready symptom report proposal, building on Build a report
+- [x] R2. The Balance testimonial into the copy proposal
+
 ### Waiting on her, not blocking anything
 
 - [ ] **blocked on Ruth** — the calisthenics progression tree, gap list and Exercise Animatic email: she asked to see them before sending, and they are drafted in the previous research document

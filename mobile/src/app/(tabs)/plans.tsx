@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { ReportLink } from '@/components/report-link';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
+import { GoalsBlock } from '@/components/goals-block';
 import { MovementLibrary } from '@/components/movement-library';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightScroll } from '@/components/spotlight-provider';
@@ -84,6 +85,11 @@ export default function PlansScreen() {
         >
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Plans</ThemedText>
+
+            {/* ABOVE EVERYTHING, and above the segmented control when that
+                arrives in Slice 3. A goal is the reason the rest of this screen
+                exists, so it is not something to scroll to. */}
+            <GoalsBlock />
 
             {loaded && (
               <SpotlightTarget id="almanac.movement">

@@ -3353,11 +3353,15 @@ Recorded from Ruth's Balance assessment and handoff. **Competitor analysis is in
 
 **No community feature. Do not build or spec one.** Ruth's decision, for two reasons that both stand on their own: she finds community exhausting, and a feature where users exchange medical details and advice carries moderation and safety obligations a one-person company cannot meet. **Checked 2026-09-28: nothing in this specification proposes one**, so this is a rule rather than a removal.
 
-**A claim needs a source.** The full rule, its ranking, and the four ways the current build contradicts it are in `SAFETY_ARCHITECTURE.md` §10. Not restated here.
+**Health claims are handled in layers, not by a gate.** Ruth replaced her own vetted-source instruction on 2026-09-28: a gate checking every claim against a list would misfire the way the allergy gate did, and a model restricted to a list becomes stilted. The six layers, the proposed red-flag list and the health test set are in `SAFETY_ARCHITECTURE.md` §10. **Her sign-off on the list and the test set is required before any of it is built.** Not restated here.
 
-**"Worth raising with a doctor."** `SAFETY_ARCHITECTURE.md` §11.
+**"Worth raising with a doctor."** `SAFETY_ARCHITECTURE.md` §11, and §11a for the early-menopause case built on it.
 
-**Onboarding must not assume one situation.** A Balance reviewer with surgical or induced menopause reported that its flow did not reflect her. Selodía's life-stage question (proposed 2026-09-28, *Onboarding, menopause and price*) must therefore cover **surgical and induced menopause and early onset**, not only the natural transition, and every branch must be skippable. **This changes the proposed wording**, which currently offers regular / changed / stopped / not sure / rather not say — "stopped" alone does not distinguish a woman of 52 from a woman of 38 after surgery, and the difference matters to how the app should talk to her.
+**Onboarding must not assume one situation, and "stopped" was doing too much work.** A Balance reviewer with surgical or induced menopause reported that its flow did not reflect her. **The five-option wording proposed in *Onboarding, menopause and price* is superseded** by the branches in *Menopause proposal — life stage branches, GP report, copy* (2026-09-28), because one answer cannot serve a woman of 54 after a natural menopause, a woman of 38 after surgery, and a woman of 45 with a coil who has no bleeding and is still cycling.
+
+The branches are: natural · surgical · induced by treatment · **another reason (coil, implant, hysterectomy, treatment)** · not sure · rather not say, with a follow-up only where it changes something. **The case most easily got wrong is the coil: no bleeding does not mean not cycling**, and for her, symptom tracking is the only signal there is. Every branch is skippable.
+
+**Contradiction with the current build, stated rather than quietly fixed:** `lifeStage` does not exist as a field anywhere in the app today, and the cycle code still has no upper bound. This is new build, not a modification, and until it exists the 45-day quiet bound is the thing that actually protects a user from being told she is on cycle day 1,826.
 
 **Chat-based logging is a core differentiator, so it must work every time.** Balance's tap-based journal has no free text, and its reviewers ask for one. That advantage is only real while the logging is reliable, which is why it sits inside the wave-zero gate rather than beside it.
 

@@ -117,8 +117,11 @@ type ProfileRow = {
 };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
-const asFocus = (s: string | null): FocusState =>
-  s === 'reduce' || s === 'increase' ? s : 'maintain';
+// Null means not stated, and not stated means no target - NOT maintenance.
+// See app/lib/daily-targets.ts for why this used to be the other way round and
+// what it cost. Third of the three places the old default lived.
+const asFocus = (s: string | null): FocusState | null =>
+  s === 'reduce' || s === 'increase' || s === 'maintain' ? s : null;
 
 // "Thursday 17 September", never 2026-09-17. Built by hand rather than through
 // toLocaleDateString for the same reason week.ts is: Hermes on Android ships a
@@ -525,6 +528,41 @@ export function OverviewPanel({
           )}
         </FigureRow>
 
+        {/* THE TARGET, SAID OUT LOUD AT LAST (2026-09-28).
+            `calorieTargetKcal` and `proteinTargetLabel` have been computed here
+            and put into `data` since 2026-08-15, and rendered nowhere at all.
+            The app has known what somebody's target was for six weeks and never
+            told her.
+
+            STATED, NOT COUNTED. What she ate is on the row above; what she is
+            aiming at is here. No remaining figure, no percentage, no bar,
+            nothing that can read as behind. Goals are welcome and shame is not,
+            and a number counting down is how shame gets in. */}
+        {data.calorieTargetKcal != null || data.proteinTargetLabel ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
+            {[
+              data.calorieTargetKcal != null ? `Aiming for ${data.calorieTargetKcal} kcal` : null,
+              data.proteinTargetLabel,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </ThemedText>
+        ) : (
+          /* NO TARGET IS NOT AN ERROR, and this line is not a nag.
+             Until today an unset focus silently became 'maintain' and she was
+             shown a maintenance target nobody had chosen. Now it shows nothing,
+             and offers a way to change that - once, quietly, and only here. */
+          <Pressable
+            onPress={() => router.push('/')}
+            accessibilityRole="link"
+            accessibilityLabel="Add a goal to see targets, opens chat"
+            style={({ pressed }) => [styles.targetLine, pressed && styles.pressed]}>
+            <ThemedText type="small" themeColor="accentDeep">
+              Add a goal to see targets
+            </ThemedText>
+          </Pressable>
+        )}
+
         <Hairline />
 
         {/* ALL THREE ALWAYS SHOW, dashed where the latest reading did not carry
@@ -882,6 +920,12 @@ const styles = StyleSheet.create({
   // broken mid-word is not.
   figureLabel: {
     width: 76,
+  },
+  // Indented to the figures' own left edge, so the target reads as belonging to
+  // the Food row above it rather than as a new row of its own.
+  targetLine: {
+    paddingLeft: 76,
+    paddingBottom: Spacing.two,
   },
   // The figures themselves, which take the slack so the chevron keeps the
   // right edge. They wrap rather than clip - see the as-of date above.

@@ -1,43 +1,52 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ChatBubble } from '@/components/chat-bubble';
 import { useOnboardingAction } from '@/components/onboarding-action';
-import { ConversationLayout } from '@/components/conversation-layout';
-import { ResourceCard } from '@/components/resource-card';
-import { SaveConfirmation } from '@/components/save-confirmation';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useChatScroll } from '@/hooks/use-chat-scroll';
+import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { GOAL_OPTIONS, focusFromGoals, invitesMeasure, type GoalKey } from '@/lib/goals';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
 
-type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-  resourceCard?: { title: string; description: string; url: string } | null;
-};
+// WHAT BRINGS HER HERE. Taps, not a conversation (Ruth's session brief,
+// 28 September 2026).
+//
+// WHAT THIS REPLACED, AND WHY IT HAD TO GO. This screen used to open with
+// "Let's talk about what you're hoping to get out of this" and wait for her to
+// type. The words "fat_focus_state" and "muscle_focus_state" appeared in it
+// exactly zero times: a goal became a target only if the chat model happened to
+// infer a focus change from her prose AND she then confirmed it. Nothing
+// guaranteed either step. Meanwhile the columns were NOT NULL DEFAULT
+// 'maintain', so the outcome of saying something thoughtful and the outcome of
+// saying nothing were identical - a maintenance target, presented as hers.
+// Every account in the database was in that state, Ruth's included.
+//
+// A tap writes the column. That is the whole change, and it is why the brief
+// says every answer must change something.
+//
+// SCREENS ARE IMPERSONAL. Only chat says "I". Nothing here does.
+//
+// NO SHAME ANYWHERE. Every option is phrased as something to move towards,
+// none of them carries a number, and the optional measure below is shown as one
+// line and never counted down from.
 
-const OPENING_LINE =
-  "Let's talk about what you're hoping to get out of this. How are you feeling about things right now?";
+const QUESTION = 'What brings you here?';
+const SUBTITLE = 'Pick as many as fit. Each one changes what Selodía works out for you.';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+// Ruth's own wording, from the brief.
+const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
+const MEASURE_NOTE = 'Optional. It sits under your goals as a reminder of what you said, and is never counted down from.';
 
 export default function GoalsScreen() {
-  // Destructured here rather than read as chatScroll.ref inside the JSX:
-  // with the React Compiler on, a property access on the returned object
-  // during render trips react-hooks/refs, which cannot tell it apart from
-  // reading .current. Passing a ref BINDING to ref= is the sanctioned shape.
-  const { ref: scrollRef, onContentSizeChange: onThreadGrew } = useChatScroll();
   const theme = useTheme();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number } | null>(null);
+  const [chosen, setChosen] = useState<GoalKey[]>([]);
+  const [measure, setMeasure] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -45,162 +54,197 @@ export default function GoalsScreen() {
     });
   }, []);
 
-  async function handleSend() {
-    const trimmed = input.trim();
-    if (!trimmed || sending) return;
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
-    setSending(true);
+  function toggle(key: GoalKey) {
+    setChosen((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  }
 
-    try {
-      if (!API_BASE_URL) throw new Error('Backend URL not configured');
+  async function save(): Promise<boolean> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not signed in');
+    const { fat, muscle } = focusFromGoals(chosen);
 
-      const response = await fetch(`${API_BASE_URL}/api/onboarding-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ message: trimmed }),
+    // THE GOAL ROWS ARE REPLACED, NOT MERGED. A multi-select is a set, and
+    // somebody coming back through onboarding means the new set, not the union
+    // of both. Deleting only her own onboarding rows leaves any goal that
+    // arrived through chat alone - those are in her words and were not part of
+    // this question.
+    const { error: clearError } = await supabase
+      .from('user_goals')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('source', 'onboarding');
+    if (clearError) return false;
+
+    if (chosen.length > 0) {
+      const detail = measure.trim() || null;
+      const rows = chosen.map((key, i) => {
+        const option = GOAL_OPTIONS.find((o) => o.key === key)!;
+        return {
+          user_id: user.id,
+          goal_key: key,
+          label: option.label,
+          // The measure belongs to the goal that invited it, not to all of
+          // them: "12 stone" under "more energy" would be nonsense.
+          detail: option.invitesMeasure ? detail : null,
+          source: 'onboarding',
+          sort_order: i,
+        };
       });
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(`Request failed (${response.status}): ${body}`);
-      }
-
-      const data = await response.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: data.reply, resourceCard: data.resourceCard },
-      ]);
-      if (data.saved?.summary) {
-        setSaveToast((prev) => ({ summary: data.saved.summary, nonce: (prev?.nonce ?? 0) + 1 }));
-      }
-    } catch (err) {
-      console.error('Goals chat send failed:', err instanceof Error ? err.message : err);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: "Something went wrong on my end. Mind trying that again?" },
-      ]);
-    } finally {
-      setSending(false);
+      const { error: insertError } = await supabase.from('user_goals').insert(rows);
+      if (insertError) return false;
     }
+
+    // NULL IS WRITTEN DELIBERATELY when nothing was chosen. It is not a missing
+    // update - it is the app saying it does not know, which is now a state the
+    // target code understands and the column allows.
+    const { error: profileError } = await supabase
+      .from('user_profile')
+      .update({ fat_focus_state: fat, muscle_focus_state: muscle })
+      .eq('user_id', user.id);
+    return !profileError;
+  }
+
+  async function goOn(skipping: boolean) {
+    if (saving) return;
+    setFailed(false);
+    if (skipping) {
+      router.push('/onboarding/health-context');
+      return;
+    }
+    setSaving(true);
+    const ok = await save();
+    setSaving(false);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+    router.push('/onboarding/health-context');
   }
 
   useOnboardingAction({
-    label: 'Continue',
-    enabled: messages.length > 0,
-    onPress: () => router.push('/onboarding/health-context'),
+    label: saving ? 'Saving…' : 'Continue',
+    // ENABLED EVEN WITH NOTHING CHOSEN. Nothing here is required, and a
+    // Continue that waits for an answer would make an optional question feel
+    // compulsory. Choosing nothing is a real answer: both focuses stay unset
+    // and no calorie target is invented.
+    enabled: !saving,
+    onPress: () => void goOn(false),
+    secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
   });
 
+  const showMeasure = invitesMeasure(chosen);
+
   return (
-    <ConversationLayout>
+    <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          ref={scrollRef}
-          onContentSizeChange={onThreadGrew}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <ChatBubble role="assistant">{OPENING_LINE}</ChatBubble>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <ThemedText type="sectionTitle">{QUESTION}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {SUBTITLE}
+          </ThemedText>
 
-          {messages.map((m, i) => (
-            <ThemedView key={i} style={styles.messageGroup}>
-              <ChatBubble role={m.role}>{m.content}</ChatBubble>
-              {m.resourceCard && (
-                <ResourceCard
-                  title={m.resourceCard.title}
-                  description={m.resourceCard.description}
-                  url={m.resourceCard.url}
-                />
-              )}
+          <View style={styles.options}>
+            {GOAL_OPTIONS.map((option) => {
+              const on = chosen.includes(option.key);
+              return (
+                <Pressable
+                  key={option.key}
+                  onPress={() => toggle(option.key)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={option.label}
+                  style={({ pressed }) => [styles.optionWrap, pressed && styles.pressed]}>
+                  <ThemedView
+                    type={on ? 'backgroundSelected' : 'backgroundElement'}
+                    style={[
+                      styles.option,
+                      { borderColor: on ? theme.accentDeep : 'transparent' },
+                    ]}>
+                    <ThemedText type="small" themeColor={on ? 'accentDeep' : 'text'}>
+                      {option.label}
+                    </ThemedText>
+                  </ThemedView>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {showMeasure && (
+            <ThemedView type="backgroundElement" style={styles.measureCard}>
+              <ThemedText type="small">{MEASURE_PROMPT}</ThemedText>
+              <TextInput
+                value={measure}
+                onChangeText={setMeasure}
+                placeholder="Nothing in mind is fine too"
+                placeholderTextColor={theme.textSecondary}
+                accessibilityLabel={MEASURE_PROMPT}
+                style={[
+                  styles.measureInput,
+                  { color: theme.text, borderColor: theme.backgroundSelected },
+                ]}
+              />
+              <ThemedText type="small" themeColor="textSecondary">
+                {MEASURE_NOTE}
+              </ThemedText>
             </ThemedView>
-          ))}
+          )}
 
-          {sending && <ChatBubble role="assistant">…</ChatBubble>}
+          {failed && (
+            <ThemedText type="small" themeColor="danger">
+              That didn&apos;t save. Check your connection and try again.
+            </ThemedText>
+          )}
+
+          <ThemedText type="small" themeColor="textSecondary">
+            All of this lives in Plans afterwards, and changes whenever you say so in chat.
+          </ThemedText>
         </ScrollView>
-
-        <ThemedView style={styles.inputRow}>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Type your answer…"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-            multiline
-            editable={!sending}
-          />
-          <Pressable
-            onPress={handleSend}
-            // Empty input previously did nothing at all - no message, no re-ask,
-            // nothing - so Send looked pressable and behaved dead. Disabling it
-            // lets the control state the truth instead of failing silently. A
-            // "please type something" nag would be the other option and is worse:
-            // scolding someone for a tap that should never have been offered.
-            disabled={sending || input.trim().length === 0}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedView
-              type="backgroundSelected"
-              style={[styles.sendButton, (sending || input.trim().length === 0) && styles.sendDisabled]}
-            >
-              <ThemedText type="smallBold">Send</ThemedText>
-            </ThemedView>
-          </Pressable>
-        </ThemedView>
-
-        <SaveConfirmation summary={saveToast?.summary ?? null} nonce={saveToast?.nonce ?? 0} />
       </SafeAreaView>
-    </ConversationLayout>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
   scrollContent: {
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.six,
+    gap: Spacing.four,
+  },
+  options: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  optionWrap: {
+    // A wrapper rather than a style on the card, so the whole tappable area
+    // moves together when pressed.
+    borderRadius: ButtonRadius,
+  },
+  option: {
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    borderRadius: ButtonRadius,
+    borderWidth: 1,
+  },
+  measureCard: {
+    padding: Spacing.four,
+    borderRadius: ButtonRadius,
     gap: Spacing.three,
   },
-  messageGroup: {
-    gap: Spacing.two,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.four,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
-  },
-  input: {
-    flex: 1,
+  measureInput: {
+    borderWidth: 1,
+    borderRadius: ButtonRadius,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-    maxHeight: 100,
+    fontSize: 16,
   },
-  sendButton: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    borderRadius: Spacing.three,
-  },
-  sendDisabled: {
-    opacity: 0.4,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
+  pressed: { opacity: 0.7 },
 });
