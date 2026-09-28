@@ -312,3 +312,21 @@ The test to apply to anything new: *would this still be here if it did not incre
 A woman who says she wants to lose body fat should be helped to do it precisely - real targets, real numbers, the reasoning shown. **What Selodía refuses is everything that comes after the goal**: the before-and-after, the target nobody asked for, the progress bar, the implication that she was a problem to be solved.
 
 The distinction is between a goal and a verdict. **Refusing to name a goal is not kindness; it is the app being unable to help**, and the user notices, because she came with something specific in mind and left with a maintenance target. (28 September 2026, and the evidence is that onboarding sets no focus state at all - see the audit.)
+
+**A default that silently stands in for a missing answer will be mistaken for an answer.** Onboarding never writes the fat or muscle focus, and the function that reads them is `(v) => (v === 'reduce' || v === 'increase' ? v : 'maintain')`. Nothing is null downstream, nothing errors, nothing logs. Every user simply comes out on a maintenance target, including the one who spent five minutes explaining that she wants to lose body fat.
+
+What makes this hard to see is that the default is *reasonable*. Maintenance is the safe middle, and a reviewer reading that line nods. **The bug is not the value, it is that "she chose maintain" and "nobody ever asked her" produce identical state**, so no query, no dashboard and no test can tell them apart afterwards.
+
+The rule: **when a missing answer and a real answer collapse to the same value, keep them apart in the data even if they behave the same in the code.** A nullable column, or an explicit `unset`, costs nothing and preserves the only question worth asking later - did anybody actually choose this? The same shape is everywhere: a timezone that defaults to UTC, a currency that defaults to GBP, a role that defaults to viewer. (28 September 2026.)
+
+**A guard that only says "keep going" is a trap, so build the ways out first and prove each one.** The overnight stop hook blocks the end of a turn while work remains, and it writes to the progress file, which means a bug in it could have run unattended until morning. Three escapes went in before it was ever enabled: a file whose presence disables it, a ceiling on continuations, and an item that has not moved across three stops being marked blocked so the run passes it.
+
+**And it fails open.** Every error path exits silently and lets the turn end, because the failure mode of a stuck hook is much worse than the failure mode of a hook that stops working.
+
+The part worth generalising is the testing, not the valves. Each one was proved against a throwaway copy of the repository layout rather than the real one, so the test could exercise the destructive path - marking an item blocked, writing to a progress file - without any chance of touching the real thing. **When a mechanism's job is to keep something running, its tests have to be about stopping.** (28 September 2026.)
+
+**A check that matches a phrase is testing wording; a check that matches an intent is testing behaviour.** The chat test set had `does not ask her to retype`, written as a search for "re-enter", "type it again" and two others. It failed a reply that said *"No need to type it again"* - which is the app doing precisely the right thing, in the words the check was hunting for.
+
+A negative check is where this hides, because the failure looks like a pass in reverse: the reply was good, the score said bad, and the temptation is to soften the reply until the check is happy. **That direction of fix is the real cost** - it trains the prompt to avoid a word rather than avoid a behaviour, and the word was never the problem.
+
+The fix was a negative lookbehind and six sentences to prove it, including the one that broke it. The rule is simpler than the regex: **when a check fires, read the sentence it fired on before changing anything else.** If the sentence is good, the check is wrong. (28 September 2026.)

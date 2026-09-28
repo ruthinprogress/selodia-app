@@ -765,10 +765,10 @@ loses nothing.
 ### Still in flight from the earlier prompt
 
 - [x] F1. **Done.** Not a data bug: the route computes 1,760 kcal and 83-99g correctly and the writer receives them. The MODEL denied figures it had, because nothing was logged yet. One clause added to the what-to-eat rule, deployed and verified live.
-- [ ] F2. Add the three meal-suggestion examples to the chat test set as permanent cases
-- [ ] F3. Fix the blank space where a plan exercise has no demonstration clip
-- [ ] F4. Fix the stale line in the build spec about there being no video player
-- [ ] F5. Full close-out: build log, article log, decision log, build spec, beta checklist, Open Actionables, final summary with file times
+- [x] F2. Add the three meal-suggestion examples to the chat test set as permanent cases **Done.** All three in, 51/51 on the live path and 42/51 on the old one.
+- [x] F3. Fix the blank space where a plan exercise has no demonstration clip **Done.**
+- [x] F4. Fix the stale line in the build spec about there being no video player **Done.** It claimed there was no player; there is, and it works.
+- [x] F5. Full close-out: build log, article log, decision log, build spec, beta checklist, Open Actionables, final summary with file times **Done.**
 
 ### Waiting on her, not blocking anything
 
