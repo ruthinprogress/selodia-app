@@ -337,11 +337,30 @@ A GP, nurse or menopause specialist reviews the boundaries, the red flags and th
 
 **Timing: before public launch, not before wave zero or wave one.** Both beta waves are small, known and consented, and layer 5 — Ruth reading a weekly sample — is stronger at that scale than any review of rules could be.
 
-### Status
+### Status (updated 2026-09-28, evening)
 
-**Nothing in this section is built.** Layer 1 is four lines of prompt. Layer 2 is a list and a matcher. Layer 3 is a test file. **Ruth's sign-off on the red-flag list and the test set is required before any of it goes live.**
+**Ruth approved the red-flag list and the 12-case test set the same evening, as PROVISIONAL, pending clinical advisor review before public launch.** Layer 2 was then built and **switched off**.
 
-**What exists today:** `NOT_A_DOCTOR` in `app/lib/reply-prompt.ts`, which is a boundary rather than a rule set, and the §2 safety machine, which is unaffected by everything here.
+| Layer | State |
+| --- | --- |
+| **1. Prompt boundaries** | Not built. Four lines to add |
+| **2. Red flags** | **Built, `RED_FLAGS_LIVE = false`** in `app/lib/red-flags.ts`. 18 flags: 6 for 999, 3 for 111, 9 for a GP |
+| **3. Health test set** | The 12 cases are written into `scripts/check-red-flags.mjs`. **Listed, not run** — each needs a live turn, and the output says so every time rather than letting a green tick imply otherwise |
+| **4. Sources on request** | Not built |
+| **5. Beta safeguards** | The feedback route exists. The weekly twenty-turn sample does not |
+| **6. Clinical advisor** | Not engaged. **This is what the flag is waiting for** |
+
+**A switch rather than an unmerged branch**, deliberately: the code is on main, covered by its checks, and cannot rot, and turning it on is one line. **Turning it on is a clinical decision, not an engineering one.**
+
+### What the build taught, which the design did not
+
+**The first version told somebody to call an ambulance for asking a question.** *"Is chest pain always serious?"* matched, because the guard against abstract questions was a list of question openings — "is it", "what causes", "can you get" — and that sentence begins with none of them.
+
+**A prefix list is the wrong shape for this.** The ways to ask a question are unbounded; the ways to report something about yourself are not. Every real report contains a first-person reference and a question in the abstract contains none. **One rule instead of twenty**, and it does not need extending each time somebody phrases a question a new way.
+
+**This is the allergy gate's lesson at one remove**, and worth naming as such: a MATCH is not a REPORT, exactly as a MATCH was not a SUGGESTION. Both failures come from a filter that can find a word and cannot tell who is being talked about.
+
+**What exists today besides this:** `NOT_A_DOCTOR` in `app/lib/reply-prompt.ts`, which is a boundary rather than a rule set, and the §2 safety machine, which is unaffected by everything here and has always been on.
 
 ## 11. "Worth raising with a doctor" (added 2026-09-28)
 
