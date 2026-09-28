@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { Allergy } from './allergies';
-import { normaliseAllergen } from './allergies';
+import { filtersFood, normaliseAllergen } from './allergies';
 
 // THE FILTER GATE. Build item 42, part (c) — the half that is a safety mechanism
 // rather than awareness of one.
@@ -93,7 +93,10 @@ async function modelCheck(
       'only what is named: pad thai conventionally contains peanuts, carbonara contains egg ' +
       'and pork, pesto contains pine nuts and hard cheese. Judge only food the message ' +
       'PROPOSES, RECOMMENDS OR OFFERS. Food the person is described as having already eaten ' +
-      'is not a suggestion and must never be flagged.',
+      'is not a suggestion and must never be flagged. NEITHER IS TALKING ABOUT THE ' +
+      'RESTRICTION ITSELF: a message that answers a question about an allergy, explains a ' +
+      'reaction, or names the allergen while discussing it is not suggesting anything, ' +
+      'however many times the word appears. Naming is not proposing.',
     tools: [
       {
         name: 'verdict',
@@ -147,22 +150,49 @@ export async function runAllergyGate(
   allergies: Allergy[],
   suggestsFood: boolean
 ): Promise<GateVerdict> {
-  // The short circuit that makes this free for almost everybody.
-  if (allergies.length === 0) return { safe: true };
+  // ONLY WHAT CAN BE EATEN (2026-09-28). This gate's entire job is filtering food
+  // suggestions, so an allergy that does not arrive through food has no business
+  // arming it. Nickel in jewellery is not a dietary exclusion; hay fever is not a
+  // dietary exclusion. Both were in this list, and the nickel one blocked two
+  // plain questions about nickel within a minute of being recorded.
+  const edible = allergies.filter(filtersFood);
 
-  // Layer 3 runs whatever the model said about itself, because the self-report is
-  // the model's own claim and a determined jailbreak would set it false.
-  const literal = deterministicHit(replyText, allergies);
-  if (literal) {
+  // The short circuit that makes this free for almost everybody.
+  if (edible.length === 0) return { safe: true };
+
+  // LAYER 3 STILL RUNS ON EVERY REPLY AND STILL TRUSTS NOTHING. What changed on
+  // 2026-09-28 is what a hit MEANS.
+  //
+  // It used to block outright, on the reasoning that the model's self-report is
+  // the model's own claim and a jailbreak would set suggestsFood false. That
+  // reasoning is right about self-reports and wrong about what a match proves: it
+  // treats "this reply MENTIONS the allergen" as "this reply SUGGESTS it", and
+  // those come apart completely on the one subject where it matters most.
+  //
+  // Any true answer to "is a nickel reaction common?" contains the word nickel.
+  // So every true answer was replaced by "what I had in mind doesn't work with
+  // your nickel" - twice, to two different questions. The gate guaranteed that
+  // the single topic she could get no answer about was her own allergy.
+  //
+  // So a hit on a reply the model did NOT flag as suggesting food is now
+  // ADJUDICATED rather than blocked: layer 4 decides. A jailbreak setting the
+  // flag false gets judged instead of waved through, and a genuine answer about
+  // an allergen gets a correct verdict. The cost is one cheap call on a rare turn.
+  const literal = deterministicHit(replyText, edible);
+  if (literal && suggestsFood) {
     console.log(`ALLERGY GATE: blocked on a literal match for "${literal}"`);
     return { safe: false, allergen: literal, layer: 'deterministic' };
   }
 
-  // Layer 4 is the one with a cost, so it is the one that is gated.
-  if (!suggestsFood) return { safe: true };
+  // Layer 4 runs when the model says this suggests food, or when layer 3 saw an
+  // allergen named in a reply that claims not to.
+  if (!suggestsFood && !literal) return { safe: true };
+  if (literal) {
+    console.log(`ALLERGY GATE: "${literal}" named without a food suggestion, asking layer 4`);
+  }
 
   try {
-    const hidden = await modelCheck(anthropic, replyText, allergies.map((a) => a.name));
+    const hidden = await modelCheck(anthropic, replyText, edible.map((a) => a.name));
     if (hidden) {
       console.log(`ALLERGY GATE: blocked on a composite-dish match for "${hidden}"`);
       return { safe: false, allergen: hidden, layer: 'model' };

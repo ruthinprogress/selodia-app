@@ -18,6 +18,9 @@ import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 
 import { turnIsOrdinary, writeReplyAfterSaves } from '../app/lib/chat-path.ts';
+import { deterministicHit } from '../app/lib/allergy-gate.ts';
+import { buildAllergyPrompt, filtersFood } from '../app/lib/allergies.ts';
+import { applyRedirect } from '../app/lib/pending-save.ts';
 import { SAFETY_PROMPT_BLOCK } from '../app/lib/safety-classification.ts';
 
 const ROOT = 'C:/Users/ruthi/unflump-app';
@@ -171,6 +174,126 @@ for (const [name, turn, expected] of GUARD_CASES) {
 }
 if (guardFailed > 0) {
   console.error(`\n  ${guardFailed} guard check(s) failed. Nothing else was run.\n`);
+  process.exit(1);
+}
+
+// ── THE NICKEL FAILURES, 28 SEPTEMBER ───────────────────────────────────────
+//
+// Three of them in one conversation, all from the same root: the app treated a
+// CONTACT allergy as a food restriction, and then treated a reply that MENTIONED
+// the allergen as a reply that SUGGESTED it.
+//
+//   a) "Is it a common reaction?" and "Can I get rid of a nickel sensitivity?"
+//      both got "Let me think again - what I had in mind doesn't work with your
+//      nickel." Every true answer to a question about nickel contains the word
+//      nickel, so every true answer was blocked.
+//   b) A rash from a necklace was recorded as a dietary exclusion.
+//   c) "Yes, perhaps under skincare and allergies" filed it in Insights as a
+//      one-off symptom.
+//
+// All pure, so they cost nothing and run before anything else.
+
+const NICKEL = { name: 'nickel', disclosed_at: '2026-09-28', kind: 'contact' };
+const HAYFEVER = { name: 'seasonal allergy (hay fever, summer)', disclosed_at: '2026-09-20', kind: 'environmental' };
+const PEANUTS = { name: 'peanuts', disclosed_at: '2026-01-01', kind: 'food' };
+
+const ALLERGY_CASES = [
+  // (b) Which allergies may filter food at all.
+  ['a contact allergy does not filter food', () => filtersFood(NICKEL) === false],
+  ['an environmental allergy does not filter food', () => filtersFood(HAYFEVER) === false],
+  ['a food allergy does filter food', () => filtersFood(PEANUTS) === true],
+  [
+    'an unknown kind DOES filter food, because unknown is the conservative way round',
+    () => filtersFood({ name: 'x', disclosed_at: '', kind: 'other' }) === true,
+  ],
+
+  // (a) Layer 3 still catches a real one. The gate is not being weakened here.
+  [
+    'the literal matcher still catches a food allergen it is given',
+    () => deterministicHit('How about a peanut satay for dinner?', [PEANUTS]) === 'peanuts',
+  ],
+  [
+    'and still does not fire on a word that merely contains it',
+    () => deterministicHit('Your nutrition looks steady this week.', [PEANUTS]) === null,
+  ],
+  // THE ONE THAT BROKE. The gate now only ever sees edible allergies, so the
+  // answer to a question about nickel is not even a candidate for blocking.
+  [
+    'an answer about nickel is not matched, because nickel never reaches the gate',
+    () => {
+      const edible = [NICKEL, HAYFEVER].filter(filtersFood);
+      return deterministicHit(
+        'A rash from nickel-containing jewellery is common and usually settles once it is off.',
+        edible
+      ) === null;
+    },
+  ],
+
+  // (b) The prompt tells the model about both, differently.
+  [
+    'the prompt keeps a contact allergy out of the dietary list',
+    () => {
+      const text = buildAllergyPrompt([NICKEL, PEANUTS]);
+      const dietary = text.slice(0, text.indexOf('REACTIONS THAT ARE NOT ABOUT FOOD'));
+      return dietary.includes('peanuts') && !dietary.includes('nickel');
+    },
+  ],
+  [
+    'and still says the contact one exists',
+    () => buildAllergyPrompt([NICKEL, PEANUTS]).includes('nickel'),
+  ],
+  [
+    'a person with only contact allergies gets no dietary list at all',
+    () => !buildAllergyPrompt([NICKEL, HAYFEVER]).includes('not negotiable'),
+  ],
+
+  // (c) A yes that names a destination.
+  [
+    'a yes naming skincare and allergies files it in Me, not Insights',
+    () => {
+      const proposal = { type: 'symptom', title: 'Nickel rash on neck', content: { summary: 'Rash from a necklace' } };
+      const out = applyRedirect(proposal, { type: 'me', section: 'Skincare and allergies' });
+      return out.type === 'me' && out.content.section === 'Skincare and allergies';
+    },
+  ],
+  [
+    'and keeps her own words as the detail',
+    () => {
+      const proposal = { type: 'symptom', title: 'Nickel rash on neck', content: { summary: 'Rash from a necklace' } };
+      return applyRedirect(proposal, { type: 'me' }).content.detail === 'Rash from a necklace';
+    },
+  ],
+  [
+    'a plain yes changes nothing',
+    () => {
+      const proposal = { type: 'symptom', title: 'x', content: { summary: 'y' } };
+      return applyRedirect(proposal, undefined) === proposal;
+    },
+  ],
+  [
+    'a redirect nobody recognises changes nothing',
+    () => {
+      const proposal = { type: 'symptom', title: 'x', content: { summary: 'y' } };
+      return applyRedirect(proposal, { type: 'somewhere else' }).type === 'symptom';
+    },
+  ],
+];
+
+let allergyFailed = 0;
+console.log('\n## The nickel failures\n');
+for (const [name, test] of ALLERGY_CASES) {
+  let ok = false;
+  try {
+    ok = test() === true;
+  } catch (err) {
+    ok = false;
+    console.log(`        (threw: ${err.message})`);
+  }
+  if (!ok) allergyFailed += 1;
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}`);
+}
+if (allergyFailed > 0) {
+  console.error(`\n  ${allergyFailed} allergy check(s) failed. Nothing else was run.\n`);
   process.exit(1);
 }
 

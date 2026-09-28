@@ -270,6 +270,55 @@ export async function clearPendingSave(supabase: SupabaseClient, userId: string)
  * failed, so the app never confirms a save that did not happen (the
  * storage-honesty rule).
  */
+/**
+ * Apply what she said on the yes-turn to the offer already waiting.
+ *
+ * WHY THE REDIRECT EXISTS. The proposal's type is decided when the OFFER is made,
+ * and the answer can carry information the offer did not have. "Yes, perhaps
+ * under skincare and allergies" is a yes AND an instruction about where it goes,
+ * and that instruction used to be thrown away: her nickel sensitivity was filed
+ * as a one-off symptom in Insights because that is what had been proposed
+ * fifteen minutes earlier.
+ *
+ * A symptom is a single observation on a date. An ongoing sensitivity is a
+ * standing fact about a body. Me is where the standing things live.
+ *
+ * NARROW ON PURPOSE. It only ever edits a proposal that already exists, so it
+ * can never create a save out of a redirect, and anything it does not recognise
+ * leaves the proposal exactly as it was.
+ */
+export function applyRedirect(
+  proposal: ProposedSave,
+  redirect: { type?: unknown; section?: unknown } | null | undefined
+): ProposedSave {
+  if (!redirect) return proposal;
+
+  const type = coerceSaveType(redirect.type) ?? proposal.type;
+  const section =
+    typeof redirect.section === 'string' && redirect.section.trim()
+      ? redirect.section.trim().slice(0, MAX_TITLE)
+      : null;
+
+  if (type === proposal.type && !section) return proposal;
+
+  // A Me card's content has a shape the tab reads - section, why, status,
+  // detail. Moving a symptom there without one would file it into no section at
+  // all, so the section she named becomes the section, and what she originally
+  // said stays as the detail.
+  const content: Record<string, unknown> = { ...proposal.content };
+  if (type === 'me') {
+    if (section) content.section = section;
+    if (typeof content.section !== 'string' || !content.section) content.section = 'Sensitivities';
+    if (content.detail === undefined && typeof content.summary === 'string') {
+      content.detail = content.summary;
+    }
+  } else if (section) {
+    content.section = section;
+  }
+
+  return { ...proposal, type, content };
+}
+
 export async function commitSave(
   supabase: SupabaseClient,
   userId: string,

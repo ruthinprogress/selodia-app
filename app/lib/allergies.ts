@@ -27,7 +27,30 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // softening over time. A function to remove one would be the first step toward
 // softening it by accident.
 
-export type Allergy = { name: string; disclosed_at: string };
+/**
+ * HOW THE ALLERGEN REACHES THEM, which decides what gets filtered.
+ *
+ * Added 2026-09-28 after a contact allergy to nickel was treated as a food
+ * restriction and blocked two plain questions about nickel. Only what can be
+ * EATEN has any business gating a food suggestion.
+ *
+ * A CLOSED LIST, unlike the allergen name. This file is emphatic that the name
+ * must never be a fixed vocabulary, because nobody can finish writing the list of
+ * things a person can react to. The kind is not the person's word for their own
+ * body - it is a routing decision with four answers that code has to switch on.
+ *
+ * 'other' is the honest unknown and is treated AS food, because in a food app an
+ * allergy mentioned with no other context is most often one, and that is the
+ * conservative way round for a filter.
+ */
+export type AllergyKind = 'food' | 'contact' | 'environmental' | 'other';
+
+export type Allergy = { name: string; disclosed_at: string; kind: AllergyKind };
+
+/** The ones that can be eaten, and so the only ones a food filter may act on. */
+export function filtersFood(a: Allergy): boolean {
+  return a.kind === 'food' || a.kind === 'other';
+}
 
 // Case and whitespace only. Deliberately NOT a closed list of allergens or a
 // spelling correction: principle 13 rules out a fixed vocabulary for open-ended
@@ -44,16 +67,27 @@ export function normaliseAllergen(raw: string): string {
 export async function recordAllergies(
   supabase: SupabaseClient,
   userId: string,
-  names: string[],
+  disclosed: { name: string; kind?: string }[],
   rawInput: string
 ): Promise<string[]> {
-  const cleaned = Array.from(
-    new Set(names.map(normaliseAllergen).filter((n) => n.length > 0 && n.length <= 80))
-  );
+  const byName = new Map<string, AllergyKind>();
+  for (const d of disclosed) {
+    const name = normaliseAllergen(d.name ?? '');
+    if (!name || name.length > 80) continue;
+    // ANYTHING UNRECOGNISED BECOMES 'other', WHICH FILTERS FOOD. A kind the model
+    // invented must not quietly switch the food filter off - 'other' is the
+    // honest unknown and is treated as food downstream.
+    const kind: AllergyKind =
+      d.kind === 'contact' || d.kind === 'environmental' || d.kind === 'food'
+        ? d.kind
+        : 'other';
+    if (!byName.has(name)) byName.set(name, kind);
+  }
+  const cleaned = [...byName.keys()];
   if (cleaned.length === 0) return [];
 
   const { error } = await supabase.from('allergies').upsert(
-    cleaned.map((name) => ({ user_id: userId, name, raw_input: rawInput })),
+    cleaned.map((name) => ({ user_id: userId, name, kind: byName.get(name), raw_input: rawInput })),
     { onConflict: 'user_id,name', ignoreDuplicates: true }
   );
   if (error) {
@@ -67,7 +101,7 @@ export async function loadAllergies(supabase: SupabaseClient): Promise<Allergy[]
   // RLS scopes this to the signed-in person, as everywhere else.
   const { data, error } = await supabase
     .from('allergies')
-    .select('name, disclosed_at')
+    .select('name, disclosed_at, kind')
     .order('disclosed_at', { ascending: true });
   if (error) return [];
   return (data ?? []) as Allergy[];
@@ -83,7 +117,30 @@ export async function loadAllergies(supabase: SupabaseClient): Promise<Allergy[]
 // exactly the negotiation this must not have.
 export function buildAllergyPrompt(allergies: Allergy[]): string {
   if (allergies.length === 0) return '';
-  const list = allergies.map((a) => a.name).join(', ');
-  return `\n\nALLERGIES AND DIETARY RESTRICTIONS THEY HAVE TOLD YOU ABOUT: ${list}.
-These are not preferences and are not negotiable. Never suggest, recommend or include any of them in anything you propose, in any quantity, however it is prepared, and never as an ingredient in something else. Do not ask whether it still applies, do not offer a version "just this once", and do not soften over time. If they mention eating one themselves, that is their business and you simply do not comment on it - this constrains what YOU offer, never what they report.`;
+
+  const edible = allergies.filter(filtersFood);
+  const other = allergies.filter((a) => !filtersFood(a));
+
+  const blocks: string[] = [];
+
+  if (edible.length > 0) {
+    blocks.push(`ALLERGIES AND DIETARY RESTRICTIONS THEY HAVE TOLD YOU ABOUT: ${edible
+      .map((a) => a.name)
+      .join(', ')}.
+These are not preferences and are not negotiable. Never suggest, recommend or include any of them in anything you propose, in any quantity, however it is prepared, and never as an ingredient in something else. Do not ask whether it still applies, do not offer a version "just this once", and do not soften over time. If they mention eating one themselves, that is their business and you simply do not comment on it - this constrains what YOU offer, never what they report.`);
+  }
+
+  // SAID SEPARATELY, AND SAID AT ALL. A contact or environmental allergy is not
+  // a food restriction and must not read as one - but it is still something they
+  // have told the app about their body, and a reply that had never heard of it
+  // would be its own failure. What it constrains is different, so it is written
+  // as a different instruction rather than folded into the list above.
+  if (other.length > 0) {
+    blocks.push(`REACTIONS THAT ARE NOT ABOUT FOOD, which they have also told you about: ${other
+      .map((a) => `${a.name} (${a.kind})`)
+      .join(', ')}.
+These do not restrict anything they eat, so never treat them as a dietary exclusion. They DO constrain what you suggest they put on their skin, wear or use, where that is relevant. And they are ordinary subjects of conversation: if they ask about one, answer the question plainly, the way you would any other question about their own body.`);
+  }
+
+  return `\n\n${blocks.join('\n\n')}`;
 }

@@ -79,6 +79,7 @@ import {
 import {
   clearPendingSave,
   coerceProposal,
+  applyRedirect,
   commitSave,
   offerQuestion,
   type SaveType,
@@ -1174,9 +1175,40 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // never be filed as a soft preference.
     allergiesDisclosed: {
       type: 'array',
-      items: { type: 'string' },
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: "The allergen itself, in their words, e.g. \"peanuts\", \"nickel\"." },
+          kind: {
+            type: 'string',
+            enum: ['food', 'contact', 'environmental', 'other'],
+            description:
+              'HOW IT REACHES THEM, which decides what the app filters. "food" is eaten or drunk - peanuts, shellfish, gluten for a coeliac. "contact" is touched - nickel in jewellery, latex, a fragrance in a cream. "environmental" is breathed - pollen, dust, animal dander. "other" when you genuinely cannot tell. A contact allergy is NOT a dietary restriction and must never be recorded as food: somebody who reacts to a nickel necklace has no food restriction at all.',
+          },
+        },
+        required: ['name', 'kind'],
+      },
       description:
-        'Only when the person states an ALLERGY or a medical dietary restriction (coeliac, an intolerance that makes them ill), in any context including in passing. The allergen itself in their words, e.g. ["peanuts"]. NOT dislikes, NOT preferences, NOT things they are avoiding by choice or for a diet - those go to rememberCategory. When in doubt it is a preference, not an allergy.',
+        'Only when the person states an ALLERGY or a medical dietary restriction (coeliac, an intolerance that makes them ill), in any context including in passing. NOT dislikes, NOT preferences, NOT things they are avoiding by choice or for a diet - those go to rememberCategory. When in doubt it is a preference, not an allergy.',
+    },
+    saveRedirect: {
+      type: 'object',
+      description:
+        'ONLY on a turn where saveAnswer is "yes" AND they said where it should go ("yes, under skincare", "keep that in my Me tab", "as an ongoing thing rather than a one-off"). Leave unset for a plain yes. It re-aims the offer that is already waiting and can never create a save on its own.',
+      properties: {
+        type: {
+          type: 'string',
+          enum: ['symptom', 'insight', 'note', 'me'],
+          description:
+            'Where it now belongs. Use "me" whenever what they describe is a STANDING FACT about their body or how they live rather than a single observation - an ongoing sensitivity, an allergy, a routine, a supplement. A symptom is one observation on one day; a sensitivity is true next year too. Asking for it under a heading like "skincare and allergies" is asking for Me.',
+        },
+        section: {
+          type: 'string',
+          description:
+            'Only for type "me": the section, in one or two words, taken from THEIR words where they gave any - "Skincare and allergies" becomes "Skincare and allergies". Sections come into being by the first card arriving in them, so a new one is fine.',
+        },
+      },
+      required: ['type'],
     },
     rememberCategory: {
       type: 'string',
@@ -1606,10 +1638,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     discussTopicEnded?: boolean;
     navigationTarget?: string;
     endVoiceSession?: boolean;
-    allergiesDisclosed?: string[];
+    allergiesDisclosed?: ({ name: string; kind?: string } | string)[];
     proposedSave?: unknown;
     meUpdate?: { title?: unknown; status?: unknown; reason?: unknown };
     saveAnswer?: string;
+    saveRedirect?: { type?: unknown; section?: unknown };
     noteText?: string;
     workoutPlan?: string;
     workoutSkipped?: string[];
@@ -2413,7 +2446,15 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // disclosure a small ceremony rather than something said in passing. Idempotent
   // on (user_id, name), so a repeat mention is silently the same row.
   if (Array.isArray(result.allergiesDisclosed) && result.allergiesDisclosed.length > 0) {
-    await recordAllergies(supabase, user.id, result.allergiesDisclosed, message);
+    // TOLERANT OF THE OLD SHAPE. This field was an array of strings until
+    // 2026-09-28 and a turn already in flight during the deploy can still send
+    // one. A bare string becomes a nameless-kind entry, which recordAllergies
+    // resolves to 'other' - and 'other' filters food, so the old shape keeps
+    // exactly the behaviour it had.
+    const disclosed = result.allergiesDisclosed.map((a) =>
+      typeof a === 'string' ? { name: a } : a
+    );
+    await recordAllergies(supabase, user.id, disclosed, message);
   }
 
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
@@ -2493,7 +2534,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   let offeredType: SaveType = 'note';
   if (pendingSave.proposal && (result.saveAnswer === 'yes' || result.saveAnswer === 'no')) {
     if (result.saveAnswer === 'yes') {
-      const kept = await commitSave(supabase, user.id, pendingSave.proposal);
+      // A YES CAN CARRY AN INSTRUCTION, and it used to be discarded. See
+      // applyRedirect: "yes, perhaps under skincare and allergies" is an answer
+      // and a destination, and the destination arrived after the type was fixed.
+      const destined = applyRedirect(pendingSave.proposal, result.saveRedirect);
+      const kept = await commitSave(supabase, user.id, destined);
       saveNote = saveAppliedNote(kept, true);
       if (kept) savedAlmanac = kept;
     }
