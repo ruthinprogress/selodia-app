@@ -758,9 +758,9 @@ loses nothing.
 
 ### Section 1 — brand rule and evidence
 
-- [ ] 1a. Add the new BetterMe evidence to the pricing/positioning research and the article capture: the second email, the "as featured in" change, the goal contradiction, the body-fat labels
-- [ ] 1b. Record "Premium means restraint" as a standing brand rule in the decision patterns and the build spec
-- [ ] 1c. Check the landing page, onboarding and any existing emails against those rules and list what breaks them
+- [x] 1a. Add the new BetterMe evidence to the pricing/positioning research and the article capture: the second email, the "as featured in" change, the goal contradiction, the body-fat labels **Done.** Two emails, the logo swap, and the two bodies labelled identically and drawn differently.
+- [x] 1b. Record "Premium means restraint" as a standing brand rule in the decision patterns and the build spec **Done.** In DECISION_PATTERNS.md with the evidence, and in the spec as six numbered rules with a test.
+- [x] 1c. Check the landing page, onboarding and any existing emails against those rules and list what breaks them **Done. Nothing breaks the rules today.** Six checks, all clean; six urgency hits all false positives. Two things named that are not breaches: the goal is stored and then ignored, and the password-reset email still does not work.
 
 ### Still in flight from the earlier prompt
 

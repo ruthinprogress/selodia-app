@@ -589,6 +589,25 @@ Same plan, same account, seventy minutes apart. The only thing that changed is t
 
 **She asked for calisthenics. Three separate screens gave her a weight to lose.**
 
+### The second email, an hour later
+
+Two emails, both unprompted, both after she abandoned the checkout.
+
+- **18:15** — subject *"Verify your email address"*, sender displayed as "Calisthenic…". Inside: *"Your BetterMe goal: lose weight"*, and an offer of "special offers" and "the most up-to-date information on achieving your **perfect body**".
+- **19:15, exactly an hour later** — subject *"Update: price drop for your program"*, carrying the **71% off**, illustrated with a **loose-jeans weight-loss image**.
+
+**She had told them her goal was to maintain.** The checkout screen said so in its own words — "Maintain weight and get fit". The email that followed it sold weight loss with a picture of loose jeans.
+
+**And the price drop arrived by email rather than being found.** It is not a sale she stumbled on. It was sent to her, an hour after she did not buy.
+
+### The "as featured in" logos changed between visits
+
+Healthline, Women's Health and Good Housekeeping on one page. USA Today, Forbes, WSJ, New York Post and Mashable on another, the same evening. **Two different sets of publications, presented the same way** — which tells you the logos are a slot to be filled rather than a claim being made.
+
+### The bodies are labelled identically and drawn differently
+
+The checkout's *Now* and *Your Goal* illustrations both read **"Body fat: Normal"**. The only label that changes is the calisthenics level, Intermediate to Advanced. **But the goal body has visible abs and the current one does not.** The numbers say nothing changed. The picture says everything did. The picture is the argument.
+
 ### The guarantee, in their own words
 
 *(shots 17, 42)* — not a user's account: **"We're even ready to return your money if you can demonstrate that you followed the plan but didn't see any results."** BetterMe International Limited, Office No. 101, "Afentiko Anna" Building, Paphos, Cyprus.

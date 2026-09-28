@@ -292,3 +292,23 @@ It was found by a security advisor run while looking up something else entirely,
 **A gap in a timeline is not automatically an opportunity, and the difference is where the work sits inside it.** Streaming the spoken reply was estimated at about 1.9 seconds, from a measurement: the saves confirm a median 1.9s before the reply writer emits its last token. The estimate was honest and it was wrong. It measured almost nothing — 124ms — because that 1.9 seconds is not the model producing text steadily; it is mostly the model producing nothing yet. There was no early text to speak because none had been written.
 
 The fix was to cut at a clause rather than a sentence, which took the measured benefit to 680ms median and 2.5s at best. But the lesson is the estimate, not the fix. **A duration between two events tells you how long something took, not how its work is distributed inside it**, and a plan that depends on the distribution needs the distribution measured rather than inferred from the total. The tell was available and unasked: nobody had measured when the first sentence appeared, only when the last one did. (28 September 2026.)
+
+**Premium means restraint, and a day inside a competitor's funnel is what made it a rule.** BetterMe's checkout offered 61% off at six in the evening and 71% off at seven, same plan, same account, because the sale had not closed. A promo code carried the user's first name. A countdown ran throughout. The quiz she completed asking for *calisthenics* returned "your goal: reach 52 kg" on a screen whose own previous page had told her her BMI was normal, then "lose weight" in the follow-up email, then "maintain weight" with a target six kilos below her actual weight at checkout. The "as featured in" logos were one set of publications on one page and a different set on another.
+
+None of that is incompetence. Every piece of it works, which is why it is everywhere, and it is precisely why the rule has to be written down before there is any commercial pressure to break it. **A discount that deepens because somebody hesitated is not a discount. A goal the user did not set is not personalisation. A countdown that resets is not urgency.**
+
+THE RULE, and it is absolute rather than a preference:
+- **No escalating or personalised discounts.** The price is the price. The only reduced price is the founding rate: real, capped at 100, honoured for good.
+- **No fake urgency.** No countdown timers, no "offer ends", no scarcity claims. A body-literacy app has no reason to be urgent, and manufacturing a reason is the tell.
+- **Email is what the user needs or asked for.** At most one gentle follow-up to somebody who started signing up and stopped, sent once, a day later, no discount and no pressure. No marketing email without explicit opt-in. One-tap unsubscribe that works.
+- **No "as featured in" unless it is true, specific and linked.**
+- **No body images in marketing or onboarding.** Any kind.
+- **Goals are the user's words and are never rewritten into weight loss.**
+
+The test to apply to anything new: *would this still be here if it did not increase conversion?* If the honest answer is no, it is a dark pattern wearing a design. (28 September 2026.)
+
+**Goals are welcome, shame is not.** The product has drifted into vagueness about goals, and the drift came from a good instinct: Selodía exists against the culture of making women smaller, so naming a fat-loss goal felt like joining it. That is the wrong conclusion and it makes the app less useful to the person it is for.
+
+A woman who says she wants to lose body fat should be helped to do it precisely - real targets, real numbers, the reasoning shown. **What Selodía refuses is everything that comes after the goal**: the before-and-after, the target nobody asked for, the progress bar, the implication that she was a problem to be solved.
+
+The distinction is between a goal and a verdict. **Refusing to name a goal is not kindness; it is the app being unable to help**, and the user notices, because she came with something specific in mind and left with a maintenance target. (28 September 2026, and the evidence is that onboarding sets no focus state at all - see the audit.)

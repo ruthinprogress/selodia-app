@@ -3345,6 +3345,21 @@ Added 2026-09-27. Not a beta blocker, and on this list because it was found the 
 - [x] **Both written logs verified and backfilled.** The build log was missing sessions 45 to 53; the article log was missing 25 to 27 September. `scripts/closeout_check.py` now blocks a close-out whose session is not in the build log, whose day has no article entry, or whose workbook has no rows.
 - [x] **WORKFLOW's claim that the build log is written automatically, corrected.** It never was.
 
+### Premium means restraint (standing brand rule, Ruth, 2026-09-28)
+
+**Absolute, not a preference.** Written after a day spent inside BetterMe's funnel, with 42 screenshots filed in *Marketing Articles and Copy*. See `mobile/DECISION_PATTERNS.md` for what was observed and why it became a rule.
+
+1. **No escalating or personalised discounts.** The price is the price. The only reduced price is the **founding rate** — real, capped at 100, honoured for good.
+2. **No fake urgency.** No countdown timers, no "offer ends", no scarcity claims.
+3. **Email is what the user needs or asked for.** At most **one** gentle follow-up to somebody who began signing up and stopped — once, a day later, no discount, no pressure ("You started setting up Selodía; here's where you left off"). **No marketing email without explicit opt-in.** One-tap unsubscribe that works.
+4. **No "as featured in"** unless it is true, specific and linked.
+5. **No body images of any kind** in marketing or onboarding.
+6. **Goals are the user's words**, never rewritten into weight loss.
+
+**The test for anything new:** would this still be here if it did not increase conversion? If not, it is a dark pattern wearing a design.
+
+**Note on principle 16.** The Exercise Animatic clips are **animations of musculature, not photographs of bodies**, so they are consistent with rule 5 and with principle 16. Recorded here because the two could otherwise be read as being in conflict.
+
 ## The shape of the beta, settled 2026-09-28
 
 Her decision, and the reason the rest of this list can now be read as two lists rather than one.
