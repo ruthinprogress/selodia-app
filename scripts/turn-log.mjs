@@ -35,6 +35,22 @@ const admin = createClient(E.NEXT_PUBLIC_SUPABASE_URL, E.SUPABASE_SERVICE_ROLE_K
 
 const ms = (n) => (n == null ? '    -' : `${String(Math.round(n)).padStart(5)}`);
 
+// PHASES IN TIME ORDER, NOT IN KEY ORDER.
+//
+// The marks are stored as jsonb, and Postgres does NOT preserve the order the
+// keys went in - it reorders them by length and then bytewise. The first version
+// of this differenced them in whatever order they came back and printed phases
+// of MINUS three and a half seconds, which is how the bug announced itself.
+//
+// Every mark is elapsed-since-start, so sorting by value recovers the true
+// sequence whatever the storage did with it.
+function phases(marks) {
+  return Object.entries(marks ?? {})
+    .filter(([name]) => name !== 'total')
+    .sort((a, b) => a[1] - b[1])
+    .map(([name, at], i, all) => [name, at - (i === 0 ? 0 : all[i - 1][1])]);
+}
+
 if (TURN) {
   // ONE TURN, EVERYTHING ABOUT IT. Three tables, because the three kinds of
   // record were built at different times for different reasons and joining them
@@ -49,11 +65,8 @@ if (TURN) {
   for (const d of diag ?? []) {
     if (d.kind === 'timing') {
       console.log(`  ${d.created_at.slice(11, 19)}  ${d.label}  ${d.total_ms}ms`);
-      let prev = 0;
-      for (const [name, at] of Object.entries(d.detail ?? {})) {
-        if (name === 'total') continue;
-        console.log(`      ${name.padEnd(24)} +${at - prev}ms`);
-        prev = at;
+      for (const [name, took] of phases(d.detail)) {
+        console.log(`      ${name.padEnd(24)} +${took}ms`);
       }
     } else {
       console.log(`  ${d.created_at.slice(11, 19)}  ERROR  ${d.label}`);
@@ -118,17 +131,12 @@ if (TURN) {
       // WHERE THE TIME WENT, averaged over the phases every turn records. This
       // is the question Vercel's log could answer for twenty minutes and then
       // could not.
-      const phases = {};
+      const spent = {};
       for (const t of timings) {
-        let prev = 0;
-        for (const [name, at] of Object.entries(t.detail ?? {})) {
-          if (name === 'total') continue;
-          (phases[name] ??= []).push(at - prev);
-          prev = at;
-        }
+        for (const [name, took] of phases(t.detail)) (spent[name] ??= []).push(took);
       }
       console.log('\n  WHERE THE TIME GOES, median per phase\n');
-      const rows = Object.entries(phases)
+      const rows = Object.entries(spent)
         .map(([name, xs]) => [name, [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)], xs.length])
         .sort((a, b) => b[1] - a[1]);
       for (const [name, med, n] of rows) {
