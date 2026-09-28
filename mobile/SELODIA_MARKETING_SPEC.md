@@ -30,6 +30,9 @@ She already owns a smart scale. She already tracks. She is not new to any of thi
 
 ## 3. What makes it different
 
+**Positioning, recorded 2026-09-28.** Selodía is **body literacy**: learning to understand and manage symptoms by noticing what works. **GP and medication are a secondary layer**, not the destination. It is **not medical-led**, and that is the line against the nearest comparable product, which is. Much of this audience wants to try non-medical approaches first, and the app is built for that choice rather than around it. *(Internal note: the comparison behind this is in Drive under Competitor analysis, and is never used publicly — see section 10.)*
+
+
 **Body literacy, not body fixing.** Most health apps teach people to control their bodies. Selodía teaches people to understand them. Every feature is scaffolding for one arc: confusion, then curiosity, then understanding, then confidence, then autonomy.
 
 **No gamification, at all.** No streaks, no scores, no badges. Not softened, not tastefully redesigned. Absent. An app that hands out points for logging is optimising for its own engagement, and this one is built to be outgrown.
@@ -219,7 +222,25 @@ The negative space matters as much as the rest. Most of these are the difference
 
 ---
 
-## 10. Expert review programme
+## 10. Faceless by design, and no comparative marketing (added 2026-09-28)
+
+**Ruth is not the face of Selodía.** No founder-led copy, no photographs, no bylines, no personal story in marketing. This is a decision, not modesty, and it has a consequence that has to be met rather than assumed.
+
+**What carries credibility instead.** Balance's is a named clinician founder — Dr Louise Newson, with ORCHA certification and Apple awards behind her. Selodía has chosen not to have a person at the front, so **the sources have to do that work**: a visible, curated list of real credible sources, citations wherever the app makes a claim, a short public sourcing policy, and honesty about what the evidence does and does not show. The rule and its current gaps are in `SAFETY_ARCHITECTURE.md` §10.
+
+**A named medical, fitness or physio reviewer is the right later addition**, once there is money for one. Not now. For funding applications, assessors will ask about clinical governance: **the answer is the sourcing policy now and a planned reviewer role later**, stated in those terms.
+
+**One distinction worth keeping straight.** Section 2 of this document says *"Ruth is the target user… her instinct about what feels wrong is evidence."* That remains true and does not conflict with this. **Being the target user is an internal design fact. Being the face is a public one.** The first stays; the second never happens.
+
+**No comparative marketing.** Selodía does not name, compare itself to, or position against another product in any public or customer-facing material. **Competitor analysis is internal only** and lives in Drive under *Competitor analysis*.
+
+**Two things that are not comparative marketing**, so the rule does not overreach:
+- **Describing what Selodía does**, including things others do not do, without naming them. "Log by talking, in your own words" is a description, not a comparison.
+- **A short factual market-landscape paragraph in a funding application.** Assessors expect it, and an application is not marketing.
+
+---
+
+## 11. Expert review programme
 
 Selodía's activity weighting system — which determines how each logged activity contributes to the six health dimensions in the Health Flower — has been built from peer-reviewed research but requires expert validation before public launch.
 

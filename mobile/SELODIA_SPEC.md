@@ -3345,6 +3345,26 @@ Added 2026-09-27. Not a beta blocker, and on this list because it was found the 
 - [x] **Both written logs verified and backfilled.** The build log was missing sessions 45 to 53; the article log was missing 25 to 27 September. `scripts/closeout_check.py` now blocks a close-out whose session is not in the build log, whose day has no article entry, or whose workbook has no rows.
 - [x] **WORKFLOW's claim that the build log is written automatically, corrected.** It never was.
 
+### Decisions from the competitor review, 2026-09-28
+
+Recorded from Ruth's Balance assessment and handoff. **Competitor analysis is internal only** — see the marketing spec.
+
+**Positioning: Selodía is body literacy, and it is not medical-led.** Learning to understand and manage symptoms by noticing what works. **GP and medication are a secondary layer**, because a large part of this audience wants to try non-medical approaches first. Balance is medical-led and that is the distinction to hold: *get informed, get treated* against *notice what works, then decide*.
+
+**No community feature. Do not build or spec one.** Ruth's decision, for two reasons that both stand on their own: she finds community exhausting, and a feature where users exchange medical details and advice carries moderation and safety obligations a one-person company cannot meet. **Checked 2026-09-28: nothing in this specification proposes one**, so this is a rule rather than a removal.
+
+**A claim needs a source.** The full rule, its ranking, and the four ways the current build contradicts it are in `SAFETY_ARCHITECTURE.md` §10. Not restated here.
+
+**"Worth raising with a doctor."** `SAFETY_ARCHITECTURE.md` §11.
+
+**Onboarding must not assume one situation.** A Balance reviewer with surgical or induced menopause reported that its flow did not reflect her. Selodía's life-stage question (proposed 2026-09-28, *Onboarding, menopause and price*) must therefore cover **surgical and induced menopause and early onset**, not only the natural transition, and every branch must be skippable. **This changes the proposed wording**, which currently offers regular / changed / stopped / not sure / rather not say — "stopped" alone does not distinguish a woman of 52 from a woman of 38 after surgery, and the difference matters to how the app should talk to her.
+
+**Chat-based logging is a core differentiator, so it must work every time.** Balance's tap-based journal has no free text, and its reviewers ask for one. That advantage is only real while the logging is reliable, which is why it sits inside the wave-zero gate rather than beside it.
+
+**Accessibility is a credential to state, which means it has to be true first.** Balance leads with subtitles, screen-reader and voice-control support. Before Selodía claims anything, the app has to be checked: screen reader, voice control, and subtitles on any video. **One known contradiction, already recorded in this document:** the cream-only theme means somebody using their phone in dark mode at night gets a cream screen, accepted deliberately as *"a real accessibility and comfort regression"*. **If accessibility becomes a stated credential, that trade has to be revisited rather than inherited.**
+
+**Health-summary reports are re-tested before wave zero.** Added to the gate below. Specifically: outlier data points skewing daily averages, profile fields that differ between report versions, and the same bar as everything else — logs correctly, interprets properly, no junk.
+
 ### Premium means restraint (standing brand rule, Ruth, 2026-09-28)
 
 **Absolute, not a preference.** Written after a day spent inside BetterMe's funnel, with 42 screenshots filed in *Marketing Articles and Copy*. See `mobile/DECISION_PATTERNS.md` for what was observed and why it became a rule.
@@ -3377,6 +3397,8 @@ Worth being precise about why it is the right gate, because it is easy to read a
 **The week has to be a real week**, not a test pass: ordinary days, the days she cannot be bothered, the day she logs three meals at once at eleven at night. A clean week that was carefully driven proves nothing.
 
 **What counts as failing it.** Any of (a), (b) or (c) happening once is a fault to fix and the week restarts from the fix, not from zero - the point is seven consecutive clean days, not perfection from a standing start. Two of the same fault after a fix means the fix was wrong.
+
+**One thing joins the gate from the competitor review (2026-09-28): the health-summary report is re-tested before wave zero.** It was pleasing and early. Re-check outlier data points skewing daily averages, profile fields that differ between report versions, and whether it meets the same bar as the rest — logs correctly, interprets properly, no junk.
 
 **What it does NOT gate.** Nothing in this is about polish, wording or empty states. Those belong to the refinement pass, which is a separate list.
 

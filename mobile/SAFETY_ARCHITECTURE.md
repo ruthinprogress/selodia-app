@@ -195,3 +195,37 @@ Keep the harness in sync with this table. When adding a tier, an escalation step
 **Status: a rule, not yet enforced.** Nothing in the chat prompt carries it yet, and the chat has no supplement guidance of any kind today. It has to land as a prompt rule before the Me tab's supplement cards are built. Recommended, following §1's split: the model reports what was said, and the code decides whether the GP or pharmacist prompt is due, from the health context it already holds.
 
 *Breastfeeding added on 2026-09-12 at Ruth's confirmation, for the same reason as pregnancy: what she takes can reach the baby.*
+
+
+## 10. A claim needs a source (added 2026-09-28)
+
+**The rule, Ruth's decision on 2026-09-28:** a claim appears in the app only if it maps to a listed source. Sources are cited at the point of the claim, ranked, with a short public sourcing policy. **The AI must not state a health claim that is not backed by a listed source.**
+
+**Why it exists, and it is not caution.** Balance's credibility is carried by a named clinician founder. Selodía has decided not to have a face (see the marketing spec), which means **the sources have to carry what a person would otherwise carry.** This is not a disclaimer; it is the whole substitute for authority.
+
+- **Ranked, highest first:** national guidelines (NICE, NHS) and society consensus statements (British Menopause Society, Women's Health Concern); systematic reviews and meta-analyses; individual peer-reviewed studies; everything else, which is not a source.
+- **Cited at the point of the claim**, not in a bibliography nobody opens.
+- **Weak or mixed evidence is said to be weak or mixed.** Part Eight already does this for the "whoosh effect" — *"not a formal clinical term… a genuine lack of dedicated research"* — and that is the model to follow.
+- **A named medical, fitness or physio reviewer is planned for later, when funded.** Not now, and the sourcing policy is the answer in the meantime, including to a funding assessor asking about clinical governance.
+
+**STATUS: A RULE, AND THE BUILD CONTRADICTS IT TODAY.** Stated plainly rather than quietly fixed:
+
+1. **Nothing in the chat prompt carries this rule.** The only thing close is `NOT_A_DOCTOR` in `app/lib/reply-prompt.ts`, which says the app is not a clinician and defers genuinely medical things to a GP. **That is a boundary, not a sourcing rule** — it does not stop the model making an unsourced health claim, and today nothing does.
+2. **There is no list of sources in the app.** The research in Part Eight and in the September 2026 menopause work is in the specification, not in anything a user can see.
+3. **There is no sourcing policy page**, public or otherwise.
+4. **No claim in the app is cited at its point of use.**
+
+**What this means in practice.** Before wave one, either the chat is constrained to a listed source set, or the app must not make health claims at all. The second is achievable now and the first is not, so the honest interim rule is: **Selodía describes what is in her record and does not explain physiology.** That is a real narrowing of what the chat says today and it should be decided deliberately, not discovered.
+
+## 11. "Worth raising with a doctor" (added 2026-09-28)
+
+**The rule, Ruth's decision on 2026-09-28:** a pattern that persists or looks concerning should say so plainly, without alarm.
+
+**The tension it resolves.** Selodía is body literacy: notice what works, manage symptoms, and treat GP and medication as a secondary layer. That stance is right for the audience and it has one failure mode — **an app that only ever says "notice what works" is an app that says nothing when something needs a doctor.** The line exists so that stance stays honest.
+
+- **Plainly.** "This has been going on for six weeks now. That is worth mentioning to your GP." Not "you should see someone urgently", and not buried in a paragraph about hydration.
+- **From the record, never from a diagnosis.** It reports duration and pattern — what was logged and for how long — and never names a cause.
+- **Once, and not repeatedly.** A person who has heard it and decided not to go has made a decision, and the app's job is not to keep asking.
+- **It is not the safety architecture.** The tiers in §2 handle distress and crisis. This is the ordinary case: a symptom that has not gone away.
+
+**Status: a rule, not yet built.** Nothing computes persistence today. It needs a definition of "persists" — a count of days or logs over a window — decided before it is written, because a threshold chosen by a model on the day is not a rule.
