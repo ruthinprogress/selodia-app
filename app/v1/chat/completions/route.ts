@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // block, the Almanac flow - because it IS the same function, just reached
 // without leaving the process.
 import { POST as askSelodia } from '../../../api/ask-selodia/route';
+import { attachVoiceSink, createVoiceSink, type VoiceSink } from '../../../lib/voice-sink';
 import { getSupabaseForRequest } from '../../../lib/supabase';
 import { offeredTools, wasHeard, words } from '../../../lib/voice-turns';
 
@@ -278,7 +279,13 @@ function spokenCompletion(
   created: number,
   model: string,
   canEnd: boolean,
-  produce: () => Promise<Spoken>
+  produce: () => Promise<Spoken>,
+  // WHEN THE PIPELINE IS WILLING TO TALK WHILE IT WORKS (2026-09-28).
+  //
+  // Silent unless `ask-selodia` opens it, which it does only once the reply is
+  // known to be the reply. See app/lib/voice-sink.ts. Without it this function
+  // behaves exactly as it did: wait for the whole thing, then speak it.
+  sink?: VoiceSink
 ): Response {
   const stream = new ReadableStream({
     async start(controller) {
@@ -290,25 +297,93 @@ function spokenCompletion(
         controller.enqueue(sseChunk(id, created, model, { content: HOLDING_LINE }, null));
       }, HOLDING_AFTER_MS);
 
+      // ── SPEAKING EARLY ───────────────────────────────────────────────────
+      //
+      // WHOLE SENTENCES, NOT TOKENS. The model produces text a few characters
+      // at a time and handing those straight on would have the voice sounding
+      // out fragments of words. So it accumulates and releases on a sentence
+      // ending, which is the same rule speakableChunks already uses on a
+      // finished reply - and the reason it uses it.
+      let saidEarly = 0;
+      const pump = sink
+        ? (async () => {
+            let pending = '';
+            for await (const piece of sink.read()) {
+              pending += piece;
+              for (;;) {
+                const end = pending.search(/[.!?\n]\s|[.!?]$/);
+                if (end < 0) break;
+                const cut = pending.slice(0, end + 1);
+                pending = pending.slice(end + 1).replace(/^\s+/, '');
+                if (!cut.trim()) continue;
+                if (saidEarly === 0) {
+                  clearTimeout(holding);
+                  // The holding line went out before the words did, so this
+                  // follows on from it rather than restarting mid-thought.
+                  if (spokeHolding) {
+                    controller.enqueue(sseChunk(id, created, model, { content: ' ' }, null));
+                  }
+                }
+                saidEarly += cut.length;
+                controller.enqueue(sseChunk(id, created, model, { content: cut }, null));
+              }
+            }
+            // Whatever was left when the reply ended, which is anything without
+            // a full stop on it.
+            if (pending.trim()) {
+              if (saidEarly === 0) {
+                clearTimeout(holding);
+                if (spokeHolding) {
+                  controller.enqueue(sseChunk(id, created, model, { content: ' ' }, null));
+                }
+              }
+              saidEarly += pending.length;
+              controller.enqueue(sseChunk(id, created, model, { content: pending }, null));
+            }
+          })()
+        : null;
+
       let spoken: Spoken;
       try {
         spoken = await produce();
       } catch (err) {
         console.log('VOICE ADAPTER: pipeline threw', err instanceof Error ? err.message : err);
+        // A pipeline that threw never closed the sink, and an open sink is a
+        // pump that never finishes.
+        sink?.abandon();
         spoken = { text: SAY_AGAIN };
       } finally {
         clearTimeout(holding);
       }
+
+      // THE PUMP HAS TO END, WHATEVER THE ROUTE DID. `ask-selodia` closes the
+      // sink itself on the way out, but it has eight ways to return and only the
+      // last one reaches that line - a 401, a duplicate turn, a truncated
+      // classification and three internal errors all return earlier. None of
+      // them ever OPENED the sink, so nothing was spoken, but a sink nobody
+      // closes is a pump nobody finishes and a stream the caller waits on
+      // forever. Closing it here is a no-op on every ordinary turn, because the
+      // route got there first.
+      sink?.abandon();
+
+      // The early words are already out, and `finish` on the route's side has
+      // already sent whatever the stored reply added to them. Everything below
+      // is for the turns that said nothing early.
+      await pump;
+      if (saidEarly > 0) {
+        console.log(`VOICE ADAPTER: ${saidEarly} characters spoken while the reply was being written`);
+      }
+
       const reply = spoken.text.trim() || SAY_AGAIN;
 
       // The holding line was already spoken, so the reply follows on from it
       // rather than restarting. Without this the person hears "Let me put that
       // together" and then a sentence that begins as though nothing was said.
-      if (spokeHolding) {
+      if (saidEarly === 0 && spokeHolding) {
         controller.enqueue(sseChunk(id, created, model, { content: ' ' }, null));
       }
 
-      for (const piece of speakableChunks(reply)) {
+      for (const piece of saidEarly > 0 ? [] : speakableChunks(reply)) {
         controller.enqueue(sseChunk(id, created, model, { content: piece }, null));
       }
       if (spoken.endCall && canEnd) {
@@ -494,9 +569,13 @@ export async function POST(request: NextRequest) {
   // worked on. If the platform does not actually close the connection this
   // changes nothing and costs nothing, which is the right way round for a
   // guess about somebody else's client.
-  const ask = (supersedes?: string) =>
-    askSelodia(
-      new NextRequest(new URL('/api/ask-selodia', request.url), {
+  // ONE SINK FOR THIS TURN, attached to whichever request actually runs. The
+  // route finds it by the request object, so there is nothing global and nothing
+  // to clean up between concurrent calls.
+  const sink = createVoiceSink();
+
+  const ask = (supersedes?: string) => {
+    const inner = new NextRequest(new URL('/api/ask-selodia', request.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -510,9 +589,11 @@ export async function POST(request: NextRequest) {
           ...(resumedAfterDrop ? { resumedAfterDrop } : {}),
           ...(supersedes ? { supersedes } : {}),
         }),
-        signal: request.signal,
-      })
-    );
+      signal: request.signal,
+    });
+    attachVoiceSink(inner, sink);
+    return askSelodia(inner);
+  };
 
   const spokenFrom = async (res: Response): Promise<Spoken> => {
     if (res.status === 401) {
@@ -540,10 +621,17 @@ export async function POST(request: NextRequest) {
       }));
     }
     console.log('VOICE ADAPTER: a turn continued after a pause, answering all of it');
-    return spokenCompletion(id, created, model, canEnd, async () => {
-      await answerAfter(db, since, SUPERSEDE_WAIT_MS);
-      return spokenFrom(await ask(since));
-    });
+    return spokenCompletion(
+      id,
+      created,
+      model,
+      canEnd,
+      async () => {
+        await answerAfter(db, since, SUPERSEDE_WAIT_MS);
+        return spokenFrom(await ask(since));
+      },
+      sink
+    );
   }
 
   // Non-streaming is not what ElevenLabs asks for, but an OpenAI-compatible
@@ -575,5 +663,5 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return spokenCompletion(id, created, model, canEnd, async () => spokenFrom(await ask()));
+  return spokenCompletion(id, created, model, canEnd, async () => spokenFrom(await ask()), sink);
 }

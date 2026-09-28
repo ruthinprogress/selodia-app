@@ -69,6 +69,24 @@ import { turnFacts, type TurnData } from './turn-facts';
  */
 export const REPLY_WRITTEN_AFTER_THE_SAVES = { typed: true, voice: true };
 
+/**
+ * SPEAK THE REPLY WHILE IT IS STILL BEING WRITTEN. Ruth, 28 September 2026.
+ *
+ * Set this to false and a spoken turn goes back to waiting for the last word
+ * before the first one is heard. Nothing else has to change: the route still
+ * assembles, gates and stores the whole reply exactly as it does now, and the
+ * streaming is an extra copy of the words going out early. One line, one step.
+ *
+ * WHY IT IS WORTH ANYTHING. Measured on 28 September: the saves confirm a median
+ * 1.9 seconds before the writer finishes its last token, and until now every one
+ * of those seconds was silence on a phone call.
+ *
+ * WHAT IT COSTS. Words that have been spoken cannot be taken back. See
+ * app/lib/voice-sink.ts for the three conditions that have to hold before
+ * anything is emitted, and for the one case they cannot cover.
+ */
+export const REPLY_STREAMS_TO_VOICE = true;
+
 /** Does the rebuilt path write this turn's reply, before anything else is asked? */
 export function newPathWrites(voice: boolean): boolean {
   return voice ? REPLY_WRITTEN_AFTER_THE_SAVES.voice : REPLY_WRITTEN_AFTER_THE_SAVES.typed;
@@ -144,6 +162,20 @@ export type ReplyRequest = {
   safetyBlock: string;
   /** Context blocks the old path built that the new prompt still needs. */
   extraBlocks?: (string | null | undefined)[];
+  /**
+   * CALLED WITH EACH PIECE OF TEXT AS THE MODEL PRODUCES IT.
+   *
+   * Providing this is the only difference between a streamed call and an
+   * ordinary one: the same prompt, the same model, the same parameters, and the
+   * same WrittenReply at the end - including the fallbacks, which are decided on
+   * the finished message exactly as before. A caller that streams still gets the
+   * whole reply back and must still treat this function's return value as the
+   * truth, because a truncated or empty stream is still a fallback.
+   *
+   * It must not throw. Anything it does happens inside the model call's own
+   * loop, and an exception here would turn a working reply into an error.
+   */
+  onText?: (text: string) => void;
 };
 
 /**
@@ -238,33 +270,59 @@ ${req.didLines.map((l) => `- ${l}`).join('\n')}`
     .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
     .join('\n\n');
 
+  // ONE SET OF PARAMETERS, TWO WAYS OF SENDING IT. Streaming and not streaming
+  // have to be the same call in every respect that affects the words, or the
+  // switch in this file stops being a switch and becomes two chat paths again -
+  // which is the thing this whole rebuild exists to avoid. So the params are
+  // built once and handed to whichever method is being used.
+  const params = {
+    model: req.model,
+    // A CEILING TO CATCH A RUNAWAY, and NOT a way to make replies shorter.
+    //
+    // Lowered to 400 on 28 September to claw back latency, and put straight back
+    // when the probe showed what that actually does: it truncates a reply that
+    // was going to be long, and a truncated reply is discarded in favour of the
+    // old path's. So the change turned a slow turn into a FALLBACK - the same
+    // wait, and then the reply the new path exists to replace. Two of three
+    // probe cases hit it.
+    //
+    // The lever for latency is output LENGTH, which is asked for in the prompt,
+    // not cut off here. A ceiling only ever decides what happens after
+    // everything has already gone wrong.
+    max_tokens: 700,
+    system: [
+      { type: 'text' as const, text: staticHalf, cache_control: { type: 'ephemeral' as const } },
+      { type: 'text' as const, text: turnHalf },
+    ],
+    // THE LAST FEW EXCHANGES, not the last forty. See RUN_UP_TURNS.
+    //
+    // Taken from the END of the array, which is where her current message is -
+    // turn_context returns the history with her turn already in it, so slicing
+    // from the front would cut off the thing she just said.
+    messages: req.messages.slice(-RUN_UP_TURNS),
+  };
+
   try {
-    const res = await req.anthropic.messages.create({
-      model: req.model,
-      // A CEILING TO CATCH A RUNAWAY, and NOT a way to make replies shorter.
-      //
-      // Lowered to 400 on 28 September to claw back latency, and put straight back
-      // when the probe showed what that actually does: it truncates a reply that
-      // was going to be long, and a truncated reply is discarded in favour of the
-      // old path's. So the change turned a slow turn into a FALLBACK - the same
-      // wait, and then the reply the new path exists to replace. Two of three
-      // probe cases hit it.
-      //
-      // The lever for latency is output LENGTH, which is asked for in the prompt,
-      // not cut off here. A ceiling only ever decides what happens after
-      // everything has already gone wrong.
-      max_tokens: 700,
-      system: [
-        { type: 'text' as const, text: staticHalf, cache_control: { type: 'ephemeral' as const } },
-        { type: 'text' as const, text: turnHalf },
-      ],
-      // THE LAST FEW EXCHANGES, not the last forty. See RUN_UP_TURNS.
-      //
-      // Taken from the END of the array, which is where her current message is -
-      // turn_context returns the history with her turn already in it, so slicing
-      // from the front would cut off the thing she just said.
-      messages: req.messages.slice(-RUN_UP_TURNS),
-    });
+    // THE STREAMED CALL AND THE PLAIN ONE END IN THE SAME PLACE. `finalMessage`
+    // returns exactly what `create` would have, so every check below - truncated,
+    // empty, the usage - is made on the finished message either way. A caller
+    // that streamed still has to believe the return value of this function
+    // rather than what it heard, because a stream that stops halfway is still a
+    // fallback and the pieces it emitted are not a reply.
+    const res = req.onText
+      ? await (() => {
+          const stream = req.anthropic.messages.stream(params);
+          stream.on('text', (text) => {
+            try {
+              req.onText?.(text);
+            } catch (err) {
+              // A consumer that throws must not take the reply down with it.
+              console.log('REPLY WRITER: onText threw, carrying on:', err instanceof Error ? err.message : err);
+            }
+          });
+          return stream.finalMessage();
+        })()
+      : await req.anthropic.messages.create(params);
     if (res.stop_reason === 'max_tokens') {
       // Truncated mid-sentence. Unusable as a reply and worse than the old
       // path's, which at least finished.

@@ -13,7 +13,13 @@ import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
-import { newPathWrites, turnIsOrdinary, writeReplyAfterSaves } from '../../lib/chat-path';
+import {
+  newPathWrites,
+  REPLY_STREAMS_TO_VOICE,
+  turnIsOrdinary,
+  writeReplyAfterSaves,
+} from '../../lib/chat-path';
+import { voiceSinkFor } from '../../lib/voice-sink';
 import { recordModelUsage } from '../../lib/usage-record';
 import {
   CLASSIFY_TOOL_NAME,
@@ -63,7 +69,7 @@ import {
   whichReadingMessage,
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
-import { buildAllergyPrompt, recordAllergies, type Allergy } from '../../lib/allergies';
+import { buildAllergyPrompt, filtersFood, recordAllergies, type Allergy } from '../../lib/allergies';
 import { planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
@@ -1524,9 +1530,31 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // and it buys removing a second call from the critical path of a spoken
   // conversation, where the alternative is silence on a phone line. On text those
   // seconds are a pause with a typing indicator in them.
+  // THE SINK IS THE VOICE ADAPTER LISTENING IN (see app/lib/voice-sink.ts).
+  //
+  // Present only on a spoken turn that came through the adapter, and silent
+  // until this route opens it. Nothing below changes because of it: the reply is
+  // still assembled, gated and stored exactly as it was, and the streaming is an
+  // extra copy of the words going out early.
+  //
+  // THE GATE DECIDES WHETHER STREAMING IS ALLOWED AT ALL, and it decides here,
+  // before a word is written. `runAllergyGate` short-circuits to safe for anybody
+  // with no edible exclusions, so for those people it can never block and words
+  // already spoken can never need taking back. For everybody else the sink is
+  // never opened and the turn waits, which is slower and is the only honest
+  // answer: a reply that is half-spoken before the gate has seen it is exactly
+  // the failure the gate exists to prevent.
+  const sink = isVoice ? voiceSinkFor(request) : null;
+  const mayStream =
+    sink !== null &&
+    REPLY_STREAMS_TO_VOICE &&
+    newPathWrites(true) &&
+    disclosedAllergies.filter(filtersFood).length === 0;
+
   const spokenReplyInFlight =
     isVoice && newPathWrites(true)
       ? writeReplyAfterSaves({
+          ...(mayStream ? { onText: (text: string) => sink.push(text) } : {}),
           anthropic,
           model: MODEL,
           messages,
@@ -2911,6 +2939,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       );
     }
 
+    // COMMITTED. Everything that could have replaced these words has now had
+    // its say: the turn is ordinary, the guess held so there is nothing to
+    // report, and the allergy gate could not arm on this account. What is left
+    // to happen to the reply is the offer line, which is APPENDED - so the words
+    // already spoken are a prefix of the stored reply rather than a draft of it.
+    if (mayStream && speculationHeld) {
+      timing.mark('spokenAloudFrom');
+      sink.open();
+    }
+
     timing.mark(speculationHeld ? 'speculationHeld' : 'speculationDiscarded');
     const written = speculationHeld
       ? await spokenReplyInFlight
@@ -3108,6 +3146,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (result.navigationTarget && !navigationTarget) {
     console.log('ASK-SELODIA DROPPED UNKNOWN SPOTLIGHT TARGET:', result.navigationTarget);
   }
+
+  // WHAT WAS ACTUALLY STORED, handed to the sink so it can say the rest - which
+  // is the offer line when there is one, and nothing at all when there is not.
+  // Called on every turn, including the ones that never opened it, because a
+  // sink nobody closes is an adapter waiting forever.
+  sink?.finish(finalReply);
 
   timing.report(isVoice ? 'voice' : 'typed');
 
