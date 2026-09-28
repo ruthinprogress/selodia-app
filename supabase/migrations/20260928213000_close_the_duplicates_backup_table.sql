@@ -1,0 +1,17 @@
+-- A BACKUP OF HER CHAT MESSAGES WAS READABLE BY ANYONE (2026-09-28).
+--
+-- chat_messages_duplicates_removed was created on 27 September to hold the
+-- duplicate assistant rows before deleting them. Backing them up first was the
+-- right instinct. What was missed is that a table created in `public` is exposed
+-- through PostgREST, and without RLS enabled the ANON KEY reads it - the key that
+-- ships in the mobile app and sits in the landing page's own bundle. The rows are
+-- her conversation with Selodia.
+--
+-- Found by the security advisor, not by anybody looking, which is the argument
+-- for running it after every migration rather than when something feels off.
+-- scripts/check-rls.mjs now refuses a public table with RLS off.
+--
+-- RLS ON AND NO POLICY, the same shape as model_usage: nothing on a phone needs
+-- this table and nothing on a phone writes it. The service role bypasses RLS, so
+-- the backup stays readable to the only key that should ever read it.
+alter table public.chat_messages_duplicates_removed enable row level security;
