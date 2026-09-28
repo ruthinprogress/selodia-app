@@ -330,3 +330,22 @@ The part worth generalising is the testing, not the valves. Each one was proved 
 A negative check is where this hides, because the failure looks like a pass in reverse: the reply was good, the score said bad, and the temptation is to soften the reply until the check is happy. **That direction of fix is the real cost** - it trains the prompt to avoid a word rather than avoid a behaviour, and the word was never the problem.
 
 The fix was a negative lookbehind and six sentences to prove it, including the one that broke it. The rule is simpler than the regex: **when a check fires, read the sentence it fired on before changing anything else.** If the sentence is good, the check is wrong. (28 September 2026.)
+
+**One broken stand-in only catches one direction of wrongness.** Three check files tonight ran every case twice - once against the real implementation, once against a deliberately broken one - and all three came back with checks marked WEAK. The pattern was identical each time and I did not see it until the third: **the broken stand-in removed nothing, so every check about NOT over-removing passed against it trivially.**
+
+A gate can be wrong in two directions. The rules gate can fail to exclude a contraindicated movement, or it can strip a session of things that were fine. The red-flag matcher can miss chest pain, or it can tell a woman asking a general question to call an ambulance. **A stand-in that is only too permissive proves nothing about the half of the failure space that is too eager** - and in this codebase the eager half is the one that has actually bitten, twice: the allergy gate blocking two honest answers about nickel, and the first red-flag matcher firing on "is chest pain always serious?".
+
+So: two stand-ins, one for each direction, and a check earns its place by failing against **at least one**. Everything left over is a regression guard or a sanity check, and those get their own heading and are counted separately rather than folded into the total. **A check that cannot distinguish a working implementation from a broken one is not evidence, and a summary line that counts it as evidence is the self-flattery the whole exercise exists to prevent.** (28 September 2026.)
+
+**When the exclusion list is unbounded and the inclusion test is small, invert it.** The red-flag matcher needed to tell "I've got chest pain" from "is chest pain always serious?". The first attempt was a list of question openings - "is it", "what causes", "can you get" - and it failed on the very first sentence tried, because that one begins with none of them. The fix was not a longer list.
+
+**Every real report of a symptom contains a first-person reference, and a question in the abstract contains none.** One rule replaced twenty, and it does not need extending each time somebody phrases a question a new way. The tell that a list is the wrong shape is that adding an item feels like it will be the last one and never is.
+
+The same shape catches the allergy gate's original failure at one remove: **a MATCH is not a REPORT, exactly as a MATCH was not a SUGGESTION.** Both are filters that can find a word and cannot tell who is being talked about, and both were fixed by asking a question about the *sentence* rather than adding to a list of *words*. (28 September 2026.)
+
+**A fabricated default lives in more places than the one you find it in.** The maintenance-target bug was reported as a line of TypeScript: `asFocus` turning null into `'maintain'`. Fixing that line would have changed nothing, because the column underneath was `NOT NULL DEFAULT 'maintain'` and the value was being written at row creation, before any code read it.
+
+It was in three places - the schema, the server, and the app - and the schema was both the deepest and the least likely to be looked at, because a migration written months ago does not appear in a code review of today's bug. **All three accounts in the database carried it, including the founder's**, set to maintenance while she trained for a muscle up.
+
+The rule: **when a value appears where nobody chose it, check the schema before concluding you have found the cause.** A `DEFAULT` clause is a decision somebody made once and nobody has read since, and it outranks every line of application code that comes after it. (28 September 2026.)
+
