@@ -48,6 +48,11 @@ import re
 import shutil
 import sys
 import zipfile
+# ALIASED, because the local variable holding the document is called `xml`.
+# `import xml.dom.minidom` inside the function rebound that name to the module
+# and the well-formedness check then failed on its own input - which the guard
+# correctly refused to write past, and which is a fair test of the guard.
+from xml.dom.minidom import parseString as parse_xml
 from pathlib import Path
 
 BOOK = Path(
@@ -196,10 +201,8 @@ def append(entry_path: Path, before: int | None = None) -> int:
     # for the check rather than for being careful: the file is the only copy of
     # the build log, and a corrupt one is not obviously corrupt until somebody
     # opens it.
-    import xml.dom.minidom
-
     try:
-        xml.dom.minidom.parseString(xml.encode("utf-8"))
+        parse_xml(xml.encode("utf-8"))
     except Exception as exc:  # noqa: BLE001 - any parse failure means do not write
         raise SystemExit(
             "  The document would not be well-formed XML, so nothing was written.\n"

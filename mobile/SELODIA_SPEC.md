@@ -3145,7 +3145,15 @@ The whole prompt is **770 tokens on a typed turn, 884 spoken, 838 for the roundu
 
 The one exception is deliberate: the Almanac offer is a question that must be asked exactly once, because an offer stored and never asked can be answered by a yes to something else. It is recomputed against whatever reply comes back, and `offerQuestion()` returns null when the reply already asks it.
 
-**Four: it is behind a switch, and the switch is off.** `REPLY_WRITTEN_AFTER_THE_SAVES` in `app/lib/chat-path.ts`. Off means every turn runs the path that has been running all week, unchanged. A failure in the new path falls back to the old reply rather than costing a turn, so the switch is a change of author rather than a new way to fail. A constant rather than an environment variable, deliberately: an environment variable is a production setting and those are Ruth's, while a constant is a commit she can see and revert.
+**Four: it is behind a switch, and the switch is ON** since 09:55 on 28 September 2026. `REPLY_WRITTEN_AFTER_THE_SAVES` in `app/lib/chat-path.ts`. Setting it back to `false` is one line, one commit and one web deploy, and the old path is still there.
+
+**THE NEW PATH DOES NOT WRITE EVERY REPLY, and the condition is the most consequential line in the feature.** `turnIsOrdinary()` is a whitelist: a neutral classification *after* the safety state machine has run, no escalation step, no resource card of either kind, and no allergy block. Everything else keeps the reply the existing pipeline produced.
+
+The reason is specific rather than cautious. When the C-SSRS screen fires, `applySafetyStateMachine` replaces the reply with `DIRECT_ESCALATION_QUESTION` — a fixed question, substituted so that a probing question can never co-occur with a resource card. The first version of the switch ran on every turn the *allergy* gate passed, which would have thrown that question away and written something conversational in its place. That is not a change of tone; it is removing a screening question from a screening turn. It was found by reading the state machine while looking at something else, hours after the switch went live, and it was never covered by a test because the chat test set has a medical-question case and no distress case. It is a whitelist rather than a blacklist so that a tier added later is excluded by default.
+
+**Every fall back to the old path is recorded**, in `reply_path_fallbacks`, with the reason (`error`, `empty` or `max_tokens`), a short technical detail, whether the turn was spoken, and which turn. A console line goes to Vercel, where "how often is this happening?" cannot be answered.
+
+**The classification call's `reply` field is asked for SHORT while the switch is on.** It is the fallback and nothing else reads it, and generating forty to sixty words of careful prose on the critical path of every turn is pure latency — her median went from 3.3s to 7.0s the day the second call went live. One exception is written into the instruction and is absolute: on any turn that is not the ordinary non-distress one, the full reply is required, because the new path does not run there and that field *is* what she reads. A failure in the new path falls back to the old reply rather than costing a turn, so the switch is a change of author rather than a new way to fail. A constant rather than an environment variable, deliberately: an environment variable is a production setting and those are Ruth's, while a constant is a commit she can see and revert.
 
 ## The test set
 
@@ -3155,11 +3163,31 @@ The one exception is deliberate: the Almanac offer is a question that must be as
 
 **The suite refuses to run until the checks prove they can fail.** Before a token is spent, every check runs against an empty reply, and a case that scores full marks on nothing stops the run. Any check containing a control character is rejected, because that is always an escape mangled by a shell. Both guards exist because this suite twice reported PASS on replies that plainly failed — see `DECISION_PATTERNS.md`, "A test that cannot fail is worse than no test".
 
+## An allergy has a kind, and only one kind filters food
+
+Added 28 September 2026, after a contact allergy to nickel was treated as a dietary restriction and then blocked two plain questions about nickel.
+
+`allergies.kind` is one of **`food`, `contact`, `environmental`, `other`**, and only `food` and `other` arm the food filter — `other` because an unknown allergy in a food app is most likely a food one, so a wrong guess fails towards more filtering rather than less. The prompt names the non-food ones separately: they constrain what she is told to put on her skin or wear, never what she eats, and a question about one gets a plain answer.
+
+**What was actually in her table when this was found:** "seasonal allergy (hay fever, summer)" and "nickel". Neither is a food allergy; both were arming a food gate, one of them for eight days.
+
+**The gate's layer 3 no longer blocks on a mention.** It matched stored allergen names against the reply text and ran regardless of whether the reply suggested food — deliberately, because the model's self-report can be gamed. That reasoning is right about self-reports and wrong about what a match proves: it read "this reply mentions nickel" as "this reply suggests nickel", and every true answer to a question about nickel contains the word. A layer-3 hit on a reply the model did not flag as suggesting food is now **adjudicated by layer 4** rather than blocked, so a jailbreak is judged rather than waved through and a real answer gets a correct verdict. Layer 4 is told in as many words that naming is not proposing.
+
+**A yes can carry a destination.** A proposal's type is fixed when the offer is made, so "yes, perhaps under skincare and allergies" was accepting a symptom decided fifteen minutes earlier and filing it in Insights. `applyRedirect` re-aims the waiting offer using what she said on the yes-turn. It only ever edits a proposal that already exists, so it can never create a save.
+
 ## The weekly roundup
 
 The roundup is its own route with its own prompt, and it was never written by the chat's conduct block. Two things about it are worth having in the spec.
 
-**Its prompt asks for a theme.** Step 4 of its numbered ORDER list is "one thematic observation drawn across the week". The sentence Ruth reported — *"the thread running through this week is permission: you've been letting yourself off the hook in small ways"* — is that instruction being obeyed. Run three times over the same week it produced "unevenness", "patchiness" and "incompleteness in the record itself". No rule about tone overrides a numbered step telling it to do the thing.
+**Its prompt asked for a theme, and no longer does** (28 September 2026). Step 4 of its numbered ORDER list was "one thematic observation drawn across the week". The sentence Ruth reported — *"the thread running through this week is permission: you've been letting yourself off the hook in small ways"* — is that instruction being obeyed. Run three times over the same week it produced "unevenness", "patchiness" and "incompleteness in the record itself". No rule about tone overrides a numbered step telling it to do the thing.
+
+**The whole prompt is now rebuilt from a baseline upwards**, in `app/lib/roundup-prompt.ts`, by the same method as the chat's: a rule earns its place by a test failing without it, and each one names its test. The numbered ORDER list is gone. Four rules earned a place — `NO_THEME` (removing the instruction was not enough on its own, so it says the opposite out loud), `FIGURES_ARE_NOT_VERDICTS`, `DO_NOT_RESTATE` and the unchanged `NEVER_MORALISE`.
+
+`DO_NOT_RESTATE` needed a second pass, which is worth recording: the first version was obeyed everywhere except the opening sentence, which came back as "food was logged all seven days, averaging 1,236 kcal and 62 g protein" — the card read aloud. Naming that exact sentence in the rule fixed it, which is the same finding as the chat rebuild: a rule that quotes the failure works where an abstract one does not.
+
+**Tested on Ruth's real week**, 21–27 September, from her own rows rather than the demo account: 15 of 15. `scripts/probe-roundup-prompt.mjs`.
+
+**A scale read six times in 28 seconds is one weigh-in.** Six of her eight readings for that week were written within 28 seconds on the 24th — 58.0 twice, then 55.5 four times. Counted raw that is eight readings and a delta across values 2.5 kg apart, which is the "your 10 readings show a real trend" failure arriving by a different door. Collapsed at the read with a five-minute window; nothing is deleted, because her rows are hers.
 
 **The card's rows are computed, not parsed.** `app/lib/roundup-figures.ts` builds the rows from her own stored rows; the model's words sit underneath as observations. Splitting the prose into rows would have produced tidy rows of the same wrong figures. Every absence is a row saying so rather than a row left out, and each confidence note sits with its own figure rather than at the top of the card.
 
@@ -3188,6 +3216,20 @@ Her reason, and it is the whole design: *"users don't remember exact values (I r
 ## A back-filled reading shows the time of the measurement
 
 A reading entered later for an earlier moment was showing the time it was typed. That is not a display preference: a weight at 07:10 and the same weight at 21:40 are different facts about a body, and the app was recording the second while she meant the first.
+
+## A feedback route that carries context
+
+Built 28 September 2026. A wave-one requirement from the beta checklist.
+
+Settings has its own **"Something not right?"** row, above Help and support, because reporting something broken is not the same errand as finding help. It writes to `feedback_reports` with the build context attached automatically: the update id, runtime version, channel, platform and OS version.
+
+**Why automatic.** Ruth's own reports are unusually good because she knows what she saw and sends a screenshot from a build she can name. Nobody else will. A stranger writes "it did the thing wrong again" from an update nobody can identify, and the difference between that and a fixable report is four fields the phone already knows.
+
+**What is attached is listed, not summarised**, and it says plainly what is *not* sent: nothing logged, no food, no weight, no measurements, nothing from her conversations. "Some technical information" is the sentence an app uses when it would rather you did not look.
+
+**A failed send is said, and her words stay in the box.** Somebody who writes out a problem and is told nothing assumes it arrived, and stops sending them when nothing changes.
+
+RLS lets somebody write their own reports and read them back, and nothing else — reading them back matters because an invisible report reads as one that never arrived. Triage happens with the service role; there is no update or delete policy.
 
 ## The bundler: nothing was ever cached
 
@@ -3236,7 +3278,7 @@ Three consequences, and they are build items rather than wording:
 
 Ruth, 2026-09-27: the beta *"will include the feedback forms in the More section also."*
 
-- [ ] **Feedback forms in More.** Not built. Worth settling before it is: what is being asked, how often, and whether a form is the right shape at all in an app whose whole interface is a conversation. A form that duplicates something the person could just say is the kind of thing this app has removed elsewhere.
+- [x] **A feedback route inside the app — built 28 September 2026.** Settings has its own "Something not right?" row, above Help, writing to `feedback_reports` with the build context attached automatically. See Part Twenty. **One of wave one's three blockers, and it is done.** What remains under this heading is the *cadence* — when to ask rather than wait to be told — proposed in the wave-one document as three touches (day 3, day 10, a conversation at day 21) rather than a survey. A form that duplicates something the person could just say is the kind of thing this app has removed elsewhere.
 - [ ] **A route for a bug report that carries context.** She currently sends them by message, with a screenshot, and they are excellent because she knows what she saw. A stranger will not do that unaided.
 - [ ] **Somewhere for the reports to land** that is not a chat thread.
 
@@ -3257,8 +3299,8 @@ Her words, and they are the standard this app is held to: *"the app is only usef
 - [x] **Every number the app states about her is computed in code, rounded as the screen rounds, and passed as a labelled fact.** `app/lib/turn-facts.ts`, all eight data blocks. Part Nineteen.
 - [x] **An empty log says so explicitly rather than being a short list.** This is what stopped the invented session: a list somebody has to notice is empty is what produced it.
 - [x] **A test proves a weigh-in with no activity produces no exercise claim.** `scripts/chat-eval.mjs`, and the suite refuses to run if its own checks cannot fail.
-- [~] **The rebuilt chat path is behind a switch and the switch is OFF.** `REPLY_WRITTEN_AFTER_THE_SAVES`. Ruth turns it on after reading the before-and-after replies, uses it for a day, and the old path comes out after that. Beta cannot start with two paths.
-- [ ] **The roundup's content half.** The card's figures are computed (item 9's layout half, done 2026-09-27). The prose still comes from a prompt whose numbered ORDER list asks for a thematic observation, which is where "the thread running through this week is permission" came from. Not yet changed.
+- [~] **The rebuilt chat path is LIVE** since 09:55 on 28 September, after she read the before-and-after replies: *"the new version is clearly better."* The old path is still there and the rollback is one line. It comes out for good once she has used this one for a while. **Beta cannot start with two paths**, so removing the old one is a wave-one item rather than an optional tidy-up.
+- [x] **The roundup's content half — done 28 September 2026.** The numbered ORDER list and its "one thematic observation" step are gone, and the prompt is rebuilt from a baseline in `app/lib/roundup-prompt.ts`. Tested on her real week rather than the demo account: 15 of 15.
 
 ## The record of the build itself
 

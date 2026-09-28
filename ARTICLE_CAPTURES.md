@@ -443,3 +443,39 @@ The in-app chat was noticeably worse than the same model asked the same question
 ## 27 September 2026 — The tests were green because they were testing nothing
 
 Twice in one evening a test suite reported PASS on a reply that plainly failed, for two different reasons, and both times it took reading the reply by hand to notice. Two checks had been written through a shell, which turned a backslash into an invisible control character, so neither could ever match and both passed on a reply that said "Got it, 56.9 kg logged". And a whole case's checks were negatives, every one asking whether something wrong was absent, so all five passed on the answer "What's on your mind?". Nothing was there to be wrong. The fix was not to promise more care, because care was already being taken both times. The suite now refuses to run until every case proves it can fail an empty answer, and rejects any check with a control character in it. It found two more unfailable cases on its first run.
+
+---
+
+## 28 September 2026 — Thirteen hours of replies that reached her phone and were thrown away
+
+A one-line change the night before had made every reply fail to save. The insert asked Postgres to ignore conflicts on a column whose unique index was partial, and Postgres cannot infer a partial index from that, so it raised an error every single time rather than only on a conflict. The route logs a failed write and carries on, deliberately, because a database problem must never cost somebody their answer. That deliberate choice is what hid it: she saw her replies, they simply were not kept. The index itself was verified when it was applied. The call site was not, and one statement run against the real index would have shown it in ten seconds. A constraint the database accepts is not the same as a constraint the application can use.
+
+---
+
+## 28 September 2026 — The gate guaranteed that the one thing she could not ask about was her own allergy
+
+An allergy filter had been checking whether a reply mentioned a stored allergen anywhere in its text, deliberately ignoring the model's own claim about whether it was suggesting food, on the reasoning that a self-report can be gamed. Sound about self-reports, wrong about what a match proves. She asked two plain questions about a nickel reaction, and every true answer to a question about nickel contains the word nickel, so both were replaced by a canned refusal about food she had not asked for. The second half of the same bug: nickel is a contact allergy, from a necklace, and it had been recorded as a dietary restriction. So had hay fever, eight days earlier. A food filter had been armed by two allergies that nobody eats.
+
+---
+
+## 28 September 2026 — A hundred grams, described as something to watch
+
+Her weigh-in card said she was up 1.4 kg and that this was more than a single-day blip, worth a calm look rather than a shrug or a spiral. The comparison it used was a reading from six days earlier, because the function it called finds the reading nearest to a week ago rather than the most recent one. Against yesterday's reading she was up 0.1 kg. She was on her period and had eaten a pizza, and the app could see the first and was not looking at the second: there was a flag for a salty day and none for simply having eaten a lot, which is the most ordinary reason a scale is up the next morning. The fix is less interesting than the shape: a correct function, called for the wrong question, producing a true number about something nobody asked.
+
+---
+
+## 28 September 2026 — The prompt was asked for a theme, so it produced one
+
+"The thread running through this week is permission: you've been letting yourself off the hook in small ways." That sentence was not the model inventing a verdict on somebody's character. Step four of a numbered list in the roundup's own prompt asked for one thematic observation drawn across the week, and it produced one every time it was run, on the same week, in three different words. A theme is not a finding. It is a sentence that sounds like one, produced to order, about a person who did not ask for it. Removing the instruction was not enough, either: the prompt now says the opposite out loud, because a week of logs is the kind of thing that seems to want a story and does not contain one.
+
+---
+
+## 28 September 2026 — Four things on the list had already been built
+
+The standing list of what is not done had three items marked as not started that had shipped the same day it was written, in commits made by the person writing the list. A fourth was found the same way an hour later. The cause was one habit: the list was being rebuilt from the previous version of the list rather than from the app. Every line now says how it was checked — a file, a commit, a query — which is slower to write and is the only version worth keeping. A status document does not drift because people are careless. It drifts because checking it against reality is a different and harder job than updating it.
+
+---
+
+## 28 September 2026 — Measuring the fix showed it cost twice what it saved
+
+A rebuilt chat path went live and the median time from message to reply doubled, from 3.3 seconds to 7.0, measured on real turns rather than in a probe. The second model call was expected and the number was not. What made it worth measuring rather than assuming was finding the part that was pure waste: the first call was still writing a full, careful reply that nothing would ever read, because the new path replaces it. Output is the slow half of a model call. The field could not be removed — it is the fallback when the second call fails, and on a distress turn it is still the real reply — so it is asked for short instead. A feature that is better and slower is a trade. A feature that is better and slower partly for no reason at all is just unfinished.
