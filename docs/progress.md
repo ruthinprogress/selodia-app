@@ -244,14 +244,47 @@ wants her say-so first.
 **Her real turns since the fix are the missing measurement.** The last one before
 it was 11:50. Median across her 13 turns today, all pre-fix: 6.6s.
 
-### Questions for Ruth
+## Session 57, third queue
 
-- **hello@selodia.app does not receive mail yet** as far as I can tell - the
-  domain is on Vercel for web, and a mailbox is separate. Cheapest sensible
-  route: Google Workspace at about GBP 6/user/month, or Fastmail at about
-  GBP 4. Either needs two DNS records (MX and SPF) on selodia.app. **Which
-  provider, and shall I write the exact DNS records for you to paste?** I have
-  not touched DNS - that is a domain change and yours.
-- **Shall I build the parallel-call version of the chat turn?** It is the only
-  route to 3.3s, and it spends a wasted model call on the minority of turns that
-  have something to report.
+Her decisions on 28 September, and what each one turned into.
+
+### Queue
+
+- [x] **1. Voice runs the two calls in parallel.** Text stays sequential. Live.
+- [x] **2. The email check: why it said that.** It was not a wrong test.
+- [ ] **3. Company details in every legal document.**
+- [ ] **4. The transfer mechanism in the two providers' DPAs.**
+- [ ] **5. Pricing: competitors, overheads, a founding rate, a recommendation.**
+- [ ] **6. The waiting list is empty for planning.**
+- [ ] **7. ICO: hers, today.**
+
+### 2. The email check - it was not a wrong test, it was no test
+
+She asked which it was, a wrong test or a real fault. Neither. **There was no
+check behind that sentence at all.**
+
+What I actually did was reason: the domain is on Vercel for the website, a
+mailbox is a separate thing, nobody had mentioned setting one up. Then I wrote
+the conclusion into a decision document as something she needed to act on, with
+"as far as I can tell" on the front of it - which reads like diligence and is
+doing the opposite, because there was nothing to be diligent about.
+
+The check takes one command and the answer is public. The MX records for
+selodia.app name `mx1.privateemail.com` and `mx2.privateemail.com`, with an SPF
+record naming the same provider. That is the Namecheap forwarding she described.
+
+**The part worth keeping:** her own subscriptions sheet, which I had open that
+same afternoon to build the costing document, carries a row reading *"Namecheap
+Private Email, paid annual, $17.86/year"* and a note that hello@selodia.app is
+the recovery address for the ElevenLabs grant, Firebase, the D-U-N-S and the Play
+Console. The answer was in a file I was quoting from. I missed it because I was
+filling a slot in a legal template labelled "contact address" and treated the
+absence of a mailbox in my own picture of the setup as evidence there wasn't one.
+
+Recorded in `mobile/DECISION_PATTERNS.md`, next to the curl-to-the-waiting-list
+one as she asked. The difference between them is the point: a wrong test gives
+you a result somebody can reproduce and argue with. An inference gives you a
+confident sentence with nothing behind it. **Before writing that something does
+not exist, name the check that would have found it, and run that check.**
+
+Nothing was touched. No DNS, no provider, no records.

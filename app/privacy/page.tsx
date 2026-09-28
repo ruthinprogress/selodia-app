@@ -61,6 +61,7 @@ const SECTIONS: PlainSection[] = [
     heading: 'Who is responsible',
     body: [
       'Selodía is operated by Selodía Ltd, which is the data controller for everything described here. If you have a question about your data, or want to exercise any of the rights below, email hello@selodia.app.',
+      'Selodía Ltd is registered in England and Wales, company number 12246794, registered office 19 Campbell Road, London, E17 6RR.',
       'If you are not satisfied with how a request is handled, you can complain to the Information Commissioner’s Office (ICO) at ico.org.uk.',
     ],
   },

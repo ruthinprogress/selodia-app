@@ -1,6 +1,7 @@
 # Data Protection Impact Assessment — Selodía
 
-**Controller:** Selodía Ltd
+**Controller:** Selodía Ltd, 19 Campbell Road, London, E17 6RR
+**Company number:** 12246794 · **Contact:** hello@selodia.app
 **Version 1.0 · 28 September 2026 · first draft, not yet reviewed**
 **Review:** yearly, and whenever anything new is collected.
 

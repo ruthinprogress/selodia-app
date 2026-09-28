@@ -91,6 +91,7 @@ const SECTIONS: PlainSection[] = [
     heading: 'Who you are agreeing with',
     body: [
       'Selodía is operated by Selodía Ltd. Using the app means accepting these terms, which are an agreement between you and Selodía Ltd. If you do not accept them, do not use it.',
+      'Selodía Ltd is registered in England and Wales, company number 12246794, registered office 19 Campbell Road, London, E17 6RR.',
       'Questions about anything here go to hello@selodia.app.',
     ],
   },

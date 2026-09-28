@@ -62,7 +62,8 @@ England and Wales.
 
 ## 15. Contact
 
-hello@selodia.app · Selodía Ltd, [registered address], company number [number].
+hello@selodia.app · Selodía Ltd, 19 Campbell Road, London, E17 6RR, company
+number 12246794.
 
 ---
 
@@ -72,7 +73,9 @@ hello@selodia.app · Selodía Ltd, [registered address], company number [number]
 
 ## Notes, not part of the agreement
 
-**Three things are still placeholders** and the agreement cannot be shown to anybody until they are filled: the **version date**, the **registered address** and the **company number**. All three follow incorporation.
+**The address and the company number are filled in** (Ruth, 28 September 2026): Selodía Ltd, 19 Campbell Road, London, E17 6RR, company number 12246794.
+
+**One placeholder is left, and it is meant to be.** The version date is *the day the agreement is first shown to a tester*, which has not happened. `node scripts/beta-agreement-date.mjs` fills it from the earliest grant in `beta_members` **that is not the founder's own account** — so the date is the day wave zero was actually granted to somebody being tested on, derived rather than remembered. It refuses while no such grant exists, and refuses to re-date a version already stamped. **Do not type the date in by hand.** The founder exclusion is there because the first run of the script dated the agreement from Ruth's own beta grant, which was made that morning so she could see the feedback screen.
 
 **Clause 12 is the one to watch.** The earlier draft carried the standard carve-out — that nothing limits liability for death or personal injury caused by negligence, for fraud, or for anything else that cannot lawfully be limited. Ruth shortened it deliberately, and the note above flags it for the solicitor. Worth knowing that the carve-out is generally implied by law in England and Wales whether or not it is written, so the shortening changes how the clause reads more than what it does — but that is exactly the kind of sentence a solicitor should confirm rather than me.
 
