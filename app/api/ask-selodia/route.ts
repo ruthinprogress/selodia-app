@@ -92,6 +92,12 @@ import {
   type PlanExercise,
 } from '../../lib/rules-gate';
 import {
+  RED_FLAGS_LIVE,
+  alreadyRaised,
+  matchRedFlag,
+  recordRaised,
+} from '../../lib/red-flags';
+import {
   clearPendingSave,
   coerceProposal,
   applyRedirect,
@@ -2953,7 +2959,46 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   //
   // Point 4 is that they go IN INSTEAD, before anything is written, so one voice
   // says all of it once. See app/lib/chat-path.ts for the switch.
+  // RED FLAGS (2026-09-28). SAFETY_ARCHITECTURE.md §10, layer 2.
+  //
+  // OFF UNTIL A CLINICIAN HAS READ THE LIST - RED_FLAGS_LIVE is false. Ruth
+  // approved the list as provisional, pending advisor review before public
+  // launch, so the code is on main and covered by its checks rather than
+  // rotting on a branch, and turning it on is one line.
+  //
+  // ACUTE DISTRESS WINS, ALWAYS. If the turn carries an escalation step or a
+  // distress classification, the safety machine owns it completely and this is
+  // suppressed. Two safety mechanisms speaking in one message is the failure
+  // that produced the "logged fine / did not save" reply, in a far worse place.
+  //
+  // IT READS WHAT SHE SAID, not what the model wrote. The allergy gate reads
+  // output because it is stopping the app suggesting something; a red flag is
+  // about what she has told us.
+  let redFlagNote: string | null = null;
+  if (
+    RED_FLAGS_LIVE &&
+    nextEscalationStep == null &&
+    // The cast is because the constant is a one-element `as const` tuple, so
+    // its `includes` only accepts 'neutral'. Widened rather than the array,
+    // because narrowing NON_DISTRESS_CLASSIFICATIONS is what makes the
+    // classify tool's own type safe.
+    (NON_DISTRESS_CLASSIFICATIONS as readonly string[]).includes(nextClassification)
+  ) {
+    const hit = matchRedFlag(message ?? '');
+    // ONCE, AND NOT AGAIN. Somebody who has been told and has not gone has made
+    // a decision, and the app's job is not to keep asking.
+    if (hit && !(await alreadyRaised(supabase, user.id, hit.flag.key))) {
+      redFlagNote = hit.line;
+      await recordRaised(supabase, user.id, hit.flag.key);
+      console.log(`RED FLAG: ${hit.flag.key} (${hit.flag.urgency})`);
+    }
+  }
+
   const appendedNotes = [
+    // FIRST IN THE LIST, because if anything here is going to be read it is
+    // this one, and a line about calling 999 does not belong under a note about
+    // an Almanac save.
+    redFlagNote,
     planNote,
     correctionNote,
     restoreNote,
