@@ -2814,9 +2814,30 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     });
     // A failure here is a fallback, not a lost turn: the old path's reply is
     // already sitting in safeReplyText with its notes ready to append.
-    if (written) {
-      replyBody = written;
+    // DISCRIMINATED ON fellBack, not on the text being truthy: the success branch
+    // types text as string, so an empty one would not narrow and both branches
+    // would look possible to the compiler. The reason is the discriminant.
+    if (written.fellBack === null) {
+      replyBody = written.text;
       notesStillToAppend = [];
+    } else {
+      // RECORDED WHERE IT CAN BE COUNTED, not only logged. The console line goes
+      // to Vercel, which is not somewhere the question "how often is this
+      // happening?" can be answered from. Fire-and-forget: a failure to record a
+      // fallback must never become a second failure on the same turn.
+      console.log(`REPLY PATH FALLBACK: ${written.fellBack} - ${written.detail}`);
+      void supabase
+        .from('reply_path_fallbacks')
+        .insert({
+          user_id: user.id,
+          reason: written.fellBack,
+          detail: written.detail,
+          voice: isVoice,
+          turn_id: turnId,
+        })
+        .then(({ error }) => {
+          if (error) console.log('REPLY PATH FALLBACK NOT RECORDED:', error.message);
+        });
     }
   }
 

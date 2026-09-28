@@ -121,13 +121,26 @@ export type ReplyRequest = {
 };
 
 /**
+ * Why a turn fell back to the old path. Three genuinely different failures that
+ * used to be one bare null, so nobody could tell a model outage from a reply
+ * that came back empty from one truncated half-written.
+ */
+export type FallbackReason = 'error' | 'empty' | 'max_tokens';
+
+export type WrittenReply =
+  | { text: string; fellBack: null }
+  | { text: null; fellBack: FallbackReason; detail: string };
+
+/**
  * Write the whole reply, once, after the saving is done.
  *
- * Returns null on any failure - a model error, an empty reply, a timeout. The
- * caller then uses the old path's reply. That is deliberate: the switch is a
- * change of author, not a new way for a turn to fail.
+ * NEVER THROWS, and never leaves the caller without a reply: any failure comes
+ * back as a reason and the old path's reply is used. That is deliberate - the
+ * switch is a change of author, not a new way for a turn to fail - but a silent
+ * fallback is its own problem, so the reason is returned rather than swallowed
+ * and the caller records it.
  */
-export async function writeReplyAfterSaves(req: ReplyRequest): Promise<string | null> {
+export async function writeReplyAfterSaves(req: ReplyRequest): Promise<WrittenReply> {
   // THE STATIC HALF FIRST, SO IT CAN BE CACHED. The rebuilt prompt and the safety
   // block are identical on every turn of the same kind - 3,093 tokens of the
   // roughly 4,000 this call sends - and a cache entry is keyed on everything
@@ -167,15 +180,27 @@ export async function writeReplyAfterSaves(req: ReplyRequest): Promise<string | 
       ],
       messages: req.messages,
     });
-    if (res.stop_reason === 'max_tokens') return null;
+    if (res.stop_reason === 'max_tokens') {
+      // Truncated mid-sentence. Unusable as a reply and worse than the old
+      // path's, which at least finished.
+      return { text: null, fellBack: 'max_tokens', detail: `output_tokens=${res.usage?.output_tokens ?? '?'}` };
+    }
     const text = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('')
       .trim();
-    return text.length > 0 ? text : null;
+    if (text.length === 0) {
+      return {
+        text: null,
+        fellBack: 'empty',
+        detail: `stop_reason=${res.stop_reason ?? '?'} blocks=${res.content.length}`,
+      };
+    }
+    return { text, fellBack: null };
   } catch (err) {
-    console.log('REPLY WRITER ERROR, falling back to the old path:', err instanceof Error ? err.message : err);
-    return null;
+    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    console.log('REPLY WRITER ERROR, falling back to the old path:', detail);
+    return { text: null, fellBack: 'error', detail: detail.slice(0, 500) };
   }
 }

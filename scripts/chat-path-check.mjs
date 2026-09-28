@@ -311,16 +311,16 @@ for (const c of CASES) {
     safetyBlock: SAFETY_PROMPT_BLOCK,
   });
 
-  if (reply === null) {
-    console.log('  (returned null - the caller would fall back to the old reply)');
+  if (reply.fellBack !== null) {
+    console.log(`  (fell back: ${reply.fellBack} - ${reply.detail})`);
     failed += c.checks.length;
     continue;
   }
 
-  console.log('> ' + reply.split('\n').join('\n> '));
+  console.log('> ' + reply.text.split('\n').join('\n> '));
   console.log('');
   for (const [name, test] of c.checks) {
-    const ok = test(reply);
+    const ok = test(reply.text);
     if (!ok) failed += 1;
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}`);
   }
