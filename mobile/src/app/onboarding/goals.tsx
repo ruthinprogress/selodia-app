@@ -111,7 +111,7 @@ export default function GoalsScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/health-context');
+      router.push('/onboarding/skill');
       return;
     }
     setSaving(true);
@@ -121,7 +121,7 @@ export default function GoalsScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/health-context');
+    router.push('/onboarding/skill');
   }
 
   useOnboardingAction({

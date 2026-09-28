@@ -25,6 +25,7 @@ import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-lin
 import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { readSnapshot, saveSnapshot } from '@/lib/snapshot';
+import { hidesCycleDay, type LifeStage } from '@/lib/life-stage';
 import { supabase } from '@/lib/supabase';
 
 // The Body tab's landing screen (rewritten 2026-09-03).
@@ -114,6 +115,9 @@ type ProfileRow = {
   has_scales: boolean | null;
   protein_target_g: number | null;
   first_name: string | null;
+  // Read so the cycle day can be suppressed for anybody who is not on a regular
+  // cycle. See cycleDayFrom.
+  life_stage: string | null;
 };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
@@ -168,7 +172,19 @@ function greeting(name: string | null, now: Date = new Date()): string {
 // The ceiling comes down from 60 to 45, her figure. Past that the last logged
 // start is too old to mean anything, and a number that is probably wrong is
 // worse than no number.
-export function cycleDayFrom(lastStart: string | null): number | null {
+export function cycleDayFrom(lastStart: string | null, stage?: LifeStage | null): number | null {
+  // HER LIFE STAGE OVERRULES THE ARITHMETIC (2026-09-28).
+  //
+  // The 45-day ceiling below is what protects a woman who has simply stopped
+  // logging. It does nothing for the woman who told us where she is: somebody
+  // post-menopause, or with a coil, can still have a period start from five
+  // weeks ago on file, and "Cycle day 34" beside her date is the app telling
+  // her something it has been explicitly told is not true.
+  //
+  // Only a regular cycle gets a cycle day. Everything else - including "not
+  // sure" and "prefer not to say" - gets silence, which is the honest answer
+  // when the app does not know.
+  if (hidesCycleDay(stage ?? null)) return null;
   if (!lastStart) return null;
   const start = new Date(`${lastStart}T00:00:00`);
   if (isNaN(start.getTime())) return null;
@@ -278,7 +294,7 @@ export function OverviewPanel({
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -416,7 +432,10 @@ export function OverviewPanel({
         ],
         steps: stepsToday,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
-        cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
+        cycleDay: cycleDayFrom(
+          (lastPeriod as { event_date: string } | null)?.event_date ?? null,
+          (profile?.life_stage ?? null) as LifeStage | null
+        ),
       };
       setData(next);
       // Kept for the next opening, so the screen starts full rather than empty.
