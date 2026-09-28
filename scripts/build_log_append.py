@@ -25,6 +25,7 @@ it in the file correctly.
 
     python scripts/build_log_append.py entry.txt
     python scripts/build_log_append.py entry.txt --before 54
+    python scripts/build_log_append.py entry.txt --continue 57
 
 The log is chronological, so a backfilled session has to go where it belongs
 rather than on the end. `--before N` inserts it immediately ahead of session N's
@@ -97,9 +98,12 @@ def insertion_point(xml: str, before: int | None) -> int:
     # rather than inside it. Search back from the header text to the <w:p> that
     # contains it, and then back again over the blank spacer paragraph that
     # separates entries, so the spacing pattern survives.
-    m = re.search(rf">Session {before}\b", xml)
+    # The BODY header. See the note in end_of_session: the contents list says
+    # "Session N" too, with two spaces around the separator instead of one. This
+    # one has never been bitten and would have been, by the same bug.
+    m = re.search(rf">Session {before} [·—]", xml)
     if not m:
-        raise SystemExit(f"  Session {before} is not in the build log, so there is nothing to insert before.")
+        raise SystemExit(f"  Session {before} is not in the build log's body, so there is nothing to insert before.")
     i = xml.rindex("<w:p>", 0, m.start())
     if xml[:i].endswith(BLANK):
         i -= len(BLANK)
@@ -156,7 +160,40 @@ def rebuild_contents(xml: str) -> str:
     return xml[:start] + fresh + xml[end:]
 
 
-def append(entry_path: Path, before: int | None = None) -> int:
+def end_of_session(xml: str, n: int) -> int:
+    """The end of session n's block: just before whatever comes after it.
+
+    A session that runs all day produces more than one queue, and the convention
+    is ONE ENTRY PER SESSION, appended to. S57a and S57b would make the run of
+    session numbers stop meaning anything.
+
+    The block ends where the next session's blank spacer begins, or - for the
+    last session in the document - at the section properties, same as a plain
+    append.
+    """
+    # THE BODY HEADER, NOT THE CONTENTS LINE. Both say "Session 57", and the
+    # first version of this matched the contents entry and put five paragraphs
+    # inside the table of contents. The document's own convention tells them
+    # apart: contents entries use TWO spaces around the separator and body
+    # headers use one, which rebuild_contents already relies on and this did not.
+    m = re.search(rf">Session {n} [·—]", xml)
+    if not m:
+        raise SystemExit(f"  Session {n} is not in the build log's body, so there is nothing to continue.")
+
+    nxt = re.search(r">Session \d+ [·—]", xml[m.end():])
+    if not nxt:
+        return xml.rindex("<w:sectPr")
+
+    # Back to the <w:p> that opens the NEXT session, and then back over the blank
+    # spacer in front of it, so the new paragraphs land inside this session and
+    # the spacing pattern survives.
+    i = xml.rindex("<w:p>", 0, m.end() + nxt.start())
+    if xml[:i].endswith(BLANK):
+        i -= len(BLANK)
+    return i
+
+
+def append(entry_path: Path, before: int | None = None, continue_from: int | None = None) -> int:
     lines = [l.rstrip() for l in entry_path.read_text(encoding="utf-8").split("\n")]
     lines = [l for l in lines if l.strip()]
     if len(lines) < 2:
@@ -173,17 +210,27 @@ def append(entry_path: Path, before: int | None = None) -> int:
     xml = parts["word/document.xml"].decode("utf-8")
 
     m = re.match(r"Session (\d+)", header)
-    if m and int(m.group(1)) in session_numbers(xml):
-        raise SystemExit(f"  Session {m.group(1)} is already in the build log. Nothing written.")
+    if continue_from is None and m and int(m.group(1)) in session_numbers(xml):
+        raise SystemExit(
+            f"  Session {m.group(1)} is already in the build log. Nothing written.\n"
+            f"  If this is a second queue of the same session, --continue {m.group(1)}\n"
+            f"  adds the paragraphs to that entry rather than opening a new one."
+        )
 
-    block = (
-        BLANK
-        + PARA.format(esc(header))
-        + PARA.format(esc(f"Toggl session: {PLACEHOLDER}"))
-        + "".join(PARA.format(esc(p)) for p in paragraphs)
-    )
-
-    i = insertion_point(xml, before)
+    # A CONTINUATION IS PARAGRAPHS, NOT AN ENTRY. No second header and no second
+    # Toggl line: the session has one of each, and a duplicate of either is the
+    # thing --continue exists to avoid.
+    if continue_from is not None:
+        block = "".join(PARA.format(esc(p)) for p in paragraphs)
+        i = end_of_session(xml, continue_from)
+    else:
+        block = (
+            BLANK
+            + PARA.format(esc(header))
+            + PARA.format(esc(f"Toggl session: {PLACEHOLDER}"))
+            + "".join(PARA.format(esc(p)) for p in paragraphs)
+        )
+        i = insertion_point(xml, before)
     xml = xml[:i] + block + xml[i:]
     xml = rebuild_contents(xml)
 
@@ -214,7 +261,7 @@ def append(entry_path: Path, before: int | None = None) -> int:
         for name, data in parts.items():
             z.writestr(name, data)
 
-    print(f"  appended: {header}")
+    print(f"  appended to session {continue_from}" if continue_from else f"  appended: {header}")
     print(f"  {len(paragraphs)} paragraph(s), backup at {backup.name}")
     return 0
 
@@ -226,6 +273,13 @@ if __name__ == "__main__":
         j = args.index("--before")
         before = int(args[j + 1])
         del args[j : j + 2]
+    continue_from = None
+    if "--continue" in args:
+        j = args.index("--continue")
+        continue_from = int(args[j + 1])
+        del args[j : j + 2]
+    if before is not None and continue_from is not None:
+        raise SystemExit("  --before and --continue mean opposite things. Pick one.")
     if len(args) != 1:
         raise SystemExit(__doc__)
-    sys.exit(append(Path(args[0]), before))
+    sys.exit(append(Path(args[0]), before, continue_from))

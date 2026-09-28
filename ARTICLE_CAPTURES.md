@@ -503,3 +503,13 @@ Everything measured: a chat turn costs 1.77 cents, a logging turn 2.01, a weekly
 ## 28 September 2026 — A close-out is not an ending
 
 A standing rule said to keep working until the queue was empty and not to stop to report progress. It held all day and then quietly did not, because of a sentence nobody had thought about: the rule said when to close out, and said nothing about what happens next. So a close-out read as a full stop, and a long summary after it read like one harder. The fix was two sentences — a close-out is a checkpoint, the session is over when the person says it is, and work arriving mid-session joins the end of the queue. Worth recording because the failure was not disobedience. It was an instruction that was complete about the thing it described and silent about the thing that came after, which is the most common way a rule fails.
+
+---
+
+## 28 September 2026 — Three bugs in two days, and all three returned success
+
+A command-line post to a sign-up form came back 200 and wrote nothing, because that kind of form needs machinery the browser supplies and a bare request does not. A latency probe produced a clean set of numbers from a fixture describing a conversation that could not happen. A cost-per-user table recorded nothing at all, because the write was started and deliberately not waited for — right, so that bookkeeping could never delay somebody's reply — and a server of that kind is entitled to switch off the moment the reply is sent, so the write began and the machine running it stopped existing.
+
+Different bugs, one shape. In each case the code was correct about what it asked for and wrong about the environment it asked in: a promise runs to completion, a post is a post, a fixture is a conversation. And in each case nothing failed. The 200 was a 200. The probe printed a median. The table was empty in the way a quiet week is empty.
+
+That is the part worth keeping. A silent success is the signature of an assumption about the environment rather than about the logic, and it is the one failure mode that testing the code cannot catch, because the code did exactly what it said. The check that works is the one that asks the other system what it saw — read the table, open the page in a real browser, look at the row. Not "did my function return", but "did anything happen out there".
