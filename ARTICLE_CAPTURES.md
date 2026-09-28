@@ -546,7 +546,17 @@ Fitness apps are built for the weeks you are on the plan. They are designed arou
 
 Selodía would still be useful to me right now. Today. Injured, off plan, no goal I am chasing, logging half of what I eat. It would notice how I am eating. It would notice how I am sleeping. It would keep track of how the knee is going and what I can still do without making it worse. And it would not make me feel behind, because there is nothing to be behind on.
 
-That is the thing nobody else is building. Not a better plan. Something that stays useful when the plan stops.
+There is more, and I only saw it going back through the screenshots afterwards. I went into that funnel wanting calisthenics. I answered all the questions. What came back was "Ruth, your 4-week Calisthenics Workout Plan to get fitter is ready", over a chart of my fitness climbing week by week, with a line underneath in small grey letters saying the chart is for illustrative purposes only. Next to it: "Your goal: reach 52 kg". I never said that. The screen before had just told me my BMI was normal.
+
+The email came an hour later. Subject line, verify your email address. Inside it, "Your BetterMe goal: lose weight", and an offer to send me the most up-to-date information on achieving my perfect body.
+
+I went back at ten past seven to look at the checkout again. The plan I had been offered at six o'clock for £15.19, down from £38.95, sixty-one per cent off, was now £11.29. Seventy-one per cent off. Same plan. The only thing that had changed was that I had not bought it yet.
+
+And on that same checkout page, under two drawings of a body labelled Now and Your Goal, both of them marked body fat: normal, it said my goal was to maintain weight and get fit, and set my target weight at eight stone. I weigh nearly nine.
+
+So I asked for strength, and it gave me a weight to lose, twice, while telling me I was already a healthy size, at a price that went down because I hesitated. That is the whole thing in one afternoon.
+
+That is what nobody else is building. Not a better plan. Something that stays useful when the plan stops.
 
 **For the weeks you're training, and the weeks you're not.**
 
@@ -556,8 +566,54 @@ It is not small. Every woman I know is in the off-plan weeks far more than she i
 
 ---
 
-*Supporting material from the same day, for whoever writes this up:*
+*Supporting material, all of it from Ruth's own screenshots taken 28 September 2026. The 42 images are filed alongside this in* **Branding & Assets › Marketing Articles and Copy › BetterMe screenshots 2026-09-28**, *numbered in the order she took them.*
 
-- *BetterMe: 6.2 million followers and 72% recommend. Public posts about charges continuing after cancellation, and refunds requiring proof that the product did not work.* **Both figures are from Ruth's own reading on the day and are not yet sourced. Find and cite the source before publishing, or cut them.** The argument stands without them.
-- *Nikki, one of the wave-zero testers, asked for exactly one thing: something that tells her what to eat for the rest of the day to hit her targets. That is the real demand, and it is that simple.*
-- *The funnel numbers, if a price comparison is wanted: £6.93 for the first week, then £38.95 every four weeks, which is about £506 a year.*
+### The price fell because she did not buy
+
+**This is the strongest thing in the set, and it is proved rather than alleged.**
+
+| | 18:01 *(shots 18, 26)* | 19:11 *(shots 39, 42)* |
+| --- | --- | --- |
+| 1-week trial | £17.77 → **£6.93** | £17.77 → **£5.15** |
+| 4-week plan | £38.95 → **£15.19** | £38.95 → **£11.29** |
+| 12-week plan | £94.85 → **£36.99** | £94.85 → **£27.49** |
+| The banner | **61% OFF** | **71% OFF** |
+
+Same plan, same account, seventy minutes apart. The only thing that changed is that she had not paid. **A discount that deepens the longer you hesitate is not a discount, it is a negotiation with a timer on it** — and there was a countdown running on the page throughout.
+
+### The goal she never set, stated three different ways
+
+- **17:59** *(shot 33)* — the quiz result: **"Your goal: reach 52 kg"**, over a rising fitness chart captioned *"This chart is for illustrative purposes only"*. The screen before *(shot 36)* reports **BMI 20.45, NORMAL**, with "Healthy BMI: Good starting BMI to tone up and get your dream body", and assigns a **body type of "Mesomorph"** — somatotype theory, which has no standing in exercise science.
+- **18:15** *(shots 37, 38)* — the follow-up email, subject "Verify your email address", from a sender displayed as "Calisthenic…": **"Your BetterMe goal: lose weight"**, and an offer of "the most up-to-date information on achieving your **perfect body** with Calisthenics workouts".
+- **19:11** *(shot 39)* — the checkout: **"Goal: Maintain weight and get fit. Target weight: 8 st 0 lb."** That is 50.8 kg, below the 52 kg it first named, on a screen that says *maintain*. Above it sit two illustrations labelled **Now** and **Your Goal**, and **both are labelled "Body fat: Normal"** — the only label that changes between them is the calisthenics level, Intermediate to Advanced.
+
+**She asked for calisthenics. Three separate screens gave her a weight to lose.**
+
+### The guarantee, in their own words
+
+*(shots 17, 42)* — not a user's account: **"We're even ready to return your money if you can demonstrate that you followed the plan but didn't see any results."** BetterMe International Limited, Office No. 101, "Afentiko Anna" Building, Paphos, Cyprus.
+
+The checkout's own renewal line: *"Without cancellation, before the selected discounted intro plan ends, I accept that BetterMe will automatically charge £38.95 (incl. VAT) every 4 weeks until I cancel."*
+
+### The claims
+
+*(shots 19-24, 40)* — "Trusted by 10 million+ people", Trustpilot Excellent, 2.2M reviews, 1.7M five-star ratings, Apple App of the Day in 160 countries on 15 July 2025, Best Mobile App Awards 2022, Top-3 Guided Workout Apps by Apple 2022, Forbes Health 2025. **"As featured in" is two different lists on two different pages** — Healthline, Women's Health, Good Housekeeping on one; USA Today, Forbes, WSJ, New York Post, Mashable on the other. Featured is not endorsed, and it is placed to read as though it were.
+
+**The disclaimer moves too.** Under the before-and-afters it is "0.45-0.9 kg per week" in one place and "1-2 lb per week" in another, and the same two testimonials appear as **Mandy -4 kg / Nina -3 kg** on one page and **Mandy -0.9 st / Nina -0.7 st** on the next. One of the three, Vera at -5 kg, is captioned **BetterMe Ambassador** in the image margin.
+
+*(shot 34)* — the loading spinner sits at 23% under "**287,465 women** have chosen BetterMe to build muscle and get fit".
+
+### The Facebook page and the public posts
+
+*(shot 16, 17:40)* — Health/beauty, Los Angeles, **6.2M followers, 72% recommend**.
+
+- *Key Bradley (shot 12):* "BetterMe requires customers seeking a refund to meet a policy that, in my case, included proving they hadn't achieved results. I requested a refund on the same day my subscription renewed because I no longer wanted to use the service."
+- *Ann Press (shots 7, 8), 36 likes:* the programme requires consecutive days, and "The BetterME advertisement does NOT inform you that the days have to be consecutive".
+- *Deanna Ean (shot 9):* "NEVER EVER use Betterme.com!!!"
+- **And the one that belongs in the piece for fairness** — *Sinziana Bura (shot 7):* "UPDATE: After posting this review and discussing my experience directly with the BetterMe team, they issued a full refund of 433.18 RON. More importantly, they acknowledged the point I was trying to make about communication before automatic renewal." **They do refund. You appear to have to post a public review first.**
+
+### Two other things worth keeping
+
+**Nikki**, one of the wave-zero testers, asked for exactly one thing: something that tells her what to eat for the rest of the day to hit her targets. That is the real demand, and it is that simple.
+
+**Their own FAQ asks "What if I lose motivation quickly?"** *(shot 41)*. They know what the problem is. Their answer is a better plan. This piece's answer is that the plan is not the point.

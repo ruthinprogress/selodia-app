@@ -54,6 +54,31 @@ export type TurnData = {
   lastPeriodStart: string | null;
   /** How many days each block covers. Seven typed, three spoken. */
   days: number;
+  /**
+   * TODAY'S TARGETS AND WHAT IS LEFT OF THEM, already computed and already
+   * worded by app/lib/daily-targets.ts.
+   *
+   * ADDED 28 SEPTEMBER 2026, and the reason is the whole point of it. That block
+   * had been built for months and handed to the CLASSIFY call only. The writer -
+   * which writes every reply on the rebuilt path - had never seen it. So when
+   * somebody asked what to eat for the rest of the day, the half of the pipeline
+   * that answers did not know what was left of it, and said so honestly, which
+   * read as the app not knowing its own numbers.
+   *
+   * Passed through as the finished string rather than the numbers, so there is
+   * one place that decides how a target is worded and one place that decides
+   * when there is no target to state.
+   */
+  today?: string | null;
+  /**
+   * The distinct things she has actually eaten lately.
+   *
+   * SO A SUGGESTION IS HER FOOD, NOT A NUTRITIONIST'S. Somebody who has logged
+   * feta and mackerel salad three times should not be told about quinoa bowls.
+   * It is also the cheapest possible personalisation: no preferences to set up,
+   * no questionnaire, and it is right by construction because she ate it.
+   */
+  usuallyEats?: string[] | null;
 };
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -226,13 +251,47 @@ export function cycleFacts(lastPeriodStart: string | null, today: Date): string 
  * six places in a 2,700-line route, which is six places for one of them to
  * quietly go back to prose.
  */
+/**
+ * What she tends to eat, from what she has logged.
+ *
+ * NEWEST FIRST AND CAPPED, because the point is a handful of recognisable things
+ * rather than an inventory. A list of forty meals is the same as no list: the
+ * model picks whichever suits the sentence it was already going to write.
+ */
+function eatingHabits(items: string[] | null | undefined): string | null {
+  if (!items || items.length === 0) return null;
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const raw of items) {
+    const text = raw.trim();
+    // A key that ignores case and punctuation, so "Chicken salad" and "chicken
+    // salad," are one thing rather than two.
+    const key = text.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    kept.push(text.length > 70 ? `${text.slice(0, 67)}...` : text);
+    if (kept.length === 12) break;
+  }
+  if (kept.length === 0) return null;
+  return (
+    'WHAT THEY ACTUALLY EAT, from their own log, newest first. Use these when ' +
+    'suggesting food: something they have eaten before needs no selling and no ' +
+    'explaining. Never present this list back to them.\n' +
+    kept.map((k) => `- ${k}`).join('\n')
+  );
+}
+
 export function turnFacts(data: TurnData, today: Date = new Date()): string {
   return [
+    data.today ?? null,
+    eatingHabits(data.usuallyEats),
     foodFacts(data.food, data.days),
     movementFacts(data.activity, data.dailyBurn, data.days),
     waterFacts(data.drinks, data.days),
     sleepFacts(data.sleep, data.days),
     measurementFacts(data.measurements, data.days),
     cycleFacts(data.lastPeriodStart, today),
-  ].join('\n\n');
+  ]
+    .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+    .join('\n\n');
 }

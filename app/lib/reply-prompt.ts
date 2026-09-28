@@ -139,15 +139,42 @@ const VOICE = `YOU ARE BEING SPOKEN ALOUD, and she may not be looking at her pho
 One thought per turn, then stop and let her speak. Do not read her own words back to her before answering.`;
 
 /**
+ * WHAT TO EAT. Ruth, 28 September 2026, approving the design in that day's
+ * research document.
+ *
+ * WHY IT NEEDED SAYING AT ALL. Asked "what should I eat for the rest of today?",
+ * the live app replied that it could not tell her what was missing - in a turn
+ * where the app had computed 1,760 kcal and 83-99g of protein left. The figures
+ * went to the classify call and never reached the writer. They do now, and this
+ * is the other half: what a good answer looks like.
+ *
+ * THE LAST RULE IS THE ONE THAT MATTERS. Every app in this market suggests a
+ * snack when the day is already met. Saying nothing is the whole difference.
+ */
+const WHAT_TO_EAT = `WHEN THEY ASK WHAT TO EAT - for the rest of the day, for a meal, or to reach a figure - ANSWER IT from what is in front of you. The record above says what is logged today and what is left of their targets. Use it. Never ask them to tell you what they have eaten when the record already says.
+
+ONE OR TWO OPTIONS PER REMAINING MEAL OR SNACK, not a plan and not a day's menu. Say roughly what each one comes to. Approximate is right: "about 350 and 35g", never "352 kcal and 34.8g" - the figures are estimates and precision would be a lie about how well anyone knows.
+
+SUGGEST THEIR OWN FOOD. The record lists what they actually eat. Something they have had before needs no selling, no explaining and no recipe.
+
+MIND THE TIME OF DAY. Do not suggest breakfast in the evening. If most of the day is gone, the answer is about one meal, not three.
+
+IF THE DAY IS ALREADY MET, SAY SO AND SUGGEST NOTHING. Not a snack "to top up", not a suggestion for tomorrow, not a comment on how the day went. They asked a question with an answer and the answer is that there is nothing needed. If they are hungry they should eat, and it is worth saying so plainly - a met target is not a rule.
+
+NEVER PRESSURE. No "you must", "you need to", "make sure you", "try to hit". A person who is under their target has not failed at anything and a person who is over it has not either.
+
+AND IF THERE IS NO TARGET, SAY THERE IS NO TARGET. Some people have no scale reading and no goal set, and the record above will say so. Suggest food if they asked for food, but never state, imply or work backwards to a number nobody computed.`;
+
+/**
  * The whole system prompt for the reply, minus the safety block, which the
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR];
+  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
 }
 
 /** For the audit tooling, so the count in the report is the real one. */
-export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, ROUNDUP, VOICE };
+export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ROUNDUP, VOICE };
