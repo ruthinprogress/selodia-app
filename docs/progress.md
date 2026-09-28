@@ -250,7 +250,8 @@ Her decisions on 28 September, and what each one turned into.
 
 ### Queue
 
-- [x] **1. Voice runs the two calls in parallel.** Text stays sequential. Live.
+- [x] **1. Voice runs the two calls in parallel.** Text stays sequential. Live,
+      measured, and it did not get to 3.3s. Below.
 - [x] **2. The email check: why it said that.** It was not a wrong test.
 - [ ] **3. Company details in every legal document.**
 - [ ] **4. The transfer mechanism in the two providers' DPAs.**
@@ -288,3 +289,68 @@ confident sentence with nothing behind it. **Before writing that something does
 not exist, name the check that would have found it, and run that check.**
 
 Nothing was touched. No DNS, no provider, no records.
+
+### 1. Parallel voice — live, working, and not enough
+
+**It is deployed and the mechanism does what it was built to do.** Nine probe
+turns through the real production pipeline, and the speculative reply was used on
+**nine out of nine**. The classify call now finishes while the writer is still
+going, on every turn measured — it has disappeared from the critical path
+entirely, which is exactly what was promised.
+
+**And voice is still about six seconds.** Median 6.3s server-side across the nine
+(best 3.4s, worst 7.8s).
+
+**Why, with the phase timings that show it.** A turn now looks like this:
+
+| | |
+| --- | --- |
+| auth, her row, the record | 0.5–1.7s |
+| classify **and** write, at the same time | the longer of the two |
+| the classify call alone | 1.8–2.6s |
+| **the reply writer alone** | **2.9–6.6s** |
+
+The writer is now the whole critical path, and **it takes longer on its own than
+the entire old path did.** The old path's 3.3s was one streamed call. Parallelism
+removed the classify call from the sum; it cannot make the writer faster, and the
+writer is the bigger of the two by roughly double.
+
+**The remaining lever, and it is yours to call.** The reply is written but not
+*sent* until it is complete — the voice adapter waits for the whole thing and
+then hands it to ElevenLabs in pieces. It does not have to. The moment the saves
+confirm (which the timings show happens 1.9s before the writer finishes, median)
+the reply is safe to start speaking, and the rest could stream out as it is
+written. **That is worth about 1.9s of the six**, and would put a spoken turn at
+roughly 3.5–4.5s to first word.
+
+It is a real change: `ask-selodia` currently returns finished JSON and would have
+to return a stream, which the mobile app also consumes. Not something to do
+unasked on the same day as the last one. **Shall I?**
+
+**What I did not do, deliberately.** The other way to make the writer faster is to
+make the replies shorter, because output tokens are most of the time. The spoken
+replies it is producing now are two or three dense sentences. Shortening them is a
+decision about how Selodía talks, not a latency fix, and you approved how it talks
+this morning — so it is not mine to change.
+
+### 1b. What the parallel call costs
+
+**On the nine probe turns: nothing.** The guess held every time, so the
+speculative call *was* the reply and no second call was made.
+
+**That sample flatters it, and the reason matters.** Those nine were all
+questions. The guess is discarded when a turn has something to report — a failed
+save, a correction, a deletion — and none of them did. A turn that logs food is
+exactly the kind that discards.
+
+**When it is discarded, the turn costs one extra reply-writer call: 0.337c**, on
+top of a 1.767c chat turn. **+19% on that turn**, and nothing on the turns where
+it holds. Voice only; text is untouched.
+
+**So the real number is 0.337c × however often it discards, and that is now
+measured rather than guessed.** Every turn logs whether the guess held, and the
+route prints the reason when it did not. A week of real voice use will give the
+rate. Until then the bound is what can be said honestly: **between 0 and 19% of
+the voice turn cost, and nowhere near the top of the bill either way** — the
+ElevenLabs grant ending in September 2027 is still the largest number on that
+page by an order of magnitude.

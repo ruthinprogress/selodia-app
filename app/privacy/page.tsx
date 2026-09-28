@@ -40,6 +40,14 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // the version they agreed to is not the current one, which is how "you will be
 // told in the app" below is kept.
 //
+// 2026-09-28: THE COMPANY'S REGISTERED PARTICULARS WERE ADDED and UPDATED was
+// deliberately LEFT AT 19 SEPTEMBER. The Companies Act and the E-Commerce
+// Regulations want the number, the place of registration and the registered
+// office stated; none of that changes what is collected or who sees it, and
+// UPDATED is the field that re-asks every existing user to confirm their consent.
+// Making the whole userbase re-consent to learn Selodia's postcode is the wrong
+// trade. Bump it when the SUBSTANCE changes, which is what the note above means.
+//
 // NO CLIENT JAVASCRIPT, matching the landing page: one server-rendered document.
 
 export const metadata: Metadata = {

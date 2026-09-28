@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   description: 'The agreement between you and Selodía, in plain English.',
 };
 
-const UPDATED = '27 September 2026';
+const UPDATED = '28 September 2026';
 
 const SECTIONS: PlainSection[] = [
   {
