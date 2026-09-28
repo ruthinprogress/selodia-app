@@ -26,6 +26,7 @@ import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { readSnapshot, saveSnapshot } from '@/lib/snapshot';
 import { hidesCycleDay, type LifeStage } from '@/lib/life-stage';
+import { plannedTodayLine } from '@/lib/reminders';
 import { supabase } from '@/lib/supabase';
 
 // The Body tab's landing screen (rewritten 2026-09-03).
@@ -103,6 +104,8 @@ type OverviewData = {
   // has ever been logged. Read, never inferred: a cycle day guessed from an
   // average would be a number about somebody's body that nobody measured.
   cycleDay: number | null;
+  // "On the plan: gym", or null. Guide me only, planned days only.
+  plannedLine: string | null;
 };
 
 type ProfileRow = {
@@ -115,6 +118,7 @@ type ProfileRow = {
   has_scales: boolean | null;
   protein_target_g: number | null;
   first_name: string | null;
+  guidance_mode: string | null;
   // Read so the cycle day can be suppressed for anybody who is not on a regular
   // cycle. See cycleDayFrom.
   life_stage: string | null;
@@ -285,6 +289,7 @@ export function OverviewPanel({
         { data: drinks },
         stepsToday,
         { data: lastPeriod },
+        { data: weekRows },
       ] = await Promise.all([
           supabase
             .from('body_measurements')
@@ -294,7 +299,7 @@ export function OverviewPanel({
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -316,6 +321,10 @@ export function OverviewPanel({
             .order('event_date', { ascending: false })
             .limit(1)
             .maybeSingle(),
+          // THE WEEK, only so today's planned line can be built. Days are set
+          // in Guide me and are empty for everybody else, so for most people
+          // this returns rows whose `days` array is empty and the line is null.
+          supabase.from('user_week').select('activity, days').order('sort_order', { ascending: true }),
         ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
@@ -436,6 +445,10 @@ export function OverviewPanel({
           (lastPeriod as { event_date: string } | null)?.event_date ?? null,
           (profile?.life_stage ?? null) as LifeStage | null
         ),
+        plannedLine: plannedTodayLine(
+          (weekRows ?? []) as { activity: string; days: string[] }[],
+          profile?.guidance_mode ?? null
+        ),
       };
       setData(next);
       // Kept for the next opening, so the screen starts full rather than empty.
@@ -496,6 +509,21 @@ export function OverviewPanel({
             {data.cycleDay != null ? `  ·  Cycle day ${data.cycleDay}` : ''}
           </ThemedText>
         </View>
+        {/* GUIDE ME, AND ONLY ON A DAY THAT HAS SOMETHING IN IT.
+            Ruth's brief: 'Guide me shows one line on Today ("On the plan:
+            gym"), only on planned days.'
+
+            A LINE, NOT A PROMPT, AND NEVER A TICK. It states what is in her
+            week today and offers no way to mark it done, because Today is not
+            where anything is marked done and My Week has no completion at all.
+            Somebody who does not do it finds the line gone tomorrow and nothing
+            else changed - no carry-over, no count, no note that it did not
+            happen. */}
+        {data.plannedLine ? (
+          <ThemedText type="small" themeColor="accentDeep">
+            {data.plannedLine}
+          </ThemedText>
+        ) : null}
       </View>
 
       {/* The daily line is NOT here any more - see the foot of this screen
