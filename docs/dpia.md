@@ -51,7 +51,40 @@ Selodía is a body-literacy app for women over 40. People log what they eat, how
 | **Backblaze B2** | The exercise clip library. **No personal data at all.** | US |
 | **Apple / Google** | Subscription and payment data, once billing exists. Selodía never sees a card. | Various |
 
-**International transfers.** Anthropic and ElevenLabs are US processors. This needs the appropriate transfer mechanism in place (SCCs or the UK Addendum / Data Bridge) and **it is not confirmed** — see the gaps below.
+### International transfers — checked, 28 September 2026
+
+Anthropic and ElevenLabs are US processors, so personal data leaves the UK on
+every chat turn and every spoken one. **Both have a UK transfer mechanism, and
+both apply without Selodía signing anything.** Read from the processors' own
+current documents rather than from a summary of them.
+
+| | Mechanism | How it attaches | Sub-processors |
+| --- | --- | --- | --- |
+| **Anthropic** | EU SCCs Module Two (Controller→Processor), incorporated by reference at section I.1, **plus the UK Addendum** at Schedule 3 section B, which applies "to any processing of Customer Personal Data that is subject to the UK GDPR". | The DPA "is incorporated into and forms part of the Anthropic Commercial Terms of Service". Accepting the Commercial Terms accepts the DPA. **No form, no signature.** | anthropic.com/subprocessors. **15 days** to object to a new one. |
+| **ElevenLabs** | SCCs at section 11.1, **the UK Addendum completed at section 11.4**, and the EU–US Data Privacy Framework offered as an alternative basis at 11.1(i). | Section 11.1: the SCCs "shall be deemed executed upon this DPA taking effect". **No separate signature.** | compliance.elevenlabs.io. **30 days'** notice before a new one, with a right to object on data-protection grounds. |
+
+**Two things this does *not* establish, stated rather than glossed.**
+
+1. **Whether either company is certified under the Data Privacy Framework, and
+   whether that certification carries the UK Extension.** The public list at
+   dataprivacyframework.gov did not answer it either way today, and secondary
+   write-ups contradict each other. It does not matter for the mechanism — the
+   SCCs and the UK Addendum stand on their own — so it is recorded as unknown
+   rather than assumed either way.
+2. **Transfer risk assessments.** Having the clauses is the first half; the UK
+   GDPR also expects a documented judgement that the clauses are effective given
+   US surveillance law. Not done, and it belongs with the solicitor at the
+   100-subscriber review rather than here.
+
+**Anthropic's retention and training position**, since it bears on the risk
+rather than the mechanism: the DPA's stated purpose is providing the service,
+and it does **not** authorise using customer inputs to train models — that would
+need a separate agreement. On termination, deletion within 30 days.
+
+**The other three are not settled by this.** Supabase (EU region), Vercel (London)
+and Backblaze were not checked today and are not in the same position: their data
+stays in region, but the companies are American and support access is itself a
+transfer. That is the *processor due diligence* line below, not this one.
 
 **Nothing is sold, and nothing trains anybody else's model.** Stated in the terms, the privacy policy and the beta agreement.
 
@@ -120,7 +153,8 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 | **ICO registration** — tier 1, £52. Being done 28 September 2026. | Done today |
 | **Leaked-password protection** — a Supabase setting, possibly paid. | **Before wave one** |
 | **Password reset proved end to end on a phone.** | **Before wave one** |
-| **International transfer mechanism confirmed** for Anthropic and ElevenLabs. | **Before wave one** |
+| ~~International transfer mechanism for Anthropic and ElevenLabs~~ — **done, 28 September.** SCCs plus the UK Addendum in both DPAs, both automatic. Section 3. | Closed |
+| **A transfer risk assessment** for the two US processors — the clauses are in place, the documented judgement that they are effective is not. | 100-subscriber review |
 | **A breach-response procedure** — who is told, how fast, and the 72-hour clock. One page. | Before wave one |
 | **Whether a DPO is required.** Core activity is large-scale special category processing *in kind*; "large scale" at a handful of testers plainly is not, and where the line sits I could not establish. | 100-subscriber review |
 | **Processor due diligence** recorded for each of the six above. | Before public launch |
@@ -130,9 +164,9 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 
 **The processing is high risk by nature and proportionate in practice**, on the strength of five things: a bounded window rather than a whole record sent to any model; statuses rather than clinical values; deletion that genuinely removes everything; research separated from use by its own opt-in; and safety implemented as architecture rather than instruction.
 
-**Three risks are not closed and are named above**: the database breach case, the model saying something untrue about somebody's body, and the transfer mechanism.
+**Two risks are not closed and are named above**: the database breach case, and the model saying something untrue about somebody's body. The transfer mechanism was the third and is now closed — both US processors carry the UK Addendum, and neither needed Selodía to sign anything. What is left of it is the transfer risk assessment, which is a solicitor's job.
 
-**Nothing here blocks wave zero** — two people the controller knows personally. **Four things block wave one** and are marked.
+**Nothing here blocks wave zero** — two people the controller knows personally. **Three things block wave one** and are marked: leaked-password protection, password reset proved on a phone, and a breach-response procedure. All three are hers or an afternoon's work.
 
 ---
 

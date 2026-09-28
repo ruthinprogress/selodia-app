@@ -2899,6 +2899,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       );
     }
 
+    timing.mark(speculationHeld ? 'speculationHeld' : 'speculationDiscarded');
     const written = speculationHeld
       ? await spokenReplyInFlight
       : await writeReplyAfterSaves({
@@ -2957,6 +2958,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // never asked leaves her yes to something else able to answer it. Whichever
   // path wrote the reply, offerQuestion() returns null if that reply already
   // asks, and the app's own line otherwise.
+  timing.mark('replyWritten');
   const offerLine = offered ? offerQuestion(replyBody, offeredType) : null;
   const trailingLines = [...notesStillToAppend, offerLine].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
