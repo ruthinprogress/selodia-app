@@ -85,6 +85,13 @@ import {
   storePendingFocus,
 } from '../../lib/focus-states';
 import {
+  applyRules,
+  loadRules,
+  removalNote,
+  rulesPrompt,
+  type PlanExercise,
+} from '../../lib/rules-gate';
+import {
   clearPendingSave,
   coerceProposal,
   applyRedirect,
@@ -655,6 +662,13 @@ export async function POST(request: NextRequest) {
   // read as an allergy, or the reverse.
   const allergyBlock = buildAllergyPrompt(disclosedAllergies);
 
+  // MY RULES, LAYER 1 (2026-09-28). This asks; app/lib/rules-gate.ts enforces.
+  // Both exist for the same reason the allergy gate has four layers: a prompt is
+  // the cheapest way to get the right answer most of the time, and it is never
+  // the thing to rely on when being wrong means an injury.
+  const movementRules = await loadRules(supabase, user.id);
+  const rulesBlock = rulesPrompt(movementRules);
+
   // The next-morning weave. Only YESTERDAY's factor, and only in the morning:
   // a mediating factor is about how today's reading should be read, and by the
   // afternoon it has stopped explaining anything and started being an excuse
@@ -1024,7 +1038,7 @@ ${longHistoryBlock ? `
 ${longHistoryBlock}
 ` : ''}
 ${plansBlock}${meCardsBlock}${insightsBlock}
-${allergyBlock}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
+${allergyBlock}${rulesBlock ? `\n${rulesBlock}\n` : ''}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
 
 
   // Item 43. The standing instruction, for every turn AFTER an unsafe goal was
@@ -1473,10 +1487,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     proposedSave: {
       type: 'object',
       description:
-        'Set ONLY when something in this turn is worth OFFERING to keep in their Almanac - as a symptom, an insight, or a ME CARD. Do not ask the question yourself: the app adds the offer to the end of your reply. '
-        + '{"type": "symptom" | "insight" | "me", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}}. '
+        'Set ONLY when something in this turn is worth OFFERING to keep - as a symptom, an insight, a ME CARD, or a RULE. Do not ask the question yourself: the app adds the offer to the end of your reply. '
+        + '{"type": "symptom" | "insight" | "me" | "rule", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}, for a rule {"kind": "never" | "always", "matchTerms": [...], "advisedBy": ...}}. '
         + 'A ME CARD is for a settled decision about how they live - a supplement, a routine, a dietary decision, a standing commitment - and its status, where it has one, must be exactly one of: Taking, Ordered, Dietary source, As needed, Active, Paused. See the Almanac section of your instructions for when each type applies. '
-        + 'The app stores the offer and saves it only if they say yes. Never for a plan, a passing remark, a plain result or a one-off observation, and never while an earlier offer is still waiting.',
+        + 'A RULE is a MOVEMENT CONSTRAINT: something they must never do, or something that is always fine, usually because a clinician said so or because of a condition or injury. "My surgeon said no loaded squats" is a rule; "I hate burpees" is not. kind is "never" or "always". matchTerms are the lowercase movement words the app should match against a generated plan - for "no heavy deadlifts or loaded squats" that is ["deadlift", "loaded squat", "back squat"] - and they matter, because the app uses them to physically remove movements from anything it builds, so a term that is too narrow means a rule that does not work. advisedBy is who said so, if they named anybody. '
+        + 'The app stores the offer and saves it only if they say yes. NEVER save a rule silently and never treat one as agreed because it was mentioned: a rule changes what gets built for them from then on, so it is confirmed first, always. Never for a plan, a passing remark, a plain result or a one-off observation, and never while an earlier offer is still waiting.',
     },
     meUpdate: {
       type: 'object',
@@ -2647,6 +2662,35 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (insightsKind) {
     console.log('ASK-SELODIA REFUSED A DIRECT INSIGHTS SAVE:', result.almanacKind);
   }
+  // MY RULES, ENFORCED BEFORE THE PLAN IS STORED (2026-09-28).
+  //
+  // SELODIA_SPEC.md has said since the Movement brief that this has to happen in
+  // code and not only in the prompt, on the allergy gate's reasoning: a
+  // contraindicated movement is an injury risk, and a prompt is a request.
+  //
+  // IT RUNS ON THE WAY IN, not on the way out, because unlike the allergy gate
+  // this is not reading prose. The plan is structured - a list of exercises with
+  // names and groups, in the app's own schema - so there is nothing to misread,
+  // and a plan that breaks a rule must never be WRITTEN, not merely never shown.
+  let ruleRemovalNote: string | null = null;
+  if (result.almanacKind && result.almanacTitle && !insightsKind) {
+    const content = result.almanacContent as { exercises?: unknown } | null | undefined;
+    if (content && Array.isArray(content.exercises)) {
+      const rules = await loadRules(supabase, user.id);
+      const { kept, removed } = applyRules(content.exercises as PlanExercise[], rules);
+      if (removed.length > 0) {
+        console.log(
+          `RULES GATE: removed ${removed.map((r) => `${r.exercise} (${r.rule})`).join(', ')}`
+        );
+        // The object is rebuilt rather than mutated: `result` is what the model
+        // returned, and keeping it intact means the log of what was proposed
+        // stays honest about what was proposed.
+        result.almanacContent = { ...content, exercises: kept };
+        ruleRemovalNote = removalNote(removed);
+      }
+    }
+  }
+
   if (result.almanacKind && result.almanacTitle && !insightsKind) {
     const entry = await saveAlmanacEntry(
       supabase,
@@ -2909,9 +2953,20 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   //
   // Point 4 is that they go IN INSTEAD, before anything is written, so one voice
   // says all of it once. See app/lib/chat-path.ts for the switch.
-  const appendedNotes = [planNote, correctionNote, restoreNote, focusNote, saveNote, meNote, honestyNote].filter(
-    (line): line is string => typeof line === 'string' && line.length > 0
-  );
+  const appendedNotes = [
+    planNote,
+    correctionNote,
+    restoreNote,
+    focusNote,
+    saveNote,
+    meNote,
+    // WHAT A RULE TOOK OUT IS SAID, NOT HIDDEN (2026-09-28). A session that
+    // quietly comes back two movements shorter teaches her the app is
+    // unreliable; one that names the rule teaches her the rule is working,
+    // which is the only reason to have written it down.
+    ruleRemovalNote,
+    honestyNote,
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0);
 
   let replyBody = safeReplyText;
   let notesStillToAppend = appendedNotes;
