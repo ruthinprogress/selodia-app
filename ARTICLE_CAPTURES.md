@@ -479,3 +479,27 @@ The standing list of what is not done had three items marked as not started that
 ## 28 September 2026 — Measuring the fix showed it cost twice what it saved
 
 A rebuilt chat path went live and the median time from message to reply doubled, from 3.3 seconds to 7.0, measured on real turns rather than in a probe. The second model call was expected and the number was not. What made it worth measuring rather than assuming was finding the part that was pure waste: the first call was still writing a full, careful reply that nothing would ever read, because the new path replaces it. Output is the slow half of a model call. The field could not be removed — it is the fallback when the second call fails, and on a distress turn it is still the real reply — so it is asked for short instead. A feature that is better and slower is a trade. A feature that is better and slower partly for no reason at all is just unfinished.
+
+---
+
+## 28 September 2026 — The waiting list had been collecting for a month and nobody could read it
+
+The sign-up form on the landing page writes to the one publicly writable table in the whole schema: anyone can add themselves, and there is no read permission at all. That is exactly the right way round for a list strangers put their email into, and the consequence nobody followed through is that it was unreadable to the founder too. Twenty-six days of sign-ups with no way to look at them short of opening the SQL editor. The form was fine; the loop was never closed. Worth noting how the check nearly went wrong too: posting the form with a command-line tool returned a cheerful 200 and wrote nothing, which looks exactly like a broken form, because a server action needs the browser's own machinery. The only honest test was to open the page and press the button.
+
+---
+
+## 28 September 2026 — Three drinks estimates, all wrong in the same direction
+
+Half a lager was recorded at 180 calories and six grams of protein. The real figures, from the government's own composition tables, are 68 and 0.9: calories about two and a half times out, protein seven times. A ten millilitre splash of milk had been given two and a half grams of protein, which is two thirds of that item's entire calorie content. The mistake is not carelessness and it is not random. Alcohol carries about seven calories a gram and almost no protein, and nothing in the words "half a lager" says either — so an estimate made from a name reaches for something beer-shaped and beer-sized, and beer-sized in most training data is an American pint. The figures were not wild. They were the wrong drink. The fix was not another instruction: the correct numbers were already sitting in the app's own database, measured by a government laboratory, and had never been asked.
+
+---
+
+## 28 September 2026 — Working out what it costs, and finding the shape matters more than the number
+
+Everything measured: a chat turn costs 1.77 cents, a logging turn 2.01, a weekly summary 2.5. Across a realistic mix of users that lands at about £2.09 each per month. The useful finding was not the figure but the shape — cost per user is essentially flat from a hundred users to ten thousand, because the infrastructure barely moves and the model costs scale in a straight line. There is no economy of scale coming. Whatever the margin is at a hundred customers is the margin at ten thousand, which makes the launch price a real decision rather than a placeholder. The number that should worry anybody is the heaviest user: she costs £11.88 a month and would pay £5.94. Today that is one person and she built the thing.
+
+---
+
+## 28 September 2026 — A close-out is not an ending
+
+A standing rule said to keep working until the queue was empty and not to stop to report progress. It held all day and then quietly did not, because of a sentence nobody had thought about: the rule said when to close out, and said nothing about what happens next. So a close-out read as a full stop, and a long summary after it read like one harder. The fix was two sentences — a close-out is a checkpoint, the session is over when the person says it is, and work arriving mid-session joins the end of the queue. Worth recording because the failure was not disobedience. It was an instruction that was complete about the thing it described and silent about the thing that came after, which is the most common way a rule fails.

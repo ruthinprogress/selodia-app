@@ -2799,7 +2799,7 @@ A real deletion mechanism must exist for anyone who wants their data removed, in
 
 ---
 
-# BETA FEEDBACK, IN THE APP (idea recorded 2026-09-19, in the backlog, not yet scoped)
+# BETA FEEDBACK, IN THE APP — **BUILT 2026-09-28**
 
 **Ruth's idea, in her words as far as they reached:** for the free beta users needed at the start, "instead of us doing feedback forms on, like, dot form, which is the original plan, why don't we just do it in app with a notification when it's due, and we do it how we did the different fonts when you gave me the different options in the fonts, and it would be at the bottom in settings or somewhere on settings, they just log in. That way, they'd be able to use voice if they wanted to because they're all busy." She recorded the idea by voice while pushing her son in a pram, which is the case it is for, and asked for it to go in the backlog.
 
@@ -2810,7 +2810,25 @@ A real deletion mechanism must exist for anyone who wants their data removed, in
 - It lives in Settings, near the bottom. Testers are already signed in, so nothing extra is needed to take part.
 - **Every answer can be spoken as well as typed**, because testers are busy. The movement review sheet already offers typing and voice side by side, so the pattern exists to reuse.
 
-**To settle when it is scoped:** how often feedback is due; whether answers are tied to the account or kept de-identified (the research opt-in and the privacy policy both bear on this); and that the section is shown only to beta testers.
+**WHAT WAS ACTUALLY BUILT, 28 September 2026**, and where it differs from the note above, which it does in two places.
+
+**The shape.** One screen. An optional screenshot, an optional text box, and optional feeling buttons — angry, upset, bored, triggered, lost confidence, confused, pleased, surprised, and "something else" with free text. **Nothing is required to press Send beta feedback.** A submission can be a single tapped feeling and nothing else, and that is complete and valid.
+
+That sentence is the design rather than a detail. The moment worth capturing is when somebody is irritated and holding a toddler, and a form that validates before it will accept anything is a form that collects nothing — which is what the three Jotform forms it replaces actually collected. Every content column is nullable and **the Send button is never disabled**, because a greyed-out Send is the app telling somebody their feedback is not good enough yet.
+
+**Where it lives.** Top of More, for beta accounts only. More is the seed mark on every screen, so it is two taps from wherever the problem happened — which is the other half of her instruction, "as the first item in the seed menu on every screen". The mark now records the route it was pressed FROM (`lib/last-screen.ts`), because by the time the feedback screen is open she has navigated away from whatever went wrong.
+
+**What is attached and never shown as fields:** that screen, the app version, the update id, the device, the time. Listed in words at the bottom, alongside what is NOT sent — nothing logged, no food, no weight, nothing from her conversations.
+
+**History, with a status.** Her own submissions sit below the form in the Log tabs' day-list shape, each showing **sent, read or fixed**. Three words rather than a triage vocabulary. Somebody who sends feedback into silence stops sending it, so the status is a promise: marking something fixed when nothing was fixed is lying to the person who took the trouble. `scripts/beta-feedback.mjs` lists and updates them.
+
+**Prompted questions use the same screen.** Around day 3 and day 10, the question is passed as a parameter and shown at the top, and stored with the answer so it is never read out of context.
+
+**Screenshots go to a private bucket** under the sender's own user id, enforced by the storage policy rather than by the client choosing a path. A screenshot of this app is a picture of somebody's own health record. **Gallery only** — capturing the previous screen needs a native view-shot module that is not in this build, and adding one would mean a whole new binary to ship a form.
+
+**TWO DIFFERENCES FROM THE 19 SEPTEMBER NOTE**, both deliberate. There is no notification when feedback is "due", because nothing is due — the point is that it is always available and never asked for. And answers are **tied to the account**, not de-identified: a report you cannot trace to a build, a screen and a person is a report nobody can fix, and the tester needs to see her own history and its status.
+
+**Beta membership is its own table.** `beta_members` (granted per account, with a reason and a wave) and `beta_agreement_acceptances` (versioned, append-only). Two facts rather than one boolean, because "granted access but has not yet accepted the agreement" is a real state the app has to handle — clause 13 of the agreement says pressing the button is what counts and carrying on using Selodía is not.
 
 ---
 
@@ -3217,6 +3235,20 @@ Her reason, and it is the whole design: *"users don't remember exact values (I r
 
 A reading entered later for an earlier moment was showing the time it was typed. That is not a display preference: a weight at 07:10 and the same weight at 21:40 are different facts about a body, and the app was recording the second while she meant the first.
 
+## A drink is measured, not estimated
+
+Built 28 September 2026, after a half of lager was logged at 180 kcal and 6 g protein. CoFID's "Lager, standard" is 24 kcal and 0.3 g per 100 ml, so a 284 ml half is **68 kcal and 0.9 g** — calories 2.6 times out, protein seven times. A 10 ml splash of whole milk had been given 2.5 g of protein, two thirds of that item's own calories.
+
+**Why drinks and not everything.** The general CoFID lookup exists and stays switched off; that decision was measured and right — only 9.5% of her real entries are the single-weighed-food shape it can answer. Drinks are the exception for a structural reason: a standard drink in a standard measure is the one thing people describe in terms a reference table matches exactly. Nobody says "a medium portion of lager".
+
+**Why the model gets it wrong**, which is worth stating because it is not carelessness. Alcohol carries about 7 kcal a gram and almost no protein, and nothing in the words "half a lager" signals either. An estimate made from a name reaches for something beer-shaped and beer-sized, and beer-sized in most training data is an American pint. The figures were not wild; they were the wrong drink.
+
+**Not a prompt rule, deliberately.** `docs/chat-prompt-history.md` records five of six incidents where a rule was added and the cause was a missing fact. The fact was in the app's own database, measured by UKHSA, and had never been asked.
+
+**At the write** (`writeItems`), because the text logger and the image parser both arrive there — the same reasoning as the plan-as-session guard and the thigh measurement before it. **The parent totals are recomputed when a correction happens**, because a corrected item otherwise leaves `food_logs` holding the old number.
+
+It will not touch beer-battered cod, a red wine sauce, or an estimate that was already right.
+
 ## A feedback route that carries context
 
 Built 28 September 2026. A wave-one requirement from the beta checklist.
@@ -3259,11 +3291,11 @@ Three consequences, and they are build items rather than wording:
 
 ## Legal and compliance
 
-- [ ] **The beta agreement itself.** Does not exist. It is the document that makes a beta tester's free access contractual, and it needs to say what beta means: that things break, that data may be lost, that the app is not finished, and what happens to their record when the beta ends.
-- [ ] **A mechanism attaching an agreement to an account.** Does not exist. `consent_records` is the nearest thing and is about health-data consent, not contract acceptance. Needs deciding whether this is a new table or a column.
+- [~] **The beta agreement — v1.1 final text, and acceptance built.** In `docs/beta-agreement.md` and the Legal folder on Drive. `beta_members` and `beta_agreement_acceptances` exist and acceptance is versioned and append-only. **Three placeholders still block it being shown to anybody**: the version date, the registered address and the company number, all of which follow incorporation.
+- [x] **A mechanism attaching an agreement to an account — built 28 September 2026.** `beta_agreement_acceptances`, versioned and append-only, the same shape as `consent_records` and for the same reason: only a new row can show which version was agreed to on which date.
 - [x] **Terms of Service — legal review deliberately deferred.** Ruth, 2026-09-27: *"I think it's fine without a solicitor at this stage, pre-funding. At 100 subscribers I'll get it all reviewed."* So this is a decision with a trigger rather than an outstanding task, and the trigger is **100 subscribers** — at which point the terms, the privacy policy and the beta agreement all go to a solicitor together. Recorded here so the deferral does not quietly become a forgetting. The medical and liability sections are the ones to point at when it happens.
 - [x] **Privacy policy controller changed to Selodía Ltd** (2026-09-27). *"Always Selodía Ltd, not me personally."*
-- [ ] **ICO registration.** Naming a controller in a policy is not the same as being registered as one, and only one of those is a thing code can change. In whose name, and does it exist.
+- [~] **ICO registration — Ruth is registering Selodía Ltd herself on 28 September**, tier 1, direct debit. Detail in *2026-09-28 ICO registration*. **The DPIA matters more and now exists** as a first draft: `docs/dpia.md` and the Legal folder. It names four things that block wave one.
 - [ ] **Governing law confirmed.** England and Wales is assumed in the terms.
 - [x] **Record consent** — item 51. Built 2026-09-19. *(Box was unticked beside its own "built" note until 2026-09-27, which is the drift this list exists to catch.)*
 - [x] **Account deletion reachable without the app** — live at selodia.app/delete-account.
@@ -3271,14 +3303,14 @@ Three consequences, and they are build items rather than wording:
 ## Billing
 
 - [ ] **Nothing exists.** No payment provider, no subscription model, no price, no billing screen, no cancellation flow. The terms page describes all of it in the abstract. This is the largest unbuilt item on this list and it did not appear on any list before today.
-- [ ] **A price.** Not decided.
+- [~] **A price — analysed, not yet decided.** *2026-09-28 Running costs and pricing* computes it from measured token counts: about £2.09 a user a month blended, and **flat from 100 users to 10,000**, so there is no economy of scale to wait for. Recommendation £6.99/month and £59.99/year, with the reasoning and the heavy-user problem stated.
 - [ ] **What the free beta becomes when the beta ends.** Testers will have a record they care about behind a paywall that did not exist when they started.
 
 ## Feedback, and the More section
 
 Ruth, 2026-09-27: the beta *"will include the feedback forms in the More section also."*
 
-- [x] **A feedback route inside the app — built 28 September 2026.** Settings has its own "Something not right?" row, above Help, writing to `feedback_reports` with the build context attached automatically. See Part Twenty. **One of wave one's three blockers, and it is done.** What remains under this heading is the *cadence* — when to ask rather than wait to be told — proposed in the wave-one document as three touches (day 3, day 10, a conversation at day 21) rather than a survey. A form that duplicates something the person could just say is the kind of thing this app has removed elsewhere.
+- [x] **A feedback route inside the app — built 28 September 2026**, and the **beta feedback screen** with it. Settings has a general "Something not right?" row for anybody, and beta accounts get **Beta feedback** above it. **Both of wave one's feedback requirements are done**, including the cadence: prompted questions around day 3 and day 10 reuse the same screen with the question at the top. See Part Twenty and the BETA FEEDBACK part.
 - [ ] **A route for a bug report that carries context.** She currently sends them by message, with a screenshot, and they are excellent because she knows what she saw. A stranger will not do that unaided.
 - [ ] **Somewhere for the reports to land** that is not a chat thread.
 

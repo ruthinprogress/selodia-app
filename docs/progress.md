@@ -184,11 +184,23 @@ path and the per-surface split comes out.
 
 - [x] **1. Voice latency.** See the finding below. Voice is on the old path.
 - [x] **2. The waiting list.** Found, tested live, and readable.
-- [ ] **3. Running costs and pricing**, to Drive.
-- [ ] **4. DPIA**, Legal folder in Drive plus a repo copy.
-- [ ] **5. Beta agreement v1.1** to the Legal folder, and acceptance in the app.
-- [ ] **6. Beta feedback** - a wave-one blocker.
-- [ ] **7. Open Actionables items that do not need her.**
+- [x] **3. Running costs and pricing.** In Build Specs. Computed from measured
+      token counts: GBP 2.09 a user a month blended, and flat from 100 to 10,000.
+      Recommendation GBP 6.99 / GBP 59.99.
+- [x] **4. DPIA.** `docs/dpia.md` and the new **Legal** folder on Drive, with the
+      live privacy policy and terms filed beside it. Six risks with residuals;
+      four things named as wave-one blockers.
+- [x] **5. Beta agreement v1.1.** Her final text, in `docs/` and in Legal.
+      Acceptance is versioned and append-only, same shape as consent.
+- [x] **6. Beta feedback.** Built and shipped. Top of More for beta accounts, one
+      tap from anywhere via the seed mark, nothing required to press Send, history
+      with sent / read / fixed, screenshots in a private bucket.
+      `scripts/beta-feedback.mjs` reads and triages.
+- [x] **7. Open Actionables: the drinks estimator.** A drink is now measured
+      against CoFID rather than estimated, at the write, with the parent totals
+      kept in step.
+
+**The queue is empty.** Everything left in Open Actionables needs her.
 
 ### 2. The waiting list, answered
 
