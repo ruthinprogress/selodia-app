@@ -85,13 +85,25 @@ for (let i = 0; i < RUNS; i++) {
     `  ${i + 1}  ${String(Math.round(took)).padStart(6)}ms wall  ${res.status}  "${utterance}"`
   );
   if (t) {
-    console.log(
-      `        server ${String(t.total).padStart(5)}ms` +
-        `   auth ${String(t.authorised ?? '-').padStart(4)}` +
-        `   context ${String(t.contextLoaded ?? '-').padStart(5)}` +
-        `   model ${String(t.modelAnswered ?? '-').padStart(5)}` +
-        `   network ${Math.round(took) - t.total}ms`
-    );
+    // EVERY MARK, AS ELAPSED-AT AND AS A PHASE. The three hand-picked ones
+    // hid the reply writer inside "the rest", which is the only phase the
+    // parallel change was meant to move.
+    const order = [
+      'authorised', 'userRowWritten', 'contextLoaded', 'dayStateBuilt', 'promptBuilt',
+      'modelAnswered', 'sideEffectsDone', 'speculationHeld', 'speculationDiscarded',
+      'replyWritten', 'allergyGateDone', 'total',
+    ];
+    let prev = 0;
+    const phases = [];
+    for (const name of order) {
+      if (t[name] === undefined) continue;
+      phases.push(`${name} +${t[name] - prev}`);
+      prev = t[name];
+    }
+    console.log(`        server ${t.total}ms, network ${Math.round(took) - t.total}ms`);
+    console.log(`        ${phases.join('  ')}`);
+    if (t.speculationHeld !== undefined) console.log('        the guess HELD');
+    else if (t.speculationDiscarded !== undefined) console.log('        the guess was DISCARDED');
   }
   console.log(`        -> ${(data?.reply ?? '(no reply)').slice(0, 70)}...`);
   if (i < RUNS - 1) await new Promise((r) => setTimeout(r, GAP));
