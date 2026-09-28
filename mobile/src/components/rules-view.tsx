@@ -4,7 +4,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ButtonRadius, Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -167,19 +167,19 @@ const styles = StyleSheet.create({
   eyebrow: { textTransform: 'uppercase', letterSpacing: 0.8 },
   context: {
     borderWidth: 1,
-    borderRadius: ButtonRadius,
+    borderRadius: CardRadius,
     padding: Spacing.three,
   },
   row: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
-    borderRadius: ButtonRadius,
+    borderRadius: CardRadius,
     gap: Spacing.one,
   },
   card: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
-    borderRadius: ButtonRadius,
+    borderRadius: CardRadius,
     gap: Spacing.one,
   },
   pressed: { opacity: 0.7 },

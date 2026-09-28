@@ -5,7 +5,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ButtonRadius, Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 // WHAT YOU'RE WORKING TOWARDS. The top of Plans, above the segmented control.
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   card: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
-    borderRadius: ButtonRadius,
+    borderRadius: CardRadius,
     gap: Spacing.one,
   },
   pressed: { opacity: 0.7 },

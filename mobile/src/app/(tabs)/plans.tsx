@@ -7,6 +7,10 @@ import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
 import { ReportLink } from '@/components/report-link';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { GoalsBlock } from '@/components/goals-block';
+import { RulesView } from '@/components/rules-view';
+import { SegmentedTabs, type SegmentedTabItem } from '@/components/segmented-tabs';
+import { SkillsView } from '@/components/skills-view';
+import { WeekView } from '@/components/week-view';
 import { MovementLibrary } from '@/components/movement-library';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightScroll } from '@/components/spotlight-provider';
@@ -34,8 +38,24 @@ export const PLANS_EMPTY_HEADING = 'No plans yet';
 export const PLANS_EMPTY_BODY =
   "Tell me in chat what you'd like to work towards, and we'll build a plan for it. It lives here once you've said yes to keeping it.";
 
+// THE ORDER IS THE ORDER OF ZOOM, not of importance: the week, then the
+// sessions inside it, then the skills those sessions build, then the rules that
+// constrain all three. Rules is last and is not therefore least - it is the one
+// segment whose contents are enforced in code, and its own view says so loudly.
+type PlanView = 'week' | 'sessions' | 'skills' | 'rules';
+
+const PLAN_VIEWS: readonly SegmentedTabItem<PlanView>[] = [
+  { id: 'week', label: 'Week' },
+  { id: 'sessions', label: 'Sessions' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'rules', label: 'Rules' },
+];
+
 export default function PlansScreen() {
   const router = useRouter();
+  // WEEK FIRST ON ARRIVAL. "What am I following?" is answered by the rhythm, and
+  // the individual sessions are what you go looking for afterwards.
+  const [view, setView] = useState<PlanView>('week');
   const scrollRef = useRef<ScrollView>(null);
   const [rows, setRows] = useState<AlmanacRow[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -86,12 +106,22 @@ export default function PlansScreen() {
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Plans</ThemedText>
 
-            {/* ABOVE EVERYTHING, and above the segmented control when that
-                arrives in Slice 3. A goal is the reason the rest of this screen
-                exists, so it is not something to scroll to. */}
+            {/* ABOVE THE CONTROL, AND ON EVERY SEGMENT. A goal is the reason
+                the rest of this screen exists, so it is not something to
+                scroll to and not something that disappears when you look at
+                your rules. */}
             <GoalsBlock />
 
-            {loaded && (
+            {/* FOUR SEGMENTS, the same control Log and Almanac use (Ruth's
+                session brief). Week and Sessions are deliberately separate
+                objects rather than two views of one - a cadence, and a thing
+                to do - which is what keeps a single Tuesday from existing
+                twice. */}
+            <SegmentedTabs items={PLAN_VIEWS} value={view} onChange={setView} />
+
+            {view === 'week' && <WeekView onOpenSession={setOpenId} />}
+
+            {view === 'sessions' && loaded && (
               <SpotlightTarget id="almanac.movement">
                 {plans.length > 0 ? (
                   // The library introduces itself (movement-library.tsx), so
@@ -106,9 +136,13 @@ export default function PlansScreen() {
                 )}
               </SpotlightTarget>
             )}
-            {loaded && plans.length > 0 && (
+            {view === 'sessions' && loaded && plans.length > 0 && (
               <ReportLink start={['plans']} label="Build a report from these" />
             )}
+
+            {view === 'skills' && <SkillsView onOpenSession={setOpenId} />}
+
+            {view === 'rules' && <RulesView />}
           </SpotlightScroll>
         </ScrollView>
 

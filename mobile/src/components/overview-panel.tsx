@@ -542,7 +542,13 @@ export function OverviewPanel({
           <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
             {[
               data.calorieTargetKcal != null ? `Aiming for ${data.calorieTargetKcal} kcal` : null,
-              data.proteinTargetLabel,
+              // THE UNIT IS ADDED HERE, not in proteinTargetLabel. That
+              // function returns a bare range ("83-99") because it was written
+              // for a caller that supplied its own unit - and then never had
+              // one, because nothing rendered it for six weeks. The first
+              // screenshot of this line read "Aiming for 1760 kcal · 83-99",
+              // which is how the omission finally became visible.
+              data.proteinTargetLabel ? `${data.proteinTargetLabel}g protein` : null,
             ]
               .filter(Boolean)
               .join(' · ')}
