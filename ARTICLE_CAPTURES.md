@@ -513,3 +513,17 @@ A command-line post to a sign-up form came back 200 and wrote nothing, because t
 Different bugs, one shape. In each case the code was correct about what it asked for and wrong about the environment it asked in: a promise runs to completion, a post is a post, a fixture is a conversation. And in each case nothing failed. The 200 was a 200. The probe printed a median. The table was empty in the way a quiet week is empty.
 
 That is the part worth keeping. A silent success is the signature of an assumption about the environment rather than about the logic, and it is the one failure mode that testing the code cannot catch, because the code did exactly what it said. The check that works is the one that asks the other system what it saw — read the table, open the page in a real browser, look at the row. Not "did my function return", but "did anything happen out there".
+
+---
+
+## 28 September 2026 — The safety check was reading a draft
+
+An app that talks about food has a filter on the way out: before a reply reaches somebody with a declared allergy, a check asks whether it suggests anything that would hurt them. It had been running for weeks and it was examining the wrong sentence.
+
+The app has two ways of writing a reply, one being replaced by the other. The filter runs on the first one. The condition that decides whether the newer path is allowed to take over asks, among other things, whether that reply passed the filter. It did, so the newer path runs, writes a completely different sentence, and stores it. The checked draft is thrown away.
+
+So for anybody with a food allergy on file, the filter had been approving text that was never shown, while text that was never checked went out under its approval. That is worse than having no filter at all, because the turn is recorded as having been filtered.
+
+Nothing about it is visible in the code. Both paths assign to the same variable. The check sits above both of them, and a reader following the flow sees a check and then a reply. It survived a typecheck, a linter and a day of real use. It surfaced only because a separate piece of work — starting to speak a reply before it was finished — forced the question of at what exact moment a reply becomes final, which is the same question the filter should have been asked when it was written.
+
+The general form is worth carrying elsewhere: when a value is validated and then reassigned, the validation belongs to the reassignment rather than to the variable. A sanitiser followed by a formatter, a permission check followed by a retry with different arguments — the shape recurs. The question that finds it in a minute: of all the things that can end up in this variable, which have been through the check? If the answer is "the first one", the check is in the wrong place.
