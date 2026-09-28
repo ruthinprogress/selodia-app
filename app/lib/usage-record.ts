@@ -1,3 +1,5 @@
+import { after } from 'next/server';
+
 import { getSupabaseServiceRole } from './supabase';
 import { callCostMicroCents, type ModelCall, type TokenUsage } from './model-cost';
 
@@ -40,7 +42,18 @@ export function recordModelUsage(entry: Entry): void {
   }
 
   const usage = entry.usage;
-  void (async () => {
+
+  // AFTER THE RESPONSE, BUT STILL INSIDE THE FUNCTION'S LIFE.
+  //
+  // The first version just started the promise and let it go, and not one row
+  // arrived. A serverless instance is entitled to freeze the moment the response
+  // is sent, so the insert was begun and then the machine running it stopped
+  // existing. `after` is what keeps the function alive long enough - the work is
+  // still off the reply's critical path, which was the whole point.
+  //
+  // The fallback matters for tests and scripts: `after` throws outside a request,
+  // and a helper that explodes in a probe is a helper nobody runs.
+  const work = async () => {
     try {
       const { error } = await getSupabaseServiceRole().from('model_usage').insert({
         user_id: entry.userId,
@@ -64,5 +77,15 @@ export function recordModelUsage(entry: Entry): void {
     } catch (err) {
       console.log('MODEL USAGE: threw', err instanceof Error ? err.message : err);
     }
-  })();
+  };
+
+  // THE FUNCTION, NOT THE PROMISE. `after(work())` would already have started
+  // the insert before `after` had a chance to throw, and the fallback would then
+  // run it a second time - two rows for one call, which is the one way this
+  // table can lie about the bill.
+  try {
+    after(work);
+  } catch {
+    void work();
+  }
 }
