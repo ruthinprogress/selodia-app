@@ -60,12 +60,14 @@ import { turnFacts, type TurnData } from './turn-facts';
  * Either way a failure in the new path falls back to the old reply rather than
  * failing the turn, so this can never cost somebody a message.
  *
- * VOICE IS FALSE UNTIL THE LATENCY IS BACK TO ABOUT 3.3s, at which point it
- * becomes true and this comment goes. It is not a permanent difference in how the
- * two surfaces work, and it must not be allowed to become one - two chat paths is
- * the thing a beta cannot start with.
+ * VOICE IS BACK ON, 28 September 2026, and by a different route rather than
+ * because the second call got faster. A spoken turn now starts the reply writer
+ * AT THE SAME TIME as the classification instead of after it - see the note in
+ * ask-selodia/route.ts where it begins. Text stays sequential, because the
+ * seconds it saves there are a pause with a typing indicator in them and the
+ * trade is a wasted call on the turns that report something.
  */
-export const REPLY_WRITTEN_AFTER_THE_SAVES = { typed: true, voice: false };
+export const REPLY_WRITTEN_AFTER_THE_SAVES = { typed: true, voice: true };
 
 /** Does the rebuilt path write this turn's reply, before anything else is asked? */
 export function newPathWrites(voice: boolean): boolean {

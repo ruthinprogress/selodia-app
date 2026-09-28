@@ -1504,6 +1504,50 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // real reply, which the instruction says in as many words.
   newPathWrites(isVoice));
 
+  // ── THE SPOKEN TURN STARTS ITS REPLY NOW, NOT AFTER (Ruth, 2026-09-28) ─────
+  //
+  // Two sequential model calls cannot beat one: the old path WAS the
+  // classification call and measured 3.3s, and the writer adds about two seconds
+  // on top of it. The only route back to 3.3s is not running them one after the
+  // other.
+  //
+  // It works because the writer needs her message and the record, and both exist
+  // right now - turn_context was read at the top of this function. What it does
+  // NOT have is what the app did with her data, because nothing has been saved
+  // yet. Most turns have nothing to report there, and those are the turns this
+  // gets right.
+  //
+  // THE GUESS IS DISCARDED WHOLE when it is wrong. See where it is consumed.
+  //
+  // VOICE ONLY. The cost is a wasted call on the turns that do report something,
+  // and it buys removing a second call from the critical path of a spoken
+  // conversation, where the alternative is silence on a phone line. On text those
+  // seconds are a pause with a typing indicator in them.
+  const spokenReplyInFlight =
+    isVoice && newPathWrites(true)
+      ? writeReplyAfterSaves({
+          anthropic,
+          model: MODEL,
+          messages,
+          data: {
+            food: recentFood ?? [],
+            activity: recentActivity ?? [],
+            dailyBurn: recentDailyBurn ?? [],
+            drinks: recentDrinks ?? [],
+            sleep: recentSleep ?? [],
+            measurements: recentMeasurements ?? [],
+            lastPeriodStart: lastPeriodRow?.event_date ?? null,
+            days: 3,
+          },
+          voice: true,
+          // NOTHING, because nothing has happened yet. That is the assumption
+          // this whole branch rests on, and it is checked before the result is
+          // used rather than hoped for.
+          didLines: [],
+          safetyBlock: SAFETY_PROMPT_BLOCK,
+        })
+      : null;
+
   let response;
   try {
     response = await anthropic.messages.create({
@@ -2830,29 +2874,55 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     nonDistress: NON_DISTRESS_CLASSIFICATIONS,
   });
 
+  // A SPECULATIVE REPLY FOR A TURN THAT TURNED OUT NOT TO BE ORDINARY is paid
+  // for and thrown away, which is the deal. It cannot reject - the writer catches
+  // everything and returns a reason - but it is consumed explicitly so nobody
+  // later wonders whether a promise was left dangling on a distress turn.
+  if (spokenReplyInFlight !== null && !ordinary) {
+    void spokenReplyInFlight.then(() =>
+      console.log('ASK-SELODIA: spoken reply written ahead was discarded - the turn was not ordinary')
+    );
+  }
+
   if (newPathWrites(isVoice) && ordinary) {
-    const written = await writeReplyAfterSaves({
-      anthropic,
-      model: MODEL,
-      // Already ends with her current message: turn_context reads the history
-      // after her turn is inserted. See the note at that read.
-      messages,
-      data: {
-        food: recentFood ?? [],
-        activity: recentActivity ?? [],
-        dailyBurn: recentDailyBurn ?? [],
-        drinks: recentDrinks ?? [],
-        sleep: recentSleep ?? [],
-        measurements: recentMeasurements ?? [],
-        lastPeriodStart: lastPeriodRow?.event_date ?? null,
-        // Three days spoken, seven typed - the same window the reads used, so
-        // the facts cannot describe a week the query never fetched.
-        days: isVoice ? 3 : 7,
-      },
-      voice: isVoice,
-      didLines: appendedNotes,
-      safetyBlock: SAFETY_PROMPT_BLOCK,
-    });
+    // THE SPECULATIVE REPLY IS ONLY USABLE IF THE ASSUMPTION HELD. It was
+    // written before the saves ran, with didLines empty, so it is right exactly
+    // when the turn turned out to have nothing to report. If anything did - a
+    // failed save, a correction, a deletion - it is discarded and the writer runs
+    // again with the facts, which costs the sequential time on that turn and is
+    // the correct trade: a reply missing the one thing she needed to know is the
+    // failure this entire rebuild exists to prevent.
+    const speculationHeld = spokenReplyInFlight !== null && appendedNotes.length === 0;
+    if (spokenReplyInFlight !== null && !speculationHeld) {
+      console.log(
+        `ASK-SELODIA: spoken reply written ahead was discarded - ${appendedNotes.length} thing(s) to report`
+      );
+    }
+
+    const written = speculationHeld
+      ? await spokenReplyInFlight
+      : await writeReplyAfterSaves({
+          anthropic,
+          model: MODEL,
+          // Already ends with her current message: turn_context reads the
+          // history after her turn is inserted. See the note at that read.
+          messages,
+          data: {
+            food: recentFood ?? [],
+            activity: recentActivity ?? [],
+            dailyBurn: recentDailyBurn ?? [],
+            drinks: recentDrinks ?? [],
+            sleep: recentSleep ?? [],
+            measurements: recentMeasurements ?? [],
+            lastPeriodStart: lastPeriodRow?.event_date ?? null,
+            // Three days spoken, seven typed - the same window the reads used,
+            // so the facts cannot describe a week the query never fetched.
+            days: isVoice ? 3 : 7,
+          },
+          voice: isVoice,
+          didLines: appendedNotes,
+          safetyBlock: SAFETY_PROMPT_BLOCK,
+        });
     // A failure here is a fallback, not a lost turn: the old path's reply is
     // already sitting in safeReplyText with its notes ready to append.
     // DISCRIMINATED ON fellBack, not on the text being truthy: the success branch
