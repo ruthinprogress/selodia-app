@@ -67,7 +67,19 @@ export function nameWords(text: string): Set<string> {
  */
 export function choosePlan<T extends { id: string; title: string }>(
   spoken: string,
-  plans: T[]
+  plans: T[],
+  options: {
+    /**
+     * Require words from the plan's own TITLE, never the single-plan shortcut.
+     *
+     * For the guard at the activity write (Ruth's item 8). That path runs on text
+     * the model decided was an ordinary activity, so there is no prior decision
+     * that a routine happened at all - and the shortcut would turn "went for a 5k
+     * run" into a barbell session for anybody with one saved plan. The deliberate
+     * path, which runs only after the model set workoutPlan, does not pass this.
+     */
+    requireNameOverlap?: boolean;
+  } = {}
 ): T | null {
   if (plans.length === 0) return null;
   const said = spoken.trim().toLowerCase();
@@ -78,7 +90,7 @@ export function choosePlan<T extends { id: string; title: string }>(
   // ONE PLAN AND NO CONTRADICTION. Somebody with a single saved routine who says
   // "I did my workout today" means that one, and asking which would be obtuse.
   const words = nameWords(spoken);
-  if (plans.length === 1 && words.size === 0) return plans[0];
+  if (!options.requireNameOverlap && plans.length === 1 && words.size === 0) return plans[0];
 
   const scored = plans
     .map((p) => {

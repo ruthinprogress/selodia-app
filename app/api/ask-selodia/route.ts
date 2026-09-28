@@ -2254,7 +2254,38 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // let it through on its own, or the branch below could never run at all.
   const saysDidPlan = typeof result.workoutPlan === 'string' && result.workoutPlan.trim().length > 0;
 
-  if (result.logIntent === 'food' || result.logIntent === 'activity' || saysDidPlan) {
+  // AND THE SAME THING SAID AS AN ACTIVITY (Ruth's item 8, 2026-09-28).
+  //
+  // She found "Full-Body Barbell Strength Plan" in Movement as an ACTIVITY whose
+  // type was the plan's own name. The session writer exists, is correct, and was
+  // never reached: the classifier is told to set workoutPlan and leave logIntent
+  // 'none', and on that turn it set logIntent 'activity' with the plan's title as
+  // the text instead.
+  //
+  // That is the thigh measurement again in a different tab - a correct writer
+  // behind a router that did not choose it, failing intermittently because the
+  // instruction is followed most of the time. Her own rule applies: a guard
+  // belongs at the write. So the check is here, on the path the data actually
+  // takes, rather than in the prompt where it can be missed again.
+  //
+  // choosePlan is deliberately strict - an exact title, or a single plan with
+  // nothing contradicting it, or an unambiguous word overlap, and null on a tie.
+  // Recording the wrong routine is worse than recording none.
+  const activityNamesAPlan =
+    !saysDidPlan && result.logIntent === 'activity'
+      ? // STRICTER THAN THE DELIBERATE PATH, and the note on requireNameOverlap
+        // says why: nothing here has decided a routine happened, so a match has
+        // to come from the plan's own title rather than from her owning one plan.
+        choosePlan(result.logText?.trim() || message, savedPlans, { requireNameOverlap: true })
+      : null;
+  if (activityNamesAPlan) {
+    console.log(
+      'ASK-SELODIA: an activity named a saved plan, writing a session instead —',
+      JSON.stringify(activityNamesAPlan.title)
+    );
+  }
+
+  if (result.logIntent === 'food' || result.logIntent === 'activity' || saysDidPlan || activityNamesAPlan) {
     const runLog = async () => {
       if (result.logIntent === 'food') {
         // logText carries the food itself when the model has separated it from
@@ -2314,13 +2345,15 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
               .eq('id', entries[0].id);
           }
         }
-      } else if (saysDidPlan) {
+      } else if (saysDidPlan || activityNamesAPlan) {
         // A SAVED ROUTINE, RECORDED BY SAYING SO (Ruth, 2026-09-18). This runs
         // ahead of ordinary activity logging and instead of it: the session is
         // written from the plan's own movements, which carries the plan's
         // history and the movements themselves into the week - neither of which
         // an activity row built from a sentence can do.
-        const plan = choosePlan(result.workoutPlan ?? '', savedPlans);
+        // Either the model named the plan, or the guard above recognised it in
+        // what would otherwise have become an activity row.
+        const plan = activityNamesAPlan ?? choosePlan(result.workoutPlan ?? '', savedPlans);
         if (!plan) {
           // NOTHING IS WRITTEN ON A GUESS. Recording the wrong routine is worse
           // than recording none, because the person is then told a session

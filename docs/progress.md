@@ -71,7 +71,10 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
 - [x] **7. The red check.** Resolved: the rule now says that saying nothing is
       not the alternative to a receipt, and names the failing sentence. Whole
       chat test set is **35/35** on the new path, 29/35 on the old one.
-- [ ] **8. Plan logged as a session.**
+- [x] **8. Plan logged as a session.** The guard is at the write: before any
+      activity row, the text is matched against her own saved plan titles and a
+      session is written instead. Stricter than the deliberate path, because
+      nothing here has decided a routine happened. 13 checks.
 - [ ] **9. Repeated-phrase probe within a single conversation.**
 - [ ] **10. Voice speed** — is a turn back to about 3.2s.
 - [ ] **11. Research only, no building:** UK/EU store rules for subscriptions;
@@ -96,6 +99,16 @@ Monday 28th. Five food items for Sunday in total. So what she is seeing is a
 stale screen rather than stale data — the Log tab does not re-read after a change
 made server-side. Reopening the app should show it correctly, and the refetch
 gap is worth its own item.
+
+### Findings that do not block anything
+
+**choosePlan's comment and its code disagree**, found while testing item 8. The
+single-plan shortcut says "somebody with a single saved routine who says *I did my
+workout today* means that one" - and that exact sentence does not trigger it,
+because nameWords keeps "workout" and "today" so the word set is not empty and it
+falls through to scoring. Left alone rather than fixed: loosening the deliberate
+path changes what gets written to her data, and that is a decision rather than a
+tidy-up. The guard is unaffected - it requires title words either way.
 
 ### Questions for Ruth
 
