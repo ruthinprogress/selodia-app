@@ -3244,6 +3244,7 @@ Ruth, 2026-09-27: the beta *"will include the feedback forms in the More section
 
 - [~] **Password reset — built 2026-09-27, not yet proved on a phone.** The app half is done: a forgotten-password route, the email, and the screen that takes the new password. **Two things are still outstanding and both are outside the code.** (1) The Supabase redirect URL and email template have to be set, which needs a personal access token rather than the service role key — `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/supabase-auth-config.mjs`, and Ruth is creating the token at her next laptop session. (2) The end-to-end test on a real phone is hers. Until both are done a beta tester who forgets their password is still stuck, so this line stays open rather than ticked.
 - [ ] **Google sign-in consent screen still in Testing**, so only listed test users can use it, and it reads "continue to jwyzpkxcaxdnjkykoahn.supabase.co" rather than Selodía.
+- [~] **iOS and TestFlight: pending Apple's verification, no longer unstarted.** Apple Developer enrolment for **Selodía Ltd** submitted **28 September 2026**, enrolment ID **3N9H5LB49A**, using the D-U-N-S obtained on 10 September. Waiting on Apple. Two things follow it rather than run alongside it: **Sign in with Apple**, which App Store guideline 4.8 requires once any third-party sign-in is offered, and an `ios.bundleIdentifier`, which is still not set in `app.json` and should be `app.selodia` to match. Neither is worth doing before the account exists. **Both waves of the beta are Android**, so this blocks neither.
 - [ ] **Product analytics and its consent screen** — item 50, deliberately deferred until there are users, which is now.
 - [ ] **Mobility and yoga illustration coverage** — item 49. 113 of 770 clips match what the app actually prescribes.
 
@@ -3266,9 +3267,33 @@ Added 2026-09-27. Not a beta blocker, and on this list because it was found the 
 - [x] **Both written logs verified and backfilled.** The build log was missing sessions 45 to 53; the article log was missing 25 to 27 September. `scripts/closeout_check.py` now blocks a close-out whose session is not in the build log, whose day has no article entry, or whose workbook has no rows.
 - [x] **WORKFLOW's claim that the build log is written automatically, corrected.** It never was.
 
+## The shape of the beta, settled 2026-09-28
+
+Her decision, and the reason the rest of this list can now be read as two lists rather than one.
+
+**Wave zero: Nikki and Carol only, for about a week.** Two people she knows, to catch anything broken. Everything below marked *wave one* can be missing during wave zero, because two people she can reach by phone can be carried by hand through a gap that would lose a stranger permanently.
+
+**Wave one: 8 to 12 strangers from the target audience, women over 40.** Three things must exist before a single invitation goes out, and they are the three that cannot be worked around by knowing somebody:
+
+1. **Password reset, working and proved on a phone.** A stranger who forgets their password has no other way back in. This is the single most likely way a tester is lost for good.
+2. **A feedback route inside the app.** Ruth's bug reports are excellent because she knows what she saw and sends a screenshot. Nobody else will do that unaided, and a beta with no route for a report is a beta that generates no information.
+3. **The beta agreement, and a way to attach it to an account.** Free access has to be contractual before it is given to people she does not know.
+
+**Not a blocker for either wave:** billing. Both waves are free, so the subscription can arrive after them. The question billing raises for wave one is what happens to a tester's record when the beta ends, and that has to be answered in the agreement rather than in code.
+
+**How to find and choose wave one** is proposed separately, in the beta research document, rather than decided here.
+
+## Complimentary accounts, decided 2026-09-28
+
+Her words: a small, deliberate list of people she chooses, *"each connected to a different circle, who are likely to talk about Selodía"*. The starting list is Lynda, Carol, Nikki and Auguste.
+
+**Mechanically it is the same promotional entitlement as the beta**, which is the point: one mechanism, granted per account, with an optional end date, and a list she can see in full at any time. Distinct from a beta tester only in what the record says about why it was granted and when it ends.
+
+**Not to be built yet.** It belongs in the billing proposal, and that waits on the store-rules check.
+
 ## Standing question
 
-**How many testers, and chosen how?** Not decided. It changes several lines above: a handful of people Ruth knows can be supported by hand through a missing password reset; fifty strangers cannot.
+**Who, for wave one, and how are they found?** The size is settled at 8 to 12. Where they come from is not, and it is the question the beta research document exists to answer.
 
 # LONG-HORIZON IDEAS
 

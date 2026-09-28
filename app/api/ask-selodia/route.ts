@@ -13,7 +13,7 @@ import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
-import { REPLY_WRITTEN_AFTER_THE_SAVES, writeReplyAfterSaves } from '../../lib/chat-path';
+import { REPLY_WRITTEN_AFTER_THE_SAVES, turnIsOrdinary, writeReplyAfterSaves } from '../../lib/chat-path';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -2714,10 +2714,37 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   let replyBody = safeReplyText;
   let notesStillToAppend = appendedNotes;
 
-  // NEVER OVER A BLOCKED REPLY. When the allergy gate blocks a suggestion the
-  // text is a fixed safety message, not a reply to be rewritten, and the same
-  // goes for anything else that replaced the model's words on purpose.
-  if (REPLY_WRITTEN_AFTER_THE_SAVES && gate.safe) {
+  // NEVER OVER A REPLY THE SAFETY ARCHITECTURE CHOSE (2026-09-28).
+  //
+  // The first version of this switch ran on every turn the ALLERGY gate passed,
+  // and `gate.safe` is about allergens. It is not the only place the app takes
+  // the words out of the model's hands on purpose, and the others matter more:
+  //
+  //   - When the C-SSRS screen fires, applySafetyStateMachine replaces the reply
+  //     with DIRECT_ESCALATION_QUESTION, a FIXED question, and its own comment
+  //     says the reply is overridden "so a probing question can never co-occur
+  //     with a card". Rewriting that is not a tone change, it is removing a
+  //     screening question from a screening turn.
+  //   - Any distress tier carries an escalation step, a revisit count and
+  //     possibly a resource card, and its reply is written under the full
+  //     conduct block with all of that in front of it. The rebuilt prompt
+  //     carries the safety block and one sentence about not being a clinician.
+  //     That is right for an ordinary turn and it is not this architecture.
+  //
+  // So the condition is a WHITELIST of ordinary-ness, not a blacklist of harms:
+  // a neutral classification, no escalation step, no resource card, no allergy
+  // block. A tier added later is excluded until somebody decides otherwise,
+  // which is the right way round here.
+  const ordinary = turnIsOrdinary({
+    allergyGateSafe: gate.safe,
+    resourceCard,
+    goalResourceCard,
+    escalationStep: nextEscalationStep,
+    classification: nextClassification,
+    nonDistress: NON_DISTRESS_CLASSIFICATIONS,
+  });
+
+  if (REPLY_WRITTEN_AFTER_THE_SAVES && ordinary) {
     const written = await writeReplyAfterSaves({
       anthropic,
       model: MODEL,

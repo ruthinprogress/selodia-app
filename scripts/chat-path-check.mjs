@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { writeReplyAfterSaves } from '../app/lib/chat-path.ts';
+import { turnIsOrdinary, writeReplyAfterSaves } from '../app/lib/chat-path.ts';
 import { SAFETY_PROMPT_BLOCK } from '../app/lib/safety-classification.ts';
 
 const ROOT = 'C:/Users/ruthi/unflump-app';
@@ -122,6 +122,56 @@ for (const c of CASES) {
       process.exit(1);
     }
   }
+}
+
+// ── WHICH TURNS THE NEW PATH IS ALLOWED TO WRITE AT ALL ──────────────────────
+//
+// The most consequential line in this feature, and it shipped untested. The hole
+// it closes was found by reading applySafetyStateMachine while looking at
+// something else: the first version ran whenever the ALLERGY gate passed, and
+// would therefore have rewritten the C-SSRS screening question - a FIXED question
+// the state machine substitutes precisely so that a probe can never co-occur with
+// a resource card.
+//
+// Pure and free, so it runs before anything is spent.
+
+const NON_DISTRESS = ['neutral'];
+const ORDINARY = {
+  allergyGateSafe: true,
+  resourceCard: null,
+  goalResourceCard: null,
+  escalationStep: null,
+  classification: 'neutral',
+  nonDistress: NON_DISTRESS,
+};
+
+const GUARD_CASES = [
+  ['an ordinary turn is written by the new path', ORDINARY, true],
+  ['a blocked allergy suggestion is not', { ...ORDINARY, allergyGateSafe: false }, false],
+  ['a turn carrying a distress resource card is not', { ...ORDINARY, resourceCard: { title: 'Beat' } }, false],
+  ['a turn carrying the unsafe-goal card is not', { ...ORDINARY, goalResourceCard: { title: 'Beat' } }, false],
+  // THE ONE THAT MATTERS MOST. escalationStep is what the C-SSRS screen sets when
+  // it replaces the reply with its fixed question.
+  ['a turn mid-way up the escalation ladder is not', { ...ORDINARY, escalationStep: 'direct_asked' }, false],
+  ['a turn that resolved to acute crisis is not', { ...ORDINARY, classification: 'acute_crisis' }, false],
+  ['a turn that resolved to eating-related distress is not', { ...ORDINARY, classification: 'eating_related_distress' }, false],
+  ['a turn that resolved to grief is not', { ...ORDINARY, classification: 'grief_related_distress' }, false],
+  ['an ambiguous-distress turn is not', { ...ORDINARY, classification: 'ambiguous_distress' }, false],
+  // A WHITELIST, so a tier nobody has thought of yet is excluded by default.
+  ['a classification nobody has seen before is not', { ...ORDINARY, classification: 'something_new' }, false],
+];
+
+let guardFailed = 0;
+console.log('\n## Which turns the new path may write\n');
+for (const [name, turn, expected] of GUARD_CASES) {
+  const got = turnIsOrdinary(turn);
+  const ok = got === expected;
+  if (!ok) guardFailed += 1;
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  (expected ${expected}, got ${got})`}`);
+}
+if (guardFailed > 0) {
+  console.error(`\n  ${guardFailed} guard check(s) failed. Nothing else was run.\n`);
+  process.exit(1);
 }
 
 let failed = 0;

@@ -50,6 +50,50 @@ import { turnFacts, type TurnData } from './turn-facts';
  */
 export const REPLY_WRITTEN_AFTER_THE_SAVES = true;
 
+/**
+ * Is this a turn the rebuilt path may write, at all?
+ *
+ * A WHITELIST OF ORDINARY-NESS, not a blacklist of harms. The app deliberately
+ * takes the words out of the model's hands in several places, and only one of
+ * them is about allergens:
+ *
+ *   - The C-SSRS screen replaces the reply with a FIXED question, specifically so
+ *     that a probing question can never co-occur with a resource card. Rewriting
+ *     it removes a screening question from a screening turn.
+ *   - Any distress tier carries an escalation step, a revisit count and possibly
+ *     a card, and its reply is written with all of that in front of it. The
+ *     rebuilt prompt has the safety block and one sentence about not being a
+ *     clinician. Right for an ordinary turn; not this architecture.
+ *   - The allergy gate and the unsafe-goal rewrite both replace the reply with
+ *     deliberate text.
+ *
+ * Written as a whitelist so that a tier added later is excluded by default. On
+ * this one question, silently doing nothing is the safe failure and silently
+ * proceeding is not.
+ */
+export function turnIsOrdinary(turn: {
+  /** False when the allergy gate replaced the reply. */
+  allergyGateSafe: boolean;
+  /** Non-null when a distress resource card is going out with this turn. */
+  resourceCard: unknown | null;
+  /** Non-null when the unsafe-goal resource card is going out. */
+  goalResourceCard: unknown | null;
+  /** Non-null while the escalation ladder is mid-climb. */
+  escalationStep: string | null;
+  /** What the turn resolved to AFTER the state machine, not what the model said. */
+  classification: string;
+  /** The classifications this route treats as not distress. */
+  nonDistress: readonly string[];
+}): boolean {
+  return (
+    turn.allergyGateSafe &&
+    turn.resourceCard === null &&
+    turn.goalResourceCard === null &&
+    turn.escalationStep === null &&
+    turn.nonDistress.includes(turn.classification)
+  );
+}
+
 export type ReplyRequest = {
   anthropic: Anthropic;
   model: string;

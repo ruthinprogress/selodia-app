@@ -188,6 +188,24 @@ def append(entry_path: Path, before: int | None = None) -> int:
     backup = BOOK.with_name(BOOK.stem + " (backup before append).docx")
     shutil.copy2(BOOK, backup)
 
+    # WELL-FORMED OR NOTHING IS WRITTEN (added 2026-09-28).
+    #
+    # Adding Ruth's locations by hand put "V&A East Storehouse" into the document
+    # with a bare ampersand and produced a file Word opens as corrupt. This
+    # function escapes properly and that edit bypassed it, which is the argument
+    # for the check rather than for being careful: the file is the only copy of
+    # the build log, and a corrupt one is not obviously corrupt until somebody
+    # opens it.
+    import xml.dom.minidom
+
+    try:
+        xml.dom.minidom.parseString(xml.encode("utf-8"))
+    except Exception as exc:  # noqa: BLE001 - any parse failure means do not write
+        raise SystemExit(
+            "  The document would not be well-formed XML, so nothing was written.\n"
+            f"    {exc}"
+        )
+
     parts["word/document.xml"] = xml.encode("utf-8")
     with zipfile.ZipFile(BOOK, "w", zipfile.ZIP_DEFLATED) as z:
         for name, data in parts.items():
