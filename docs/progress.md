@@ -90,10 +90,13 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
       it is still the real reply. Needs re-measuring tomorrow on real turns.
       **Note: chat rows do not record whether a turn was spoken**, so this is all
       turns rather than voice specifically.
-- [ ] **11. Research only, no building:** UK/EU store rules for subscriptions;
-      ICO registration for Selodía Ltd; a draft beta agreement. Each to Drive.
-      Plus the billing proposal including complimentary access, and how to find
-      and choose wave one.
+- [x] **11. Research, no building.** Four documents in Build Specs, all dated
+      2026-09-28: store rules for subscriptions, ICO registration, the beta
+      agreement first draft, and billing plus complimentary access plus wave one.
+      Every one says where I am unsure rather than smoothing it over.
+
+**The queue is empty.** Continuing with Open Actionables items that do not need
+her, per the standing rule.
 
 ### Findings that need no answer from her
 
