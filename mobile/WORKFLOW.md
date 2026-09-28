@@ -256,6 +256,41 @@ The Toggl session number is the exception: optional, and Ruth fills it in manual
 
 ---
 
+## STANDING RULE: work the queue until it is empty (Ruth, 2026-09-28)
+
+**Do not stop to report progress, ask for approval, or check in.** This is the
+default for every session from now on, and it does not need restating.
+
+- **Work the queue in order.** When an item is done: commit, push, tick it off in
+  `docs/progress.md`, and go straight to the next one. No summary in between.
+- **Blocked on Ruth?** Write the exact question in the "Questions for Ruth"
+  section of `docs/progress.md` and move on to the next item. **Never wait for an
+  answer.** A blocked item is not a stopped session.
+- **Too big to finish?** Split it, finish the part that can be finished, and
+  record what is left.
+- **Queue empty?** Continue with the "Not started" items in the Open Actionables
+  document that do not need her, in their listed order.
+- **Keep `docs/progress.md` current as you go**, not at the end. If the session
+  stops for any reason — a limit, a timeout, a crash — that file is what the next
+  session reads first and carries on from. A progress file written at the end is
+  precisely the file that does not exist when it is needed.
+- **Close out fully** only when everything that does not need her is done, or
+  before the session ends for any other reason.
+
+**Why this rule exists.** Sessions had been stopping at the end of whatever was
+asked, reporting, and waiting — which is a habit rather than a limit, and it cost
+her a reply every time she was not sitting there to give one. The queue plus the
+progress file removes both halves: there is always a next item, and stopping
+unexpectedly costs nothing because the state is on disk.
+
+**It does not override the things that genuinely need her.** Production settings,
+environment variables, domains and cost still get flagged and still wait. So does
+anything destructive without her say-so. The rule is about not stopping for
+*approval to continue*, never about not asking before doing something
+irreversible.
+
+---
+
 ### Where the session is EXECUTING decides whether the Drive sync is possible (learned 2026-08-27)
 "Ruth is on her laptop" and "Claude Code is running on the laptop" are **two different facts**, and only the second one matters for step 3 of the close-out. A session driven from the laptop can still have its agent executing in a remote container — which is exactly what happened on 2026-08-27, and the ceremony silently failed: everything was committed and pushed, the spec had a full day of additions, and the Drive copy was left stale at 218,181 bytes against the repo's 228,505.
 
