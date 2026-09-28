@@ -68,8 +68,9 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
       `app/lib/roundup-prompt.ts`; the numbered ORDER list and its "one thematic
       observation" step are gone. Tested on her real week, 21–27 September, from
       her own rows: 15 of 15.
-- [ ] **7. The red check** — an ordinary food log gets a reply that could follow
-      anything.
+- [x] **7. The red check.** Resolved: the rule now says that saying nothing is
+      not the alternative to a receipt, and names the failing sentence. Whole
+      chat test set is **35/35** on the new path, 29/35 on the old one.
 - [ ] **8. Plan logged as a session.**
 - [ ] **9. Repeated-phrase probe within a single conversation.**
 - [ ] **10. Voice speed** — is a turn back to about 3.2s.

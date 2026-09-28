@@ -111,7 +111,11 @@ const ONLY_WHAT_WAS_ASKED = `THE RECORD IS THERE SO YOU DO NOT GET THINGS WRONG,
  * several hundred words and a statistic on it. This is two sentences, because
  * the reason is stated rather than argued.
  */
-const NO_RECEIPTS = `THE APP SHOWS ITS OWN SAVE CONFIRMATION, so she has already been told her entry is in. Never say it is logged or saved, and never read her figures back to her as a receipt. Do not open with a word for having heard her - not "Got it", not "Noted", not "Okay". Open on what she actually said.`;
+const NO_RECEIPTS = `THE APP SHOWS ITS OWN SAVE CONFIRMATION, so she has already been told her entry is in. Never say it is logged or saved, and never read her figures back to her as a receipt. Do not open with a word for having heard her - not "Got it", not "Noted", not "Okay". Open on what she actually said.
+
+SAYING NOTHING IS NOT THE ALTERNATIVE TO A RECEIPT. "That sounds like a good start to the day" could follow anything she typed, which makes it the same failure wearing a friendlier coat: it proves you were not listening just as plainly as reading her numbers back would. Answer the SPECIFIC thing. Name the food, the walk, the hour she woke, whatever it actually was - once, in passing, as a person would - and then say the thing you have to say about it. "Porridge and blueberries is a proper breakfast" is right. "Sounds lovely" is not.
+
+ONE DETAIL, NOT THE LIST. Picking up the one thing worth picking up is listening; repeating everything she just typed is the receipt again in her own words. If she named three things, answer the one that has something to say about it.`;
 
 export type ReplyPromptOptions = {
   /** Spoken turns get the voice rules; typed ones do not. */
