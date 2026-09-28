@@ -132,16 +132,46 @@ export function MovementDemo({
   // and the two movements with no asset correctly showed nothing. The feature
   // was working; the reporting was not.
   //
-  // 'absent' STAYS SILENT, and must. The library covers movement patterns rather
-  // than every named exercise, a miss is ordinary, and item 46 handles the gap
-  // in conversation without ever referencing the library's limits. A caption
-  // saying "no video for this" would break that rule from the screen most likely
-  // to be read.
+  // 'absent' NOW SAYS SO (Ruth, 2026-09-28), REVERSING THE RULE BELOW.
   //
-  // 'error' IS A DIFFERENT FACT: this movement HAS a clip and the app could not
-  // fetch it. That is worth saying, and worth offering to retry, because it is
-  // the person's connection or ours - not a limit of what exists.
-  if (state === 'absent') return null;
+  // The old reasoning is kept because it was not wrong, only outweighed: a
+  // caption would reference the library's limits, and item 46 handles the gap in
+  // conversation instead, so 'absent' stayed silent on the screen most likely to
+  // be read.
+  //
+  // What that missed is how a blank reads. Every other exercise in the plan has
+  // a clip; this one has a hole. Nobody concludes "the library covers patterns
+  // rather than names" - they conclude something is broken, and then wonder what
+  // else is. A sentence costs nothing and is honest.
+  //
+  // THE WORDING IS THE WHOLE FIX. It says what is true about THIS movement and
+  // nothing about the library: no count, no "not added yet", no apology, no
+  // promise. It sits in the slot the clip would have filled so the page does not
+  // jump between exercises.
+  //
+  // 'error' IS STILL A DIFFERENT FACT: this movement HAS a clip and the app
+  // could not fetch it. That is worth saying and worth offering to retry,
+  // because it is the person's connection or ours - not a limit of what exists.
+  if (state === 'absent') {
+    return (
+      <View style={styles.wrap}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+          The movement
+        </ThemedText>
+        <View
+          style={[
+            styles.slot,
+            styles.absentSlot,
+            { backgroundColor: theme.background, borderColor: theme.backgroundElement },
+          ]}
+        >
+          <ThemedText type="small" themeColor="textSecondary" style={styles.absentText}>
+            No demonstration for this one. The safety note above still applies.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
@@ -195,6 +225,17 @@ export function MovementDemo({
 }
 
 const styles = StyleSheet.create({
+  // The empty slot keeps the clip's shape rather than collapsing, so a plan with
+  // some demonstrations and some without does not jolt as you scroll it.
+  absentSlot: {
+    minHeight: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
+  },
+  absentText: {
+    textAlign: 'center',
+  },
   wrap: { gap: Spacing.one, marginTop: Spacing.two },
   label: {
     fontSize: 11,
