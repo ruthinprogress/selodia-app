@@ -713,3 +713,65 @@ which you have agreed is not a wave-one blocker.
 turn's model calls cost **2.998c** against the 1.77c in the pricing document.
 Two turns is not a sample, but it is the first sign that the model was
 optimistic, and `scripts/cost-per-user.mjs` will say properly within a week.
+
+## Overnight queue
+
+Written 28 September 2026, evening, from her batch prompt. **In her priority
+order: section 3, then 4, then 2, then 1, then the build work still in flight.**
+
+A Stop hook (`scripts/overnight-stop-hook.mjs`) reads this section when the turn
+tries to end and pushes on to the next unticked item. Items marked **blocked**
+are skipped. Deleting this heading, or creating `.claude/overnight-off`, ends
+the run.
+
+**Each item is split into steps below it.** Tick as you go, so an interruption
+loses nothing.
+
+### Section 3 — onboarding and plans (highest priority)
+
+- [ ] 3a. Audit current onboarding against spec Part Seven and the live code: what each step asks, what it writes, what is broken, what is never persisted
+- [ ] 3b. Map the built machinery: focus states, My Week, My Plans, ladders, My Rules, execution view, notifications, Plans tab
+- [ ] 3c. Propose the new tap-based onboarding screen by screen, with exact wording and what each answer drives
+- [ ] 3d. Propose the Plans tab, sessions, start-session mode, quick session, exercise library, and where food sits in the plan
+- [ ] 3e. Rewrite principle 3 and Part Eleven (Graduation): never trap, build literacy, support for life
+- [ ] 3f. Rewrite principle 9: reactive by default, scheduled when the user asks
+- [ ] 3g. Spec: Plans out of Almanac into its own tab; information architecture matched to the app; My Week and My Rules given a clear home
+- [ ] 3h. Spec: note that the Exercise Animatic clips are animations of muscles, not photographs, so principle 16 holds
+- [ ] 3i. Decision patterns: "goals are welcome, shame is not"
+- [ ] 3j. Say what exists, what changes, what is new, and what would break
+
+### Section 4 — menopause and perimenopause
+
+- [ ] 4a. Research from NICE, the British Menopause Society and the NHS, with citations
+- [ ] 4b. Audit cycle tracking, cycle day, phase interpretation, period logging, roundups and chat for irregular cycles, no periods, and HRT
+- [ ] 4c. Competitors: Balance and one or two others, and where Selodia could do better
+- [ ] 4d. Propose life-stage and HRT onboarding questions, symptom logging, how interpretation and targets adapt, and landing/store copy
+
+### Section 2 — pricing re-model
+
+- [ ] 2a. Re-model at GBP 12 and GBP 15, annual GBP 99-120, founding GBP 8 / GBP 79 for the first 100
+- [ ] 2b. Use the real measured cost per turn (~3p, not 1.77p), heavy users included, plus overheads; margin and break-even at each price
+- [ ] 2c. Model Nikki's market reality: GBP 10 for a yoga app with five videos, GBP 2 for tracking. What Selodia needs to feel worth more than a tracker in week one
+- [ ] 2d. What a fuller library and guided sessions would change, and what they would cost
+- [ ] 2e. Draft the wave-zero willingness-to-pay questions
+- [ ] 2f. Recommend a price
+
+### Section 1 — brand rule and evidence
+
+- [ ] 1a. Add the new BetterMe evidence to the pricing/positioning research and the article capture: the second email, the "as featured in" change, the goal contradiction, the body-fat labels
+- [ ] 1b. Record "Premium means restraint" as a standing brand rule in the decision patterns and the build spec
+- [ ] 1c. Check the landing page, onboarding and any existing emails against those rules and list what breaks them
+
+### Still in flight from the earlier prompt
+
+- [ ] F1. The live app says "no target set" when asking what to eat, though the account has a measurement with a BMR. Find out why and fix: this is a wave-zero gate (b) failure
+- [ ] F2. Add the three meal-suggestion examples to the chat test set as permanent cases
+- [ ] F3. Fix the blank space where a plan exercise has no demonstration clip
+- [ ] F4. Fix the stale line in the build spec about there being no video player
+- [ ] F5. Full close-out: build log, article log, decision log, build spec, beta checklist, Open Actionables, final summary with file times
+
+### Waiting on her, not blocking anything
+
+- [ ] **blocked on Ruth** — the calisthenics progression tree, gap list and Exercise Animatic email: she asked to see them before sending, and they are drafted in the previous research document
+- [ ] **blocked on Ruth** — the revised landing page, store listing and onboarding copy: approved in principle, and she asked to see the full revision before it goes live
+- [ ] **blocked on Ruth** — refinement items 1-4 (the loading, error and retry pattern): she said to stop after 6, 7 and 9 until her test week is done

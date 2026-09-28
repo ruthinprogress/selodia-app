@@ -66,3 +66,7 @@ scratchpad/
 # An export of a food log is health data. Never in the repo.
 scripts/data/
 audit-out/
+
+# The overnight run keeps its own counter here. Not worth committing.
+.claude/overnight-state.json
+.claude/overnight-off
