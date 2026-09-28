@@ -130,7 +130,7 @@ The worst case on the page. Free-text conversations about somebody's body, cycle
 
 **Mitigations:** row-level security on every table with personal data, scoped to `auth.uid()`; the service role never in a client; the `waitlist` deliberately write-only; RLS policies reviewed and the performance and security advisors run (23 September); expired copies removed on a schedule.
 
-**Gaps:** **leaked-password protection is a Supabase setting that is still off**, and there is no documented breach-response procedure. Both below.
+**Gap:** **leaked-password protection is a Supabase setting that is still off**. A breach-response procedure now exists — `docs/breach-response.md`, and the Legal folder — covering what counts, the first hour, the 72-hour clock, when the people affected are told, and who to contact. Written on the principle that nobody reads a procedure for the first time while the clock is running.
 
 **Residual: medium-high**, and it is the risk where more work is worth doing.
 
@@ -155,7 +155,7 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 | **Password reset proved end to end on a phone.** | **Before wave one** |
 | ~~International transfer mechanism for Anthropic and ElevenLabs~~ — **done, 28 September.** SCCs plus the UK Addendum in both DPAs, both automatic. Section 3. | Closed |
 | **A transfer risk assessment** for the two US processors — the clauses are in place, the documented judgement that they are effective is not. | 100-subscriber review |
-| **A breach-response procedure** — who is told, how fast, and the 72-hour clock. One page. | Before wave one |
+| ~~A breach-response procedure~~ — **done, 28 September.** `docs/breach-response.md`. | Closed |
 | **Whether a DPO is required.** Core activity is large-scale special category processing *in kind*; "large scale" at a handful of testers plainly is not, and where the line sits I could not establish. | 100-subscriber review |
 | **Processor due diligence** recorded for each of the six above. | Before public launch |
 | **Analytics and its consent screen** (item 50). | When it is built |
@@ -166,7 +166,7 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 
 **Two risks are not closed and are named above**: the database breach case, and the model saying something untrue about somebody's body. The transfer mechanism was the third and is now closed — both US processors carry the UK Addendum, and neither needed Selodía to sign anything. What is left of it is the transfer risk assessment, which is a solicitor's job.
 
-**Nothing here blocks wave zero** — two people the controller knows personally. **Three things block wave one** and are marked: leaked-password protection, password reset proved on a phone, and a breach-response procedure. All three are hers or an afternoon's work.
+**Nothing here blocks wave zero** — two people the controller knows personally. **Two things block wave one** and are marked: **leaked-password protection**, a Supabase setting, and **password reset proved end to end on a phone**. Both are hers — the code for the second is shipped and cannot work until two settings are changed with a personal access token.
 
 ---
 
