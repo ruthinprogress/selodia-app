@@ -95,8 +95,16 @@ Started 09:40, Wood Street Library. Mobile only; laptop running at home.
       agreement first draft, and billing plus complimentary access plus wave one.
       Every one says where I am unsure rather than smoothing it over.
 
-**The queue is empty.** Continuing with Open Actionables items that do not need
+**The queue is empty.** Continued with Open Actionables items that do not need
 her, per the standing rule.
+
+- [x] **A feedback route inside the app** — a wave-one blocker, and the last
+      unblocked item on the Open Actionables list. Settings now has its own
+      "Something not right?" row above Help, writing to a `feedback_reports`
+      table with the build context attached automatically: which update, which
+      platform, which OS version, when. Shipped over the air.
+- [x] **Today's four migrations written into the repo.** They had been applied
+      through the management API and existed only in the database.
 
 ### Findings that need no answer from her
 
@@ -109,12 +117,13 @@ call rather than two. What is *not* known is why it failed; that is what the new
 `reply_path_fallbacks` table exists to answer, and it can only answer for turns
 from now on.
 
-**The pizza duplicates are already gone.** Checked at 11:0x: `food_logs` holds
-exactly one pizza and one lager, both on Sunday 27th, and nothing at all on
-Monday 28th. Five food items for Sunday in total. So what she is seeing is a
-stale screen rather than stale data — the Log tab does not re-read after a change
-made server-side. Reopening the app should show it correctly, and the refetch
-gap is worth its own item.
+**The pizza duplicates are already gone**, and my explanation for what she saw
+was wrong. `food_logs` holds exactly one pizza and one lager, both on Sunday
+27th, and nothing on Monday 28th. I put the stale screen down to the Log tab not
+re-reading after a server-side change — it does: `useFocusReload` bumps a key the
+rows effect depends on, and it fires again at follow-up intervals. Nor did my
+delete leave anything dangling: no chat message points at either removed row.
+The likeliest explanation is simply a screen she had not left and returned to.
 
 ### Findings that do not block anything
 

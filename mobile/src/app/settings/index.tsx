@@ -104,6 +104,16 @@ export default function SettingsHub() {
           />
           </SpotlightTarget>
         </SpotlightTarget>
+        {/* ITS OWN ROW, ABOVE HELP (2026-09-28). Reporting something broken is
+            not the same errand as finding help, and burying it one level down
+            inside "Help and support" is how a beta generates no information. A
+            wave-one requirement from the beta checklist. */}
+        <SettingsRow
+          icon="alert-circle-outline"
+          label="Something not right?"
+          detail="Tell us what happened - it reaches a person"
+          onPress={() => router.push('/settings/feedback')}
+        />
         <SettingsRow
           icon="help-circle-outline"
           label="Help and support"
