@@ -545,6 +545,20 @@ export async function POST(request: NextRequest) {
   const disclosedAllergies = (disclosedAllergyRows ?? []) as Allergy[];
   const savedPlans = resolvePlans(planRows);
   const dayStateRows = { todayFood: dayFood, latest: latestMeasurement };
+
+  // WHAT SHE ACTUALLY EATS, for suggesting food she recognises. A fortnight of
+  // her own entries, newest first; turn-facts dedupes and caps them. Cheap, and
+  // it is the only personalisation that cannot be wrong, because she ate it.
+  const { data: recentMeals } = await supabase
+    .from('food_logs')
+    .select('raw_text')
+    .eq('user_id', userId)
+    .gte('happened_at', new Date(Date.now() - 14 * 86_400_000).toISOString())
+    .order('happened_at', { ascending: false })
+    .limit(60);
+  const usuallyEats = (recentMeals ?? [])
+    .map((r) => (typeof r.raw_text === 'string' ? r.raw_text : ''))
+    .filter((t) => t.length > 0);
   // Only downloaded when something is actually waiting, which is rare. The row
   // itself came with everything else.
   const pendingCard = await fetchPendingCardImage(supabase, pendingCardRow);
@@ -1568,6 +1582,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             measurements: recentMeasurements ?? [],
             lastPeriodStart: lastPeriodRow?.event_date ?? null,
             days: 3,
+            // The same two fields the sequential call gets below. See mealExtras.
+            today: buildDayStatePrompt(dayState),
+            usuallyEats,
           },
           voice: true,
           // NOTHING, because nothing has happened yet. That is the assumption
@@ -2984,6 +3001,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             // Three days spoken, seven typed - the same window the reads used,
             // so the facts cannot describe a week the query never fetched.
             days: isVoice ? 3 : 7,
+            // TODAY'S TARGETS, which this call had never been given. The block
+            // was computed for the classify call and the writer - which writes
+            // every reply on this path - never saw it, so "what should I eat for
+            // the rest of today?" was answered by the half of the pipeline that
+            // did not know what was left of the day.
+            today: buildDayStatePrompt(dayState),
+            usuallyEats,
           },
           voice: isVoice,
           didLines: appendedNotes,
