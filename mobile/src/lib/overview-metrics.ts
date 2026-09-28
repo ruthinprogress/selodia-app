@@ -39,6 +39,44 @@ export function findWeekAgoReading(
   return best;
 }
 
+/**
+ * The most recent reading BEFORE this one that actually has a weight.
+ *
+ * A DIFFERENT QUESTION FROM findWeekAgoReading, deliberately kept separate rather
+ * than made into an option. The Overview asks how this week compares with last
+ * week, and a seven-day reference is the honest answer to that. The card shown
+ * the moment somebody steps off the scale asks what has changed since the last
+ * time they stood on it, and those give different numbers whenever logging is
+ * gappy - which is nearly always.
+ *
+ * On 28 September 2026 the card reached past a reading from the previous morning
+ * to one six days old, and reported +1.4 kg where the day-on-day change was +0.1.
+ *
+ * SKIPS ROWS WITH NO WEIGHT. A reading can carry body fat and no weight, or be an
+ * empty row from a photo that did not read: comparing against one of those
+ * produces no delta at all, and silently showing nothing is indistinguishable
+ * from there being nothing to show.
+ */
+export function findPreviousReading(
+  rows: MeasurementRow[],
+  latestMeasuredAt: string
+): MeasurementRow | null {
+  const latest = new Date(latestMeasuredAt).getTime();
+  if (isNaN(latest)) return null;
+  let best: MeasurementRow | null = null;
+  let bestT = -Infinity;
+  for (const r of rows) {
+    const t = new Date(r.measured_at).getTime();
+    if (isNaN(t) || t >= latest) continue;
+    if (r.weight_kg == null) continue;
+    if (t > bestT) {
+      bestT = t;
+      best = r;
+    }
+  }
+  return best;
+}
+
 // The signed delta of one metric vs the week-ago reading, or null when either
 // side is missing (so the caller shows no delta rather than a fake 0).
 export function weeklyDelta(latest: number | null, weekAgo: number | null): number | null {

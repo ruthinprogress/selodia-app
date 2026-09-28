@@ -1,6 +1,6 @@
 import {
   formatWeeklyDelta,
-  findWeekAgoReading,
+  findPreviousReading,
   gapDays,
   weeklyDelta,
   type MeasurementRow,
@@ -166,7 +166,9 @@ export async function loadLatestInterpretation(freshSince?: string): Promise<str
       .lte('happened_at', split.latest.measured_at),
     supabase
       .from('food_logs')
-      .select('happened_at, sodium_mg')
+      // kcal as well as sodium: a big day is the most ordinary reason a scale is
+      // up the next morning, and it was the one thing this could not see.
+      .select('happened_at, sodium_mg, kcal')
       .gte('happened_at', hoursBefore(split.latest.measured_at, FOOD_LOOKBACK_HOURS))
       .lte('happened_at', split.latest.measured_at),
   ]);
@@ -216,9 +218,20 @@ export async function bodyAckFacts(saved: BodyRow): Promise<BodyAckFacts> {
 
   const rows = (history ?? []) as MeasurementRow[];
 
-  // The same gap-aware delta the Overview shows, so the two surfaces cannot
-  // caption the same comparison differently.
-  const ref = findWeekAgoReading(rows, saved.measured_at);
+  // AGAINST THE LAST TIME SHE WEIGHED, not against a week ago (2026-09-28).
+  //
+  // This used the Overview's week-ago reference, on the reasoning that two
+  // surfaces should not caption the same comparison differently. They are not
+  // the same comparison. The Overview answers "how does this week compare with
+  // last week"; this card, shown the second she steps off the scale, answers
+  // "what has changed since last time" - and with gappy logging those pick
+  // different readings.
+  //
+  // Her card that morning read "+1.4 vs 6 days ago" over a day-on-day change of
+  // +0.1 kg, because findWeekAgoReading reached past the previous morning's
+  // reading to find the one nearest seven days back. The label was honest about
+  // the distance and the comparison was still the wrong one to make.
+  const ref = findPreviousReading(rows, saved.measured_at);
   const deltaLabel = ref
     ? formatWeeklyDelta(
         weeklyDelta(saved.weight_kg, ref.weight_kg),

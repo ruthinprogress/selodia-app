@@ -46,7 +46,7 @@ const SODIUM_HIGH_MG = 1500;
 // spanning months counted as a trend exactly like three consecutive mornings.
 const COMPARABLE_GAP_DAYS = 10;
 
-export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms' | 'sodium';
+export type NoiseSource = 'cycle' | 'pump' | 'time_of_day' | 'doms' | 'sodium' | 'intake';
 // Each flag carries two forms of the same fact. `reason` is the full
 // explanatory clause, used when it is the only thing to say. `short` is a bare
 // noun phrase, used when several causes combine - because three physiological
@@ -63,7 +63,7 @@ export type ActivityContext = { happenedAt: string; eccentricLoad: string | null
 // A logged food's time and estimated sodium, for the salty-food flag. sodium_mg
 // is null on older rows (captured only from the point sodium logging shipped) and
 // on any parse that omitted it — those simply don't count toward the window total.
-export type FoodContext = { happenedAt: string; sodiumMg: number | null };
+export type FoodContext = { happenedAt: string; sodiumMg: number | null; kcal?: number | null };
 export type TrendVerdict = 'insufficient' | 'single_day' | 'trend_up' | 'trend_down';
 
 export type ReadingInterpretation = {
@@ -199,6 +199,37 @@ function sodiumFlag(recentFoods: FoodContext[], measuredAt: string): NoiseFlag |
   };
 }
 
+// A BIG DAY YESTERDAY, which is the most ordinary reason of all for the scale to
+// be up this morning and the one thing this file could not see. There was a
+// sodium flag and no intake flag, so "the weekend festivities" - her words -
+// counted for nothing while a salty dinner counted for something.
+//
+// Deliberately a HIGH BAR and a SHORT WINDOW. This is not a judgement about what
+// she ate and must never read as one: it is a physical note that a lot of food
+// and drink in the last day or so shows up on a scale as glycogen and water
+// before it means anything else. An ordinary day must not trip it.
+const BIG_INTAKE_KCAL = 2200;
+const INTAKE_WINDOW_HOURS = 36;
+
+function intakeFlag(recentFoods: FoodContext[], measuredAt: string): NoiseFlag | null {
+  const measured = new Date(measuredAt).getTime();
+  if (isNaN(measured)) return null;
+  const windowMs = INTAKE_WINDOW_HOURS * 60 * 60 * 1000;
+  const total = recentFoods.reduce((sum, f) => {
+    if (f.kcal == null) return sum;
+    const at = new Date(f.happenedAt).getTime();
+    if (isNaN(at)) return sum;
+    const gap = measured - at;
+    return gap >= 0 && gap <= windowMs ? sum + f.kcal : sum;
+  }, 0);
+  if (total < BIG_INTAKE_KCAL) return null;
+  return {
+    source: 'intake',
+    reason: 'you ate more than usual in the last day or so, and that shows up as glycogen and water first',
+    short: 'the last day or so was a bigger one',
+  };
+}
+
 // Hours-of-day are circular (23:00 and 01:00 are 2h apart), so the "usual" time
 // and the distance from it are computed on the unit circle. UTC hours are used
 // for both sides: a user's offset is constant, so it cancels out of the
@@ -324,6 +355,7 @@ export function interpretLatestReading(params: {
     timeOfDayFlag(latest.measuredAt, priorMeasuredAts),
     domsFlag(recentActivities, latest.measuredAt),
     sodiumFlag(recentFoods, latest.measuredAt),
+    intakeFlag(recentFoods, latest.measuredAt),
   ].filter((f): f is NoiseFlag => f != null);
   const sources = flags.map((f) => f.source);
   const weights = [latest.weightKg, ...priorWeights].filter((w): w is number => w != null);
@@ -351,17 +383,36 @@ export function interpretLatestReading(params: {
     };
   }
   if (trend === 'trend_up') {
-    // The decision that a trend outranks the noise flags has already been made
-    // above. The message states it and moves on: walking through an alternative
-    // explanation only to overrule it mid-sentence reads as an argument with
-    // itself, and leaves the reader unsure which half to believe. So the flags
-    // are added as a plain forward-looking fact, never as a rebutted excuse.
-    let message =
-      "Weight's edged up across your last few readings. That's more than a single-day blip, so it's worth a calm look rather than a shrug or a spiral.";
+    // WHEN THERE IS AN ORDINARY EXPLANATION, IT LEADS AND THE SENTENCE STOPS
+    // (Ruth, 2026-09-28). This used to open with "that's more than a
+    // single-day blip, so it's worth a calm look rather than a shrug or a
+    // spiral" and then add the flag afterwards, on the reasoning that a trend
+    // outranks the noise and that rebutting an explanation mid-sentence reads as
+    // an argument with itself.
+    //
+    // The second half of that is true and the first half produced the wrong
+    // message: putting the alarming clause first and the explanation second does
+    // not avoid the argument, it just decides which half wins. Her reading that
+    // morning was up 0.1 kg on the day before, she was on her period, and she
+    // had eaten a pizza. Her words: "It's nothing to be alarmed about. Im not
+    // sure it's helpful to phrase it as you did."
     if (flags.length > 0) {
-      message += ` ${capitalizeFirst(composeCause(flags, { brief: true }))}, so some of this may settle on its own.`;
+      return {
+        message: `${capitalizeFirst(composeCause(flags, { brief: true }))}, so a rise around now is the ordinary thing rather than a change in itself.`,
+        trend,
+        sources,
+      };
     }
-    return { message, trend, sources };
+    // NO EXPLANATION IN THE RECORD, so the rise is stated and nothing more. The
+    // language about shrugs and spirals is gone: naming two ways of overreacting
+    // is still a sentence about how to feel, and a description does not need a
+    // recommended posture attached to it.
+    return {
+      message:
+        "Weight's edged up across your last few readings, so it's more than one morning's movement. Nothing in your log explains it either way.",
+      trend,
+      sources,
+    };
   }
 
   // Not a real trend. What is still worth saying depends on WHY, and the three

@@ -26,7 +26,7 @@ export const READING_HISTORY_LIMIT = 12;
 // the specific row it was generated for (build item 29).
 export type RawReading = { measured_at: string; weight_kg: number | null; id?: string };
 export type RawActivity = { happened_at: string; eccentric_load: string | null };
-export type RawFood = { happened_at: string; sodium_mg: number | null };
+export type RawFood = { happened_at: string; sodium_mg: number | null; kcal?: number | null };
 
 export function hoursBefore(iso: string, hours: number): string {
   return new Date(new Date(iso).getTime() - hours * 3_600_000).toISOString();
@@ -67,5 +67,5 @@ export function toActivityContexts(rows: RawActivity[]): ActivityContext[] {
 }
 
 export function toFoodContexts(rows: RawFood[]): FoodContext[] {
-  return rows.map((r) => ({ happenedAt: r.happened_at, sodiumMg: r.sodium_mg }));
+  return rows.map((r) => ({ happenedAt: r.happened_at, sodiumMg: r.sodium_mg, kcal: r.kcal ?? null }));
 }
