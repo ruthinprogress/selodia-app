@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
@@ -7,6 +7,7 @@ import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { betaStatus } from '@/lib/beta';
 
 // THE SETTINGS HUB (2026-09-20), rebuilt from Ruth's IA brief.
 //
@@ -32,6 +33,26 @@ import { supabase } from '@/lib/supabase';
 // where this is configuration. Two different things, two different homes.
 export default function SettingsHub() {
   const [signingOut, setSigningOut] = useState(false);
+
+  // BETA FEEDBACK SITS AT THE TOP, and only for beta accounts (Ruth's item 6).
+  //
+  // "Lives at the top of the More section, and as the first item in the seed
+  // menu on every screen" - and the seed menu IS this page, since the mark on
+  // every screen opens it. Top of this list is therefore both of those things at
+  // once, and two taps from wherever the problem happened.
+  //
+  // Starts false and turns true, so somebody who is not in the beta never sees
+  // it flicker into existence and back.
+  const [isBeta, setIsBeta] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void betaStatus().then((s) => {
+      if (!cancelled) setIsBeta(s.member);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // SIGN-OUT WAS NEVER CALLED ANYWHERE before this screen existed: somebody who
   // signed in had no way out of the app at all. The auth guard watches for the
@@ -104,6 +125,15 @@ export default function SettingsHub() {
           />
           </SpotlightTarget>
         </SpotlightTarget>
+        {isBeta && (
+          <SettingsRow
+            first
+            icon="megaphone-outline"
+            label="Beta feedback"
+            detail="Anything at all - nothing has to be filled in"
+            onPress={() => router.push('/settings/beta-feedback')}
+          />
+        )}
         {/* ITS OWN ROW, ABOVE HELP (2026-09-28). Reporting something broken is
             not the same errand as finding help, and burying it one level down
             inside "Help and support" is how a beta generates no information. A

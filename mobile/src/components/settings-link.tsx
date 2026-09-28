@@ -1,8 +1,9 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThreeSeedsMark } from '@/components/seed-marks';
+import { rememberScreen } from '@/lib/last-screen';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { PageInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -65,10 +66,18 @@ const MARK_SIZE = 22;
 export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  // WHERE SHE WAS WHEN SHE PRESSED IT. This mark is on every screen, so it is
+  // the one place that knows what she was looking at a moment before opening
+  // Settings - which is the most useful field on a bug report and the one
+  // nobody types. See lib/last-screen.ts.
+  const pathname = usePathname();
 
   const button = (
     <Pressable
-      onPress={() => router.push('/settings')}
+      onPress={() => {
+        rememberScreen(pathname);
+        router.push('/settings');
+      }}
       accessibilityRole="button"
       accessibilityLabel="More"
       // Generous, because the mark is small and quiet on purpose and a quiet
