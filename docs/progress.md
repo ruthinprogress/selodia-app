@@ -135,11 +135,32 @@ falls through to scoring. Left alone rather than fixed: loosening the deliberate
 path changes what gets written to her data, and that is a decision rather than a
 tidy-up. The guard is unaffected - it requires title words either way.
 
+### Answered, 28 September, and acted on
+
+- **Pizza shows once after a force-close.** Nothing further to do; my "Log tab
+  does not refetch" theory was wrong and the correction is recorded above.
+- **Voice is back on the old path**, text stays on the new one, until the latency
+  is about 3.3s. The switch is now a decision per surface.
+- **The 24 September readings:** one 55.5 kg kept, the other five backed up to
+  `body_measurements_removed` and deleted. That week is three real readings now.
+
+### Latency — her top priority, and where it stands
+
+**The cause was the did-lines block**, not the second call in itself. It said "say
+what matters of it in your own words", which reads as *cover all of it*, and it
+pulled against NO_RECEIPTS telling the model never to claim something is saved.
+The model resolved that by writing more — four or five hundred words to "56.9 this
+morning", hitting the ceiling and falling back. At about sixty tokens a second
+that is most of the seven seconds.
+
+Now: a save that worked gets no mention, anything that failed is always said in
+one sentence, and the writer sees the last eight turns rather than forty.
+
+**Measured: a median of 3,350ms against 6,330ms**, with quality holding at 35/35.
+**Not yet proven on her real turns** — that reading can only be taken tomorrow,
+and it is the only one that counts. If it is near 3.3s, voice goes back on the new
+path and the per-surface split comes out.
+
 ### Questions for Ruth
 
-- **Does the pizza still show twice after force-closing and reopening the app?**
-  If it does, the display bug is worse than a missed refetch and I will chase it.
-  If not, it is the Log tab needing a re-read on focus.
-- **Voice may now be noticeably slower** — the new path adds a second model call,
-  and a typed turn measured 10 seconds against 4–5 on the old path. Say the word
-  and the switch goes back off for voice only while that is fixed.
+- Nothing outstanding.
