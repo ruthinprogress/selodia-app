@@ -7,12 +7,18 @@ WOMEN IN INNOVATION - "what it asks for and what we build first". One sentence
 names her as a founder in an innovation award. She IS personally named there,
 legitimately, so it becomes Ruth Christianson-Monroy.
 
-ACCELERATING FEMTECH - the email. Its signature reads "Ruth Christianson", and
-THE EMAIL HAS BEEN SENT. That document is now a record of what a recipient
-actually received, and editing the body would make it quietly stop describing
-reality - the one thing a record must not do. So the body is left exactly as it
-went out, and a dated note at the top says it was sent, what the signature
-said, and which name to use next time.
+ACCELERATING FEMTECH - the email. SUPERSEDED THE SAME DAY; see
+femtech_name_correction.py, which is the script that actually holds.
+
+What this one did was leave the signature reading "Ruth Christianson" on the
+grounds that the email had been sent and a record must describe what the
+recipient received. The principle was right and the fact was wrong: she had
+edited the signature before sending, so it went out as Ruth Christianson-Monroy.
+The same principle then required the opposite action - correct the file, because
+the version on disk no longer matched the email. Kept here rather than deleted
+because the reasoning is the reusable part, and it is easy to mistake "do not
+edit a record" for a rule about not editing rather than a rule about matching
+reality.
 
 The rest of the repository and Drive is already right, which the scan showed:
 the privacy policy and terms never name her, the beta agreement's clauses never
