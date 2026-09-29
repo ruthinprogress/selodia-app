@@ -8,6 +8,7 @@ import { ReportLink } from '@/components/report-link';
 import { AlmanacEmptyState } from '@/components/almanac-empty-state';
 import { GoalsBlock } from '@/components/goals-block';
 import { LogPlanSheet, minutesFromPlan, type PlanToLog } from '@/components/log-plan-sheet';
+import { MoveSheet } from '@/components/move-sheet';
 import { LogWeekSheet, type WeekLogItem } from '@/components/log-week-sheet';
 import { RulesView } from '@/components/rules-view';
 import { SegmentedTabs, type SegmentedTabItem } from '@/components/segmented-tabs';
@@ -25,6 +26,7 @@ import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { dayKeyOf, isWalking, logMatchesPlan, placedOnDays } from '@/lib/week-plan';
+import { moveToDays } from '@/lib/week-move';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
 // "every tab should answer a different user question, with no overlap ...
@@ -63,6 +65,10 @@ export default function PlansScreen() {
   // The single-activity log sheet, and the whole-week one.
   const [loggingPlan, setLoggingPlan] = useState<PlanToLog | null>(null);
   const [weekSheet, setWeekSheet] = useState<WeekLogItem[] | null>(null);
+  // "MOVE TO…" OPENS FROM THE TAP SHEET, so it is owned here rather than
+  // inside the week: the log sheet is this screen's, and a sheet cannot open
+  // a sibling sheet that belongs to someone else.
+  const [movingPlan, setMovingPlan] = useState<PlanToLog | null>(null);
   // Bumped after anything writes, so the week reloads its ticks and its days.
   const [weekKey, setWeekKey] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -254,6 +260,35 @@ export default function PlansScreen() {
             plan={loggingPlan}
             onClose={() => setLoggingPlan(null)}
             onLog={writeLog}
+            onMove={() => {
+              // ONE SHEET AT A TIME. Two Modals open together is a stack
+              // nobody can get out of on Android's back button.
+              setMovingPlan(loggingPlan);
+              setLoggingPlan(null);
+            }}
+          />
+        )}
+
+        {movingPlan && (
+          <MoveSheet
+            activity={movingPlan.activity}
+            days={movingPlan.days}
+            weekDays={daysOfWeek(currentWeekStart())}
+            onClose={() => setMovingPlan(null)}
+            onPick={(picked) => {
+              const plan = movingPlan;
+              setMovingPlan(null);
+              if (!plan) return;
+              void (async () => {
+                try {
+                  await moveToDays(plan.id, picked);
+                } finally {
+                  // Reload either way: on success to show the move, on failure
+                  // to show that it did not happen.
+                  setWeekKey((k) => k + 1);
+                }
+              })();
+            }}
           />
         )}
 

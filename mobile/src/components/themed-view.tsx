@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { View, type ViewProps } from 'react-native';
 
 import { ThemeColor } from '@/constants/theme';
@@ -12,10 +13,21 @@ import { useTheme } from '@/hooks/use-theme';
 // the destructure would let them fall through `otherProps` onto the native View.
 export type ThemedViewProps = ViewProps & {
   type?: ThemeColor;
+  /**
+   * PASSED STRAIGHT THROUGH TO THE VIEW. Added 2026-09-29 for the week's drag:
+   * a drop target has to be measured with measureInWindow, and you cannot
+   * measure what you cannot hold a reference to.
+   *
+   * No forwardRef, because React 19 hands `ref` to a function component as an
+   * ordinary prop - declaring it here is the whole of it.
+   */
+  ref?: Ref<View>;
 };
 
-export function ThemedView({ style, type, ...otherProps }: ThemedViewProps) {
+export function ThemedView({ style, type, ref, ...otherProps }: ThemedViewProps) {
   const theme = useTheme();
 
-  return <View style={[{ backgroundColor: theme[type ?? 'background'] }, style]} {...otherProps} />;
+  return (
+    <View ref={ref} style={[{ backgroundColor: theme[type ?? 'background'] }, style]} {...otherProps} />
+  );
 }

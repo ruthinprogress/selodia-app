@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,6 +11,7 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
+import { moveToDays, withDay } from '@/lib/week-move';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { cadenceConflict, cadenceForDays, DAY_KEYS, DAY_LABEL, dayKeyOf, isWalking, logMatchesPlan, placedOnDays, shortDate, type CadenceConflict, type DayKey } from '@/lib/week-plan';
 
@@ -49,6 +52,16 @@ type WeekRow = {
 
 type LoggedName = { activity_type: string | null; happened_at: string };
 
+/** A place a card can be dropped, in window coordinates. */
+type DropZone = { key: string; x: number; y: number; width: number; height: number };
+
+/** The Anytime block's zone key. Not a day, so it cannot collide with one. */
+const ANYTIME = 'anytime';
+
+/** The carried preview's size. Fixed, so the worklet can centre it on the finger. */
+const PREVIEW_W = 130;
+const PREVIEW_H = 34;
+
 export const WEEK_EMPTY = 'No week yet';
 export const WEEK_EMPTY_BODY =
   'Tell Selodía what a normal week looks like for you, and it will keep the shape of it here.';
@@ -59,7 +72,7 @@ export function WeekView({
   reloadKey,
   onChanged,
 }: {
-  onLogPlan?: (plan: { id: string; activity: string; duration: string | null }) => void;
+  onLogPlan?: (plan: { id: string; activity: string; duration: string | null; days: string[] }) => void;
   onLogWeek?: () => void;
   reloadKey?: number;
   onChanged?: () => void;
@@ -72,9 +85,43 @@ export function WeekView({
   const [dragUsed, setDragUsed] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
-  // The card being moved, and the sheet that moves it. See the note on the
-  // sheet itself for why this is a sheet rather than a drag gesture.
-  const [moving, setMoving] = useState<WeekRow | null>(null);
+
+  // ---- dragging ----------------------------------------------------------
+  //
+  // WHY THIS IS A REAL GESTURE AND NOT Pressable's onLongPress.
+  //
+  // The first version used onLongPress, which lives in React Native's own JS
+  // responder system. A parent ScrollView can claim the responder the moment a
+  // finger moves a few pixels, and claiming it CANCELS the pending long press.
+  // So "press and drag" - which is exactly what she was doing, and exactly
+  // what the word drag means - cancelled itself before the 350ms timer could
+  // fire. Nothing happened, and nothing was going to.
+  //
+  // Gesture.Pan().activateAfterLongPress() is the tool built for this: the
+  // ScrollView keeps the touch until the hold wins, and then the pan takes it
+  // and keeps it through the movement. The same library already does the swipe
+  // on Measurements and the re-order on Log, both on this phone.
+  //
+  // COORDINATES ARE WINDOW COORDINATES throughout. Every drop zone is measured
+  // with measureInWindow at the moment the drag starts, and the finger arrives
+  // as absoluteX/absoluteY, so nothing anywhere has to know the scroll offset.
+  // Measuring at drag start rather than on layout is what keeps that true
+  // after she has scrolled.
+  const rootRef = useRef<View | null>(null);
+  const zoneRefs = useRef<Record<string, View | null>>({});
+  /** Drop targets in window coordinates, read by the gesture worklet. */
+  const zones = useSharedValue<DropZone[]>([]);
+  /** Where the week's own top-left is, so the preview can be placed inside it. */
+  const rootAt = useSharedValue({ x: 0, y: 0 });
+  /** The finger, in window coordinates. */
+  const fingerX = useSharedValue(0);
+  const fingerY = useSharedValue(0);
+  /** Which zone the finger is over. A shared value so the worklet can compare. */
+  const overKey = useSharedValue<string | null>(null);
+  /** The row being carried, for the preview. JS state: it changes once a drag. */
+  const [carrying, setCarrying] = useState<WeekRow | null>(null);
+  /** The highlighted zone, mirrored into JS only when it actually changes. */
+  const [over, setOver] = useState<string | null>(null);
   // The "+" on a day, which offers the Anytime activities to put there.
   const [addingTo, setAddingTo] = useState<DayKey | null>(null);
   const [conflict, setConflict] = useState<{ row: WeekRow; detail: CadenceConflict } | null>(null);
@@ -163,34 +210,192 @@ export function WeekView({
     [logged]
   );
 
-  async function setDays(row: WeekRow, days: string[]) {
-    // THE STAMP GOES ON AT THE WRITE, which is the only place that knows she
-    // did this rather than the plan. Every path that moves a card comes
-    // through here - the move sheet and the day's "+" both call it - so there
-    // is no second place for it to be forgotten.
+  // MEASURE EVERY DROP TARGET, ONCE, AT THE MOMENT SHE PICKS A CARD UP.
+  //
+  // measureInWindow is callback-based and one call per view, so this gathers
+  // them and writes the finished list into a shared value in a single
+  // assignment - the worklet must never see a half-built list.
+  const measureZones = useCallback(() => {
+    const entries = Object.entries(zoneRefs.current).filter(([, v]) => v);
+    let left = entries.length + 1;
+    const found: DropZone[] = [];
+    const done = () => {
+      left -= 1;
+      if (left === 0) zones.set(found);
+    };
+    rootRef.current?.measureInWindow((x, y) => {
+      rootAt.set({ x, y });
+      done();
+    });
+    if (!rootRef.current) done();
+    for (const [key, node] of entries) {
+      node?.measureInWindow((x, y, width, height) => {
+        // A zone with no size is a zone that is not on screen. Dropping onto
+        // one would be dropping onto nothing.
+        if (width > 0 && height > 0) found.push({ key, x, y, width, height });
+        done();
+      });
+    }
+  }, [rootAt, zones]);
+
+  // DECLARED BEFORE THE GESTURES THAT USE IT, and that ordering is load
+  // bearing rather than tidy. A Reanimated worklet captures the variables it
+  // references AT THE MOMENT THE WORKLET IS BUILT, not when it runs - so a
+  // gesture built above this line would read `clearCarry` while it was still
+  // in the temporal dead zone and throw before the Week tab drew anything.
+  const clearCarry = useCallback(() => {
+    setCarrying(null);
+    setOver(null);
+  }, []);
+
+  // THE GESTURES MUST OUTLIVE A RE-RENDER, and a drag causes re-renders: the
+  // highlighted zone and the carried card are both React state, so the week
+  // re-renders several times between picking a card up and letting it go. A
+  // gesture object rebuilt during that hand-off can be re-attached
+  // mid-gesture, which cancels it - the drag would die the instant the first
+  // day row highlighted, and look exactly like a drag that does not work.
+  //
+  // So the gestures are memoised on the SET OF ROW IDS, and they close over an
+  // id rather than a row. Closing over the row would put a stale `days` inside
+  // a gesture that survives the move that changed it.
+  const rowsRef = useRef<WeekRow[]>([]);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  const liftCard = useCallback(
+    (rowId: string) => {
+      const row = rowsRef.current.find((r) => r.id === rowId) ?? null;
+      setCarrying(row);
+      measureZones();
+    },
+    [measureZones]
+  );
+
+  // WHERE IT LANDED. `key` is a day, 'anytime', or null for a drop that hit
+  // nothing - and a drop that hit nothing puts the card back where it was
+  // rather than guessing, because a guess here silently rearranges her week.
+  const dropCard = useCallback(
+    (rowId: string, key: string | null) => {
+      setCarrying(null);
+      setOver(null);
+      if (!key) return;
+      const row = rowsRef.current.find((r) => r.id === rowId);
+      if (!row) return;
+      const next = key === ANYTIME ? [] : withDay(row.days, key);
+      const already =
+        next.length === (row.days ?? []).length &&
+        next.every((d) => (row.days ?? []).includes(d));
+      // Dropping a card back on the day it already sits on is not a change,
+      // and writing it would stamp days_chosen_at for nothing.
+      if (already) return;
+      void applyMove(row, next);
+    },
+    // applyMove is stable for the life of the screen; listing it would make
+    // every gesture rebuild on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  /**
+   * ONE GESTURE PER CARD. Built here rather than inside the card so every card
+   * shares the same zones, the same finger and the same drop - a gesture built
+   * in the child would have its own copy of all three.
+   */
+  const makeGesture = useCallback(
+    (rowId: string) =>
+      Gesture.Pan()
+        // THE HOLD HAS TO WIN BEFORE THE PAN STARTS. Until it does, the touch
+        // belongs to the ScrollView and the page scrolls normally. 250ms is
+        // the same feel as a long press and short enough not to read as a
+        // hang.
+        .activateAfterLongPress(250)
+        .onStart((e) => {
+          'worklet';
+          fingerX.set(e.absoluteX);
+          fingerY.set(e.absoluteY);
+          overKey.set(null);
+          runOnJS(liftCard)(rowId);
+        })
+        .onUpdate((e) => {
+          'worklet';
+          fingerX.set(e.absoluteX);
+          fingerY.set(e.absoluteY);
+          const list = zones.get();
+          let hit: string | null = null;
+          for (let i = 0; i < list.length; i += 1) {
+            const z = list[i];
+            if (
+              e.absoluteX >= z.x &&
+              e.absoluteX <= z.x + z.width &&
+              e.absoluteY >= z.y &&
+              e.absoluteY <= z.y + z.height
+            ) {
+              hit = z.key;
+              break;
+            }
+          }
+          // ONLY WHEN IT CHANGES. This runs every frame; crossing the bridge
+          // sixty times a second to set the same value is how a drag becomes
+          // a stutter.
+          if (hit !== overKey.get()) {
+            overKey.set(hit);
+            runOnJS(setOver)(hit);
+          }
+        })
+        .onEnd(() => {
+          'worklet';
+          runOnJS(dropCard)(rowId, overKey.get());
+        })
+        // FINALIZE, NOT JUST END. A gesture cancelled by the system - a call
+        // arriving, the app backgrounding - never reaches onEnd, and without
+        // this the card would stay lifted with no finger on it.
+        .onFinalize(() => {
+          'worklet';
+          overKey.set(null);
+          runOnJS(clearCarry)();
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liftCard, dropCard]
+  );
+
+  // ONE STABLE GESTURE PER CARD, rebuilt only when the set of cards changes.
+  const rowIds = rows.map((r) => r.id).join('|');
+  const gestures = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof makeGesture>>();
+    for (const id of rowIds ? rowIds.split('|') : []) map.set(id, makeGesture(id));
+    return map;
+    // rowIds is the identity of the set; `rows` itself is a new array every load.
+  }, [rowIds, makeGesture]);
+
+  /** The preview that follows her finger, placed inside the week's own box. */
+  const previewStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: fingerX.get() - rootAt.get().x - PREVIEW_W / 2 },
+      { translateY: fingerY.get() - rootAt.get().y - PREVIEW_H - 12 },
+    ],
+  }));
+
+  async function applyMove(row: WeekRow, days: string[]) {
+    // THE WRITE ITSELF IS IN lib/week-move.ts, because three routes reach it
+    // now - the drag, the hold, and "Move to…" in the tap sheet - and the
+    // days_chosen_at stamp is silent when it is forgotten.
     const chosen = new Date().toISOString();
     // SAVES IMMEDIATELY, as she asked. Optimistic locally so the card moves
     // under her finger rather than after a round trip.
     setRows((prev) =>
       prev.map((r) => (r.id === row.id ? { ...r, days, days_chosen_at: chosen } : r))
     );
-    await supabase.from('user_week').update({ days, days_chosen_at: chosen }).eq('id', row.id);
-    await markDragUsed();
-    onChanged?.();
-  }
-
-  async function markDragUsed() {
-    if (dragUsed) return;
     setDragUsed(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      await supabase
-        .from('user_profile')
-        .update({ week_drag_used_at: new Date().toISOString() })
-        .eq('user_id', user.id);
+    try {
+      await moveToDays(row.id, days);
+    } catch {
+      // PUT IT BACK. A card that stays where she dropped it while the database
+      // still has it somewhere else is the worst of both - it looks saved and
+      // is not. Reloading shows the truth.
+      await load();
     }
+    onChanged?.();
   }
 
   async function resolveConflict(keepDays: boolean) {
@@ -236,7 +441,7 @@ export function WeekView({
   }
 
   return (
-    <ThemedView style={styles.block}>
+    <ThemedView ref={rootRef} style={styles.block} collapsable={false}>
       {/* ---- the seven days ---- */}
       {/* SHOWN IN BOTH MODES. They were hidden under "Let me lead", which made
           "unless dragged" impossible to satisfy: with no day rows there was
@@ -250,8 +455,23 @@ export function WeekView({
           return (
             <ThemedView
               key={key}
-              type={isToday ? 'backgroundSelected' : 'background'}
-              style={[styles.dayRow, isToday && { borderColor: theme.accentDeep }]}>
+              // MEASURED, SO IT CAN BE DROPPED ON. collapsable={false} is not
+              // optional: without it Android may flatten a plain view out of
+              // the native tree entirely, and measureInWindow on something
+              // that is not there returns zeros - which reads as a drop zone
+              // in the top-left corner of the screen.
+              ref={(node: View | null) => {
+                zoneRefs.current[key] = node;
+              }}
+              collapsable={false}
+              type={isToday || over === key ? 'backgroundSelected' : 'background'}
+              style={[
+                styles.dayRow,
+                isToday && { borderColor: theme.accentDeep },
+                // WHERE IT WILL LAND, shown while she is still holding it.
+                // Without this a drag is a guess until she lets go.
+                over === key && { borderColor: theme.accentDeep, borderWidth: 2 },
+              ]}>
               <View style={styles.dayLabel}>
                 <ThemedText type="smallBold" themeColor={isToday ? 'accentDeep' : 'text'}>
                   {DAY_LABEL[key]}
@@ -263,13 +483,23 @@ export function WeekView({
 
               <View style={styles.pills}>
                 {items.map((row) => (
-                  <PlanPill
-                    key={row.id}
-                    row={row}
-                    logged={isLogged(row.activity)}
-                    onPress={() => onLogPlan?.({ id: row.id, activity: row.activity, duration: row.duration })}
-                    onLongPress={() => setMoving(row)}
-                  />
+                  <GestureDetector key={row.id} gesture={gestures.get(row.id)!}>
+                    <View collapsable={false}>
+                      <PlanPill
+                        row={row}
+                        logged={isLogged(row.activity)}
+                        carrying={carrying?.id === row.id}
+                        onPress={() =>
+                          onLogPlan?.({
+                            id: row.id,
+                            activity: row.activity,
+                            duration: row.duration,
+                            days: row.days ?? [],
+                          })
+                        }
+                      />
+                    </View>
+                  </GestureDetector>
                 ))}
               </View>
 
@@ -289,24 +519,45 @@ export function WeekView({
       <ThemedText type="sectionTitle" style={styles.anytimeHeading}>
         Anytime this week
       </ThemedText>
-      {anytime.length === 0 ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          Everything has a day. Hold a card to move one back here.
-        </ThemedText>
-      ) : (
-        <View style={styles.grid}>
-          {anytime.map((row) => (
-            <View key={row.id} style={styles.gridCell}>
-              <PlanCard
-                row={row}
-                logged={isLogged(row.activity)}
-                onPress={() => onLogPlan?.({ id: row.id, activity: row.activity, duration: row.duration })}
-                onLongPress={() => setMoving(row)}
-              />
-            </View>
-          ))}
-        </View>
-      )}
+      <View
+        ref={(node) => {
+          zoneRefs.current[ANYTIME] = node;
+        }}
+        collapsable={false}
+        style={[
+          styles.anytimeZone,
+          over === ANYTIME && { borderColor: theme.accentDeep, borderWidth: 2 },
+        ]}>
+        {anytime.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            Everything has a day. Drag a card back here, or hold one and choose Anytime.
+          </ThemedText>
+        ) : (
+          <View style={styles.grid}>
+            {anytime.map((row) => (
+              <View key={row.id} style={styles.gridCell}>
+                <GestureDetector gesture={gestures.get(row.id)!}>
+                  <View collapsable={false}>
+                    <PlanCard
+                      row={row}
+                      logged={isLogged(row.activity)}
+                      carrying={carrying?.id === row.id}
+                      onPress={() =>
+                        onLogPlan?.({
+                          id: row.id,
+                          activity: row.activity,
+                          duration: row.duration,
+                          days: row.days ?? [],
+                        })
+                      }
+                    />
+                  </View>
+                </GestureDetector>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* ---- walking, its own card ---- */}
       {walking && (
@@ -329,7 +580,8 @@ export function WeekView({
             furniture is what people stop reading. */}
         {!dragUsed && (
           <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-            Hold a card to move it to another day, or back to Anytime.
+            Hold a card and drag it to another day, or tap it and choose Move
+            to…
           </ThemedText>
         )}
         {onLogWeek && (
@@ -349,18 +601,24 @@ export function WeekView({
         This is the shape of your week, not a score. Nothing here is ever marked done or missed.
       </ThemedText>
 
-      {/* ---- move sheet ---- */}
-      <MoveSheet
-        row={moving}
-        days={days}
-        onClose={() => setMoving(null)}
-        onPick={(picked) => {
-          const row = moving;
-          setMoving(null);
-          if (!row) return;
-          void setDays(row, picked);
-        }}
-      />
+      {/* ---- the card she is carrying ----
+
+          It follows the finger rather than the card moving in place, which
+          matters on Android: a transformed child can be clipped by the row it
+          sits in, and a drag you cannot see is a drag that "does nothing".
+          This is a sibling of the day rows, so nothing can clip it.
+
+          pointerEvents none, or it would sit under her finger and eat the very
+          gesture that is driving it. */}
+      {carrying && (
+        <Animated.View pointerEvents="none" style={[styles.preview, previewStyle]}>
+          <ThemedView type="backgroundSelected" style={styles.previewInner}>
+            <ThemedText type="small" numberOfLines={1}>
+              {carrying.activity}
+            </ThemedText>
+          </ThemedView>
+        </Animated.View>
+      )}
 
       {/* ---- add to a day ---- */}
       <AddToDaySheet
@@ -373,7 +631,7 @@ export function WeekView({
           setAddingTo(null);
           if (!key || !row) return;
           const next = [...new Set([...(row.days ?? []), key])];
-          void setDays(row, next);
+          void applyMove(row, next);
         }}
         onNew={() => {
           const key = addingTo;
@@ -436,25 +694,35 @@ export function WeekView({
 function PlanPill({
   row,
   logged,
+  carrying,
   onPress,
-  onLongPress,
 }: {
   row: WeekRow;
   logged: boolean;
+  /** Lifted: the real card dims and the preview carries the name instead. */
+  carrying: boolean;
   onPress: () => void;
-  onLongPress: () => void;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={350}
+      // NO onLongPress. The hold is the drag's, and it cannot be shared:
+      // Pressable's long press and the pan gesture both fired, so holding a
+      // card lifted it AND threw the move sheet up over the week she was
+      // dragging it across. Caught in a mid-drag screenshot.
+      //
+      // Nothing is lost by removing it. "Move to…" is in the tap sheet, which
+      // is the route that works with a screen reader, and a tap is easier to
+      // find than a hold ever was.
       accessibilityRole="button"
       accessibilityLabel={`${row.activity}${row.duration ? `, ${row.duration}` : ''}${
         logged ? ', logged' : ''
-      }. Tap to log it, hold to move it`}
-      style={({ pressed }) => pressed && styles.pressed}>
+      }`}
+      // TWO ROUTES, BOTH SPOKEN. A screen reader user cannot drag, so the hint
+      // names the one they can use. See move-sheet.tsx.
+      accessibilityHint="Opens the log sheet, which has Move to…"
+      style={({ pressed }) => [pressed && styles.pressed, carrying && styles.lifted]}>
       <ThemedView type="backgroundElement" style={styles.pill}>
         {/* A QUIET TICK, AND NOTHING WHEN THERE IS NONE. The absence says
             nothing at all - not "missed", not "0 of 2". */}
@@ -475,25 +743,33 @@ function PlanPill({
 function PlanCard({
   row,
   logged,
+  carrying,
   onPress,
-  onLongPress,
 }: {
   row: WeekRow;
   logged: boolean;
+  /** Lifted: the real card dims and the preview carries the name instead. */
+  carrying: boolean;
   onPress: () => void;
-  onLongPress: () => void;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={350}
+      // NO onLongPress. The hold is the drag's, and it cannot be shared:
+      // Pressable's long press and the pan gesture both fired, so holding a
+      // card lifted it AND threw the move sheet up over the week she was
+      // dragging it across. Caught in a mid-drag screenshot.
+      //
+      // Nothing is lost by removing it. "Move to…" is in the tap sheet, which
+      // is the route that works with a screen reader, and a tap is easier to
+      // find than a hold ever was.
       accessibilityRole="button"
       accessibilityLabel={`${row.activity}${row.cadence ? `, ${row.cadence}` : ''}${
         logged ? ', logged' : ''
-      }. Tap to log it, hold to move it`}
-      style={({ pressed }) => pressed && styles.pressed}>
+      }`}
+      accessibilityHint="Opens the log sheet, which has Move to…"
+      style={({ pressed }) => [pressed && styles.pressed, carrying && styles.lifted]}>
       <ThemedView type="backgroundElement" style={styles.gridCard}>
         <View style={styles.gridCardTop}>
           <ThemedText type="small" style={styles.gridCardName}>
@@ -508,81 +784,6 @@ function PlanCard({
         ) : null}
       </ThemedView>
     </Pressable>
-  );
-}
-
-// A SHEET RATHER THAN A DRAG GESTURE, and this is a deliberate trade worth
-// stating plainly.
-//
-// Ruth asked for long-press and drag. A cross-container drag in React Native
-// means measuring every drop target, tracking an absolute overlay and resolving
-// a hit on release - and it cannot be verified anywhere but a real phone, which
-// is precisely where a half-working one would land on the first morning of her
-// test week.
-//
-// So the GESTURE is hers - long-press picks a card up - and the DESTINATION is
-// a list rather than a drop. It saves immediately, moves between days and back
-// to Anytime, and works with a screen reader, which a drag does not. The drag
-// itself is worth building once there is a device to test it on.
-function MoveSheet({
-  row,
-  days,
-  onClose,
-  onPick,
-}: {
-  row: WeekRow | null;
-  days: Date[];
-  onClose: () => void;
-  onPick: (days: string[]) => void;
-}) {
-  const theme = useTheme();
-  if (!row) return null;
-  const current = row.days ?? [];
-  return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrimFull} onPress={onClose} accessibilityLabel="Close" />
-      <ThemedView style={styles.sheet}>
-        <View style={[styles.grabber, { backgroundColor: theme.backgroundSelected }]} />
-        <View style={styles.sheetBody}>
-          <ThemedText type="sectionTitle">Move {row.activity}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Tap a day to put it there, or tap it again to take it off.
-          </ThemedText>
-          <View style={styles.moveGrid}>
-            {days.map((d) => {
-              const key = dayKeyOf(d);
-              const on = current.includes(key);
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => onPick(on ? current.filter((k) => k !== key) : [...current, key])}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
-                  accessibilityLabel={`${DAY_LABEL[key]} ${shortDate(d)}`}
-                  style={({ pressed }) => pressed && styles.pressed}>
-                  <ThemedView
-                    type={on ? 'backgroundSelected' : 'backgroundElement'}
-                    style={[styles.moveChip, { borderColor: on ? theme.accentDeep : 'transparent' }]}>
-                    <ThemedText type="small" themeColor={on ? 'accentDeep' : 'text'}>
-                      {DAY_LABEL[key]}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Pressable
-            onPress={() => onPick([])}
-            accessibilityRole="button"
-            accessibilityLabel="Move to Anytime this week"
-            style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedView type="backgroundElement" style={styles.moveAnytime}>
-              <ThemedText type="smallBold">Anytime this week</ThemedText>
-            </ThemedView>
-          </Pressable>
-        </View>
-      </ThemedView>
-    </Modal>
   );
 }
 
@@ -681,6 +882,34 @@ const styles = StyleSheet.create({
     borderRadius: CardRadius,
   },
   anytimeHeading: { marginTop: Spacing.three },
+  // The whole block is the drop target, not each card, so "back to Anytime"
+  // does not require her to hit a gap between two cards. The border is
+  // transparent until she is over it, so nothing is drawn at rest.
+  anytimeZone: {
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: CardRadius,
+    padding: Spacing.one,
+  },
+  // Dimmed, not hidden: the space it leaves is what tells her where it came
+  // from if she changes her mind.
+  lifted: { opacity: 0.3 },
+  preview: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: PREVIEW_W,
+    height: PREVIEW_H,
+    zIndex: 50,
+    elevation: 50,
+  },
+  previewInner: {
+    flex: 1,
+    borderRadius: CardRadius,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   // Two columns. Percentage rather than a measured width so it survives a
   // rotation and a bigger font without measuring anything.

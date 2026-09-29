@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekStart, daysOfWeek } from '@/lib/week';
-import { DAY_LABEL, dayKeyOf, shortDate } from '@/lib/week-plan';
+import { DAY_LABEL, dayKeyOf, shortDate, type DayKey } from '@/lib/week-plan';
 
 // LOGGING A PLANNED ACTIVITY (Ruth's design screen 2, 29 September 2026).
 //
@@ -61,6 +61,8 @@ export type PlanToLog = {
   id: string;
   activity: string;
   duration: string | null;
+  /** The days it sits on now, so "Move to…" can show what is already true. */
+  days: string[];
 };
 
 // MOUNTED ONLY WHILE IT IS OPEN, so every field can be initialised from the
@@ -72,10 +74,22 @@ export function LogPlanSheet({
   plan,
   onClose,
   onLog,
+  onMove,
 }: {
   plan: PlanToLog;
   onClose: () => void;
   onLog: (input: { activity: string; when: Date; minutes: number | null; note: string }) => Promise<void>;
+  /**
+   * MOVE TO… LIVES HERE (Ruth, 29 September 2026: "in the tap sheet for any
+   * activity card, a way to choose a day (Mon-Sun) or Anytime. Keep it
+   * permanently alongside drag; it's also the accessible route, since screen
+   * reader users can't drag.")
+   *
+   * The tap sheet is the right home for it because a tap is the one way into
+   * a card that every user has - with TalkBack on, with one hand, with a
+   * tremor. The drag is the shortcut; this is the road.
+   */
+  onMove?: () => void;
 }) {
   const theme = useTheme();
   // THE SHEET CLEARS THE TAB BAR, not its contents.
@@ -208,6 +222,7 @@ export function LogPlanSheet({
                 That didn&apos;t save. Check your connection and try again.
               </ThemedText>
             )}
+
           </ScrollView>
 
           {/* THE BUTTON IS OUTSIDE THE SCROLLER, which is the standard shape
@@ -218,6 +233,29 @@ export function LogPlanSheet({
               to off the bottom of the scroll. Pinned, it is simply always
               there, and the fields scroll behind it. */}
           <View style={styles.footer}>
+            {/* ABOVE THE BUTTON AND OUTSIDE THE SCROLLER, so it is on screen
+                the moment the sheet opens. It was the last thing in the
+                scrolling body, which put it below the fold - and a route that
+                has to be scrolled to is not the accessible route she asked
+                for, it is a second hidden gesture. */}
+            {onMove && (
+              <Pressable
+                onPress={onMove}
+                accessibilityRole="button"
+                accessibilityLabel={`Move ${plan.activity} to another day`}
+                accessibilityHint="Opens a list of days, and Anytime this week"
+                hitSlop={Spacing.two}
+                style={({ pressed }) => [styles.moveRow, pressed && styles.pressed]}>
+                <ThemedText type="small" themeColor="accentDeep">
+                  Move to…
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {plan.days.length === 0
+                    ? 'Anytime this week'
+                    : plan.days.map((d) => DAY_LABEL[d as DayKey] ?? d).join(', ')}
+                </ThemedText>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => void submit()}
               accessibilityRole="button"
@@ -272,6 +310,15 @@ const styles = StyleSheet.create({
   },
   minutes: { width: 120 },
   note: { minHeight: 88, textAlignVertical: 'top' },
+  moveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    // 44 tall, because it is a control.
+    minHeight: 44,
+  },
   footer: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
   cta: {
     paddingVertical: Spacing.three,
