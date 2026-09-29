@@ -90,7 +90,8 @@ page.on('request', (req) => {
   // all. Everything else that writes is refused.
   const isAuth = url.includes('/auth/v1/');
   if (mutating && url.includes(HOST) && !isAuth) {
-    blocked.push(`${method} ${url.replace(/^https?:\/\/[^/]+/, '')}`);
+    const body = (req.postData() || '').slice(0, 160);
+    blocked.push(`${method} ${url.replace(/^https?:\/\/[^/]+/, '')}  ${body}`);
     void req.abort();
     return;
   }
@@ -262,6 +263,30 @@ if (!box) {
     document.body.innerText.split('Ballet').length - 1
   );
   console.log(`  shot drag-midway (Ballet appears ${lifted}x - 2 means the carried preview is drawn)`);
+  // AND OVER ANYTIME, which must NOT light up (Ruth, polish item 3).
+  const anytimeAt = await page.evaluate(() => {
+    const h = [...document.querySelectorAll('*')].find(
+      (n) => n.textContent === 'Anytime this week' && n.children.length === 0
+    );
+    if (!h) return null;
+    const r = h.getBoundingClientRect();
+    return { x: r.x + 60, y: r.y + 70 };
+  });
+  if (anytimeAt) {
+    for (let i = 1; i <= 5; i += 1) {
+      await page.touchscreen.touchMove(
+        box.to.x + ((anytimeAt.x - box.to.x) * i) / 5,
+        box.to.y + ((anytimeAt.y - box.to.y) * i) / 5
+      );
+      await new Promise((r) => setTimeout(r, 90));
+    }
+    await new Promise((r) => setTimeout(r, 400));
+    await page.screenshot({ path: path.join(OUT, 'drag-over-anytime.png') });
+    console.log('  shot drag-over-anytime');
+  } else {
+    console.log('  could not find the Anytime heading');
+  }
+
   await page.touchscreen.touchEnd();
   await new Promise((r) => setTimeout(r, 800));
   await page.screenshot({ path: path.join(OUT, 'drag-after.png') });

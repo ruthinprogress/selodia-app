@@ -52,15 +52,25 @@ type WeekRow = {
 
 type LoggedName = { activity_type: string | null; happened_at: string };
 
+/**
+ * THE SAME SECOND LINE THE CARD HAD. A pill on a day shows its duration; a
+ * card in Anytime shows its cadence and duration. The preview is one
+ * component, so it asks where the card was lifted from rather than guessing.
+ */
+function previewDetail(row: WeekRow, from: string | null): string {
+  if (from === ANYTIME) return [row.cadence, row.duration].filter(Boolean).join(' · ');
+  return row.duration ?? '';
+}
+
 /** A place a card can be dropped, in window coordinates. */
 type DropZone = { key: string; x: number; y: number; width: number; height: number };
 
 /** The Anytime block's zone key. Not a day, so it cannot collide with one. */
 const ANYTIME = 'anytime';
 
-/** The carried preview's size. Fixed, so the worklet can centre it on the finger. */
-const PREVIEW_W = 130;
-const PREVIEW_H = 34;
+/** Where the finger sits relative to the carried card's top-left corner. */
+const GRAB_X = 28;
+const GRAB_Y = 52;
 
 export const WEEK_EMPTY = 'No week yet';
 export const WEEK_EMPTY_BODY =
@@ -118,8 +128,14 @@ export function WeekView({
   const fingerY = useSharedValue(0);
   /** Which zone the finger is over. A shared value so the worklet can compare. */
   const overKey = useSharedValue<string | null>(null);
+  /** The section the card was picked up from, which never lights up on lift. */
+  const originKey = useSharedValue<string | null>(null);
+  /** Set once the finger leaves where it started, so returning can light up. */
+  const leftOrigin = useSharedValue(false);
   /** The row being carried, for the preview. JS state: it changes once a drag. */
   const [carrying, setCarrying] = useState<WeekRow | null>(null);
+  /** And the section it came from, so the preview shows the same second line. */
+  const [carryFrom, setCarryFrom] = useState<string | null>(null);
   /** The highlighted zone, mirrored into JS only when it actually changes. */
   const [over, setOver] = useState<string | null>(null);
   // The "+" on a day, which offers the Anytime activities to put there.
@@ -245,6 +261,7 @@ export function WeekView({
   // in the temporal dead zone and throw before the Week tab drew anything.
   const clearCarry = useCallback(() => {
     setCarrying(null);
+    setCarryFrom(null);
     setOver(null);
   }, []);
 
@@ -264,9 +281,10 @@ export function WeekView({
   }, [rows]);
 
   const liftCard = useCallback(
-    (rowId: string) => {
+    (rowId: string, from: string) => {
       const row = rowsRef.current.find((r) => r.id === rowId) ?? null;
       setCarrying(row);
+      setCarryFrom(from);
       measureZones();
     },
     [measureZones]
@@ -278,6 +296,7 @@ export function WeekView({
   const dropCard = useCallback(
     (rowId: string, key: string | null) => {
       setCarrying(null);
+      setCarryFrom(null);
       setOver(null);
       if (!key) return;
       const row = rowsRef.current.find((r) => r.id === rowId);
@@ -303,7 +322,7 @@ export function WeekView({
    * in the child would have its own copy of all three.
    */
   const makeGesture = useCallback(
-    (rowId: string) =>
+    (rowId: string, from: string) =>
       Gesture.Pan()
         // THE HOLD HAS TO WIN BEFORE THE PAN STARTS. Until it does, the touch
         // belongs to the ScrollView and the page scrolls normally. 250ms is
@@ -315,7 +334,9 @@ export function WeekView({
           fingerX.set(e.absoluteX);
           fingerY.set(e.absoluteY);
           overKey.set(null);
-          runOnJS(liftCard)(rowId);
+          originKey.set(from);
+          leftOrigin.set(false);
+          runOnJS(liftCard)(rowId, from);
         })
         .onUpdate((e) => {
           'worklet';
@@ -340,7 +361,29 @@ export function WeekView({
           // a stutter.
           if (hit !== overKey.get()) {
             overKey.set(hit);
-            runOnJS(setOver)(hit);
+            if (hit !== originKey.get()) leftOrigin.set(true);
+            // WHAT LIGHTS UP IS NOT WHAT WILL RECEIVE IT. `overKey` above is
+            // the truth - the drop still works for Anytime and for the section
+            // it came from. This is only what she SEES, and Ruth asked for two
+            // things to stay dark:
+            //
+            //   the section it came from, on lift. Picking a card up lit the
+            //   whole row under her finger, which reads as "this row is the
+            //   thing happening" when the thing happening is the card. Once
+            //   she has left it, going back does light it - by then it is a
+            //   destination she has chosen rather than where she happened to
+            //   be standing.
+            //
+            //   Anytime, always. "Only the card itself shows it's being
+            //   moved." It is a big two-column block, and tinting the whole of
+            //   it swamps the card.
+            //
+            // 'anytime' inline rather than the ANYTIME constant: a worklet
+            // captures what it references when it is built, and a literal
+            // cannot be got wrong.
+            const hideIt =
+              hit === 'anytime' || (hit === originKey.get() && !leftOrigin.get());
+            runOnJS(setOver)(hideIt ? null : hit);
           }
         })
         .onEnd(() => {
@@ -359,20 +402,41 @@ export function WeekView({
     [liftCard, dropCard]
   );
 
-  // ONE STABLE GESTURE PER CARD, rebuilt only when the set of cards changes.
-  const rowIds = rows.map((r) => r.id).join('|');
+  // ONE STABLE GESTURE PER CARD **PER SECTION**. A plan on Monday and Thursday
+  // is drawn twice, and the two copies are not interchangeable: each has to
+  // know which section it was lifted from, or "never highlight the one it came
+  // from" has nothing to compare against.
+  const placements: string[] = [];
+  for (const r of planned) {
+    const on = sits(r);
+    if (on.length === 0) placements.push(`${r.id}|${ANYTIME}`);
+    else for (const d of on) placements.push(`${r.id}|${d}`);
+  }
+  const placementKey = placements.join(',');
   const gestures = useMemo(() => {
     const map = new Map<string, ReturnType<typeof makeGesture>>();
-    for (const id of rowIds ? rowIds.split('|') : []) map.set(id, makeGesture(id));
+    for (const p of placementKey ? placementKey.split(',') : []) {
+      const bar = p.indexOf('|');
+      map.set(p, makeGesture(p.slice(0, bar), p.slice(bar + 1)));
+    }
     return map;
-    // rowIds is the identity of the set; `rows` itself is a new array every load.
-  }, [rowIds, makeGesture]);
+    // The joined string is the identity of the set; the array itself is new
+    // on every render.
+  }, [placementKey, makeGesture]);
 
-  /** The preview that follows her finger, placed inside the week's own box. */
+  /**
+   * The preview follows her finger, placed inside the week's own box.
+   *
+   * ANCHORED BY ITS TOP-LEFT, not centred. Centring needs the preview's width,
+   * and the preview is now sized by its contents so that it matches the card
+   * it came from - a card with a long name is wider than one without. Sitting
+   * just above and left of the finger keeps it out from under her hand, which
+   * is the thing centring was really for.
+   */
   const previewStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: fingerX.get() - rootAt.get().x - PREVIEW_W / 2 },
-      { translateY: fingerY.get() - rootAt.get().y - PREVIEW_H - 12 },
+      { translateX: fingerX.get() - rootAt.get().x - GRAB_X },
+      { translateY: fingerY.get() - rootAt.get().y - GRAB_Y },
     ],
   }));
 
@@ -464,18 +528,29 @@ export function WeekView({
                 zoneRefs.current[key] = node;
               }}
               collapsable={false}
-              type={isToday || over === key ? 'backgroundSelected' : 'background'}
-              style={[
-                styles.dayRow,
-                isToday && { borderColor: theme.accentDeep },
-                // WHERE IT WILL LAND, shown while she is still holding it.
-                // Without this a drag is a guess until she lets go.
-                over === key && { borderColor: theme.accentDeep, borderWidth: 2 },
-              ]}>
+              // TWO STATES THAT MUST NOT LOOK ALIKE (Ruth, 29 September).
+              //
+              // Today and "the card will land here" were both a filled
+              // backgroundSelected row with an accentDeep border, so on a
+              // Tuesday the drop target and today were the same picture.
+              //
+              // The drop is now the only filled row on the screen, in the
+              // terracotta wash, and today is a dot. A tint and a dot cannot
+              // be confused with each other at any size or font scale, which
+              // an outline and a slightly thicker outline could.
+              type={over === key ? 'accentWash' : 'background'}
+              style={[styles.dayRow, over === key && { borderColor: theme.accentDeep }]}>
               <View style={styles.dayLabel}>
-                <ThemedText type="smallBold" themeColor={isToday ? 'accentDeep' : 'text'}>
-                  {DAY_LABEL[key]}
-                </ThemedText>
+                <View style={styles.dayName}>
+                  {/* TODAY IS A DOT. Quieter than a filled row, and it says
+                      the one thing today needs to say. */}
+                  {isToday && (
+                    <View style={[styles.todayDot, { backgroundColor: theme.accent }]} />
+                  )}
+                  <ThemedText type="smallBold" themeColor={isToday ? 'accentDeep' : 'text'}>
+                    {DAY_LABEL[key]}
+                  </ThemedText>
+                </View>
                 <ThemedText type="small" themeColor="textSecondary">
                   {shortDate(date)}
                 </ThemedText>
@@ -483,7 +558,7 @@ export function WeekView({
 
               <View style={styles.pills}>
                 {items.map((row) => (
-                  <GestureDetector key={row.id} gesture={gestures.get(row.id)!}>
+                  <GestureDetector key={row.id} gesture={gestures.get(`${row.id}|${key}`)!}>
                     <View collapsable={false}>
                       <PlanPill
                         row={row}
@@ -524,10 +599,11 @@ export function WeekView({
           zoneRefs.current[ANYTIME] = node;
         }}
         collapsable={false}
-        style={[
-          styles.anytimeZone,
-          over === ANYTIME && { borderColor: theme.accentDeep, borderWidth: 2 },
-        ]}>
+        // STILL A DROP TARGET, NEVER A HIGHLIGHT. Ruth: "Dropping into
+        // Anytime: don't highlight the Anytime section. Only the card itself
+        // shows it's being moved." The block is two columns deep, and tinting
+        // all of it drowns the card she is carrying.
+        style={styles.anytimeZone}>
         {anytime.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
             Everything has a day. Drag a card back here, or hold one and choose Anytime.
@@ -536,7 +612,7 @@ export function WeekView({
           <View style={styles.grid}>
             {anytime.map((row) => (
               <View key={row.id} style={styles.gridCell}>
-                <GestureDetector gesture={gestures.get(row.id)!}>
+                <GestureDetector gesture={gestures.get(`${row.id}|${ANYTIME}`)!}>
                   <View collapsable={false}>
                     <PlanCard
                       row={row}
@@ -612,10 +688,26 @@ export function WeekView({
           gesture that is driving it. */}
       {carrying && (
         <Animated.View pointerEvents="none" style={[styles.preview, previewStyle]}>
-          <ThemedView type="backgroundSelected" style={styles.previewInner}>
+          {/* IT IS THE CARD, LIFTED (Ruth: "should look like the card being
+              moved ... not a grey pill").
+              
+              It was grey because it used backgroundSelected - the token for a
+              selected tab - while every card on this screen is
+              backgroundElement, the brand sand. One token wrong, and the thing
+              under her finger looked like a different object from the thing
+              she picked up.
+              
+              Same colour, same name, same second line, and a shadow doing the
+              lifting. */}
+          <ThemedView type="backgroundElement" style={[styles.previewCard, styles.lift]}>
             <ThemedText type="small" numberOfLines={1}>
               {carrying.activity}
             </ThemedText>
+            {previewDetail(carrying, carryFrom) ? (
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                {previewDetail(carrying, carryFrom)}
+              </ThemedText>
+            ) : null}
           </ThemedView>
         </Animated.View>
       )}
@@ -872,6 +964,9 @@ const styles = StyleSheet.create({
   // Fixed so every day's activities start at the same x, which is what makes
   // the column read as a week rather than as seven unrelated rows.
   dayLabel: { width: 58 },
+  dayName: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  // Small, because it marks a day rather than announcing one.
+  todayDot: { width: 6, height: 6, borderRadius: 3 },
   pills: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   pill: {
     flexDirection: 'row',
@@ -892,23 +987,36 @@ const styles = StyleSheet.create({
     padding: Spacing.one,
   },
   // Dimmed, not hidden: the space it leaves is what tells her where it came
-  // from if she changes her mind.
+  // from if she changes her mind. The LIFT is on the preview under her finger,
+  // which is the card that is actually moving.
   lifted: { opacity: 0.3 },
   preview: {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: PREVIEW_W,
-    height: PREVIEW_H,
+    // No width or height: it is the size of the card it is carrying.
+    alignSelf: 'flex-start',
     zIndex: 50,
-    elevation: 50,
   },
-  previewInner: {
-    flex: 1,
+  // THE SAME LIFT THE LOG'S RE-ORDER USES - #2D2B28 at 0.16, offset 6,
+  // radius 12, elevation 6 (reorderable-rows.tsx). Two drags in one app that
+  // lift by different amounts read as two different apps.
+  lift: {
+    shadowColor: '#2D2B28',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 6,
+    transform: [{ scale: 1.02 }],
+  },
+  previewCard: {
     borderRadius: CardRadius,
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.one,
+    // Wide enough not to read as a chip, narrow enough not to cover the week.
+    minWidth: 96,
+    maxWidth: 220,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   // Two columns. Percentage rather than a measured width so it survives a

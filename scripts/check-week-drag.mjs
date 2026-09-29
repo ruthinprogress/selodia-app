@@ -107,6 +107,34 @@ const CHECKS = {
         ];
   },
 
+  'Anytime never lights up'(week) {
+    // Ruth, 29 September: "Dropping into Anytime: don't highlight the Anytime
+    // section. Only the card itself shows it's being moved."
+    //
+    // This is checked as an ABSENCE rather than by screenshot, and that is the
+    // stronger guarantee: the block has no highlight branch at all, so there
+    // is no state in which it can light up. A screenshot only shows the one
+    // frame it caught.
+    return /over\s*===\s*ANYTIME/.test(week)
+      ? ['the Anytime block still has a highlight branch (over === ANYTIME)']
+      : [];
+  },
+
+  'today and the drop are different pictures'(week) {
+    // They were both a filled backgroundSelected row with an accentDeep
+    // border, so on a Tuesday you could not tell the drop target from today.
+    // Today is a dot now and the drop is the terracotta wash; the fault
+    // returns the moment isToday goes back to choosing a surface.
+    const out = [];
+    if (/type=\{[^}]*isToday/.test(week)) {
+      out.push('isToday still picks the day row\'s background - it shares a surface with the drop');
+    }
+    if (!week.includes('accentWash')) {
+      out.push('the drop target no longer uses accentWash, so it has no colour of its own');
+    }
+    return out;
+  },
+
   'the accessible route survives'(_week, logSheet) {
     const out = [];
     if (!logSheet.includes('Move to…')) {
@@ -149,6 +177,10 @@ const BREAK = {
     '\nconst clearCarry = () => {};\n',
   'the hold is bound once': (w) => w.replace('accessibilityRole="button"', 'onLongPress={x}'),
   'the pan waits for the hold': (w) => w.replaceAll('activateAfterLongPress', 'xx'),
+  'Anytime never lights up': (w) =>
+    w.replace('style={styles.anytimeZone}', 'style={[styles.anytimeZone, over === ANYTIME && x]}'),
+  'today and the drop are different pictures': (w) =>
+    w.replace("type={over === key ? 'accentWash' : 'background'}", "type={isToday ? 'a' : 'b'}"),
   'the accessible route survives': (w) => w,
 };
 const BREAK_SHEET = {
