@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { personalRowsFrom } from './personal-metric-rows';
 import { recordModelUsage } from './usage-record';
 
 import { normalizeWeight } from './body-metrics';
@@ -110,6 +112,8 @@ function plausible(v: number | null, min: number, max: number): number | null {
   if (v == null || !isFinite(v)) return null;
   return v >= min && v <= max ? v : null;
 }
+
+export { personalRowsFrom, type PersonalMetricRow } from './personal-metric-rows';
 
 export async function logMeasurementFromText(
   supabase: SupabaseClient,
@@ -250,23 +254,12 @@ export async function logMeasurementFromText(
     }
   }
   if (!updateId && Array.isArray(parsed.personal)) {
-    const rows = parsed.personal
-      .map((m) => ({
-        user_id: userId,
-        measured_at: finalMeasuredAtForPersonal,
-        metric_name: String(m?.name ?? '').trim().slice(0, 60),
-        value: typeof m?.value === 'number' && isFinite(m.value) ? m.value : null,
-        value_secondary:
-          typeof m?.value_secondary === 'number' && isFinite(m.value_secondary)
-            ? m.value_secondary
-            : null,
-        unit: typeof m?.unit === 'string' && m.unit.trim() ? m.unit.trim().slice(0, 16) : null,
-        raw_input: measurementText,
-      }))
-      // A metric with no name or no number is not a measurement, it is a
-      // misparse. Dropped rather than stored, on the same grounds as the
-      // empty-scale-row guard: a nameless row would sit in her table forever.
-      .filter((r) => r.metric_name.length > 0 && r.value != null);
+    const rows = personalRowsFrom(parsed.personal, {
+      known,
+      userId,
+      measuredAt: finalMeasuredAtForPersonal,
+      rawInput: measurementText,
+    });
 
     if (rows.length > 0) {
       const { data, error } = await supabase
