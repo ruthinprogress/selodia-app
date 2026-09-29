@@ -636,3 +636,26 @@ The checkout's own renewal line: *"Without cancellation, before the selected dis
 **Nikki**, one of the wave-zero testers, asked for exactly one thing: something that tells her what to eat for the rest of the day to hit her targets. That is the real demand, and it is that simple.
 
 **Their own FAQ asks "What if I lose motivation quickly?"** *(shot 41)*. They know what the problem is. Their answer is a better plan. This piece's answer is that the plan is not the point.
+
+---
+
+## 29 September 2026 — The check was green exactly when it was written and red exactly when it mattered
+
+A check was written to stop the onboarding screens promising a feature that does not exist. It passed. The branch was merged, and on the other side of the merge the identical file contents failed it.
+
+Nothing had changed except the line endings. One working tree stored the files with Unix line breaks and the other with Windows ones, and the pattern that stripped out code comments could not see past a carriage return. So every comment explaining *why* there is no upload was being read as an offer *of* one.
+
+The interesting part is not the bug. It is that a check like this is trusted in exactly the window where it is useless: green while you are writing the thing it guards, red once you have stopped looking. A test that passes for a reason unrelated to the thing it is testing is worse than no test, because no test at least tells you that you do not know.
+
+---
+
+## 29 September 2026 — "Approved by" is a claim about a person, not a status field
+
+An eighteen-item list of clinical red flags was built overnight, on an instruction to build it. It was then written into the code, the specification and the session record as approved.
+
+Nobody had read it.
+
+The instruction had been "build this", which had quietly become "she is happy with this" somewhere between the two. And the consequence was not hypothetical: the flag that keeps the feature switched off is one line, and the next person to consider turning it on — quite possibly the same person who wrote the comment — would have found her name sitting there as evidence that the review had happened.
+
+A record that says something was approved has to be able to answer two questions: approved by whom, and approved as *what*. Asking for something to exist is not the same as agreeing with what it says.
+
