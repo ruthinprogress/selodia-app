@@ -6,6 +6,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 
 import { ReorderableRows } from '@/components/reorderable-rows';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
+import { expandedLayout } from '@/lib/entry-layout';
+import { itemsOf } from '@/lib/me-items';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
@@ -245,6 +247,10 @@ function MeCardRow({
   // Two lines at most, and cut on a word so it does not end mid-syllable.
   const preview = previewOf(card.why || card.detail || '');
 
+  // What the expanded card shows, decided in a testable place.
+  const layout = expandedLayout(card);
+  const items = itemsOf(row.content);
+
   // ACTIVE AND PAUSED TOGGLE FROM THE COLLAPSED CARD (Ruth, item 15). Only
   // those two: the others - Taking, Ordered, Dietary source, As needed - are
   // not a pair, so there is nothing for a tap to mean. A control whose effect
@@ -278,7 +284,12 @@ function MeCardRow({
               made, in her language, and it is the thing the title alone cannot
               tell her months later. `detail` is the fallback, and when there is
               neither there is no preview rather than a summary of nothing. */}
-          {preview ? (
+          {/* IT STANDS DOWN WHEN THE BODY APPEARS (Ruth, 29 September 2026).
+              The preview is a STAND-IN for the body, not a companion to it. It
+              was never told to stop, so expanding a card showed the truncated
+              first line, then the same line in full underneath, then the
+              detail restating it a third time. */}
+          {preview && !open ? (
             <ThemedText type="detail" themeColor="textSecondary" style={styles.preview}>
               {preview}
             </ThemedText>
@@ -326,12 +337,43 @@ function MeCardRow({
 
       {open && (
         <View style={styles.expanded}>
-          {card.why && <ThemedText type="detail">{card.why}</ThemedText>}
-          {card.detail && (
-            <ThemedText type="detail" themeColor="textSecondary">
-              {card.detail}
-            </ThemedText>
-          )}
+          {/* THE BODY, ONCE. See lib/entry-layout.ts: the decision about
+              whether `detail` is saying anything new is a judgement, so it
+              lives in a function that can be tested rather than in this
+              render. */}
+          {layout.body ? <ThemedText type="detail">{layout.body}</ThemedText> : null}
+
+          {/* A COMPACT LIST, NOT A BLOB. A protocol made of parts - three
+              skincare products, four supplements - reads as a list with its
+              own timings, which is what she asked for and what a paragraph
+              cannot do. */}
+          {items.length > 0 ? (
+            <View style={styles.items}>
+              {items.map((item) => (
+                <View key={item.name} style={styles.item}>
+                  <ThemedText type="detail" style={styles.itemName}>
+                    {item.name}
+                  </ThemedText>
+                  <ThemedText type="detail" themeColor="textSecondary">
+                    {[item.when, item.purpose].filter(Boolean).join('  ·  ')}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {/* LABELLED, so it reads as an addition rather than as the body
+              said again. Absent entirely when it says nothing new. */}
+          {layout.latest ? (
+            <View style={styles.latest}>
+              <ThemedText type="detail" themeColor="textSecondary" style={styles.latestLabel}>
+                Latest
+              </ThemedText>
+              <ThemedText type="detail" themeColor="textSecondary">
+                {layout.latest}
+              </ThemedText>
+            </View>
+          ) : null}
           <ThemedText type="detail" themeColor="textSecondary">
             Added {humanDate(new Date(row.created_at))}
           </ThemedText>
@@ -645,6 +687,11 @@ const styles = StyleSheet.create({
   // status and chevron sit against the right edge whatever the title does.
   naming: { flex: 1, minWidth: 0, gap: 2 },
   name: {},
+  items: { gap: Spacing.two, marginTop: Spacing.one },
+  item: { gap: 2 },
+  itemName: { fontWeight: '600' },
+  latest: { gap: 2, marginTop: Spacing.one },
+  latestLabel: { textTransform: 'uppercase', letterSpacing: 0.6 },
   preview: {},
   // Right-aligned against the chevron, so a column of statuses reads down the
   // page as its own line of information.
