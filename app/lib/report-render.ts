@@ -899,7 +899,7 @@ function plural(n: number, one: string, many?: string): string {
   return n === 1 ? one : (many ?? `${one}s`);
 }
 
-/** "Ruth Christianson" on the cover, "Ruth C." in the running head. */
+/** "Joanna Fairbairn" on the cover, "Joanna F." in the running head. */
 function shortName(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
