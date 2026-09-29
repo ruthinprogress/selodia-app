@@ -2,9 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 // THE RED FLAGS. Narrow, deterministic, and never a model judgement.
 //
-// Approved by Ruth on 28 September 2026 as provisional, pending clinical
-// advisor review before public launch. SAFETY_ARCHITECTURE.md §10 holds the
+// NOT APPROVED. Ruth asked for this to be BUILT on 28 September 2026 and
+// corrected the record on the 29th: she has not seen the list. "Please don't
+// record it as approved by me."
+//
+// The distinction matters more than it looks. An instruction to build is not a
+// sign-off on eighteen clinical judgements, and writing "approved" into the
+// file would have left a future reader - including me - treating her name as
+// cover for a list she had never read. SAFETY_ARCHITECTURE.md §10 holds the
 // full six-layer design; this is layer 2.
+//
+// TWO REVIEWS ARE OUTSTANDING, not one: hers, and a clinician's.
 //
 // THE RULE FOR BEING ON THIS LIST: missing it is severe, and a false alarm
 // costs one unnecessary GP appointment. Anything that fails either half is not
@@ -36,15 +44,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // that can be talked out of mentioning chest pain is worse than no rule.
 
 /**
- * OFF UNTIL A CLINICIAN HAS READ THE LIST.
+ * OFF UNTIL RUTH HAS READ THE LIST **AND** A CLINICIAN HAS REVIEWED IT.
  *
- * Ruth approved the red flags and the 12-case test set on 28 September 2026 as
- * PROVISIONAL, pending clinical advisor review before public launch. Her
- * addendum: "Keep it behind a flag until the advisor has reviewed."
+ * Two gates, not one, and the first is the one I nearly skipped: she asked for
+ * this to be built, which is not the same as having seen eighteen clinical
+ * judgements and agreed to them.
  *
- * A switch rather than an unmerged branch, so the code is on main, is covered
- * by the checks, and cannot rot - and so turning it on is one line rather than
- * a rebase. Turning it on is a clinical decision, not an engineering one.
+ * A SWITCH RATHER THAN AN UNMERGED BRANCH, so the code travels with everything
+ * else, is covered by the checks, and cannot rot - and so turning it on is one
+ * line rather than a rebase. Turning it on is a clinical decision, not an
+ * engineering one.
  *
  * WHAT IS UNAFFECTED BY THIS FLAG: the five-tier safety machine, which owns
  * distress and self-harm and has always been on. This switch governs the new

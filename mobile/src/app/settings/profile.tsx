@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -96,6 +97,27 @@ export default function ProfileScreen() {
     }
     setProfile((p) => ({ ...(p ?? ({} as Profile)), ...patch }) as Profile);
     setEditing(null);
+  }
+
+  // SETS THE STEP BACK AND NOTHING ELSE. Everything the spine collects is
+  // replaced by the screen that collects it, so there is nothing to clear here
+  // - and clearing anything would be the one way this could destroy something.
+  //
+  // advanceOnboardingStep is forward-only by design, so it cannot be used: it
+  // exists to stop a stale screen dragging somebody backwards. This is the one
+  // legitimate reason to go back, so it writes the column directly and says so.
+  async function redoSetup() {
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase
+      .from('user_profile')
+      .update({ onboarding_step: 'goals' })
+      .eq('user_id', userId);
+    if (error) {
+      setFailed(true);
+      return;
+    }
+    router.replace('/onboarding/goals');
   }
 
   const dob = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;
@@ -224,6 +246,32 @@ export default function ProfileScreen() {
           following?" - did not mention them at all. Nothing is lost: the same
           goals, from the same user_context rows, now render above everything
           else in Plans, beside the tapped ones that set the targets. */}
+
+      {/* REDO MY SETUP (Ruth, 29 September 2026), so somebody who onboarded
+          before the tap spine existed can walk it.
+
+          IT NEVER DELETES A LOG. Her words, and the distinction the whole
+          feature turns on: setup is what she has DECIDED - goals, week, rules,
+          life stage, allergies - and a log is what HAPPENED. Redoing a decision
+          is ordinary; losing a month of meals because you wanted to change a
+          goal is not, and an app that could do the second by accident is one
+          nobody would risk tapping.
+
+          It only moves the onboarding step back. Every screen in the spine
+          replaces its own answers when it saves, and the ones that must not be
+          replaced - allergies, and anything said in chat - upsert instead. So
+          walking it again updates, and nothing here has to know which is
+          which. */}
+      <SettingsGroup title="Setup">
+        <SettingsRow
+          first
+          icon="refresh-outline"
+          label="Redo my setup"
+          detail="Walk through the questions again. Your logs are never touched"
+          onPress={() => void redoSetup()}
+        />
+      </SettingsGroup>
+
 
       <ThemedView type="backgroundElement" style={[styles.signOutNote, { borderColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>

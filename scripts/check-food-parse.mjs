@@ -23,6 +23,22 @@ for (const line of fs.readFileSync(path.join(process.cwd(), '.env.local'), 'utf8
 }
 process.env.ANTHROPIC_API_KEY = E.ANTHROPIC_API_KEY;
 
+// THE SUPABASE KEYS HAVE TO BE HERE TOO, and the dynamic import below is only
+// half the fix (found 2026-09-29, and the same on main).
+//
+// `food-logging.ts` reaches `app/lib/supabase.ts`, which builds a client at
+// module scope and throws "supabaseUrl is required" the instant it is
+// evaluated. The dynamic import was already correct about WHEN to evaluate it;
+// what was missing is that only ANTHROPIC_API_KEY was being copied across, so
+// the module still found nothing when it ran.
+//
+// The client built here is never used - the stub below replaces it - but it
+// must be constructible, because an import that throws cannot be caught by
+// anything downstream of it.
+process.env.NEXT_PUBLIC_SUPABASE_URL ||= E.NEXT_PUBLIC_SUPABASE_URL;
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= E.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+process.env.SUPABASE_SERVICE_ROLE_KEY ||= E.SUPABASE_SERVICE_ROLE_KEY;
+
 const { logFoodFromText } = await import('../app/lib/food-logging.ts');
 
 /** Everything the code would have written, captured instead of sent. */

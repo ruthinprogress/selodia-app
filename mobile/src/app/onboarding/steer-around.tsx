@@ -20,15 +20,23 @@ import { ThemedText } from '@/components/themed-text';
 // understood, and confirmed. Tapping a chip and being told "noted" would be the
 // worst possible outcome: she would believe the app knew about her shoulder.
 //
-// THE LETTER UPLOAD IS MENTIONED AND NOT BUILT, and that gap is not a rough
-// edge. Accepting clinical letters needs the Play Data Safety form and the
-// privacy policy changed first - both currently say files are not collected -
-// and letters carry NHS numbers, addresses and clinicians' names. See the build
-// log. The wording below promises only what exists.
+// THE LETTER UPLOAD IS NOT MENTIONED ANYWHERE ON THIS SCREEN, and that is a
+// decision rather than an omission (Ruth, 29 September 2026).
+//
+// Accepting clinical letters needs the Play Data Safety form and the privacy
+// policy changed first - both currently say files are not collected - and
+// letters carry far more than the constraints: NHS numbers, addresses,
+// clinicians' names. Until those two documents change there is nothing to
+// upload to.
+//
+// SO THE COPY PROMISES ONLY WHAT EXISTS. An "or upload the letter" that opens
+// nothing is worse than no offer at all: she would put the screen down
+// believing the app had her surgeon's instructions, and it would build her a
+// session that breaks them.
 
 const QUESTION = 'Anything to steer around?';
 const SUBTITLE =
-  'An old injury, a condition, something a clinician has told you to avoid. Anything named here stays out of every session Selodía builds.';
+  'An old injury, a condition, something a clinician has told you to avoid. Tell chat. Anything you name stays out of your sessions.';
 
 const OPTIONS = [
   {
@@ -66,14 +74,14 @@ export default function SteerAroundScreen() {
       });
       return;
     }
-    router.push('/onboarding/guidance');
+    router.push('/onboarding/allergies');
   }
 
   useOnboardingAction({
     label: choice === 'injury' || choice === 'clinician' ? 'Tell Selodía' : 'Continue',
     enabled: true,
     onPress: goOn,
-    secondary: { label: 'Skip for now', onPress: () => router.push('/onboarding/guidance') },
+    secondary: { label: 'Skip for now', onPress: () => router.push('/onboarding/allergies') },
   });
 
   return (

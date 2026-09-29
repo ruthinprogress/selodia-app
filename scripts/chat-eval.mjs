@@ -493,7 +493,37 @@ EARLIER ROUNDUPS IN THE LAST 6 WEEKS:
     situation: '',
     checks: [
       ['gives the average', (r) => /70|seventy/.test(r)],
-      ['says it is 5 of 7 days', (r) => /5 of 7|five of seven|five days|5 days/i.test(r)],
+      // TESTS THE BEHAVIOUR, NOT THE PHRASE (fixed 2026-09-29).
+      //
+      // It used to match /5 of 7|five of seven|five days|5 days/, and it failed
+      // this reply:
+      //
+      //   "On the days you logged - Monday through Friday, minus Saturday and
+      //    Sunday which have nothing recorded - protein ranged from 49g..."
+      //
+      // That is the app doing exactly the right thing, in better English than
+      // the check was hunting for: it names the window AND says which two days
+      // are empty, which is more informative than "5 days". The check was
+      // testing a wording.
+      //
+      // This is the second time this exact fault has been found in this file
+      // (see "does not ask her to retype", 28 September) and DECISION_PATTERNS
+      // carries the rule: when a check fires, read the sentence it fired on
+      // before changing anything else. If the sentence is good, the check is
+      // wrong.
+      //
+      // The BEHAVIOUR is: make clear the average is over fewer than seven days.
+      // Either by counting them, or by naming the days that are missing.
+      [
+        'makes clear the average is over fewer than seven days',
+        (r) =>
+          /5 of 7|five of seven|five days|5 days/i.test(r) ||
+          // Names the empty days, in any order, as missing.
+          (/(saturday|sunday|weekend)/i.test(r) &&
+            /nothing (recorded|logged)|no (data|entries|logs)|minus|not logged|didn't log|did not log|blank|empty/i.test(r)) ||
+          // Or says plainly that it is only counting the logged days.
+          /(on )?the days you logged|days with (food |anything )?logged|only the days/i.test(r),
+      ],
       ['does not invent a target', (r) => !/should be aiming|target of|you need/i.test(r)],
     ],
   },

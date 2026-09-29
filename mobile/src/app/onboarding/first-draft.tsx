@@ -36,6 +36,7 @@ type Draft = {
   week: string[];
   skills: string[];
   rules: string[];
+  allergies: string[];
   targetLine: string | null;
 };
 
@@ -58,13 +59,15 @@ export default function FirstDraftScreen() {
       //
       // It advances when she taps Start, which is also when it is true.
 
-      const [goalsRes, contextRes, weekRes, rungRes, rulesRes, profileRes] = await Promise.all([
+      const [goalsRes, contextRes, weekRes, rungRes, rulesRes, profileRes, allergyRes] =
+        await Promise.all([
         supabase.from('user_goals').select('label').order('sort_order', { ascending: true }),
         supabase.from('user_context').select('category, content'),
         supabase.from('user_week').select('activity, cadence').order('sort_order', { ascending: true }),
         supabase.from('user_skill_rungs').select('name, stage').eq('stage', 'now'),
         supabase.from('user_rules').select('phrase, kind'),
         supabase.from('user_profile').select('fat_focus_state, muscle_focus_state').maybeSingle(),
+        supabase.from('allergies').select('name, kind'),
       ]);
 
       const tapped = ((goalsRes.data ?? []) as { label: string }[]).map((g) => g.label);
@@ -85,6 +88,12 @@ export default function FirstDraftScreen() {
         rules: ((rulesRes.data ?? []) as { phrase: string; kind: string }[])
           .filter((r) => r.kind === 'never')
           .map((r) => r.phrase),
+        // SHOWN BACK IN THE SAME WORDS THEY WERE STORED IN, capitalised only.
+        // A woman who has just told the app she is coeliac should be able to
+        // see that it heard her, on the screen that exists to prove it did.
+        allergies: ((allergyRes.data ?? []) as { name: string }[]).map(
+          (a) => a.name.charAt(0).toUpperCase() + a.name.slice(1)
+        ),
         // THE TARGETS ARE DESCRIBED, NOT NUMBERED, on this screen. A calorie
         // figure needs a weight and a TDEE, and onboarding has not necessarily
         // got either yet. Saying what has been set is true; printing a number
@@ -119,6 +128,11 @@ export default function FirstDraftScreen() {
       <Section title="Your week" items={draft.week} />
       <Section title="Working on now" items={draft.skills} />
       <Section title="Staying out of your sessions" items={draft.rules} />
+      <Section
+        title="Staying off your plate"
+        items={draft.allergies}
+        emptyNote="Nothing recorded. Say anything in chat and it will show here."
+      />
       <Section
         title="Your targets"
         items={draft.targetLine ? [draft.targetLine] : []}

@@ -44,20 +44,31 @@ const have = new Set(data.map((r) => r.match_key));
 console.log(`  ${have.size} clips in the library\n`);
 
 let missing = 0;
+let textOnly = 0;
 for (const ladder of LADDERS) {
   console.log(`  ${ladder.name}`);
   for (const rung of ladder.rungs) {
-    // A null clip is an honest admission, not a failure: the app says "no
-    // demonstration yet" rather than showing blank space. A NAMED clip that
-    // does not exist is the failure, because the screen would silently show
-    // nothing while claiming to show something.
+    // A null clip is an honest declaration, not a failure: the rung is shown
+    // as text. A NAMED clip that does not exist IS the failure, because the
+    // screen would show nothing while claiming to show something.
     if (rung.clip === null) {
-      console.log(`    --  ${rung.name}  (no demonstration, and says so)`);
+      textOnly += 1;
+      // FOR A TEXT-ONLY RUNG THE WORDS ARE THE WHOLE DEMONSTRATION (Ruth,
+      // 29 September: "name, cue, and the Needs line"). A rung with no clip
+      // AND no cue is a name on a card, which is the thing that reads as
+      // broken. This is the check that keeps the new rule honest.
+      const cue = typeof rung.detail === 'string' ? rung.detail.trim() : '';
+      if (cue.length < 40) {
+        missing += 1;
+        console.log(`    NO  ${rung.name}  - text-only and has no usable cue`);
+      } else {
+        console.log(`    txt ${rung.name}  (text-only, cue ${cue.length} chars)`);
+      }
       continue;
     }
     const ok = have.has(rung.clip);
     if (!ok) missing += 1;
-    console.log(`    ${ok ? 'ok' : 'NO'}  ${rung.name}  ->  ${rung.clip}`);
+    console.log(`    ${ok ? 'ok ' : 'NO '} ${rung.name}  ->  ${rung.clip}`);
   }
   console.log();
 }
@@ -69,6 +80,14 @@ if (have.has(INVENTED)) {
   process.exit(2);
 }
 
+// EVERY GAP SHOULD BE WANTED BY A RUNG THAT EXISTS. The gap list is a
+// commission brief, and a brief for a clip nothing is waiting for is a clip
+// nobody needs drawn. This catches a gap left behind after its ladder changed.
+const rungNames = LADDERS.flatMap((l) => l.rungs.map((r) => r.name.toLowerCase()));
+const orphanGaps = CLIP_GAPS.filter(
+  (g) => !rungNames.some((n) => n.includes(g.movement.toLowerCase().split(' (')[0]))
+);
+
 console.log('  THE GAP LIST - movements a ladder wants and the library cannot show:\n');
 for (const gap of CLIP_GAPS) {
   // Reported rather than trusted: if one of these turns up in the library
@@ -78,12 +97,20 @@ for (const gap of CLIP_GAPS) {
   if (nowExists) missing += 1;
 }
 
+if (orphanGaps.length > 0) {
+  console.log('\n  NOT WANTED BY ANY RUNG (worth pruning, or a ladder is missing):');
+  for (const g of orphanGaps) console.log(`    ${g.movement}`);
+}
+
 console.log();
 if (missing > 0) {
-  console.log(`  ${missing} problem(s): a seeded rung names a clip that is not there,`);
-  console.log('  or the gap list is out of date. Neither should ship.');
+  console.log(`  ${missing} problem(s): a rung names a clip that is not there, a text-only`);
+  console.log('  rung has no cue, or the gap list is out of date. None should ship.');
 } else {
-  console.log(`  Every seeded rung has a clip. ${CLIP_GAPS.length} gaps, all still real.`);
+  console.log(
+    `  Every named clip exists. ${textOnly} rung(s) are text-only and every one carries a cue. ` +
+      `${CLIP_GAPS.length} gaps, all still real, ${CLIP_GAPS.length - orphanGaps.length} of them wanted by a live rung.`
+  );
 }
 // exitCode rather than process.exit(): calling exit while the supabase client
 // still holds an open handle makes libuv print an assertion failure AFTER a

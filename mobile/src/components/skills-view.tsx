@@ -20,11 +20,28 @@ import { supabase } from '@/lib/supabase';
 // rule and is also what makes a ladder different from a list: "Needs: 5 strict
 // pull-ups first" tells her why a rung is not hers yet, and that it will be.
 //
-// A RUNG WITH NO DEMONSTRATION SAYS SO. The 923-clip library cannot show a
-// handstand, a muscle up, a dead hang or a scapular pull - see
-// lib/skill-ladders.ts for the full gap list - so a rung whose clip is missing
-// states that rather than showing an empty box. An app that silently omits the
-// demonstration teaches people the feature is broken.
+// A RUNG WITH NO DEMONSTRATION IS SHOWN AS TEXT, AND SAYS SO.
+//
+// The 923-clip library has no handstand, no muscle up, no dead hang, no
+// scapular pull and no bar dip - see lib/skill-ladders.ts for the full gap
+// list. Ten of the rungs here are in that position, including every rung of
+// Ruth's own muscle-up ladder.
+//
+// Her instruction, 29 September: name, cue, and the "Needs: X first" line. **No
+// placeholder image and no broken clip frame.** For these rungs the cue IS the
+// demonstration, which is why check-skill-clips.mjs refuses a text-only rung
+// that does not carry one - a name on a card with nothing under it is exactly
+// what reads as broken.
+//
+// THE SHORT NOTE STAYS, on her earlier standing decision that a missing
+// demonstration should say so: "a blank where every other exercise has a clip
+// does not read as 'we cover patterns, not names'; it reads as broken." A quiet
+// line of text is not a placeholder image, so the two decisions agree.
+//
+// WORTH KNOWING: this view renders no clips at all yet, for any rung.
+// `clip_match_key` is stored and unused, so "no broken frames" is currently
+// true of every rung rather than only the text-only ones. When the player
+// arrives here, the null case is already handled.
 
 type Rung = {
   id: string;
@@ -176,7 +193,7 @@ function RungRow({
 
       {rung.clip_match_key ? null : (
         <ThemedText type="small" themeColor="textSecondary">
-          No demonstration for this one yet.
+          Written, not filmed yet.
         </ThemedText>
       )}
     </ThemedView>

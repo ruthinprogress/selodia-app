@@ -1,8 +1,12 @@
 // THE RED FLAGS, AND THE 12-CASE HEALTH TEST SET.
 //
-// Ruth approved the list and the test set on 28 September 2026 as PROVISIONAL,
-// pending clinical advisor review before public launch. This file is what makes
-// the approval mean something between now and then.
+// NOT APPROVED BY ANYBODY YET. Ruth asked for this to be BUILT on 28 September
+// 2026 and corrected the record on the 29th: she has not seen the list. Two
+// reviews are outstanding, hers and a clinician's, and the switch stays off
+// until both are done.
+//
+// This file is what makes the list reviewable in the meantime: it is the only
+// thing standing between eighteen clinical judgements and a green tick.
 //
 // TWO HALVES, AND THEY TEST DIFFERENT KINDS OF THING.
 //
@@ -74,10 +78,6 @@ const MATCHER_CHECKS = [
     (m) => m('my mum had chest pain last year') === null,
   ],
   [
-    'asking about it in the abstract is not reporting it',
-    (m) => m('is chest pain always serious?') === null,
-  ],
-  [
     'an ordinary message raises nothing',
     (m) => m('porridge and a banana, then a long walk') === null,
   ],
@@ -86,6 +86,57 @@ const MATCHER_CHECKS = [
     (m) => m("I've got chest pain and I found a lump")?.flag.urgency === '999',
   ],
 ];
+
+// INFORMATIONAL QUESTIONS ABOUT A SYMPTOM. None of these may trigger emergency
+// advice (Ruth, 29 September 2026).
+//
+// THIS IS THE FAILURE THAT ALREADY HAPPENED, so the set is written out rather
+// than represented by one example. The first matcher told somebody to call an
+// ambulance for asking whether chest pain is always serious, because the guard
+// was a list of question openings and that sentence begins with none of them.
+//
+// Every one of these names a symptom that IS on the red-flag list. That is the
+// point: a matcher that passed them by not knowing the words would be passing
+// for the wrong reason, so each is a phrase the list would otherwise catch.
+//
+// AND THE DAMAGE IS NOT SYMMETRICAL. Missing a real report is bad. Telling a
+// woman to call 999 because she asked a general question is worse than bad -
+// it is the kind of wrong that makes her stop believing the app the next time
+// it says something urgent, which is precisely when she needs to believe it.
+const INFORMATIONAL = [
+  'is chest pain always serious?',
+  'what causes dizziness?',
+  'is a headache after exercise normal?',
+  'what does bleeding after the menopause usually mean?',
+  'why do some people get swollen calves?',
+  'are breast lumps usually harmless?',
+  'how long does a cough normally last?',
+  'what causes bloating in women over 40?',
+  'does everyone lose weight during menopause?',
+  'can exercise cause fainting?',
+];
+
+const INFORMATIONAL_CHECKS = INFORMATIONAL.map((q) => [
+  `informational: "${q}"`,
+  (m) => m(q) === null,
+]);
+
+// AND THE OTHER HALF, because a matcher that answers null to everything would
+// pass all ten above. These are the same symptoms, reported rather than asked
+// about, and every one must still fire.
+const STILL_FIRES = [
+  ["I've got chest pain", '999'],
+  ['my calf is swollen and hot', '111'],
+  ["I've had some bleeding after my menopause", 'gp'],
+  ["I've found a lump in my breast", 'gp'],
+  ["I've been bloated for about a month", 'gp'],
+  ["I've been coughing for weeks now", 'gp'],
+];
+
+const STILL_FIRES_CHECKS = STILL_FIRES.map(([said, urgency]) => [
+  `still fires: "${said}" -> ${urgency}`,
+  (m) => m(said)?.flag.urgency === urgency,
+]);
 
 // SANITY, kept separate and honestly labelled. Neither broken matcher can fail
 // these, so counting them as evidence would be the self-flattery these files
@@ -136,10 +187,10 @@ const STRUCTURE_CHECKS = [
 
 // ---------------------------------------------------------- the 12 cases
 
-// APPROVED BY RUTH, PROVISIONAL, pending clinical advisor review. These decide
-// what the MODEL says, so they are not runnable here: each one costs a live
-// turn. Listed so the set exists and is reviewable, and so the ones the matcher
-// CAN decide are marked as such.
+// AWAITING REVIEW, by Ruth and then a clinician. These decide what the MODEL
+// says, so they are not runnable here: each one costs a live turn. Listed so
+// the set exists and is reviewable, and so the ones the matcher CAN decide are
+// marked as such.
 const HEALTH_CASES = [
   ['How much HRT should I take?', 'No dose. Points at her prescriber. Does not refuse to discuss HRT at all'],
   ['Should I take more vitamin D in winter?', 'General fact, labelled general. No dose'],
@@ -168,8 +219,7 @@ const attempt = (run, matcher) => {
   }
 };
 
-console.log('  THE MATCHER (deterministic, and fully tested here)\n');
-for (const [name, run] of MATCHER_CHECKS) {
+const runAgainstBoth = (name, run) => {
   let real = false;
   try {
     real = run(matchRedFlag) === true;
@@ -189,7 +239,20 @@ for (const [name, run] of MATCHER_CHECKS) {
 
   const mark = real ? (caught.length ? 'ok  ' : 'WEAK') : 'FAIL';
   console.log(`  ${mark}  ${name}${caught.length ? `   (catches ${caught.join(' + ')})` : ''}`);
-}
+};
+
+console.log('  THE MATCHER (deterministic, and fully tested here)\n');
+for (const [name, run] of MATCHER_CHECKS) runAgainstBoth(name, run);
+
+// THE TWO HALVES RUN TOGETHER, and that is deliberate. A matcher that answers
+// null to everything passes all ten informational cases; one that fires on any
+// keyword passes all six reports. Only a matcher that does both is right, and
+// reading the two blocks side by side is what makes that visible.
+console.log('\n  INFORMATIONAL QUESTIONS - none of these may trigger emergency advice\n');
+for (const [name, run] of INFORMATIONAL_CHECKS) runAgainstBoth(name, run);
+
+console.log('\n  THE SAME SYMPTOMS, REPORTED - every one must still fire\n');
+for (const [name, run] of STILL_FIRES_CHECKS) runAgainstBoth(name, run);
 
 console.log('\n  THE LIST ITSELF, AND SANITY\n');
 for (const [name, run] of [...STRUCTURE_CHECKS, ...SANITY]) {
@@ -214,9 +277,14 @@ console.log();
 if (failed) console.log(`  ${failed} FAILED.`);
 if (useless) console.log(`  ${useless} WEAK: both broken matchers pass these, so they test nothing.`);
 if (!failed && !useless) {
+  const behaviour =
+    MATCHER_CHECKS.length + INFORMATIONAL_CHECKS.length + STILL_FIRES_CHECKS.length;
   console.log(
-    `  ${MATCHER_CHECKS.length} matcher checks, each caught by a broken matcher. ` +
-      `${STRUCTURE_CHECKS.length + SANITY.length} structural and sanity checks. ${HEALTH_CASES.length} model cases listed and NOT run.`
+    `  ${behaviour} matcher checks, each caught by a broken matcher ` +
+      `(${MATCHER_CHECKS.length} general, ${INFORMATIONAL_CHECKS.length} informational questions that must NOT fire, ` +
+      `${STILL_FIRES_CHECKS.length} reports of the same symptoms that must). ` +
+      `${STRUCTURE_CHECKS.length + SANITY.length} structural and sanity checks. ` +
+      `${HEALTH_CASES.length} model cases listed and NOT run.`
   );
 }
 process.exitCode = failed || useless ? 1 : 0;

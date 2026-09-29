@@ -339,7 +339,9 @@ A GP, nurse or menopause specialist reviews the boundaries, the red flags and th
 
 ### Status (updated 2026-09-28, evening)
 
-**Ruth approved the red-flag list and the 12-case test set the same evening, as PROVISIONAL, pending clinical advisor review before public launch.** Layer 2 was then built and **switched off**.
+**Ruth asked for layer 2 to be BUILT on the evening of 28 September. She corrected the record on the 29th: she has not read the list, and it is not to be recorded as approved by her.** It was built and **switched off**, and there are now **two outstanding reviews rather than one** - hers, then a clinician's.
+
+**The distinction is worth keeping.** An instruction to build is not a sign-off on eighteen clinical judgements, and "approved by Ruth" written into a code comment would have become cover, for a future reader and for me, for a list she had never seen.
 
 | Layer | State |
 | --- | --- |
@@ -350,7 +352,7 @@ A GP, nurse or menopause specialist reviews the boundaries, the red flags and th
 | **5. Beta safeguards** | The feedback route exists. The weekly twenty-turn sample does not |
 | **6. Clinical advisor** | Not engaged. **This is what the flag is waiting for** |
 
-**A switch rather than an unmerged branch**, deliberately: the code is on main, covered by its checks, and cannot rot, and turning it on is one line. **Turning it on is a clinical decision, not an engineering one.**
+**A switch rather than an unmerged branch**, deliberately: the code travels with everything else, is covered by its checks, cannot rot, and turning it on is one line. **Turning it on is a clinical decision, not an engineering one.**
 
 ### What the build taught, which the design did not
 
