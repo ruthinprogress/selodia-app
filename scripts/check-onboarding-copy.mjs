@@ -44,7 +44,26 @@ const SPINE = [
 // steer-around.tsx explains at length WHY there is no upload, and a check that
 // could not tell an explanation from an offer would fail on the very file that
 // gets this right.
-function copyOf(text) {
+function copyOf(raw) {
+  // NORMALISE THE LINE ENDINGS FIRST, and this is not housekeeping - it is the
+  // bug that made this check meaningless for its first hour (29 September).
+  //
+  // In a JavaScript regex, `.` matches anything EXCEPT a line terminator, and
+  // `\r` is a line terminator. So on a CRLF file, `/(^|\s)\/\/.*$/` can never
+  // reach the end of the line: `.*` stops at the `\r`, and `$` will not match
+  // in front of it without the `m` flag. The comment stripper silently did
+  // nothing at all.
+  //
+  // WHAT MADE IT DANGEROUS is that it still PASSED. The branch's working tree
+  // was LF, so the check went green; the same files on main are CRLF, and the
+  // identical content failed with two false positives. A check whose answer
+  // depends on which branch you happen to have checked out is worse than no
+  // check, because it is trusted.
+  //
+  // This repository is on Windows with autocrlf, so every file here is CRLF on
+  // disk and LF in git. Any script reading source has the same trap waiting.
+  const text = raw.replace(/\r\n?/g, '\n');
+
   const withoutBlocks = text.replace(/\/\*[\s\S]*?\*\//g, ' ');
   const withoutLines = withoutBlocks
     .split('\n')
@@ -99,6 +118,14 @@ const COMMENT_FIXTURE = `
 `;
 if (UPLOAD.test(copyOf(COMMENT_FIXTURE))) {
   console.error('  SELF-TEST FAILED: a comment about uploads is being read as an offer.');
+  process.exit(2);
+}
+
+// AND THE SAME FIXTURE WITH WINDOWS LINE ENDINGS, because that is the one that
+// actually broke. Without this, the LF fixture above passes, the check goes
+// green on a branch, and the identical files fail on main.
+if (UPLOAD.test(copyOf(COMMENT_FIXTURE.replace(/\n/g, '\r\n')))) {
+  console.error('  SELF-TEST FAILED: comment stripping does not survive CRLF line endings.');
   process.exit(2);
 }
 
