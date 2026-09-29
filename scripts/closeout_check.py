@@ -236,6 +236,23 @@ def check_logs(session):
         print(f"    MISSING          no workbook rows dated {today.isoformat()}")
         blocking += 1
 
+    # 5. FUNDING, IN ONE LINE, EVERY CLOSE-OUT. Ruth's standing instruction of
+    #    29 September 2026, and the reason it is a check rather than a line in
+    #    WORKFLOW.md is written in her own standing process notes: "A step the
+    #    documentation calls automatic is a step nobody checks. That one
+    #    sentence cost nine sessions of the build log."
+    #
+    #    Deliberately loose. It looks for the word in a row dated today and
+    #    nothing more, because the point is that a quiet week is VISIBLE rather
+    #    than absent - "nothing moved on funding" satisfies this and should.
+    if book is not None:
+        dated = [line for line in book.splitlines() if today.isoformat() in line]
+        if any("funding" in line.lower() for line in dated):
+            print("    funding          mentioned in today's close-out")
+        else:
+            print("    MISSING          no funding line in today's close-out (her standing rule)")
+            blocking += 1
+
     return blocking
 
 
