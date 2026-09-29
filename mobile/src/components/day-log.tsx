@@ -55,6 +55,20 @@ export type DayEntry = {
    * every icon family in the app, which is the only way it stays shared.
    */
   mark?: React.ReactNode;
+  /**
+   * OPENS THE ENTRY. Optional, and per entry rather than per screen, because
+   * the three screens sharing this list genuinely differ: a food entry has an
+   * itemised breakdown to show, and a weight reading has nothing behind it.
+   *
+   * RESTORED 29 September 2026. Tapping a food row used to open the "What's in
+   * here" card - the itemised list, with a way to delete a single item that
+   * was wrong. The consolidation of Food, Movement and Measurements into this
+   * one list on 27 September kept the swipe and dropped the tap, and the card
+   * itself was deleted in the same commit. Nothing said so: the row still
+   * looked identical and still responded to a swipe, so the only way to notice
+   * was to tap one and wait for something that was never coming.
+   */
+  onOpen?: () => void;
   /** Removes it and hands back the means to undo. Null when nothing went. */
   remove: () => Promise<Undo | null>;
 };
@@ -330,6 +344,17 @@ function DayRow({
                    is supposed to leave, not a word that is supposed to fit. */
                 <View key={entry.id} style={styles.swipeBox}>
                 <SwipeToDelete what={entry.label} onDelete={() => remove(entry)}>
+                  {/* TAP OPENS, SWIPE DELETES, and the two do not fight: the
+                      swipe only activates past 12 points sideways
+                      (swipe-to-delete.tsx), so a tap never reaches it. */}
+                  <Pressable
+                    onPress={entry.onOpen}
+                    disabled={!entry.onOpen}
+                    accessibilityRole={entry.onOpen ? 'button' : undefined}
+                    accessibilityLabel={
+                      entry.onOpen ? `${entry.label}. Open to check the items or delete one.` : undefined
+                    }
+                    style={({ pressed }) => pressed && entry.onOpen && styles.pressed}>
                   <View style={styles.entry}>
                     {/* TWO LINES, NOT TWO COLUMNS (Ruth, 27 September 2026,
                         item 7). The details used to take a fixed column on the
@@ -356,6 +381,7 @@ function DayRow({
                       </ThemedText>
                     ) : null}
                   </View>
+                  </Pressable>
                 </SwipeToDelete>
                 </View>
               ))}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
+import { FoodBreakdownCard } from '@/components/food-breakdown-card';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -117,6 +118,8 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const [rows, setRows] = useState<FoodRow[]>([]);
   const [tracked, setTracked] = useState<MacroKey[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
+  /** The entry whose itemised breakdown is open. */
+  const [openId, setOpenId] = useState<string | null>(null);
   useFocusReload(setReloadKey);
 
   useEffect(() => {
@@ -218,6 +221,12 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
             // something"). FoodCategoryIcon was used on this screen and nowhere
             // else, which is the test failed. The measurement marks stay,
             // because they appear in Settings too and name a real thing.
+            // TAPPING OPENS THE ITEMS AGAIN (restored 29 September 2026).
+            // "I tapped on each food row but it didn't open up to the itemised
+            // list as it's meant to so that I can check it's all there and
+            // delete any item if incorrect." She was right, and it had been
+            // gone since 27 September - see day-log.tsx's onOpen.
+            onOpen: () => setOpenId(row.id),
             remove: () => removeEntry('food_logs', row.id, label),
           };
         });
@@ -254,6 +263,20 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
         }
         empty="Nothing logged this week."
       />
+
+      {/* THE "WHAT'S IN HERE" CARD. It takes a food_logs id and nothing else,
+          which is why it survived being orphaned for two days and could be put
+          back without changing it. */}
+      {openId ? (
+        <FoodBreakdownCard
+          foodLogId={openId}
+          onClose={() => setOpenId(null)}
+          onDeleted={() => {
+            setOpenId(null);
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      ) : null}
 
       {week.line ? (
         <ThemedText type="detail" themeColor="textSecondary">
