@@ -47,11 +47,16 @@ const roundTo = (n: number, step: number): number => Math.round(n / step) * step
 export function calculateCalorieTarget(params: {
   tdeeKcal: number | null | undefined;
   weightKg: number | null | undefined; // required only for the deficit branch
-  fatFocus: FocusState;
-  muscleFocus: FocusState;
+  fatFocus: FocusState | null | undefined;
+  muscleFocus: FocusState | null | undefined;
 }): CalorieTarget | null {
   const { tdeeKcal, weightKg, fatFocus, muscleFocus } = params;
   if (tdeeKcal == null || tdeeKcal <= 0) return null;
+
+  // NOT STATED IS NOT MAINTENANCE (2026-09-28). Mirrors app/lib/daily-targets.ts,
+  // where the full reasoning lives; probe-target-parity.mjs fails if the two
+  // ever disagree, and it now covers the null cases too.
+  if (fatFocus == null || muscleFocus == null) return null;
 
   // Surplus: either focus wants growth. Doesn't stack, doesn't need bodyweight.
   const wantsGrowth = fatFocus === 'increase' || (fatFocus === 'maintain' && muscleFocus === 'increase');

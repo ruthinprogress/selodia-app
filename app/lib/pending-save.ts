@@ -30,8 +30,18 @@ import { coerceStatus, normaliseSection } from './me-card';
 // only a fourth type. Until then the Me tab had no way in at all, and a skincare
 // routine offered to it landed in Insights twice.
 
-export type SaveType = 'symptom' | 'insight' | 'note' | 'me';
-export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note', 'me'];
+// RULE ARRIVED ON 2026-09-28, for the same reason `me` did: it is the same
+// shape of moment, so it needed a fifth type rather than its own machinery.
+//
+// AND IT IS THE TYPE THIS MECHANISM MATTERS MOST FOR. Ruth's brief: "Chat never
+// advances a rung or saves clinical rules silently. It confirms first." A rule
+// is a clinical constraint that then removes movements from her sessions in
+// code, so a rule the app invented from a passing remark would quietly narrow
+// her training with nothing to point at. The offer lives in the database and
+// the model only reports whether the answer was yes - the same split as the
+// allergy gate and Focus: the model observes, the app decides.
+export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'rule';
+export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note', 'me', 'rule'];
 
 export function coerceSaveType(v: unknown): SaveType | null {
   if (typeof v !== 'string') return null;
@@ -97,6 +107,27 @@ export function coerceProposal(v: unknown): ProposedSave | null {
     };
   }
 
+  // A RULE NEEDS TO KNOW WHICH LIST IT IS ON, and what words the gate should
+  // match. Without the first it is not a rule; without the second it is a rule
+  // that cannot stop anything, which is worse than no rule because it looks
+  // like protection. A missing match list falls back to the phrase itself at
+  // commit time - a poor matcher, and an honest one.
+  if (type === 'rule') {
+    const kind = typeof content.kind === 'string' ? content.kind.trim().toLowerCase() : null;
+    if (kind !== 'never' && kind !== 'always') return null;
+    const terms = Array.isArray(content.matchTerms)
+      ? (content.matchTerms as unknown[])
+          .map((t) => str(t))
+          .filter((t): t is string => t !== null)
+          .map((t) => t.toLowerCase())
+      : [];
+    return {
+      type,
+      title: title.slice(0, MAX_TITLE),
+      content: { kind, matchTerms: terms, advisedBy: str(content.advisedBy) },
+    };
+  }
+
   // A symptom or a note carries what was actually said, or there is nothing to keep.
   if (type !== 'insight' && !str(content.summary)) return null;
 
@@ -141,6 +172,7 @@ const TYPE_WORD: Record<SaveType, string> = {
   insight: 'an insight',
   note: 'a note',
   me: 'part of their own protocol',
+  rule: 'a movement rule',
 };
 
 /**
@@ -151,9 +183,12 @@ const TYPE_WORD: Record<SaveType, string> = {
 export function pendingSavePrompt(pending: PendingSave): string {
   if (!pending.askedAt || !pending.proposal) return '';
   const { title, type } = pending.proposal;
+  // A rule does not go to the Almanac, so the prompt must not say it does -
+  // the model reads this and writes the next reply from it.
+  const where = type === 'rule' ? 'to their rules' : 'to their Almanac';
   return `
 
-YOU OFFERED TO KEEP SOMETHING AND ARE WAITING ON AN ANSWER. In an earlier turn you offered to save "${title}" to their Almanac as ${TYPE_WORD[type]}, and they have not answered yet.
+YOU OFFERED TO KEEP SOMETHING AND ARE WAITING ON AN ANSWER. In an earlier turn you offered to save "${title}" ${where} as ${TYPE_WORD[type]}, and they have not answered yet.
 
 If THIS message answers it, set saveAnswer to 'yes' or 'no'. Treat a clear agreement as yes ("yes please", "go on", "keep it") and a clear decline as no ("no", "leave it", "not that one"). Anything else - a new topic, a log, a different question - is NOT an answer: leave saveAnswer unset and carry on with what they actually said.
 
@@ -175,8 +210,16 @@ export const SAVE_OFFER_QUESTION = 'Want me to keep that in your Almanac?';
 // complaint started.
 export const ME_OFFER_QUESTION = 'Want me to keep that in your Me tab?';
 
+// A RULE'S OFFER SAYS WHAT THE RULE WILL DO, because agreeing to it changes
+// what the app builds for her from then on. "Want me to keep that?" is not
+// enough consent for something that removes movements from her sessions.
+export const RULE_OFFER_QUESTION =
+  'Want me to add that to your rules, so it stays out of anything I build for you?';
+
 export function offerQuestionFor(type: SaveType): string {
-  return type === 'me' ? ME_OFFER_QUESTION : SAVE_OFFER_QUESTION;
+  if (type === 'me') return ME_OFFER_QUESTION;
+  if (type === 'rule') return RULE_OFFER_QUESTION;
+  return SAVE_OFFER_QUESTION;
 }
 
 /**
@@ -324,6 +367,35 @@ export async function commitSave(
   userId: string,
   proposal: ProposedSave
 ): Promise<{ kind: string; title: string } | null> {
+  // A RULE GOES TO ITS OWN TABLE, not to the Almanac. The Almanac is a record of
+  // what happened and what was noticed; a rule is a constraint the generator has
+  // to obey, and app/lib/rules-gate.ts reads it from user_rules before any plan
+  // is written. Filing it as an almanac entry would make it a note about a
+  // constraint rather than the constraint itself.
+  if (proposal.type === 'rule') {
+    const content = proposal.content as Record<string, unknown>;
+    const kind = content.kind === 'always' ? 'always' : 'never';
+    const terms = Array.isArray(content.matchTerms)
+      ? (content.matchTerms as unknown[]).filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+      : [];
+    const { error } = await supabase.from('user_rules').insert({
+      user_id: userId,
+      kind,
+      phrase: proposal.title,
+      // The words the gate matches. Falling back to the phrase itself is a poor
+      // matcher and an honest one: better a rule that catches only the obvious
+      // case than a rule that silently catches nothing.
+      match_terms: terms.length > 0 ? terms : [proposal.title.toLowerCase()],
+      source: 'chat',
+      advised_by: typeof content.advisedBy === 'string' ? content.advisedBy : null,
+      // SHE JUST SAID YES. This path only runs on a confirmed offer, which is
+      // what the confirmation is for, so the timestamp is the truth and not an
+      // assumption.
+      confirmed_at: new Date().toISOString(),
+    });
+    return error ? null : { kind: 'rule', title: proposal.title };
+  }
+
   // A Me card's SECTION is its category, which is how the Almanac groups it and
   // how a new section comes into existence: by the first card arriving in it.
   // Nobody ever creates one.
@@ -355,6 +427,10 @@ export function saveAppliedNote(
     // Me and Insights are different tabs, and telling somebody their skincare
     // routine went to Insights was the complaint that started this.
     if (type === 'me') return `Kept in your Almanac, under Me.`;
+    // A rule earns a longer sentence than the others, because agreeing to it
+    // changes what gets built from now on and she should be able to see where
+    // it went.
+    if (type === 'rule') return `Added to your rules, in Plans. It stays out of anything built for you from now on.`;
     return `Kept in your Almanac, under Insights, as ${TYPE_WORD[type]}.`;
   }
   if (attempted) return "That didn't save to your Almanac just now. Ask me again and I'll try once more.";

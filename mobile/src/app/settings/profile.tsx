@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -23,10 +24,17 @@ import { supabase } from '@/lib/supabase';
 // WHAT IS NOT HERE, and why. Region, language and units are in her brief but
 // nothing stores them and nothing reads them: the app is metric and English
 // today, and a picker that changed neither would be a control that does
-// nothing. Goals are shown but not edited here: they are set in conversation,
-// where the reasoning behind them is, and a dropdown would quietly become the
-// place people pick a goal without a conversation about whether it is a good
-// one - which Part Two rules out.
+// nothing.
+//
+// GOALS LEFT THIS PAGE ON 2026-09-28 and are now at the top of Plans. They were
+// read-only here, at the bottom of a page about height and date of birth, while
+// the screen whose entire job is "what am I intentionally following?" did not
+// mention them. The old reasoning for keeping them read-only still holds and has
+// moved with them: a goal is set in conversation, where the thinking behind it
+// is, and a dropdown would quietly become the place people pick a goal without a
+// conversation about whether it is a good one - which Part Two rules out. The
+// seven onboarding taps are not that dropdown; they set a focus state and every
+// one of them can be changed by saying so.
 
 type Profile = {
   first_name: string | null;
@@ -50,7 +58,6 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-  const [goals, setGoals] = useState<string[]>([]);
   const [editing, setEditing] = useState<Editing>(null);
   const [draft, setDraft] = useState('');
   const [failed, setFailed] = useState(false);
@@ -58,7 +65,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [account, { data: row }, { data: context }] = await Promise.all([
+      const [account, { data: row }] = await Promise.all([
         // The EMAIL is the account's, so this one asks the auth server - the
         // only place left in the app that does. See lib/current-user.ts.
         verifiedUser(),
@@ -66,16 +73,10 @@ export default function ProfileScreen() {
           .from('user_profile')
           .select('first_name, date_of_birth, biological_sex, height_cm, activity_level')
           .maybeSingle(),
-        supabase.from('user_context').select('category, content'),
       ]);
       if (cancelled) return;
       setEmail(account?.email ?? null);
       setProfile((row ?? null) as Profile | null);
-      setGoals(
-        ((context ?? []) as { category: string; content: string }[])
-          .filter((c) => (c.category ?? '').toLowerCase().includes('goal'))
-          .map((c) => c.content)
-      );
     })();
     return () => {
       cancelled = true;
@@ -96,6 +97,27 @@ export default function ProfileScreen() {
     }
     setProfile((p) => ({ ...(p ?? ({} as Profile)), ...patch }) as Profile);
     setEditing(null);
+  }
+
+  // SETS THE STEP BACK AND NOTHING ELSE. Everything the spine collects is
+  // replaced by the screen that collects it, so there is nothing to clear here
+  // - and clearing anything would be the one way this could destroy something.
+  //
+  // advanceOnboardingStep is forward-only by design, so it cannot be used: it
+  // exists to stop a stale screen dragging somebody backwards. This is the one
+  // legitimate reason to go back, so it writes the column directly and says so.
+  async function redoSetup() {
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase
+      .from('user_profile')
+      .update({ onboarding_step: 'goals' })
+      .eq('user_id', userId);
+    if (error) {
+      setFailed(true);
+      return;
+    }
+    router.replace('/onboarding/goals');
   }
 
   const dob = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;
@@ -218,25 +240,38 @@ export default function ProfileScreen() {
         </ThemedText>
       )}
 
-      <SettingsGroup title="Goals">
-        {goals.length === 0 ? (
-          <SettingsRow
-            first
-            icon="leaf-outline"
-            label="Nothing set yet"
-            detail="Goals are agreed in conversation, so they arrive with their reasons"
-          />
-        ) : (
-          goals.map((g, i) => (
-            <SettingsRow key={g} first={i === 0} icon="leaf-outline" label={g} />
-          ))
-        )}
+      {/* GOALS MOVED TO PLANS, 2026-09-28 (Ruth's session brief). They sat at
+          the bottom of a page about height and date of birth, read-only, while
+          Plans - the screen whose whole job is "what am I intentionally
+          following?" - did not mention them at all. Nothing is lost: the same
+          goals, from the same user_context rows, now render above everything
+          else in Plans, beside the tapped ones that set the targets. */}
+
+      {/* REDO MY SETUP (Ruth, 29 September 2026), so somebody who onboarded
+          before the tap spine existed can walk it.
+
+          IT NEVER DELETES A LOG. Her words, and the distinction the whole
+          feature turns on: setup is what she has DECIDED - goals, week, rules,
+          life stage, allergies - and a log is what HAPPENED. Redoing a decision
+          is ordinary; losing a month of meals because you wanted to change a
+          goal is not, and an app that could do the second by accident is one
+          nobody would risk tapping.
+
+          It only moves the onboarding step back. Every screen in the spine
+          replaces its own answers when it saves, and the ones that must not be
+          replaced - allergies, and anything said in chat - upsert instead. So
+          walking it again updates, and nothing here has to know which is
+          which. */}
+      <SettingsGroup title="Setup">
+        <SettingsRow
+          first
+          icon="refresh-outline"
+          label="Redo my setup"
+          detail="Walk through the questions again. Your logs are never touched"
+          onPress={() => void redoSetup()}
+        />
       </SettingsGroup>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-        To change a goal, say so in a conversation. Selodía keeps the thinking behind it, which a
-        list here could not.
-      </ThemedText>
 
       <ThemedView type="backgroundElement" style={[styles.signOutNote, { borderColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>

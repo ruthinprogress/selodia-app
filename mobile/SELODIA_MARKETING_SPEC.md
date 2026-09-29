@@ -39,6 +39,14 @@ She already owns a smart scale. She already tracks. She is not new to any of thi
 
 **Conversational, not a form.** You tell it things the way you would tell a person. It asks, notices, remembers, and reflects back. Nothing is a dropdown when it could be a sentence.
 
+**And it leads, from 2026-09-28.** This was one differentiator among several; it moves to the front of the landing page and the store listing. **The evidence is a real woman, in public, asking for it while paying for something else** — a competitor's own marketing page carries a testimonial asking for a free-text comment on a symptom, "to specify where it's itchy (hands/ears), or where the headache is focused etc to see if there's a pattern." She is describing chat logging without having a word for it.
+
+**That evidence is internal only.** Quoting it, or referencing it in any recognisable form, is comparative marketing and section 10 forbids it. It is filed in Drive under Competitor analysis. What it changes is the order of our own claims, not the claims themselves.
+
+**The sentence to build the copy around:** *the things that do not fit a dropdown are usually the things that matter, and those are the ones most apps lose.* True, not a comparison, and a woman who has abandoned two tracking apps recognises herself in it.
+
+**The chain matters more than the feature.** She wants the comment box *in order to* see a pattern. Free text is not the product; what free text makes possible is the product. Copy that sells the typing and not the seeing has sold the wrong half.
+
 **TDEE as something you grow.** Nearly every tracker calculates your daily energy use once, from static inputs, and treats it as fixed. Selodía tracks it as a trend against muscle mass over months, because basal metabolism rises as muscle does. This is the technical heart of the product and the clearest single answer to "why not just use the other one".
 
 **Perimenopause and medical context as depth, not reach.** Cycle phase, health markers, medication, diagnosed conditions: these exist because they are part of the 40+ story and change how a reading should be read. They are not there to widen the audience. Resist any framing that turns Selodía into a menopause app, a medical app, or a general wellness app. The specificity is the asset.

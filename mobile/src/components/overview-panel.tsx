@@ -25,6 +25,8 @@ import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-lin
 import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { readSnapshot, saveSnapshot } from '@/lib/snapshot';
+import { hidesCycleDay, type LifeStage } from '@/lib/life-stage';
+import { plannedTodayLine } from '@/lib/reminders';
 import { supabase } from '@/lib/supabase';
 
 // The Body tab's landing screen (rewritten 2026-09-03).
@@ -102,6 +104,8 @@ type OverviewData = {
   // has ever been logged. Read, never inferred: a cycle day guessed from an
   // average would be a number about somebody's body that nobody measured.
   cycleDay: number | null;
+  // "On the plan: gym", or null. Guide me only, planned days only.
+  plannedLine: string | null;
 };
 
 type ProfileRow = {
@@ -114,11 +118,18 @@ type ProfileRow = {
   has_scales: boolean | null;
   protein_target_g: number | null;
   first_name: string | null;
+  guidance_mode: string | null;
+  // Read so the cycle day can be suppressed for anybody who is not on a regular
+  // cycle. See cycleDayFrom.
+  life_stage: string | null;
 };
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
-const asFocus = (s: string | null): FocusState =>
-  s === 'reduce' || s === 'increase' ? s : 'maintain';
+// Null means not stated, and not stated means no target - NOT maintenance.
+// See app/lib/daily-targets.ts for why this used to be the other way round and
+// what it cost. Third of the three places the old default lived.
+const asFocus = (s: string | null): FocusState | null =>
+  s === 'reduce' || s === 'increase' || s === 'maintain' ? s : null;
 
 // "Thursday 17 September", never 2026-09-17. Built by hand rather than through
 // toLocaleDateString for the same reason week.ts is: Hermes on Android ships a
@@ -165,7 +176,19 @@ function greeting(name: string | null, now: Date = new Date()): string {
 // The ceiling comes down from 60 to 45, her figure. Past that the last logged
 // start is too old to mean anything, and a number that is probably wrong is
 // worse than no number.
-export function cycleDayFrom(lastStart: string | null): number | null {
+export function cycleDayFrom(lastStart: string | null, stage?: LifeStage | null): number | null {
+  // HER LIFE STAGE OVERRULES THE ARITHMETIC (2026-09-28).
+  //
+  // The 45-day ceiling below is what protects a woman who has simply stopped
+  // logging. It does nothing for the woman who told us where she is: somebody
+  // post-menopause, or with a coil, can still have a period start from five
+  // weeks ago on file, and "Cycle day 34" beside her date is the app telling
+  // her something it has been explicitly told is not true.
+  //
+  // Only a regular cycle gets a cycle day. Everything else - including "not
+  // sure" and "prefer not to say" - gets silence, which is the honest answer
+  // when the app does not know.
+  if (hidesCycleDay(stage ?? null)) return null;
   if (!lastStart) return null;
   const start = new Date(`${lastStart}T00:00:00`);
   if (isNaN(start.getTime())) return null;
@@ -266,6 +289,7 @@ export function OverviewPanel({
         { data: drinks },
         stepsToday,
         { data: lastPeriod },
+        { data: weekRows },
       ] = await Promise.all([
           supabase
             .from('body_measurements')
@@ -275,7 +299,7 @@ export function OverviewPanel({
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -297,6 +321,10 @@ export function OverviewPanel({
             .order('event_date', { ascending: false })
             .limit(1)
             .maybeSingle(),
+          // THE WEEK, only so today's planned line can be built. Days are set
+          // in Guide me and are empty for everybody else, so for most people
+          // this returns rows whose `days` array is empty and the line is null.
+          supabase.from('user_week').select('activity, days').order('sort_order', { ascending: true }),
         ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
@@ -413,7 +441,14 @@ export function OverviewPanel({
         ],
         steps: stepsToday,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
-        cycleDay: cycleDayFrom((lastPeriod as { event_date: string } | null)?.event_date ?? null),
+        cycleDay: cycleDayFrom(
+          (lastPeriod as { event_date: string } | null)?.event_date ?? null,
+          (profile?.life_stage ?? null) as LifeStage | null
+        ),
+        plannedLine: plannedTodayLine(
+          (weekRows ?? []) as { activity: string; days: string[] }[],
+          profile?.guidance_mode ?? null
+        ),
       };
       setData(next);
       // Kept for the next opening, so the screen starts full rather than empty.
@@ -474,6 +509,21 @@ export function OverviewPanel({
             {data.cycleDay != null ? `  ·  Cycle day ${data.cycleDay}` : ''}
           </ThemedText>
         </View>
+        {/* GUIDE ME, AND ONLY ON A DAY THAT HAS SOMETHING IN IT.
+            Ruth's brief: 'Guide me shows one line on Today ("On the plan:
+            gym"), only on planned days.'
+
+            A LINE, NOT A PROMPT, AND NEVER A TICK. It states what is in her
+            week today and offers no way to mark it done, because Today is not
+            where anything is marked done and My Week has no completion at all.
+            Somebody who does not do it finds the line gone tomorrow and nothing
+            else changed - no carry-over, no count, no note that it did not
+            happen. */}
+        {data.plannedLine ? (
+          <ThemedText type="small" themeColor="accentDeep">
+            {data.plannedLine}
+          </ThemedText>
+        ) : null}
       </View>
 
       {/* The daily line is NOT here any more - see the foot of this screen
@@ -524,6 +574,47 @@ export function OverviewPanel({
             </>
           )}
         </FigureRow>
+
+        {/* THE TARGET, SAID OUT LOUD AT LAST (2026-09-28).
+            `calorieTargetKcal` and `proteinTargetLabel` have been computed here
+            and put into `data` since 2026-08-15, and rendered nowhere at all.
+            The app has known what somebody's target was for six weeks and never
+            told her.
+
+            STATED, NOT COUNTED. What she ate is on the row above; what she is
+            aiming at is here. No remaining figure, no percentage, no bar,
+            nothing that can read as behind. Goals are welcome and shame is not,
+            and a number counting down is how shame gets in. */}
+        {data.calorieTargetKcal != null || data.proteinTargetLabel ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
+            {[
+              data.calorieTargetKcal != null ? `Aiming for ${data.calorieTargetKcal} kcal` : null,
+              // THE UNIT IS ADDED HERE, not in proteinTargetLabel. That
+              // function returns a bare range ("83-99") because it was written
+              // for a caller that supplied its own unit - and then never had
+              // one, because nothing rendered it for six weeks. The first
+              // screenshot of this line read "Aiming for 1760 kcal · 83-99",
+              // which is how the omission finally became visible.
+              data.proteinTargetLabel ? `${data.proteinTargetLabel}g protein` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </ThemedText>
+        ) : (
+          /* NO TARGET IS NOT AN ERROR, and this line is not a nag.
+             Until today an unset focus silently became 'maintain' and she was
+             shown a maintenance target nobody had chosen. Now it shows nothing,
+             and offers a way to change that - once, quietly, and only here. */
+          <Pressable
+            onPress={() => router.push('/')}
+            accessibilityRole="link"
+            accessibilityLabel="Add a goal to see targets, opens chat"
+            style={({ pressed }) => [styles.targetLine, pressed && styles.pressed]}>
+            <ThemedText type="small" themeColor="accentDeep">
+              Add a goal to see targets
+            </ThemedText>
+          </Pressable>
+        )}
 
         <Hairline />
 
@@ -882,6 +973,12 @@ const styles = StyleSheet.create({
   // broken mid-word is not.
   figureLabel: {
     width: 76,
+  },
+  // Indented to the figures' own left edge, so the target reads as belonging to
+  // the Food row above it rather than as a new row of its own.
+  targetLine: {
+    paddingLeft: 76,
+    paddingBottom: Spacing.two,
   },
   // The figures themselves, which take the slack so the chevron keeps the
   // right edge. They wrap rather than clip - see the as-of date above.

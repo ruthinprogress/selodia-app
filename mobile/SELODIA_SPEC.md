@@ -1566,13 +1566,32 @@ One-tap export from My Rules — clean, plain language summary suitable to share
 
 *Layout logic to carry: each section opens with a small label, a title and a one-line subtitle; rows put the name on the left and the value on the right, with light dividers; cards carry a small status badge; later tiers of a progression are dimmed rather than hidden; a context callout sits above the lists it explains. Not carried: the dark ground and green accent, because the brand is light, and the red cross and green tick on Never and Always, which read as verdicts.*
 
-**Further decisions it raises.**
+---
 
-9. **My Week: a cadence list or a calendar?** Her own reference is a cadence list. The brief describes slots with days and times, and classes placed week to week. Recommended: her shape, a cadence list with a purpose line, with a day and time shown only where a class really is fixed. That also answers decision 7, since nothing would need placing by hand.
+### BUILT, 2026-09-28 overnight. What the sections above actually became.
+
+**Ruth's session brief settled the open questions below, and the spine was built the same night** on branch `plans-and-onboarding-spine`. Where a recommendation above was overruled, the recommendation is left standing and the outcome is recorded here rather than the text being quietly rewritten.
+
+| | Decided | Built as |
+| --- | --- | --- |
+| **Week** | **A cadence list**, as recommended and as her own reference draws it | `user_week`. Activity, purpose, cadence, duration, days. **No completion column at all**, so nothing can ever be marked done or missed |
+| **Week vs Sessions** | **Two objects, not two views of one.** A cadence, and a thing to do | A week row **points at** its session (`session_entry_id`). One Tuesday, never two |
+| **Skills** | **Now / Next / Goal, and NO TIMEFRAMES** — which overrules her own reference's "MONTHS 3-6" and "MONTHS 6-18" headings | `user_skills` + `user_skill_rungs`. There is no months column, so a deadline cannot return by accident |
+| **Rules** | A segment of Plans, **and a hard exclusion in code** | `app/lib/rules-gate.ts`, run before a plan is stored rather than before it is shown |
+| **After** | **Inside a session, at the end of it.** Not a section | Not yet built. A routine detached from the session it follows is a thing to remember |
+| **Plan** | **Stays in Almanac › Me**, as mapped above. Food targets show on Today | Unchanged |
+| **Goals** | **Top of Plans**, above the segmented control, on every segment | `user_goals` plus the chat-written `user_context` goals, read together |
+| **In-session counters** | The tick stays; the counter and progress bar do not | Unchanged, and now also a standing rule across Week and Skills |
+
+**The one thing the reference wanted that the library cannot do.** Her joy track is a handstand and muscle-up ladder. Checked against all 923 clips: **zero handstand, zero muscle up, zero scapular, zero dead hang, and no bar dip** — every "split" clip is a split squat. So only ladders that can be demonstrated end to end are seeded (a strict pull-up, hanging core, the front lever), and the ten missing movements are a gap list in `mobile/src/lib/skill-ladders.ts`, each line a commission brief. `scripts/check-skill-clips.mjs` queries the library rather than trusting a comment.
+
+**Further decisions it raised, and where they landed.**
+
+9. **My Week: a cadence list or a calendar?** Her own reference is a cadence list. The brief describes slots with days and times, and classes placed week to week. Recommended: her shape, a cadence list with a purpose line, with a day and time shown only where a class really is fixed. That also answers decision 7, since nothing would need placing by hand. **Built as recommended.** Days exist on a week row but are set only in Guide me.
 10. **Plans by goal, or also by place?** Her reference groups sessions by where they happen (gym, park). The brief groups plans by goal only. Both, or goal only?
-11. **Where does the joy track live?** Recommended: a goal in My Plans can carry a ladder like hers, with Now, Next and Goal tiers and what each step needs first, so the progression sits with the plans that build it.
-12. **Where do the after-session routine and the daily movement goals go?** Recommended: daily cadences join My Week, where her own reference already lists walking and running; the after-session routine becomes an Always rule attached to the sessions it follows. One caution: a walking baseline measured in steps is one the app cannot currently see, because step tracking has never read a step (Part Four).
-13. **In-session counters.** Her Gym and Park pages show "1 of 8 done" with a progress bar. The brief and the Witness Principle both rule out completion rates. Recommended: the per-exercise tick stays, because it records what was done, and the counter and progress bar do not come across.
+11. **Where does the joy track live?** Recommended: a goal in My Plans can carry a ladder like hers, with Now, Next and Goal tiers and what each step needs first, so the progression sits with the plans that build it. **Overruled, and better: Skills is its own segment of Plans**, and a rung links to the session that trains it rather than the ladder living inside a plan.
+12. **Where do the after-session routine and the daily movement goals go?** Recommended: daily cadences join My Week, where her own reference already lists walking and running; the after-session routine becomes an Always rule attached to the sessions it follows. **Daily cadences are in My Week as recommended. The routine is NOT built** — it belongs at the end of a session, and a routine detached from the session it follows is a thing to remember rather than a thing that happens. One caution: a walking baseline measured in steps is one the app cannot currently see, because step tracking has never read a step (Part Four).
+13. **In-session counters.** Her Gym and Park pages show "1 of 8 done" with a progress bar. The brief and the Witness Principle both rule out completion rates. Recommended: the per-exercise tick stays, because it records what was done, and the counter and progress bar do not come across. **Built as recommended, and hardened: `user_week` has no completion column at all**, so the rule is enforced by the schema rather than by everybody remembering it.
 
 ### Ruth's answers, 2026-09-12. MOVEMENT BRIEF CONFIRMED.
 
@@ -3353,11 +3372,21 @@ Recorded from Ruth's Balance assessment and handoff. **Competitor analysis is in
 
 **No community feature. Do not build or spec one.** Ruth's decision, for two reasons that both stand on their own: she finds community exhausting, and a feature where users exchange medical details and advice carries moderation and safety obligations a one-person company cannot meet. **Checked 2026-09-28: nothing in this specification proposes one**, so this is a rule rather than a removal.
 
-**A claim needs a source.** The full rule, its ranking, and the four ways the current build contradicts it are in `SAFETY_ARCHITECTURE.md` §10. Not restated here.
+**Health claims are handled in layers, not by a gate.** Ruth replaced her own vetted-source instruction on 2026-09-28: a gate checking every claim against a list would misfire the way the allergy gate did, and a model restricted to a list becomes stilted. The six layers, the proposed red-flag list and the health test set are in `SAFETY_ARCHITECTURE.md` §10. **Her sign-off on the list and the test set is required before any of it is built.** Not restated here.
 
-**"Worth raising with a doctor."** `SAFETY_ARCHITECTURE.md` §11.
+**"Worth raising with a doctor."** `SAFETY_ARCHITECTURE.md` §11, and §11a for the early-menopause case built on it.
 
-**Onboarding must not assume one situation.** A Balance reviewer with surgical or induced menopause reported that its flow did not reflect her. Selodía's life-stage question (proposed 2026-09-28, *Onboarding, menopause and price*) must therefore cover **surgical and induced menopause and early onset**, not only the natural transition, and every branch must be skippable. **This changes the proposed wording**, which currently offers regular / changed / stopped / not sure / rather not say — "stopped" alone does not distinguish a woman of 52 from a woman of 38 after surgery, and the difference matters to how the app should talk to her.
+**Onboarding must not assume one situation, and "stopped" was doing too much work.** A Balance reviewer with surgical or induced menopause reported that its flow did not reflect her. **The five-option wording proposed in *Onboarding, menopause and price* is superseded** by the branches in *Menopause proposal — life stage branches, GP report, copy* (2026-09-28), because one answer cannot serve a woman of 54 after a natural menopause, a woman of 38 after surgery, and a woman of 45 with a coil who has no bleeding and is still cycling.
+
+The branches are: natural · surgical · induced by treatment · **another reason (coil, implant, hysterectomy, treatment)** · not sure · rather not say, with a follow-up only where it changes something. **The case most easily got wrong is the coil: no bleeding does not mean not cycling**, and for her, symptom tracking is the only signal there is. Every branch is skippable.
+
+**BUILT the same night (2026-09-28), with Ruth's ninth option.** `user_profile.life_stage` now holds one of nine values and `mobile/src/lib/life-stage.ts` holds what each one changes. The ninth is **"I don't have periods for another reason"** — a coil, a hysterectomy with the ovaries kept, or treatment — and it exists because a 45-year-old with a Mirena has no bleeding and is still cycling, so none of the other eight fit her and both of the answers she would pick are wrong.
+
+**Her rule for that branch, and it is the whole point of it: never infer menopause status from absent periods.** `stageForReasoning()` returns null there, so anything that wants to say "because you are post-menopausal" has to ask and be told no. Period logging goes off, Cycle shows symptoms and observations only, and the cycle day is hidden on Today.
+
+**Surgical means the ovaries were removed.** A hysterectomy that keeps them is not surgical menopause and belongs under "another reason" — she is still cycling, with nothing to bleed.
+
+**The cycle day now answers to life stage, not only to staleness.** The 45-day bound protects a woman who stopped logging; it did nothing for one who had told us where she is, and a five-week-old period start on a post-menopausal profile still produced "Cycle day 34". Only a regular cycle gets a cycle day; **not sure and prefer-not-to-say get silence**, which is the honest answer when the app does not know.
 
 **Chat-based logging is a core differentiator, so it must work every time.** Balance's tap-based journal has no free text, and its reviewers ask for one. That advantage is only real while the logging is reliable, which is why it sits inside the wave-zero gate rather than beside it.
 
