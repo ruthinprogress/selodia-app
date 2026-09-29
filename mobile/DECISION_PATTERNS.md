@@ -349,3 +349,16 @@ It was in three places - the schema, the server, and the app - and the schema wa
 
 The rule: **when a value appears where nobody chose it, check the schema before concluding you have found the cause.** A `DEFAULT` clause is a decision somebody made once and nobody has read since, and it outranks every line of application code that comes after it. (28 September 2026.)
 
+
+
+**A tool that drives the real app against real data must be unable to write, not trusted not to.** The screenshot script signs in as Ruth and clicks things by matching label text. It answered the Gym cadence question that was hers to answer, took Gym off two days, and moved an activity to Sunday. I restored all three, tightened the selectors, and that would have been the whole fix - a more careful click.
+
+The rule was already written down in this repository, in check-food-parse.mjs: *"it is her production database, and a verification that changes the thing it is verifying is not a verification."* That file stubs the client so a write is impossible. The screenshot script had the same access and no such guard, because it felt like a camera rather than a client.
+
+So the fix is not better selectors. Every mutating request to Supabase is aborted at the network layer during a shoot, and the run prints what it tried to send. The printout turned out to be the useful half: a later run reported a blocked PATCH, and that line was the proof the drag had completed end to end - a thing no screenshot could show. **A guard at the write is cheaper than the care it replaces, and it tells you things care never would.** (29 September 2026.)
+
+**A substitution you make quietly becomes a bug report she has to write.** Ruth asked for long-press and drag. A cross-container drag is genuinely hard to verify without a device, so I built the hold as a shortcut to a chooser sheet instead, and wrote the trade-off at the top of the file in four careful paragraphs. Then I told her: *"Hold a card and move it to another day."*
+
+She read that as drag, because it is drag. She tested it, it did nothing, and she spent a message diagnosing a feature that had never been built - asking, reasonably, whether it needed a native module her build was missing.
+
+The comment was not the problem; the comment was good. **The trade-off was recorded where only I would read it, and described to her in words that hid it.** A decision to build something smaller than what was asked is hers to accept or refuse, and she can only do that if the message that ships it says so in the first sentence. The test is simple: if she would be surprised to learn what the code actually does, the summary is wrong however true each of its words is. (29 September 2026.)
