@@ -104,9 +104,32 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
     // the fix is not to unpin it but to give it something to sit on. A disc in
     // the page colour is invisible where the page is plain, which is the top of
     // every screen at rest, and hides whatever passes under it once scrolled.
-    <View
-      style={[styles.mark, { top: insets.top + TOP_GAP, backgroundColor: theme.background }]}
-    >
+    <>
+      {/* A BAND, NOT A DISC (2026-09-29). Ruth: "The floating seed menu covers
+          content when scrolling - it currently sits over '1.5 hrs' on the
+          Ballet card. Keep it clear of content on every screen."
+
+          The disc below was added on 25 September for this exact problem and
+          only half solved it. It gave the mark something to sit ON, so scrolled
+          content no longer ran THROUGH the seeds - but a 34-point disc parked
+          in the middle of a card still hides whatever is under it, which from
+          the reading side is the same complaint. Occluding content is not the
+          same as being clear of it.
+
+          A full-width band in the page colour is what every app does at the top
+          of a scroller: content passes behind a clean edge instead of colliding
+          with a shape. It is exactly as tall as the mark needs and no taller,
+          so it takes nothing from the screen at rest. */}
+      <View
+        pointerEvents="none"
+        style={[
+          styles.band,
+          { height: insets.top + TOP_GAP + MARK_SIZE + 12, backgroundColor: theme.background },
+        ]}
+      />
+      <View
+        style={[styles.mark, { top: insets.top + TOP_GAP, backgroundColor: theme.background }]}
+      >
       {spotlight ? (
         // THE ONE POINTABLE CROSS-SCREEN STEP (build item 23): "where do I get
         // my data" pulses this, the tap opens Settings, and the export
@@ -118,11 +141,22 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
       ) : (
         button
       )}
-    </View>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  band: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    // Under the mark, over the page. The mark's own zIndex is higher so the
+    // seeds are never hidden by their own ground.
+    zIndex: 9,
+    elevation: 9,
+  },
   mark: {
     position: 'absolute',
     // Round, and a little larger than the mark, so the ground reads as a disc

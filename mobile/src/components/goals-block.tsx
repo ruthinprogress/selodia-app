@@ -1,45 +1,37 @@
-import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { displayGoal } from '@/lib/goal-display';
 import { supabase } from '@/lib/supabase';
 
 // WHAT YOU'RE WORKING TOWARDS. The top of Plans, above the segmented control.
 //
-// MOVED FROM SETTINGS > PROFILE, where it was a read-only group at the bottom
-// of a page about height and date of birth. Settings is plumbing: account,
-// notifications, what happens to your data. A goal is not plumbing, it is the
-// reason the rest of Plans exists, and it belongs above the things that serve
-// it.
+// ONE SOURCE NOW, AND IT IS user_goals. This block used to read user_goals AND
+// user_context and concatenate them, which produced exactly what Ruth found:
+// the same goal twice, and a superseded one that never went away. The fix is a
+// database trigger that mirrors any goal written to user_context into
+// user_goals, so there is one place to read and the guard sits at the write
+// where a future writer cannot miss it.
 //
-// TWO SOURCES, ON PURPOSE, AND BOTH ARE REAL.
+// CURRENT ONLY. History lives on the Goal screen and nowhere else, which is her
+// instruction and is also the right shape: a list that shows everything you
+// have ever wanted is a list you stop reading.
 //
-//   user_context (category = 'goal') is what CHAT writes, in her own words.
-//   Ruth's account carries two of them, including "reduce body fat and get back
-//   into old jeans", which is a better sentence than anything a dropdown will
-//   ever produce and is exactly why the chat path is not being replaced.
+// CAPITALISED AT RENDER, NEVER IN THE DATABASE. See lib/goal-display.ts.
 //
-//   user_goals is what the TAPS write, from the seven options in lib/goals.ts,
-//   and those rows are the ones that set a focus state.
-//
-// Reading both is the honest arrangement while chat still writes to
-// user_context. Merging them into one table would mean changing the chat
-// pipeline, which is not this slice's job, and doing it halfway would mean a
-// goal that shows in one place and not the other. Worth consolidating later;
-// noted rather than quietly deferred.
-//
-// NO COUNTERS, NO PERCENTAGES, NO BARS, and no sense of a deadline. Each goal
-// is one line. The optional measure underneath is what she said, quoted back,
-// and nothing counts down from it.
+// NO COUNTERS, NO PERCENTAGES, NO BARS, and no sense of a deadline.
 
 export type Goal = {
   id: string;
   label: string;
   detail: string | null;
+  set_on: string | null;
 };
 
 export const GOALS_EMPTY = 'Nothing set yet';
@@ -47,6 +39,7 @@ export const GOALS_EMPTY_BODY =
   'Say what you would like to work towards in chat, and it will show here.';
 
 export function GoalsBlock() {
+  const theme = useTheme();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -54,32 +47,14 @@ export function GoalsBlock() {
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [tapped, written] = await Promise.all([
-          supabase
-            .from('user_goals')
-            .select('id, label, detail')
-            .order('sort_order', { ascending: true })
-            .order('created_at', { ascending: true }),
-          supabase.from('user_context').select('id, category, content'),
-        ]);
+        const { data, error } = await supabase
+          .from('user_goals')
+          .select('id, label, detail, set_on')
+          .is('archived_at', null)
+          .order('set_on', { ascending: false })
+          .order('created_at', { ascending: false });
         if (cancelled) return;
-
-        const fromTaps = (tapped.error ? [] : ((tapped.data ?? []) as Goal[]));
-        const fromChat = (written.error ? [] : (written.data ?? []))
-          .filter((row) => {
-            const r = row as { category: string | null };
-            return (r.category ?? '').toLowerCase().includes('goal');
-          })
-          .map((row) => {
-            const r = row as { id: string; content: string };
-            // Her own sentence is the label. There is no detail line, because
-            // there is nothing to separate out: she said one thing.
-            return { id: `context:${r.id}`, label: r.content, detail: null };
-          });
-
-        // Taps first, then her own words. The tapped ones set the targets, so
-        // they are the ones an answer on this screen explains.
-        setGoals([...fromTaps, ...fromChat]);
+        setGoals(error ? [] : ((data ?? []) as Goal[]));
         setLoaded(true);
       })();
       return () => {
@@ -114,14 +89,26 @@ export function GoalsBlock() {
         </Pressable>
       ) : (
         goals.map((goal) => (
-          <ThemedView key={goal.id} type="backgroundElement" style={styles.card}>
-            <ThemedText type="small">{goal.label}</ThemedText>
-            {goal.detail ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                {goal.detail}
-              </ThemedText>
-            ) : null}
-          </ThemedView>
+          <Pressable
+            key={goal.id}
+            onPress={() => router.push({ pathname: '/goal', params: { id: goal.id } })}
+            accessibilityRole="link"
+            accessibilityLabel={`${displayGoal(goal.label)}. Open the goal`}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedView type="backgroundElement" style={[styles.card, styles.cardRow]}>
+              <View style={styles.cardText}>
+                <ThemedText type="small">{displayGoal(goal.label)}</ThemedText>
+                {goal.detail ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {goal.detail}
+                  </ThemedText>
+                ) : null}
+              </View>
+              {/* accentDeep rather than accent: full-strength terracotta on sand
+                  is 2.43:1, under even the 3:1 a non-text control needs. */}
+              <Ionicons name="chevron-forward" size={16} color={theme.accentDeep} />
+            </ThemedView>
+          </Pressable>
         ))
       )}
     </ThemedView>
@@ -142,5 +129,13 @@ const styles = StyleSheet.create({
     borderRadius: CardRadius,
     gap: Spacing.one,
   },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  // Takes the slack so the chevron keeps the right edge, and wraps rather than
+  // clipping when a goal runs to two lines - which most of them do.
+  cardText: { flex: 1, gap: Spacing.one },
   pressed: { opacity: 0.7 },
 });

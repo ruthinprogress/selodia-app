@@ -163,7 +163,11 @@ export function SegmentedTabs<T extends string>({
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.75}
-              maxFontSizeMultiplier={1.3}
+              // 1.25 rather than 1.3, for the same fourth-tab reason as the
+              // font size. Capped at all because a tab-bar label that wraps
+              // or loses letters is less readable than a slightly smaller one,
+              // which is what most apps' tab controls do.
+              maxFontSizeMultiplier={1.25}
               textBreakStrategy="simple"
             >
               {item.label}
@@ -200,19 +204,37 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 8,
-    // Small on purpose. At 12 either side there was about 100 points a third,
-    // 76 left for the word, and "Measurements" needs about 88.
-    paddingHorizontal: 4,
+    // TWO, NOT FOUR, FROM 2026-09-29. The control was built for THREE tabs and
+    // Plans gave it four, so every tab lost a quarter of its width at a stroke
+    // and "Week" - the shortest label of the four - came back as "Wee".
+    //
+    // The arithmetic, at 390pt with the page inset: the track is about 326
+    // wide, less 3 of inset either side, a quarter of which is 80 a tab. Four
+    // points of padding either side left 72 for the word; two leaves 76.
+    paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // WITHOUT THIS A FLEX CHILD WILL NOT GO BELOW ITS CONTENT WIDTH, so a long
+    // label pushes its own tab wider, steals width from its neighbours, and the
+    // one that loses is whichever comes last. minWidth:0 is what makes `flex:1`
+    // mean "an equal quarter" rather than "at least my content".
+    minWidth: 0,
   },
   label: {
     textAlign: 'center',
-    // A control's label, not body text.
-    fontSize: 13,
-    // Never squeezed by the layout: the tab supplies the width, and the word
-    // keeps whatever it needs of it.
-    flexShrink: 0,
+    // TWELVE, FROM 2026-09-29, for the fourth tab. At 13 the margin on
+    // "Sessions" was a couple of points; at 12 it is about 24, and at the 1.25
+    // cap below the worst case is roughly 62 points of word in 76 of room.
+    //
+    // A point smaller on a control label is not a legibility cost worth
+    // arguing about. A word missing its last letter is.
+    fontSize: 12,
+    // SHRINK RATHER THAN OVERFLOW. This was flexShrink: 0 - "the tab supplies
+    // the width, and the word keeps whatever it needs of it" - which is true
+    // right up until the word needs more than the tab has, and then it
+    // overflows and is clipped by the parent with no ellipsis to show for it.
+    // That is what "Wee" was.
+    flexShrink: 1,
   },
   pressed: { opacity: 0.7 },
 });

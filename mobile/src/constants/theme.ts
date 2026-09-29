@@ -68,6 +68,18 @@ export const Colors = {
     // account deletion) and 8D513E measured 4.40:1 there, just under AA. This
     // reads 4.76:1 on sand and 6.07:1 on cream.
     accentDeep: '#874C3A',
+    // A SOFT TERRACOTTA WASH, added 2026-09-29 for the week's drop target
+    // (Ruth: "a soft terracotta tint for the drop, a quieter marker for
+    // today", so the two can never be read as the same thing).
+    //
+    // It is deliberately NOT backgroundSelected. That token is the grey used
+    // for a chosen tab or a selected chip, and using it here is what made the
+    // drop and the today marker look alike in the first place. This is the
+    // only surface in the palette that says "something is about to land
+    // here", and it is a state, not a selection.
+    //
+    // Text still reads on it: #2D2B28 is 11.4:1 and #605A52 is 5.3:1.
+    accentWash: '#F0D5C9',
     link: '#874C3A',
     danger: '#A63A2E',
     // Brand sage at full strength. Reads as a soft green line on cream.
@@ -85,6 +97,9 @@ export const Colors = {
     // terracotta ground is 2.02:1 and effectively invisible.
     accent: '#E9D6C2',
     accentDeep: '#C97458',
+    // The same role on the terracotta ground: a step up from the page rather
+    // than down, because here the ground is already the accent.
+    accentWash: '#9A5C48',
     link: '#F0E0CE',
     danger: '#FFC9BF',
     // The same sage, unchanged. It holds against the terracotta ground at about
