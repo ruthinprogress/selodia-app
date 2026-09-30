@@ -28,7 +28,7 @@
 
 import assert from 'node:assert';
 
-import { claimsAWrite, falseClaimNote, stripMachineOutput } from '../app/lib/claimed-write.ts';
+import { claimsAWrite, falseClaimNote, stripMachineOutput, stripSaveClaims } from '../app/lib/claimed-write.ts';
 import { unsavedNote } from '../app/lib/save-honesty.ts';
 
 let pass = 0;
@@ -55,7 +55,10 @@ check('OLD: save-honesty stayed silent, because nothing attempted a write', () =
 check('NEW: the false claim is caught', () => {
   const note = falseClaimNote({ reply: PEANUT_REPLY, wrote: [] });
   assert.ok(note, 'the guard must speak when a write was claimed and none happened');
-  assert.ok(/nothing was saved/i.test(note), `the note must say nothing was saved, got: ${note}`);
+  // Wording changed on 30 September: it used to say "nothing was saved to your
+  // log", and a Me card is not a log. The assertion is about the meaning.
+  assert.ok(/did not save/i.test(note), `the note must say it did not save, got: ${note}`);
+  assert.ok(!/your log/i.test(note), 'it must not call her record a log');
 });
 
 check('NEW: and it says what it cannot do, when the caller knows', () => {
@@ -196,6 +199,61 @@ check('THE MAGNESIUM TURN: a claim with a real write is left alone', () => {
   // 11:35:17 - Magnesium Glycinate really was created, two seconds before.
   const stripped = stripMachineOutput(LEAKED_MAGNESIUM);
   assert.equal(falseClaimNote({ reply: stripped, wrote: ['me card'] }), null);
+});
+
+
+// ------------------------------------------------- THE 1:12 CONVERSATION
+//
+// Replayed from chat_messages, verbatim. Ruth pasted her routine, the app
+// proposed it, she said a plain "Yes", and nothing was written - and the
+// correction arrived twice, once stapled to the PROPOSAL.
+
+const PROPOSAL_1_12 = [
+  '**Skincare Routine**',
+  '',
+  'Morning',
+  '- Niacinamide (Vitamin B3) — strengthens barrier, reduces redness/inflammation, minimises pores, regulates oil. Calming and protective for morning. Also targeted at the rosacea-type redness on your cheeks.',
+  '',
+  'Evening (alternating)',
+  '- Vitamin C (Ascorbyl Glucoside) — antioxidant, brightens, boosts collagen, fades hyperpigmentation and uneven freckle tone. Needs time to work, so used at night.',
+  '',
+  'Alternating vitamin C and retinol at night to give skin a break between actives. Together addressing fine lines around the eyes, under-eye laxity, enlarged pores, and the freckle merging noted back in June.',
+  '',
+  'Shall I save it this way?',
+].join('\n');
+
+check('THE PROPOSAL IS NOT A CLAIM - no correction is stapled to it', () => {
+  const note = falseClaimNote({ reply: PROPOSAL_1_12, wrote: [] });
+  assert.equal(note, null, `a question asking to save must never be corrected, got: ${note}`);
+});
+
+check('"noted back in June" is a date, not a confirmation', () => {
+  assert.equal(claimsAWrite('the freckle merging noted back in June'), null);
+});
+
+check('", noted." at the end of a sentence still is a confirmation', () => {
+  assert.ok(claimsAWrite('Two spoons of peanut butter added to the yoghurt bowl, noted.'));
+});
+
+check('the proposal survives the strip untouched', () => {
+  assert.equal(stripSaveClaims(PROPOSAL_1_12), PROPOSAL_1_12);
+});
+
+check('THE YES TURN: the model claim is removed rather than argued with', () => {
+  const claimed = "That's saved to your Me tab.";
+  assert.equal(stripSaveClaims(claimed), '', 'the claim sentence must go');
+});
+
+check('a real reply keeps everything except the claim', () => {
+  const mixed = "Retinol at night makes sense with the vitamin C. That's saved to your Me tab.";
+  const out = stripSaveClaims(mixed);
+  assert.ok(out.includes('Retinol at night makes sense'));
+  assert.ok(!/saved/i.test(out));
+});
+
+check('the failure wording does not call her Me card a log', () => {
+  const note = falseClaimNote({ reply: "I've saved that.", wrote: [] });
+  assert.ok(note && !/your log/i.test(note), `got: ${note}`);
 });
 
 for (const f of failures) console.error('  FAIL  ' + f);

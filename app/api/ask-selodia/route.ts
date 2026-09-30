@@ -8,7 +8,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // single largest block of prompt that a spoken exchange cannot use. Text turns
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
-import { falseClaimNote, stripMachineOutput } from '../../lib/claimed-write';
+import { falseClaimNote, stripMachineOutput, stripSaveClaims } from '../../lib/claimed-write';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
@@ -3259,7 +3259,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // NOTHING MACHINE-SHAPED REACHES HER. See stripMachineOutput: on 30
         // September her reply opened with a proposedSave object because I had
         // handed the writer a block that told it to emit one.
-        replyBody = stripMachineOutput(written.text);
+        // MACHINE OUTPUT OUT, THEN THE MODEL'S SAVE CLAIMS OUT.
+        //
+        // The prompt has forbidden "that's saved" since 27 September and the
+        // model keeps writing it. Removing the sentence is better than
+        // appending a contradiction: on 30 September she got "That's saved to
+        // your Me tab." and "nothing was saved" in one message, which is two
+        // voices disagreeing about her own record.
+        //
+        // Whatever the app actually did is stated by the app, below.
+        replyBody = stripSaveClaims(stripMachineOutput(written.text));
 
         // AND THE CLAIM GUARD BELONGS HERE, ON THE PATH THAT WRITES HER REPLY.
         //
@@ -3270,8 +3279,19 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // wrong reply.
         //
         // Recomputed here against what she will actually read.
-        const liveClaim = falseClaimNote({ reply: replyBody, wrote: wroteThisTurn });
-        notesStillToAppend = liveClaim ? [liveClaim] : [];
+        // THE APP'S OWN SENTENCE, and only the app's.
+        //
+        // A save that worked is announced by saveNote/meNote, which are built
+        // from the write result. A claim the model made that did NOT happen has
+        // already been removed above, so the honest note is only needed when
+        // something was genuinely attempted and lost - which is what
+        // falseClaimNote still covers for the cases the strip cannot see.
+        const liveClaim = falseClaimNote({ reply: written.text, wrote: wroteThisTurn });
+        notesStillToAppend = [
+          ...(saveNote ? [saveNote] : []),
+          ...(meNote ? [meNote] : []),
+          ...(liveClaim ? [liveClaim] : []),
+        ];
       } else {
         // THE NOTES SURVIVE A BLOCK, same as above and for the same reason: they
         // are statements about what the app DID with her data, still true and

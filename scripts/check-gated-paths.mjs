@@ -68,9 +68,12 @@ function audit(source) {
   // rather than being loosened to match anything.
   // The capture above stops at the first non-identifier character, so a wrapped
   // adoption reads as the wrapper's name rather than the whole expression.
-  const written = assignments.find(
-    (a) => a.from === 'written.text' || a.from === 'stripMachineOutput'
-  );
+  // AN ALLOW-LIST, DELIBERATELY, rather than "anything containing written.text".
+  // Each new wrapper has to be added here by hand, which forces whoever adds one
+  // to look at this check and confirm the gate still runs before the reply is
+  // adopted. That is the whole job of this file.
+  const ADOPTIONS = ['written.text', 'stripMachineOutput', 'stripSaveClaims'];
+  const written = assignments.find((a) => ADOPTIONS.includes(a.from));
   if (!written) {
     failures.push(
       "Could not find `replyBody = written.text`, which is how the rebuilt path's " +

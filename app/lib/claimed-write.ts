@@ -43,8 +43,17 @@
  * already exists does not match, because it is not claiming to have made one.
  */
 const CLAIMS: RegExp[] = [
-  // "noted", "duly noted", "... , noted." - the peanut butter reply.
-  /\bnoted\b/i,
+  // "noted" AS A CONFIRMATION, not as a date.
+  //
+  // This was `/\bnoted\b/` and on 30 September it fired on "the freckle merging
+  // noted back in June" - her own phrase about when something was observed - so
+  // a proposal that claimed nothing got a correction stapled to it. A word is
+  // not a claim; a word in a position is.
+  //
+  // Matches "…, noted." at the end of a sentence, and "duly noted". Never
+  // "noted back in June", "noted months ago", "you noted".
+  /(?:^|[,;]\s*|\s)noted\s*[.!]?\s*$/im,
+  /\bduly noted\b/i,
   // "added to", "I've added", "adding that"
   /\b(?:i(?:'ve| have)\s+)?added\b/i,
   // "saved", "I've saved", "that's saved"
@@ -92,6 +101,16 @@ const NOT_A_CLAIM: RegExp[] = [
   /\byou(?:'ve| have)?\s+(?:already\s+)?(?:added|saved|logged|updated|noted)\b/i,
 ];
 
+/**
+ * A QUESTION IS NOT A CLAIM.
+ *
+ * "Shall I save it this way?" is the app asking permission, and on 30 September
+ * a correction was appended to exactly that - so the offer and its retraction
+ * arrived in the same message, and she was told nothing had been saved before
+ * she had even been asked.
+ */
+const IS_AN_OFFER = /\b(?:shall i|would you like|want me to|do you want me to|should i)\b[^.?!]*\?/i;
+
 /** Split into sentences so one true clause cannot excuse a false one. */
 function sentences(text: string): string[] {
   return text
@@ -105,11 +124,39 @@ function sentences(text: string): string[] {
  * null. Returned rather than a boolean so a caller can quote it.
  */
 export function claimsAWrite(reply: string): string | null {
+  // A reply that ASKS to save has not claimed to have saved.
+  if (IS_AN_OFFER.test(reply)) return null;
   for (const sentence of sentences(reply)) {
     if (NOT_A_CLAIM.some((re) => re.test(sentence))) continue;
     if (CLAIMS.some((re) => re.test(sentence))) return sentence;
   }
   return null;
+}
+
+/**
+ * REMOVE THE CLAIM RATHER THAN ARGUE WITH IT.
+ *
+ * Ruth, 30 September: the guard "contradicts the app's own confirmation in the
+ * same message". She is right, and appending was the wrong shape from the
+ * start - it produced "That's saved to your Me tab." followed immediately by "I
+ * need to correct that: nothing was saved", which is two voices disagreeing in
+ * front of her about her own record.
+ *
+ * The prompt has told the model since 27 September never to say something is
+ * saved (NO_RECEIPTS: "the app shows its own save confirmation"), and it says
+ * it anyway. So the sentence comes out. What remains is what the model actually
+ * said to her, and the app adds its own confirmation only when a write really
+ * happened.
+ *
+ * ONE VOICE, and it is the app's, for the one thing only the app knows.
+ */
+export function stripSaveClaims(reply: string): string {
+  if (IS_AN_OFFER.test(reply)) return reply;
+  const kept = sentences(reply).filter((sentence) => {
+    if (NOT_A_CLAIM.some((re) => re.test(sentence))) return true;
+    return !CLAIMS.some((re) => re.test(sentence));
+  });
+  return kept.join(' ').replace(/\s{2,}/g, ' ').trim();
 }
 
 /**
@@ -212,7 +259,10 @@ export function falseClaimNote(outcome: WriteOutcome): string | null {
   if (!claim) return null;
 
   if (outcome.cannot) {
-    return `I need to correct that: nothing was saved. I can't ${outcome.cannot} yet.`;
+    return `That did not save. I can't ${outcome.cannot} yet.`;
   }
-  return "I need to correct that: nothing was saved to your log just now, so that change isn't recorded.";
+  // NOT "your log". A Me card is not a log, and being told a skincare routine
+  // failed to reach "your log" is the app describing her record in a word she
+  // would not use for it.
+  return 'That did not save, so it is not in your record.';
 }

@@ -78,7 +78,21 @@ check('it must summarise rather than copy a long paste', () => {
 });
 
 check('it must not write an outcome she did not state', () => {
-  assert.ok(/never write that something is working, helping or showing a result/i.test(prompt));
+  // Tightened 30 September after "Redness already reducing" appeared in a
+  // proposal. She had not typed it - it came out of the text she pasted, which
+  // is not the same as her saying it.
+  assert.ok(/only what she typed/i.test(prompt), 'the pasted-text rule must be stated');
+  assert.ok(
+    /never propose or store a current result or a prediction/i.test(prompt),
+    'a result and a prediction must both be named'
+  );
+  assert.ok(/redness already reducing/i.test(prompt), 'the real example earns its place');
+});
+
+check('proposals must be glanceable, grouped, and free of markdown', () => {
+  assert.ok(/one line per thing/i.test(prompt));
+  assert.ok(/group them under morning and evening/i.test(prompt));
+  assert.ok(/never asterisks or other markdown/i.test(prompt));
 });
 
 check('it must never scold her for repeating herself', () => {

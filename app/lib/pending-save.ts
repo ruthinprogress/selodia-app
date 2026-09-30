@@ -93,9 +93,30 @@ export function coerceProposal(v: unknown): ProposedSave | null {
   // The status is optional on purpose: a supplement has one, a weekly call does
   // not.
   if (type === 'me') {
+    // A SECTION IS NOT REQUIRED, AND REQUIRING IT LOST HER SKINCARE CARD.
+    //
+    // On 30 September at 12:11 she pasted her routine, the app proposed it, she
+    // said Yes, and nothing was written. No pending_save row was ever stored,
+    // because this line rejected the proposal.
+    //
+    // WHY IT REJECTED IT. When the model returns `content` as prose rather than
+    // an object - which is what it does for anything complicated - the block
+    // above turns it into `{ summary: text }`. That has no `section`, so this
+    // returned null. The magnesium card, being one line, came back as a
+    // structured object with a section and saved perfectly. So it looked like
+    // multi-item saves failing, and it was really prose-shaped content failing.
+    //
+    // AND THE RULE WAS STRICTER THAN THE DATA. `commitSave` passes the section
+    // through as the category and null is allowed there; her own "Vitamin D,
+    // 1000iu" card has had `section: null` since it was created. The Almanac
+    // has never needed one.
+    //
+    // The WHY stays required. That is the card's whole point - a name with no
+    // reason is a checklist item - and a proposal with no reason is a decision
+    // moment nobody identified.
     const section = normaliseSection(content.section);
     const why = str(content.why) ?? str(content.summary);
-    if (!section || !why) return null;
+    if (!why) return null;
     // A PROTOCOL MADE OF PARTS (2026-09-30). A Me card may carry items - name,
     // when, a one-line purpose - so three skincare products are three things
     // with their own timings rather than one paragraph. Optional: a weekly call
