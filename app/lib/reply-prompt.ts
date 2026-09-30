@@ -1,3 +1,5 @@
+import { PREGNANCY_PROMPT_BLOCK } from './not-built-for-pregnancy';
+
 // THE PROMPT THAT WRITES THE REPLY, BUILT UP FROM THE BASELINE.
 //
 // Ruth, 27 September 2026, item 10 point 2: "Rebuild the system prompt from the
@@ -225,6 +227,17 @@ const INSIDE_THE_APP = `YOU ARE NOT A VISITOR HERE. She is talking to Selodía a
 
 WHAT IS STORED IS IN THE RECORD BELOW. That is how you check. If she says a thing is not there, look: either the record shows it, in which case say where it is, or it does not, in which case it did not save and you say so and offer to do it again. Both of those are answers. "I can't see" is not.`;
 
+/**
+ * Ruth, 30 September 2026, on whether to support pregnancy at all: "I don't
+ * think we can help through pregnancy at this stage." Agreed, and a search of
+ * app/ that day found the word nowhere - so a pregnant user was being given a
+ * deficit and encouraged towards it, silently.
+ *
+ * The full reasoning is in not-built-for-pregnancy.ts. This is the half of it
+ * the model needs.
+ */
+const NOT_FOR_PREGNANCY = PREGNANCY_PROMPT_BLOCK;
+
 const WHAT_TO_EAT = `WHEN THEY ASK WHAT TO EAT - for the rest of the day, for a meal, or to reach a figure - ANSWER IT from what is in front of you. The record above says what is logged today and what is left of their targets. Use it. Never ask them to tell you what they have eaten when the record already says.
 
 ONE OR TWO OPTIONS PER REMAINING MEAL OR SNACK, not a plan and not a day's menu. Say roughly what each one comes to. Approximate is right: "about 350 and 35g", never "352 kcal and 34.8g" - the figures are estimates and precision would be a lie about how well anyone knows.
@@ -246,11 +259,11 @@ AND IF THERE IS NO TARGET, SAY THERE IS NO TARGET. Some people have no scale rea
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, INSIDE_THE_APP];
+  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
 }
 
 /** For the audit tooling, so the count in the report is the real one. */
-export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, INSIDE_THE_APP, ROUNDUP, VOICE };
+export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY, ROUNDUP, VOICE };

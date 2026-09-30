@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { calculateBMR, calculateTDEE, proteinTarget, type ProteinTarget } from './body-metrics';
+import { pregnancyGuard } from './not-built-for-pregnancy';
 
 // What is left of today, for the chat pipeline. Build item 22's foundation.
 //
@@ -42,9 +43,20 @@ export function calculateCalorieTarget(params: {
   weightKg: number | null | undefined;
   fatFocus: FocusState | null | undefined;
   muscleFocus: FocusState | null | undefined;
+  /** Her answer about where she is, so pregnancy can stand this down. */
+  lifeStage?: string | null;
 }): CalorieTarget | null {
-  const { tdeeKcal, weightKg, fatFocus, muscleFocus } = params;
+  const { tdeeKcal, weightKg, fatFocus, muscleFocus, lifeStage } = params;
   if (tdeeKcal == null || tdeeKcal <= 0) return null;
+
+  // PREGNANCY STANDS THE ARITHMETIC DOWN ENTIRELY (2026-09-30).
+  //
+  // Not "a gentler deficit" and not "maintenance instead" - NO TARGET. This
+  // function's own comment above makes the case for the null: a figure shown
+  // without a basis is a silence wearing a choice's clothes, and there is no
+  // basis here at all. Energy needs in pregnancy change by trimester and this
+  // app has no trimester. See not-built-for-pregnancy.ts.
+  if (pregnancyGuard(lifeStage).holdAtMaintenance) return null;
 
   // A FOCUS NOBODY STATED IS NOT MAINTENANCE (2026-09-28).
   //
@@ -160,6 +172,8 @@ export type DayStateProfile = {
   fat_focus_state?: string | null;
   muscle_focus_state?: string | null;
   protein_target_g?: number | null;
+  // Read since 30 September so the arithmetic can stand down in pregnancy.
+  life_stage?: string | null;
 } | null;
 
 /** The sums, once both the rows and the profile are in hand. */
@@ -186,6 +200,7 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
     kcalEaten,
     proteinEaten,
     calorieTarget: calculateCalorieTarget({
+      lifeStage: profile?.life_stage ?? null,
       tdeeKcal: calculateTDEE(bmr, profile?.activity_level),
       weightKg: m?.weight_kg ?? null,
       fatFocus: asFocus(profile?.fat_focus_state),
