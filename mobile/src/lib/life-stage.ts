@@ -127,3 +127,66 @@ export function stageForReasoning(stage: LifeStage | null): LifeStage | null {
   }
   return stage;
 }
+
+// ── WHAT SHE IS TAKING, WHICH IS NOT WHERE SHE IS ───────────────────────────
+//
+// Added 30 September 2026. Ruth's Body Manual draft listed hormonal
+// contraception and HRT among the stages; they are interventions and they
+// combine with a stage rather than replacing it. Perimenopausal AND on HRT is
+// the ordinary case in this audience.
+//
+// AND ASKING ABOUT CONTRACEPTION CLOSES A REAL GAP. The app has always asked
+// about HRT so "a monthly bleed on sequential HRT is not read as a cycle". The
+// same is true of the combined pill and nothing has ever asked: a withdrawal
+// bleed is not a natural cycle. A woman on the pill answers "regular periods",
+// which is true as she experiences it, and every bleed is then read as evidence
+// of a cycle the app can reason from.
+
+export type HormoneUse =
+  | 'hormonal_contraception'
+  | 'hrt'
+  | 'neither'
+  | 'prefer_not_to_say';
+
+export const HORMONE_USE_OPTIONS: { key: HormoneUse; label: string; hint?: string }[] = [
+  {
+    key: 'hormonal_contraception',
+    label: 'Hormonal contraception',
+    hint: 'The pill, a coil, an implant, an injection',
+  },
+  { key: 'hrt', label: 'HRT' },
+  { key: 'neither', label: 'Neither' },
+  { key: 'prefer_not_to_say', label: 'Prefer not to say' },
+];
+
+/** These two answer the whole question, so they clear everything else. */
+const EXCLUSIVE: HormoneUse[] = ['neither', 'prefer_not_to_say'];
+
+/**
+ * Toggling one answer, with the exclusivity handled here rather than in the
+ * screen - so the rule is testable and there is one of it.
+ */
+export function toggleHormoneUse(current: HormoneUse[], key: HormoneUse): HormoneUse[] {
+  if (current.includes(key)) return current.filter((k) => k !== key);
+  if (EXCLUSIVE.includes(key)) return [key];
+  return [...current.filter((k) => !EXCLUSIVE.includes(k)), key];
+}
+
+/** Kept in step so everything written before this column keeps working. */
+export function hrtFromHormoneUse(use: HormoneUse[]): Hrt | null {
+  if (use.includes('hrt')) return 'yes';
+  if (use.includes('prefer_not_to_say')) return 'prefer_not_to_say';
+  if (use.includes('neither') || use.length > 0) return 'no';
+  return null;
+}
+
+/**
+ * IS A BLEED EVIDENCE OF A NATURAL CYCLE?
+ *
+ * No, on sequential HRT, and no on hormonal contraception. This is the single
+ * most useful thing the question buys, and it is the reason to ask it of
+ * everybody rather than only of women whose periods have changed.
+ */
+export function bleedMayNotBeACycle(use: HormoneUse[]): boolean {
+  return use.includes('hrt') || use.includes('hormonal_contraception');
+}

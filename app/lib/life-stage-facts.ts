@@ -36,6 +36,8 @@ type LifeStageProfile = {
   life_stage?: string | null;
   life_stage_detail?: string | null;
   hrt?: string | null;
+  /** Multi-select, added 30 September: what she is taking, not where she is. */
+  hormone_use?: unknown;
 };
 
 /** Her answer, in the words the screen used, so nothing is re-labelled. */
@@ -69,8 +71,12 @@ export function lifeStageFacts(profile: LifeStageProfile | null | undefined): st
   if (!profile) return '';
   const stage = profile.life_stage ?? null;
   const hrt = profile.hrt ?? null;
-  if (!stage && !hrt) return '';
-  if (stage === 'prefer_not_to_say' && !hrt) return '';
+  const use = Array.isArray(profile.hormone_use)
+    ? (profile.hormone_use as unknown[]).filter((v): v is string => typeof v === 'string')
+    : [];
+  const onContraception = use.includes('hormonal_contraception');
+  if (!stage && !hrt && use.length === 0) return '';
+  if (stage === 'prefer_not_to_say' && !hrt && use.length === 0) return '';
 
   const lines: string[] = ['', 'WHERE SHE IS WITH PERIODS, in her own answers:'];
 
@@ -83,12 +89,21 @@ export function lifeStageFacts(profile: LifeStageProfile | null | undefined): st
   }
 
   if (hrt === 'yes') lines.push('- Taking HRT');
-  else if (hrt === 'no') lines.push('- Not taking HRT');
+  else if (hrt === 'no' && !onContraception) lines.push('- Not taking HRT');
+  if (onContraception) lines.push('- Using hormonal contraception');
 
   // HOW TO READ HER RECORD, which is the only reason any of this is passed.
-  if (hrt === 'yes') {
+  if (hrt === 'yes' || onContraception) {
+    // THE SAME SENTENCE FOR BOTH, because it is the same mistake. A withdrawal
+    // bleed on the combined pill is no more a natural cycle than a bleed on
+    // sequential HRT, and nothing asked about contraception until today.
+    const cause = hrt === 'yes' && onContraception
+      ? 'the HRT or the contraception'
+      : hrt === 'yes'
+        ? 'the HRT'
+        : 'the contraception';
     lines.push(
-      '- So a regular monthly bleed may be the HRT rather than a natural cycle, and must not be read as one.'
+      `- So a regular monthly bleed may be ${cause} rather than a natural cycle, and must not be read as one.`
     );
   }
   if (stage === 'no_periods_other' || stage === 'not_sure') {

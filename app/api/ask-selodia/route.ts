@@ -814,6 +814,7 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
     life_stage: string | null;
     life_stage_detail: string | null;
     hrt: string | null;
+    hormone_use: unknown;
   } | null;
 
   // WHERE SHE IS WITH PERIODS, AND WHETHER SHE IS ON HRT (2026-09-30). Asked by
