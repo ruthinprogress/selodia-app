@@ -362,3 +362,28 @@ So the fix is not better selectors. Every mutating request to Supabase is aborte
 She read that as drag, because it is drag. She tested it, it did nothing, and she spent a message diagnosing a feature that had never been built - asking, reasonably, whether it needed a native module her build was missing.
 
 The comment was not the problem; the comment was good. **The trade-off was recorded where only I would read it, and described to her in words that hid it.** A decision to build something smaller than what was asked is hers to accept or refuse, and she can only do that if the message that ships it says so in the first sentence. The test is simple: if she would be surprised to learn what the code actually does, the summary is wrong however true each of its words is. (29 September 2026.)
+
+
+**A frame you hand a model is a frame it will use.** Ruth asked why a card had not appeared and was told: *"That's on me for saying it would show up. I don't control that, only the app does. I'm not able to check what's actually stored there."* Her objection was not that it was unhelpful. It was that she IS the app, so hearing it wash its hands of her data destroys the thing the whole product rests on.
+
+Three prompt rules, written weeks apart, each said some version of *"the app shows its own save confirmation"*. Every one of them existed to stop a receipt, and every one of them was right on its own. Together they had taught the model that there was somebody else in the room, and when it was cornered by a question it could not answer, it pointed at him.
+
+The instinct was to add a rule forbidding the sentence. The actual fix was to remove the frame: all three reworded to speak about her screen rather than about a third party, and a check that fails the build if any rule in the prompt says "the app". **A model does not distinguish between the rules you wrote for it and the world those rules imply.** Watch for the noun you keep using in passing. (30 September 2026.)
+
+**Retest the limit before you repeat it.** For several days I told Ruth I could not look at the app's screens, from one true observation: the Expo web dev server dies on this machine, four times now. That sentence hardened into "the screens cannot be seen", and from there into a reason every UI change had to be checked by her, on her phone, one round trip at a time.
+
+The machine has 16 GB of RAM, 5 GB free, and a 21 GB pagefile that has never been more than a third used. It was never short of memory. The dev server re-bundles the whole app on every request and holds it, which is a shape of work that dies at any ceiling. `expo export` is a batch job and completes in four minutes.
+
+The cost was not the four minutes. An onboarding screen shipped with no Continue button on it and went six days unnoticed, because looking at it had been ruled out by an inference nobody re-ran. **A limit inferred from one failure is a hypothesis, and it keeps its authority long after the evidence for it has stopped applying.** When a constraint starts shaping how the work is organised, that is the moment to test it again rather than the moment it becomes settled. (30 September 2026.)
+
+**Collected, stored, and read by nobody is a class of bug, not an incident.** Three times in one day: the Me tab cards were built by one code path and never passed to the model that answers her; `life_stage`, `life_stage_detail` and `hrt` were gathered by nine careful onboarding questions and read nowhere on the server; and calcium turned out to be published in the government spreadsheet the import was already open in, one column along from the sodium it did take.
+
+Each looked like its own small oversight. Together they are a shape: the collecting is visible, satisfying work with a screen at the end of it, and the reading is a line in a file nobody looks at. Nothing fails when the second half is missing. The feature simply behaves as though the person never answered.
+
+So the rule is a commit-level one rather than a review-level one. **Whatever is stored gets read in the same commit that starts storing it, or it does not go in.** The check is not "did I wire it up" but "can I point at the line that consumes this, today". (30 September 2026.)
+
+**A true sentence that changes nothing still costs attention.** A brief asked three times for a gentle note that tea and coffee reduce calcium absorption. The mechanism was crossed - the interaction that matters is with iron - and on calcium the effect is real, small, and in the source's own words *"easily offset by increasing calcium consumption in the diet"*, which is the habit the feature already teaches.
+
+The tempting fix was to soften it: "may slightly reduce". That keeps a sentence which is defensible, unfalsifiable and useless, and spends a nudge on asking somebody to reorganise her morning for a benefit her next yoghurt erases.
+
+In a product whose whole method is quiet repetition, attention is the scarce resource and every nudge is drawn from the same account. **The question is not "is this true" but "is this the smallest thing that would still change what she does".** Deleting it was the feature working. (30 September 2026.)

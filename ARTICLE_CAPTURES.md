@@ -659,3 +659,32 @@ The instruction had been "build this", which had quietly become "she is happy wi
 
 A record that says something was approved has to be able to answer two questions: approved by whom, and approved as *what*. Asking for something to exist is not the same as agreeing with what it says.
 
+---
+
+## 30 September 2026 — A frame you hand a model is a frame it will use
+
+She asked why a card had not appeared and was told: "That's on me for saying it would show up. I don't control that, only the app does. I'm not able to check what's actually stored there." Her reading was exact: she IS the app, and hearing her wash her hands of the data she is supposedly working with destroys trust. It was also false, because the cards were sitting in the record handed to her on every turn. The cause was three prompt rules written months apart, each one to stop a save receipt, each one phrased as "the app shows its own confirmation". Individually sensible. Together they taught her there was somebody else in the room, and cornered, she pointed at him.
+
+---
+
+## 30 September 2026 — Nobody swipes a header, so nobody found out
+
+A swipe-to-delete was built on a detail card on 24 September, documented in the file as working, and shipped. It had never worked once. The card is a Modal, and on Android a Modal is a separate native window that sits outside the app's only gesture root, so every gesture inside it was handled by nobody. Nothing throws. Nothing logs. The finger moves and the row does not. It survived six days because the only gesture anyone tried was the new one added on top of it, and a feature nobody has a reason to use is a feature nobody reports.
+
+---
+
+## 30 September 2026 — A whole day testing yesterday's code
+
+She spent a day reporting that fixes had not worked. Five updates had gone out and her phone was running the bundle from 09:36 through all of them. The app launches on the bundle it already has and applies the download on the next start, so every fix arrives one restart late even when it arrives at all. Three of her bug reports that day were not bugs: the feature simply was not on her phone. The worst of it is that one of those reports was treated as confirmation that a different fix had worked, which it could not possibly have been.
+
+---
+
+## 30 September 2026 — It was in the government spreadsheet the whole time
+
+A calcium feature was built on the assumption that no measured calcium data existed, so every figure had to be estimated by a language model. It turned out the UK government's own food composition dataset, already imported into the database, publishes calcium in the same sheet the import was already reading for sodium. The import took one column and walked past the rest. Twenty minutes of work replaced 2,839 guesses with measured values, and the only thing that had ever been missing was somebody looking at the spreadsheet.
+
+---
+
+## 30 September 2026 — The nudge that was deleted for being true but not worth saying
+
+A brief asked three times for a gentle reminder that tea and coffee reduce calcium absorption. Two things were wrong with it. The interaction that matters is with iron, not calcium. And on calcium the effect is real, small, and in the source's own words "easily offset by increasing calcium consumption in the diet" — which is the habit the feature already teaches. So the honest answer was not to soften the wording but to spend the nudge on nothing. In a product whose method is quiet repetition, attention is the scarce resource, and a true sentence that changes nothing still costs some.
