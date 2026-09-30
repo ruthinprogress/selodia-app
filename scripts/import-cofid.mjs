@@ -95,6 +95,8 @@ for r in prox:
         'fat_g': num(r[col['Fat (g)']]),
         'carbs_g': num(r[col['Carbohydrate (g)']]),
         'sodium_mg': None,
+        'calcium_mg': None,
+        'iron_mg': None,
         # "Satd FA /100g fd" is saturated fat in grams per 100g OF FOOD, which
         # is what a food log wants. The column beside it, "Satd FA /100g FA",
         # is the saturated share of the FAT - so for a lean food it reads high
@@ -106,12 +108,23 @@ for r in prox:
         'fibre_basis': basis,
     }
 
-# Sodium lives in its own sheet, in milligrams per 100g.
+# The minerals live in their own sheet, in milligrams per 100g.
+#
+# CALCIUM AND IRON ADDED 30 September 2026. Sodium was the only one taken when
+# this was written, and calcium is the reason the Calcium feature had to
+# estimate rather than look up - the column existed in the government
+# spreadsheet the whole time and the import walked past it. Iron comes with it
+# because it is the next column along and the iron pairing already exists.
+MINERALS = {'sodium_mg': 'sodium', 'calcium_mg': 'calcium', 'iron_mg': 'iron'}
 try:
     ino_header, ino = sheet_rows('1.4 Inorganics')
     icol = {h: i for i, h in enumerate(ino_header) if h}
-    sodium_key = next((h for h in icol if h and h.lower().startswith('sodium')), None)
-    if sodium_key:
+    keys = {
+        field: next((h for h in icol if h and h.lower().startswith(prefix)), None)
+        for field, prefix in MINERALS.items()
+    }
+    sodium_key = keys['sodium_mg']
+    if any(keys.values()):
         # The Inorganics sheet heads its first column with a single space
         # rather than "Food Code", so the code column is taken by position when
         # the name is not there. Found by reading the sheet, not by guessing.
@@ -120,9 +133,12 @@ try:
             code = r[code_at]
             if code is None: continue
             f = foods.get(str(code))
-            if f: f['sodium_mg'] = num(r[icol[sodium_key]])
+            if not f: continue
+            for field, header in keys.items():
+                if header:
+                    f[field] = num(r[icol[header]])
 except Exception as e:
-    print('sodium sheet skipped:', e, file=sys.stderr)
+    print('inorganics sheet skipped:', e, file=sys.stderr)
 
 # A row with no energy and no protein describes nothing this app can use.
 usable = [f for f in foods.values() if f['kcal'] is not None or f['protein_g'] is not None]
@@ -143,6 +159,8 @@ const basis = (b) => foods.filter((f) => f.fibre_basis === b).length;
 console.log(`\n  ${foods.length} foods written to ${out}`);
 console.log(`    with energy:         ${has('kcal')}`);
 console.log(`    with sodium:         ${has('sodium_mg')}`);
+console.log(`    with calcium:        ${has('calcium_mg')}`);
+console.log(`    with iron:           ${has('iron_mg')}`);
 console.log(`    with saturated fat:  ${has('saturated_fat_g')}`);
 console.log(`    with sugar:          ${has('sugar_g')}`);
 console.log(`    with fibre:          ${has('fibre_g')}  (AOAC ${basis('AOAC')}, NSP ${basis('NSP')})`);
