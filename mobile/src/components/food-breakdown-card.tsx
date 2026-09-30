@@ -342,7 +342,7 @@ export function FoodBreakdownCard({
                       // nothing else on the plate has already closed the gap -
                       // see lib/pair.ts for why that suppression is the whole
                       // feature rather than a refinement of it.
-                      const flag = showsPair(asPair(it), items.map(asPair)) ? 'Pair' : null;
+                      const flag = showsPair(asPair(it), items.map(asPair), avoid) ? 'Pair' : null;
                       const named = `${it.name}${it.quantity ? ` ${it.quantity}` : ''}`;
                       return (
                         <SwipeToDelete

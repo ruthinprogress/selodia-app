@@ -61,14 +61,28 @@ check("HER EXAMPLE: chicken, rice and beans -> nothing", () => {
   assert.equal(showsPair(rice, meal), false, 'rice is covered by the chicken and the beans');
 });
 
-check('HER EXAMPLE: peanut butter on wholegrain toast -> nothing', () => {
+check('peanut butter on wholegrain toast DOES carry it', () => {
+  // The brief gave this as a meal needing no label and Ruth withdrew the
+  // example on 30 September: "It was a bad example." Peanuts and wheat are both
+  // lysine-limited, so they do not complete each other and two grains on a
+  // plate is not a pairing.
   const pb = item('Peanut butter 30g', 7, 'limiting_lysine');
   const toast = item('Wholegrain toast', 5, 'limiting_lysine');
-  // Both are lysine-limited, so this one is NOT complementary on the amino
-  // argument - and the brief still says no label. Left as a deliberate, named
-  // disagreement rather than quietly special-cased: see the note printed below.
-  const shown = showsPair(pb, [pb, toast]);
-  assert.equal(typeof shown, 'boolean');
+  assert.equal(showsPair(pb, [pb, toast]), true, 'two lysine-limited foods do not complete each other');
+});
+
+check('and what it suggests for it is a breakfast, not a tin of beans', () => {
+  const pb = item('Peanut butter 30g', 7, 'limiting_lysine');
+  const card = pairCard(pb);
+  const top = card.suggestions.join(' ').toLowerCase();
+  assert.ok(/yoghurt|milk|egg/.test(top), `expected dairy or eggs first, got: ${card.suggestions.join(', ')}`);
+});
+
+check('a glass of milk with it silences the label', () => {
+  const pb = item('Peanut butter 30g', 7, 'limiting_lysine');
+  const toast = item('Wholegrain toast', 5, 'limiting_lysine');
+  const milk = item('Glass of milk', 8, 'complete');
+  assert.equal(showsPair(pb, [pb, toast, milk]), false);
 });
 
 check('beans and rice in real amounts', () => {
@@ -146,11 +160,34 @@ check('a nut allergy removes the nuts', () => {
   assert.ok(!/nuts|seeds/i.test(card.suggestions.join(' ')), card.suggestions.join(', '));
 });
 
-check('a vegan is not told to pair with eggs or yoghurt', () => {
+check('a vegan is not told to pair with eggs, milk or yoghurt', () => {
   const rice = item('Rice', 5, 'limiting_lysine');
   const card = pairCard(rice, ['vegan']);
-  assert.ok(!/egg|yoghurt|dairy/i.test(card.suggestions.join(' ')), card.suggestions.join(', '));
-  assert.ok(/beans|lentils|chickpeas|peas/i.test(card.suggestions.join(' ')), 'and is still given something');
+  assert.ok(!/egg|yoghurt|dairy|milk|cheese/i.test(card.suggestions.join(' ')), card.suggestions.join(', '));
+  assert.ok(/beans|lentils|chickpeas/i.test(card.suggestions.join(' ')), 'and is still given something');
+});
+
+// ── NO LABEL WITHOUT A CARD BEHIND IT ───────────────────────────────────────
+//
+// Ruth, 30 September: "if nothing, then don't mention it, don't force it if
+// it's going to feel broken." This was a real fault in the first version: the
+// filtering lived in pairCard and the label never consulted it, so somebody
+// whose allergies removed every suggestion saw the word, tapped it, and got
+// nothing.
+
+check('no suggestions survive the allergies -> no label at all', () => {
+  const collagen = item('Collagen powder', 10, 'limiting_tryptophan');
+  // Its only completers are eggs, dairy, fish, chicken and soya.
+  const avoid = ['eggs', 'dairy', 'fish', 'chicken', 'soya'];
+  assert.equal(pairCard(collagen, avoid), null, 'nothing left to suggest');
+  assert.equal(showsPair(collagen, [collagen], avoid), false, 'so the word must not appear either');
+});
+
+check('but a partial filter still shows, because there is still something to say', () => {
+  const collagen = item('Collagen powder', 10, 'limiting_tryptophan');
+  const avoid = ['fish'];
+  assert.ok(pairCard(collagen, avoid));
+  assert.equal(showsPair(collagen, [collagen], avoid), true);
 });
 
 // ── MUTATION ────────────────────────────────────────────────────────────────
@@ -182,10 +219,11 @@ console.log(
   `  Proof: an always-on label is caught = ${suppressionCaught}, an unfiltered list is caught = ${allergyCaught}`
 );
 console.log(
-  '\n  ONE DISAGREEMENT WITH THE BRIEF, left visible rather than coded around:\n' +
-    '  peanut butter on wholegrain toast is given as an example of a meal that needs\n' +
-    '  no label. Both are lysine-limited, so on the amino argument they do not\n' +
-    '  complete each other and the label still shows. Either the example is wrong or\n' +
-    '  the rule is - that is Ruth’s call, not mine to quietly settle.'
+  [
+    '',
+    '  Settled 30 September: the brief’s peanut-butter-on-toast example was withdrawn,',
+    '  so two lysine-limited foods correctly still carry the label, and what it offers',
+    '  for them is a yoghurt, a glass of milk or an egg rather than a tin of beans.',
+  ].join('\n')
 );
 if (failures.length > 0) process.exit(1);

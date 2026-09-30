@@ -13,9 +13,16 @@ import type { AminoProfile } from '@/lib/protein-quality';
 // ── THE RULE THAT MAKES IT WORTH HAVING ──────────────────────────────────────
 //
 // THE LABEL DISAPPEARS WHEN THE MEAL HAS ALREADY DONE IT. Chicken, rice and
-// beans gets no label; peanut butter on wholegrain toast gets no label. A flag
-// that fires on beans whatever else is on the plate is not teaching anything -
-// it is a sticker, and she would learn to stop seeing it.
+// beans gets no label. A flag that fires on beans whatever else is on the plate
+// is not teaching anything - it is a sticker, and she would learn to stop
+// seeing it.
+//
+// THE BRIEF'S SECOND EXAMPLE WAS WRONG AND SHE WITHDREW IT. Peanut butter on
+// wholegrain toast was given as a meal needing no label; peanuts and wheat are
+// BOTH lysine-limited, so they do not complete each other and the label is
+// right to show. Ruth, 30 September: "It was a bad example, suggest what would
+// complete peanut butter on toast." What completes it is lysine - a yoghurt, a
+// glass of milk, an egg - which is why those now head the list.
 //
 // That is also the hardest part, and protein-quality.ts has the scar from
 // getting it wrong the other way round: "A per-item flag is scoped to ITS ITEM
@@ -82,7 +89,13 @@ const SUGGESTIONS: Record<AminoProfile, string[]> = {
   complete: [],
   // Short of lysine - grains, nuts and seeds. Completed by legumes or by any
   // complete protein.
-  limiting_lysine: ['Beans', 'Lentils', 'Chickpeas', 'Peas', 'Yoghurt', 'Eggs'],
+  //
+  // DAIRY AND EGGS FIRST, deliberately (Ruth, 30 September, on peanut butter
+  // and toast). Only four suggestions are shown, so the order decides what she
+  // actually reads. Beans beside peanut butter on toast is technically right
+  // and nobody has ever done it; a yoghurt, a glass of milk or an egg is the
+  // same lysine and is a breakfast somebody would recognise.
+  limiting_lysine: ['Yoghurt', 'Milk', 'Eggs', 'Beans', 'Lentils', 'Chickpeas', 'Cheese'],
   // Short of methionine - beans, lentils, peas. Completed by grains, nuts and
   // seeds, and by the grains that are complete in their own right.
   limiting_methionine: ['Rice', 'Quinoa', 'Corn', 'Wholegrain bread', 'Oats', 'Nuts or seeds'],
@@ -101,10 +114,20 @@ function covers(grams: number, mealTotal: number): boolean {
  * they already have rather than filtering it, because a caller that forgets to
  * exclude the item itself would silently make everything self-complementing.
  */
-export function showsPair(item: PairItem, meal: PairItem[]): boolean {
+export function showsPair(item: PairItem, meal: PairItem[], avoid: string[] = []): boolean {
   const profile = item.aminoProfile;
   if (!profile || profile === 'complete') return false;
   if ((item.proteinG ?? 0) < MIN_ITEM_PROTEIN_G) return false;
+
+  // NO LABEL WITHOUT A CARD BEHIND IT (Ruth, 30 September: "if nothing, then
+  // don't mention it, don't force it if it's going to feel broken").
+  //
+  // She is right and this was a fault in the first version. The filtering
+  // happened in pairCard, which the label never consulted - so somebody whose
+  // allergies removed every suggestion would see the word, tap it, and get
+  // nothing. A control that does nothing is worse than no control, and on a
+  // feature whose method is quiet repetition it would train her to ignore it.
+  if (!pairCard(item, avoid)) return false;
 
   const others = meal.filter((m) => m !== item);
   const total = meal.reduce((s, m) => s + (m.proteinG && m.proteinG > 0 ? m.proteinG : 0), 0);
@@ -171,8 +194,9 @@ export function pairCard(item: PairItem, avoid: string[] = []): PairCard | null 
 const AVOID_GROUPS: Record<string, string[]> = {
   gluten: ['wholegrain bread', 'bread', 'oats', 'wheat'],
   wheat: ['wholegrain bread', 'bread'],
-  dairy: ['yoghurt'],
-  milk: ['yoghurt', 'dairy'],
+  dairy: ['yoghurt', 'milk', 'cheese'],
+  milk: ['yoghurt', 'dairy', 'cheese'],
+  lactose: ['yoghurt', 'milk', 'cheese'],
   'tree nuts': ['nuts or seeds'],
   nuts: ['nuts or seeds'],
   peanuts: ['nuts or seeds'],
@@ -180,9 +204,29 @@ const AVOID_GROUPS: Record<string, string[]> = {
   egg: ['eggs'],
   eggs: ['eggs'],
   fish: ['fish'],
-  vegan: ['yoghurt', 'eggs', 'dairy', 'fish', 'chicken'],
+  vegan: ['yoghurt', 'milk', 'cheese', 'eggs', 'dairy', 'fish', 'chicken'],
   vegetarian: ['fish', 'chicken'],
 };
+
+// ── THE EXPANSION, AND THE ONE ENTRY THAT WAS ALREADY WRONG ──────────────────
+//
+// Ruth's brief lists Pair becoming a general contextual learning engine: iron
+// with vitamin C, fat-soluble vitamins with fat, turmeric with black pepper,
+// lycopene with cooking and oil, and calcium away from tea and coffee.
+//
+// THAT LAST ONE HAS THE MECHANISM CROSSED, and she asked for it corrected
+// ("Correct it, chatgpt got confused"). Tea and coffee polyphenols inhibit the
+// absorption of NON-HAEM IRON - the iron in plants, pulses, fortified cereal -
+// not calcium. Calcium is itself one of the things that competes with iron. So
+// the true entry is about iron twice over:
+//
+//   pair plant iron with vitamin C - peppers, kiwi, oranges, tomatoes;
+//   and keep tea, coffee and a big hit of calcium away from that same meal.
+//
+// Written down here rather than built, because every entry in the expansion
+// needs a named source and a check the way the menopause reference layer does -
+// and because a feature that teaches by repetition teaches a mistake just as
+// thoroughly as it teaches anything else.
 
 function SOUNDS_LIKE(suggestion: string, avoided: string): boolean {
   const group = AVOID_GROUPS[avoided];
