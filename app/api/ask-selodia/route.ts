@@ -1636,6 +1636,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // used rather than hoped for.
           didLines: [],
           safetyBlock: SAFETY_PROMPT_BLOCK,
+          // The same context the sequential call gets. A spoken turn that
+          // cannot see her Me tab gives the same wrong answer as a typed one.
+          extraBlocks: [meCardsBlock, plansBlock, insightsBlock],
         })
       : null;
 
@@ -3165,6 +3168,21 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           voice: isVoice,
           didLines: appendedNotes,
           safetyBlock: SAFETY_PROMPT_BLOCK,
+          // THE BLOCKS THE WRITER HAD NEVER BEEN GIVEN (2026-09-30).
+          //
+          // `extraBlocks` exists on this call for exactly this - its own
+          // comment says "context blocks the old path built that the new
+          // prompt still needs" - and nothing was ever passed to it. So the
+          // model that writes every reply on this path had never seen her Me
+          // tab, her saved plans or her insights.
+          //
+          // That is the whole of Ruth's "chat will not write to Me". She
+          // pasted three skincare products and was told "none of this is in
+          // your record", which was TRUE from where the model sat: the record
+          // it was given has food, movement, water, sleep, measurements and
+          // cycle, and nothing else. It was obeying the baseline instruction
+          // to say only what the record shows.
+          extraBlocks: [meCardsBlock, plansBlock, insightsBlock],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's

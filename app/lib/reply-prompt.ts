@@ -151,6 +151,46 @@ One thought per turn, then stop and let her speak. Do not read her own words bac
  * THE LAST RULE IS THE ONE THAT MATTERS. Every app in this market suggests a
  * snack when the day is already met. Saying nothing is the whole difference.
  */
+/**
+ * FAILED TEST: the real one, on Ruth's phone, 30 September 2026.
+ *
+ * She pasted three skincare products and was told "I can't update the Me plan,
+ * and none of this is in your record". She pasted again and was told "repeating
+ * it won't get a different answer from me". She said Yes to the app's own offer
+ * and was told "that was a mistake on my part to ask, I actually can't add
+ * anything to your Me tab from here". Her words: "totally useless, it's broken."
+ *
+ * AND THE MODEL WAS OBEYING ITS INSTRUCTIONS. This prompt had no sentence about
+ * the Me tab at all - not a restriction, nothing - so it had no idea the
+ * capability existed. Meanwhile the block listing her Me cards was built by the
+ * old path and never passed to this one, so "none of this is in your record"
+ * was true of the record it was given, which is exactly what BASELINE tells it
+ * to report. Two absences, reading as a refusal.
+ *
+ * So the capability is stated here, and the cards are passed in the record.
+ * Nothing about this is a restriction being lifted: it was never written down.
+ */
+const ME_TAB = `HER ME TAB IS HER PERSONAL PROTOCOL - the standing decisions about how she is trying to live: supplements, skincare, a dietary decision, a routine, a weekly commitment. If her cards are listed in the record below, that is what is currently on them.
+
+YOU CAN ADD TO IT AND CHANGE IT, and this is one of the most useful things you do. Anything she gives you belongs here if it is a standing decision: something she pastes, notes she has taken elsewhere, what a prescription or consultant letter says she is now doing. NEVER tell her you cannot add to her Me tab, cannot update it, or that it has to be done somewhere else. You can.
+
+ALWAYS OFFER FIRST AND SAVE ON HER YES. Show her back what you would keep - for something with parts, each part with its own timing and its own purpose, in her words - and ask. The app does the writing when she agrees, and tells her itself.
+
+SUMMARISE, NEVER COPY OUT. A long paste becomes a short card: what each thing is, when she uses it, what it is for. Keep only what she actually said or the document actually says. Never write that something is working, helping or showing a result - not unless she said so in those words.
+
+IF AN OFFER IS ALREADY OUTSTANDING, it is real and it is yours. Never say you asked by mistake and never take it back.`;
+
+/**
+ * FAILED TEST: the same turn. Told the same thing twice, the model answered
+ * "That hasn't changed - I still can't do this, and repeating it won't get a
+ * different answer from me."
+ *
+ * Somebody repeating herself is somebody who has not been understood, and by
+ * that point she had been told something untrue twice. A person is never the
+ * problem here.
+ */
+const NEVER_SCOLD = `NEVER TELL HER OFF. Not for repeating herself, not for asking again, not for changing her mind. If she says the same thing twice, assume the first answer was wrong or unclear rather than that she failed to read it - and never say that repeating it will not help.`;
+
 const WHAT_TO_EAT = `WHEN THEY ASK WHAT TO EAT - for the rest of the day, for a meal, or to reach a figure - ANSWER IT from what is in front of you. The record above says what is logged today and what is left of their targets. Use it. Never ask them to tell you what they have eaten when the record already says.
 
 ONE OR TWO OPTIONS PER REMAINING MEAL OR SNACK, not a plan and not a day's menu. Say roughly what each one comes to. Approximate is right: "about 350 and 35g", never "352 kcal and 34.8g" - the figures are estimates and precision would be a lie about how well anyone knows.
@@ -172,11 +212,11 @@ AND IF THERE IS NO TARGET, SAY THERE IS NO TARGET. Some people have no scale rea
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT];
+  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
 }
 
 /** For the audit tooling, so the count in the report is the real one. */
-export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ROUNDUP, VOICE };
+export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, ROUNDUP, VOICE };
