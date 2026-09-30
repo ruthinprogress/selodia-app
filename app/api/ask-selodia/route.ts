@@ -10,6 +10,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import {
   falseClaimNote,
+  stripDisavowal,
   stripMachineOutput,
   stripSaveClaims,
   unescapeNewlines,
@@ -3308,7 +3309,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // voices disagreeing about her own record.
         //
         // Whatever the app actually did is stated by the app, below.
-        replyBody = unescapeNewlines(stripSaveClaims(stripMachineOutput(written.text)));
+        // stripDisavowal added 30 September, 2:27pm on her phone: "I don't
+        // control that, only the app does... I'm not able to check what's
+        // actually stored there." She is the app and the record was in front of
+        // it. See DISAVOWALS in claimed-write.ts.
+        replyBody = unescapeNewlines(
+          stripDisavowal(stripSaveClaims(stripMachineOutput(written.text)))
+        );
 
         // AND THE CLAIM GUARD BELONGS HERE, ON THE PATH THAT WRITES HER REPLY.
         //

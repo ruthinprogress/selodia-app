@@ -28,7 +28,15 @@
 
 import assert from 'node:assert';
 
-import { claimsAWrite, falseClaimNote, stripMachineOutput, stripSaveClaims, unescapeNewlines } from '../app/lib/claimed-write.ts';
+import {
+  claimsAWrite,
+  disavowsTheApp,
+  falseClaimNote,
+  stripDisavowal,
+  stripMachineOutput,
+  stripSaveClaims,
+  unescapeNewlines,
+} from '../app/lib/claimed-write.ts';
 import { unsavedNote } from '../app/lib/save-honesty.ts';
 
 let pass = 0;
@@ -312,8 +320,79 @@ check('a claim is removed WITHOUT flattening the lines around it', () => {
   assert.ok(out.split(LF).length >= 2, 'the shape survives');
 });
 
+// ─── THE APP NEVER DISOWNS THE APP ──────────────────────────────────────────
+//
+// Her phone, 30 September, 2:27pm, the real reply in its real wording.
+
+const DISOWNED =
+  "That's on me for saying it would show up - I don't control that, only the app does. " +
+  "If it's not appearing on your Me tab, worth trying the add once more or giving the app a moment; " +
+  "I'm not able to check what's actually stored there.";
+
+check('her 2:27 reply is caught', () => {
+  const found = disavowsTheApp(DISOWNED);
+  assert.ok(found, 'the sentence she objected to must be recognised');
+});
+
+check('every disowning sentence in it is removed', () => {
+  const out = stripDisavowal(DISOWNED);
+  assert.ok(!/only the app/i.test(out), '"only the app does" must go');
+  assert.ok(!/don't control/i.test(out), '"I don\'t control that" must go');
+  assert.ok(!/not able to check/i.test(out), '"I\'m not able to check" must go');
+  assert.ok(!/giving the app a moment/i.test(out), 'the wait-and-retry answer must go');
+});
+
+check('a reply that was ONLY a disavowal still says something true', () => {
+  const out = stripDisavowal(DISOWNED);
+  assert.ok(out.trim().length > 0, 'she must not get an empty message');
+  assert.ok(/record/i.test(out), 'what replaces it must point at the record it does have');
+  assert.ok(!/\bapp\b/i.test(out), 'and must not name the app as somebody else');
+});
+
+// THE FALSE POSITIVES, which are the hard half. Every sentence below is an
+// honest limit or an ordinary answer and must survive untouched.
+const MUST_SURVIVE = [
+  'I am not a clinician, so that one is worth taking to your GP.',
+  'That did not save, so it is not in your record.',
+  "I can't add an item to a meal that is already logged yet.",
+  'I can see your Skincare Routine card, and retinol is on it.',
+  "There's no waist reading in your record for this week.",
+  "I can't see a change in your protein since Monday.",
+  'The app store review is nothing to do with me.',
+];
+
+for (const sentence of MUST_SURVIVE) {
+  check(`untouched: "${sentence.slice(0, 40)}..."`, () => {
+    assert.equal(disavowsTheApp(sentence), null, 'this is an honest sentence, not a disavowal');
+    assert.equal(stripDisavowal(sentence), sentence);
+  });
+}
+
+check('a list around a disavowal keeps its shape', () => {
+  const mixed = ['Morning', '- Niacinamide', '', "I'm not able to check what's stored there."].join(LF);
+  const out = stripDisavowal(mixed);
+  assert.ok(out.includes('Morning') && out.includes('- Niacinamide'), 'the list survives');
+  assert.ok(!/not able to check/i.test(out), 'the disavowal goes');
+});
+
+// CAN THIS SET FAIL? Run the same assertions against a guard that does nothing.
+// If they pass, they were testing the sentence rather than the behaviour.
+const identity = (s) => s;
+let disavowalCaught = false;
+try {
+  const out = identity(DISOWNED);
+  assert.ok(!/only the app/i.test(out));
+  assert.ok(!/not able to check/i.test(out));
+} catch {
+  disavowalCaught = true;
+}
+if (!disavowalCaught) {
+  failures.push('USELESS: a do-nothing guard passed the disavowal checks');
+}
+
 for (const f of failures) console.error('  FAIL  ' + f);
 console.log(`\n  ${pass} passed, ${failures.length} failed`);
+console.log(`  Proof: a do-nothing disavowal guard is caught = ${disavowalCaught}`);
 console.log(
   '  The 20:23 turn: old behaviour said nothing, new behaviour corrects it.\n' +
     '  Most of these checks are sentences that must NOT be touched - a guard that\n' +

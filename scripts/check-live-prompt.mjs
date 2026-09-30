@@ -100,6 +100,43 @@ check('it must never scold her for repeating herself', () => {
   assert.ok(/repeating it will not help/i.test(prompt));
 });
 
+// ------------------------------------------------- it does not disown the app
+
+check('the prompt tells it that it IS the app', () => {
+  assert.ok(/you are not a visitor here/i.test(prompt), 'the rule must be stated');
+  assert.ok(
+    /never say you do not control something/i.test(prompt),
+    'the exact answer she got must be forbidden by name'
+  );
+  assert.ok(
+    /what is stored is in the record below/i.test(prompt),
+    'it must be told where to look instead of saying it cannot see'
+  );
+});
+
+check('NO OTHER RULE SPEAKS OF "the app" IN THE THIRD PERSON', () => {
+  // THIS IS THE ONE THAT MATTERS, and it is the cause rather than the symptom.
+  // Three rules used to say "the app shows its own save confirmation", "the app
+  // does the writing and tells her itself", "the app keeps her words". Each was
+  // written to stop a receipt; together they handed the model a second party to
+  // point at, and on 30 September at 2:27pm it pointed: "I don't control that,
+  // only the app does."
+  //
+  // INSIDE_THE_APP is exempt because naming the phrase is how it forbids it.
+  const offenders = [];
+  for (const [name, text] of Object.entries(REPLY_PROMPT_PARTS)) {
+    if (name === 'INSIDE_THE_APP') continue;
+    const hit = String(text).match(/[^.!?]*\bthe app\b[^.!?]*/i);
+    if (hit) offenders.push(`${name}: "${hit[0].trim()}"`);
+  }
+  assert.equal(
+    offenders.length,
+    0,
+    'a rule speaks of the app as somebody else, which is where "only the app does" came from:\n      ' +
+      offenders.join('\n      ')
+  );
+});
+
 check('the voice prompt carries the same capability', () => {
   assert.ok(/me tab/i.test(replyPrompt({ voice: true })));
 });
@@ -171,8 +208,31 @@ try {
   blocksCaught = true;
 }
 
+let disavowalCaught = false;
+try {
+  const withoutRule = prompt.replace(/YOU ARE NOT A VISITOR HERE[\s\S]*?"I can't see" is not\./, '');
+  assert.ok(/you are not a visitor here/i.test(withoutRule));
+} catch {
+  disavowalCaught = true;
+}
+
+let thirdPersonCaught = false;
+try {
+  const parts = { ...REPLY_PROMPT_PARTS, SAVES: 'the app keeps her words and has already retried.' };
+  const offenders = [];
+  for (const [name, text] of Object.entries(parts)) {
+    if (name === 'INSIDE_THE_APP') continue;
+    if (/\bthe app\b/i.test(String(text))) offenders.push(name);
+  }
+  assert.equal(offenders.length, 0);
+} catch {
+  thirdPersonCaught = true;
+}
+
 if (!capabilityCaught) failures.push('USELESS: removing the capability sentence did not fail the check');
 if (!blocksCaught) failures.push('USELESS: removing extraBlocks did not fail the check');
+if (!disavowalCaught) failures.push('USELESS: removing the disavowal rule did not fail the check');
+if (!thirdPersonCaught) failures.push('USELESS: putting "the app" back into a rule did not fail the check');
 
 for (const f of failures) console.error('  FAIL  ' + f);
 console.log(`\n  ${pass} passed, ${failures.length} failed`);

@@ -269,6 +269,85 @@ export function stripMachineOutput(reply: string): string {
   return out.replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/**
+ * THE APP NEVER DISOWNS THE APP (2026-09-30).
+ *
+ * Ruth's phone, 2:27pm. She said "Nothing there" and was told:
+ *
+ *   "That's on me for saying it would show up - I don't control that, only the
+ *   app does. If it's not appearing on your Me tab, worth trying the add once
+ *   more or giving the app a moment; I'm not able to check what's actually
+ *   stored there."
+ *
+ * Her reading of it, which is the one that counts: "she IS the app and
+ * supposedly the authority on it, so that's just terrible to hear she washes
+ * her hands of the actual data she's supposedly working with. Destroys trust."
+ *
+ * IT IS ALSO UNTRUE. Her Me cards are in the record handed to the writer on
+ * every turn. It could check. It said it could not.
+ *
+ * WHY A GUARD AND NOT JUST THE PROMPT SENTENCE. The prompt now says this in
+ * INSIDE_THE_APP, and the prompt has said "never claim a save" since 27
+ * September and the model claims saves anyway - which is the whole argument
+ * behind stripSaveClaims above. A rule that matters twice belongs in code.
+ *
+ * NARROW ON PURPOSE. "I'm not a doctor", "that didn't save", "I can't add an
+ * item to a meal yet" are all honest limits and none of them match: what is
+ * caught is the app pointing at some OTHER party, or claiming it cannot see
+ * what is sitting in front of it.
+ */
+const DISAVOWALS: RegExp[] = [
+  // Pointing at somebody else.
+  /\bi (?:don't|do not|can't|cannot) control\b/i,
+  /\bonly the app\b/i,
+  /\bthe app (?:does|controls|handles|decides|knows) that\b/i,
+  /\bthat(?:'s| is) (?:the app's|not my) (?:job|doing|department|side|end)\b/i,
+  /\bfrom (?:my end|here),? i (?:can't|cannot)\b/i,
+  // Telling her to wait and try again, which is a helpdesk answer.
+  /\bgiv(?:e|ing) (?:the app|it) a (?:moment|minute|second)\b/i,
+  // Claiming it cannot see what it was given.
+  /\bi (?:can't|cannot|am not able to|'m not able to) (?:see|check|access|read) your (?:me tab|record|almanac|log|data)\b/i,
+  /\bi have no (?:visibility|access) (?:into|to)\b/i,
+  /\b(?:i(?:'m| am) not able to|i (?:can't|cannot|couldn't)|i have no way (?:to|of)|i don't have (?:a way|any way|visibility))\s[^.!?]{0,30}\b(?:see|check|read|access|tell|know)\b[^.!?]{0,20}\bwhat(?:'s| is| was)?\b[^.!?]{0,30}\b(?:stored|saved|in there|on your|in your)\b/i,
+];
+
+/**
+ * The first sentence in which the app disowns the app, or null.
+ */
+export function disavowsTheApp(reply: string): string | null {
+  for (const sentence of sentences(reply)) {
+    if (DISAVOWALS.some((re) => re.test(sentence))) return sentence;
+  }
+  return null;
+}
+
+/**
+ * What is left when every disavowal is removed.
+ *
+ * WHEN NOTHING IS LEFT, which is what her turn would have been - the whole
+ * reply was the disavowal - this stands in. It claims nothing, points at
+ * nobody, and asks the one question that gets the next turn answered from the
+ * record it actually has.
+ */
+const NOTHING_LEFT = 'I can see your record, so let me answer from it. What were you expecting to find?';
+
+export function stripDisavowal(reply: string): string {
+  if (!disavowsTheApp(reply)) return reply;
+
+  // Line by line, same shape as stripSaveClaims: a list must survive.
+  const lines = reply.split('\n').map((line) => {
+    if (!line.trim()) return line;
+    return line
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => !DISAVOWALS.some((re) => re.test(sentence)))
+      .join(' ')
+      .trim();
+  });
+
+  const kept = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return kept || NOTHING_LEFT;
+}
+
 export type WriteOutcome = {
   /** The reply the model wrote. */
   reply: string;
