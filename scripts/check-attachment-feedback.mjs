@@ -53,12 +53,39 @@ const check = (name, fn) => {
 
 // ------------------------------------------------------- the silence is over
 
+check('the failure shows BESIDE the buttons, not at the bottom of the screen', () => {
+  // Ruth, 30 September, with the place marked on a screenshot. It used to use
+  // `failed`, which renders once under the Create PDF button - most of a page
+  // below the camera she had just tapped. A message she never sees is still
+  // silence, just a quieter kind.
+  assert.ok(/attachFailed/.test(screen), 'attachment failures need their own state');
+  const attachBlock = screen.slice(
+    screen.indexOf('UPLOAD_HINT}'),
+    screen.indexOf('A note, if you want one')
+  );
+  assert.ok(
+    /\{attachFailed && \(/.test(attachBlock),
+    'the attachment failure must render inside the attachment section'
+  );
+  assert.ok(
+    attachBlock.indexOf('attachFailed') < attachBlock.indexOf('<PhotoVote'),
+    'the failure comes before the vote link, directly under the buttons'
+  );
+});
+
+check('a report failure and an attachment failure are separate', () => {
+  // Or building a report would clear the reason a document was refused, and a
+  // refused document would read as the report failing.
+  assert.ok(/const \[failed, setFailed\]/.test(screen));
+  assert.ok(/const \[attachFailed, setAttachFailed\]/.test(screen));
+});
+
 check('a response with no attachment shows a message', () => {
   // The exact shape of the bug: an if with no else.
   const bare = /if \(res\.attachment\) setAttachments/.test(screen);
   assert.ok(!bare, 'the bare `if (res.attachment) setAttachments` is back - a 422 would be swallowed');
   assert.ok(
-    /} else \{[\s\S]{0,600}setFailed\(NOT_A_DOCUMENT\)/.test(screen),
+    /} else \{[\s\S]{0,600}setAttachFailed\(NOT_A_DOCUMENT\)/.test(screen),
     'there must be an else that says why nothing was added'
   );
 });
@@ -130,10 +157,10 @@ check('the feature is a parameter so it can be reused', () => {
 // --------------------------------------------------------------------- MUTATION
 
 const silentAgain = screen.replace(
-  /} else \{[\s\S]*?setFailed\(NOT_A_DOCUMENT\);[\s\S]*?\}/,
+  /} else \{[\s\S]*?setAttachFailed\(NOT_A_DOCUMENT\);[\s\S]*?\}/,
   '}'
 );
-const caught = !/setFailed\(NOT_A_DOCUMENT\)/.test(silentAgain);
+const caught = !/setAttachFailed\(NOT_A_DOCUMENT\)/.test(silentAgain);
 if (!caught) failures.push('USELESS: removing the else did not fail the check');
 
 for (const f of failures) console.error('  FAIL  ' + f);

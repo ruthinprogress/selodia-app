@@ -358,6 +358,20 @@ export default function ReportScreen() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  /**
+   * WHY AN ADD FAILED, SHOWN WHERE SHE ADDED IT (Ruth, 30 September 2026).
+   *
+   * `failed` renders once, under the Create PDF button, which is most of a
+   * screen away from the attachment row. So a photo she took at the top was
+   * refused in a line she never saw at the bottom - which from where she sat
+   * was still silence, just a quieter kind.
+   *
+   * An attachment failure is about the thing she just tapped, so it belongs
+   * beside it. Separate state rather than a second use of `failed`, or
+   * building a report would clear the reason a document was refused, and
+   * refusing a document would look like the report failing.
+   */
+  const [attachFailed, setAttachFailed] = useState<string | null>(null);
 
   // Whole-source choices.
   const [whole, setWhole] = useState<Set<string>>(new Set());
@@ -505,12 +519,12 @@ export default function ReportScreen() {
   async function addAttachment(from: 'camera' | 'library' | 'file') {
     if (reading || attachments.length >= MAX_ATTACHMENTS) return;
     setReading(true);
-    setFailed(null);
+    setAttachFailed(null);
     try {
       const picked = from === 'file' ? await pickPageFiles() : await pickPageImages(from);
       if (!picked.ok) {
         const msg = pickFailureMessage(picked.reason);
-        if (msg) setFailed(msg);
+        if (msg) setAttachFailed(msg);
         return;
       }
 
@@ -531,18 +545,20 @@ export default function ReportScreen() {
           // opened, the shot was taken, the app thought for a second, and
           // nothing appeared and nothing was said. She had no way to tell that
           // from a bug.
-          setFailed(NOT_A_DOCUMENT);
+          setAttachFailed(NOT_A_DOCUMENT);
         }
       }
 
       if (picked.pages.length > room) {
-        setFailed(`A report can carry ${MAX_ATTACHMENTS} documents, so I have taken the first ${room}.`);
+        setAttachFailed(
+          `A report can carry ${MAX_ATTACHMENTS} documents, so only the first ${room} were added.`
+        );
       }
     } catch (err) {
       // IMPERSONAL AND PLAIN (her rule for every screen). The server's own
       // wording is preferred when it has one, because it knows which of several
       // things went wrong.
-      setFailed((err instanceof ApiError && err.userMessage) || COULD_NOT_ADD);
+      setAttachFailed((err instanceof ApiError && err.userMessage) || COULD_NOT_ADD);
     } finally {
       setReading(false);
     }
@@ -1000,8 +1016,6 @@ export default function ReportScreen() {
               {UPLOAD_HINT}
             </ThemedText>
 
-            <PhotoVote />
-
             {attachments.length < MAX_ATTACHMENTS && (
               <View style={styles.attachActions}>
                 {(
@@ -1027,6 +1041,23 @@ export default function ReportScreen() {
                 ))}
               </View>
             )}
+
+            {/* DIRECTLY UNDER THE BUTTONS SHE JUST TAPPED (Ruth, 30 September
+                2026, with the place marked on a screenshot).
+                
+                It used to render once at the bottom of the screen, under Create
+                PDF, which is most of a page away. A photo refused at the top
+                said so somewhere she never looked, and from where she sat that
+                was still silence - just a quieter kind. */}
+            {attachFailed && (
+              <ThemedText type="small" themeColor="danger">
+                {attachFailed}
+              </ThemedText>
+            )}
+
+            {/* AND THE WAY TO ASK FOR PHOTOS, beside the sentence that says
+                there are none. */}
+            <PhotoVote />
 
             {reading && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
