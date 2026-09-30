@@ -32,7 +32,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { FLOW_SCREENS, progressForPath } from '../mobile/src/lib/onboarding-progress.ts';
+import {
+  FLOW_SCREENS,
+  ONBOARDING_SCREENS,
+  progressForPath,
+} from '../mobile/src/lib/onboarding-progress.ts';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ONBOARDING = path.join(ROOT, 'mobile', 'src', 'app', 'onboarding');
@@ -129,6 +133,72 @@ check('there is a visible way out of a redo', () => {
   const header = read(path.join(ROOT, 'mobile', 'src', 'components', 'onboarding-header.tsx'));
   assert.ok(/Not now/.test(header), 'no "Not now" is drawn anywhere in the header');
   assert.ok(/useRedoing/.test(header), 'the header does not know whether this is a redo');
+});
+
+
+// ── EVERY CONFIGURATION SCREEN IS REACHABLE, AND THE CHAIN ENDS ─────────────
+//
+// ADDED 30 SEPTEMBER 2026, AFTER BREAKING IT. Splitting the Body Manual out of
+// the main chain left `activities` - a Configuration screen that also collects
+// her height - reachable from nothing at all. The flow would have run
+// goals -> skill -> life-stage and quietly skipped the screen the metabolic
+// estimate depends on.
+//
+// Nothing would have caught that. Every other check here is about the way OUT;
+// this is the first one about the way THROUGH. It walks the pushes the screens
+// actually make, from the first screen a signed-in person sees, and asserts
+// that the walk arrives at the last one without stranding a Configuration
+// screen nobody can get to.
+
+check('the configuration chain runs from intro to the first draft', () => {
+  const nextOf = (route) => {
+    const file = path.join(ONBOARDING, route + '.tsx');
+    if (!fs.existsSync(file)) return [];
+    const source = stripComments(read(file));
+    return [
+      ...new Set(
+        [...source.matchAll(/router\.(?:push|replace)\(\s*(?:\{\s*pathname:\s*)?'\/onboarding\/([a-z-]+)'/g)].map(
+          (m) => m[1]
+        )
+      ),
+    ];
+  };
+
+  const configuration = new Set(
+    ONBOARDING_SCREENS.filter((s) => s.kind === 'configuration').map((s) => s.route)
+  );
+  // Reached before a session exists, so not part of the signed-in walk.
+  for (const entry of ['consent', 'account']) configuration.delete(entry);
+
+  const seen = new Set();
+  const queue = ['intro'];
+  while (queue.length > 0) {
+    const route = queue.shift();
+    if (seen.has(route)) continue;
+    seen.add(route);
+    for (const next of nextOf(route)) {
+      if (configuration.has(next) && !seen.has(next)) queue.push(next);
+    }
+  }
+
+  const stranded = [...configuration].filter((r) => !seen.has(r));
+  assert.equal(
+    stranded.length,
+    0,
+    'these configuration screens cannot be reached by walking the chain from intro: ' +
+      stranded.join(', ') +
+      ' - which is what splitting the Body Manual out did to `activities`, the screen the ' +
+      'metabolic estimate needs'
+  );
+  assert.ok(seen.has('first-draft'), 'the chain never arrives at the first draft');
+});
+
+check('and the Body Manual is entered from the draft, not wired into the chain', () => {
+  const draft = stripComments(read(path.join(ONBOARDING, 'first-draft.tsx')));
+  assert.ok(
+    /\/onboarding\/life-stage/.test(draft),
+    'the first draft must offer the Body Manual, or nothing reaches those screens at all'
+  );
 });
 
 // ---------------------------------------------------------------- MUTATION

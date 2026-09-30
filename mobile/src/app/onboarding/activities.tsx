@@ -153,7 +153,7 @@ export default function ActivitiesScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/steer-around');
+      router.push('/onboarding/allergies');
       return;
     }
     setSaving(true);
@@ -163,7 +163,7 @@ export default function ActivitiesScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/steer-around');
+    router.push('/onboarding/allergies');
   }
 
   useOnboardingAction({

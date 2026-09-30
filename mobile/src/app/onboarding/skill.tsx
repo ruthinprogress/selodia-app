@@ -88,7 +88,7 @@ export default function SkillScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/life-stage');
+      router.push('/onboarding/activities');
       return;
     }
     setSaving(true);
@@ -98,7 +98,7 @@ export default function SkillScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/life-stage');
+    router.push('/onboarding/activities');
   }
 
   useOnboardingAction({

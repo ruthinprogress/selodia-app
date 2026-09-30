@@ -86,7 +86,7 @@ export default function LifeStageScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/activities');
+      router.push('/onboarding/steer-around');
       return;
     }
     setSaving(true);
@@ -96,7 +96,7 @@ export default function LifeStageScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/activities');
+    router.push('/onboarding/steer-around');
   }
 
   useOnboardingAction({

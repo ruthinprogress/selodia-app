@@ -57,7 +57,7 @@ const OPTIONS: { key: OptionKey; label: string; hint?: string }[] = [
   { key: 'skip', label: 'Rather not say' },
 ];
 
-const NEXT = '/onboarding/allergies' as const;
+const NEXT = '/onboarding/first-draft' as const;
 
 export default function MedicationScreen() {
   const [choice, setChoice] = useState<OptionKey | null>(null);

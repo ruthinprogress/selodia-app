@@ -25,7 +25,6 @@ import { setRedoing, useRedoing } from '@/lib/redo-setup';
 // long steps, which makes the feeling of being lost worse rather than better.
 // Discrete segments promise only what is true: nine steps, this is the fourth.
 export function OnboardingHeader() {
-  const theme = useTheme();
   const pathname = usePathname();
   const progress = progressForPath(pathname);
   // Body Manual screens say what they are for. See onboarding-progress.ts.
@@ -70,7 +69,7 @@ export function OnboardingHeader() {
       <View style={styles.row}>
         <View style={styles.titleBlock}>
           <ThemedText type="smallBold">{ONBOARDING_TITLE}</ThemedText>
-          {progress && (
+          {progress?.index != null && (
             <ThemedText type="small" themeColor="textSecondary">
               {progress.index} of {progress.total}
             </ThemedText>
@@ -142,28 +141,11 @@ export function OnboardingHeader() {
         </View>
       </View>
 
-      {progress && (
-        <>
-          <View
-            style={styles.segments}
-            accessibilityRole="progressbar"
-            accessibilityLabel={`${ONBOARDING_TITLE}: step ${progress.index} of ${progress.total}, ${progress.label}`}
-          >
-            {Array.from({ length: progress.total }, (_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.segment,
-                  { backgroundColor: i < progress.index ? theme.text : theme.backgroundElement },
-                ]}
-              />
-            ))}
-          </View>
-
-          <ThemedText type="small" themeColor="textSecondary" style={styles.stepLabel}>
-            {progress.label}
-          </ThemedText>
-        </>
+      {/* Only a counted screen has a bar. A Body Manual screen keeps its title
+          and its note and carries no position, because it is not a step on the
+          way to anything - it is something she chose to add. */}
+      {progress?.index != null && progress.total != null && (
+        <Segments index={progress.index} total={progress.total} label={progress.label} />
       )}
 
       {/* THE HONESTY THE SPLIT EXISTS FOR (Ruth, 30 September 2026). A Body
@@ -176,6 +158,41 @@ export function OnboardingHeader() {
         </ThemedText>
       )}
     </ThemedView>
+  );
+}
+
+/**
+ * The segmented counter, taking a position it is certain of.
+ *
+ * Pulled out on 30 September 2026 when the index became nullable for Body
+ * Manual screens. A component with non-null props is a better answer than an
+ * assertion at each use: there is one place that knows a bar needs a number,
+ * and it is this one.
+ */
+function Segments({ index, total, label }: { index: number; total: number; label: string }) {
+  const theme = useTheme();
+  return (
+    <>
+      <View
+        style={styles.segments}
+        accessibilityRole="progressbar"
+        accessibilityLabel={`${ONBOARDING_TITLE}: step ${index} of ${total}, ${label}`}
+      >
+        {Array.from({ length: total }, (_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.segment,
+              { backgroundColor: i < index ? theme.text : theme.backgroundElement },
+            ]}
+          />
+        ))}
+      </View>
+
+      <ThemedText type="small" themeColor="textSecondary" style={styles.stepLabel}>
+        {label}
+      </ThemedText>
+    </>
   );
 }
 

@@ -107,6 +107,22 @@ export default function FirstDraftScreen() {
     })();
   }, []);
 
+  // THE MANUAL IS OFFERED HERE, NOT GATED ON (Ruth, 30 September 2026).
+  //
+  // Configuration is what onboarding must finish; the Body Manual is what grows
+  // afterwards. Her own line: "It doesn't need to be perfect today. Your Manual
+  // will grow as your body, health and life change."
+  //
+  // WHY OFFERING IT BEATS INCLUDING IT. The flow was already thirteen screens
+  // and her draft adds free-text health, medication and hormones on top. The
+  // failure that risks is not a thin Manual, it is NO Manual - because she put
+  // the phone down at screen nine and Version 1 never existed at all. So
+  // Configuration ends here, completely, and the three Manual screens sit
+  // behind an invitation that can be taken now or in six months.
+  //
+  // IT IS THE SECONDARY ACTION, deliberately. "Start" is the primary one
+  // because finishing is the thing she came to do, and an invitation dressed as
+  // the main button would read as four more screens she has to get through.
   useOnboardingAction({
     label: 'Start',
     enabled: true,
@@ -120,6 +136,10 @@ export default function FirstDraftScreen() {
         setRedoing(false);
         router.replace('/');
       })();
+    },
+    secondary: {
+      label: 'Add more about you',
+      onPress: () => router.push('/onboarding/life-stage'),
     },
   });
 

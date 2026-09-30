@@ -86,7 +86,17 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
 // answer is the onboarding redesign Ruth has queued, and she has said not to
 // start it yet, so this records the fault rather than quietly papering it.
 
-export const ONBOARDING_TOTAL = ONBOARDING_SCREENS.length;
+// THE COUNT IS THE CONFIGURATION CHAIN, NOT EVERY SCREEN (30 September 2026).
+//
+// The Body Manual screens are offered rather than required, so counting them
+// would promise a longer setup than anybody has to do and would make the
+// denominator wrong for the person who skips them - which is most people, most
+// of the time. They keep their title and their note and simply carry no
+// "4 of 11"; the header has drawn its action independently of the count since
+// the night the whole flow lost its Continue button.
+export const ONBOARDING_TOTAL = ONBOARDING_SCREENS.filter(
+  (s) => s.kind === 'configuration'
+).length;
 
 /**
  * Is this screen building the Body Manual rather than configuring the app?
@@ -118,8 +128,9 @@ export const BODY_MANUAL_NOTE =
 export const ONBOARDING_TITLE = 'Getting to know you';
 
 export type OnboardingProgress = {
-  index: number; // 1-based, for display
-  total: number;
+  /** 1-based, for display. Null on a Body Manual screen, which is not a step. */
+  index: number | null;
+  total: number | null;
   label: string;
 };
 
@@ -132,9 +143,17 @@ export function progressForPath(pathname: string | null | undefined): Onboarding
   const clean = pathname.split('?')[0].replace(/\/+$/, '');
   const last = clean.split('/').filter(Boolean).pop();
   if (!last) return null;
-  const i = ONBOARDING_SCREENS.findIndex((s) => s.route === last);
-  if (i < 0) return null;
-  return { index: i + 1, total: ONBOARDING_TOTAL, label: ONBOARDING_SCREENS[i].label };
+  const screen = ONBOARDING_SCREENS.find((s) => s.route === last);
+  if (!screen) return null;
+  // A Body Manual screen has a label and no position: it is not a step on the
+  // way to anything, it is a thing she chose to add.
+  if (screen.kind === 'manual') return { index: null, total: null, label: screen.label };
+  const among = ONBOARDING_SCREENS.filter((s) => s.kind === 'configuration');
+  return {
+    index: among.findIndex((s) => s.route === screen.route) + 1,
+    total: ONBOARDING_TOTAL,
+    label: screen.label,
+  };
 }
 
 // THE SCREENS THE AUTH GUARD MUST NEVER POLICE, derived from the list above
