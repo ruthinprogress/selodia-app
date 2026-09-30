@@ -91,6 +91,29 @@ Design exploration and build direction are genuinely different working modes, an
 
 ---
 
+## Main, not branches, while there are only test users (Ruth, 30 September 2026)
+
+**Work on main, in small commits, one fix each**, so any single commit can be reverted on its own. No long-lived feature branches until there are real users whose data a bad merge could reach.
+
+**Why the branch was worse.** `overnight-s59` ran from the evening of 29 September to the morning of the 30th and collected four commits — a chat fix, a layout fix, a guard and a close-out. Two things went wrong that a branch made possible and small commits on main would not have:
+
+- **Nothing on it could be deployed**, so Ruth kept testing an app that did not contain the fix. She reported the chat history bug as still present twice, correctly, because what was on her phone came from `main`. A fix nobody can run is indistinguishable from no fix.
+- **Its Vercel preview build failed on the first push and nobody noticed for ten hours**, because a failing preview is a mail nobody is watching and the branch was not blocking anything. On main the same failure is a production deploy that stops.
+
+### Before every push to main
+
+Run all three, in this order, and push only if all three pass:
+
+```
+npx tsc --noEmit          # and again in mobile/
+node --import ./scripts/ts-paths.mjs scripts/check-*.mjs
+npm run build             # the way Vercel does it
+```
+
+**`npm run build` is the one that was missing**, and it is not covered by the other two. A typecheck does not collect page data; `next build` does, and that is where a module reaching for a missing environment variable at import time fails. **Never push on a failing build, and never run the closing ceremony or report anything "complete" while the build is red.**
+
+---
+
 ## Session Structure
 
 ### Opening a session
@@ -118,6 +141,8 @@ So the rule above is not wrong, it is incomplete. A pause is a pause when **the 
 **What to do.** When she hands over for the night, run the ceremony **before starting the overnight work**, covering the day just finished, and number it as that session. The overnight run then belongs to the NEXT session, which is what it is — a different session number, a different set of hands on the wheel. If the overnight work is itself substantial, it gets its own close-out when she wakes, rather than being folded silently into the previous day.
 
 **Do not wait to be asked.** The four facts at step 6 are still not inferable, so ask for them as part of accepting the overnight work — the same message in which she says goodnight is the right moment, and the cost of asking is one line.
+
+**An overnight run works on main like any other, in small commits** (Ruth, 30 September 2026). Earlier overnight briefs said "work on a branch", and that instruction is withdrawn — see *Main, not branches* above for what it cost. The protection a branch was meant to give is now given by the three checks before every push and by each commit being one fix that can be reverted alone. **An overnight run that ends with a red build has not finished**, whatever else is done: nothing on it can reach her phone, so nothing on it can be checked in the morning.
 
 ### Closing a session — the full ceremony
 1. Confirm everything is committed and the working tree is clean (`git status`).
