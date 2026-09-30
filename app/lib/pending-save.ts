@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { saveAlmanacEntry } from './almanac';
 import { coerceStatus, normaliseSection } from './me-card';
+import { coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
 
 // The conversational save (build spec, Part Ten: Insights slice 2, 2026-09-12).
 //
@@ -95,6 +96,16 @@ export function coerceProposal(v: unknown): ProposedSave | null {
     const section = normaliseSection(content.section);
     const why = str(content.why) ?? str(content.summary);
     if (!section || !why) return null;
+    // A PROTOCOL MADE OF PARTS (2026-09-30). A Me card may carry items - name,
+    // when, a one-line purpose - so three skincare products are three things
+    // with their own timings rather than one paragraph. Optional: a weekly call
+    // with a friend has no parts.
+    //
+    // There is no field for an outcome or a result, which is deliberate and is
+    // the answer to "chat must not write outcomes Ruth didn't state": a
+    // sentence like "already seeing the redness reduce" has nowhere to go even
+    // if a model offers it.
+    const items = coerceItems(content.items);
     return {
       type,
       title: title.slice(0, MAX_TITLE),
@@ -103,6 +114,7 @@ export function coerceProposal(v: unknown): ProposedSave | null {
         why,
         status: coerceStatus(content.status),
         detail: str(content.detail),
+        ...(items.length > 0 ? { items } : {}),
       },
     };
   }
@@ -404,6 +416,22 @@ export async function commitSave(
       ? proposal.content.section
       : null;
 
+  // ONE CARD PER THING, NOT ONE PER CONVERSATION (2026-09-30).
+  //
+  // Ruth's acceptance test: "One Skincare entry results, three items... Fail
+  // means chat... creates a second entry." Saving always created a new row, so
+  // telling Selodia about her skincare twice would have produced two Skincare
+  // cards saying different things, and neither of them wrong.
+  //
+  // So a proposal whose title matches a card she already has UPDATES it: the
+  // items merge, a restated field replaces, a field she did not mention is left
+  // alone, and the old wording goes to history rather than being overwritten in
+  // silence. See me-items.ts.
+  if (proposal.type === 'me') {
+    const merged = await mergeIntoExistingMeCard(supabase, userId, proposal);
+    if (merged) return merged;
+  }
+
   const entry = await saveAlmanacEntry(supabase, userId, {
     kind: proposal.type,
     title: proposal.title,
@@ -411,6 +439,60 @@ export async function commitSave(
     content: proposal.content,
   });
   return entry ? { kind: entry.kind, title: entry.title } : null;
+}
+
+/**
+ * Merge a proposal into the Me card of the same name, when there is one.
+ *
+ * Returns null when she has no such card, which is the ordinary first-time
+ * case and means the caller should create one.
+ *
+ * MATCHED ON THE TITLE, EXACTLY AS me-update.ts does it, because two different
+ * answers to "which card did she mean" is how an update lands on the wrong
+ * record. Case and punctuation are ignored; anything less certain is left to
+ * create a new card, which is recoverable, rather than edit the wrong one,
+ * which is not.
+ */
+async function mergeIntoExistingMeCard(
+  supabase: SupabaseClient,
+  userId: string,
+  proposal: ProposedSave
+): Promise<{ kind: string; title: string } | null> {
+  const key = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const { data } = await supabase
+    .from('almanac_entries')
+    .select('id, title, content')
+    .eq('user_id', userId)
+    .eq('kind', 'me')
+    .eq('status', 'active')
+    .limit(200);
+
+  const match = (data ?? []).find((r) => key(String(r.title ?? '')) === key(proposal.title));
+  if (!match) return null;
+
+  const existing = (match.content ?? {}) as Record<string, unknown>;
+  const incoming = proposal.content as Record<string, unknown>;
+  const incomingItems = coerceItems(incoming.items) as MeItem[];
+  const { items } = mergeItems(itemsOf(existing), incomingItems);
+
+  const next: Record<string, unknown> = {
+    ...existing,
+    // A restated reason replaces; an unstated one leaves hers alone.
+    ...(typeof incoming.why === 'string' && incoming.why.trim() ? { why: incoming.why } : {}),
+    ...(incoming.status ? { status: incoming.status } : {}),
+    ...(items.length > 0 ? { items } : {}),
+  };
+
+  const { error } = await supabase
+    .from('almanac_entries')
+    .update({ content: next, updated_at: new Date().toISOString() })
+    .eq('id', match.id)
+    .eq('user_id', userId);
+  if (error) {
+    console.log('ME MERGE: write failed -', error.message);
+    return null;
+  }
+  return { kind: 'me', title: String(match.title) };
 }
 
 /**
