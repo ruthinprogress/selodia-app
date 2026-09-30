@@ -3308,6 +3308,28 @@ Three consequences, and they are build items rather than wording:
 2. **Beta testers are free, under their own agreement**, attached to the account rather than published on the site. That agreement overrides the public terms for those users, and the public terms now say so.
 3. **The contract is with Selodía Ltd**, not with Ruth personally. Settled the same day.
 
+### The price, decided 2026-09-30
+
+| | |
+| :-- | :-- |
+| Monthly | **£12** |
+| Annual | **£120** |
+| Founding monthly | **£8**, first 100 people |
+| Founding annual | **£79**, first 100 people |
+
+**The founding rate is kept for good**, not an introductory period that reverts. That is the part that has to survive into the billing build, because every subscription system makes the opposite assumption by default.
+
+**Paid extras come later** for the full workout library and the calisthenics progressions. Not at launch, and not part of the subscription decision above.
+
+### The funding needs list, 2026-09-30
+
+Recorded here because it is the answer to "what would money actually be for", which is the question every application asks and the one that is hardest to reconstruct afterwards.
+
+- **A clinical advisor.** Named already by the red-flag layer and the menopause reference layer, both of which are built and switched off waiting for exactly this.
+- **The missing exercise clips.** Ten movements still being drawn, including the handstand and the muscle up. The skills ladder offers nothing it cannot demonstrate, so these are a hard limit on what Skills can contain.
+- **Legal review** of the terms, the privacy policy and the beta agreement. Currently a first draft by somebody who is not a lawyer, which the DPIA says of itself in its own first line.
+- **A coach partnership.**
+
 ## Legal and compliance
 
 - [~] **The beta agreement — v1.1 final text, and acceptance built.** In `docs/beta-agreement.md` and the Legal folder on Drive. `beta_members` and `beta_agreement_acceptances` exist and acceptance is versioned and append-only. The registered address and the company number are in it (Selodia Ltd, 19 Campbell Road, London, E17 6RR, company number 12246794). **The version date is deliberately still blank**: Ruth's rule is the day it is first shown to a tester, and `scripts/beta-agreement-date.mjs` fills it from the earliest non-founder grant in `beta_members` so it is read rather than remembered.
@@ -3318,6 +3340,7 @@ Three consequences, and they are build items rather than wording:
 - [x] **The international transfer mechanism — checked 28 September, and both processors have one.** Anthropic: EU SCCs Module Two at section I.1 plus **the UK Addendum** at Schedule 3 section B, incorporated by the Commercial Terms with no form to sign. ElevenLabs: SCCs at 11.1, **the UK Addendum completed at 11.4**, "deemed executed upon this DPA taking effect". Recorded in section 3 of the DPIA. **Two things deliberately left as unknown rather than guessed**: whether either company is certified under the Data Privacy Framework with the UK Extension (the public list did not answer it and the secondary sources contradict each other), and a transfer risk assessment, which is a solicitor's job.
 - [x] **A breach-response procedure — written 28 September.** `docs/breach-response.md`, and the Legal folder. What counts as a breach and what does not, the first hour (write down the time, rotate keys, delete nothing, start the record), the **72-hour clock which starts at awareness rather than at understanding**, when the people affected are told, and the contacts. Nobody reads a procedure for the first time while that clock is running.
 - [x] **The company is identified on the public pages, not only named.** The privacy policy and the terms both said "Selodía Ltd" and stopped; the Companies Act and the E-Commerce Regulations want the company number, the place of registration and the registered office too. **`UPDATED` on the privacy page was deliberately NOT bumped**: that field re-asks every existing user to confirm their consent, and statutory particulars change neither what is collected nor who sees it.
+- [ ] **THE PAPERWORK GATE, added 30 September 2026, and it has a trigger rather than a date.** Ruth's decision that evening was to build the Body Manual work first and update the paperwork after: *"let's just build it and once it's built we update the paperwork. Ico is already registered."* That is right, and nothing blocks the build — she is both the data controller and the data subject on her own account. **The gate is the FIRST INVITATION, not the build.** Medication is special category data and `onboarding/medication.tsx` now collects it through chat, so the **privacy policy**, the **DPIA** and the **Play Data Safety form** must all be correct before Nikki and Carol are invited. Same moment the ICO registration was set against, for the same reason. Recorded here because the only real risk in "build first" is that "after" quietly becomes "never".
 - [ ] **Governing law confirmed.** England and Wales is assumed in the terms.
 - [x] **Record consent** — item 51. Built 2026-09-19. *(Box was unticked beside its own "built" note until 2026-09-27, which is the drift this list exists to catch.)*
 - [x] **Account deletion reachable without the app** — live at selodia.app/delete-account.
@@ -3325,7 +3348,8 @@ Three consequences, and they are build items rather than wording:
 ## Billing
 
 - [ ] **Nothing exists.** No payment provider, no subscription model, no price, no billing screen, no cancellation flow. The terms page describes all of it in the abstract. This is the largest unbuilt item on this list and it did not appear on any list before today.
-- [~] **A price — analysed in full, not yet decided.** *2026-09-28 Running costs and pricing*, rewritten the same evening at Ruth's instruction with a competitor pass, the company's own overheads and a founding rate. Model cost is about £2.09 a user a month and **flat from 100 users to 10,000**. The company overheads are not: about £1,150 a year spread over 25 subscribers is £3.83 a head a month, which is why £7 felt too low to her and why it was. **Recommendation: £9/month, £79/year, with a founding rate of £6 / £59 kept for good** for everybody subscribing in the first three months. Round numbers, no .99, at her instruction. Break-even on the overheads alone at £9: about 19 subscribers held for a year.
+- [x] **DECIDED 2026-09-30 — the price.** £12 a month, £120 a year, founding £8 and £79 for the first 100 people and kept for good. See *The price, decided 2026-09-30* above. The analysis below is what it was decided from, and its own recommendation of £9 / £79 was revised upward by Ruth on the day. **The founding rate being permanent rather than introductory is the part that has to reach the billing build**, because every subscription system assumes the opposite by default.
+- [~] **The analysis it came from.** *2026-09-28 Running costs and pricing*, rewritten the same evening at Ruth's instruction with a competitor pass, the company's own overheads and a founding rate. Model cost is about £2.09 a user a month and **flat from 100 users to 10,000**. The company overheads are not: about £1,150 a year spread over 25 subscribers is £3.83 a head a month, which is why £7 felt too low to her and why it was. **Recommendation: £9/month, £79/year, with a founding rate of £6 / £59 kept for good** for everybody subscribing in the first three months. Round numbers, no .99, at her instruction. Break-even on the overheads alone at £9: about 19 subscribers held for a year.
 - [x] **Cost per user is instrumented — 28 September 2026.** Named in the costing document as the highest-value item on the page, because every figure in it rests on an invented user mix. `model_usage` takes a row per model call with the tokens **and** the cost priced at the rates of the day — both, because a table storing only tokens would silently re-price last quarter every time Anthropic changes a number. Counted: the classify call, the reply writer **on both outcomes** (a fallback is the most expensive turn there is), and the three Haiku parses. `node scripts/cost-per-user.mjs` reads it, and was written before the table had anything in it. **The first version wrote nothing at all**: a fire-and-forget insert in a serverless function is not forgotten, it is killed when the instance freezes after the response. `after()` fixes it.
 - [ ] **What the free beta becomes when the beta ends.** Testers will have a record they care about behind a paywall that did not exist when they started.
 

@@ -815,3 +815,5 @@ _Raised during the overnight run of 30 September 2026. Each one was answered wit
 **3. The chain has not been reordered.** Configuration first with the Body Manual offered at the end is agreed and labelled, but the order has not moved. Reordering is the one change here that can strand somebody mid-flow, and it wanted a working update channel first — which is exactly what tonight's APK is for. **Safest option taken: label now, reorder once the APK is confirmed working.**
 
 **4. The Body Manual note wording.** Every Manual screen now carries one quiet line: *"For your record rather than today's numbers. It helps Selodía make sense of things later, and you can add to it any time."* That is mine, not yours. Change it freely.
+
+**5. Body Manual screens no longer show their step label.** "Where you are" and "What you take" were drawn by the same block as the progress bar, and that block now only renders for counted screens. The Manual note took its place. I left it that way: a label whose job is to say where you are in a bounded sequence does not apply to a screen that is not in the sequence, and the screen's own question already heads it. Say if you want it back.

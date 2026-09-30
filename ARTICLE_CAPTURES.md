@@ -688,3 +688,15 @@ A calcium feature was built on the assumption that no measured calcium data exis
 ## 30 September 2026 — The nudge that was deleted for being true but not worth saying
 
 A brief asked three times for a gentle reminder that tea and coffee reduce calcium absorption. Two things were wrong with it. The interaction that matters is with iron, not calcium. And on calcium the effect is real, small, and in the source's own words "easily offset by increasing calcium consumption in the diet" — which is the habit the feature already teaches. So the honest answer was not to soften the wording but to spend the nudge on nothing. In a product whose method is quiet repetition, attention is the scarce resource, and a true sentence that changes nothing still costs some.
+
+---
+
+## 1 October 2026 — The check caught the break I had just made
+
+Splitting the optional half of onboarding out of the required half left one screen reachable from nothing at all: the one that collects height, which every calorie figure in the app is built on. The flow would have skipped it silently and the only symptom would have been an app that quietly never computed a target, months later, for reasons nobody could reconstruct. It was not caught by care or by review. It was caught because a check written six hours earlier prints the list of screens the flow can actually reach, and one name was missing from it. The check had been written for a different bug entirely.
+
+---
+
+## 1 October 2026 — Offering it is what makes it get done
+
+The instinct with a feature like a health record is to require it: ask everything up front, while you have their attention. The opposite turns out to be true. The flow was already thirteen screens and the new material would have made it seventeen, and the failure that risks is not a thin record — it is no record at all, because somebody put the phone down at screen nine. So the required part now ends completely, and the rest sits behind one line on the last screen. A record that grows over years does not need to be complete on the first evening, and insisting that it is is the surest way to end up with nothing.
