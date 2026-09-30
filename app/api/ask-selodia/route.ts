@@ -8,6 +8,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // single largest block of prompt that a spoken exchange cannot use. Text turns
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
+import { falseClaimNote } from '../../lib/claimed-write';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
@@ -2994,6 +2995,23 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     }
   }
 
+  // WHAT GENUINELY REACHED HER DATA THIS TURN. `landed` covers the log
+  // writers; the notes below it are each written by a path that only speaks
+  // after its own write succeeded, so their presence is evidence of one.
+  const wroteThisTurn = [
+    ...attempt.landed,
+    ...(meNote ? ['me card'] : []),
+    ...(planNote ? ['plan'] : []),
+    ...(restoreNote ? ['restored entry'] : []),
+    ...(focusNote ? ['focus'] : []),
+    ...(saveNote ? ['saved note'] : []),
+  ];
+  const alreadySpoke =
+    correctionNote !== null || honestyNote !== null || deferredLog === true;
+  const falseClaimedNote = alreadySpoke
+    ? null
+    : falseClaimNote({ reply: safeReplyText, wrote: wroteThisTurn });
+
   const appendedNotes = [
     // FIRST IN THE LIST, because if anything here is going to be read it is
     // this one, and a line about calling 999 does not belong under a note about
@@ -3011,6 +3029,19 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // which is the only reason to have written it down.
     ruleRemovalNote,
     honestyNote,
+    // THE REPLY MAY NOT CLAIM A WRITE THAT DID NOT HAPPEN (2026-09-30).
+    //
+    // save-honesty above speaks when a writer TRIED and failed. This speaks
+    // when nothing tried at all and the reply said it had - which is the
+    // peanut butter turn of 29 September, where "Two spoons of peanut butter
+    // added to the yoghurt bowl, noted" met a database in which nothing was
+    // written between 20:22 and 20:27. No writer ran, so no writer threw, so
+    // that module correctly stayed silent.
+    //
+    // Last in the list and suppressed whenever anything above it already
+    // spoke: two corrections in one reply is the coffee loop, and one honest
+    // sentence is worth more than two competing ones.
+    falseClaimedNote,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0);
 
   let replyBody = safeReplyText;
