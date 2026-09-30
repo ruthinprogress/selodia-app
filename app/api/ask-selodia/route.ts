@@ -8,7 +8,12 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // single largest block of prompt that a spoken exchange cannot use. Text turns
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
-import { falseClaimNote, stripMachineOutput, stripSaveClaims } from '../../lib/claimed-write';
+import {
+  falseClaimNote,
+  stripMachineOutput,
+  stripSaveClaims,
+  unescapeNewlines,
+} from '../../lib/claimed-write';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
@@ -591,7 +596,23 @@ export async function POST(request: NextRequest) {
     .reverse()
     .map((m) => ({
       role: m.role as 'user' | 'assistant',
-      content: m.content as string,
+      // HER HISTORY IS CLEANED BEFORE THE MODEL READS IT (2026-09-30).
+      //
+      // A model's strongest instruction is its own previous output. When the
+      // proposedSave JSON leaked into her thread this morning, those turns
+      // stayed there - and hours later, with the leak itself fixed, a proposal
+      // came back with the escape sequences visible as text, exactly the shape
+      // of that leaked content string. Nothing was generating that any more,
+      // so it was copying
+      // the shape of a message it could still see itself having written.
+      //
+      // A bad turn is therefore not over when it is fixed. It keeps teaching
+      // until it leaves the window, so it is cleaned on the way in: machine
+      // output removed, escaped newlines made real.
+      content:
+        m.role === 'assistant'
+          ? unescapeNewlines(stripMachineOutput(m.content as string))
+          : (m.content as string),
     }));
 
   const insightsBlock =
@@ -3287,7 +3308,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // voices disagreeing about her own record.
         //
         // Whatever the app actually did is stated by the app, below.
-        replyBody = stripSaveClaims(stripMachineOutput(written.text));
+        replyBody = unescapeNewlines(stripSaveClaims(stripMachineOutput(written.text)));
 
         // AND THE CLAIM GUARD BELONGS HERE, ON THE PATH THAT WRITES HER REPLY.
         //

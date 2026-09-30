@@ -152,11 +152,55 @@ export function claimsAWrite(reply: string): string | null {
  */
 export function stripSaveClaims(reply: string): string {
   if (IS_AN_OFFER.test(reply)) return reply;
-  const kept = sentences(reply).filter((sentence) => {
-    if (NOT_A_CLAIM.some((re) => re.test(sentence))) return true;
-    return !CLAIMS.some((re) => re.test(sentence));
+  if (!claimsAWrite(reply)) return reply;
+
+  // LINE BY LINE, KEEPING THE SHAPE.
+  //
+  // The first version split the whole reply into sentences and rejoined the
+  // survivors with a space. That flattened every list she is meant to be able
+  // to glance at - "Morning / - Niacinamide ... / Evening (alternating) / ..."
+  // became one paragraph - and it ran on every reply rather than only the ones
+  // that claimed something.
+  //
+  // So: nothing is touched unless there is a claim, and a line loses only the
+  // sentences that make one. Blank lines and indentation survive, because they
+  // are the difference between a list and a wall.
+  const lines = reply.split('\n').map((line) => {
+    if (!line.trim()) return line;
+    const kept = line
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => {
+        if (NOT_A_CLAIM.some((re) => re.test(sentence))) return true;
+        return !CLAIMS.some((re) => re.test(sentence));
+      })
+      .join(' ')
+      .trim();
+    return kept;
   });
-  return kept.join(' ').replace(/\s{2,}/g, ' ').trim();
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/**
+ * A REPLY MUST NOT CONTAIN THE TWO CHARACTERS BACKSLASH-N.
+ *
+ * Ruth, 30 September 2026: a proposal arrived reading
+ *
+ *   "Here's the update to your Skincare Routine card:\n\nMorning\n- Niacinamide…"
+ *
+ * with the escapes visible as text. The shape is exactly the `content` string
+ * from the proposedSave object that leaked into her thread earlier the same
+ * day - which is still sitting in her history as an assistant turn, so the
+ * model had an example of itself writing escaped newlines and copied it.
+ *
+ * The cause is being fixed where it belongs, by cleaning history before the
+ * model sees it. This is the display guard, and it is safe because no honest
+ * reply ever needs the literal two-character sequence: a real line break is a
+ * real line break.
+ */
+export function unescapeNewlines(reply: string): string {
+  if (!reply.includes('\\n')) return reply;
+  return reply.replace(/\\r\\n|\\n/g, '\n').replace(/\\t/g, ' ');
 }
 
 /**

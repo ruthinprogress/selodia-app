@@ -72,7 +72,14 @@ function audit(source) {
   // Each new wrapper has to be added here by hand, which forces whoever adds one
   // to look at this check and confirm the gate still runs before the reply is
   // adopted. That is the whole job of this file.
-  const ADOPTIONS = ['written.text', 'stripMachineOutput', 'stripSaveClaims'];
+  const ADOPTIONS = [
+    'written.text',
+    'stripMachineOutput',
+    'stripSaveClaims',
+    // Added 30 September with the escaped-newline guard. Still the same
+    // assignment, in the same branch, after the second gate.
+    'unescapeNewlines',
+  ];
   const written = assignments.find((a) => ADOPTIONS.includes(a.from));
   if (!written) {
     failures.push(

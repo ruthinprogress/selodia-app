@@ -28,7 +28,7 @@
 
 import assert from 'node:assert';
 
-import { claimsAWrite, falseClaimNote, stripMachineOutput, stripSaveClaims } from '../app/lib/claimed-write.ts';
+import { claimsAWrite, falseClaimNote, stripMachineOutput, stripSaveClaims, unescapeNewlines } from '../app/lib/claimed-write.ts';
 import { unsavedNote } from '../app/lib/save-honesty.ts';
 
 let pass = 0;
@@ -254,6 +254,62 @@ check('a real reply keeps everything except the claim', () => {
 check('the failure wording does not call her Me card a log', () => {
   const note = falseClaimNote({ reply: "I've saved that.", wrote: [] });
   assert.ok(note && !/your log/i.test(note), `got: ${note}`);
+});
+
+
+// ------------------------------------- THE 2:14 REPLY, AND THE SHAPE OF A LIST
+//
+// Her real reply, verbatim: the escapes arrived as text because the model was
+// copying a leaked proposedSave content string still sitting in her history.
+const ESCAPED =
+  "Here is the update to your Skincare Routine card:\n\nMorning\n- Niacinamide - strengthens barrier.\n\nEvening (alternating)\n- Retinol - increases cell turnover.\n\nShall I save this version?";
+
+check('the escaped newlines become real ones', () => {
+  const out = unescapeNewlines(ESCAPED);
+  assert.ok(!out.includes(String.fromCharCode(92) + 'n'), 'no backslash-n may reach her');
+  assert.ok(out.split(String.fromCharCode(10)).length > 4, 'it must break into lines');
+  assert.ok(out.includes('Morning') && out.includes('Evening (alternating)'));
+});
+
+const LF = String.fromCharCode(10);
+
+check('a reply with real newlines is untouched', () => {
+  const fine = ['Morning', '- Niacinamide', '', 'Evening', '- Retinol'].join(LF);
+  assert.equal(unescapeNewlines(fine), fine);
+});
+
+// THE FLATTENING I INTRODUCED. stripSaveClaims split the whole reply into
+// sentences and rejoined with a space, turning a grouped list into a paragraph,
+// and it ran on every reply rather than only the ones claiming a save.
+const GROUPED = [
+  'Here is the update to your Skincare Routine card:',
+  '',
+  'Morning',
+  '- Niacinamide (Vitamin B3) - barrier support, redness, pores',
+  '',
+  'Evening (alternating)',
+  '- Vitamin C (Ascorbyl Glucoside) - brightening, pigmentation',
+  '- Retinol (Vitamin A) - fine lines, texture',
+  '',
+  'Shall I save this version?',
+].join(LF);
+
+check('a grouped list keeps its shape', () => {
+  assert.equal(stripSaveClaims(GROUPED), GROUPED, 'a proposal must not be flattened');
+});
+
+check('a reply that claims nothing is returned unchanged', () => {
+  const plain = ['Retinol at night makes sense with the vitamin C.', '', 'Anything else?'].join(LF);
+  assert.equal(stripSaveClaims(plain), plain);
+});
+
+check('a claim is removed WITHOUT flattening the lines around it', () => {
+  const mixed = ['Morning', '- Niacinamide', '', 'That is saved to your Me tab.'].join(LF);
+  const out = stripSaveClaims(mixed);
+  assert.ok(out.includes('Morning'), 'the list survives');
+  assert.ok(out.includes('- Niacinamide'), 'the list survives');
+  assert.ok(!/saved/i.test(out), 'the claim goes');
+  assert.ok(out.split(LF).length >= 2, 'the shape survives');
 });
 
 for (const f of failures) console.error('  FAIL  ' + f);
