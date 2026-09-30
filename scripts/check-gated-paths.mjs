@@ -61,7 +61,16 @@ function audit(source) {
 
   // The rebuilt path specifically: its assignment must sit after a SECOND gate,
   // not merely after the first one, because the first gated a different draft.
-  const written = assignments.find((a) => a.from === 'written.text');
+  // ADOPTED THROUGH A WRAPPER SINCE 30 SEPTEMBER. The rebuilt reply is now
+  // `stripMachineOutput(written.text)` - the strip that keeps a proposedSave
+  // object out of her message. It is still the same assignment in the same
+  // branch, still after the second gate, so this check matches either spelling
+  // rather than being loosened to match anything.
+  // The capture above stops at the first non-identifier character, so a wrapped
+  // adoption reads as the wrapper's name rather than the whole expression.
+  const written = assignments.find(
+    (a) => a.from === 'written.text' || a.from === 'stripMachineOutput'
+  );
   if (!written) {
     failures.push(
       "Could not find `replyBody = written.text`, which is how the rebuilt path's " +

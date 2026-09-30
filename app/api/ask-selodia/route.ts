@@ -8,7 +8,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // single largest block of prompt that a spoken exchange cannot use. Text turns
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
-import { falseClaimNote } from '../../lib/claimed-write';
+import { falseClaimNote, stripMachineOutput } from '../../lib/claimed-write';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weighInFacts } from '../../lib/weigh-in-facts';
@@ -640,6 +640,47 @@ export async function POST(request: NextRequest) {
           '',
         ].join('\n')
       : '';
+  // THE SAME CARDS, WITH NO INSTRUCTIONS IN THEM (2026-09-30).
+  //
+  // meCardsBlock above tells the CLASSIFY call how to emit a save - "offer it
+  // with proposedSave type 'me'". That sentence is correct for a model with a
+  // tool to put it in, and catastrophic for the model that writes her reply,
+  // which has no tool and only writes prose.
+  //
+  // I wired extraBlocks to the writer this morning and handed it that block.
+  // It did the only thing it could with an instruction to emit proposedSave: it
+  // typed the JSON into her message. Twice, at 11:32 and 11:35, followed by
+  // "That's saved to your Me tab."
+  //
+  // So the writer gets FACTS and the classifier gets INSTRUCTIONS, and the two
+  // are built separately rather than one being reused for both. A block that
+  // names a field name has no business in front of the model that writes to
+  // her.
+  const meFactsBlock =
+    (meRows ?? []).length > 0
+      ? [
+          '',
+          'WHAT IS ON HER ME TAB - her personal protocol, as it currently stands:',
+          ...(meRows ?? []).flatMap((r) => {
+            const c = (r.content ?? {}) as Record<string, unknown>;
+            const status = typeof c.status === 'string' ? c.status : null;
+            const why = typeof c.why === 'string' ? c.why : null;
+            const items = itemsOf(c);
+            const lines = [
+              `- ${r.title}${r.category ? ` (${r.category})` : ''}${status ? `: ${status}` : ''}`,
+            ];
+            if (why) lines.push(`    why: ${why}`);
+            for (const item of items) {
+              lines.push(
+                `    ${item.name}${item.when ? ` | ${item.when}` : ''}${item.purpose ? ` | ${item.purpose}` : ''}`
+              );
+            }
+            return lines;
+          }),
+          '',
+        ].join('\n')
+      : '';
+
   const plansBlock =
     savedPlans.length > 0
       ? [
@@ -1638,7 +1679,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           safetyBlock: SAFETY_PROMPT_BLOCK,
           // The same context the sequential call gets. A spoken turn that
           // cannot see her Me tab gives the same wrong answer as a typed one.
-          extraBlocks: [meCardsBlock, plansBlock, insightsBlock],
+          extraBlocks: [meFactsBlock],
         })
       : null;
 
@@ -3182,7 +3223,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // it was given has food, movement, water, sleep, measurements and
           // cycle, and nothing else. It was obeying the baseline instruction
           // to say only what the record shows.
-          extraBlocks: [meCardsBlock, plansBlock, insightsBlock],
+          extraBlocks: [meFactsBlock],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's
@@ -3215,8 +3256,22 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         result.suggestsFood === true
       );
       if (reGate.safe) {
-        replyBody = written.text;
-        notesStillToAppend = [];
+        // NOTHING MACHINE-SHAPED REACHES HER. See stripMachineOutput: on 30
+        // September her reply opened with a proposedSave object because I had
+        // handed the writer a block that told it to emit one.
+        replyBody = stripMachineOutput(written.text);
+
+        // AND THE CLAIM GUARD BELONGS HERE, ON THE PATH THAT WRITES HER REPLY.
+        //
+        // It was computed further up against the OLD path's text, which on this
+        // path does not exist - so it has been dead since the switch. That is
+        // why "That's saved to your Me tab" went out at 11:32 with nothing
+        // written: the guard built for exactly that sentence was looking at the
+        // wrong reply.
+        //
+        // Recomputed here against what she will actually read.
+        const liveClaim = falseClaimNote({ reply: replyBody, wrote: wroteThisTurn });
+        notesStillToAppend = liveClaim ? [liveClaim] : [];
       } else {
         // THE NOTES SURVIVE A BLOCK, same as above and for the same reason: they
         // are statements about what the app DID with her data, still true and

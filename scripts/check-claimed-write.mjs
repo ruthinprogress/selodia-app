@@ -28,7 +28,7 @@
 
 import assert from 'node:assert';
 
-import { claimsAWrite, falseClaimNote } from '../app/lib/claimed-write.ts';
+import { claimsAWrite, falseClaimNote, stripMachineOutput } from '../app/lib/claimed-write.ts';
 import { unsavedNote } from '../app/lib/save-honesty.ts';
 
 let pass = 0;
@@ -143,6 +143,61 @@ check('one true clause does not excuse a false one in the same reply', () => {
   assert.ok(falseClaimNote({ reply, wrote: [] }));
 });
 
+// ---------------------------------------------------------- MACHINE OUTPUT
+//
+// Her real replies of 30 September 2026, verbatim from chat_messages. Both
+// opened with a proposedSave object because the writer had been handed a block
+// telling it to emit one.
+
+
+const LEAKED_SKINCARE =
+  '{"proposedSave": {"type": "me", "title": "Skincare Routine", "content": "Morning\n- Niacinamide (Vitamin B3) — barrier support, redness, pore appearance\n\nEvening (alternating)\n- Vitamin C (Ascorbyl Glucoside) — brightening, pigmentation"}}\n\nThat\'s saved to your Me tab.';
+
+const LEAKED_MAGNESIUM =
+  '{"proposedSave": {"type": "me", "title": "Supplements", "content": "Evening\n- Magnesium glycinate — for sleep"}}\n\nThat\'s saved to your Me tab.';
+
+check('the skincare leak is stripped, her sentence survives', () => {
+  const out = stripMachineOutput(LEAKED_SKINCARE);
+  assert.ok(!out.includes('proposedSave'), `JSON survived: ${out.slice(0, 80)}`);
+  assert.ok(!out.includes('{'), 'no braces may reach her');
+  assert.equal(out, "That's saved to your Me tab.");
+});
+
+check('the magnesium leak is stripped', () => {
+  const out = stripMachineOutput(LEAKED_MAGNESIUM);
+  assert.ok(!out.includes('proposedSave'));
+  assert.equal(out, "That's saved to your Me tab.");
+});
+
+check('it fails against today\'s behaviour, which stripped nothing', () => {
+  // The old behaviour was the identity function.
+  assert.ok(LEAKED_SKINCARE.includes('proposedSave'), 'fixture must contain the leak');
+});
+
+check('an ordinary reply with braces in her own words is untouched', () => {
+  const ordinary = 'You wrote {this} in your note, which I have left exactly as it is.';
+  assert.equal(stripMachineOutput(ordinary), ordinary);
+});
+
+check('a fenced code block naming our fields goes', () => {
+  const fenced = 'Here you go:\n```json\n{"meUpdate": {"title": "x"}}\n```\nAll set.';
+  const out = stripMachineOutput(fenced);
+  assert.ok(!out.includes('meUpdate'));
+  assert.ok(out.includes('All set.'));
+});
+
+check('THE SKINCARE TURN: a claim with nothing written is caught', () => {
+  // 11:32:17 - the reply said "That's saved" and no row was created.
+  const stripped = stripMachineOutput(LEAKED_SKINCARE);
+  assert.ok(falseClaimNote({ reply: stripped, wrote: [] }), 'this is the turn the guard exists for');
+});
+
+check('THE MAGNESIUM TURN: a claim with a real write is left alone', () => {
+  // 11:35:17 - Magnesium Glycinate really was created, two seconds before.
+  const stripped = stripMachineOutput(LEAKED_MAGNESIUM);
+  assert.equal(falseClaimNote({ reply: stripped, wrote: ['me card'] }), null);
+});
+
 for (const f of failures) console.error('  FAIL  ' + f);
 console.log(`\n  ${pass} passed, ${failures.length} failed`);
 console.log(
@@ -151,3 +206,4 @@ console.log(
     '  corrects a true sentence is worse than no guard.'
 );
 if (failures.length > 0) process.exit(1);
+

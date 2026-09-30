@@ -112,8 +112,16 @@ check('EVERY call to the live writer is given extraBlocks', () => {
       `writer call ${i + 1} does not pass extraBlocks, so the model cannot see her Me tab`
     );
     assert.ok(
-      body.includes('meCardsBlock'),
-      `writer call ${i + 1} passes extraBlocks without meCardsBlock`
+      body.includes('meFactsBlock'),
+      `writer call ${i + 1} passes extraBlocks without her Me cards`
+    );
+    // AND NEVER THE INSTRUCTION BLOCK. meCardsBlock tells the CLASSIFY call to
+    // emit `proposedSave`; the writer has no tool to put one in, so handing it
+    // that sentence makes it type the JSON into her message. It did, twice, on
+    // 30 September at 11:32 and 11:35.
+    assert.ok(
+      !body.includes('meCardsBlock'),
+      `writer call ${i + 1} is given meCardsBlock, which contains tool instructions - that is what made it print raw JSON to her`
     );
   });
 });

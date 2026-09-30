@@ -112,6 +112,72 @@ export function claimsAWrite(reply: string): string | null {
   return null;
 }
 
+/**
+ * MACHINE OUTPUT NEVER REACHES HER (2026-09-30).
+ *
+ * On 30 September her reply began:
+ *
+ *   {"proposedSave": {"type": "me", "title": "Skincare Routine", "content": ...}}
+ *
+ *   That's saved to your Me tab.
+ *
+ * CAUSE, and it was mine, made that morning. The block listing her Me cards
+ * carries an instruction for the CLASSIFY call - "offer it with proposedSave
+ * type 'me'" - and I handed that block to the model that writes her replies,
+ * which has no tool to put a proposedSave into. It did the only thing it could
+ * and typed the JSON into the message.
+ *
+ * The real fix is upstream: the writer is given facts and the classifier is
+ * given instructions, built separately. This is the second line of defence,
+ * because the first one is a discipline about which block goes where and any
+ * future edit can break it again - and the failure is not subtle for her, it is
+ * a wall of braces above a sentence about her skin.
+ *
+ * DELIBERATELY BLUNT. It removes a leading JSON object and any fenced block
+ * that contains one of the field names this app's tools use. It does not try to
+ * parse or repair: whatever was in there was never meant for her, and a reply
+ * that loses a sentence is better than one that shows her the plumbing.
+ */
+const MACHINE_FIELDS =
+  /"(?:proposedSave|almanacKind|almanacTitle|almanacContent|meUpdate|noteText|saveAnswer|workoutPlan|proposedFatFocus|proposedMuscleFocus)"/;
+
+export function stripMachineOutput(reply: string): string {
+  let out = reply;
+
+  // A fenced block whose contents name one of our fields.
+  out = out.replace(/```[a-z]*\s*([\s\S]*?)```/gi, (whole, inner) =>
+    MACHINE_FIELDS.test(String(inner)) ? '' : whole
+  );
+
+  // A bare JSON object at the start, or on its own lines anywhere. Balanced
+  // scanning rather than a greedy regex, so a brace inside her own text cannot
+  // swallow the rest of the reply.
+  let guard = 0;
+  while (guard < 5) {
+    guard += 1;
+    const start = out.indexOf('{"');
+    if (start === -1) break;
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < out.length; i += 1) {
+      if (out[i] === '{') depth += 1;
+      else if (out[i] === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end === -1) break;
+    const candidate = out.slice(start, end + 1);
+    if (!MACHINE_FIELDS.test(candidate)) break;
+    out = (out.slice(0, start) + out.slice(end + 1)).trim();
+  }
+
+  return out.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export type WriteOutcome = {
   /** The reply the model wrote. */
   reply: string;
