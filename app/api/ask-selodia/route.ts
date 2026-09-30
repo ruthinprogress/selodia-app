@@ -41,6 +41,7 @@ import {
 import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
 import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
+import { lifeStageFacts } from '../../lib/life-stage-facts';
 import {
   answerWrittenAfter,
   earlierTwin,
@@ -807,7 +808,18 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
     lite_mode_since: string | null;
     pending_save: unknown;
     pending_save_asked_at: string | null;
+    // Collected by onboarding Screen 3 since the spine was rebuilt, and read by
+    // nobody on this side until 30 September 2026. See the migration
+    // 20260930180000_turn_context_knows_life_stage.sql.
+    life_stage: string | null;
+    life_stage_detail: string | null;
+    hrt: string | null;
   } | null;
+
+  // WHERE SHE IS WITH PERIODS, AND WHETHER SHE IS ON HRT (2026-09-30). Asked by
+  // onboarding Screen 3, stored in three columns, and read by nothing on this
+  // side until today. See app/lib/life-stage-facts.ts.
+  const lifeStageBlock = lifeStageFacts(profile);
 
   // An outstanding offer to change their Focus, if there is one. Read from the
   // database rather than from the conversation, so a confirmation can never be
@@ -1701,7 +1713,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           safetyBlock: SAFETY_PROMPT_BLOCK,
           // The same context the sequential call gets. A spoken turn that
           // cannot see her Me tab gives the same wrong answer as a typed one.
-          extraBlocks: [meFactsBlock],
+          extraBlocks: [meFactsBlock, lifeStageBlock],
         })
       : null;
 
@@ -3264,7 +3276,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // it was given has food, movement, water, sleep, measurements and
           // cycle, and nothing else. It was obeying the baseline instruction
           // to say only what the record shows.
-          extraBlocks: [meFactsBlock],
+          extraBlocks: [meFactsBlock, lifeStageBlock],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's
