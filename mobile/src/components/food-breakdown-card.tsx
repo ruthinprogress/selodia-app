@@ -9,8 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { perItemProteinFlag } from '@/lib/protein-quality';
-import type { ProteinSource } from '@/lib/protein-quality';
+import { pairCard, showsPair, type PairItem } from '@/lib/pair';
+import { aminoProfile } from '@/lib/protein-quality';
 import { removeFoodItem } from '@/lib/remove-food-item';
 import { supabase } from '@/lib/supabase';
 import { MACROS, macroLine, type MacroKey } from '@/lib/tracked-macros';
@@ -57,6 +57,9 @@ type FoodItem = {
   kcal: number | null;
   protein_g: number | null;
   protein_source: string | null;
+  // Read since 30 September for Pair. protein_source cannot express
+  // complementarity - only which acid is short can, and that is this column.
+  amino_profile: string | null;
 };
 
 const g = (n: number | null): string => (n == null ? '—' : `${Math.round(n)}g`);
@@ -99,6 +102,11 @@ export function FoodBreakdownCard({
   // the macro grid shows the figures the database now holds rather than the
   // ones it held when the card opened.
   const [reloadKey, setReloadKey] = useState(0);
+  // Pair (Ruth's brief, 30 September). `avoid` is what she has told the app she
+  // cannot or will not eat: a suggestion she cannot act on is worse than none,
+  // because this feature works by repetition.
+  const [avoid, setAvoid] = useState<string[]>([]);
+  const [pairFor, setPairFor] = useState<FoodItem | null>(null);
 
   useEffect(() => {
     if (!foodLogId) return;
@@ -118,7 +126,7 @@ export function FoodBreakdownCard({
           .maybeSingle(),
         supabase
           .from('food_items')
-          .select('id, name, quantity, kcal, protein_g, protein_source')
+          .select('id, name, quantity, kcal, protein_g, protein_source, amino_profile')
           .eq('food_log_id', foodLogId)
           .order('created_at', { ascending: true }),
       ]);
@@ -130,6 +138,17 @@ export function FoodBreakdownCard({
       cancelled = true;
     };
   }, [foodLogId, reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.from('allergies').select('name');
+      if (!cancelled) setAvoid(((data ?? []) as { name: string }[]).map((a) => a.name));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,10 +338,11 @@ export function FoodBreakdownCard({
                         change by conversation. "Delete this meal" is still at
                         the bottom, visible, where it has always been. */}
                     {items.map((it) => {
-                      const flag = perItemProteinFlag(
-                        it.protein_source as ProteinSource | null,
-                        it.protein_g
-                      );
+                      // PAIR (Ruth's brief, 30 September 2026). Shown only when
+                      // nothing else on the plate has already closed the gap -
+                      // see lib/pair.ts for why that suppression is the whole
+                      // feature rather than a refinement of it.
+                      const flag = showsPair(asPair(it), items.map(asPair)) ? 'Pair' : null;
                       const named = `${it.name}${it.quantity ? ` ${it.quantity}` : ''}`;
                       return (
                         <SwipeToDelete
@@ -355,9 +375,20 @@ export function FoodBreakdownCard({
                                   reads "incomplete", plant reads "pair it", animal and
                                   unclassified read nothing at all. */}
                               {flag && (
-                                <ThemedText type="small" themeColor="textSecondary" style={styles.flag}>
-                                  {flag}
-                                </ThemedText>
+                                <Pressable
+                                  onPress={() => setPairFor(it)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`Pair ${it.name} with something`}
+                                  hitSlop={Spacing.two}
+                                >
+                                  <ThemedText
+                                    type="small"
+                                    themeColor="textSecondary"
+                                    style={styles.flag}
+                                  >
+                                    {flag}
+                                  </ThemedText>
+                                </Pressable>
                               )}
                             </View>
                             <ThemedText type="small" themeColor="textSecondary">
@@ -429,10 +460,68 @@ export function FoodBreakdownCard({
               </ScrollView>
             )}
           </ThemedView>
+
+          {/* PAIR THIS WITH... - an inline sheet, NOT a second <Modal>.
+              Nesting modals on Android is exactly the class of thing that cost
+              today: this card's own gestures were dead for six days because a
+              Modal is its own window. An absolutely positioned panel inside the
+              card cannot have that problem, and looks the same. */}
+          {pairFor ? <PairSheet item={pairFor} avoid={avoid} onClose={() => setPairFor(null)} /> : null}
         </Pressable>
       </Pressable>
       </GestureHandlerRootView>
     </Modal>
+  );
+}
+
+// food_items rows as pair.ts wants them. amino_profile is validated rather than
+// cast: a stray value degrades to "we don't know", which shows no label, which
+// is the safe direction.
+function asPair(it: FoodItem): PairItem {
+  return {
+    name: `${it.name}${it.quantity ? ` ${it.quantity}` : ''}`,
+    proteinG: it.protein_g,
+    aminoProfile: aminoProfile(it.amino_profile),
+  };
+}
+
+/**
+ * The card behind the word. Her brief: "No scrolling. No articles. No long
+ * explanations. Users should be able to dismiss it in seconds."
+ *
+ * It does NOT open chat, which she said twice. This is a footnote somebody
+ * read, not a conversation they started.
+ */
+function PairSheet({
+  item,
+  avoid,
+  onClose,
+}: {
+  item: FoodItem;
+  avoid: string[];
+  onClose: () => void;
+}) {
+  const card = pairCard(asPair(item), avoid);
+  if (!card) return null;
+  return (
+    <Pressable style={styles.pairBackdrop} onPress={onClose} accessibilityLabel="Close">
+      <ThemedView type="background" style={styles.pairSheet}>
+        <ThemedText type="smallBold">Pair this with…</ThemedText>
+        <View style={styles.pairList}>
+          {card.suggestions.map((s) => (
+            <ThemedText key={s} type="small">
+              {s}
+            </ThemedText>
+          ))}
+        </View>
+        <ThemedText type="small" themeColor="textSecondary">
+          {card.explanation}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {card.sameMealNote}
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -522,5 +611,25 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+  // Covers the card so a tap anywhere dismisses, which is what "dismiss it in
+  // seconds" needs. Not a scrim: the card underneath stays readable, because
+  // the whole point is the ingredient it is about.
+  pairBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-end',
+  },
+  pairSheet: {
+    borderTopLeftRadius: Spacing.three,
+    borderTopRightRadius: Spacing.three,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  pairList: {
+    gap: Spacing.half,
   },
 });
