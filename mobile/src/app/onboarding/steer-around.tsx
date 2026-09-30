@@ -74,14 +74,14 @@ export default function SteerAroundScreen() {
       });
       return;
     }
-    router.push('/onboarding/allergies');
+    router.push('/onboarding/medication');
   }
 
   useOnboardingAction({
     label: choice === 'injury' || choice === 'clinician' ? 'Tell Selodía' : 'Continue',
     enabled: true,
     onPress: goOn,
-    secondary: { label: 'Skip for now', onPress: () => router.push('/onboarding/allergies') },
+    secondary: { label: 'Skip for now', onPress: () => router.push('/onboarding/medication') },
   });
 
   return (

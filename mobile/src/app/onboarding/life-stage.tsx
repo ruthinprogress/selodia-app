@@ -7,10 +7,12 @@ import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import {
-  HRT_OPTIONS,
+  HORMONE_USE_OPTIONS,
   LIFE_STAGES,
   NO_PERIODS_REASONS,
-  type Hrt,
+  hrtFromHormoneUse,
+  toggleHormoneUse,
+  type HormoneUse,
   type LifeStage,
   type NoPeriodsReason,
 } from '@/lib/life-stage';
@@ -41,13 +43,14 @@ const SUBTITLE =
   'This changes how your weight is read and how your cycle is talked about. Skip it if you would rather, and change it any time.';
 
 const REASON_QUESTION = 'Which of these is closest?';
-const HRT_QUESTION = 'Are you taking HRT?';
-const HRT_WHY = 'So a monthly bleed on sequential HRT is not read as a cycle.';
+const USE_QUESTION = 'Are you using any of these?';
+const USE_WHY =
+  'So a monthly bleed on HRT or the pill is not read as a natural cycle. Tick anything that applies.';
 
 export default function LifeStageScreen() {
   const [stage, setStage] = useState<LifeStage | null>(null);
   const [reason, setReason] = useState<NoPeriodsReason | null>(null);
-  const [hrt, setHrt] = useState<Hrt | null>(null);
+  const [use, setUse] = useState<HormoneUse[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -70,7 +73,10 @@ export default function LifeStageScreen() {
         // stale "coil" on a profile that later says "regular" would be a fact
         // about her that nothing on screen could explain.
         life_stage_detail: stage === 'no_periods_other' ? reason : null,
-        hrt,
+        hormone_use: use,
+        // Derived and kept in step, so everything written before this column
+        // existed keeps working without a migration at ten at night.
+        hrt: hrtFromHormoneUse(use),
       })
       .eq('user_id', user.id);
     return !error;
@@ -100,11 +106,23 @@ export default function LifeStageScreen() {
     secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
   });
 
-  // THE HRT QUESTION IS NOT ASKED OF SOMEBODY WITH REGULAR PERIODS, because it
-  // would change nothing for her and every question that changes nothing is a
-  // question that costs trust. It IS asked after "another reason", because a
-  // coil and HRT together is an ordinary combination at this age.
-  const askHrt = stage !== null && stage !== 'regular' && stage !== 'prefer_not_to_say';
+  // IT IS NOW ASKED OF EVERYBODY, AND THAT IS A REVERSAL (30 September 2026).
+  //
+  // This used to skip the question for anybody with regular periods, on the
+  // reasoning that HRT "would change nothing for her and every question that
+  // changes nothing is a question that costs trust". Sound, and it was only
+  // ever true because the question was about HRT alone.
+  //
+  // Widening it to contraception breaks that reasoning, and the case it breaks
+  // on is the most common one in the country: a woman with regular periods who
+  // is on the combined pill. Her bleed is a withdrawal bleed, not a natural
+  // cycle, and the app has been reading every one of them as evidence of a
+  // cycle it can reason from. The question changes plenty for her; nobody had
+  // ever asked it.
+  //
+  // Ruth's Body Manual draft is what surfaced it, by listing contraception and
+  // HRT among the life stages. They are not stages - they combine with one -
+  // and separating them is what made the gap visible.
 
   return (
     <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
@@ -114,7 +132,6 @@ export default function LifeStageScreen() {
         onSelect={(key) => {
           setStage(key);
           if (key !== 'no_periods_other') setReason(null);
-          if (key === 'regular' || key === 'prefer_not_to_say') setHrt(null);
         }}
       />
 
@@ -136,15 +153,15 @@ export default function LifeStageScreen() {
         </>
       )}
 
-      {askHrt && (
-        <>
-          <ThemedText type="small">{HRT_QUESTION}</ThemedText>
-          <TapChoices options={HRT_OPTIONS} selected={hrt ? [hrt] : []} onSelect={setHrt} />
-          <ThemedText type="small" themeColor="textSecondary">
-            {HRT_WHY}
-          </ThemedText>
-        </>
-      )}
+      <ThemedText type="small">{USE_QUESTION}</ThemedText>
+      <TapChoices
+        options={HORMONE_USE_OPTIONS}
+        selected={use}
+        onSelect={(key) => setUse((current) => toggleHormoneUse(current, key))}
+      />
+      <ThemedText type="small" themeColor="textSecondary">
+        {USE_WHY}
+      </ThemedText>
 
       {failed && (
         <ThemedText type="small" themeColor="danger">

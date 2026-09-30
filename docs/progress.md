@@ -803,3 +803,15 @@ loses nothing.
 - [ ] **blocked on Ruth** — the calisthenics progression tree, gap list and Exercise Animatic email: she asked to see them before sending, and they are drafted in the previous research document
 - [ ] **blocked on Ruth** — the revised landing page, store listing and onboarding copy: approved in principle, and she asked to see the full revision before it goes live
 - [ ] **blocked on Ruth** — refinement items 1-4 (the loading, error and retry pattern): she said to stop after 6, 7 and 9 until her test week is done
+
+## Questions for Ruth
+
+_Raised during the overnight run of 30 September 2026. Each one was answered with the safest option and carried on; none of them blocked anything._
+
+**1. The route paths are still `/onboarding/*`.** You asked to rename onboarding throughout the codebase to Body Manual Setup. The vocabulary is renamed and the spec has a new part under that name. The route segments are not, because they are load-bearing in five places (expo-router's file routing, RESUME_ROUTE, the auth guard's screen set, the progress list, and check-onboarding-exit.mjs) and renaming them is mechanical risk with no user-visible benefit — landing in the same night as the flow changes, on the flow that locked you out twelve hours earlier. **Safest option taken: defer.** Say the word and it is a contained morning job.
+
+**2. Medication sits between "anything to steer around" and allergies.** Your structure has it after Health. There is no Health screen yet, so it went next to the other chat signpost rather than somewhere arbitrary. **Safest option taken: group the two screens that both open chat.**
+
+**3. The chain has not been reordered.** Configuration first with the Body Manual offered at the end is agreed and labelled, but the order has not moved. Reordering is the one change here that can strand somebody mid-flow, and it wanted a working update channel first — which is exactly what tonight's APK is for. **Safest option taken: label now, reorder once the APK is confirmed working.**
+
+**4. The Body Manual note wording.** Every Manual screen now carries one quiet line: *"For your record rather than today's numbers. It helps Selodía make sense of things later, and you can add to it any time."* That is mine, not yours. Change it freely.

@@ -3543,6 +3543,61 @@ By her own rule — *"where evidence is mixed, either omit the advice or present
 
 **Anything clinical stays behind the gate.** Intake targets for an individual, supplements, and the connection between bone density and the menopause are not in the Pair layer — the reason calcium matters more at this age is oestrogen, and that is a clinical sentence however gently it is put. It belongs in the reference layer, which is off until a clinician has read it.
 
+# PART TWENTY-TWO: BODY MANUAL SETUP
+
+*Ruth's architecture, 30 September 2026, reviewed and then built overnight. Her framing, which is the part worth keeping: onboarding is not a registration flow, it is the process of creating Version 1 of someone's Body Manual while simultaneously configuring the app.*
+
+> *"Most health apps collect measurements. Selodia collects context. Measurements tell us what happened. The Body Manual helps explain why."*
+
+## The two models
+
+**Configuration** is what the app needs to function today: the calorie and protein arithmetic, Plans, Sessions, Skills, reports. Every answer changes her experience the moment she gives it.
+
+**The Body Manual** is a living physiological record. Her words: *"not every field needs an immediate feature"*, and it should become more valuable over years rather than weeks.
+
+**The distinction is in the data, not only in the design document.** `ONBOARDING_SCREENS` carries `kind: 'configuration' | 'manual'` per screen, and the header shows one quiet line on a Manual screen: *"For your record rather than today's numbers."*
+
+**That line is not decoration, it is the honesty the split needs.** Her own onboarding rule is that *"a question whose answer changes nothing costs a minute and buys a false sense of being understood"*. The Body Manual deliberately collects things with no immediate feature, which breaks that rule **unless she is told which is which**. A Manual question that quietly implies it is doing something today is the same false sense wearing a better name.
+
+## What was built overnight
+
+| Change | Where |
+| :-- | :-- |
+| `kind` on every screen, and the Body Manual note | `lib/onboarding-progress.ts`, `components/onboarding-header.tsx` |
+| Hormone use split from life stage, multi-select, asked of everyone | `lib/life-stage.ts`, `onboarding/life-stage.tsx` |
+| Medication, a Body Manual signpost that opens chat | `onboarding/medication.tsx` |
+| Pregnancy guarded rather than offered | `app/lib/not-built-for-pregnancy.ts` |
+
+## Three decisions taken in the review, and the reasoning
+
+**Hormonal contraception and HRT are not life stages.** Her draft listed them as mutually exclusive options beside perimenopause and post-menopause. They are interventions: they combine with a stage rather than replacing it, and perimenopausal **and** on HRT is the ordinary case in this audience.
+
+Separating them found a real gap. The app has asked about HRT since the spine was rebuilt, for a stated reason — *"so a monthly bleed on sequential HRT is not read as a cycle"*. **Nothing had ever asked about contraception**, and a withdrawal bleed on the combined pill is not a natural cycle either. A woman on the pill answers "regular periods", truthfully as she experiences it, and every bleed was being read as evidence of a cycle the app could reason from. The question is now asked of everybody, which reverses an earlier decision to skip it for regular cycles — that decision was correct while the question was about HRT alone.
+
+**Pregnancy is not offered, and is guarded instead.** Ruth asked whether a version with mandatory maintenance and a ticked disclaimer was worth building. A disclaimer improves the company's position and changes nothing the app does: with the box signed it would still compute a deficit, suggest movement and read a rising weight as a problem, with no pregnancy logic behind any of it. Energy needs change by trimester and this app has no trimester; weight gain is expected and healthy, which inverts the whole body-fat framing; and the red flags are a different list. `calculateCalorieTarget` returns null and chat says once that the app is not built for it.
+
+**Medication opens chat rather than saving.** The same decision `steer-around.tsx` made for clinical constraints, with more force. A medication list is exactly where an interpretation can be confidently wrong, and a chip labelled "yes, a few things" is not consent to anything because the app has no idea what. She says it in her own words, the app reads its understanding back, and she confirms before any of it is kept.
+
+## Not built, and what each needs
+
+- **The chain reorder.** Configuration first (About You, Goal, Equipment), with the Body Manual offered at the end rather than gated on. The pieces are labelled but the order has not moved, because reordering the chain is the one change here that can strand somebody mid-flow and it wanted a working update channel first.
+- **The rename to Body Manual Setup.** Done in vocabulary and in this section; **the route paths are still `/onboarding/*`**. See the note below.
+- **Free-text health**, and the structured reading she confirms, for both health and medication.
+- **Goals: eleven options, five strategies each.** Today `focusFromGoals` maps to two states. Four of her goals — cholesterol, blood sugar, metabolic health, healthy ageing — are clinical markers rather than training goals and need the clinician gate.
+- **A free text box on every section**, which she asked for: *"probably most sections need a free text as it's their record"*.
+
+## Why the route paths were not renamed
+
+Her instruction was to rename onboarding throughout the codebase. The vocabulary is renamed. **The `/onboarding/*` route segments are not**, and that is a deliberate deferral rather than an oversight.
+
+Those segments are load-bearing in five places: expo-router's file-based routing, `RESUME_ROUTE`, the auth guard's screen set, the progress list, and `check-onboarding-exit.mjs`. Renaming them is a mechanical change with real breakage risk, no user-visible benefit, and it would land in the same night as the flow changes above — on the one flow that locked her out of the app twelve hours ago. It is a separate, deliberate change and belongs in daylight.
+
+## The paperwork gate
+
+Ruth's decision, 30 September: build first, update the paperwork after. She is the data controller and the data subject on her own account and the ICO registration is done, so nothing blocks the build.
+
+**The gate is the first invitation, not the build.** Medication is special category data. The privacy policy, the DPIA and the Play Data Safety form must all be updated **before Nikki and Carol are invited** — the same moment the ICO registration was set against, for the same reason. Recorded here rather than left to memory, because the only real risk in "build first" is that "after" quietly becomes "never".
+
 # LONG-HORIZON IDEAS
 
 *Capture-only. Nothing in this section is scoped, planned, or a roadmap item, and nothing here should be turned into a build item, a task, or a reference in build planning. It exists so that ideas raised in passing are not lost and do not have to be re-derived later. Distinct from **NOT CURRENTLY IN SCOPE**, which holds things deliberately parked out of the current build — these are further out than that.*

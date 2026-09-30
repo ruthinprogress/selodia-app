@@ -6,7 +6,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ONBOARDING_TITLE, progressForPath } from '@/lib/onboarding-progress';
+import {
+  BODY_MANUAL_NOTE,
+  ONBOARDING_TITLE,
+  isBodyManual,
+  progressForPath,
+} from '@/lib/onboarding-progress';
 import { setRedoing, useRedoing } from '@/lib/redo-setup';
 
 // The persistent onboarding header (build item 48). Two jobs, both from live
@@ -23,6 +28,8 @@ export function OnboardingHeader() {
   const theme = useTheme();
   const pathname = usePathname();
   const progress = progressForPath(pathname);
+  // Body Manual screens say what they are for. See onboarding-progress.ts.
+  const manual = isBodyManual(pathname);
   // The forward action, registered by whichever screen is showing. Null until a
   // screen has one to offer - see onboarding-action.tsx for why it moved here
   // off the message box.
@@ -157,6 +164,16 @@ export function OnboardingHeader() {
             {progress.label}
           </ThemedText>
         </>
+      )}
+
+      {/* THE HONESTY THE SPLIT EXISTS FOR (Ruth, 30 September 2026). A Body
+          Manual question has no feature behind it today, which breaks her own
+          rule that every answer must change something - unless she is told.
+          One quiet line, on the screens it applies to, and nowhere else. */}
+      {manual && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.stepLabel}>
+          {BODY_MANUAL_NOTE}
+        </ThemedText>
       )}
     </ThemedView>
   );
