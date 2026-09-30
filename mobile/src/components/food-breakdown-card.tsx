@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DeleteEntry } from '@/components/delete-entry';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
@@ -200,6 +201,25 @@ export function FoodBreakdownCard({
       onRequestClose={onClose}
       accessibilityViewIsModal
     >
+      {/* A MODAL IS A SECOND WINDOW, AND GESTURES DO NOT REACH IT (2026-09-30).
+          Ruth, on the per-item swipe built an hour earlier: "the swipe left to
+          delete is not working. No swipe at all there."
+
+          react-native-gesture-handler needs a GestureHandlerRootView above any
+          gesture, and the app has exactly one, in app/_layout.tsx. On Android a
+          <Modal> is rendered into its OWN native window, outside that root, so
+          every gesture inside this card was being handled by nobody. Nothing
+          throws and nothing logs; the swipe simply does not move.
+
+          WHICH MEANS THE MEAL-HEADER SWIPE NEVER WORKED EITHER. It was built on
+          24 September, documented in this file as working, and has been inside
+          this modal the whole time. It is not that the new item rows broke it -
+          it is that this card has never had a working gesture and nobody swiped
+          the header to find out.
+
+          One root per modal window, and the check that enforces it is
+          scripts/check-gestures-in-modals.mjs. */}
+      <GestureHandlerRootView style={styles.gestureRoot}>
       {/* Tapping the dimmed backdrop dismisses; the card itself swallows the tap. */}
       <Pressable
         style={[styles.backdrop, { backgroundColor: theme.scrim }]}
@@ -390,6 +410,7 @@ export function FoodBreakdownCard({
           </ThemedView>
         </Pressable>
       </Pressable>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -406,6 +427,9 @@ function Macro({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  // The gesture root must fill the modal window, or the backdrop inside it has
+  // no height and the card lands at the top of the screen.
+  gestureRoot: { flex: 1 },
   backdrop: {
     flex: 1,
     // Colour comes from theme.scrim at render; only the geometry lives here.
