@@ -2,6 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "selodia-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "mobile/scripts/serve-web.mjs",
+        "8081"
+      ],
+      "port": 8081
+    },
+    {
       "name": "expo-mobile-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
