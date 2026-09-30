@@ -1,4 +1,5 @@
 import * as Updates from 'expo-updates';
+import { useUpdates } from 'expo-updates';
 import { useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
@@ -41,6 +42,27 @@ import { formatLogDate } from '@/lib/week';
 // Nothing about it is a preference either; it is the same fact, made actionable.
 export function BuildVersion() {
   const [state, setState] = useState<'idle' | 'checking' | 'none' | 'failed'>('idle');
+  // WHAT THE UPDATER IS ACTUALLY DOING, added 30 September 2026 in the build
+  // that had to be made because nobody could tell.
+  //
+  // Ruth spent a day testing the morning's code. Her phone sat on the 09:36
+  // bundle through five updates and a two-hour wait, and from here it was
+  // invisible: publishing was correct, the channel mapped to one branch at
+  // 100%, the runtime matched. Every explanation I offered - a cancelled
+  // download, a branch rollout, a failed-update marker - was a guess, because
+  // the only thing that knows is the device.
+  //
+  // So the device says. isChecking, isDownloading, isUpdatePending and both
+  // error objects are what expo-updates already tracks and never shows.
+  const {
+    isChecking,
+    isDownloading,
+    isUpdatePending,
+    availableUpdate,
+    checkError,
+    downloadError,
+    lastCheckForUpdateTimeSinceRestart,
+  } = useUpdates();
 
   async function fetchLatest() {
     if (state === 'checking') return;
@@ -106,6 +128,43 @@ export function BuildVersion() {
           Updates are not available on this build.
         </ThemedText>
       ) : null}
+
+      {/* THE UPDATER'S OWN ACCOUNT OF ITSELF. Quiet, and only says a thing when
+          there is a thing to say - an error, or work in progress. A line that
+          is always there becomes furniture and stops being read. */}
+      {isChecking || isDownloading || isUpdatePending ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {isChecking ? 'Checking…' : isDownloading ? 'Downloading…' : 'Ready on next start'}
+        </ThemedText>
+      ) : null}
+
+      {availableUpdate && !isUpdatePending ? (
+        <ThemedText type="small" themeColor="textSecondary" selectable>
+          {`Waiting: ${String(availableUpdate.updateId).slice(0, 8)}`}
+        </ThemedText>
+      ) : null}
+
+      {checkError ? (
+        <ThemedText type="small" themeColor="textSecondary" selectable>
+          {`Check failed: ${checkError.message}`}
+        </ThemedText>
+      ) : null}
+
+      {downloadError ? (
+        <ThemedText type="small" themeColor="textSecondary" selectable>
+          {`Download failed: ${downloadError.message}`}
+        </ThemedText>
+      ) : null}
+
+      {lastCheckForUpdateTimeSinceRestart ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {`Last checked ${hhmm(lastCheckForUpdateTimeSinceRestart)}`}
+        </ThemedText>
+      ) : (
+        <ThemedText type="small" themeColor="textSecondary">
+          Not checked since this app started
+        </ThemedText>
+      )}
     </ThemedView>
   );
 }
