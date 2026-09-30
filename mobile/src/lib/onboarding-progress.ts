@@ -35,11 +35,32 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
   { route: 'equipment', label: 'What you have' },
   { route: 'first-log', label: 'Your first log' },
   { route: 'goals', label: 'What matters to you' },
-  { route: 'health-context', label: 'Anything to know' },
-  { route: 'technical', label: 'How tracking works' },
-  { route: 'nutrition', label: 'Your targets' },
-  { route: 'activity', label: 'How you move' },
+  // ADDED 30 SEPTEMBER 2026, AND THE OMISSION WAS THE TRAP. The seven screens
+  // below have been in the push chain since the spine was rebuilt and were
+  // never added here. That alone should have been cosmetic - a screen without a
+  // count - but the Continue button lives in the same header as the count, and
+  // the header hid itself on any screen it did not recognise. So the whole of
+  // the flow after Goals had no way forward. See onboarding-header.tsx: the
+  // header no longer hides its action, so a future omission costs a number
+  // rather than the way out.
+  { route: 'skill', label: 'Something to work on' },
+  { route: 'life-stage', label: 'Where you are' },
+  { route: 'activities', label: 'How you move' },
+  { route: 'steer-around', label: 'What to steer around' },
+  { route: 'allergies', label: 'Anything to avoid' },
+  { route: 'guidance', label: 'How much to steer' },
+  { route: 'first-draft', label: 'Your first draft' },
 ];
+
+// NOT IN THE LIST, ON PURPOSE, AND THIS IS NOT THE PLACE TO FIX IT.
+// `health-context`, `technical`, `nutrition` and `activity` are real screens
+// with real code, but nothing in the push chain reaches them any more - they
+// are only arrived at through RESUME_ROUTE, which still names steps the chain
+// above no longer visits. Listing them would put a wrong denominator in front
+// of everybody who never sees them. Leaving them out costs them a count and
+// nothing else, now that the header keeps its button either way. The real
+// answer is the onboarding redesign Ruth has queued, and she has said not to
+// start it yet, so this records the fault rather than quietly papering it.
 
 export const ONBOARDING_TOTAL = ONBOARDING_SCREENS.length;
 
@@ -69,3 +90,25 @@ export function progressForPath(pathname: string | null | undefined): Onboarding
   if (i < 0) return null;
   return { index: i + 1, total: ONBOARDING_TOTAL, label: ONBOARDING_SCREENS[i].label };
 }
+
+// THE SCREENS THE AUTH GUARD MUST NEVER POLICE, derived from the list above
+// rather than hand-copied beside it.
+//
+// 30 SEPTEMBER 2026: IT WAS HAND-COPIED, AND IT WENT STALE IN EXACTLY THE SAME
+// WAY. use-auth-guard.ts carried its own literal set of eight screen names,
+// missing the same seven that were missing from ONBOARDING_SCREENS - so a
+// finished account that opened one of them was thrown straight back to the app,
+// while an unfinished one was dragged back into the flow. Two lists of the same
+// thing, maintained by memory, drifting together. One list now, and adding a
+// screen to the flow tells both.
+//
+// The four legacy routes are added on purpose: nothing in the push chain
+// reaches them any more, but RESUME_ROUTE still can, and a screen somebody can
+// legitimately be on must not be policed. See the note above.
+export const FLOW_SCREENS: ReadonlySet<string> = new Set([
+  ...ONBOARDING_SCREENS.map((s) => s.route).filter((r) => r !== 'consent' && r !== 'account'),
+  'health-context',
+  'technical',
+  'nutrition',
+  'activity',
+]);

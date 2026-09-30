@@ -1,5 +1,6 @@
 import * as Updates from 'expo-updates';
-import { StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -27,8 +28,40 @@ import { formatLogDate } from '@/lib/week';
 // protects is against inventing product surface, and a version string invents
 // none.
 //
-// SELECTABLE, because its whole job is to be copied into a message to me.
+// AND SINCE 30 SEPTEMBER IT CAN FETCH ONE, which is the other half of the same
+// afternoon. Ruth, today: the Report Builder wording she asked for went out at
+// 13:32 and again at 13:55, and her phone was still showing the old words.
+// Nothing had failed. expo-updates is configured with fallbackToCacheTimeout 0,
+// so the app launches on the bundle it already has and applies the download on
+// the NEXT start - which means every fix is one restart behind, every time, and
+// a test run straight after a restart tests the previous version.
+//
+// Reading the line above tells her WHICH bundle she is on. This button gets her
+// onto the current one in a single tap instead of two restarts and a guess.
+// Nothing about it is a preference either; it is the same fact, made actionable.
 export function BuildVersion() {
+  const [state, setState] = useState<'idle' | 'checking' | 'none' | 'failed'>('idle');
+
+  async function fetchLatest() {
+    if (state === 'checking') return;
+    setState('checking');
+    try {
+      const check = await Updates.checkForUpdateAsync();
+      if (!check.isAvailable) {
+        setState('none');
+        return;
+      }
+      await Updates.fetchUpdateAsync();
+      // Restarts onto the bundle just downloaded. Nothing after this line runs.
+      await Updates.reloadAsync();
+    } catch {
+      // A DEAD END IS SAID OUT LOUD. In Expo Go and on a development build
+      // there is no update server to ask, and swallowing that leaves a button
+      // that looks broken rather than one that is not available here.
+      setState('failed');
+    }
+  }
+
   const { updateId, createdAt, channel, isEmbeddedLaunch, runtimeVersion } = Updates;
 
   // An update that has never been applied is the embedded bundle - the one baked
@@ -50,6 +83,29 @@ export function BuildVersion() {
       <ThemedText type="small" themeColor="textSecondary" selectable>
         {`Channel ${channel || 'none'} · app ${runtimeVersion ?? '?'}`}
       </ThemedText>
+
+      <Pressable
+        onPress={() => void fetchLatest()}
+        accessibilityRole="button"
+        accessibilityLabel="Get the latest update and restart"
+        hitSlop={Spacing.two}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <ThemedText type="smallBold" themeColor="accentDeep">
+          {state === 'checking' ? 'Checking…' : 'Get the latest update'}
+        </ThemedText>
+      </Pressable>
+
+      {state === 'none' ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          You are on the latest.
+        </ThemedText>
+      ) : null}
+      {state === 'failed' ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Updates are not available on this build.
+        </ThemedText>
+      ) : null}
     </ThemedView>
   );
 }
@@ -69,4 +125,5 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
     alignItems: 'center',
   },
+  pressed: { opacity: 0.6 },
 });

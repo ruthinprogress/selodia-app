@@ -108,25 +108,60 @@ export async function writeItems(
   );
   if (error) console.log('food_items insert failed (non-fatal):', error.message);
 
-  // THE PARENT HAS TO AGREE WITH ITS ITEMS. A corrected item otherwise leaves
-  // food_logs holding the old total, which is precisely the state her lager row
-  // was in this morning: the items said 68 kcal and the log still said 180.
+  // ONE SOURCE FOR THE MEAL AND ITS PARTS (Ruth, 30 September 2026: "meal total
+  // and item figures must come from one source").
   //
-  // ONLY AFTER A REAL CORRECTION. An entry carrying a total with no itemisation
-  // is a legitimate shape, and recomputing every log from a sum over its items
-  // would zero those.
-  if (!error && corrections.length > 0) {
-    const sum = (pick: (i: ParsedItem) => number | undefined) =>
-      checked.reduce((n, i) => n + (pick(i) ?? 0), 0);
+  // WHAT WAS WRONG. The model is asked for the totals AND the items in the same
+  // answer, and the only thing holding them together was a clause in the prompt:
+  // "Item macros should roughly sum to the totals". Roughly is what it did. On
+  // 30 September, 68 of her itemised meals were measured against their own
+  // items and 16 disagreed by more than 5 kcal, the worst by 206 - and it was
+  // not a rounding drift, it was two independent estimates of the same plate.
+  //
+  // So the items are now the record and the meal is their sum. Not because the
+  // items are more accurate - sometimes they are worse - but because a number
+  // she can open up and inspect is the only one she can correct. A total that
+  // nothing adds up to cannot be argued with.
+  //
+  // THIS BLOCK USED TO RUN ONLY AFTER A DRINK CORRECTION, and its comment gave
+  // the reason: "an entry carrying a total with no itemisation is a legitimate
+  // shape, and recomputing every log from a sum over its items would zero
+  // those." That was right and it is still handled - writeItems returns at the
+  // top when there are no items, so nothing here can reach an un-itemised
+  // entry. What has changed is that having items is now enough.
+  //
+  // ALL EIGHT FIGURES, not the two the drink path needed. Summing calories and
+  // protein while leaving carbs, fat, sugar, fibre and sodium as the model
+  // first wrote them would leave the meal half agreeing with itself, which is a
+  // worse state to reason about than plain disagreement.
+  if (!error) {
+    // NOTHING KNOWN MEANS NOTHING KNOWN, NOT ZERO. ParsedItem's own comment
+    // makes the rule: "a figure it did not work out must stay absent rather
+    // than become a zero". A sum over items that all omit fibre is 0, and 0 g
+    // of fibre is a measurement - it would show on her card as a figure
+    // somebody took. So a macro no item states at all stays null, and the sum
+    // runs only over the ones that do.
+    const sum = (pick: (i: ParsedItem) => number | undefined, places: 0 | 1) => {
+      const stated = checked.map(pick).filter((v): v is number => typeof v === 'number');
+      if (stated.length === 0) return null;
+      const total = stated.reduce((n, v) => n + v, 0);
+      return places === 0 ? Math.round(total) : Math.round(total * 10) / 10;
+    };
     const { error: totalsError } = await supabase
       .from('food_logs')
       .update({
-        kcal: Math.round(sum((i) => i.kcal)),
-        protein_g: Math.round(sum((i) => i.protein_g) * 10) / 10,
+        kcal: sum((i) => i.kcal, 0),
+        protein_g: sum((i) => i.protein_g, 1),
+        carbs_g: sum((i) => i.carbs_g, 1),
+        fat_g: sum((i) => i.fat_g, 1),
+        saturated_fat_g: sum((i) => i.saturated_fat_g, 1),
+        sugar_g: sum((i) => i.sugar_g, 1),
+        fibre_g: sum((i) => i.fibre_g, 1),
+        sodium_mg: sum((i) => i.sodium_mg, 0),
       })
       .eq('id', foodLogId);
     if (totalsError) {
-      console.log('food_logs totals not updated after a drink correction:', totalsError.message);
+      console.log('food_logs totals not summed from its items:', totalsError.message);
     }
   }
 }

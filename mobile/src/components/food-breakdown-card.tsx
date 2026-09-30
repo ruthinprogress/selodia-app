@@ -66,6 +66,10 @@ const kcal = (n: number | null): string => (n == null ? '—' : `${Math.round(n)
 // whole line, so ask it for this macro alone. An em dash where there is no
 // figure, because this grid has a slot per macro and an empty slot reads as a
 // rendering fault; on a row the macro is simply left out instead.
+// The screen reader's actions menu for one item. `label` is what it reads out,
+// so it says what goes rather than naming a gesture nobody using it can make.
+const ITEM_ACTIONS = [{ name: 'delete', label: 'Delete item' }];
+
 function macroValue(row: Record<string, unknown>, key: MacroKey): string {
   return macroLine(row, [key]) || '—';
 }
@@ -137,6 +141,19 @@ export function FoodBreakdownCard({
       cancelled = true;
     };
   }, [foodLogId]);
+
+  // ONE REMOVAL, TWO WAYS IN. The swipe and the screen reader's own delete
+  // action both come through here, so there is a single place where an item
+  // leaves - not two that can drift apart about whether the card reloads.
+  async function removeItem(id: string) {
+    await removeFoodItem(id);
+    // The meal's own totals have changed, so the card re-reads rather than
+    // splicing the row out of state: the header figures above are the whole
+    // point of doing the removal in the database.
+    setItems((rows) => rows.filter((r) => r.id !== id));
+    setReloadKey((k) => k + 1);
+    onChanged?.();
+  }
 
   // Two real cases produce no rows in food_items, and neither is an error:
   //   - a 'simple' log (an apple, a branded yoghurt) is never itemised by design;
@@ -311,21 +328,25 @@ export function FoodBreakdownCard({
                         <SwipeToDelete
                           key={it.id}
                           what={named}
-                          onDelete={() => removeFoodItem(it.id)}
-                          onDeleted={() => {
-                            // The meal's own totals have changed, so the card
-                            // is re-read rather than the row spliced out of
-                            // state: the header figures above are the whole
-                            // point of doing this in the database.
-                            setItems((rows) => rows.filter((r) => r.id !== it.id));
-                            setReloadKey((k) => k + 1);
-                            onChanged?.();
-                          }}
+                          onDelete={() => removeItem(it.id)}
                         >
                           <Pressable
                             onPress={() => openInChat('correct', named)}
                             accessibilityRole="button"
                             accessibilityLabel={`${named}. Tap to change it, swipe left to remove it.`}
+                            // A SWIPE IS NOT REACHABLE BY A SCREEN READER, and
+                            // her decision (30 September) was to keep the
+                            // gesture and no visible bins, so this is the only
+                            // route left for anybody using TalkBack or
+                            // VoiceOver. An accessibilityAction shows up in the
+                            // reader's own actions menu, which is where someone
+                            // using one looks for exactly this.
+                            accessibilityActions={ITEM_ACTIONS}
+                            onAccessibilityAction={(e) => {
+                              if (e.nativeEvent.actionName === 'delete') {
+                                void removeItem(it.id);
+                              }
+                            }}
                             style={({ pressed }) => [styles.itemRow, pressed && styles.pressed]}
                           >
                             <View style={styles.itemName}>

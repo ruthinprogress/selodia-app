@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { StyleSheet } from 'react-native';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
+import { setRedoing } from '@/lib/redo-setup';
 import { supabase } from '@/lib/supabase';
 
 // SCREEN 7: HERE IS YOUR FIRST DRAFT.
@@ -115,6 +116,8 @@ export default function FirstDraftScreen() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) await advanceOnboardingStep(supabase, user.id, 'complete');
+        // The visit is over, so the door goes with it.
+        setRedoing(false);
         router.replace('/');
       })();
     },

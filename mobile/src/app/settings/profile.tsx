@@ -10,6 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ActivityLevel } from '@/lib/body-metrics';
 import { currentUserId, verifiedUser } from '@/lib/current-user';
+import { setRedoing } from '@/lib/redo-setup';
 import { supabase } from '@/lib/supabase';
 
 // PROFILE (2026-09-20). Ruth's brief: "This page does not currently exist. I'd
@@ -99,25 +100,33 @@ export default function ProfileScreen() {
     setEditing(null);
   }
 
-  // SETS THE STEP BACK AND NOTHING ELSE. Everything the spine collects is
-  // replaced by the screen that collects it, so there is nothing to clear here
-  // - and clearing anything would be the one way this could destroy something.
+  // IT NO LONGER TOUCHES THE STEP AT ALL (30 September 2026), and that single
+  // deletion is the whole fix for the trap.
   //
-  // advanceOnboardingStep is forward-only by design, so it cannot be used: it
-  // exists to stop a stale screen dragging somebody backwards. This is the one
-  // legitimate reason to go back, so it writes the column directly and says so.
-  async function redoSetup() {
-    const userId = await currentUserId();
-    if (!userId) return;
-    const { error } = await supabase
-      .from('user_profile')
-      .update({ onboarding_step: 'goals' })
-      .eq('user_id', userId);
-    if (error) {
-      setFailed(true);
-      return;
-    }
-    router.replace('/onboarding/goals');
+  // WHAT IT USED TO DO. It wrote `onboarding_step: 'goals'` the instant she
+  // tapped it - before she had answered one question. From that moment the
+  // account read as unfinished, and use-auth-guard sends an unfinished account
+  // sitting in the app back to RESUME_ROUTE[step]. So there was no way out of
+  // onboarding except to reach 'complete', and force-closing made it worse: the
+  // step is in the database, so the next launch read 'goals' and bounced her
+  // straight back in. Ruth, today: "LOCKED IN. Force-closing twice does not
+  // help."
+  //
+  // WHY NOTHING NEEDS TO REPLACE IT. Every screen in the flow saves its own
+  // answers as it goes; not one of them reads onboarding_step to decide what to
+  // do. The column's only job is resuming somebody who has not finished, and a
+  // person who finished in August is not that. And advanceOnboardingStep is
+  // forward-only, so walking the whole flow again cannot move a 'complete'
+  // account backwards either - the redo is safe from both ends.
+  //
+  // So a redo is now exactly what the words say: the same screens, revisited,
+  // with her account still finished the entire time. Leaving halfway leaves
+  // nothing behind.
+  function redoSetup() {
+    // The flag is what puts "Not now" in the header for the whole chain; the
+    // param is left on so the first screen can tell in its own right.
+    setRedoing(true);
+    router.push({ pathname: '/onboarding/goals', params: { redo: '1' } });
   }
 
   const dob = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;

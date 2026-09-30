@@ -1,4 +1,4 @@
-import { usePathname } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useOnboardingActionSlot } from '@/components/onboarding-action';
@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ONBOARDING_TITLE, progressForPath } from '@/lib/onboarding-progress';
+import { setRedoing, useRedoing } from '@/lib/redo-setup';
 
 // The persistent onboarding header (build item 48). Two jobs, both from live
 // device feedback: say plainly that this is a bounded setup phase, and show how
@@ -26,10 +27,32 @@ export function OnboardingHeader() {
   // screen has one to offer - see onboarding-action.tsx for why it moved here
   // off the message box.
   const action = useOnboardingActionSlot();
+  // Set when she came in through More > redo setup. Her account is still
+  // finished for the whole of that visit, so leaving costs her nothing.
+  const redoing = useRedoing();
 
-  // Not an onboarding screen (or an unrecognised one) — render nothing rather
-  // than guess at a position.
-  if (!progress) return null;
+  // THE WAY OUT IS NOT PART OF THE DECORATION (2026-09-30).
+  //
+  // This said `if (!progress) return null` - render nothing on a screen the
+  // progress list does not recognise, rather than guess at a position. Sound
+  // reasoning about a COUNT, and catastrophic, because the Continue button
+  // lives in this same header and went with it.
+  //
+  // WHAT IT DID TO RUTH. She tapped "redo setup" in More, which drops her on
+  // Goals. Goals is in the list, so it had a button. Its Continue goes to
+  // /onboarding/skill, which is NOT in the list - along with life-stage,
+  // activities, steer-around, allergies, guidance and first-draft, the entire
+  // second half of the flow. So the header vanished, and with it the only
+  // control that moves forward. The stack has headerShown: false, so there was
+  // no back either. Force-closing returned her to Goals, because the step was
+  // written the moment she tapped redo, and Continue took her straight back to
+  // the screen with no button. Locked in, twice over.
+  //
+  // So the action renders WHATEVER the path is, and only the count and the
+  // segments wait to be sure of themselves. A screen this file has never heard
+  // of now costs a progress number, which is cosmetic. It used to cost the way
+  // out, which is not.
+  if (!progress && !action && !redoing) return null;
 
   return (
     <ThemedView style={styles.wrap}>
@@ -40,13 +63,36 @@ export function OnboardingHeader() {
       <View style={styles.row}>
         <View style={styles.titleBlock}>
           <ThemedText type="smallBold">{ONBOARDING_TITLE}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {progress.index} of {progress.total}
-          </ThemedText>
+          {progress && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {progress.index} of {progress.total}
+            </ThemedText>
+          )}
         </View>
 
-        {action && (
-          <View style={styles.actions}>
+        <View style={styles.actions}>
+          {/* THE DOOR OUT, and it is visible on every screen rather than the
+              first (Ruth, 30 September). It is drawn before the forward action
+              and in the quiet style, so it reads as the way back rather than
+              competing with the way on. */}
+          {redoing && (
+            <Pressable
+              onPress={() => {
+                setRedoing(false);
+                router.replace('/');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Not now, leave setup"
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="small" themeColor="textSecondary" style={styles.secondary}>
+                Not now
+              </ThemedText>
+            </Pressable>
+          )}
+
+          {action && (
+          <>
             {action.secondary && (
               <Pressable
                 onPress={action.secondary.onPress}
@@ -84,29 +130,34 @@ export function OnboardingHeader() {
                 </ThemedText>
               </ThemedView>
             </Pressable>
-          </View>
-        )}
+          </>
+          )}
+        </View>
       </View>
 
-      <View
-        style={styles.segments}
-        accessibilityRole="progressbar"
-        accessibilityLabel={`${ONBOARDING_TITLE}: step ${progress.index} of ${progress.total}, ${progress.label}`}
-      >
-        {Array.from({ length: progress.total }, (_, i) => (
+      {progress && (
+        <>
           <View
-            key={i}
-            style={[
-              styles.segment,
-              { backgroundColor: i < progress.index ? theme.text : theme.backgroundElement },
-            ]}
-          />
-        ))}
-      </View>
+            style={styles.segments}
+            accessibilityRole="progressbar"
+            accessibilityLabel={`${ONBOARDING_TITLE}: step ${progress.index} of ${progress.total}, ${progress.label}`}
+          >
+            {Array.from({ length: progress.total }, (_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.segment,
+                  { backgroundColor: i < progress.index ? theme.text : theme.backgroundElement },
+                ]}
+              />
+            ))}
+          </View>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.stepLabel}>
-        {progress.label}
-      </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.stepLabel}>
+            {progress.label}
+          </ThemedText>
+        </>
+      )}
     </ThemedView>
   );
 }

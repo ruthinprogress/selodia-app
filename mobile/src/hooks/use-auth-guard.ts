@@ -3,6 +3,7 @@ import { useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
 import { consentStatus, recordCarriedConsentIfMissing } from '@/lib/consent';
+import { FLOW_SCREENS } from '@/lib/onboarding-progress';
 import { RESUME_ROUTE, type OnboardingStep } from '@/lib/onboarding-step';
 import { clearDocumentHandoff } from '@/lib/document-handoff';
 import { clearSnapshots } from '@/lib/snapshot';
@@ -11,16 +12,11 @@ import { supabase } from '@/lib/supabase';
 // The onboarding conversation screens (Part Seven's linear push-chain). The
 // guard stays passive on these so it never fights forward progress — it only
 // acts at the boundary: the (tabs) app and the auth-entry screens.
-const CONVERSATION_SCREENS = new Set([
-  'intro',
-  'equipment',
-  'first-log',
-  'goals',
-  'health-context',
-  'technical',
-  'nutrition',
-  'activity',
-]);
+// WAS A LITERAL LIST OF EIGHT AND WENT STALE (30 September 2026). Seven
+// screens joined the flow and none of them was added here, so this guard did
+// not recognise the second half of its own onboarding. See FLOW_SCREENS in
+// lib/onboarding-progress.ts, which is now the one place a screen is declared.
+const CONVERSATION_SCREENS = FLOW_SCREENS;
 
 // Fill-if-missing metadata sync (step 6): on reauth, carry date of birth and
 // biological sex from auth metadata into user_profile when they aren't there
