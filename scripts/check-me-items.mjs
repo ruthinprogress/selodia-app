@@ -204,6 +204,35 @@ check('itemsOf survives a card that has no items yet', () => {
   assert.deepEqual(itemsOf(null), []);
 });
 
+// ------------------------------------------------------------------- THE COPY
+//
+// mobile/src/lib/me-items.ts is a narrow read-only copy of this module, because
+// the mobile bundle has no path to app/lib. A copy that can drift is a copy
+// that will, so the two field lists are compared here: if either side gains or
+// loses a field, this fails rather than letting the app quietly stop showing
+// something the server writes.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const fields = (file) => {
+  // Line endings normalised first: `.` does not match \r, and this repository
+  // has already lost a day to a check that only worked on LF files.
+  const src = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\r\n').join('\n');
+  const block = src.match(/export type MeItem = \{([\s\S]*?)\};/);
+  if (!block) return null;
+  return [...block[1].matchAll(/^\s*(\w+)\??:/gm)].map((m) => m[1]).sort();
+};
+
+const server = fields('app/lib/me-items.ts');
+const app = fields('mobile/src/lib/me-items.ts');
+check('the app copy of MeItem has not drifted', () => {
+  assert.ok(server, 'could not read MeItem from app/lib/me-items.ts');
+  assert.ok(app, 'could not read MeItem from mobile/src/lib/me-items.ts');
+  assert.deepEqual(app, server, `app copy has [${app}], server has [${server}]`);
+});
+
 for (const f of failures) console.error('  FAIL  ' + f);
 for (const w of weak) console.error('  WEAK  ' + w);
 console.log(`\n  ${pass} passed, ${failures.length} failed, ${weak.length} weak`);

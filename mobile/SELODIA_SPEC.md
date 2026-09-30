@@ -3431,6 +3431,14 @@ Worth being precise about why it is the right gate, because it is easy to read a
 
 **What it does NOT gate.** Nothing in this is about polish, wording or empty states. Those belong to the refinement pass, which is a separate list.
 
+**A WORKING PREVIEW ENVIRONMENT, before real users and not before** (Ruth, 30 September 2026). Wave zero is her own account, so a broken preview costs nothing. The moment somebody else's data is in the system it costs everything: there is currently no way to build a branch or test a server change without deploying it to the environment that holds live records.
+
+*What exists today, and it is worse than it sounds.* The Vercel Preview environment has the three ElevenLabs variables and nothing else. Every Supabase and Anthropic variable exists only for Production, so **every preview deployment on every branch fails at build** with `Error: supabaseUrl is required` while collecting page data — and has since the project was set up. It was found on 30 September only because a branch push happened to be watched; the failure had been arriving as mail nobody read.
+
+*What has to be true before wave one.* A Preview environment with **its own Supabase project or branch, and its own Anthropic key**. Not production keys copied across: a preview build with production credentials is a branch that can write to live records, which is the opposite of what a preview is for, and it puts a key with full access into every pull request build.
+
+*Why this is not a wave-zero item.* Her account is disposable, main deploys to production, and a fix she can see beats a fix that built cleanly somewhere she cannot. Doing this now would buy safety nobody needs yet and cost a second Supabase project to keep in step.
+
 **ICO registration is a step, not the gate.** Ruth, 28 September 2026, correcting an earlier version of this page that had it the other way round: *"Wave zero's real blocker is my one-week daily-use test, not the ICO. ICO comes just before inviting Nikki and Carol."* Tier 1, GBP 52 a year, in the name of Selodia Ltd. It happens inside the gate rather than in front of it: the week of daily use is hers alone and needs no registration, and the registration is done before anybody else's health data enters the system - which is the moment the obligation becomes live. Detail in *2026-09-28 ICO registration - what Selodia Ltd needs*.
 
 **Wave one: 8 to 12 strangers from the target audience, women over 40.** The wave-zero gate above applies to wave one too, and by then it has been proved. Three further things must exist before a single invitation goes out, and they are the three that cannot be worked around by knowing somebody:

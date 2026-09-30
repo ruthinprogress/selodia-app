@@ -111,6 +111,20 @@ type Message = {
   imageUri?: string | null;
 };
 
+/**
+ * How many messages the thread holds on screen.
+ *
+ * DELIBERATELY WELL UNDER PostgREST's 1000-row ceiling, so the limit that
+ * applies is this one - written down, visible in the code, and chosen - rather
+ * than a default nobody set that takes effect silently on the day the table
+ * crosses a threshold. See loadThread.
+ *
+ * 300 is roughly a fortnight of her use. Older turns are not lost: they are in
+ * chat_messages, and the conversation itself can reach further back than the
+ * screen does (see long-history.ts).
+ */
+const THREAD_WINDOW = 300;
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const FALLBACK_ERROR = "Something went wrong on my end. Mind trying that again?";
 const NOT_SIGNED_IN_ERROR = "You're not signed in. Please sign in and try again.";
@@ -319,12 +333,38 @@ export default function ChatScreen() {
   }, [input]);
 
   const loadThread = useCallback(async () => {
+    // THE NEWEST MESSAGES, NOT THE OLDEST (2026-09-29).
+    //
+    // Ruth: "my chat disappeared from chat. No way to see what was said or even
+    // if logged properly." Every message was in the database; none of them
+    // reached the screen.
+    //
+    // This read had no .limit() and ordered ASCENDING. PostgREST caps a
+    // response at 1000 rows and says nothing about it - no error, no flag, a
+    // perfectly ordinary 200 - so `if (error || !data) return` sails through.
+    // At 1504 messages the app was being handed the OLDEST thousand, which
+    // ended on 21 September at 19:16. Everything she had said in the eight days
+    // since was in the table and unreachable.
+    //
+    // It is the worst shape a limit can have: invisible, silent, and it arrives
+    // on a threshold rather than on a change. Nothing was edited on the day it
+    // broke. The thread simply crossed a number.
+    //
+    // A chat wants its tail. Newest first with an explicit limit, then reversed
+    // into reading order below.
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('role, content, image_path, food_log_id, discuss_entry_id, discuss_entry_type, kind, meta')
+      .select('role, content, image_path, food_log_id, discuss_entry_id, discuss_entry_type, kind, meta, created_at')
       .eq('source', 'chat')
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false })
+      // One more than shown, so the extra row can seed the discussion-tag walk
+      // below. Without it the first message in the window would be judged
+      // against nothing and could draw a card that belongs to the turn before.
+      .limit(THREAD_WINDOW + 1);
     if (error || !data) return;
+
+    const windowed = data.slice(0, THREAD_WINDOW).reverse();
+    const seed = data.length > THREAD_WINDOW ? data[THREAD_WINDOW] : null;
 
     // THE CARD HAS TO SURVIVE A RELOAD (Ruth, 2026-09-16: "Table didnt come up").
     //
@@ -341,8 +381,8 @@ export default function ChatScreen() {
     // wherever a tag appears would stack the same table under every reply in the
     // conversation. The opening turn is the one where the tag first differs from
     // the message before it, which is exactly the turn the live path draws it on.
-    let previousTag: string | null = null;
-    const rows: Message[] = data.map((m) => {
+    let previousTag: string | null = (seed?.discuss_entry_id as string | null) ?? null;
+    const rows: Message[] = windowed.map((m) => {
       const tagId = (m.discuss_entry_id as string | null) ?? null;
       const tagType = m.discuss_entry_type as string | null;
       const opensDiscussion = m.role === 'user' && tagId !== null && tagId !== previousTag;

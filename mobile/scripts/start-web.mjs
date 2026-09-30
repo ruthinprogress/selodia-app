@@ -23,6 +23,21 @@
 //
 // No new dependency: cross-env would do this in one line and is not installed,
 // and a dependency added to somebody's app to set one variable is a poor trade.
+//
+// 8192 IS NOT ALWAYS AVAILABLE, and when it is not the failure looks the same
+// (30 September 2026, overnight). Three starts died at exit 134 without ever
+// answering on 8081. The machine has 15.9 GB with about 7.7 GB free while
+// Chrome is open, so V8 asks for a ceiling the OS cannot supply and dies
+// reaching for it.
+//
+// Lowering it does not help, which is worth writing down so nobody tries
+// again: at 6144 the bundle grew to 6.1 GB and died anyway, so this genuinely
+// needs more than 6 GB of old space. The fix is free memory, not a smaller
+// ceiling - closing Chrome is usually enough.
+//
+// The tell that it is this and not a code fault: it never answers HTTP at all,
+// and the log ends in "Reached heap limit" rather than in a stack trace from
+// the app.
 
 import { spawn } from 'node:child_process';
 
