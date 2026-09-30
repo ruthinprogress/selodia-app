@@ -3364,6 +3364,24 @@ Added 2026-09-27. Not a beta blocker, and on this list because it was found the 
 - [x] **Both written logs verified and backfilled.** The build log was missing sessions 45 to 53; the article log was missing 25 to 27 September. `scripts/closeout_check.py` now blocks a close-out whose session is not in the build log, whose day has no article entry, or whose workbook has no rows.
 - [x] **WORKFLOW's claim that the build log is written automatically, corrected.** It never was.
 
+### Session 59, 30 September 2026 — what shipped and what it cost
+
+**Six faults were found in things believed to be working**, which is the pattern worth recording rather than the list.
+
+- [x] **Chat can write to the Me tab.** The live path had no sentence about the Me tab at all and the block listing her cards was built by the old path and never passed. Two absences reading as a refusal. Confirmed working on her phone.
+- [x] **The app never disowns the app.** *"I don't control that, only the app does... I'm not able to check what's actually stored there."* Three rules spoke of "the app" in the third person, each written to stop a save receipt; together they handed the model a second party to point at. All three reworded, `INSIDE_THE_APP` added, `stripDisavowal` enforces it at the write, and `check-live-prompt` now fails if any other rule says "the app".
+- [x] **One item off a meal.** `food_item_remove()` deletes the row and subtracts its figures from the parent in one transaction. It subtracts a delta rather than recomputing, because 16 of her 68 itemised meals disagree with their own items and neither side is reliably the honest one.
+- [x] **Meal totals and item figures now come from one source.** The model was asked for both and held together only by *"item macros should roughly sum to the totals"*.
+- [x] **A modal is its own window.** Every gesture inside the food detail card had been dead since it was built on 24 September — `react-native-gesture-handler` needs a root and a `<Modal>` on Android sits outside the app's only one. `check-gestures-in-modals.mjs` covers all 16 modals.
+- [x] **Redoing setup no longer locks the door.** It wrote `onboarding_step = 'goals'` on tap, before she had answered anything, and the guard then refused to let her back into the app; force-closing re-read it and put her straight back. It no longer touches the step at all. Separately the Continue button lived in a header that hid itself on any screen it did not recognise, and seven screens were missing from that list — the whole flow after Goals had no way forward.
+- [x] **The app knows her life stage.** `life_stage`, `life_stage_detail` and `hrt` were collected by Screen 3 and read by nothing on the server. Now in `turn_context`, passed as facts.
+- [x] **A clinical reference layer, empty and shut.** `REFERENCE_LAYER_ON` is false; every entry needs a named source and is refused if worded as advice. Measured at 360 microseconds for 400 entries — about a four-thousandth of one model call.
+
+**Two things about how this build is worked on, which cost more than any single bug:**
+
+- [x] **Screens can be looked at again.** The Expo web dev server cannot run on this machine and has died four times; `expo export --platform web` is a batch job and completes in about four minutes. `mobile/scripts/serve-web.mjs` serves the result. The onboarding screen with no Continue button went six days unnoticed because nobody could open it.
+- [ ] **Updates were not reaching her phone.** She spent the whole day testing the 09:36 bundle through five updates and a two-hour wait. Publishing, channel mapping, rollout and runtime were all verified correct and a republish under a fresh id changed nothing. **Unresolved.** A native build was made carrying updater diagnostics on the About screen and `fallbackToCacheTimeout` raised from 0 to 12 seconds, which cannot be changed over the air. **The 12 seconds must be reconsidered before wave one** — it is right while the only user is the person waiting on the fix and wrong for a stranger on a bad train.
+
 ### Decisions from the competitor review, 2026-09-28
 
 Recorded from Ruth's Balance assessment and handoff. **Competitor analysis is internal only** — see the marketing spec.
@@ -3462,6 +3480,68 @@ Her words: a small, deliberate list of people she chooses, *"each connected to a
 ## Standing question
 
 **Who, for wave one, and how are they found?** The size is settled at 8 to 12. Where they come from is not, and it is the question the beta research document exists to answer.
+
+# PART TWENTY-ONE: QUIET NUTRITION
+
+*Added 30 September 2026, from Ruth's three briefs of that evening. She named the idea herself and it is the most useful thing said about the product in weeks, so it is recorded in her words before anything built from it.*
+
+## The principle
+
+> *"You're not building a nutrient tracker. You're building quiet nutrition. People don't need another app telling them they hit 78% of calcium today. They need an app that gently prevents tiny blind spots becoming decades-long habits."*
+
+And the test she set for every feature:
+
+> *"What's the smallest piece of evidence-based guidance that could quietly improve this person's health for the next 30 years?"*
+
+**The success metric is not engagement and not knowledge.** Her words: *"Someone may realise after six months that adding yoghurt at breakfast has become automatic. They may never consciously remember that Selodía taught them. That is success."*
+
+**What it rules out**, and this is a list to check a design against rather than a mood: no articles, no quizzes, no lessons, no badges, no gamification, no streaks, no countdowns, no red warnings, no guilt, no "you failed today", no percentage score.
+
+## What is built
+
+**Pair — amino acids.** `mobile/src/lib/pair.ts`, 20 checks in `scripts/check-pair.mjs`. A small italic *Pair* beside an ingredient whose protein is good but incomplete; tapping it opens a card, not chat. It reads `amino_profile`, which has been written since 27 August and had never been read by anything.
+
+**The suppression is the feature.** Chicken, rice and beans shows nothing, because the plate already did it. A label that fires regardless is a sticker and gets ignored within a week, which is the opposite of the stated metric.
+
+**Absorption pairings.** `mobile/src/lib/nutrient-pairs.ts`, 14 checks. Three entries, each carrying a source that was fetched and read on 30 September rather than recalled:
+
+| Entry | What it teaches | Source |
+| :-- | :-- | :-- |
+| Calcium and vitamin D | Vitamin D is what lets the body use calcium; UK sunlight is too weak from about October to March | NHS, *Vitamins and minerals: Vitamin D* |
+| Spinach is not a calcium food | About a twentieth of spinach's calcium is absorbed against a quarter of milk's; kale, broccoli and cabbage absorb about as well as milk | NIH ODS, *Calcium: Fact Sheet for Health Professionals* |
+| Plant iron and vitamin C | Plant iron is absorbed far better with vitamin C; tea and coffee bind it | BDA, *Iron Food Fact Sheet* |
+
+**Calcium, the data foundation.** Migration `20260930200000_calcium_on_food.sql` adds `calcium_mg` to `food_items`, `food_logs`, `food_composition` and `food_cache`. The parse now estimates it per item and the meal is the sum of its items. `mobile/src/lib/calcium.ts` computes the day's line against the NHS reference of **700 mg for adults 19 and over**.
+
+**Nothing in the app had ever recorded calcium**, and `food_composition`'s 2,886 CoFID rows do not carry it either — the import took the macros and left the minerals. That is why the figure is an estimate from the parse rather than a lookup, and a CoFID column exists now so a future import can correct it where a name matches, the way drinks already are.
+
+## Three findings from the research pass, and one correction
+
+**The tea-and-coffee nudge is not worth spending a nudge on, and should not be built.** It appeared in three of Ruth's briefs, twice against calcium. Two separate things were wrong with it:
+
+- The tea and coffee interaction that matters is with **iron**, not calcium. That entry now sits where it belongs.
+- On calcium specifically, NIH ODS: caffeine *"has a small effect on calcium absorption and can temporarily increase calcium excretion and may modestly decrease calcium absorption, **an effect easily offset by increasing calcium consumption in the diet**."*
+
+By her own rule — *"where evidence is mixed, either omit the advice or present it cautiously"* — and by the smallest-guidance test, this fails. The remedy is "eat a little more calcium", which is the habit the feature already teaches. A nudge asking somebody to move their tea is a real cost in attention for a benefit their next yoghurt erases.
+
+**The UK and US reference intakes diverge sharply for this audience**, and it is worth knowing which the app is using. NHS: **700 mg** for all adults 19 and over. NIH: **1,000 mg** for women 19–50 and **1,200 mg** for women 51 and over. Selodía Ltd is a UK company serving UK users, so the app uses the NHS figure — but a user over 50 reading American sources will see a number nearly twice as large, and the app should not be surprised by that question.
+
+**Spinach is the single most useful entry here**, because it corrects a belief rather than filling a gap. Somebody eating spinach for her bones is not failing to do something; she is doing something that does not work.
+
+## What is not built, and what it needs
+
+- **The daily calcium line on screen.** `calcium.ts` computes it; nothing renders it yet.
+- **Calcium on the food detail card**, per her *"Greek yoghurt / Calcium / 240 mg"*.
+- **Gentle suggestions over weeks**, not days. Her wording is right and the caution is mine: a run of low estimates is still a run of **estimates**, and the sentence that names a pattern has to carry that.
+- **AI pattern recognition** — *"most of your calcium comes from yoghurt"*, *"you rarely include calcium-rich foods at breakfast"*.
+- **Calcium-set tofu and fortified plant milks.** Both are in her brief and neither has a verified source yet, so neither is written. Calcium-set tofu genuinely does carry far more than tofu set without it, and that claim needs a document behind it before it teaches anybody.
+- **The rest of the engine**: fat-soluble vitamins with fat, turmeric with black pepper, lycopene with cooking and oil. Each needs its own source and check.
+
+## The rule this section runs on
+
+**Every entry carries a named document, a URL, and the date it was read.** `assertSafePair` refuses an entry with no source and refuses one worded as advice, and the same discipline governs `app/lib/clinical-reference.ts`. The reason is not diligence for its own sake: a feature whose method is quiet repetition teaches a mistake exactly as thoroughly as it teaches anything else, and this brief arrived with one in it.
+
+**Anything clinical stays behind the gate.** Intake targets for an individual, supplements, and the connection between bone density and the menopause are not in the Pair layer — the reason calcium matters more at this age is oestrogen, and that is a clinical sentence however gently it is put. It belongs in the reference layer, which is off until a clinician has read it.
 
 # LONG-HORIZON IDEAS
 
