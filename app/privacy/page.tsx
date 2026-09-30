@@ -24,10 +24,17 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 //     app/terms/page.tsx, which was changed the same day and had been
 //     disagreeing with this page since it was written.
 //
-//     STILL OUTSTANDING and carried on the Beta-ready checklist: the ICO
-//     registration is in whose name, and does it exist. Naming a controller in
-//     a policy is not the same as being registered as one, and only one of
-//     those is a thing code can change.
+//     SETTLED 2026-09-30. IT EXISTS AND IT IS IN THE COMPANY'S NAME. Tier 1,
+//     direct debit set up, application C2047751, Selodía Ltd. The question this
+//     comment asked - naming a controller in a policy is not the same as being
+//     registered as one - is answered.
+//
+//     WHAT IS NOT DONE, and the distinction is the point: C2047751 is the
+//     APPLICATION number, not the registration reference. The reference is the
+//     ZA/ZB number on the certificate and it is the one a privacy policy cites.
+//     Nothing below claims a registration, so nothing below is wrong today;
+//     when the certificate arrives the reference goes in the controller
+//     paragraph. Do not put the application number there instead.
 //
 // BROUGHT UP TO DATE 2026-09-19 for the store submissions. The 10 September
 // text had fallen behind the app in five places: error reports from the phone
