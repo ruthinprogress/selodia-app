@@ -134,7 +134,28 @@ export function coerceProposal(v: unknown): ProposedSave | null {
         section,
         why,
         status: coerceStatus(content.status),
-        detail: str(content.detail),
+        // DETAIL IS DROPPED ONCE THERE ARE ITEMS (2026-09-30).
+        //
+        // Her card saved correctly on 30 September - three items, each with its
+        // own timing and purpose - and carried this in `detail`:
+        //
+        //   "Three-month timeframe for meaningful change in texture and
+        //    evenness. Redness already reducing."
+        //
+        // She never typed either sentence. Both came out of the text she
+        // pasted, which she had been sent rather than written, and the card
+        // showed them to her as LATEST.
+        //
+        // The prompt forbids an outcome, and only inside `items` - so `detail`
+        // became the one place a stray sentence could still land, which is
+        // exactly where it landed. A field with no defined job collects
+        // whatever the model has left over.
+        //
+        // When the parts carry the content, there is nothing for a free-text
+        // paragraph to add that is not either a repeat or a claim. So it goes.
+        // A card with no items keeps its detail, because there it is the only
+        // place her own words can be.
+        ...(items.length > 0 ? {} : { detail: str(content.detail) }),
         ...(items.length > 0 ? { items } : {}),
       },
     };
