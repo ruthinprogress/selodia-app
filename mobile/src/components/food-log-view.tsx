@@ -275,6 +275,10 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
             setOpenId(null);
             setReloadKey((k) => k + 1);
           }}
+          // The meal survived but its figures moved - one item removed
+          // (2026-09-30). The card stays open; the week behind it is re-read,
+          // because the day's line and the average both come from food_logs.
+          onChanged={() => setReloadKey((k) => k + 1)}
         />
       ) : null}
 

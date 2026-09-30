@@ -10,6 +10,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { perItemProteinFlag } from '@/lib/protein-quality';
 import type { ProteinSource } from '@/lib/protein-quality';
+import { removeFoodItem } from '@/lib/remove-food-item';
 import { supabase } from '@/lib/supabase';
 import { MACROS, macroLine, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
@@ -72,24 +73,32 @@ export function FoodBreakdownCard({
   foodLogId,
   onClose,
   onDeleted,
+  onChanged,
 }: {
   foodLogId: string | null;
   onClose: () => void;
   // Called instead of onClose when the meal was removed, so the log behind this
   // card re-reads rather than keeping a row that is no longer in the database.
   onDeleted?: () => void;
+  // Called when the meal still exists but its figures have moved - removing one
+  // item (2026-09-30). The card stays open; the log BEHIND it is stale from the
+  // moment the item goes, because the day's line and the week's average are
+  // read from food_logs.
+  onChanged?: () => void;
 }) {
   const theme = useTheme();
-  const [loading, setLoading] = useState(true);
   const [log, setLog] = useState<FoodLog | null>(null);
   const [items, setItems] = useState<FoodItem[]>([]);
   const [tracked, setTracked] = useState<MacroKey[]>([]);
+  // Bumped when this card changes the meal, so the read below runs again and
+  // the macro grid shows the figures the database now holds rather than the
+  // ones it held when the card opened.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!foodLogId) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
       // RLS scopes both reads to the signed-in user.
       const [{ data: logRow }, { data: itemRows }] = await Promise.all([
         supabase
@@ -111,12 +120,11 @@ export function FoodBreakdownCard({
       if (cancelled) return;
       setLog((logRow ?? null) as FoodLog | null);
       setItems((itemRows ?? []) as FoodItem[]);
-      setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [foodLogId]);
+  }, [foodLogId, reloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,14 +152,23 @@ export function FoodBreakdownCard({
   // What differs is the sentence already in the box - a question, or a
   // correction - so a person who tapped to fix a mistake does not have to work
   // out how to phrase it.
-  function openInChat(mode: 'ask' | 'correct') {
+  // `item` names ONE thing inside the meal (2026-09-30). Tapping the meal's
+  // header opens "My <meal> log should say "; tapping one item opens "In my
+  // <meal> log, the <item> should say ", so a correction to one line does not
+  // arrive as a correction to the whole entry.
+  function openInChat(mode: 'ask' | 'correct', item?: string) {
     if (!log) return;
     const label = log.raw_text ?? log.meal_label ?? 'this entry';
     onClose();
     router.push({
       pathname: '/',
       params: {
-        prefill: mode === 'ask' ? `About my "${label}" log: ` : `My "${label}" log should say `,
+        prefill:
+          mode === 'ask'
+            ? `About my "${label}" log: `
+            : item
+              ? `In my "${label}" log, the "${item}" should say `
+              : `My "${label}" log should say `,
         discussId: foodLogId ?? '',
         discussType: 'food',
         // The entry's own words, date and totals, already loaded into this
@@ -191,7 +208,13 @@ export function FoodBreakdownCard({
       >
         <Pressable style={styles.cardWrap} onPress={() => {}}>
           <ThemedView style={styles.card}>
-            {loading || !log ? (
+            {/* `!log` RATHER THAN A LOADING FLAG (2026-09-30). The card now
+                re-reads itself after an item is removed, and a flag that is
+                true for that round trip blanks the whole card to an ellipsis,
+                which makes a delete look like a crash. There is no first-load
+                case this loses: until the first read lands there is no log
+                either, so the ellipsis still shows. */}
+            {!log ? (
               <ThemedText type="small" themeColor="textSecondary">
                 …
               </ThemedText>
@@ -233,32 +256,75 @@ export function FoodBreakdownCard({
 
                 {hasItems ? (
                   <View style={styles.section}>
+                    {/* EVERY ITEM IS NOW A CONTROL (Ruth, 30 September 2026,
+                        item 2d): "per-item swipe delete and edit on the food
+                        item view; keep Delete this meal."
+
+                        SWIPE removes that one item and takes its figures off
+                        the meal in the same transaction - see
+                        lib/remove-food-item.ts, and the migration for why it
+                        subtracts rather than re-adding up what is left.
+
+                        TAP is the edit, and it is the same edit the whole
+                        entry has always had: the conversation, with this item
+                        named in the box. No second editor, because a second way
+                        to change a figure is a second set of rules about the
+                        same data - the card has carried that decision since it
+                        was built and one item does not overturn it.
+
+                        NO VISIBLE BUTTON PER ITEM, which breaks this app's own
+                        rule that a gesture always has a button beside it
+                        (swipe-to-delete.tsx: "a hidden gesture is a control
+                        that only some people ever find"). Five bins down the
+                        side of a five-item meal is a different screen, and the
+                        thing the rule protects - a way through for somebody who
+                        never swipes - is the tap, which reaches the same
+                        change by conversation. "Delete this meal" is still at
+                        the bottom, visible, where it has always been. */}
                     {items.map((it) => {
                       const flag = perItemProteinFlag(
                         it.protein_source as ProteinSource | null,
                         it.protein_g
                       );
+                      const named = `${it.name}${it.quantity ? ` ${it.quantity}` : ''}`;
                       return (
-                        <View key={it.id} style={styles.itemRow}>
-                          <View style={styles.itemName}>
-                            <ThemedText type="small">
-                              {it.name}
-                              {it.quantity ? ` ${it.quantity}` : ''}
+                        <SwipeToDelete
+                          key={it.id}
+                          what={named}
+                          onDelete={() => removeFoodItem(it.id)}
+                          onDeleted={() => {
+                            // The meal's own totals have changed, so the card
+                            // is re-read rather than the row spliced out of
+                            // state: the header figures above are the whole
+                            // point of doing this in the database.
+                            setItems((rows) => rows.filter((r) => r.id !== it.id));
+                            setReloadKey((k) => k + 1);
+                            onChanged?.();
+                          }}
+                        >
+                          <Pressable
+                            onPress={() => openInChat('correct', named)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${named}. Tap to change it, swipe left to remove it.`}
+                            style={({ pressed }) => [styles.itemRow, pressed && styles.pressed]}
+                          >
+                            <View style={styles.itemName}>
+                              <ThemedText type="small">{named}</ThemedText>
+                              {/* Per-item protein flag (item 12's other half): collagen
+                                  reads "incomplete", plant reads "pair it", animal and
+                                  unclassified read nothing at all. */}
+                              {flag && (
+                                <ThemedText type="small" themeColor="textSecondary" style={styles.flag}>
+                                  {flag}
+                                </ThemedText>
+                              )}
+                            </View>
+                            <ThemedText type="small" themeColor="textSecondary">
+                              {kcal(it.kcal)}
+                              {it.protein_g != null ? ` · ${g(it.protein_g)}` : ''}
                             </ThemedText>
-                            {/* Per-item protein flag (item 12's other half): collagen
-                                reads "incomplete", plant reads "pair it", animal and
-                                unclassified read nothing at all. */}
-                            {flag && (
-                              <ThemedText type="small" themeColor="textSecondary" style={styles.flag}>
-                                {flag}
-                              </ThemedText>
-                            )}
-                          </View>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {kcal(it.kcal)}
-                            {it.protein_g != null ? ` · ${g(it.protein_g)}` : ''}
-                          </ThemedText>
-                        </View>
+                          </Pressable>
+                        </SwipeToDelete>
                       );
                     })}
                   </View>
