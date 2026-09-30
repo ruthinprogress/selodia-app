@@ -12,6 +12,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, authedGet, authedPost } from '@/lib/api';
 import { canPickFiles, pickFailureMessage, pickPageFiles, pickPageImages } from '@/lib/document-pages';
+import { hasVotedFor, voteForFeature, voteMessage } from '@/lib/feature-vote';
 
 // BUILD A REPORT (2026-09-20), from Ruth's brief: "The PDF export should not
 // feel like downloading data. It should feel like building a story for a
@@ -87,6 +88,24 @@ type Attachment = {
 
 /** Four is what fits in one request alongside a report. */
 const MAX_ATTACHMENTS = 4;
+
+// WHAT THIS SECTION TAKES, SAID BEFORE SHE TRIES (Ruth, 30 September 2026).
+//
+// Photographs are parked until after wave zero. Until then the honest thing is
+// to say so where somebody is about to reach for the camera, rather than let
+// them find out by a shot that vanishes.
+//
+// IMPERSONAL, sentence case, no em dashes - her standing rule for screens.
+const UPLOAD_HINT = 'Add letters, results and other documents. No photos yet.';
+
+const NOT_A_DOCUMENT =
+  "That looks like a photo rather than a document, so it wasn't added. Photos aren't supported yet.";
+
+const COULD_NOT_ADD = "That couldn't be added. Try again.";
+
+// The vote, and its wording. Never a hint that photos are coming, and never a
+// suggestion that anything was uploaded here.
+const PHOTO_VOTE_LABEL = 'Tap here to vote for adding photos to reports.';
 
 type Block = {
   source: string;
@@ -254,6 +273,66 @@ function Picker({
         </View>
       )}
     </SettingsGroup>
+  );
+}
+
+/**
+ * ONE TAP TO ASK FOR PHOTOS (Ruth, 30 September 2026).
+ *
+ * Photographs are parked until after wave zero, so the screen says so and
+ * offers a way to ask rather than a dead end. Her reasoning: a failed photo
+ * becomes a demand signal, and at wave one the count of distinct people who
+ * asked is real evidence rather than a hunch.
+ *
+ * IT MUST STAY HONEST. No suggestion that photos are coming soon, and nothing
+ * that reads as though anything was uploaded here. The button says what it is:
+ * a vote.
+ *
+ * Impersonal, sentence case, no em dashes.
+ */
+function PhotoVote() {
+  const [state, setState] = useState<'idle' | 'busy' | 'counted' | 'already' | 'failed'>('idle');
+
+  // Whether she has asked before is read once, so the button can say so before
+  // she taps rather than only after.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const already = await hasVotedFor('report_photos');
+      if (!cancelled && already) setState('already');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state === 'counted' || state === 'already') {
+    return (
+      <ThemedText type="detail" themeColor="textSecondary">
+        {voteMessage({ kind: state === 'counted' ? 'counted' : 'already' })}
+      </ThemedText>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (state === 'busy') return;
+        setState('busy');
+        void voteForFeature('report_photos').then((r) =>
+          setState(r.kind === 'counted' ? 'counted' : r.kind === 'already' ? 'already' : 'failed')
+        );
+      }}
+      disabled={state === 'busy'}
+      accessibilityRole="button"
+      accessibilityLabel={PHOTO_VOTE_LABEL}
+      hitSlop={Spacing.two}
+      style={({ pressed }) => pressed && styles.pressed}
+    >
+      <ThemedText type="detail" themeColor={state === 'busy' ? 'textSecondary' : 'link'}>
+        {state === 'failed' ? voteMessage({ kind: 'failed' }) : PHOTO_VOTE_LABEL}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -441,16 +520,29 @@ export default function ReportScreen() {
           base64: page.base64,
           mediaType: page.mediaType,
         });
-        if (res.attachment) setAttachments((list) => [...list, res.attachment as Attachment]);
+        if (res.attachment) {
+          setAttachments((list) => [...list, res.attachment as Attachment]);
+        } else {
+          // A REFUSAL THAT SAYS NOTHING IS WORSE THAN A REFUSAL (2026-09-30).
+          //
+          // This was `if (res.attachment)` with no else. The server returns 422
+          // not_a_document for a photograph, by her own decision of 21
+          // September, and the client threw the answer away - so the camera
+          // opened, the shot was taken, the app thought for a second, and
+          // nothing appeared and nothing was said. She had no way to tell that
+          // from a bug.
+          setFailed(NOT_A_DOCUMENT);
+        }
       }
 
       if (picked.pages.length > room) {
         setFailed(`A report can carry ${MAX_ATTACHMENTS} documents, so I have taken the first ${room}.`);
       }
     } catch (err) {
-      setFailed(
-        (err instanceof ApiError && err.userMessage) || 'Could not read that document. Please try again.'
-      );
+      // IMPERSONAL AND PLAIN (her rule for every screen). The server's own
+      // wording is preferred when it has one, because it knows which of several
+      // things went wrong.
+      setFailed((err instanceof ApiError && err.userMessage) || COULD_NOT_ADD);
     } finally {
       setReading(false);
     }
@@ -902,11 +994,19 @@ export default function ReportScreen() {
               </View>
             )}
 
+            {/* SAID BEFORE SHE REACHES FOR THE CAMERA, rather than after the
+                shot has vanished. */}
+            <ThemedText type="detail" themeColor="textSecondary">
+              {UPLOAD_HINT}
+            </ThemedText>
+
+            <PhotoVote />
+
             {attachments.length < MAX_ATTACHMENTS && (
               <View style={styles.attachActions}>
                 {(
                   [
-                    { from: 'camera' as const, label: 'Photograph one' },
+                    { from: 'camera' as const, label: 'Photograph a letter or document' },
                     { from: 'library' as const, label: 'From gallery' },
                     ...(canPickFiles() ? [{ from: 'file' as const, label: 'Choose a file' }] : []),
                   ]
