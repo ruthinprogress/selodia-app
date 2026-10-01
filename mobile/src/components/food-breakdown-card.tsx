@@ -370,7 +370,29 @@ export function FoodBreakdownCard({
                             style={({ pressed }) => [styles.itemRow, pressed && styles.pressed]}
                           >
                             <View style={styles.itemName}>
-                              <ThemedText type="small">{named}</ThemedText>
+                              {/* ONE LINE, ELLIPSISED (1 October 2026). Ruth's
+                                  card showed "e 1 cup" where "Black coffee 1
+                                  cup" should be: the row slides 64px left to
+                                  uncover the bin, the name goes under the
+                                  card's edge, and what is left is the tail of a
+                                  word broken mid-way.
+
+                                  swipe-to-delete.tsx carries this same fault
+                                  from 25 September, when she saw "care
+                                  Routine" - and its fix was to stop the WRAPPER
+                                  clipping. Here the clipping is the card's own
+                                  edge, which is correct behaviour for a sliding
+                                  row, so the fix is the other end: a name that
+                                  cannot wrap cannot be cut mid-word, and an
+                                  ellipsis says plainly that there is more. */}
+                              <ThemedText
+                                type="small"
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={styles.itemLabel}
+                              >
+                                {named}
+                              </ThemedText>
                               {/* Per-item protein flag (item 12's other half): collagen
                                   reads "incomplete", plant reads "pair it", animal and
                                   unclassified read nothing at all. */}
@@ -582,7 +604,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    flexWrap: 'wrap',
+    // NO LONGER WRAPS. A wrapped name is what produced "e 1 cup" once the row
+    // slid left; the label below shrinks and ellipsises instead.
+  },
+  itemLabel: {
+    flexShrink: 1,
   },
   flag: {
     fontSize: 11,

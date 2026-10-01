@@ -75,10 +75,13 @@ export function LogPlanSheet({
   onClose,
   onLog,
   onMove,
+  onRemove,
 }: {
   plan: PlanToLog;
   onClose: () => void;
   onLog: (input: { activity: string; when: Date; minutes: number | null; note: string }) => Promise<void>;
+  /** Take it out of her week entirely. See removeFromWeek for why not "delete". */
+  onRemove?: () => void;
   /**
    * MOVE TO… LIVES HERE (Ruth, 29 September 2026: "in the tap sheet for any
    * activity card, a way to choose a day (Mon-Sun) or Anytime. Keep it
@@ -115,6 +118,8 @@ export function LogPlanSheet({
   });
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  // Two taps to remove. See the control at the bottom of the sheet.
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [failed, setFailed] = useState(false);
 
   // THIS WEEK, UP TO AND INCLUDING TODAY. Not the whole week, for the reason in
@@ -267,6 +272,33 @@ export function LogPlanSheet({
                 </ThemedText>
               </View>
             </Pressable>
+
+            {/* LAST AND QUIET, the same shape as removing a food entry: the one
+                thing on this sheet that takes something away rather than adding
+                to it, so it sits under the action she actually came for.
+
+                TWO TAPS, NOT ONE. The second tap is the confirmation, in place,
+                rather than a dialog - which is the pattern swipe-to-delete
+                already settled on ("the gesture uncovers a delete, and the
+                delete is a tap. That IS the confirmation her spec asks for").
+                A plan is not precious, but a sheet she opened to LOG something
+                should not lose her week's shape to a misplaced thumb. */}
+            {onRemove && (
+              <Pressable
+                onPress={() => (confirmRemove ? onRemove() : setConfirmRemove(true))}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  confirmRemove
+                    ? `Confirm, take ${plan.activity} out of my week`
+                    : `Take ${plan.activity} out of my week`
+                }
+                hitSlop={Spacing.two}
+                style={({ pressed }) => [styles.removeRow, pressed && styles.pressed]}>
+                <ThemedText type="small" themeColor={confirmRemove ? 'accentDeep' : 'textSecondary'}>
+                  {confirmRemove ? 'Tap again to take it out' : 'Take out of my week'}
+                </ThemedText>
+              </Pressable>
+            )}
           </View>
         </ThemedView>
       </KeyboardAvoidingView>
@@ -310,6 +342,11 @@ const styles = StyleSheet.create({
   },
   minutes: { width: 120 },
   note: { minHeight: 88, textAlignVertical: 'top' },
+  removeRow: {
+    alignSelf: 'center',
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.one,
+  },
   moveRow: {
     flexDirection: 'row',
     alignItems: 'center',

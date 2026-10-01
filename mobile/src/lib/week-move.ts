@@ -62,3 +62,27 @@ export function toggleDay(days: string[] | null, day: string): string[] {
   const current = days ?? [];
   return current.includes(day) ? current.filter((d) => d !== day) : [...current, day];
 }
+
+/**
+ * TAKE SOMETHING OUT OF HER WEEK.
+ *
+ * Ruth, 1 October 2026: "Plans - Week - no way to delete a card." There was
+ * not. A card could be moved between days, logged, and dragged, and the only
+ * delete against user_week in the whole app was the one onboarding uses to wipe
+ * the table before writing a fresh set.
+ *
+ * NOT CALLED DELETE, ON THE SCREEN OR HERE. A week card is a plan - "Gym, 1.5
+ * hrs" - not a record of something that happened. Removing it changes what she
+ * intends to do, destroys no history, and is undone by adding it back. "Delete"
+ * would borrow the weight of the food and measurement deletes, which really are
+ * irreversible, and that weight is what makes somebody hesitate over a thing
+ * that does not deserve hesitation.
+ *
+ * THE LOGS IT PRODUCED STAY. Sessions already logged against this activity live
+ * in activity_logs and are untouched: she did those, and taking yoga out of her
+ * week next month cannot mean she never went.
+ */
+export async function removeFromWeek(rowId: string): Promise<void> {
+  const { error } = await supabase.from('user_week').delete().eq('id', rowId);
+  if (error) throw new Error(error.message);
+}

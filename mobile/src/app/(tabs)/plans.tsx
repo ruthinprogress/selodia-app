@@ -26,7 +26,7 @@ import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { dayKeyOf, isWalking, logMatchesPlan, placedOnDays } from '@/lib/week-plan';
-import { moveToDays } from '@/lib/week-move';
+import { moveToDays, removeFromWeek } from '@/lib/week-move';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
 // "every tab should answer a different user question, with no overlap ...
@@ -265,6 +265,23 @@ export default function PlansScreen() {
               // nobody can get out of on Android's back button.
               setMovingPlan(loggingPlan);
               setLoggingPlan(null);
+            }}
+            // TAKE IT OUT OF THE WEEK (Ruth, 1 October 2026: "Plans - Week - no
+            // way to delete a card"). The sheet asks twice before calling this,
+            // so by the time it runs she has confirmed.
+            onRemove={() => {
+              const plan = loggingPlan;
+              setLoggingPlan(null);
+              if (!plan) return;
+              void (async () => {
+                try {
+                  await removeFromWeek(plan.id);
+                } finally {
+                  // The week is re-read either way: a failed delete must not
+                  // leave the card looking gone when it is still there.
+                  setReloadKey((k) => k + 1);
+                }
+              })();
             }}
           />
         )}
