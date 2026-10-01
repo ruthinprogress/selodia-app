@@ -43,6 +43,11 @@ for (const line of fs.readFileSync(path.join(process.cwd(), '.env.local'), 'utf8
 }
 const anthropic = new Anthropic({ apiKey: E.ANTHROPIC_API_KEY });
 
+// WHICH MODEL IS BEING ASKED. Defaults to the one the route uses. Overridable
+// so the same six cases can be run against a candidate before the route moves
+// to it - which is exactly how the classifier was moved to Haiku on 1 October.
+const MODEL = process.env.PROBE_MODEL || 'claude-sonnet-5';
+
 // HER REAL WORDS, verbatim from conversation conv_3201m3sr2c26f3xtz2wn88mk13f2.
 const HERS =
   "Uh, coping how I usually cope, which is by eating more sugary things, raisins and bananas " +
@@ -97,7 +102,7 @@ const failures = [];
 
 for (const c of CASES) {
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-5',
+    model: MODEL,
     max_tokens: 400,
     system:
       'You classify a message in a body-literacy app used by women over 40, and write a brief reply.' +
