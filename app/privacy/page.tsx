@@ -85,6 +85,24 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 //   medication mentioned in passing is stored the moment Send is pressed. The
 //   sentence now says which of the two it is talking about.
 //
+// REVISED THE SAME EVENING, 2026-10-01, AND THE VERSION MOVED AGAIN. Ruth
+// switched ElevenLabs' training opt-out on at 20:06 and confirmed their retention
+// period, which answers the "[to confirm before launch]" bracket that had been
+// sitting in the processor list since 10 September.
+//
+// IT IS NOT ONLY GOOD NEWS, which is why the version moved rather than the text
+// being quietly improved. The opt-out stops training; it does NOT stop retention.
+// ElevenLabs hold audio and transcripts for UP TO THREE YEARS. Two other
+// documents said flatly that audio "is not retained" - the Play Data Safety form
+// and the App Store label - and both were wrong on a point that decides whether
+// "Voice or sound recordings" is declared at all.
+//
+// SHE HAD ALREADY RE-CONSENTED, at 18:51, to the 1 October text that said the
+// retention setting was unconfirmed. Leaving the string alone would mean her
+// consent pointed at wording that no longer exists, on a material point about a
+// processor. So "(revised)" is appended and she is asked once more. It is ugly
+// on screen and it is correct; a cleaner date would have been a quieter lie.
+//
 // 2026-09-28: THE COMPANY'S REGISTERED PARTICULARS WERE ADDED and UPDATED was
 // deliberately LEFT AT 19 SEPTEMBER. The Companies Act and the E-Commerce
 // Regulations want the number, the place of registration and the registered
@@ -100,7 +118,7 @@ export const metadata: Metadata = {
   description: 'What Selodía collects, why, and what you can do about it.',
 };
 
-const UPDATED = '1 October 2026';
+const UPDATED = '1 October 2026 (revised)';
 
 const SECTIONS: PlainSection[] = [
   {
@@ -168,7 +186,7 @@ const SECTIONS: PlainSection[] = [
       [
         'Supabase — stores the database and files, and handles sign-in. Data is held in their London region.',
         'Anthropic — provides Claude, the model behind the conversation. Messages, and food photographs you send, are processed to produce a reply. Anthropic’s commercial terms state that data submitted through their API is not used to train their models.',
-        'ElevenLabs — provides speech recognition and the spoken voice, and only when you use voice mode. Audio is processed to produce a transcript and a reply. [To confirm before launch: retention settings on this account.]',
+        'ElevenLabs — provides speech recognition and the spoken voice, and only when you use voice mode. Audio is processed to produce a transcript and a reply. From 1 October 2026 onward, data from this account is not used to train ElevenLabs\u2019 models: the training opt-out is switched on. ElevenLabs retains audio and transcripts for up to 3 years under their own retention policy, so what you say by voice is held by them for that period even though Selod\u00eda does not keep the audio itself.',
         'Vercel — runs Selodía’s servers, which pass your data between the app, the database and the providers above. Server logs are kept briefly, to fix faults.',
         'Google — confirms who you are if you choose to sign in with Google. On Android, Google’s Firebase Cloud Messaging delivers reminders, using a device token rather than your data.',
         'Expo — delivers push notifications and app updates. It sees a device token, not your data.',

@@ -28,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 // MUST MATCH `UPDATED` in app/privacy/page.tsx. Moving it re-asks everybody to
 // confirm their consent, which is the whole point of the pair: 1 October 2026
 // added three new kinds of special category data to the policy.
-export const PRIVACY_POLICY_VERSION = '1 October 2026';
+export const PRIVACY_POLICY_VERSION = '1 October 2026 (revised)';
 
 export type ConsentAnswers = {
   coreConsent: boolean;

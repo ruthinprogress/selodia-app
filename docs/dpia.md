@@ -2,7 +2,7 @@
 
 **Controller:** Selodía Ltd, 19 Campbell Road, London, E17 6RR
 **Company number:** 12246794 · **Contact:** hello@selodia.app
-**Version 1.1 · 1 October 2026 · first draft, not yet reviewed**
+**Version 1.2 · 1 October 2026 · first draft, not yet reviewed**
 **Review:** yearly, and whenever anything new is collected.
 
 **Version 1.1, 1 October 2026.** The review trigger above is "whenever anything new is collected", and eleven things had been collected since 28 September without this document moving. Three of them are special category data in their own right - menopause status, hormone use and medication - and one is a processing activity the document did not describe at all: clinical documents are photographed, sent to be read, and discarded. Section 2 is rewritten, the processor table gains a row for what a document upload actually sends, and 5.7 is new.
@@ -56,12 +56,26 @@ Selodía is a body-literacy app for women over 40. People log what they eat, how
 
 ## 3. Who it goes to, and where
 
+**ElevenLabs, settled 1 October 2026 at 20:06.** The training opt-out is on for
+this workspace, so from that date onward nothing said by voice trains their
+models. **It does not stop retention:** audio and transcripts are held by them for
+**up to 3 years**. Two consequences, both acted on rather than noted:
+
+- Anything spoken BEFORE 1 October 2026 was submitted while the opt-out was off.
+  The setting is forward-looking - ElevenLabs' own guidance says "any new data you
+  submit won't be used" - so earlier audio cannot be clawed back out of whatever
+  it contributed to. On this project that is Ruth's own test voice and nobody
+  else's, which is the only reason it is a footnote rather than a finding.
+- "Audio is not retained" was stated as fact in the Play Data Safety form and the
+  App Store label. It is not true of the processor. Both are corrected, and
+  *Voice or sound recordings* now needs declaring.
+
 | Processor | What reaches them | Where |
 | --- | --- | --- |
 | **Supabase** | Everything. Database, auth, file storage. | EU region |
 | **Vercel** | Requests in transit; the API runs here. Logs are not retained on the current tier. | `lhr1`, London |
 | **Anthropic** | The conversation turn: her message, recent history, and computed facts about her record. **Not the whole database** — each turn carries a bounded window. Also **the pages of any clinical document she chooses to have read**, and **food photographs she sends** — both processed to produce a reading and neither stored by Selodía. | US |
-| **ElevenLabs** | Spoken audio and transcripts, for voice conversations only. | US |
+| **ElevenLabs** | Spoken audio and transcripts, for voice conversations only. **Retained by them for up to 3 years** under their retention policy. **Training opt-out ON from 1 October 2026 onward** (workspace setting, confirmed 20:06). | US |
 | **Backblaze B2** | The exercise clip library. **No personal data at all.** | US |
 | **Apple / Google** | Subscription and payment data, once billing exists. Selodía never sees a card. | Various |
 

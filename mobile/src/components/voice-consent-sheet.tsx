@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 // WHAT IT SAYS AND WHY IT SAYS IT. The OS dialog cannot carry any of this.
 // "Selodía would like to access the microphone" says nothing about audio
 // leaving the phone, so agreeing to it is not informed consent to a third party
-// processing your voice. Hence: who processes it, that the audio is not kept,
+// processing your voice. Hence: who processes it, what happens to the audio,
 // and - the part it would be easy to leave out - that what you say IS saved,
 // into the chat thread, like any typed message. An earlier draft of this copy
 // said "nothing is stored beyond the conversation", which was not true: the
@@ -52,9 +52,19 @@ export function VoiceConsentSheet({
       <View style={styles.bottom} pointerEvents="box-none">
         <ThemedView style={styles.sheet}>
           <ThemedText type="sectionTitle">Voice logging</ThemedText>
+          {/* "THE AUDIO ISN'T KEPT" WAS NOT TRUE, and this is the worst place
+              for an untrue sentence in the whole app: it is read at the moment
+              somebody decides whether to speak to it at all.
+              Confirmed 1 October 2026, 20:06 - ElevenLabs hold audio and
+              transcripts for UP TO 3 YEARS. What was true is the narrower thing
+              the sentence was reaching for: SELODÍA does not keep the audio. The
+              processor does, and the person deciding is entitled to know that
+              before the microphone opens rather than from a policy page. */}
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-            Your voice is processed by ElevenLabs so you can log hands-free. The audio isn&apos;t
-            kept. What you say is saved to your chat thread like any other message.
+            Your voice is processed by ElevenLabs so you can log hands-free. Selodía does not keep
+            the audio. ElevenLabs holds it for up to 3 years, and from 1 October 2026 does not use
+            it to train their models. What you say is saved to your chat thread like any other
+            message.
           </ThemedText>
 
           <Pressable

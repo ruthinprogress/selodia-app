@@ -37,7 +37,7 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | Health and fitness | Fitness info | Yes | No | Optional | App functionality — activity, duration, intensity, and step counts from Health Connect where permission was granted |
 | Photos and videos | Photos | Yes | No | Optional | App functionality — food photographs the person chooses to send |
 | Messages | Other in-app messages | Yes | No | Required | App functionality — the conversation is the product's primary interface |
-| Audio | Voice or sound recordings | **No** | — | — | Audio is processed to produce a transcript and is not retained. **Declare the transcript under Messages, not here.** |
+| Audio | Voice or sound recordings | **Yes** | No | Optional | ⚠ **CHANGED 1 Oct, and it reverses an earlier answer.** App functionality — what she says in voice mode. The old answer rested on "audio is not retained", which is **not true of the processor**: ElevenLabs hold audio and transcripts for **up to 3 years**. Google asks whether data is transmitted off the device, and it is. Declare the transcript under Messages as well. |
 | App activity | Other actions | Yes | No | Optional | ⚠ **Changed 1 Oct.** App functionality — saved plans, insights, notes, **goals, skills and the shape of the week** |
 | Device or other IDs | Device or other IDs | Yes | No | Optional | App functionality — a push token, only if reminders are turned on |
 | Files and docs | Files and docs | **Yes** | No | Optional | ⚠ **NEW 1 Oct, and the important one.** App functionality — a letter or result the person chooses to photograph or upload so Selodía can read it. **The pages are processed and not stored**; only what the person then agrees to keep is written. Declared because Google counts processing, not only storage. |
@@ -47,7 +47,28 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 
 **Not collected, and worth stating so nobody assumes otherwise:** location of any kind, contacts, calendar, browsing history, search history, installed apps, purchase history, credit info, payment info, race or ethnicity, political or religious beliefs, sexual orientation, financial info, and any advertising or analytics identifier. **There is no third-party analytics SDK and no advertising SDK in the app at all.**
 
-**The one to get right.** *Voice or sound recordings* is tempting to tick because the app has a voice mode. Audio is streamed to ElevenLabs, converted to text, and not stored by Selodía — what persists is the transcript, which is a message. Ticking "audio collected" implies stored recordings and would contradict the privacy policy. **Confirm ElevenLabs' retention settings for this account before finalising**, because that sentence depends on them.
+**The one to get right — and it was got wrong, until 1 October 2026.**
+
+The old answer here was *No*, reasoning that audio is streamed to ElevenLabs,
+converted to text and not stored by Selodía. The note ended: *"Confirm ElevenLabs'
+retention settings for this account before finalising, because that sentence
+depends on them."* It depended on them, and nobody had confirmed them for three
+weeks.
+
+**Confirmed 1 October 2026, 20:06.** Ruth switched the workspace training opt-out
+ON — so from that date onward nothing said by voice trains their models — and
+their retention is **up to 3 years**. The sentence the *No* rested on was false.
+
+**Why that flips the answer.** Google asks whether data is **transmitted off the
+device**, not whether Selodía keeps it. Audio leaves the phone and is held by a
+processor for up to three years. "Selodía does not store it" is a true sentence
+that answers a different question, and it is exactly the shape of reasoning that
+produced the *Files and docs* under-declaration on the same form.
+
+**The training opt-out is forward-looking.** ElevenLabs' own wording is "any new
+data you submit won't be used". Anything spoken before 1 October 2026 was
+submitted while it was off. On this project that is Ruth's own test voice and
+nobody else's.
 
 ---
 
@@ -219,9 +240,10 @@ Apple's categories differ from Google's. Every item below is **linked to the per
 | User content: other user content | Yes | App functionality (messages and voice transcripts) |
 | Identifiers: device ID | Yes | App functionality (push token, only with reminders on) |
 | Diagnostics: other diagnostic data | Yes | App functionality (error notes) |
+| Audio data | ⚠ **Yes** (changed 1 Oct) | App functionality — voice mode. ElevenLabs retain audio and transcripts up to 3 years; training opt-out on from 1 October 2026 onward |
 | Sensitive info, location, contacts, browsing, purchases, financial | No | — |
 
-**Audio data**: not collected, for the same reason as on Play. Audio is turned into text and not kept; the transcript is declared as user content. This depends on the ElevenLabs retention setting still to be confirmed.
+**Audio data**: ⚠ **now declared as collected**, for the same reason as on Play and with the same correction. The setting it depended on was confirmed on 1 October 2026: training opt-out ON from that date onward, retention **up to 3 years**. Audio leaves the device and is held by a processor, which is what Apple is asking. The transcript is still declared as user content as well.
 
 ## 9. Progress
 
