@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { PROCESSOR_WORDING } from '@/lib/processor-wording';
 
 // The one time voice is explained, before it is ever used.
 //
@@ -61,10 +62,16 @@ export function VoiceConsentSheet({
               processor does, and the person deciding is entitled to know that
               before the microphone opens rather than from a policy page. */}
           <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-            Your voice is processed by ElevenLabs so you can log hands-free. Selodía does not keep
-            the audio. ElevenLabs holds it for up to 3 years, and from 1 October 2026 does not use
-            it to train their models. What you say is saved to your chat thread like any other
-            message.
+            {PROCESSOR_WORDING}
+          </ThemedText>
+          {/* THE ONE THING THIS SHEET MUST SAY THAT THE OTHERS NEED NOT. The
+              shared paragraph covers who processes it and for how long; this
+              sheet is the only place somebody is deciding whether to SPEAK, and
+              the part that surprises people is that the words persist in the
+              thread afterwards. An earlier draft said "nothing is stored beyond
+              the conversation", which was not true. */}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
+            What you say is saved to your chat thread like any other message.
           </ThemedText>
 
           <Pressable

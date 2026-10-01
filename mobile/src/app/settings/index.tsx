@@ -4,6 +4,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
 import { SpotlightTarget } from '@/components/spotlight-target';
+import { BuildStamp } from '@/components/build-stamp';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
@@ -172,6 +173,12 @@ export default function SettingsHub() {
           {signingOut ? 'Signing out…' : 'Sign out'}
         </ThemedText>
       </Pressable>
+
+      {/* LAST THING ON THE SCREEN SHE ACTUALLY OPENS. See build-stamp.tsx:
+          the fuller version with a fetch button is on About, one tap further
+          in, and tonight that tap was the difference between knowing and
+          guessing which bundle her phone was running. */}
+      <BuildStamp />
     </SettingsPage>
   );
 }

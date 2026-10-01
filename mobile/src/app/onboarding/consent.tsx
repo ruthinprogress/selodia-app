@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Checkbox } from '@/components/checkbox';
 import { ThemedText } from '@/components/themed-text';
+import { PROCESSOR_WORDING } from '@/lib/processor-wording';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import { holdConsent, recordConsent } from '@/lib/consent';
@@ -117,12 +118,14 @@ export default function ConsentScreen() {
               are to be told, and this is the screen where telling happens.
               The period is named here rather than left to the policy, because
               this is the screen somebody actually reads. */}
-          <ThemedText>
-            To understand what you write or say, Selodía sends it to Claude, an AI model made by
-            Anthropic. If you use voice, what you say goes to ElevenLabs to be turned into text. Both
-            may use it only to reply to you. ElevenLabs keeps the audio and the transcript for up to
-            3 years; Claude does not keep what it is sent for training.
-          </ThemedText>
+          {/* RUTH'S OWN WORDING, 1 October 2026, and it is the SAME STRING on the
+              voice sheet, in the privacy policy and in the DPIA. See
+              lib/processor-wording.ts.
+              One source because of what happened today: "the audio isn't kept"
+              was corrected in the policy and left standing in the app, and she
+              read the stale one on her phone an hour after a report said it was
+              fixed. Four copies of a sentence is four chances for one to rot. */}
+          <ThemedText>{PROCESSOR_WORDING}</ThemedText>
 
           <ThemedText>
             Selodía isn&apos;t a medical service and doesn&apos;t replace advice from your doctor.

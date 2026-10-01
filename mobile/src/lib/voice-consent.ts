@@ -44,6 +44,40 @@ export async function hasVoiceConsent(): Promise<boolean> {
   return data.voice_consent_at != null;
 }
 
+/**
+ * TAKING IT BACK, which was impossible until 1 October 2026.
+ *
+ * Nothing anywhere cleared `voice_consent_at`. Consent could be given from a
+ * sheet one tap from the chat box and withdrawn only by somebody with database
+ * access - which is not a defensible position for a permission covering a
+ * microphone and a third-party processor. Found by Ruth asking the obvious
+ * question: what is the tap path to turn it off?
+ *
+ * IT STOPS NEW AUDIO AND NOTHING ELSE. The transcripts stay in her thread, and
+ * ElevenLabs keep their copy for up to 3 years whatever this writes. The screen
+ * says so; offering this as an erasure would be the same shape of untrue comfort
+ * as "the audio isn't kept".
+ *
+ * Returns whether it landed, rather than throwing, because the caller is a
+ * settings row that must say "that didn't save, so voice is still on" instead of
+ * showing an off state that is not real.
+ */
+export async function withdrawVoiceConsent(): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { error } = await supabase
+      .from('user_profile')
+      .update({ voice_consent_at: null })
+      .eq('user_id', user.id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export async function recordVoiceConsent(): Promise<void> {
   const {
     data: { user },

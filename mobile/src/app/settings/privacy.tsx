@@ -2,6 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 
 import { ConsentChoices } from '@/components/consent-choices';
+import { VoiceChoice } from '@/components/voice-choice';
 import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
 
 // PRIVACY (2026-09-20): what was agreed to, what is remembered, and the way
@@ -16,6 +17,11 @@ export default function PrivacyScreen() {
       footer="Your data. Your choice. Always."
     >
       <ConsentChoices />
+
+      {/* Consent has to be as easy to withdraw as it was to give, and until
+          tonight there was no way to turn voice off at all. See
+          components/voice-choice.tsx. */}
+      <VoiceChoice />
 
       <SettingsGroup>
         <SettingsRow
