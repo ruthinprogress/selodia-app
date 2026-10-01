@@ -8,7 +8,11 @@
 
 ## 1. Data Safety — the answers
 
-**APPROVED by Ruth, 24 September 2026.** The answers below are signed off and can be entered as written. If any of them changes, the privacy policy at selodia.app/privacy has to change in the same pass - Google compares the two, and a Data Safety form that contradicts the policy is a rejection.
+**APPROVED by Ruth, 24 September 2026. THREE ROWS CHANGED SINCE AND NEED RE-APPROVING (1 October 2026) — marked ⚠ below.** Everything unmarked is still as she signed it off.
+
+**Why they changed.** Two of the three are things the app started collecting after she approved the form: menopause status, hormone use and medication. The third is worse than an omission - *Files and docs* says "not built yet" further down this document, and clinical-document reading is built, shipped, and reachable from chat. Google counts PROCESSING, not only storage, so a document that is read and discarded is still collected for this form. A Data Safety answer that is wrong in the direction of under-declaring is the kind that gets an app pulled rather than rejected.
+
+The answers below are otherwise signed off and can be entered as written. If any of them changes, the privacy policy at selodia.app/privacy has to change in the same pass - Google compares the two, and a Data Safety form that contradicts the policy is a rejection.
 
 Google's Data Safety form asks, for each data type: is it **collected**, is it **shared**, is it **processed ephemerally**, is it **required or optional**, and **why**. "Shared" has a specific meaning — transferred to a *third party*, which does **not** include a service provider processing on your behalf. Supabase, Anthropic, ElevenLabs and Expo are all processors, so the honest answer to "shared" is **No** throughout.
 
@@ -29,18 +33,19 @@ Google's Data Safety form asks, for each data type: is it **collected**, is it *
 | Personal info | Email address | Yes | No | Required | Account management |
 | Personal info | Name | No | — | — | Not collected |
 | Personal info | Other info (date of birth, biological sex) | Yes | No | Optional | App functionality — used to derive metabolic estimates |
-| Health and fitness | Health info | Yes | No | Optional | App functionality — body measurements, conditions and markers the person discloses, menstrual cycle dates, allergies |
+| Health and fitness | Health info | Yes | No | Optional | ⚠ **Changed 1 Oct.** App functionality — body measurements, conditions and markers the person discloses, menstrual cycle dates, allergies, **sleep, daily mood and energy ratings, where someone is with the menopause, hormonal contraception and HRT, medication and supplements, and movement constraints including advice from a clinician** |
 | Health and fitness | Fitness info | Yes | No | Optional | App functionality — activity, duration, intensity, and step counts from Health Connect where permission was granted |
 | Photos and videos | Photos | Yes | No | Optional | App functionality — food photographs the person chooses to send |
 | Messages | Other in-app messages | Yes | No | Required | App functionality — the conversation is the product's primary interface |
 | Audio | Voice or sound recordings | **No** | — | — | Audio is processed to produce a transcript and is not retained. **Declare the transcript under Messages, not here.** |
-| App activity | Other actions | Yes | No | Optional | App functionality — saved plans, insights, notes |
+| App activity | Other actions | Yes | No | Optional | ⚠ **Changed 1 Oct.** App functionality — saved plans, insights, notes, **goals, skills and the shape of the week** |
 | Device or other IDs | Device or other IDs | Yes | No | Optional | App functionality — a push token, only if reminders are turned on |
+| Files and docs | Files and docs | **Yes** | No | Optional | ⚠ **NEW 1 Oct, and the important one.** App functionality — a letter or result the person chooses to photograph or upload so Selodía can read it. **The pages are processed and not stored**; only what the person then agrees to keep is written. Declared because Google counts processing, not only storage. |
 | App info and performance | Diagnostics | Yes | No | Required | Analytics — a short error note (which part of the app failed, and the error text) written when something fails on the phone. **Added 19 September**: `client_error_log` has existed since 17 September and was missing here. Google counts diagnosing faults as Analytics. |
 
-**Changes the day clinical-letter upload is built** (Part Sixteen, not built yet): *Files and docs* becomes collected, even though the letter is discarded after reading, because Google counts processing, not only storage. Update this table, the privacy policy and the App Store answers in the same change.
+**~~Changes the day clinical-letter upload is built~~ — IT IS BUILT (confirmed 1 October 2026).** `/api/parse-document` is live and `handleReadDocument` is wired into the chat composer; a person can photograph a letter today. This note sat here saying "not built yet" while the feature shipped, which is exactly how a Data Safety form goes quietly wrong: the form is only ever as current as the sentence telling you when to change it. *Files and docs* is now declared above. The privacy policy draft at `docs/privacy-policy-draft-2026-10-01.md` carries the matching paragraph and the App Store answers in section 8 need the same change before an iOS submission.
 
-**Not collected, and worth stating so nobody assumes otherwise:** location of any kind, contacts, calendar, files and docs, browsing history, search history, installed apps, purchase history, credit info, payment info, race or ethnicity, political or religious beliefs, sexual orientation, financial info, and any advertising or analytics identifier. **There is no third-party analytics SDK and no advertising SDK in the app at all.**
+**Not collected, and worth stating so nobody assumes otherwise:** location of any kind, contacts, calendar, browsing history, search history, installed apps, purchase history, credit info, payment info, race or ethnicity, political or religious beliefs, sexual orientation, financial info, and any advertising or analytics identifier. **There is no third-party analytics SDK and no advertising SDK in the app at all.**
 
 **The one to get right.** *Voice or sound recordings* is tempting to tick because the app has a voice mode. Audio is streamed to ElevenLabs, converted to text, and not stored by Selodía — what persists is the transcript, which is a message. Ticking "audio collected" implies stored recordings and would contradict the privacy policy. **Confirm ElevenLabs' retention settings for this account before finalising**, because that sentence depends on them.
 
@@ -210,7 +215,7 @@ Apple's categories differ from Google's. Every item below is **linked to the per
 | Contact info: email address | Yes | App functionality |
 | Health & fitness: health | Yes | App functionality |
 | Health & fitness: fitness | Yes | App functionality |
-| User content: photos | Yes | App functionality (food photos) |
+| User content: photos | Yes | ⚠ **Changed 1 Oct.** App functionality (food photos, **and pages of a clinical letter or result the person chooses to have read — processed, not stored**) |
 | User content: other user content | Yes | App functionality (messages and voice transcripts) |
 | Identifiers: device ID | Yes | App functionality (push token, only with reminders on) |
 | Diagnostics: other diagnostic data | Yes | App functionality (error notes) |

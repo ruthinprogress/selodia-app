@@ -2,8 +2,10 @@
 
 **Controller:** Selodía Ltd, 19 Campbell Road, London, E17 6RR
 **Company number:** 12246794 · **Contact:** hello@selodia.app
-**Version 1.0 · 28 September 2026 · first draft, not yet reviewed**
+**Version 1.1 · 1 October 2026 · first draft, not yet reviewed**
 **Review:** yearly, and whenever anything new is collected.
+
+**Version 1.1, 1 October 2026.** The review trigger above is "whenever anything new is collected", and eleven things had been collected since 28 September without this document moving. Three of them are special category data in their own right - menopause status, hormone use and medication - and one is a processing activity the document did not describe at all: clinical documents are photographed, sent to be read, and discarded. Section 2 is rewritten, the processor table gains a row for what a document upload actually sends, and 5.7 is new.
 
 **Status.** This is written from what the app already does, not from what it might. It is a first draft by somebody who is not a lawyer, and it goes to a solicitor with the terms, the privacy policy and the beta agreement at 100 subscribers. **It is required before wave one** — not because the ICO will ask for it, but because it is the document that makes the risks legible while the app is still small enough to describe.
 
@@ -23,20 +25,32 @@ Selodía is a body-literacy app for women over 40. People log what they eat, how
 
 ## 2. What is collected
 
-39 tables. The ones that matter here:
+51 tables, 47 of them per-user. The ones that matter here:
 
 **Special category (health) data**
-`body_measurements`, `personal_metrics`, `food_logs` and `food_items`, `activity_logs`, `daily_activity_summaries`, `sleep_logs`, `hydration_logs`, `cycle_events` and `cycle_days`, `daily_ratings` (mood and energy), `health_context`, `allergies`, `almanac_entries` (symptoms, insights, protocol cards), `interpretation_notes`, `workout_completion_log`, `workout_weight_log`.
+`body_measurements`, `personal_metrics`, `food_logs` and `food_items`, `activity_logs`, `daily_activity_summaries`, `sleep_logs`, `hydration_logs`, `cycle_events` and `cycle_days`, `daily_ratings` (mood and energy), `health_context`, `allergies`, `almanac_entries` (symptoms, insights, protocol cards **including the Medications card**), `interpretation_notes`, `workout_completion_log`, `workout_weight_log`.
+
+**Added since version 1.0, and all of it special category:**
+
+- `user_profile.life_stage`, `.life_stage_detail` — where somebody is with periods and the menopause, and the reason where they gave one. Asked on a Body Manual screen, skippable, with "prefer not to say" as a first-class answer that is stored as a refusal rather than as an absence.
+- `user_profile.hormone_use`, `.hrt` — hormonal contraception and HRT. Collected because a withdrawal bleed is not a natural cycle, and reading one as the other makes every cycle observation wrong.
+- **Medication and supplements**, held as items on a single `almanac_entries` card titled "Medications". The most sensitive new category: a medication list is identifying of conditions nobody named. Written only after Selodía has read its understanding back and the person has agreed — the app cannot write one silently, and a live test against production confirms nothing is stored before the yes.
+- `user_rules` — movement constraints, including **advice a clinician has given**, which is clinical information about a third-party consultation.
+- `red_flags_raised` — that a possible red flag has already been put to somebody, so it is not repeated. The flag layer itself remains OFF pending clinical review (section 6).
+- `user_goals`, `user_skills`, `user_skill_rungs`, `user_week` — what somebody is working towards and the shape of their week. Health-adjacent rather than clinical, and treated as health data because it describes a body's capability.
+- Calcium, iron and sodium on `food_logs`/`food_items`, derived from `food_composition`. More nutrients in an existing breakdown rather than a new category, and no new source: CoFID is a UK Government dataset held in Selodía's own database.
 
 **Conversation** — `chat_messages`, which is free text and routinely contains health information, family details and whatever else somebody chose to say.
 
 **Ordinary personal data** — `user_profile` (name given voluntarily, not read off an email address), `push_tokens`, `reminder_settings`, `custom_reminders`, `user_context`, `waitlist`.
 
-**Operational** — `client_error_log`, `reply_path_fallbacks`, `feedback_reports` (no logged data, only what was typed plus the build context), `me_exports`, `report_exports`.
+**Operational** — `client_error_log`, `reply_path_fallbacks`, `feedback_reports` and `beta_feedback` (no logged data, only what was typed plus the build context), `me_exports`, `report_exports`, `model_usage` and `turn_diagnostics` (token counts and per-step timings, attached to an account and containing no part of what was said), `beta_members` and `beta_agreement_acceptances` (which agreement version was accepted, and when — append-only, because clause 13 promises a changed agreement is re-accepted and only a new row can show that).
 
 **Archives of removed data** — `deleted_records`, `food_logs_removed`, `body_measurements_removed`, `chat_messages_duplicates_removed`. These exist because removing something from a body record without a copy has already cost accuracy once, on 24 September 2026. They are covered by deletion: erasing an account erases these too.
 
 **Reference data, no personal content** — `food_composition` (CoFID, Crown copyright, OGL v3), `food_cache`, `movement_assets`, `movement_aliases`.
+
+**Processed but not stored — clinical documents.** Somebody can photograph or upload a letter or a result and have Selodía read it. The pages go to Anthropic to be read, what was understood is shown back, and **the pages themselves are never written to the database**; only what the person then agrees to keep survives the turn. Version 1.0 did not describe this at all, and the store submission document still called it unbuilt. It is built and reachable from chat. Under UK GDPR this is processing whether or not it is retained, and Google Play counts it the same way — so *Files and docs* must be declared.
 
 **Not collected:** no photographs of bodies, ever (Principle 16). No raw lab values — health markers are stored as **statuses**, deliberately, so the app never computes a clinical threshold. No location. No contacts. No advertising identifiers.
 
@@ -46,7 +60,7 @@ Selodía is a body-literacy app for women over 40. People log what they eat, how
 | --- | --- | --- |
 | **Supabase** | Everything. Database, auth, file storage. | EU region |
 | **Vercel** | Requests in transit; the API runs here. Logs are not retained on the current tier. | `lhr1`, London |
-| **Anthropic** | The conversation turn: her message, recent history, and computed facts about her record. **Not the whole database** — each turn carries a bounded window. | US |
+| **Anthropic** | The conversation turn: her message, recent history, and computed facts about her record. **Not the whole database** — each turn carries a bounded window. Also **the pages of any clinical document she chooses to have read**, and **food photographs she sends** — both processed to produce a reading and neither stored by Selodía. | US |
 | **ElevenLabs** | Spoken audio and transcripts, for voice conversations only. | US |
 | **Backblaze B2** | The exercise clip library. **No personal data at all.** | US |
 | **Apple / Google** | Subscription and payment data, once billing exists. Selodía never sees a card. | Various |
@@ -145,6 +159,35 @@ Not a privacy breach in the textbook sense, and for this product it is the same 
 **Mitigations:** export and erasure brought up to the schema (19 September); deletion reachable without the app at selodia.app/delete-account; nothing retained after deletion, including the auth credential.
 
 **Gap: password reset is built and not yet proved on a phone**, and two Supabase settings are outstanding. **A wave-one blocker.**
+
+### 5.7 Medication recorded wrongly, or recorded at all without agreement
+
+**The risk.** Two different ones wearing one name. A medication list is the most
+identifying thing in the record — it names conditions nobody disclosed — so holding
+one somebody did not knowingly agree to is a serious wrong on its own. And a
+misread dose is worse than no dose: "75mcg" stored as "75mg" is a thousandfold
+error in a health record that an app may later reason from.
+
+**What is actually done.**
+
+- **Nothing is written without an explicit yes.** The screen collects no
+  medication itself; it opens a conversation. Selodía reads back what it
+  understood, the app stores the offer in the database rather than relying on the
+  model to remember it, and writes only when the person answers yes. Verified
+  against production, not asserted: a live test confirms the card does not exist
+  after the reading-back turn and does exist after the yes.
+- **Her words are not transformed.** The model is instructed not to convert a
+  unit, correct a spelling or expand a brand name, and the test asserts that
+  "75mcg" survives into the stored record unchanged.
+- **Reading it back IS the control.** It is the only mechanism by which a misreading
+  is caught, which is why it happens before anything is stored rather than after.
+- **No clinical advice.** Selodía is instructed not to say whether a dose sounds
+  right, not to suggest starting, stopping or changing anything, and not to warn
+  about interactions. That belongs with a GP or pharmacist and the app says so.
+
+**Residual risk.** Somebody agrees to a card containing a misreading they did not
+notice. Reduced by reading back item by item rather than as a paragraph, and by the
+card being editable in conversation afterwards like any other.
 
 ## 6. What is not done yet
 

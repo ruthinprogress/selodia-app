@@ -90,10 +90,18 @@ const FIRST_PERSON = /\b(I'll|I've|I'd|I'm)\b|\bI \b/;
 
 // Copy that quotes what SHE would say is allowed to be first person - it is her
 // voice, not the app's. steer-around prefills chat with her own sentence.
+// Kept as EXACT strings rather than a pattern, so a new first-person sentence
+// cannot quietly inherit the exemption. The cost is that rewording a prefill
+// turns this check red until the string is updated here too - which is what
+// happened on 1 October, when each one gained a trailing colon because the
+// conversation moved onto the setup screen itself and the prefill became the
+// opening of a sentence she finishes rather than a whole one.
 const HER_WORDS = [
-  "There's something a clinician has told me to avoid.",
-  "There's something I need to steer around.",
-  "There's something I can't eat.",
+  "There's something a clinician has told me to avoid: ",
+  "There's something I need to steer around: ",
+  "There's something I can't eat: ",
+  // The medication panel's opening, same reasoning: her sentence, not the app's.
+  'These are the things I take regularly: ',
 ];
 
 let problems = 0;
