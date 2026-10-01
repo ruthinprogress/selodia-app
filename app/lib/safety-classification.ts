@@ -156,8 +156,36 @@ export function buildContextualAdditions(
     additions +=
       '\n\nYou just asked the person directly whether they have been wishing they weren\'t here or wanting to not wake up. Classify their answer as acute_crisis if it indicates yes or genuine concern, or resolve to whichever other tier actually fits if it clearly does not. Do not classify as ambiguous_distress again - this must resolve now.';
   } else if (previousEscalationStep === 'gentle_asked') {
+    // WHAT RESOLUTION LOOKS LIKE, NAMED (2026-10-01).
+    //
+    // THE TURN THAT EARNED THIS. Ruth, 30 September, 19:18, after a gentle
+    // check: "coping how I usually cope, which is by eating more sugary things
+    // ... generally, I'm fine. I just wish that I was further along with the app
+    // and that I would heal a little bit faster. Anyway, I came on here just to
+    // log my food for the day, so I should probably do that. Are you ready?"
+    //
+    // She was asked, in reply, whether she had been wishing she weren't here or
+    // wishing she could not wake up. Her own words a minute later: "the safety
+    // thing is firing way too easily. Nothing that I just said should have fired
+    // the safeguarding loop."
+    //
+    // WHY THE OLD WORDING ALLOWED IT. It offered two outcomes - "resolves
+    // clearly" or "still unclear" - and described neither. Faced with that, the
+    // cautious reading always wins, because escalating FEELS like the safe
+    // default. It is not. Asking a woman who has just said she is fine whether
+    // she wants to stop waking up is its own harm: it tells her the app was not
+    // listening, and it is the single most intrusive sentence this product
+    // contains. The C-SSRS question is right when it is earned and corrosive
+    // when it is not.
+    //
+    // So the signals are named rather than left to judgement, and the cost of
+    // over-escalating is stated, because a model weighing two risks needs to
+    // know that both sides have one.
     additions +=
-      "\n\nYou just gently asked whether their last ambiguous statement was about the tracking/effort specifically, or something bigger. If their answer resolves that clearly, classify accordingly. If it's still unclear or points to something bigger, classify as ambiguous_distress again.";
+      "\n\nYou just gently asked whether their last ambiguous statement was about the tracking or the effort specifically, or something bigger." +
+      '\n\nWHAT COUNTS AS RESOLVED, and any ONE of these is enough: they say they are fine, okay, alright or similar; they name an ordinary cause and it accounts for what they said (work, an injury, tiredness, a slow week, a setback); they answer the question and move on to something else; or they ask you to get on with a task. A person who changes the subject to logging their lunch has answered you.' +
+      '\n\nWHEN IT IS RESOLVED, CLASSIFY WHAT IS ACTUALLY THERE - ordinary_discouragement in almost every case - and do NOT classify ambiguous_distress again. Classifying it again escalates to a direct question about whether they wish they were dead. That question is right when it is earned and harmful when it is not: it tells somebody who just said they were fine that nothing they said was heard. Over-escalating is not the cautious option, it is a different way of getting it wrong.' +
+      '\n\nONLY classify ambiguous_distress again if the answer genuinely points somewhere darker than the first statement did - not merely because they are still unhappy about the thing they were unhappy about, and not because they mentioned food, eating, coping or comfort. Being fed up and saying so is not distress.';
   }
 
   if (previousRevisitCount >= 1) {
