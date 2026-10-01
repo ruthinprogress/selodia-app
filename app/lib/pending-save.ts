@@ -121,7 +121,40 @@ export function coerceProposal(v: unknown): ProposedSave | null {
           .map((d) => d.trim().toLowerCase().slice(0, 3))
           .filter((d) => ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].includes(d))
       : [];
-    content = { ...content, days };
+    // AND WHEN IN THE DAY, IF SHE SAID. "french class on thursday night at 7pm"
+    // carries a time, and the time is the part that makes the evening
+    // unavailable - which is the whole reason she wanted the class in her week.
+    // Kept as text: `time` is what the model is asked for, `time_of_day` is the
+    // column, and either spelling is accepted because a model that has seen the
+    // column name will sometimes use it.
+    const time = str(content.time) ?? str(content.time_of_day);
+    // IT RETURNS HERE RATHER THAN FALLING THROUGH, and the first version did
+    // not. Three hundred lines down there is a last gate - "a symptom or a note
+    // carries what was actually said, or there is nothing to keep" - which
+    // requires content.summary. A week entry is an activity and a day; it has no
+    // summary and never will. So every week proposal was normalised correctly
+    // and then thrown away by a rule written for a different kind of thing,
+    // which is what a type union with one shared exit does to a new member.
+    //
+    // It was deployed for an hour before a test found it. Nobody could have
+    // found it by using the app: the model proposed, the app refused, and the
+    // reply said nothing was offered - which looks exactly like the model
+    // choosing not to offer.
+    return {
+      type,
+      title: title.slice(0, MAX_TITLE),
+      content: {
+        days,
+        time_of_day: time ?? null,
+        duration: str(content.duration),
+        cadence: str(content.cadence),
+        // NO PURPOSE FROM A SINGLE SENTENCE. onboarding leaves it null for the
+        // same reason: the why is what a conversation fills in, and inventing
+        // "cardio and bone density" for somebody who said "swimming" is the app
+        // putting words in her mouth.
+        purpose: str(content.purpose),
+      },
+    };
   }
 
   if (type === 'me') {
@@ -272,7 +305,8 @@ export function pendingSavePrompt(pending: PendingSave): string {
   const { title, type } = pending.proposal;
   // A rule does not go to the Almanac, so the prompt must not say it does -
   // the model reads this and writes the next reply from it.
-  const where = type === 'rule' ? 'to their rules' : 'to their Almanac';
+  const where =
+    type === 'rule' ? 'to their rules' : type === 'week' ? 'to their week' : 'to their Almanac';
   return `
 
 YOU OFFERED TO KEEP SOMETHING AND ARE WAITING ON AN ANSWER. In an earlier turn you offered to save "${title}" ${where} as ${TYPE_WORD[type]}, and they have not answered yet.
@@ -303,9 +337,15 @@ export const ME_OFFER_QUESTION = 'Want me to keep that in your Me tab?';
 export const RULE_OFFER_QUESTION =
   'Want me to add that to your rules, so it stays out of anything I build for you?';
 
+// A WEEK OFFER NAMES THE WEEK. "Want me to keep that in your Almanac?" after
+// "add gym on Wednesday" is the question answered wrongly: she asked for her
+// week and the app would be asking permission to file it somewhere else.
+export const WEEK_OFFER_QUESTION = 'Want me to put that in your week?';
+
 export function offerQuestionFor(type: SaveType): string {
   if (type === 'me') return ME_OFFER_QUESTION;
   if (type === 'rule') return RULE_OFFER_QUESTION;
+  if (type === 'week') return WEEK_OFFER_QUESTION;
   return SAVE_OFFER_QUESTION;
 }
 
@@ -324,6 +364,9 @@ export function offerQuestion(reply: string, type: SaveType = 'note'): string | 
   const alreadyAsks =
     /almanac[^.!?\n]*\?/i.test(reply) ||
     /\bme tab[^.!?\n]*\?/i.test(reply) ||
+    // "...in your week?" / "...to your week?" - the week's own phrasing,
+    // which the broad keep|save|add test below misses when the verb is "put".
+    /\b(in|to)\s+your\s+week[^.!?\n]*\?/i.test(reply) ||
     /\b(keep|save|add)\b[^.!?\n]*\b(that|this|it)\b[^.!?\n]*\?/i.test(reply);
   return alreadyAsks ? null : offerQuestionFor(type);
 }
@@ -482,8 +525,21 @@ export async function commitSave(
       user_id: userId,
       activity: proposal.title,
       days,
+      // DAYS_CHOSEN_AT, OR THE ROW IS WRITTEN AND NEVER SEEN.
+      //
+      // Under "Let me lead" the Week screen shows a card on a day only when SHE
+      // put it there - a row with days and no stamp is pushed into Anytime. So
+      // "add gym on Wednesday", confirmed, would have inserted correctly and
+      // shown up nowhere near Wednesday.
+      //
+      // She asked for this one by name, in words, which is as chosen as it gets.
+      // The same guard is on the client write in mobile/src/lib/week-move.ts;
+      // two runtimes means two writes, and the stamp belongs at both of them
+      // rather than at the screen that reads them.
+      days_chosen_at: days.length > 0 ? new Date().toISOString() : null,
       duration: typeof content.duration === 'string' ? content.duration : null,
       cadence: typeof content.cadence === 'string' ? content.cadence : null,
+      time_of_day: typeof content.time_of_day === 'string' ? content.time_of_day : null,
       // NOT INVENTED. onboarding/activities.tsx leaves purpose null for the same
       // reason: the why is what a conversation fills in, and writing one from a
       // single sentence would put words in her mouth.
@@ -622,6 +678,12 @@ export function saveAppliedNote(
     // changes what gets built from now on and she should be able to see where
     // it went.
     if (type === 'rule') return `Added to your rules, in Plans. It stays out of anything built for you from now on.`;
+    // A WEEK ENTRY NEVER WENT TO THE ALMANAC, and this line is the only place
+    // that still said it did. Falling through to the sentence below would have
+    // produced "Kept in your Almanac, under Insights, as something in their
+    // week" - wrong tab, wrong screen, and talking about her in the third
+    // person in a sentence addressed to her.
+    if (type === 'week') return `Added to your week, in Plans.`;
     return `Kept in your Almanac, under Insights, as ${TYPE_WORD[type]}.`;
   }
   if (attempted) return "That didn't save to your Almanac just now. Ask me again and I'll try once more.";

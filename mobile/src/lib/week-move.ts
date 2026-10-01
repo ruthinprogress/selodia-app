@@ -86,3 +86,68 @@ export async function removeFromWeek(rowId: string): Promise<void> {
   const { error } = await supabase.from('user_week').delete().eq('id', rowId);
   if (error) throw new Error(error.message);
 }
+
+/**
+ * PUT SOMETHING NEW IN HER WEEK, from the week screen itself.
+ *
+ * Ruth, 1 October 2026: "I start a new class, like french class, and I want to
+ * see it in the week because it blocks that evening availability for movement.
+ * I tap plus and at the bottom of pre-existing activities I do, I can Text add."
+ *
+ * UNTIL NOW HER WEEK WAS FIXED AT SETUP. The only insert into user_week in the
+ * whole app was onboarding's. The day's "+" could put an EXISTING activity on
+ * another day and otherwise said "Something else — tell chat", and chat had no
+ * route either. So a week was whatever she picked from a list of eleven on one
+ * screen, for good. Adding a remove that same morning made it a one-way door.
+ *
+ * NOT EVERYTHING IN A WEEK IS EXERCISE, which is the whole point of her
+ * example. A French class earns its place by taking the evening, not by being
+ * training. Nothing here checks what the thing is, and nothing should.
+ *
+ * DAYS_CHOSEN_AT IS STAMPED because she typed this onto a named day. Under "Let
+ * me lead" a card with days and no stamp is hidden from the week, so the row
+ * would be written and then not appear - the exact shape of the bug that lost a
+ * morning on 1 October.
+ *
+ * NO CADENCE, NO PURPOSE. Both are left null for the reason onboarding leaves
+ * purpose null: she typed a name and a day, and "1x/week" would be the app
+ * deciding how often she goes. Chat can fill either in later from an actual
+ * conversation.
+ */
+export async function addToWeek(
+  activity: string,
+  days: string[],
+  timeOfDay?: string | null
+): Promise<void> {
+  const name = activity.trim();
+  if (!name) throw new Error('Needs a name.');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in.');
+
+  // LAST IN HER WEEK, not first. sort_order decides the Anytime order, and a new
+  // thing arriving at the top would reshuffle a list she has been reading for a
+  // fortnight.
+  const { data: last } = await supabase
+    .from('user_week')
+    .select('sort_order')
+    .eq('user_id', user.id)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+  const nextOrder =
+    Array.isArray(last) && typeof last[0]?.sort_order === 'number' ? last[0].sort_order + 1 : 0;
+
+  const { error } = await supabase.from('user_week').insert({
+    user_id: user.id,
+    activity: name,
+    days,
+    days_chosen_at: days.length > 0 ? new Date().toISOString() : null,
+    time_of_day: timeOfDay?.trim() ? timeOfDay.trim() : null,
+    cadence: null,
+    purpose: null,
+    sort_order: nextOrder,
+  });
+  if (error) throw new Error(error.message);
+  await markMoveUsed();
+}

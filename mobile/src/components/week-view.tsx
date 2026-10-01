@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
@@ -11,7 +11,7 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
-import { moveToDays, withDay } from '@/lib/week-move';
+import { addToWeek, moveToDays, withDay } from '@/lib/week-move';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { cadenceConflict, cadenceForDays, DAY_KEYS, DAY_LABEL, dayKeyOf, isWalking, logMatchesPlan, placedOnDays, shortDate, type CadenceConflict, type DayKey } from '@/lib/week-plan';
 
@@ -43,6 +43,14 @@ type WeekRow = {
   purpose: string | null;
   cadence: string | null;
   duration: string | null;
+  /**
+   * WHEN IN THE DAY, IN HER WORDS. Text, not a time column, and deliberately:
+   * "7pm", "evening", "after the school run" and "before work" are all answers
+   * she might give, and only one of them is a clock time. Parsing it into
+   * 19:00:00 would throw away the other three and gain nothing, because nothing
+   * sorts or alarms on this - it is read, shown, and spoken back.
+   */
+  time_of_day: string | null;
   session_entry_id: string | null;
   days: string[];
   /** Set when SHE put this on its day. Null means the days came from the plan. */
@@ -59,7 +67,7 @@ type LoggedName = { activity_type: string | null; happened_at: string };
  */
 function previewDetail(row: WeekRow, from: string | null): string {
   if (from === ANYTIME) return [row.cadence, row.duration].filter(Boolean).join(' · ');
-  return row.duration ?? '';
+  return [row.time_of_day, row.duration].filter(Boolean).join(' · ');
 }
 
 /** A place a card can be dropped, in window coordinates. */
@@ -74,7 +82,7 @@ const GRAB_Y = 52;
 
 export const WEEK_EMPTY = 'No week yet';
 export const WEEK_EMPTY_BODY =
-  'Tell Selodía what a normal week looks like for you, and it will keep the shape of it here.';
+  'Tap to add something you do, or talk it through with Selodía, and the shape of your week will live here.';
 
 export function WeekView({
   onLogPlan,
@@ -151,7 +159,7 @@ export function WeekView({
     const [planRes, logRes, profileRes, stepCount] = await Promise.all([
       supabase
         .from('user_week')
-        .select('id, activity, purpose, cadence, duration, session_entry_id, days, days_chosen_at, cadence_conflict_asked_at')
+        .select('id, activity, purpose, cadence, duration, time_of_day, session_entry_id, days, days_chosen_at, cadence_conflict_asked_at')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
       supabase
@@ -487,11 +495,16 @@ export function WeekView({
 
   if (!loaded) return null;
 
+  // AN EMPTY WEEK STILL HAS TO HAVE A DOOR, and until now its only door was
+  // chat. The seven days are not drawn when there are no rows, so there is no
+  // "+" anywhere, so the text box added today was unreachable on a fresh
+  // account - which is the one-door bug again, one commit after fixing it. The
+  // card opens the same sheet, on today, and the sheet still offers chat.
   if (rows.length === 0) {
     return (
       <Pressable
-        onPress={() => router.push('/')}
-        accessibilityRole="link"
+        onPress={() => setAddingTo(todayKey)}
+        accessibilityRole="button"
         accessibilityLabel={`${WEEK_EMPTY}. ${WEEK_EMPTY_BODY}`}
         style={({ pressed }) => pressed && styles.pressed}>
         <ThemedView type="backgroundElement" style={styles.card}>
@@ -500,6 +513,33 @@ export function WeekView({
             {WEEK_EMPTY_BODY}
           </ThemedText>
         </ThemedView>
+        <AddToDaySheet
+          dayKey={addingTo}
+          date={addingTo ? days[DAY_KEYS.indexOf(addingTo)] : null}
+          candidates={[]}
+          onClose={() => setAddingTo(null)}
+          onPick={() => setAddingTo(null)}
+          onAdd={async (activity, timeOfDay) => {
+            const key = addingTo;
+            if (!key) return false;
+            try {
+              await addToWeek(activity, [key], timeOfDay);
+            } catch {
+              return false;
+            }
+            await load();
+            onChanged?.();
+            setAddingTo(null);
+            return true;
+          }}
+          onNew={() => {
+            setAddingTo(null);
+            router.push({
+              pathname: '/',
+              params: { prefill: "I'd like to add something to my week.", askNow: '1' },
+            });
+          }}
+        />
       </Pressable>
     );
   }
@@ -725,6 +765,21 @@ export function WeekView({
           const next = [...new Set([...(row.days ?? []), key])];
           void applyMove(row, next);
         }}
+        onAdd={async (activity, timeOfDay) => {
+          const key = addingTo;
+          if (!key) return false;
+          try {
+            await addToWeek(activity, [key], timeOfDay);
+          } catch {
+            return false;
+          }
+          // THE SHEET CLOSES ONLY ON A SUCCESS, and the week is reloaded before
+          // it does, so the card she typed is already on the day behind it.
+          await load();
+          onChanged?.();
+          setAddingTo(null);
+          return true;
+        }}
         onNew={() => {
           const key = addingTo;
           setAddingTo(null);
@@ -808,9 +863,9 @@ function PlanPill({
       // is the route that works with a screen reader, and a tap is easier to
       // find than a hold ever was.
       accessibilityRole="button"
-      accessibilityLabel={`${row.activity}${row.duration ? `, ${row.duration}` : ''}${
-        logged ? ', logged' : ''
-      }`}
+      accessibilityLabel={`${row.activity}${row.time_of_day ? `, ${row.time_of_day}` : ''}${
+        row.duration ? `, ${row.duration}` : ''
+      }${logged ? ', logged' : ''}`}
       // TWO ROUTES, BOTH SPOKEN. A screen reader user cannot drag, so the hint
       // names the one they can use. See move-sheet.tsx.
       accessibilityHint="Opens the log sheet, which has Move to…"
@@ -821,9 +876,12 @@ function PlanPill({
         {logged && <Ionicons name="checkmark-circle" size={14} color={theme.accentDeep} />}
         <View>
           <ThemedText type="small">{row.activity}</ThemedText>
-          {row.duration ? (
+          {/* THE TIME EARNS THE SECOND LINE ahead of the duration, because a
+              time is what makes the evening unavailable. "7pm · 1.5 hrs" when
+              she gave both; whichever she gave when she gave one. */}
+          {row.time_of_day || row.duration ? (
             <ThemedText type="small" themeColor="textSecondary">
-              {row.duration}
+              {[row.time_of_day, row.duration].filter(Boolean).join(' · ')}
             </ThemedText>
           ) : null}
         </View>
@@ -879,12 +937,28 @@ function PlanCard({
   );
 }
 
+/**
+ * ADD TO A DAY - from what she already does, or by typing a new thing.
+ *
+ * THE TEXT FIELD IS WHY THIS SHEET CHANGED (Ruth, 1 October 2026): "I tap plus
+ * and at the bottom of pre-existing activities I do, I can Text add." Before
+ * today the only thing at the bottom was "Something else — tell chat", which
+ * sent her to another tab to type a sentence so a model could extract a name
+ * she had already decided on. For "French class" that is four screens and a
+ * round trip to do what a text box does.
+ *
+ * CHAT STILL WORKS, AND STILL BELONGS. Her own words: "I can always discuss it
+ * with chat if I want to." A conversation is where the purpose and the cadence
+ * come from. So the link stays, demoted: the box is for when she knows what she
+ * wants, chat is for when she wants to talk about it.
+ */
 function AddToDaySheet({
   dayKey,
   date,
   candidates,
   onClose,
   onPick,
+  onAdd,
   onNew,
 }: {
   dayKey: DayKey | null;
@@ -892,9 +966,32 @@ function AddToDaySheet({
   candidates: WeekRow[];
   onClose: () => void;
   onPick: (row: WeekRow) => void;
+  onAdd: (activity: string, timeOfDay: string) => Promise<boolean>;
   onNew: () => void;
 }) {
   const theme = useTheme();
+  const [name, setName] = useState('');
+  const [when, setWhen] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  // THE SHEET STAYS OPEN ON A FAILURE AND KEEPS WHAT SHE TYPED. Closing it and
+  // showing nothing is the shape the delete bug had this morning: she did the
+  // thing, the thing did not happen, and the screen said so by saying nothing.
+  async function submit() {
+    if (adding || !name.trim()) return;
+    setAdding(true);
+    setFailed(false);
+    const ok = await onAdd(name, when);
+    setAdding(false);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+    setName('');
+    setWhen('');
+  }
+
   if (!dayKey || !date) return null;
   // Anything not already on this day, which includes things that are on other
   // days: "also on Thursday" is a real thing to want.
@@ -909,8 +1006,13 @@ function AddToDaySheet({
             Add to {DAY_LABEL[dayKey]} {shortDate(date)}
           </ThemedText>
           {choices.length === 0 ? (
+            // TWO DIFFERENT NOTHINGS. An empty week has nothing to offer yet;
+            // a full day has everything on it already. Saying the second when
+            // the first is true is a sentence about a week she does not have.
             <ThemedText type="small" themeColor="textSecondary">
-              Everything in your week is already on this day.
+              {candidates.length === 0
+                ? 'Nothing in your week yet. Type the first thing below.'
+                : 'Everything in your week is already on this day.'}
             </ThemedText>
           ) : (
             choices.map((row) => (
@@ -926,13 +1028,70 @@ function AddToDaySheet({
               </Pressable>
             ))
           )}
+          {/* ---- something else, typed ---- */}
+          <View style={[styles.addRule, { backgroundColor: theme.backgroundSelected }]} />
+          <ThemedText type="small" themeColor="textSecondary">
+            Something else
+          </ThemedText>
+          <TextInput
+            value={name}
+            onChangeText={(t) => {
+              setName(t);
+              setFailed(false);
+            }}
+            // HER OWN EXAMPLE AS THE PLACEHOLDER, and not an exercise, because
+            // the whole point is that a week holds whatever takes the time.
+            placeholder="French class"
+            placeholderTextColor={theme.textSecondary}
+            accessibilityLabel="What is it"
+            returnKeyType="next"
+            style={[styles.addField, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          />
+          <TextInput
+            value={when}
+            onChangeText={setWhen}
+            // IN HER WORDS, NOT A TIME PICKER. "evening" and "after work" are
+            // answers a picker cannot take, and the column is text.
+            placeholder="When? 7pm, evening, after work (optional)"
+            placeholderTextColor={theme.textSecondary}
+            accessibilityLabel="When in the day, optional"
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (name.trim() && !adding) void submit();
+            }}
+            style={[styles.addField, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          />
+          {failed && (
+            <ThemedText type="small" themeColor="textSecondary">
+              That did not save. Worth trying again.
+            </ThemedText>
+          )}
+          <Pressable
+            onPress={() => void submit()}
+            disabled={!name.trim() || adding}
+            accessibilityRole="button"
+            accessibilityLabel={`Add to ${DAY_LABEL[dayKey]}`}
+            accessibilityState={{ disabled: !name.trim() || adding }}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedView
+              type="backgroundElement"
+              style={[
+                styles.addButton,
+                { backgroundColor: theme.accentDeep },
+                (!name.trim() || adding) && styles.addButtonOff,
+              ]}>
+              <ThemedText type="small" style={{ color: theme.background }}>
+                {adding ? 'Adding…' : `Add to ${DAY_LABEL[dayKey]}`}
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
           <Pressable
             onPress={onNew}
             accessibilityRole="link"
-            accessibilityLabel="Add something new, opens chat"
+            accessibilityLabel="Talk it through with chat instead"
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedText type="small" themeColor="accentDeep" style={styles.addNew}>
-              Something else — tell chat
+              Or talk it through with chat
             </ThemedText>
           </Pressable>
         </View>
@@ -1089,6 +1248,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     borderRadius: CardRadius,
   },
-  addNew: { marginTop: Spacing.two },
+  addNew: { marginTop: Spacing.two, textAlign: 'center' },
+  addRule: { height: 1, marginTop: Spacing.two },
+  addField: {
+    borderWidth: 1,
+    borderRadius: CardRadius,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    // THE TOUCH TARGET, NOT THE TEXT SIZE. A 44pt minimum on a field somebody
+    // is typing a class name into with one hand.
+    minHeight: 44,
+  },
+  addButton: { alignItems: 'center', paddingVertical: Spacing.three, borderRadius: CardRadius },
+  addButtonOff: { opacity: 0.4 },
   pressed: { opacity: 0.7 },
 });

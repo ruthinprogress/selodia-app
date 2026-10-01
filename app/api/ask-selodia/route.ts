@@ -42,6 +42,7 @@ import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '
 import { buildCycleContextPrompt } from '../../lib/cycle';
 import { logFoodFromText } from '../../lib/food-logging';
 import { lifeStageFacts } from '../../lib/life-stage-facts';
+import { weekFacts } from '../../lib/week-facts';
 import {
   answerWrittenAfter,
   earlierTwin,
@@ -230,6 +231,16 @@ type TurnContext = {
   planRows: { id: string; title: string; content: unknown }[];
   insightRows: { kind: string; title: string; created_at: string }[];
   meRows: { title: string; category: string | null; content: unknown }[];
+  // HER WEEK, selected by turn_context from 1 October 2026 and not before.
+  // See the migration week_time_of_day_and_chat_can_see_it.
+  weekRows: {
+    activity: string | null;
+    days: unknown;
+    duration: string | null;
+    cadence: string | null;
+    time_of_day: string | null;
+    purpose: string | null;
+  }[];
   pendingCardRow: { id: string; image_path: string } | null;
   dayFood: { kcal: number | null; protein_g: number | null }[];
   latestMeasurement: { weight_kg: number | null; body_fat_pct: number | null; bmr: number | null } | null;
@@ -559,6 +570,7 @@ export async function POST(request: NextRequest) {
     planRows,
     insightRows,
     meRows,
+    weekRows,
     pendingCardRow,
     dayFood,
     latestMeasurement,
@@ -821,6 +833,10 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   // onboarding Screen 3, stored in three columns, and read by nothing on this
   // side until today. See app/lib/life-stage-facts.ts.
   const lifeStageBlock = lifeStageFacts(profile);
+
+  // WHAT IS IN HER WEEK (2026-10-01). It could add to her week an hour before
+  // it could say what was in it. See app/lib/week-facts.ts.
+  const weekBlock = weekFacts(weekRows);
 
   // An outstanding offer to change their Focus, if there is one. Read from the
   // database rather than from the conversation, so a confirmation can never be
@@ -1593,8 +1609,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'object',
       description:
         'Set ONLY when something in this turn is worth OFFERING to keep - as a symptom, an insight, a ME CARD, a RULE, or something in their WEEK. Do not ask the question yourself: the app adds the offer to the end of your reply. '
-        + '{"type": "symptom" | "insight" | "me" | "rule" | "week", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}, for a rule {"kind": "never" | "always", "matchTerms": [...], "advisedBy": ...}, for a week entry {"days": ["mon","wed"], "duration": "~60 min", "cadence": "2x/week"}}. '
-        + 'A WEEK ENTRY is an activity she does and when she does it - "add gym on Wednesday", "put yoga in my week", "I swim on Thursdays now". The title is the activity in her words ("Gym", "Rocket yoga"), days are lowercase three-letter day names, and an EMPTY days array means Anytime this week, which is a real answer for anything she does when she can. HER WEEK IS NOT HER ME TAB: the Me tab is her standing protocol and her week is the seven days on Plans that sessions are planned against. Never offer one when she asked for the other, and never tell her they are the same. '
+        + '{"type": "symptom" | "insight" | "me" | "rule" | "week", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}, for a rule {"kind": "never" | "always", "matchTerms": [...], "advisedBy": ...}, for a week entry {"days": ["mon","wed"], "time": "7pm", "duration": "~60 min", "cadence": "2x/week"}}. '
+        + 'A WEEK ENTRY is an activity she does, which day, and when in the day - "add gym on Wednesday", "put yoga in my week", "I swim on Thursdays now". The title is the activity in her words ("Gym", "Rocket yoga"), days are lowercase three-letter day names, and an EMPTY days array means Anytime this week, which is a real answer for anything she does when she can. HER WEEK IS NOT HER ME TAB: the Me tab is her standing protocol and her week is the seven days on Plans that sessions are planned against. Never offer one when she asked for the other, and never tell her they are the same. '
+        + 'THE TIME GOES IN "time", IN HER WORDS AND NOT PARSED. "french class on thursday night at 7pm" is time "7pm"; "evening", "after work" and "before the school run" are equally valid and must be kept as she said them. Leave it out when she did not say. A WEEK ENTRY NEED NOT BE EXERCISE - a class, a commitment, a standing arrangement all belong there, because something can earn a place in her week by taking the time rather than by being training. '
         + 'A ME CARD is for a settled decision about how they live - a supplement, a routine, a dietary decision, a standing commitment - and its status, where it has one, must be exactly one of: Taking, Ordered, Dietary source, As needed, Active, Paused. See the Almanac section of your instructions for when each type applies. '
         + 'A RULE is a MOVEMENT CONSTRAINT: something they must never do, or something that is always fine, usually because a clinician said so or because of a condition or injury. "My surgeon said no loaded squats" is a rule; "I hate burpees" is not. kind is "never" or "always". matchTerms are the lowercase movement words the app should match against a generated plan - for "no heavy deadlifts or loaded squats" that is ["deadlift", "loaded squat", "back squat"] - and they matter, because the app uses them to physically remove movements from anything it builds, so a term that is too narrow means a rule that does not work. advisedBy is who said so, if they named anybody. '
         + 'The app stores the offer and saves it only if they say yes. NEVER save a rule silently and never treat one as agreed because it was mentioned: a rule changes what gets built for them from then on, so it is confirmed first, always. Never for a plan, a passing remark, a plain result or a one-off observation, and never while an earlier offer is still waiting.',
@@ -1715,7 +1732,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           safetyBlock: SAFETY_PROMPT_BLOCK,
           // The same context the sequential call gets. A spoken turn that
           // cannot see her Me tab gives the same wrong answer as a typed one.
-          extraBlocks: [meFactsBlock, lifeStageBlock],
+          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock],
         })
       : null;
 
@@ -3278,7 +3295,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // it was given has food, movement, water, sleep, measurements and
           // cycle, and nothing else. It was obeying the baseline instruction
           // to say only what the record shows.
-          extraBlocks: [meFactsBlock, lifeStageBlock],
+          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's
