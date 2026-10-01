@@ -103,8 +103,27 @@ function ok(cond, msg) {
 }
 
 const { token, userId } = await demoSession();
-const clean = () =>
-  rest('DELETE', `almanac_entries?user_id=eq.${userId}&title=eq.${encodeURIComponent(TITLE)}`);
+// IT CLEARS ITS OWN CONVERSATION TOO.
+//
+// The card is only half the state: the demo account's chat history goes to the
+// model on every turn, so a previous run leaves it discussing a routine that no
+// longer exists and answering from that instead of from the card in front of it.
+// Only this probe's own sentences are removed, matched on the text it sends.
+const clean = async () => {
+  await rest('DELETE', `almanac_entries?user_id=eq.${userId}&title=eq.${encodeURIComponent(TITLE)}`);
+  await rest(
+    'DELETE',
+    `chat_messages?user_id=eq.${userId}&content=ilike.*${encodeURIComponent('skincare (probe)')}*`
+  );
+  await rest(
+    'DELETE',
+    `chat_messages?user_id=eq.${userId}&content=ilike.*${encodeURIComponent('niacinamide')}*`
+  );
+  await rest('PATCH', `user_profile?user_id=eq.${userId}`, {
+    pending_save: null,
+    pending_save_asked_at: null,
+  });
+};
 
 async function say(message) {
   const res = await fetch(`${API}/api/ask-selodia`, {

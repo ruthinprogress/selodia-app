@@ -68,6 +68,31 @@ const CLAIMS: RegExp[] = [
   // which are statements about an existing entry.
   /\bi(?:'ve| have)\s+logged\b/i,
   /\blogged (?:it|that|those|them)\b/i,
+  // "KEPT IN YOUR ME TAB", WHICH IS THE APP'S OWN SENTENCE (2026-10-01).
+  //
+  // Ruth: "Fix the duplicate, it feels broken." On the turn where she says yes,
+  // the reply arrived as:
+  //
+  //   Kept in your Me tab, under Medications.
+  //
+  //   Kept in your Almanac, under Me.
+  //
+  // The second line is saveAppliedNote - the app, which is the only thing that
+  // knows the write happened. The FIRST is the model, which has seen that exact
+  // house phrasing in its own history and copied the style. The same mechanism
+  // as the escaped-newline bug below: the model learns from what it said last
+  // time, including the parts that were never its to say.
+  //
+  // "Kept" was the one confirmation verb this list did not have, which is why
+  // the sentence sailed through while "saved", "added" and "logged" were caught.
+  //
+  // DELIBERATELY THE WHOLE SHAPE, NOT THE BARE WORD. "Nothing is kept until you
+  // agree" is on the medication screen and in the panel's own intro, and it is a
+  // promise rather than a claim - stripping it would delete the sentence that
+  // makes the feature trustworthy. So this matches only a destination being
+  // asserted: kept IN somewhere.
+  /\bkept\s+(?:it\s+|that\s+|these\s+|them\s+)?(?:in|on|to)\s+(?:your|the)\b/i,
+  /\bi(?:'ve| have)\s+kept\b/i,
 ];
 
 /**
@@ -95,10 +120,26 @@ const NOT_A_CLAIM: RegExp[] = [
   /\bthat(?:'s| is) logged\b/i,
   /\bno need to (?:repeat|re-?enter)\b/i,
   // Negated.
-  /\b(?:added|saved|logged|updated|noted)\s+(?:nothing|none)\b/i,
-  /\b(?:haven't|have not|hasn't|has not|didn't|did not|won't|will not|cannot|can't|not)\s+(?:yet\s+)?(?:been\s+)?(?:added|saved|logged|updated|noted)\b/i,
+  /\b(?:added|saved|logged|updated|noted|kept)\s+(?:nothing|none)\b/i,
+  /\b(?:haven't|have not|hasn't|has not|didn't|did not|won't|will not|cannot|can't|not)\s+(?:yet\s+)?(?:been\s+)?(?:added|saved|logged|updated|noted|kept)\b/i,
   // Hers, not the app's.
-  /\byou(?:'ve| have)?\s+(?:already\s+)?(?:added|saved|logged|updated|noted)\b/i,
+  /\byou(?:'ve| have)?\s+(?:already\s+)?(?:added|saved|logged|updated|noted|kept)\b/i,
+  // THE PROMISE, WHICH MUST SURVIVE (2026-10-01).
+  //
+  // "Nothing is kept until you have seen it written down and agreed" is on the
+  // medication screen; "Nothing is saved until you say yes" is the setup chat
+  // panel's own intro. These are the sentences the whole confirm-first design
+  // rests on, and each contains a confirmation verb while asserting the exact
+  // opposite of a confirmation.
+  //
+  // THE NEGATION RULE ABOVE DID NOT COVER THEM, and that was a live fault rather
+  // than a gap I introduced: it matches the VERB followed by "nothing"
+  // ("saved nothing"), and every one of these puts the "nothing" FIRST. So the
+  // app's own promise read as a claim that something had been written, and
+  // would have been deleted out of a reply that repeated it.
+  /\bnothing (?:is|was|has been|gets|will be)\s+(?:added|saved|logged|updated|noted|kept)\b/i,
+  // "...until you say yes", "...until you agree" - the condition IS the promise.
+  /\b(?:added|saved|logged|updated|noted|kept)\s+until\b/i,
 ];
 
 /**

@@ -390,6 +390,73 @@ if (!disavowalCaught) {
   failures.push('USELESS: a do-nothing guard passed the disavowal checks');
 }
 
+// The failures are listed at the END of this file now, after every check has
+// run. They were printed here, which was before a third of the checks existed -
+// so a failure added later counted in the total and never said what it was. A
+// report that hides the message is a report nobody can act on.
+// ------------------------------------------------- "kept", and the duplicate
+//
+// Ruth, 1 October 2026: "Fix the duplicate, it feels broken." On her yes-turn
+// the reply arrived as two confirmations, one under the other:
+//
+//   Kept in your Me tab, under Medications.
+//
+//   Kept in your Almanac, under Me.
+//
+// The second is saveAppliedNote - the app, which is the only thing that knows
+// the write happened. The first is the MODEL, copying the app's own house
+// phrasing because it has seen it in its own history. "Kept" was the one
+// confirmation verb CLAIMS did not carry, so it went straight through while
+// "saved", "added" and "logged" were all caught.
+//
+// THE HARD HALF IS THE SENTENCES THAT MUST SURVIVE. "Nothing is kept until you
+// have seen it written down and agreed" is on the medication screen and in the
+// setup panel, and it is the promise the whole confirm-first design rests on. A
+// guard that deletes it would be far worse than the duplicate it fixes.
+
+const KEPT_CLAIMS = [
+  'Kept in your Me tab, under Medications.',
+  'Kept in your Almanac, under Me.',
+  "I've kept that for you.",
+  'Kept it in your record.',
+];
+
+for (const sentence of KEPT_CLAIMS) {
+  check(`a "kept" claim is removed: "${sentence.slice(0, 36)}..."`, () => {
+    assert.ok(claimsAWrite(sentence), 'not recognised as a claim at all');
+    assert.equal(stripSaveClaims(sentence), '', 'the claim survived the strip');
+  });
+}
+
+const KEPT_MUST_SURVIVE = [
+  // The promise, in both the wordings the app actually uses.
+  'Nothing is kept until you have seen it written down and agreed.',
+  'Nothing is saved until you say yes.',
+  'Nothing is kept until you agree.',
+  // An offer, not a claim.
+  'Want me to keep these on a Medications card in your Me tab?',
+  // Hers, and about the past.
+  "You've kept that one since June.",
+  // A denial.
+  'I have not kept anything yet.',
+];
+
+for (const sentence of KEPT_MUST_SURVIVE) {
+  check(`untouched: "${sentence.slice(0, 44)}..."`, () => {
+    assert.equal(claimsAWrite(sentence), null, 'read as a claim when it is not one');
+    assert.equal(stripSaveClaims(sentence), sentence, 'an honest sentence was altered');
+  });
+}
+
+check('the duplicate turn, end to end', () => {
+  // What she actually saw, minus the app's line - which is appended AFTER the
+  // strip runs, so only the model's half is in front of this function.
+  const modelSaid = 'Kept in your Me tab, under Medications. Anything else you take?';
+  const out = stripSaveClaims(modelSaid);
+  assert.ok(!/kept in your/i.test(out), `the claim survived: "${out}"`);
+  assert.ok(/anything else you take/i.test(out), 'the rest of the reply was lost with it');
+});
+
 for (const f of failures) console.error('  FAIL  ' + f);
 console.log(`\n  ${pass} passed, ${failures.length} failed`);
 console.log(`  Proof: a do-nothing disavowal guard is caught = ${disavowalCaught}`);

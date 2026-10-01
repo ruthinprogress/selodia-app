@@ -181,7 +181,30 @@ export function coerceProposal(v: unknown): ProposedSave | null {
     // moment nobody identified.
     const section = normaliseSection(content.section);
     const why = str(content.why) ?? str(content.summary);
-    if (!why) return null;
+    // A CARD MADE OF ITEMS CARRIES ITS REASON IN THEM (2026-10-01).
+    //
+    // The why stays required for a card that is one decision: "Vitamin D3" with
+    // no reason is a checklist item, and Me is not a checklist. That rule is
+    // right and it is unchanged below.
+    //
+    // IT IS WRONG FOR A LIST, AND THE MEDICATION PROBE CAUGHT IT. The model
+    // proposed exactly what it was asked for -
+    //
+    //   {"title":"Medications","content":{"section":"Medication","items":[
+    //     {"name":"Levothyroxine","when":"75mcg, each morning"}, ... ]}}
+    //
+    // - and this line threw it away, so her yes answered nothing and the app
+    // told her "that did not save". Twice in a row, after passing 11/11 an hour
+    // earlier, because whether the model volunteers a card-level `why` for a
+    // list of prescriptions is a coin toss.
+    //
+    // And it should be. The reason a medication is on her card is that she takes
+    // it; each item already carries its own `when` and `purpose`. Demanding one
+    // sentence that explains all four is asking for a line nobody would write
+    // and the model can only invent - which is the opposite of what the why rule
+    // is for.
+    const items = coerceItems(content.items);
+    if (!why && items.length === 0) return null;
     // A PROTOCOL MADE OF PARTS (2026-09-30). A Me card may carry items - name,
     // when, a one-line purpose - so three skincare products are three things
     // with their own timings rather than one paragraph. Optional: a weekly call
@@ -191,7 +214,6 @@ export function coerceProposal(v: unknown): ProposedSave | null {
     // the answer to "chat must not write outcomes Ruth didn't state": a
     // sentence like "already seeing the redness reduce" has nowhere to go even
     // if a model offers it.
-    const items = coerceItems(content.items);
     return {
       type,
       title: title.slice(0, MAX_TITLE),

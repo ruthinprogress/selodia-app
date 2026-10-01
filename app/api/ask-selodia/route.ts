@@ -3486,10 +3486,22 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   const trailingLines = [...notesStillToAppend, offerLine].filter(
     (line): line is string => typeof line === 'string' && line.length > 0
   );
+  // AN EMPTY BODY CONTRIBUTES NO BLANK LINES (2026-10-01).
+  //
+  // Once "Kept in your Me tab, under Medications." was added to the save-claim
+  // strip, a reply whose WHOLE content was that one sentence came back empty -
+  // correctly, it was a claim the model had no business making - and the join
+  // then produced "\n\nKept in your Almanac, under Me.", which arrives on her
+  // phone as a message that starts with a gap.
+  //
+  // The app's own line is a complete and honest confirmation on its own, so the
+  // answer is to let it stand as the whole reply rather than to put the claim
+  // back.
+  const body = replyBody.trim();
   const finalReply =
     trailingLines.length > 0
-      ? `${replyBody}\n\n${trailingLines.join('\n\n')}`
-      : replyBody;
+      ? [body, trailingLines.join('\n\n')].filter(Boolean).join('\n\n')
+      : body;
 
   timing.mark('allergyGateDone');
   // ONE REPLY PER TURN, ENFORCED BY THE DATABASE (Ruth, 27 September 2026).

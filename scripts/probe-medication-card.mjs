@@ -105,8 +105,27 @@ const cards = () =>
     'GET',
     `almanac_entries?select=id,title,content&user_id=eq.${userId}&kind=eq.me&title=ilike.*medication*`
   );
+// IT CLEARS ITS OWN CONVERSATION TOO, and that is not tidiness.
+//
+// The card is only half the state. The demo account's chat HISTORY is sent to
+// the model on every turn, so a previous run of this probe leaves it saying
+// "these are already on your Medications card" - and then not offering, because
+// from where it sits nothing has changed. The second run of this probe failed
+// for exactly that reason while the code was working perfectly.
+//
+// Only the probe's own sentences: matched on the text it sends, so a real
+// conversation on the demo account is never touched.
+const MINE = ['levothyroxine', 'iron as well, 14mg'];
 const clean = async () => {
   await rest('DELETE', `almanac_entries?user_id=eq.${userId}&kind=eq.me&title=ilike.*medication*`);
+  for (const phrase of MINE) {
+    await rest('DELETE', `chat_messages?user_id=eq.${userId}&content=ilike.*${encodeURIComponent(phrase)}*`);
+  }
+  // And the replies to them, which name the medications back.
+  await rest(
+    'DELETE',
+    `chat_messages?user_id=eq.${userId}&role=eq.assistant&content=ilike.*${encodeURIComponent('Medications card')}*`
+  );
   await rest('PATCH', `user_profile?user_id=eq.${userId}`, {
     pending_save: null,
     pending_save_asked_at: null,

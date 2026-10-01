@@ -38,7 +38,35 @@ console.log('\n  WHAT IS REFUSED, AND WHY IT MATTERS\n');
 // moment, only a mention.
 check('no why at all', me({ section: 'Supplements', status: 'Taking' }), null);
 check('an empty why', me({ section: 'Supplements', why: '   ' }), null);
-check('no section', me({ why: 'Because it helps.' }), null);
+// A SECTION IS NOT REQUIRED, AND THIS CHECK WAS STALE FROM THE DAY IT STOPPED
+// BEING. The requirement was removed on 30 September - see the long note in
+// coerceProposal - because when the model returns `content` as prose it has no
+// section, and that is what lost her skincare card. The probe kept asserting the
+// old rule and has been failing ever since, which is its own small lesson: a red
+// line nobody acts on is indistinguishable from no test.
+check('no section is fine - the Almanac has never needed one', me({ why: 'Because it helps.' })?.type, 'me');
+check('and the section comes through as null rather than invented', me({ why: 'Because it helps.' })?.content.section, null);
+
+// A LIST CARRIES ITS REASON IN ITS ITEMS (1 October 2026). The why stays
+// required for a card that is one decision; a medication list is four decisions
+// with their own timings, and demanding one sentence explaining all four asks
+// for a line nobody would write and only a model could invent. The live probe
+// found this: a perfectly formed Medications card was refused, her yes answered
+// nothing, and the app told her "that did not save".
+const meds = coerceProposal({
+  type: 'me',
+  title: 'Medications',
+  content: {
+    section: 'Medication',
+    items: [
+      { name: 'Levothyroxine', when: '75mcg, each morning' },
+      { name: 'Vitamin D', when: '1000iu, through the winter' },
+    ],
+  },
+});
+check('a card of items needs no card-level why', meds?.type, 'me');
+check('and its items survive', meds?.content.items?.length, 2);
+check('but a single decision with no why is still refused', me({ section: 'Supplements', status: 'Taking' }), null);
 
 console.log('\n  STATUS IS A CLOSED LIST\n');
 // One of the few in this app. An invented seventh would be the model deciding
