@@ -85,13 +85,38 @@ if (!TOKEN) {
   process.exit(0);
 }
 
+// A DEAD TOKEN IS "I CANNOT TELL", NOT A FAILURE AND NOT A CRASH.
+//
+// The CLI's auth file can hold an EXPIRED token, which this originally treated as
+// credentials - present, so not skipped - and then threw an unhandled 403 out of
+// the top level. An `until` loop waiting for this check to pass therefore waited
+// for ever on a script that was crashing rather than failing, which is how a
+// deploy check became a hang.
+//
+// Expired is the same situation as absent: nobody here can answer the question.
+// It says so and exits 0, because a red X for "the laptop is logged out" trains
+// everybody to ignore the check that matters.
+class NotAuthorised extends Error {}
+
 async function api(route) {
   const sep = route.includes('?') ? '&' : '?';
   const res = await fetch(`https://api.vercel.com${route}${sep}teamId=${TEAM_ID}`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
   });
+  if (res.status === 401 || res.status === 403) throw new NotAuthorised();
   if (!res.ok) throw new Error(`${route} -> ${res.status} ${await res.text()}`);
   return res.json();
+}
+
+// CAUGHT WHERE IT IS THROWN, not on a process handler. A rejected TOP-LEVEL
+// await in an ES module surfaces as an uncaught exception and never reaches
+// process.on('unhandledRejection') - so the handler that was here looked right
+// and did nothing at all.
+function skipIfUnauthorised(e) {
+  if (!(e instanceof NotAuthorised)) throw e;
+  console.log('  SKIPPED  the Vercel credentials on this machine have expired.');
+  console.log('           Run `npx vercel login` from the project, then try again.');
+  process.exit(0);
 }
 
 function git(...args) {
@@ -117,7 +142,7 @@ function ok(cond, msg) {
 }
 
 // ---- 1. one project, connected to main -----------------------------------
-const projects = (await api('/v9/projects?limit=100')).projects ?? [];
+const projects = (await api('/v9/projects?limit=100').catch(skipIfUnauthorised)).projects ?? [];
 const project = projects.find((p) => p.id === PROJECT_ID) ?? null;
 
 check('there is exactly one Vercel project', () =>

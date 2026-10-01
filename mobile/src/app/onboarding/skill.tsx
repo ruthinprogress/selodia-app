@@ -119,10 +119,18 @@ export default function SkillScreen() {
         }}
       />
 
+      {/* TRUE OF WHAT IS ON THIS SCREEN (Ruth, 1 October 2026, item 3).
+          It said "nothing is offered here until it can actually be
+          demonstrated", which is true of this list and reads as a promise about
+          Skills as a whole - and chat is being given the ability to add a skill
+          with no clip at all. One screen's rule stated as the app's rule.
+          ONE IS THE POINT, and she confirmed it: this screen exists to show how
+          Selodía uses Skills, not to collect them all. So the note says that
+          rather than apologising for a short list. */}
       <ThemedText type="small" themeColor="textSecondary">
-        More are on the way. {CLIP_GAPS.length} movements are still being drawn, including
-        handstands and the muscle up, and nothing is offered here until it can actually be
-        demonstrated.
+        One is enough here — this is just to show how it works. These are the ones with a
+        demonstration drawn; {CLIP_GAPS.length} more are being made, including handstands and the
+        muscle up. Anything else can be added later by saying so in chat.
       </ThemedText>
 
       {ladderKey && (

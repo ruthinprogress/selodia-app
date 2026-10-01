@@ -15,6 +15,47 @@
 
 ---
 
+## STANDING RULE: how Claude Code reports to Ruth (set 1 October 2026)
+
+**Every report ends with ONE link to a document in Drive that holds the whole
+thing. The chat message is five lines.**
+
+Her instruction, after a day in which single replies ran to forty lines:
+
+> End every report with ONE link to a Drive document that holds the full report.
+> Keep the chat message to five lines: done / needs a phone check (exact steps) /
+> needs her decision / broken or reverted / the link. Never paste long text into
+> chat. Never ask her to open a file to read it. She pastes the link to Claude,
+> who reads it and tells her what matters.
+
+**The five lines, in this order.** Any that has nothing in it is dropped rather
+than padded:
+
+1. **Done** — what now works.
+2. **Needs a phone check** — with the **exact steps**, because "have a look at
+   Plans" is not a test and she should not have to invent one.
+3. **Needs her decision** — the thing that is blocked on her and nobody else.
+4. **Broken or reverted** — anything that went backwards. Never omitted, never
+   softened, and never left to the document to mention first.
+5. **The link.**
+
+**Which format.** A **Google Doc** when she has to comment or edit it — that is
+what Docs are for and a .docx round-trip loses her comments. Anything Claude can
+read otherwise; in practice a `.docx` rendered by `scripts/md2docx.py`, because
+she can open it herself if she wants to and the tooling already exists.
+
+**The document is not for her to read.** That is the part that is easy to get
+wrong and then quietly undo. She pastes the link back into a chat and asks what
+matters; the document exists so the answer is grounded in something written down
+rather than in a summary of a summary. **Never write "see the attached document
+for details"** — that is asking her to do the reading, which is the exact thing
+this rule removes.
+
+**Why it exists.** Not length for its own sake. A forty-line reply with four
+findings buried in it puts the work of triage on her, every time, and triage is
+the one thing she cannot delegate back. Five lines is enough to decide what to do
+next, which is all a report has to achieve.
+
 ## Where Status Goes, and Why Not in the Prose (set 2026-09-09)
 
 **Status claims do not belong in prose sections. Decisions and reasoning do.** This is the single convention that would have prevented the most expensive documentation failure this project has had.

@@ -84,6 +84,30 @@ morning.
     remove; explain "needs this first". **Removing asks first.**
 15. Keep the tab name "Skills" in **one** place, so it is a one-word change.
 
+## Muscle-up rung wording — APPROVED by Ruth, 1 October 2026
+
+Her own wording, approved including the breathing cues. **The breathing line is
+guidance for how to do a move, not a Rule** — it excludes nothing and must not be
+written into `user_rules`.
+
+**Now**
+1. **Dead hang.** 3 × 20–30s. *Why:* every pull starts here, and it decompresses the shoulders and builds grip. *Develops:* grip and shoulder comfort.
+2. **Scapular pulls.** 3 × 8–10 clean reps. *Why:* arms straight, shoulder blades pulled down, which teaches the shoulder to set before the arms pull and protects it. *Develops:* shoulder-blade control.
+3. **Pull-up volume.** 3 × 5 strict. *Why:* full range from a dead hang with no kipping. This is the gate to everything above, so build the number before adding anything harder. *Develops:* pulling strength.
+
+**Next**
+4. **High pull-ups.** Needs 5 strict pull-ups first. 3 × 3–5 with full rest. *Why:* pull so the chest reaches the bar, not just the chin. This trains the height and momentum the transition needs. *Develops:* explosive pulling.
+5. **Bar dips.** 3 × 8 full range. *Why:* the last part of a muscle up is a press above the bar. *Develops:* pushing strength in the chest, shoulders and triceps.
+
+**Goal**
+6. **Muscle up.** Needs 8–10 pull-ups, bar dips and high pull-ups. *Why:* this puts the three together. *Develops:* the move over the bar.
+
+**OPEN:** the text she pasted carries no breathing cues, and her approval
+mentions them. Either they are in a version I have not been sent, or the approval
+covers a document held elsewhere. **Ask before building this ladder** rather than
+inventing a breathing line — item 10 of her own brief forbids writing anything
+she did not say.
+
 ## Needs Ruth before it ships
 
 The **"why this step"** and **"what it develops"** text for every rung of the
