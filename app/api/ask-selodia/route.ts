@@ -59,6 +59,7 @@ import { todayISODate } from '../../lib/workout-logs';
 import { itemsOf } from '../../lib/me-items';
 import { meUpdateNote, updateMeCard } from '../../lib/me-update';
 import { addWeekEntry, weekEntryNote, weekNoteNeeded } from '../../lib/week-entry';
+import { createWriteLog } from '../../lib/write-log';
 import type { WeekEntryOutcome } from '../../lib/week-entry';
 import { hydrationSaveSummary, logHydrationFromText } from '../../lib/hydration-logging';
 import { logSleepFromText, sleepSaveSummary } from '../../lib/sleep-logging';
@@ -2777,8 +2778,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     }
   }
 
-  // What the allergy write actually stored, for the honesty guard below.
-  let recordedAllergies: string[] = [];
+  // WHAT REACHED HER RECORD THIS TURN, noted by each writer at its own call
+  // site. See lib/write-log.ts for why this is not a list assembled further
+  // down: three writers were missing from that list and the app spent weeks
+  // denying saves it had made.
+  const writes = createWriteLog();
   // Allergy capture (item 42 part (b)). Fire-and-persist with no confirmation
   // turn and no toast: Part Twelve requires this to be captured conversationally
   // wherever it surfaces, and a "shall I remember that?" prompt would make
@@ -2796,7 +2800,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // KEPT, BECAUSE THE HONESTY GUARD HAS TO KNOW. recordAllergies returns the
     // names it stored and returns [] when the write failed, which is exactly the
     // distinction falseClaimNote needs and never had. See wroteThisTurn.
-    recordedAllergies = await recordAllergies(supabase, user.id, disclosed, message);
+    const stored = await recordAllergies(supabase, user.id, disclosed, message);
+    // AFTER the write, and only on what it actually stored: recordAllergies
+    // returns [] when the insert failed, and a failed write must leave the log
+    // untouched so the reply's claim is still contradicted.
+    if (stored.length > 0) writes.record('allergy');
   }
 
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
@@ -2896,6 +2904,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       today: todayISODate(),
     });
     meNote = meUpdateNote(outcome);
+    if (outcome.kind === 'updated') writes.record('me card');
   }
 
   // SOMETHING INTO HER WEEK, ON HER SAYING SO (2026-10-01). Applied here rather
@@ -2908,6 +2917,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   if (result.weekEntry && typeof result.weekEntry.activity === 'string' && result.weekEntry.activity.trim()) {
     weekOutcome = await addWeekEntry(supabase, user.id, result.weekEntry);
     weekNote = weekEntryNote(weekOutcome);
+    if (weekOutcome.kind === 'added' || weekOutcome.kind === 'already') writes.record('week entry');
     console.log('WEEK ENTRY:', JSON.stringify({ outcome: weekOutcome.kind, raw: result.weekEntry }));
   }
 
@@ -3219,34 +3229,24 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // WHAT GENUINELY REACHED HER DATA THIS TURN. `landed` covers the log
   // writers; the notes below it are each written by a path that only speaks
   // after its own write succeeded, so their presence is evidence of one.
-  // THE LIST WAS INCOMPLETE, AND AN INCOMPLETE LIST HERE CALLS HER A LIAR
-  // ABOUT HER OWN DATA (2026-10-01).
+  // WHAT REACHED HER RECORD, read from the log rather than from a list.
   //
-  // Ruth told chat she cannot eat sardines. Chat offered, she said yes, the row
-  // was written - `sardines [food]` is in her allergies right now - and the reply
-  // ended "That did not save, so it is not in your record." The same evening:
-  // "French class is in your week... It's on the Week view in Plans", followed by
-  // "That did not save".
+  // This WAS a hand-assembled array, and it was missing the allergy write, the
+  // week write and the remembered detail - so every correct claim about any of
+  // the three was answered with "that did not save". Sardines was in her
+  // allergies the whole time it was being denied.
   //
-  // Both writes SUCCEEDED. falseClaimNote compares what the reply claimed against
-  // this array, and neither the allergy capture nor the week write was in it - so
-  // a correct claim about a real write was contradicted by the app, in the same
-  // message. That is worse than the bug it exists to catch: a false claim misleads
-  // once, and an app that denies its own successful writes teaches her not to
-  // believe any confirmation it gives.
-  //
-  // THE SHAPE OF THE FAULT IS THE LIST, not the entries. Every writer added since
-  // this was built had to remember to come back here, and three did not. Anything
-  // that writes to her record and is reported in the reply belongs in it.
+  // The entries still here are the ones whose writers report success through a
+  // note rather than through the log; each is a single source of truth for its
+  // own write, which is the same property, reached a shorter way. Anything new
+  // records itself at its own call site. See lib/write-log.ts.
   const wroteThisTurn = [
     ...attempt.landed,
-    ...(meNote ? ['me card'] : []),
+    ...writes.all(),
     ...(planNote ? ['plan'] : []),
     ...(restoreNote ? ['restored entry'] : []),
     ...(focusNote ? ['focus'] : []),
     ...(saveNote ? ['saved note'] : []),
-    ...(weekNote ? ['week entry'] : []),
-    ...(recordedAllergies.length > 0 ? ['allergy'] : []),
     ...(savedContext ? ['remembered detail'] : []),
   ];
   const alreadySpoke =
