@@ -110,10 +110,57 @@ export default function ActivitiesScreen() {
     } = await supabase.auth.getUser();
     if (!user) return false;
 
-    // Only the rows onboarding put there are replaced. Anything added later in
-    // chat is hers and is not this screen's to remove.
-    const { error: clearError } = await supabase.from('user_week').delete().eq('user_id', user.id);
-    if (clearError) return false;
+    // THIS SCREEN DELETED HER ENTIRE WEEK (1 October 2026, ~19:05).
+    //
+    // The two lines that used to be here said:
+    //
+    //   "Only the rows onboarding put there are replaced. Anything added later
+    //    in chat is hers and is not this screen's to remove."
+    //
+    // ...immediately above `.delete().eq('user_id', user.id)`, which removes
+    // EVERY row she has. The comment described an intention nobody implemented,
+    // and it read so reasonably that it survived several reviews including mine.
+    //
+    // WHAT IT COST. Ruth opened "redo my setup" to review the wording, walked to
+    // this screen, and continued. Gym on Wednesdays and her French class on
+    // Thursday - both of which she had added through chat four hours earlier -
+    // were deleted. Nothing was written in their place, because the delete ran
+    // BEFORE the early return for "nothing chosen": walking onto this screen and
+    // pressing Continue with no chips selected wiped the table and saved nothing.
+    //
+    // THREE CHANGES, and each closes a different half of it:
+    //
+    //   1. Nothing is deleted when nothing is chosen. A redo she walks through
+    //      without touching the chips now changes nothing at all, which is what
+    //      "review the wording" should always have meant.
+    //   2. Only THIS SCREEN'S OWN ACTIVITIES can be removed. The ten labels below
+    //      are the only things this screen can create, so anything else in her
+    //      week - a French class, anything chat added - is hers and is left
+    //      alone. That is what the old comment claimed and this now does.
+    //   3. An activity she keeps is UPDATED, not deleted and re-made. Re-running
+    //      setup used to throw away the day she had chosen and the time she had
+    //      given, because a new row has neither. Her Wednesday survives.
+    // Widened to string: ACTIVITIES is `as const`, so its labels are a literal
+    // union, and what comes back from the database is any string at all.
+    const labels: string[] = ACTIVITIES.map((a) => a.label);
+    const keep = new Set<string>(chosen.map((key) => ACTIVITIES.find((a) => a.key === key)!.label));
+
+    const { data: existingRows, error: readError } = await supabase
+      .from('user_week')
+      .select('id, activity, sort_order')
+      .eq('user_id', user.id);
+    if (readError) return false;
+    const existing = existingRows ?? [];
+
+    // Deselected, and only ever one of this screen's own.
+    const toRemove = existing
+      .filter((r) => labels.includes(String(r.activity)) && !keep.has(String(r.activity)))
+      .map((r) => r.id);
+    if (toRemove.length > 0) {
+      const { error } = await supabase.from('user_week').delete().in('id', toRemove);
+      if (error) return false;
+    }
+
     if (chosen.length === 0) return true;
 
     // ACTIVITY LEVEL AND HEIGHT COME FROM THIS SCREEN NOW, and they have to.
@@ -133,7 +180,25 @@ export default function ActivitiesScreen() {
     if (cm >= 100 && cm <= 230) profilePatch.height_cm = Math.round(cm);
     await supabase.from('user_profile').update(profilePatch).eq('user_id', user.id);
 
-    const rows = chosen.map((key, i) => ({
+    // Already in her week: update the cadence she just gave and leave everything
+    // else - her day, her time, the order - exactly as it was.
+    for (const row of existing) {
+      const name = String(row.activity);
+      if (!keep.has(name)) continue;
+      const key = ACTIVITIES.find((a) => (a.label as string) === name)?.key;
+      const cadence = key && cadences[key] ? CADENCE_WORDS[cadences[key]!] : null;
+      if (!cadence) continue;
+      await supabase.from('user_week').update({ cadence }).eq('id', row.id);
+    }
+
+    const alreadyThere = new Set<string>(existing.map((r) => String(r.activity)));
+    const nextOrder = existing.reduce(
+      (max, r) => (typeof r.sort_order === 'number' && r.sort_order >= max ? r.sort_order + 1 : max),
+      0
+    );
+    const rows = chosen
+      .filter((key) => !alreadyThere.has(ACTIVITIES.find((a) => a.key === key)!.label as string))
+      .map((key, i) => ({
       user_id: user.id,
       activity: ACTIVITIES.find((a) => a.key === key)!.label,
       // NO PURPOSE LINE YET, and that is honest rather than lazy. The purpose
@@ -143,8 +208,9 @@ export default function ActivitiesScreen() {
       // would be the app putting words in her mouth on day one.
       purpose: null,
       cadence: cadences[key] ? CADENCE_WORDS[cadences[key]!] : null,
-      sort_order: i,
+      sort_order: nextOrder + i,
     }));
+    if (rows.length === 0) return true;
     const { error } = await supabase.from('user_week').insert(rows);
     return !error;
   }
@@ -170,7 +236,7 @@ export default function ActivitiesScreen() {
     label: saving ? 'Saving…' : 'Continue',
     enabled: !saving,
     onPress: () => void goOn(false),
-    secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
+    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
   return (

@@ -110,7 +110,7 @@ export default function AllergiesScreen() {
     label: saving ? 'Saving…' : 'Continue',
     enabled: !saving,
     onPress: () => void goOn(false),
-    secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
+    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
   return (

@@ -132,7 +132,7 @@ export default function GoalsScreen() {
     // and no calorie target is invented.
     enabled: !saving,
     onPress: () => void goOn(false),
-    secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
+    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
   const showMeasure = invitesMeasure(chosen);

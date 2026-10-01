@@ -213,7 +213,7 @@ export default function HealthContextScreen() {
         <ThemedView style={styles.actionRow}>
           {phase === 'intro' ? (
             <>
-              <ActionButton label="Skip for now" onPress={handleSkip} disabled={saving} muted />
+              <ActionButton label="Skip this question" onPress={handleSkip} disabled={saving} muted />
               <ActionButton
                 label="Yes, add this"
                 onPress={() => setPhase('capture')}

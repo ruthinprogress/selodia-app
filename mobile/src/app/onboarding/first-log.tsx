@@ -130,7 +130,7 @@ export default function FirstLogScreen() {
     label: 'Continue',
     enabled: done,
     onPress: () => router.push('/onboarding/goals'),
-    secondary: done ? undefined : { label: 'Skip for now', onPress: handleSkip },
+    secondary: done ? undefined : { label: 'Skip this question', onPress: handleSkip },
   });
 
   return (

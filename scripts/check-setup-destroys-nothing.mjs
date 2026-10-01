@@ -1,0 +1,139 @@
+// CAN WALKING THROUGH SETUP AGAIN DESTROY SOMETHING SHE DID NOT TOUCH?
+//
+//   node scripts/check-setup-destroys-nothing.mjs
+//
+// On 1 October 2026 Ruth opened "redo my setup" to review the wording, walked to
+// the activities screen and pressed Continue. **Her entire week was deleted** -
+// Gym on Wednesdays and the French class on Thursday, both of which she had added
+// through chat four hours earlier. Nothing was written in their place.
+//
+// The code did this:
+//
+//   // Only the rows onboarding put there are replaced. Anything added later in
+//   // chat is hers and is not this screen's to remove.
+//   await supabase.from('user_week').delete().eq('user_id', user.id);
+//   if (chosen.length === 0) return true;
+//
+// A comment describing an intention nobody implemented, sitting directly above
+// the line that does the opposite - and a delete that runs BEFORE the early
+// return, so the "I changed nothing" path was the destructive one.
+//
+// WHY A SOURCE CHECK. The failure is a DELETE with too wide a filter, which no
+// unit test on this screen's logic would see: the logic was right, the scope was
+// not. What can be checked mechanically is the shape - that no setup screen
+// deletes every row a person owns, and that a destructive call never sits above
+// the guard that decides whether to be destructive at all.
+//
+// It is weak evidence about behaviour and strong evidence about a rule holding
+// across a folder that will grow. The real proof is the live test below it.
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const DIR = 'mobile/src/app/onboarding';
+
+let pass = 0;
+const failures = [];
+function check(name, fn) {
+  try {
+    const note = fn();
+    console.log(`  PASS  ${name}${note ? `   ${note}` : ''}`);
+    pass += 1;
+  } catch (e) {
+    console.log(`  FAIL  ${name}\n          ${e.message}`);
+    failures.push(name);
+  }
+}
+function ok(cond, msg) {
+  if (!cond) throw new Error(msg);
+}
+
+const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.tsx'));
+console.log('\n  SETUP DESTROYS NOTHING SHE DID NOT TOUCH\n');
+
+// ---- 1. no screen wipes a whole table for a user -------------------------
+check('no setup screen deletes every row a person owns', () => {
+  // THE FILTER IS THE WHOLE QUESTION, so the chain is read rather than pattern-
+  // matched. The first version of this flagged any `.delete().eq('user_id'...)`
+  // and so condemned goals.tsx and skill.tsx, both of which are correct: goals
+  // narrows to `source = 'onboarding'` and skill to one `ladder_key`. A check
+  // that cries wolf on correct code gets switched off, and then it is not there
+  // for the one case that matters.
+  const offenders = [];
+  for (const f of files) {
+    // COMMENTS ARE NOT CODE, and this check could not tell. activities.tsx now
+    // carries a note QUOTING the delete that cost Ruth her week, so the file
+    // that was fixed was the only one still failing - and the files most likely
+    // to describe a bug are the ones that just fixed it. Stripped first.
+    const src = fs
+      .readFileSync(path.join(DIR, f), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    let at = src.indexOf('.delete()');
+    while (at >= 0) {
+      // The chained filters, up to the end of the statement.
+      const end = src.indexOf(';', at);
+      const chain = src.slice(at, end < 0 ? at + 400 : end);
+      const filters = [...chain.matchAll(/\.(?:eq|in|neq|is|match|filter)\(\s*['"]?(\w+)/g)].map(
+        (m) => m[1]
+      );
+      const scopedOnlyToUser =
+        filters.length > 0 && filters.every((name) => name === 'user_id');
+      if (scopedOnlyToUser) offenders.push(`${f} (filters: ${filters.join(', ')})`);
+      at = src.indexOf('.delete()', at + 1);
+    }
+  }
+  ok(
+    offenders.length === 0,
+    `${offenders.join('; ')} — deletes every row for the user. A setup screen may ` +
+      'only remove rows IT created; anything else in there came from chat and is hers.'
+  );
+  return `${files.length} screens, every delete scoped to more than the user`;
+});
+
+// ---- 2. the activities screen specifically -------------------------------
+const activities = fs.readFileSync(path.join(DIR, 'activities.tsx'), 'utf8');
+
+check('nothing is deleted before the "nothing chosen" guard', () => {
+  const guard = activities.indexOf('if (chosen.length === 0) return true;');
+  const del = activities.indexOf('.delete()');
+  ok(guard >= 0, 'the "nothing chosen" early return is gone');
+  ok(
+    del < 0 || del > guard || activities.slice(0, guard).includes('toRemove'),
+    'a delete runs before the code decides whether anything was chosen at all - ' +
+      'so walking through the screen and changing nothing is the destructive path'
+  );
+  return 'the no-op walk is a no-op';
+});
+
+check('it can only remove its own activities', () => {
+  ok(
+    /labels\.includes\(String\(r\.activity\)\)/.test(activities),
+    'the delete is not scoped to this screen\'s own ten activities, so a French ' +
+      'class added in chat can be swept up by a setup redo'
+  );
+  return 'scoped to the ten chips';
+});
+
+check('an activity she keeps is updated, not re-made', () => {
+  // A delete-and-reinsert loses days_chosen_at and time_of_day - her Wednesday
+  // and her 10am - which is a quieter version of the same loss.
+  ok(
+    /alreadyThere/.test(activities) && /\.update\(\{ cadence \}\)/.test(activities),
+    're-selecting an activity re-creates the row, which throws away the day she ' +
+      'chose and the time she gave'
+  );
+  return 'her day and time survive';
+});
+
+// ---- 3. the comment that lied --------------------------------------------
+check('no comment claims a scope the code does not have', () => {
+  // Narrow on purpose: this exact sentence sat above a wipe for days.
+  const claims = /Only the rows onboarding put there are replaced/.test(activities);
+  const scoped = /labels\.includes/.test(activities);
+  ok(!claims || scoped, 'the comment claims onboarding only replaces its own rows; the code does not');
+  return 'the comment and the code agree';
+});
+
+console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
+if (failures.length > 0) process.exit(1);

@@ -65,6 +65,20 @@ export default function LifeStageScreen() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return false;
+    // NOTHING SELECTED CHANGES NOTHING (1 October 2026).
+    //
+    // The same shape as the week wipe found the same evening: with no chip
+    // tapped this wrote life_stage: null, hormone_use: [] and hrt: null over
+    // whatever was there - so walking through a redo to review the wording would
+    // have erased her menopause and hormone answers without touching a control.
+    //
+    // It had not bitten yet, only because life-stage is reached from "Add more
+    // about you" rather than from the main chain. That is luck, not a design,
+    // and the redo now starts at step 3 so she will walk past far more of these.
+    //
+    // A deliberate "prefer not to say" is a real answer and is NOT this: it sets
+    // `stage` to that value and saves normally. This is the untouched screen.
+    if (stage === null && use.length === 0) return true;
     const { error } = await supabase
       .from('user_profile')
       .update({
@@ -103,7 +117,7 @@ export default function LifeStageScreen() {
     label: saving ? 'Saving…' : 'Continue',
     enabled: !saving,
     onPress: () => void goOn(false),
-    secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
+    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
   // IT IS NOW ASKED OF EVERYBODY, AND THAT IS A REVERSAL (30 September 2026).

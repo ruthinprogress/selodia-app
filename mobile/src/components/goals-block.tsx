@@ -152,7 +152,7 @@ export function GoalsBlock() {
 
       {failedToHide && (
         <ThemedText type="small" themeColor="textSecondary">
-          Hidden for now, but that didn&apos;t save — they&apos;ll show again next time.
+          Hidden for now, but that didn&apos;t save, so they will show again next time.
         </ThemedText>
       )}
 

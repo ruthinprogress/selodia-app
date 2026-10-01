@@ -80,7 +80,7 @@ export default function SteerAroundScreen() {
     label: wantsToTalk && !talking ? 'Tell Selodía' : 'Continue',
     enabled: true,
     onPress: goOn,
-    secondary: { label: 'Skip for now', onPress: () => router.push(NEXT) },
+    secondary: { label: 'Skip this question', onPress: () => router.push(NEXT) },
   });
 
   return (

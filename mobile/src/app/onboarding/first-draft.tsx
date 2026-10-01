@@ -83,7 +83,7 @@ export default function FirstDraftScreen() {
       setDraft({
         goals: [...tapped, ...written],
         week: ((weekRes.data ?? []) as { activity: string; cadence: string | null }[]).map((w) =>
-          w.cadence ? `${w.activity} — ${w.cadence}` : w.activity
+          w.cadence ? `${w.activity}, ${w.cadence}` : w.activity
         ),
         skills: ((rungRes.data ?? []) as { name: string }[]).map((r) => r.name),
         rules: ((rulesRes.data ?? []) as { phrase: string; kind: string }[])

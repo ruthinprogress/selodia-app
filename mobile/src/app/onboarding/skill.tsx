@@ -105,7 +105,7 @@ export default function SkillScreen() {
     label: saving ? 'Saving…' : 'Continue',
     enabled: !saving,
     onPress: () => void goOn(false),
-    secondary: { label: 'Skip for now', onPress: () => void goOn(true) },
+    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
   return (
@@ -119,18 +119,28 @@ export default function SkillScreen() {
         }}
       />
 
-      {/* TRUE OF WHAT IS ON THIS SCREEN (Ruth, 1 October 2026, item 3).
-          It said "nothing is offered here until it can actually be
-          demonstrated", which is true of this list and reads as a promise about
-          Skills as a whole - and chat is being given the ability to add a skill
-          with no clip at all. One screen's rule stated as the app's rule.
-          ONE IS THE POINT, and she confirmed it: this screen exists to show how
-          Selodía uses Skills, not to collect them all. So the note says that
-          rather than apologising for a short list. */}
+      {/* THE LIST AND THE NOTE HAVE TO AGREE (Ruth, 1 October 2026, finding 2).
+          Two wrong versions in one day, both caught by her on the phone:
+
+          "nothing is offered here until it can actually be demonstrated" - true
+          of this list and reading as a promise about Skills as a whole, while
+          chat is being given the ability to add a skill with no clip at all.
+
+          then "these are the ones with a demonstration drawn" - which is simply
+          false. Muscle up and Dead hang are BOTH in LADDERS and in CLIP_GAPS:
+          offered here, and not yet drawn. She spotted her own muscle up in a
+          list the note said was fully illustrated.
+
+          ONE IS THE POINT, which she confirmed: this screen shows how Selodía
+          uses Skills rather than collecting them all. The note says that, says
+          the clips are still coming without claiming which, and promises
+          nothing about the rest of the app.
+
+          NO EM DASH (finding 3). Screen copy does not use them. */}
       <ThemedText type="small" themeColor="textSecondary">
-        One is enough here — this is just to show how it works. These are the ones with a
-        demonstration drawn; {CLIP_GAPS.length} more are being made, including handstands and the
-        muscle up. Anything else can be added later by saying so in chat.
+        One is enough here. This is just to show how Skills work. Some of these do not have a
+        demonstration drawn yet, and {CLIP_GAPS.length} movements are still being made. Anything
+        else can be added later by saying so in chat.
       </ThemedText>
 
       {ladderKey && (

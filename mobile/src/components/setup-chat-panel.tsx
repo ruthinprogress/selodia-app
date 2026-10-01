@@ -131,7 +131,7 @@ export function SetupChatPanel({
 
       {failed && (
         <ThemedText type="small" themeColor="danger">
-          That didn&apos;t send. Your words are still in the box — try again.
+          That didn&apos;t send. Your words are still in the box, so try again.
         </ThemedText>
       )}
 

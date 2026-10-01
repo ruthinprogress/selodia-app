@@ -88,11 +88,11 @@ export function OnboardingHeader() {
                 router.replace('/');
               }}
               accessibilityRole="button"
-              accessibilityLabel="Not now, leave setup"
+              accessibilityLabel="Leave setup"
               style={({ pressed }) => pressed && styles.pressed}
             >
               <ThemedText type="small" themeColor="textSecondary" style={styles.secondary}>
-                Not now
+                Leave setup
               </ThemedText>
             </Pressable>
           )}

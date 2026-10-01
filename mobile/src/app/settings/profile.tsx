@@ -122,11 +122,36 @@ export default function ProfileScreen() {
   // So a redo is now exactly what the words say: the same screens, revisited,
   // with her account still finished the entire time. Leaving halfway leaves
   // nothing behind.
+  // IT STARTED AT STEP 6 OF 11 (Ruth, 1 October 2026, finding 1).
+  //
+  // "'Redo my setup' opens at step 6 of 11. Steps 1 to 5 cannot be reached, so
+  // Ruth cannot review the whole flow."
+  //
+  // WHAT STEPS 1-5 ARE, since that was her question. In order: consent (Your
+  // data), account (Your account), intro (Hello), equipment (What you have),
+  // first-log (Your first log). It was NOT resuming at her first unanswered
+  // step - it has always pushed to `goals` unconditionally, because when the
+  // redo was written goals was where the interesting questions began.
+  //
+  // IT NOW STARTS AT `intro`, STEP 3, AND THAT IS NOT ALL ELEVEN. The two it
+  // still cannot show are the two that cannot be re-run from inside a signed-in
+  // app rather than ones I chose to skip:
+  //
+  //   consent happens before a session exists. It has its own re-ask, driven by
+  //   the policy version, and it fired today when the 1 October policy went
+  //   live - so it is reviewable, just not from here.
+  //   account is sign-in. Walking her through account creation while she is
+  //   signed in would be a way to break a login, not a way to review wording.
+  //
+  // So this covers steps 3 to 11, and the first-log screen is the one to watch
+  // in testing: it asks her to log something, and a redo must not leave a
+  // phantom meal behind. It has a skip, which is now labelled "Skip this
+  // question" rather than reading like the header's "Leave setup".
   function redoSetup() {
-    // The flag is what puts "Not now" in the header for the whole chain; the
+    // The flag is what puts "Leave setup" in the header for the whole chain; the
     // param is left on so the first screen can tell in its own right.
     setRedoing(true);
-    router.push({ pathname: '/onboarding/goals', params: { redo: '1' } });
+    router.push({ pathname: '/onboarding/intro', params: { redo: '1' } });
   }
 
   const dob = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;
