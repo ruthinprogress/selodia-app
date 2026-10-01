@@ -58,6 +58,8 @@ import {
 import { todayISODate } from '../../lib/workout-logs';
 import { itemsOf } from '../../lib/me-items';
 import { meUpdateNote, updateMeCard } from '../../lib/me-update';
+import { addWeekEntry, weekEntryNote, weekNoteNeeded } from '../../lib/week-entry';
+import type { WeekEntryOutcome } from '../../lib/week-entry';
 import { hydrationSaveSummary, logHydrationFromText } from '../../lib/hydration-logging';
 import { logSleepFromText, sleepSaveSummary } from '../../lib/sleep-logging';
 import { foodSaveSummary, activitySaveSummary } from '../../lib/save-summary';
@@ -1610,7 +1612,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         'Set ONLY when something in this turn is worth OFFERING to keep - as a symptom, an insight, a ME CARD, a RULE, or something in their WEEK. Do not ask the question yourself: the app adds the offer to the end of your reply. '
         + '{"type": "symptom" | "insight" | "me" | "rule" | "week", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}, for a rule {"kind": "never" | "always", "matchTerms": [...], "advisedBy": ...}, for a week entry {"days": ["mon","wed"], "time": "7pm", "duration": "~60 min", "cadence": "2x/week"}}. '
-        + 'A WEEK ENTRY is an activity she does, which day, and when in the day - "add gym on Wednesday", "put yoga in my week", "I swim on Thursdays now". The title is the activity in her words ("Gym", "Rocket yoga"), days are lowercase three-letter day names, and an EMPTY days array means Anytime this week, which is a real answer for anything she does when she can. HER WEEK IS NOT HER ME TAB: the Me tab is her standing protocol and her week is the seven days on Plans that sessions are planned against. Never offer one when she asked for the other, and never tell her they are the same. '
+        + 'A WEEK ENTRY HERE IS ONLY FOR SOMETHING SHE MENTIONED IN PASSING that you are offering to keep - "she has started a French class on Thursdays" said while talking about something else. WHEN SHE DIRECTLY ASKS for something to go in her week, USE THE weekEntry FIELD INSTEAD and do not offer: asking is the yes, exactly as with a note. A week entry is an activity she does, which day, and when in the day - "add gym on Wednesday", "put yoga in my week", "I swim on Thursdays now". The title is the activity in her words ("Gym", "Rocket yoga"), days are lowercase three-letter day names, and an EMPTY days array means Anytime this week, which is a real answer for anything she does when she can. HER WEEK IS NOT HER ME TAB: the Me tab is her standing protocol and her week is the seven days on Plans that sessions are planned against. Never offer one when she asked for the other, and never tell her they are the same. '
         + 'THE TIME GOES IN "time", IN HER WORDS AND NOT PARSED. "french class on thursday night at 7pm" is time "7pm"; "evening", "after work" and "before the school run" are equally valid and must be kept as she said them. Leave it out when she did not say. A WEEK ENTRY NEED NOT BE EXERCISE - a class, a commitment, a standing arrangement all belong there, because something can earn a place in her week by taking the time rather than by being training. '
         + 'A ME CARD is for a settled decision about how they live - a supplement, a routine, a dietary decision, a standing commitment - and its status, where it has one, must be exactly one of: Taking, Ordered, Dietary source, As needed, Active, Paused. See the Almanac section of your instructions for when each type applies. '
         + 'A RULE is a MOVEMENT CONSTRAINT: something they must never do, or something that is always fine, usually because a clinician said so or because of a condition or injury. "My surgeon said no loaded squats" is a rule; "I hate burpees" is not. kind is "never" or "always". matchTerms are the lowercase movement words the app should match against a generated plan - for "no heavy deadlifts or loaded squats" that is ["deadlift", "loaded squat", "back squat"] - and they matter, because the app uses them to physically remove movements from anything it builds, so a term that is too narrow means a rule that does not work. advisedBy is who said so, if they named anybody. '
@@ -1622,6 +1624,24 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         'ONLY when they tell you something ALREADY in their Me tab has changed - stopped, paused, restarted, ordered. '
         + '{"title": the card\'s name as listed in their Me tab, "status": one of Taking, Ordered, Dietary source, As needed, Active, Paused, "reason": why, in their own words, or omit if they gave none}. '
         + 'Not for adding something new - that is proposedSave with type "me". The app finds the card, changes it, keeps the history, and tells them.',
+    },
+    weekEntry: {
+      type: 'object',
+      description:
+        'ONLY when they DIRECTLY ask for something to go in their week - "add gym on Wednesday", '
+        + '"put french class in my week on thursday night at 7pm", "I swim on Thursdays now, add that". '
+        + '{"activity": the thing in their words ("Gym", "French class"), "days": lowercase three-letter '
+        + 'day names like ["thu"], "time": when in the day IN THEIR WORDS ("7pm", "evening", "after work") '
+        + 'or omit if they did not say, "duration": "~60 min" or omit}. '
+        + 'ASKING IS THE YES: there is no offer and no confirmation step, exactly as with noteText. The app '
+        + 'adds it and tells them itself, so do NOT claim in your reply that it is in their week and do NOT '
+        + 'ask whether to add it. '
+        + 'IT NEED NOT BE EXERCISE. A class, a commitment, a standing arrangement all belong in a week, '
+        + 'because something can earn its place by taking the time rather than by being training. '
+        + 'An EMPTY days array means Anytime this week, which is a real answer for anything they do when they can. '
+        + 'Use proposedSave with type "week" INSTEAD when they only MENTIONED it in passing and you are '
+        + 'offering to keep it - a direct request uses this field, a thing you noticed uses that one. '
+        + 'Never for their Me tab, which is their standing protocol and a different screen.',
     },
     saveAnswer: {
       type: 'string',
@@ -1906,6 +1926,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     allergiesDisclosed?: ({ name: string; kind?: string } | string)[];
     proposedSave?: unknown;
     meUpdate?: { title?: unknown; status?: unknown; reason?: unknown };
+    weekEntry?: { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown };
     saveAnswer?: string;
     saveRedirect?: { type?: unknown; section?: unknown };
     noteText?: string;
@@ -2854,6 +2875,19 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     meNote = meUpdateNote(outcome);
   }
 
+  // SOMETHING INTO HER WEEK, ON HER SAYING SO (2026-10-01). Applied here rather
+  // than offered, because "add french class on thursday night at 7pm" is an
+  // instruction and not something the app noticed. See app/lib/week-entry.ts for
+  // the probe that settled it.
+  let weekNote: string | null = null;
+  // Kept so the reply path can ask whether its own words have already covered it.
+  let weekOutcome: WeekEntryOutcome | null = null;
+  if (result.weekEntry && typeof result.weekEntry.activity === 'string' && result.weekEntry.activity.trim()) {
+    weekOutcome = await addWeekEntry(supabase, user.id, result.weekEntry);
+    weekNote = weekEntryNote(weekOutcome);
+    console.log('WEEK ENTRY:', JSON.stringify({ outcome: weekOutcome.kind, raw: result.weekEntry }));
+  }
+
   let offered = false;
   // Which tab the outstanding offer is for, so the question names it. Defaults
   // to 'note', which asks about the Almanac, because that is what every offer
@@ -2906,7 +2940,33 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // decision moment and are the point of the tab. What is rate-limited is
       // the app noticing something and asking to keep it, which is the shape
       // that turned a cold into an Almanac prompt.
-      const tooSoon = proposal && proposal.type !== 'me' && (await offeredRecently(supabase, user.id));
+      //
+      // A WEEK ENTRY IS EXEMPT FOR THE SAME REASON, AND THE PROBE PROVED WHY
+      // (2026-10-01). "add french class on thursday night at 7pm" is not the app
+      // noticing anything. It is an instruction. The rate limit treated it as a
+      // suggestion and dropped it, and because the model had already asked the
+      // question in its own words, the next turn's "yes" was answered with
+      // "French class, Thursday, 7pm - on your week now" over an empty table.
+      //
+      // That is the failure she has twice told me destroys trust: the app
+      // telling her it has her data when it has not. Rate-limiting a direct
+      // instruction cannot be right - a limit on pestering must not become a
+      // limit on doing as she asks.
+      const askedFor = proposal && (proposal.type === 'me' || proposal.type === 'week');
+      // AND IF THE REPLY ALREADY ASKED, THE OFFER IS STORED REGARDLESS.
+      //
+      // The limit exists so she is not pestered. Once the model's own words have
+      // asked the question, the pestering has already happened, and declining to
+      // store the offer does not undo it - it only guarantees that her answer
+      // goes nowhere. Of the two bad outcomes, an extra offer she can say no to
+      // is much the smaller.
+      //
+      // offerQuestion's own test is reused deliberately: the thing that decides
+      // the app's question is redundant is the right thing to decide the reply
+      // has made a promise.
+      const replyAlreadyAsked = proposal !== null && offerQuestion(replyText, proposal.type) === null;
+      const tooSoon =
+        proposal && !askedFor && !replyAlreadyAsked && (await offeredRecently(supabase, user.id));
       if (proposal && !tooSoon) {
         offered = await storePendingSave(supabase, user.id, proposal);
         if (offered) offeredType = proposal.type;
@@ -3161,6 +3221,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     focusNote,
     saveNote,
     meNote,
+    weekNote,
     // WHAT A RULE TOOK OUT IS SAID, NOT HIDDEN (2026-09-28). A session that
     // quietly comes back two movements shorter teaches her the app is
     // unreliable; one that names the rule teaches her the rule is working,
@@ -3368,6 +3429,21 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         notesStillToAppend = [
           ...(saveNote ? [saveNote] : []),
           ...(meNote ? [meNote] : []),
+          // AND THE WEEK LINE, for the same reason the other two are here -
+          // unless the reply has already said it, which on a turn that is
+          // nothing but the instruction it usually has. See weekNoteNeeded.
+          //
+          // The writer is told a save that worked is not news BECAUSE the app
+          // prints its own confirmation. Leaving weekNote out of this list broke
+          // the other half of that bargain: the writer was told to stay quiet and
+          // nothing then spoke. It only looked right in the probe because her
+          // message was nothing but the instruction, so the model had nothing
+          // else to answer and said it anyway. On "add french class on thursday
+          // at 7pm, and how's my protein?" she would have got the protein and no
+          // word about her week at all.
+          ...(weekNote && (!weekOutcome || weekNoteNeeded(written.text, weekOutcome))
+            ? [weekNote]
+            : []),
           ...(liveClaim ? [liveClaim] : []),
         ];
       } else {

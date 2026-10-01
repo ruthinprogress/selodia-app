@@ -9,7 +9,7 @@
 // is. I can also ask chat directly to add french class on thursday night at
 // 7pm."
 //
-// FOUR WAYS THIS FEATURE CAN BE WRONG AND LOOK RIGHT, which is what the groups
+// FIVE WAYS THIS FEATURE CAN BE WRONG AND LOOK RIGHT, which is what the groups
 // below are:
 //
 //   weekFacts      Chat could write to her week an hour before it could read
@@ -22,15 +22,20 @@
 //   wording        A week entry has never gone to the Almanac. Three separate
 //                  sentences used to say it did, because week was added to a
 //                  type union whose every other member is an Almanac entry.
+//   weekEntry      The DIRECT path - "add french class on thursday at 7pm" is
+//                  an instruction, applied on the turn, and the app states the
+//                  outcome. So the sentence it states is part of the feature:
+//                  one that claims the row when the write failed is the lie
+//                  this whole file exists to catch.
 //   days_chosen_at The row is written and never seen. Under "Let me lead" the
 //                  Week screen hides a card on a day she did not choose, so an
 //                  unstamped insert is indistinguishable from the add silently
 //                  failing - the exact bug that cost a morning on 1 October.
 //
-// THE DAYS_CHOSEN_AT GROUP IS A SOURCE CHECK, deliberately. There are TWO
-// writes into user_week now - one in the app and one on the server - because
-// there are two runtimes, and the stamp has to be at both. Nothing at runtime
-// can see both, so this reads the files. A source check is weak evidence about
+// THE DAYS_CHOSEN_AT GROUP IS A SOURCE CHECK, deliberately. There are THREE
+// writes into user_week now - the app's text box, a confirmed offer, and a
+// direct request - across two runtimes, and the stamp has to be at all three.
+// Nothing at runtime can see all of them, so this reads the files. A source check is weak evidence about
 // behaviour and strong evidence about a rule holding in two places.
 //
 // EVERY GROUP IS PROVED ABLE TO FAIL at the bottom. See MUTATION.
@@ -41,6 +46,7 @@ import path from 'node:path';
 
 import { weekFacts } from '../app/lib/week-facts.ts';
 import { coerceProposal, offerQuestionFor, saveAppliedNote } from '../app/lib/pending-save.ts';
+import { coerceDays, weekEntryNote, weekNoteNeeded } from '../app/lib/week-entry.ts';
 
 let pass = 0;
 const failures = [];
@@ -179,7 +185,11 @@ GROUPS.wording = ({ question, applied }) => {
 GROUPS.stamp = (read) => {
   const WRITES = [
     ['mobile/src/lib/week-move.ts', 'addToWeek', 'the app'],
-    ['app/lib/pending-save.ts', "proposal.type === 'week'", 'the server'],
+    ['app/lib/pending-save.ts', "proposal.type === 'week'", 'the confirmed offer'],
+    // THE THIRD WRITE, added when the direct path arrived. Three writes into one
+    // table across two runtimes is three chances to forget the stamp, which is
+    // precisely why this group reads the files rather than trusting a review.
+    ['app/lib/week-entry.ts', 'export async function addWeekEntry', 'a direct request'],
   ];
 
   for (const [file, marker, who] of WRITES) {
@@ -202,11 +212,96 @@ GROUPS.stamp = (read) => {
   }
 };
 
+// --------------------------------------------------------------- weekEntry
+//
+// THE DIRECT PATH. "add french class on thursday night at 7pm" is an
+// instruction, so it is applied on the turn and the APP states the outcome -
+// which means the sentence it states is part of the feature, not decoration. A
+// line that says the row is there when it is not is the failure Ruth has twice
+// said destroys trust, and a line that says nothing leaves her looking at a
+// screen wondering.
+
+GROUPS.weekEntry = ({ days, note }) => {
+  check('weekEntry', 'thursday becomes thu, however she said it', () => {
+    assert.deepEqual(days(['Thursday']), ['thu']);
+    assert.deepEqual(days(['THU', 'thu']), ['thu'], 'the same day twice is one day');
+    assert.deepEqual(days(['someday']), []);
+    assert.deepEqual(days('thursday'), [], 'a bare string is not a day list');
+  });
+
+  check('weekEntry', 'a success names the day and the time back to her', () => {
+    const line = note({ kind: 'added', activity: 'French class', days: ['thu'], time: '7pm' });
+    assert.match(line, /French class/);
+    assert.match(line, /Thursday/);
+    assert.match(line, /7pm/);
+    // Naming the day back is the cheapest check on the day being wrong.
+    assert.match(line, /Plans|Week/);
+  });
+
+  check('weekEntry', 'no day reads as Anytime, not as a blank', () => {
+    assert.match(note({ kind: 'added', activity: 'Walking', days: [], time: null }), /Anytime/i);
+  });
+
+  check('weekEntry', 'a failure says so plainly and never claims the row', () => {
+    const line = note({ kind: 'failed' });
+    assert.match(line, /didn't|did not/i);
+    assert.doesNotMatch(line, /is in your week|added to your week/i);
+  });
+
+  check('weekEntry', 'already there is not reported as a failure or a duplicate', () => {
+    const line = note({ kind: 'already', activity: 'Gym' });
+    assert.match(line, /already/i);
+    assert.doesNotMatch(line, /didn't|did not/i);
+  });
+
+  check('weekEntry', 'nothing asked for says nothing at all', () => {
+    // A true sentence that changes nothing still costs attention.
+    assert.equal(note({ kind: 'nothing' }), null);
+  });
+};
+
+// ----------------------------------------------------------- said exactly once
+
+GROUPS.saidOnce = (needed) => {
+  const ADDED = { kind: 'added', activity: 'French class', days: ['thu'], time: '7pm' };
+
+  check('saidOnce', 'the app stays quiet when the reply already said it', () => {
+    // The real duplicate, 1 October: the model's sentence and the app's, one
+    // under the other, saying the same thing in nearly the same words.
+    assert.equal(
+      needed("French class, Thursday at 7pm - it's already there, on the Week view in Plans.", ADDED),
+      false
+    );
+    assert.equal(needed('Put French class in your week on Thursday at 7pm.', ADDED), false);
+  });
+
+  check('saidOnce', 'the app DOES speak when the reply says nothing about her week', () => {
+    // The guarantee that matters. A silent app plus a silent reply is her
+    // asking for something and being told nothing at all.
+    assert.equal(needed("You're at 68g of protein, so there's room for more.", ADDED), true);
+    assert.equal(needed('', ADDED), true);
+  });
+
+  check('saidOnce', 'naming the class while answering something else is not enough', () => {
+    // It has to tell her the ROW EXISTS. A passing mention does not, and
+    // suppressing on one would leave her with no confirmation.
+    assert.equal(needed('French class sounds like a good evening for you.', ADDED), true);
+  });
+
+  check('saidOnce', 'a failure is always said, whatever the reply claimed', () => {
+    // The one case where the model's words are the problem rather than the
+    // substitute for the app's.
+    assert.equal(needed("It's in your week now, French class on Thursday.", { kind: 'failed' }), true);
+  });
+};
+
 // ----------------------------------------------------------------------- RUN
 
 GROUPS.weekFacts(weekFacts);
 GROUPS.coerceProposal(coerceProposal);
 GROUPS.wording({ question: offerQuestionFor, applied: saveAppliedNote });
+GROUPS.weekEntry({ days: coerceDays, note: weekEntryNote });
+GROUPS.saidOnce(weekNoteNeeded);
 GROUPS.stamp((f) => fs.readFileSync(path.join(process.cwd(), f), 'utf8'));
 
 // ------------------------------------------------------------------- MUTATION
@@ -219,6 +314,8 @@ const EMPTY = {
   weekFacts: () => '',
   coerceProposal: () => null,
   wording: { question: () => 'Want me to keep that in your Almanac?', applied: () => null },
+  weekEntry: { days: () => [], note: () => null },
+  saidOnce: () => false,
   stamp: () => '',
 };
 
