@@ -25,10 +25,30 @@ import { supabase } from '@/lib/supabase';
 
 // The privacy policy's own "Last updated" date (app/privacy/page.tsx). Change
 // the two together: a record says which version of the policy was agreed to.
-// MUST MATCH `UPDATED` in app/privacy/page.tsx. Moving it re-asks everybody to
-// confirm their consent, which is the whole point of the pair: 1 October 2026
-// added three new kinds of special category data to the policy.
-export const PRIVACY_POLICY_VERSION = '1 October 2026 (revised)';
+// THE VERSION IS AN IDENTITY, NOT A DATE, AND THE TWO ARE NOW SEPARATE.
+//
+// This used to be the same prose string as `UPDATED` on the policy page, and the
+// coupling cost three re-asks in one evening. On 1 October the policy was updated
+// at 18:51, revised at 20:18 when ElevenLabs' retention was confirmed, and
+// revised again at 21:15 when Ruth gave her own final wording - and she had
+// already answered the re-ask for the middle one. There was no string left to
+// move that would not also change what she READS on the page, and she had asked
+// for "(revised)" to stay exactly as it was.
+//
+// So the two jobs are split, because they were always two jobs:
+//
+//   UPDATED in app/privacy/page.tsx  what a person reads. Prose. Her call.
+//   PRIVACY_POLICY_VERSION           what the code compares. Opaque. Bumped
+//                                    whenever the SUBSTANCE changes, whatever
+//                                    the date on the page happens to say.
+//
+// BUMP THIS WHENEVER THE POLICY'S SUBSTANCE CHANGES. That is the whole rule.
+// The date on the page is for her; this is for the comparison, and a comparison
+// key that has to read nicely is a comparison key that eventually cannot move.
+//
+// r3 = 1 October 2026, Ruth's final wording of the Claude and ElevenLabs
+// paragraph. r2 was the ElevenLabs retention revision she answered at 20:18.
+export const PRIVACY_POLICY_VERSION = '2026-10-01-r3';
 
 export type ConsentAnswers = {
   coreConsent: boolean;

@@ -28,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 
 type Rule = {
   id: string;
-  kind: 'never' | 'always';
+  kind: 'never' | 'always' | 'technique';
   phrase: string;
   advised_by: string | null;
   confirmed_at: string | null;

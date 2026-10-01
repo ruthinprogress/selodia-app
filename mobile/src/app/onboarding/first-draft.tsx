@@ -60,10 +60,25 @@ export default function FirstDraftScreen() {
       //
       // It advances when she taps Start, which is also when it is true.
 
-      const [goalsRes, contextRes, weekRes, rungRes, rulesRes, profileRes, allergyRes] =
+      const [goalsRes, weekRes, rungRes, rulesRes, profileRes, allergyRes] =
         await Promise.all([
-        supabase.from('user_goals').select('label').order('sort_order', { ascending: true }),
-        supabase.from('user_context').select('category, content'),
+        // ONE SOURCE, AND ARCHIVED ONES EXCLUDED (Ruth, 1 October 2026, B2).
+        //
+        // This read showed her FOUR goals: her current one, "reduce body fat and
+        // get back into old jeans" TWICE, and the long sentence that superseded
+        // it. Two faults stacked.
+        //
+        // It did not filter `archived_at`, so a goal she had replaced came back.
+        // goals-block.tsx has always filtered it; this screen never did, and two
+        // readers of one table with different rules is how that happens.
+        //
+        // And it CONCATENATED user_goals with user_context, which double-counts
+        // every goal: a database trigger already mirrors anything written to
+        // user_context into user_goals, precisely so there is one place to read.
+        // goals-block.tsx carries the note about why that trigger exists - the
+        // same duplicate-goal complaint, fixed there in September and still
+        // standing here.
+        supabase.from('user_goals').select('label').is('archived_at', null).order('sort_order', { ascending: true }),
         supabase.from('user_week').select('activity, cadence').order('sort_order', { ascending: true }),
         supabase.from('user_skill_rungs').select('name, stage').eq('stage', 'now'),
         supabase.from('user_rules').select('phrase, kind'),
@@ -71,22 +86,24 @@ export default function FirstDraftScreen() {
         supabase.from('allergies').select('name, kind'),
       ]);
 
-      const tapped = ((goalsRes.data ?? []) as { label: string }[]).map((g) => g.label);
-      const written = ((contextRes.data ?? []) as { category: string | null; content: string }[])
-        .filter((c) => (c.category ?? '').toLowerCase().includes('goal'))
-        .map((c) => c.content);
+      const goals = ((goalsRes.data ?? []) as { label: string }[]).map((g) => g.label);
 
       const profile = profileRes.data as
         | { fat_focus_state: string | null; muscle_focus_state: string | null }
         | null;
 
       setDraft({
-        goals: [...tapped, ...written],
+        goals,
         week: ((weekRes.data ?? []) as { activity: string; cadence: string | null }[]).map((w) =>
           w.cadence ? `${w.activity}, ${w.cadence}` : w.activity
         ),
         skills: ((rungRes.data ?? []) as { name: string }[]).map((r) => r.name),
         rules: ((rulesRes.data ?? []) as { phrase: string; kind: string }[])
+          // ONLY EXCLUSIONS BELONG UNDER "Staying out of your sessions".
+          // A 'technique' rule is guidance on how to do a move and rules
+          // nothing out, so listing it there told her the opposite of what
+          // she meant. This filter was already correct; the Valsalva row was
+          // stored as 'never' because there was no third kind until today.
           .filter((r) => r.kind === 'never')
           .map((r) => r.phrase),
         // SHOWN BACK IN THE SAME WORDS THEY WERE STORED IN, capitalised only.

@@ -200,6 +200,11 @@ type TurnContext = {
   } | null;
   recentHistory: { role: string; content: string }[];
   contextRows: { category: string; content: string }[];
+  // HER CURRENT GOALS, from user_goals with archived ones excluded. Goal rows
+  // are no longer in contextRows: the model was reading a goal she replaced in
+  // August alongside the one that replaced it, with nothing to say which was
+  // which. See the migration chat_reads_the_current_goal_only.
+  goalRows: { label: string; detail: string | null; set_on: string | null }[];
   recentFood: { happened_at: string; raw_text: string; kcal: number | null; protein_g: number | null }[];
   recentActivity: {
     happened_at: string;
@@ -558,6 +563,7 @@ export async function POST(request: NextRequest) {
     lastAssistantTurn,
     recentHistory,
     contextRows,
+    goalRows,
     recentFood,
     recentActivity,
     recentDailyBurn,
@@ -748,9 +754,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // WHAT SHE IS WORKING TOWARDS, said once. goalRows is user_goals with archived
+  // ones already excluded, so a superseded goal cannot reach the model at all -
+  // which it could, and did, while goals travelled through contextRows. She saw
+  // the consequence on the first-draft screen as four goals where there is one.
+  const goalText =
+    goalRows && goalRows.length > 0
+      ? 'What she is working towards:\n' +
+        goalRows
+          .map((g) => '- ' + g.label + (g.detail ? ' (' + g.detail + ')' : ''))
+          .join('\n')
+      : 'No goal set yet.';
+
   const contextText = contextRows && contextRows.length > 0
-    ? contextRows.map((c) => c.category + ': ' + c.content).join('\n')
-    : 'No stored context yet.';
+    ? goalText + '\n' + contextRows.map((c) => c.category + ': ' + c.content).join('\n')
+    : goalText;
 
   // Health Context (Part Twelve): RLS scopes this to the current user, so no
   // explicit user_id filter is needed. Injected alongside macro/context below.
@@ -2759,6 +2777,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     }
   }
 
+  // What the allergy write actually stored, for the honesty guard below.
+  let recordedAllergies: string[] = [];
   // Allergy capture (item 42 part (b)). Fire-and-persist with no confirmation
   // turn and no toast: Part Twelve requires this to be captured conversationally
   // wherever it surfaces, and a "shall I remember that?" prompt would make
@@ -2773,7 +2793,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     const disclosed = result.allergiesDisclosed.map((a) =>
       typeof a === 'string' ? { name: a } : a
     );
-    await recordAllergies(supabase, user.id, disclosed, message);
+    // KEPT, BECAUSE THE HONESTY GUARD HAS TO KNOW. recordAllergies returns the
+    // names it stored and returns [] when the write failed, which is exactly the
+    // distinction falseClaimNote needs and never had. See wroteThisTurn.
+    recordedAllergies = await recordAllergies(supabase, user.id, disclosed, message);
   }
 
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
@@ -2924,7 +2947,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // two possibilities in one line - the model never proposed, or it
       // proposed something the app refused - and neither is visible anywhere
       // else.
-      if (result.proposedSave || /me/i.test(message ?? '')) {
+      if (result.proposedSave || /\bme\b/i.test(message ?? '')) {
         console.log(
           'SAVE OFFER:',
           JSON.stringify({
@@ -3196,6 +3219,25 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // WHAT GENUINELY REACHED HER DATA THIS TURN. `landed` covers the log
   // writers; the notes below it are each written by a path that only speaks
   // after its own write succeeded, so their presence is evidence of one.
+  // THE LIST WAS INCOMPLETE, AND AN INCOMPLETE LIST HERE CALLS HER A LIAR
+  // ABOUT HER OWN DATA (2026-10-01).
+  //
+  // Ruth told chat she cannot eat sardines. Chat offered, she said yes, the row
+  // was written - `sardines [food]` is in her allergies right now - and the reply
+  // ended "That did not save, so it is not in your record." The same evening:
+  // "French class is in your week... It's on the Week view in Plans", followed by
+  // "That did not save".
+  //
+  // Both writes SUCCEEDED. falseClaimNote compares what the reply claimed against
+  // this array, and neither the allergy capture nor the week write was in it - so
+  // a correct claim about a real write was contradicted by the app, in the same
+  // message. That is worse than the bug it exists to catch: a false claim misleads
+  // once, and an app that denies its own successful writes teaches her not to
+  // believe any confirmation it gives.
+  //
+  // THE SHAPE OF THE FAULT IS THE LIST, not the entries. Every writer added since
+  // this was built had to remember to come back here, and three did not. Anything
+  // that writes to her record and is reported in the reply belongs in it.
   const wroteThisTurn = [
     ...attempt.landed,
     ...(meNote ? ['me card'] : []),
@@ -3203,6 +3245,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     ...(restoreNote ? ['restored entry'] : []),
     ...(focusNote ? ['focus'] : []),
     ...(saveNote ? ['saved note'] : []),
+    ...(weekNote ? ['week entry'] : []),
+    ...(recordedAllergies.length > 0 ? ['allergy'] : []),
+    ...(savedContext ? ['remembered detail'] : []),
   ];
   const alreadySpoke =
     correctionNote !== null || honestyNote !== null || deferredLog === true;

@@ -26,7 +26,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type Rule = {
   id: string;
-  kind: 'never' | 'always';
+  // 'technique' is guidance on HOW to do a move - breathe out on the effort,
+  // do not bear down. It excludes NOTHING. Added 1 October 2026 after Ruth
+  // found "Heavy Valsalva or bearing down" listed as a thing being kept out
+  // of her sessions, which is not what she meant by it.
+  kind: 'never' | 'always' | 'technique';
   phrase: string;
   matchTerms: string[];
   confirmedAt: string | null;
@@ -53,6 +57,30 @@ export type RulesVerdict = {
  * screen shows it as awaiting confirmation; the generator treats it as live.
  * This is the cautious side of an ambiguous instruction, chosen on purpose.
  */
+/**
+ * WHICH KIND OF RULE IS THIS, AND IT IS ITS OWN FUNCTION FOR A REASON.
+ *
+ * This was written inline as `r.kind === 'always' ? 'always' : 'never'`, which
+ * meant anything that was not 'always' became an EXCLUSION. When 'technique' was
+ * added to the database on 1 October 2026 - so that "breathe through it, do not
+ * bear down" could stop being listed as a movement Ruth avoids - that line would
+ * have gone on stripping movements out of her sessions regardless, because a
+ * technique note is not 'always' either.
+ *
+ * FAILING CLOSED IS STILL RIGHT. A kind this code has never heard of belongs on
+ * the never list: a safety filter that ignores what it cannot read is worse than
+ * one that is occasionally over-careful. The change is that the fall is now
+ * deliberate and visible, rather than whatever the else-branch happened to be.
+ *
+ * Exported so it can be tested without a database, which is the other half of
+ * why the bug survived: the only way to reach it was through loadRules.
+ */
+export function normaliseKind(kind: unknown): Rule['kind'] {
+  if (kind === 'always') return 'always';
+  if (kind === 'technique') return 'technique';
+  return 'never';
+}
+
 export async function loadRules(supabase: SupabaseClient, userId: string): Promise<Rule[]> {
   const { data, error } = await supabase
     .from('user_rules')
@@ -61,7 +89,7 @@ export async function loadRules(supabase: SupabaseClient, userId: string): Promi
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map((r) => ({
     id: String(r.id),
-    kind: r.kind === 'always' ? 'always' : 'never',
+    kind: normaliseKind(r.kind),
     phrase: String(r.phrase),
     matchTerms: Array.isArray(r.match_terms) ? (r.match_terms as string[]) : [],
     confirmedAt: (r.confirmed_at as string | null) ?? null,
@@ -143,6 +171,16 @@ export function rulesPrompt(rules: Rule[]): string {
   if (always.length > 0) {
     lines.push(
       `Movements that are always fine for her: ${always.map((r) => r.phrase).join('; ')}. This is permission, not an instruction to include them.`
+    );
+  }
+  // HOW TO DO A MOVE, NOT WHETHER TO. Said to the model so a cue can be repeated
+  // where it is useful, and worded so it can never be read as a constraint -
+  // which is exactly the mistake the database made with Valsalva before there
+  // was a kind for it.
+  const technique = rules.filter((r) => r.kind === 'technique');
+  if (technique.length > 0) {
+    lines.push(
+      `How she does things, which rules nothing out: ${technique.map((r) => r.phrase).join('; ')}. These are technique cues, not exclusions - never remove a movement because of one, and never list one as something she avoids.`
     );
   }
   return lines.join('\n');

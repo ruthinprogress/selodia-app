@@ -103,6 +103,17 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // processor. So "(revised)" is appended and she is asked once more. It is ugly
 // on screen and it is correct; a cleaner date would have been a quieter lie.
 //
+// UPDATED IS NOW DISPLAY ONLY (2026-10-01, evening). It used to double as the
+// consent version, and that coupling cost three re-asks in one evening: Ruth had
+// already answered the re-ask for one revision when the next one landed, and
+// there was no string left to move that would not also change what she reads
+// here - which she had asked to leave alone.
+//
+// The comparison key is PRIVACY_POLICY_VERSION in mobile/src/lib/consent.ts and
+// is opaque on purpose. Change this line for her; bump that one whenever the
+// SUBSTANCE changes. They no longer have to match, and the rule for the one that
+// matters is written beside it.
+//
 // 2026-09-28: THE COMPANY'S REGISTERED PARTICULARS WERE ADDED and UPDATED was
 // deliberately LEFT AT 19 SEPTEMBER. The Companies Act and the E-Commerce
 // Regulations want the number, the place of registration and the registered

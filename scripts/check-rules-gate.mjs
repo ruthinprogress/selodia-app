@@ -23,7 +23,7 @@
 //
 //   node --import ./scripts/ts-paths.mjs scripts/check-rules-gate.mjs
 
-import { applyRules, removalNote, rulesPrompt } from '../app/lib/rules-gate.ts';
+import { applyRules, normaliseKind, removalNote, rulesPrompt } from '../app/lib/rules-gate.ts';
 
 const promptOnly = (exercises) => ({ kept: exercises, removed: [] });
 
@@ -166,11 +166,74 @@ const SANITY = [
     },
   ],
   ['no removals means no note', () => removalNote([]) === null],
+
+  // A TECHNIQUE CUE MUST NEVER REMOVE ANYTHING (1 October 2026).
+  //
+  // Ruth found "Heavy Valsalva or bearing down" under "Staying out of your
+  // sessions". She means breathe through it, not never do it - guidance on HOW
+  // to do a move, which rules nothing out. It was stored as kind 'never' because
+  // until that evening those were the only two kinds a rule could have, so the
+  // shape of the table decided the meaning of her instruction.
+  //
+  // THE LINE THAT MADE IT DANGEROUS was in the gate itself:
+  //
+  //   kind: r.kind === 'always' ? 'always' : 'never'
+  //
+  // Anything not 'always' became an exclusion, so adding a third kind to the
+  // database would have changed nothing at all - a technique note would have
+  // gone on silently stripping movements out of her sessions while the column
+  // said otherwise. These two checks exist because that coercion looked
+  // harmless and was the whole bug.
+  [
+    'a technique rule removes nothing, even when its words match an exercise',
+    () => {
+      const plan = [
+        { name: 'Barbell deadlift', group: 'posterior chain' },
+        { name: 'Valsalva breathing drill', group: 'core' },
+      ];
+      const { kept, removed } = applyRules(plan, [
+        { kind: 'technique', phrase: 'Heavy Valsalva or bearing down', matchTerms: ['valsalva', 'deadlift'] },
+      ]);
+      return kept.length === 2 && removed.length === 0;
+    },
+  ],
+  [
+    'the kinds are read as themselves, and an unknown one fails CLOSED',
+    () => {
+      // Tested here rather than through applyRules, because the coercion lives
+      // at LOAD - which is why the bug was unreachable from a test for so long.
+      // Failing closed is right for a safety filter; the point is that the fall
+      // is deliberate rather than an accident of an else-branch.
+      return (
+        normaliseKind('never') === 'never' &&
+        normaliseKind('always') === 'always' &&
+        normaliseKind('technique') === 'technique' &&
+        normaliseKind('something-new') === 'never' &&
+        normaliseKind(null) === 'never'
+      );
+    },
+  ],
 ];
 
 // The prompt block is layer 1 and is checked separately: it is not enforcement,
 // so running it against the broken gate proves nothing.
 const PROMPT_CHECKS = [
+  [
+    'a technique cue is told to the model as guidance, never as an exclusion',
+    () => {
+      const out = rulesPrompt([
+        { kind: 'technique', phrase: 'Heavy Valsalva or bearing down', matchTerms: ['valsalva'] },
+      ]);
+      // It must say the cue, and must NOT appear under the never wording - the
+      // model reading "movements this person never does: Valsalva" is the same
+      // wrong answer arriving by a different route.
+      return (
+        /Valsalva/.test(out) &&
+        /rules nothing out|not exclusions/i.test(out) &&
+        !/never does/i.test(out)
+      );
+    },
+  ],
   [
     'the prompt names the never list as clinical, not preference',
     () => {

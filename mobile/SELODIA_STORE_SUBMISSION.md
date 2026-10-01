@@ -261,10 +261,22 @@ Apple's categories differ from Google's. Every item below is **linked to the per
 
 | # | Step | Owner | Status |
 |---|---|---|---|
-| 1 | Apple Developer Program as **Selodía Ltd**, about £79 a year | Ruth | Not started. **Needs the D-U-N-S number**, the same one Play needs. |
+| 1 | Apple Developer Program as **Selodía Ltd**, about £79 a year | Ruth | **IN PROGRESS — blocked on Apple, 1 October 2026.** The enrolment purchase would not complete, so Ruth raised a support case with Apple Developer Support: **case ID 102982913077**, Membership and Account › Program Enrolment, sent 21:55 from **hello@selodia.app** under the name Ruth Christianson-Monroy. Apple reply by email. The D-U-N-S number this step was waiting on (**235125707**) has been in hand since 10 September, so the blocker is now Apple's side rather than ours. |
 | 2 | Sign in with Apple | Claude, after 1 | Not started |
 | 3 | First iOS build (`eas build --platform ios`), then TestFlight | Claude, after 1 | Not started |
 | 4 | Check Apple Health permissions on a real iPhone | Ruth | Not started |
 | 5 | App Store Connect answers (§7) and App Privacy (§8) | Ruth, from this document | Drafted |
 | 6 | Screenshots: 6.9-inch iPhone required (1320×2868 or 1290×2796) | Ruth | Not started. Same rule as Play: invented data only. |
 | 7 | Submit for review | Ruth | A deliberate decision |
+
+**Open with Apple, 1 October 2026.** Case **102982913077**, raised because the
+Program Enrolment purchase would not go through. Everything downstream of step
+1 is waiting on their reply: no Apple Developer account means no Sign in with
+Apple, no iOS build, no TestFlight and no App Store Connect entries. Nothing
+here is waiting on us.
+
+**What is ready for the moment it unblocks:** the App Store Connect answers
+(§7) and the App Privacy label (§8) are drafted and approved, including the
+1 October changes for Files and docs and Audio data. The name on the account
+must read **Selodía Ltd** and match Companies House and the D-U-N-S record
+exactly, which is the usual reason an organisation enrolment is rejected.
