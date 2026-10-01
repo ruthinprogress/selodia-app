@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { saveAlmanacEntry } from './almanac';
 import { coerceStatus, normaliseSection } from './me-card';
-import { coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
+import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
 
 // The conversational save (build spec, Part Ten: Insights slice 2, 2026-09-12).
 //
@@ -284,6 +284,11 @@ export function readPendingSave(profile: PendingSaveProfile | null): PendingSave
   }
   const proposal = coerceProposal(profile?.pending_save);
   return proposal ? { proposal, askedAt } : { proposal: null, askedAt: null };
+}
+
+/** Today, as the history entries record it. */
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 const TYPE_WORD: Record<SaveType, string> = {
@@ -640,8 +645,33 @@ async function mergeIntoExistingMeCard(
   const incomingItems = coerceItems(incoming.items) as MeItem[];
   const { items } = mergeItems(itemsOf(existing), incomingItems);
 
+  // THE OLD PARAGRAPH GOES TO HISTORY ONCE THERE ARE ITEMS (2026-10-01).
+  //
+  // `...existing` carries `detail` forward, and before today nothing took it
+  // away - so restating a routine in chat left the card saying BOTH things. A
+  // live probe against production, on her exact scenario:
+  //
+  //   items   Niacinamide serum | PM, after cleansing | For redness
+  //           Retinol | PM, three nights a week
+  //   detail  "Cleanser, then vitamin C serum, then moisturiser. Retinol twice
+  //            a week on alternate nights."
+  //
+  // One card, two answers, the stale one written underneath in prose. That is
+  // precisely the failure me-items.ts was written to prevent and describes in
+  // its own header; archiveProse was built for it, exported, and called by
+  // nobody. Sixth instance this week of something built and never wired up.
+  //
+  // HER RULE DECIDES WHERE IT GOES: "Archive the old prose in history, delete
+  // nothing." It is her wording about her own body and it is the only record of
+  // what she used to do, so it moves rather than disappearing.
+  //
+  // ONLY WHEN ITEMS ACTUALLY ARRIVE. A card with no items is still a card whose
+  // detail IS its content - archiving it there would empty the card.
+  const base =
+    items.length > 0 ? archiveProse(existing, todayISO()).content : existing;
+
   const next: Record<string, unknown> = {
-    ...existing,
+    ...base,
     // A restated reason replaces; an unstated one leaves hers alone.
     ...(typeof incoming.why === 'string' && incoming.why.trim() ? { why: incoming.why } : {}),
     ...(incoming.status ? { status: incoming.status } : {}),
