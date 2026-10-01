@@ -21,6 +21,18 @@ There is no staging project and no second production project. Every one of those
 domains is an alias on the same deployment, which is what keeps the app and its
 API running the same code.
 
+### Why `unflump-app.vercel.app` is still there
+
+The project was **renamed** from `unflump-app` to `selodia-app` on 4 September
+2026. A rename does not revoke an explicitly assigned alias, so that host is
+still live and still serving — **deliberately**, because any phone build from
+before the host change still calls it. `mobile/WORKFLOW.md` is the record, and
+says the thing worth repeating: removing it with `vercel alias rm` is the step
+that actually breaks those installs, and it is harder to undo than the rename
+was, because the name goes back into Vercel's pool.
+
+So leave it. It is not a leftover and it is not a second project.
+
 ## The two halves, and they ship separately
 
 This is the thing most likely to catch somebody out, and it has caught me:
@@ -59,6 +71,18 @@ That answers the only question worth asking — *what sha is serving selodia.app
 and is it `main`?* It fails if production is behind, fails if production is
 ahead, and fails if the domains have come apart onto different deployments. It
 skips, rather than failing, on a machine with no Vercel credentials.
+
+Then confirm it *works*, which is not the same question:
+
+```bash
+node scripts/smoke-production.mjs
+```
+
+Four calls on the demo account — a static page, chat, a voice session token, and
+the voice adapter. The voice session call is the only thing anywhere that proves
+`ELEVENLABS_API_KEY` is present and valid on this project; a build log never
+will. Costs a fraction of a penny in model tokens and writes two chat messages to
+the demo account.
 
 ### A manual deploy, and why to avoid it
 
