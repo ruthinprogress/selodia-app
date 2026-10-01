@@ -1339,9 +1339,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       properties: {
         type: {
           type: 'string',
-          enum: ['symptom', 'insight', 'note', 'me'],
+          enum: ['symptom', 'insight', 'note', 'me', 'week'],
           description:
-            'Where it now belongs. Use "me" whenever what they describe is a STANDING FACT about their body or how they live rather than a single observation - an ongoing sensitivity, an allergy, a routine, a supplement. A symptom is one observation on one day; a sensitivity is true next year too. Asking for it under a heading like "skincare and allergies" is asking for Me.',
+            'Where it now belongs. Use "week" when they say it belongs in their week or in Plans - "no, I want it in plans, week" is exactly this, and answering it with "me" is the mistake of 1 October. Use "me" whenever what they describe is a STANDING FACT about their body or how they live rather than a single observation - an ongoing sensitivity, an allergy, a routine, a supplement. A symptom is one observation on one day; a sensitivity is true next year too. Asking for it under a heading like "skincare and allergies" is asking for Me.',
         },
         section: {
           type: 'string',
@@ -1592,8 +1592,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     proposedSave: {
       type: 'object',
       description:
-        'Set ONLY when something in this turn is worth OFFERING to keep - as a symptom, an insight, a ME CARD, or a RULE. Do not ask the question yourself: the app adds the offer to the end of your reply. '
-        + '{"type": "symptom" | "insight" | "me" | "rule", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}, for a rule {"kind": "never" | "always", "matchTerms": [...], "advisedBy": ...}}. '
+        'Set ONLY when something in this turn is worth OFFERING to keep - as a symptom, an insight, a ME CARD, a RULE, or something in their WEEK. Do not ask the question yourself: the app adds the offer to the end of your reply. '
+        + '{"type": "symptom" | "insight" | "me" | "rule" | "week", "title": a short title in their terms, "content": for a symptom {"summary": their own words}, for an insight {"condition": ..., "expectation": ...}, for a me card {"section": ..., "why": ..., "status": ..., "detail": ...}, for a rule {"kind": "never" | "always", "matchTerms": [...], "advisedBy": ...}, for a week entry {"days": ["mon","wed"], "duration": "~60 min", "cadence": "2x/week"}}. '
+        + 'A WEEK ENTRY is an activity she does and when she does it - "add gym on Wednesday", "put yoga in my week", "I swim on Thursdays now". The title is the activity in her words ("Gym", "Rocket yoga"), days are lowercase three-letter day names, and an EMPTY days array means Anytime this week, which is a real answer for anything she does when she can. HER WEEK IS NOT HER ME TAB: the Me tab is her standing protocol and her week is the seven days on Plans that sessions are planned against. Never offer one when she asked for the other, and never tell her they are the same. '
         + 'A ME CARD is for a settled decision about how they live - a supplement, a routine, a dietary decision, a standing commitment - and its status, where it has one, must be exactly one of: Taking, Ordered, Dietary source, As needed, Active, Paused. See the Almanac section of your instructions for when each type applies. '
         + 'A RULE is a MOVEMENT CONSTRAINT: something they must never do, or something that is always fine, usually because a clinician said so or because of a condition or injury. "My surgeon said no loaded squats" is a rule; "I hate burpees" is not. kind is "never" or "always". matchTerms are the lowercase movement words the app should match against a generated plan - for "no heavy deadlifts or loaded squats" that is ["deadlift", "loaded squat", "back squat"] - and they matter, because the app uses them to physically remove movements from anything it builds, so a term that is too narrow means a rule that does not work. advisedBy is who said so, if they named anybody. '
         + 'The app stores the offer and saves it only if they say yes. NEVER save a rule silently and never treat one as agreed because it was mentioned: a rule changes what gets built for them from then on, so it is confirmed first, always. Never for a plan, a passing remark, a plain result or a one-off observation, and never while an earlier offer is still waiting.',

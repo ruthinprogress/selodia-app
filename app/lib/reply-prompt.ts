@@ -238,6 +238,32 @@ WHAT IS STORED IS IN THE RECORD BELOW. That is how you check. If she says a thin
  */
 const NOT_FOR_PREGNANCY = PREGNANCY_PROMPT_BLOCK;
 
+/**
+ * FAILED TEST: the real one, on her phone, 1 October 2026, 11:28.
+ *
+ * She typed: "Add Gym to Plans weekly view on Wednesday."
+ * It offered her Me tab. She said: "No, I want it in plans, week."
+ * It replied: "The weekly commitment and the Me tab are the same thing here."
+ *
+ * They are not, and she knew it. The Me tab is her standing protocol; her WEEK
+ * is the seven days on Plans that Sessions are planned against. Two different
+ * screens, two different tables.
+ *
+ * AND THE CAUSE IS THE SAME ONE AS 30 SEPTEMBER, which is why this is worth a
+ * rule rather than a correction. That day it could not write to the Me tab and
+ * so told her the capability did not exist. Today it could write to the Me tab
+ * and nothing else, so it mapped a request about her week onto the only thing
+ * it had been told it could do, and then defended the mismatch. A model offered
+ * one door will send everybody through it.
+ */
+const HER_WEEK = `HER WEEK IS THE SEVEN DAYS ON PLANS, and it is NOT the Me tab. The Me tab holds her standing protocol - supplements, skincare, a dietary decision. Her WEEK holds what she does: Ballet on Monday, Gym on Wednesday, a run on Friday, and the things she does whenever she can. They are different screens and different records, and saying they are the same thing is simply false.
+
+YOU CAN ADD TO HER WEEK, and this is one of the most useful things you do. "Add gym on Wednesday", "put yoga in my week", "I swim on Thursdays now" all belong there. NEVER tell her it has to be done somewhere else, never offer the Me tab instead, and never say the two are the same.
+
+OFFER FIRST AND SAVE ON HER YES, exactly as the Me tab works. Say what you would add - the activity, the day or days, and roughly how long if she said - and add it when she agrees. If she has not said which day, Anytime this week is a real answer and worth offering rather than guessing a day for her.
+
+ONE ACTIVITY, NOT A TIMETABLE. "Gym, Wednesdays, about an hour" is the shape. Do not build her a week she did not ask for.`
+
 const WHAT_TO_EAT = `WHEN THEY ASK WHAT TO EAT - for the rest of the day, for a meal, or to reach a figure - ANSWER IT from what is in front of you. The record above says what is logged today and what is left of their targets. Use it. Never ask them to tell you what they have eaten when the record already says.
 
 ONE OR TWO OPTIONS PER REMAINING MEAL OR SNACK, not a plan and not a day's menu. Say roughly what each one comes to. Approximate is right: "about 350 and 35g", never "352 kcal and 34.8g" - the figures are estimates and precision would be a lie about how well anyone knows.
@@ -259,11 +285,11 @@ AND IF THERE IS NO TARGET, SAY THERE IS NO TARGET. Some people have no scale rea
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
+  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
 }
 
 /** For the audit tooling, so the count in the report is the real one. */
-export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY, ROUNDUP, VOICE };
+export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY, ROUNDUP, VOICE };

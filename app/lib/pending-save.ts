@@ -41,8 +41,27 @@ import { coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
 // her training with nothing to point at. The offer lives in the database and
 // the model only reports whether the answer was yes - the same split as the
 // allergy gate and Focus: the model observes, the app decides.
-export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'rule';
-export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note', 'me', 'rule'];
+// WEEK ARRIVED ON 1 OCTOBER 2026, and it closes a gap that had become a trap.
+//
+// Ruth asked chat, in plain words: "Add Gym to Plans weekly view on Wednesday."
+// Chat offered to put it on her Me tab instead. She said "No, I want it in
+// plans, week." Chat replied: "The weekly commitment and the Me tab are the
+// same thing here."
+//
+// They are not. The Me tab is almanac_entries; her week is user_week, which is
+// what the Week screen reads and what Sessions are planned against. The model
+// said it because the Me tab was the only thing it had ever been told it could
+// write to - the same shape as 30 September, when it could not write to Me and
+// so denied the capability existed.
+//
+// AND THE ONLY INSERT INTO user_week IN THE WHOLE APP WAS ONBOARDING. After
+// setup, nothing could add an activity to a week: not the UI, where the day's
+// "+" only puts an EXISTING activity on another day and otherwise says
+// "Something else - tell chat", and not chat, which had no route. Her week was
+// fixed at setup for good. Adding a remove on 1 October without this made it a
+// one-way door, which is how she lost Gym.
+export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'rule' | 'week';
+export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note', 'me', 'rule', 'week'];
 
 export function coerceSaveType(v: unknown): SaveType | null {
   if (typeof v !== 'string') return null;
@@ -92,6 +111,19 @@ export function coerceProposal(v: unknown): ProposedSave | null {
   // because a name with no reason is a checklist item and Me is not a checklist.
   // The status is optional on purpose: a supplement has one, a weekly call does
   // not.
+  // A WEEK ENTRY IS AN ACTIVITY AND WHEN SHE DOES IT. The days may be empty -
+  // "Anytime this week" is a real answer and the Week screen has a place for it
+  // - so the only thing required is a name, which the title already is.
+  if (type === 'week') {
+    const days = Array.isArray(content.days)
+      ? (content.days as unknown[])
+          .filter((d): d is string => typeof d === 'string')
+          .map((d) => d.trim().toLowerCase().slice(0, 3))
+          .filter((d) => ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].includes(d))
+      : [];
+    content = { ...content, days };
+  }
+
   if (type === 'me') {
     // A SECTION IS NOT REQUIRED, AND REQUIRING IT LOST HER SKINCARE CARD.
     //
@@ -227,6 +259,7 @@ const TYPE_WORD: Record<SaveType, string> = {
   note: 'a note',
   me: 'part of their own protocol',
   rule: 'a movement rule',
+  week: 'something in their week',
 };
 
 /**
@@ -426,6 +459,40 @@ export async function commitSave(
   // to obey, and app/lib/rules-gate.ts reads it from user_rules before any plan
   // is written. Filing it as an almanac entry would make it a note about a
   // constraint rather than the constraint itself.
+  // HER WEEK IS NOT THE ALMANAC. user_week is what the Week screen reads and
+  // what Sessions are planned against; filing this as an almanac entry would
+  // make it a note ABOUT a commitment rather than the commitment.
+  if (proposal.type === 'week') {
+    const content = proposal.content as Record<string, unknown>;
+    const days = Array.isArray(content.days)
+      ? (content.days as unknown[]).filter((d): d is string => typeof d === 'string')
+      : [];
+    // LAST, so a new activity joins the end of her week rather than displacing
+    // the order she set at setup.
+    const { data: existing } = await supabase
+      .from('user_week')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1);
+    const nextOrder =
+      Array.isArray(existing) && existing.length > 0 && typeof existing[0]?.sort_order === 'number'
+        ? (existing[0].sort_order as number) + 1
+        : 0;
+    const { error } = await supabase.from('user_week').insert({
+      user_id: userId,
+      activity: proposal.title,
+      days,
+      duration: typeof content.duration === 'string' ? content.duration : null,
+      cadence: typeof content.cadence === 'string' ? content.cadence : null,
+      // NOT INVENTED. onboarding/activities.tsx leaves purpose null for the same
+      // reason: the why is what a conversation fills in, and writing one from a
+      // single sentence would put words in her mouth.
+      purpose: typeof content.purpose === 'string' ? content.purpose : null,
+      sort_order: nextOrder,
+    });
+    return error ? null : { kind: 'week', title: proposal.title };
+  }
+
   if (proposal.type === 'rule') {
     const content = proposal.content as Record<string, unknown>;
     const kind = content.kind === 'always' ? 'always' : 'never';
