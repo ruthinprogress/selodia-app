@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { OnboardingQuestion } from '@/components/onboarding-question';
 import { useOnboardingAction } from '@/components/onboarding-action';
+import { SetupChatPanel } from '@/components/setup-chat-panel';
 import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
 
@@ -33,6 +34,21 @@ import { ThemedText } from '@/components/themed-text';
 // is the route the Me tab already uses and the only one in this app where a
 // structured fact is ever written from prose.
 //
+// THE CONVERSATION HAPPENS HERE, ON THIS SCREEN (Ruth, 1 October 2026). It used
+// to `router.push('/')` into the Chat tab, which left setup with nothing to
+// bring anybody back - and bounced a brand-new user to an older screen entirely,
+// because the auth guard sends an unfinished account that lands in the tabs to
+// RESUME_ROUTE[step]. Her rule: "setup should never send someone out of the
+// flow." See components/setup-chat-panel.tsx.
+//
+// AND THE PROMISE IS NOW TRUE. This screen has always said "Selodía will read
+// back what it understood and ask you before keeping any of it", and until today
+// nothing in the server knew what to do with a medication list - no prompt rule,
+// no destination. It now goes to a Medications card on the Me tab, offered first
+// and written only on a yes, editable afterwards in chat like any other Me card.
+// See MEDICATION in reply-prompt.ts and the medication paragraph in the classify
+// tool.
+//
 // A NOTE ABOUT THE PAPERWORK, because it was a live question tonight. Ruth's
 // call, 30 September: build it, then update the privacy policy, DPIA and Play
 // Data Safety form. She is the data controller and the data subject on her own
@@ -61,26 +77,23 @@ const NEXT = '/onboarding/first-draft' as const;
 
 export default function MedicationScreen() {
   const [choice, setChoice] = useState<OptionKey | null>(null);
+  const [talking, setTalking] = useState(false);
 
   function goOn() {
-    if (choice === 'yes') {
-      // INTO CHAT WITH THE QUESTION ALREADY ASKED, so she is answering rather
-      // than working out how to begin. The sentence is hers to finish, which is
-      // why it does not auto-send.
-      router.push({
-        pathname: '/',
-        params: {
-          prefill: 'These are the things I take regularly: ',
-          fromOnboarding: '1',
-        },
-      });
+    if (choice === 'yes' && !talking) {
+      // THE PANEL OPENS ON THIS SCREEN. No navigation, so there is nothing to
+      // come back from.
+      setTalking(true);
       return;
     }
     router.push(NEXT);
   }
 
   useOnboardingAction({
-    label: 'Continue',
+    // THE BUTTON SAYS WHAT IT DOES. "Continue" on a screen that is about to open
+    // a conversation is a small lie, and it is the kind that makes somebody
+    // stop trusting buttons.
+    label: choice === 'yes' && !talking ? 'Tell Selodía' : 'Continue',
     enabled: true,
     onPress: goOn,
     secondary: { label: 'Skip for now', onPress: () => router.push(NEXT) },
@@ -94,11 +107,21 @@ export default function MedicationScreen() {
         onSelect={(key) => setChoice(key as OptionKey)}
       />
 
-      {choice === 'yes' && (
+      {choice === 'yes' && !talking && (
         <ThemedText type="small" themeColor="textSecondary">
-          The next screen is chat. Say them however you like - brand names, doses, or just what it
-          is for. Selodía will read back what it understood and ask you before keeping any of it.
+          Say them however you like - brand names, doses, or just what each one is for. Selodía
+          will read back what it understood and ask you before keeping any of it.
         </ThemedText>
+      )}
+
+      {choice === 'yes' && talking && (
+        <SetupChatPanel
+          intro="Selodía will read back what it understood and ask before keeping anything. Nothing is saved until you say yes."
+          prefill="These are the things I take regularly: "
+          placeholder="Levothyroxine 75mcg each morning, vitamin D in winter…"
+          doneLabel="Done - continue"
+          onDone={() => router.push(NEXT)}
+        />
       )}
 
       {choice === 'nothing' && (

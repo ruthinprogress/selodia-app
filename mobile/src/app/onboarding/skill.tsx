@@ -41,7 +41,7 @@ export default function SkillScreen() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) advanceOnboardingStep(supabase, user.id, 'goals');
+      if (user) advanceOnboardingStep(supabase, user.id, 'skill');
     });
   }, []);
 

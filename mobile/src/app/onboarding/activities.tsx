@@ -86,7 +86,7 @@ export default function ActivitiesScreen() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) advanceOnboardingStep(supabase, user.id, 'activity_tdee');
+      if (user) advanceOnboardingStep(supabase, user.id, 'activities');
     });
   }, []);
 

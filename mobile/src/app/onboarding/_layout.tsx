@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { OnboardingActionProvider } from '@/components/onboarding-action';
 import { OnboardingHeader } from '@/components/onboarding-header';
 import { ThemedView } from '@/components/themed-view';
+import { useRecordsStep } from '@/hooks/use-records-step';
 
 // The onboarding group's own layout, added so the progress header lives in ONE
 // place rather than being repeated across nine screens. The header sits above
@@ -12,6 +13,10 @@ import { ThemedView } from '@/components/themed-view';
 // out with each step — the point is continuity, and a header that slid away
 // with every transition would undercut it.
 export default function OnboardingLayout() {
+  // Every screen in the group records that she reached it, so resume lands on
+  // the screen she was actually on. See hooks/use-records-step.ts.
+  useRecordsStep();
+
   return (
     // The action provider wraps BOTH the header and the Stack: the screens
     // inside register the forward action, the header outside renders it. That is

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { OnboardingQuestion } from '@/components/onboarding-question';
 import { useOnboardingAction } from '@/components/onboarding-action';
+import { SetupChatPanel } from '@/components/setup-chat-panel';
 import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
 
@@ -54,39 +55,51 @@ const OPTIONS = [
 
 type OptionKey = (typeof OPTIONS)[number]['key'];
 
+const NEXT = '/onboarding/medication' as const;
+
 export default function SteerAroundScreen() {
   const [choice, setChoice] = useState<OptionKey | null>(null);
+  const [talking, setTalking] = useState(false);
+  const wantsToTalk = choice === 'injury' || choice === 'clinician';
 
   function goOn() {
-    if (choice === 'injury' || choice === 'clinician') {
-      // STRAIGHT INTO CHAT, with the question already asked. The rule gets
-      // written down when she has said what it is and confirmed it, which is
-      // the only point at which the app knows enough to write one.
-      router.push({
-        pathname: '/',
-        params: {
-          prefill:
-            choice === 'clinician'
-              ? "There's something a clinician has told me to avoid."
-              : "There's something I need to steer around.",
-          askNow: '1',
-        },
-      });
+    // THE CONVERSATION HAPPENS ON THIS SCREEN (Ruth, 1 October 2026). It used to
+    // push into the Chat tab, which left setup with no way back - and bounced a
+    // brand-new user to an older screen, because the auth guard sends an
+    // unfinished account landing in the tabs to RESUME_ROUTE[step]. The rule
+    // being written down still happens the same way: she says what it is, the
+    // app offers it, and it is kept on her yes.
+    if (wantsToTalk && !talking) {
+      setTalking(true);
       return;
     }
-    router.push('/onboarding/medication');
+    router.push(NEXT);
   }
 
   useOnboardingAction({
-    label: choice === 'injury' || choice === 'clinician' ? 'Tell Selodía' : 'Continue',
+    label: wantsToTalk && !talking ? 'Tell Selodía' : 'Continue',
     enabled: true,
     onPress: goOn,
-    secondary: { label: 'Skip for now', onPress: () => router.push('/onboarding/medication') },
+    secondary: { label: 'Skip for now', onPress: () => router.push(NEXT) },
   });
 
   return (
     <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
       <TapChoices options={OPTIONS} selected={choice ? [choice] : []} onSelect={setChoice} />
+
+      {wantsToTalk && talking && (
+        <SetupChatPanel
+          intro="Anything you name here stays out of the sessions Selodía builds for you. Nothing is kept until you have seen it written down and agreed."
+          prefill={
+            choice === 'clinician'
+              ? "There's something a clinician has told me to avoid: "
+              : "There's something I need to steer around: "
+          }
+          placeholder="No loaded squats - my surgeon said so after the knee operation…"
+          doneLabel="Done - continue"
+          onDone={() => router.push(NEXT)}
+        />
+      )}
 
       {(choice === 'injury' || choice === 'clinician') && (
         <ThemedText type="small" themeColor="textSecondary">

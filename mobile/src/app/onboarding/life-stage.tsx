@@ -56,7 +56,7 @@ export default function LifeStageScreen() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) advanceOnboardingStep(supabase, user.id, 'health_context');
+      if (user) advanceOnboardingStep(supabase, user.id, 'life_stage');
     });
   }, []);
 

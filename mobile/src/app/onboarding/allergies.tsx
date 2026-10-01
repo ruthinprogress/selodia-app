@@ -6,6 +6,7 @@ import { OnboardingQuestion } from '@/components/onboarding-question';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
+import { SetupChatPanel } from '@/components/setup-chat-panel';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import {
@@ -48,6 +49,9 @@ export default function AllergiesScreen() {
   const [chosen, setChosen] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // "Something else" opens a conversation ON THIS SCREEN rather than in the Chat
+  // tab. See components/setup-chat-panel.tsx.
+  const [talking, setTalking] = useState(false);
 
   function toggle(name: string) {
     setChosen((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
@@ -142,24 +146,29 @@ export default function AllergiesScreen() {
       <ThemedView type="backgroundElement" style={styles.elseCard}>
         <ThemedText type="small">Something else?</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Tell chat in your own words. Anything at all, however unusual, and however you say it.
+          Tell Selodía in your own words. Anything at all, however unusual, and however you say it.
         </ThemedText>
         <ThemedText
           type="small"
           themeColor="accentDeep"
-          accessibilityRole="link"
-          accessibilityLabel="Tell chat about something else, opens chat"
-          onPress={() =>
-            router.push({
-              pathname: '/',
-              params: {
-                prefill: "There's something I can't eat.",
-                askNow: '1',
-              },
-            })
-          }>
-          Tell chat
+          accessibilityRole="button"
+          accessibilityLabel="Tell Selodía about something else"
+          // ON THIS SCREEN, NOT THE CHAT TAB (Ruth, 1 October 2026). This was
+          // the third of three setup screens that pushed into the tabs with
+          // nothing to bring anybody back.
+          onPress={() => setTalking(true)}>
+          Tell Selodía
         </ThemedText>
+
+        {talking && (
+          <SetupChatPanel
+            intro="Anything at all, however unusual. It is kept as an allergy once you have agreed to it, and it never leaves without you saying so."
+            prefill="There's something I can't eat: "
+            placeholder="Nickel - it brings my eczema up. And raw celery…"
+            doneLabel="Done"
+            onDone={() => setTalking(false)}
+          />
+        )}
       </ThemedView>
 
       {failed && (

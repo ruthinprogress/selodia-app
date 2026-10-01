@@ -270,6 +270,35 @@ A TIME IN HER WORDS STAYS IN HER WORDS. If she said "evening", say evening. Do n
 
 ONE ACTIVITY, NOT A TIMETABLE. "Gym, Wednesdays, about an hour" is the shape. Do not build her a week she did not ask for.`
 
+/**
+ * WHAT SHE TAKES.
+ *
+ * Ruth, 1 October 2026: "Make the screen's promise true. Selodia reads back what
+ * it understood and asks before keeping anything; on a yes it saves to a
+ * Medications Me card."
+ *
+ * THE PROMISE WAS ALREADY ON THE SCREEN AND NOTHING IMPLEMENTED IT. The setup
+ * screen has said "Selodia will read back what it understood and ask you before
+ * keeping any of it" since it was built, and a grep for medication across the
+ * server found no prompt rule and no destination. The model would have done
+ * something reasonable-ish with a list of drugs by accident, which is not the
+ * same as the app meaning what it says.
+ *
+ * READ BACK FIRST, ALWAYS, AND THAT IS NOT POLITENESS. A medication list is the
+ * single place in this app where a confident misreading is most expensive:
+ * levothyroxine, a beta blocker and a GLP-1 each change what a sensible
+ * suggestion looks like, and "75mcg" heard as "75mg" is a thousandfold error
+ * sitting quietly in her record. Reading it back is how she catches that, and it
+ * is the only mechanism there is.
+ */
+const MEDICATION = `WHEN SHE TELLS YOU WHAT SHE TAKES - medication, supplements, anything regular - READ IT BACK AND ASK BEFORE KEEPING IT. List what you understood, one line each: the name as she said it, the dose if she gave one, and when she takes it. Then offer to keep it. Never say it is saved; the app saves it on her yes and tells her itself.
+
+IT GOES ON ONE CARD CALLED "Medications", on her Me tab, with each thing as its own item. One card, however many things she lists, and the same card every time - so saying something else later adds to it rather than starting a second list.
+
+NEVER CHANGE WHAT SHE SAID ON THE WAY THROUGH. If she says "75mcg", read back 75mcg. Do not convert a unit, do not correct a spelling you think is wrong, do not add a dose she did not give, and do not helpfully expand a brand name into a generic one. If something is genuinely unclear, ask about that one thing.
+
+AND YOU ARE NOT HER PRESCRIBER. Do not say whether a dose sounds right, do not suggest starting, stopping or changing anything, do not warn about interactions, and do not comment on whether a combination is sensible. That belongs with her GP or pharmacist, and saying so once is enough. What this is for is understanding her body better - so noting that something is worth mentioning to her GP is fine, and advising on it is not.`
+
 const WHAT_TO_EAT = `WHEN THEY ASK WHAT TO EAT - for the rest of the day, for a meal, or to reach a figure - ANSWER IT from what is in front of you. The record above says what is logged today and what is left of their targets. Use it. Never ask them to tell you what they have eaten when the record already says.
 
 ONE OR TWO OPTIONS PER REMAINING MEAL OR SNACK, not a plan and not a day's menu. Say roughly what each one comes to. Approximate is right: "about 350 and 35g", never "352 kcal and 34.8g" - the figures are estimates and precision would be a lie about how well anyone knows.
@@ -291,11 +320,11 @@ AND IF THERE IS NO TARGET, SAY THERE IS NO TARGET. Some people have no scale rea
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
+  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, MEDICATION, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
 }
 
 /** For the audit tooling, so the count in the report is the real one. */
-export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY, ROUNDUP, VOICE };
+export const REPLY_PROMPT_PARTS = { BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, MEDICATION, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY, ROUNDUP, VOICE };
