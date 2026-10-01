@@ -109,10 +109,19 @@ export default function ConsentScreen() {
               App Store asks that people are told plainly, and agree, before
               their data goes to a third-party AI - and "never shared" was not
               true of the conversation, which is sent to Claude to be answered. */}
+          {/* "THEY USE IT ONLY TO REPLY TO YOU" IS TRUE AND WAS NOT ENOUGH
+              (1 October 2026). Both are processors and neither may use her words
+              for anything else, so the sentence was not wrong - but it reads as
+              "and then it is gone", and ElevenLabs hold audio and transcripts
+              for up to 3 years. Their DPA requires the people whose voices these
+              are to be told, and this is the screen where telling happens.
+              The period is named here rather than left to the policy, because
+              this is the screen somebody actually reads. */}
           <ThemedText>
             To understand what you write or say, Selodía sends it to Claude, an AI model made by
-            Anthropic. If you use voice, what you say goes to ElevenLabs to be turned into text. They
-            use it only to reply to you.
+            Anthropic. If you use voice, what you say goes to ElevenLabs to be turned into text. Both
+            may use it only to reply to you. ElevenLabs keeps the audio and the transcript for up to
+            3 years; Claude does not keep what it is sent for training.
           </ThemedText>
 
           <ThemedText>

@@ -5,6 +5,25 @@ sentence in the app itself.
 
 ---
 
+## The account, and the clock on it
+
+A **business account on ElevenLabs' startup programme**: free for a year, with
+commercial use permitted. Two things follow.
+
+**It is what makes them a processor.** Their terms say the published DPA at
+elevenlabs.io/dpa governs **business** clients' content — so the Article 28
+relationship, the SCCs and the UK Addendum all attach through the account tier.
+That was already in the DPIA's transfers table; what was missing was *why* it
+applies to this account.
+
+**The free year ends, and three things travel with the tier:** whether the DPA
+still governs, the retention period, and whether **Zero Retention Mode** becomes
+available. ZRM is **not part of this plan** and is not enabled — it is the one
+change that would let the consent sheet say something better than "up to 3 years",
+so it is worth asking about at renewal. Recorded in DPIA section 6 as a dated
+thing to do **before** the year is out, not after; a renewal that happens quietly
+is a change of processor terms that happens quietly.
+
 ## What you confirmed
 
 Training opt-out switched **on at 20:06**, workspace setting updated. Retention
@@ -51,6 +70,23 @@ on the same form this afternoon. Apple's label gets the matching change.
 **Marked ⚠ and needs your re-approval**, like the other three rows, since you
 signed the form off on 24 September.
 
+### The onboarding consent screen
+
+Their DPA requires the people whose voices these are to be told, and this is the
+screen where telling happens. It said:
+
+> ...what you say goes to ElevenLabs to be turned into text. They use it only to
+> reply to you.
+
+True — both are processors and neither may use her words for anything else — but
+it reads as *"and then it is gone"*. Now:
+
+> ...Both may use it only to reply to you. ElevenLabs keeps the audio and the
+> transcript for up to 3 years; Claude does not keep what it is sent for training.
+
+The period is named on the screen somebody actually reads, rather than left to the
+policy.
+
 ### The privacy policy
 
 > ElevenLabs — provides speech recognition and the spoken voice, and only when you
@@ -59,7 +95,9 @@ signed the form off on 24 September.
 > models: the training opt-out is switched on. ElevenLabs retains audio and
 > transcripts for up to 3 years under their own retention policy, so what you say
 > by voice is held by them for that period even though Selodía does not keep the
-> audio itself.
+> audio itself. They act as a data processor under their published data processing
+> agreement, which means they may use what they hold only to provide the service
+> to Selodía.
 
 Live now at selodia.app/privacy.
 

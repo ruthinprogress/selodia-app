@@ -70,6 +70,13 @@ data you submit won't be used". Anything spoken before 1 October 2026 was
 submitted while it was off. On this project that is Ruth's own test voice and
 nobody else's.
 
+**Zero Retention Mode is NOT part of this plan.** It is the thing that would make
+"not retained" true, and it is not enabled, so no answer on this form or in the
+policy may say or imply it. The account is a **business account on ElevenLabs'
+startup programme, free for a year** — so **re-check this answer when the plan
+renews**, because the retention period and the availability of Zero Retention Mode
+both travel with the tier.
+
 ---
 
 ## 2. App content declarations

@@ -56,10 +56,23 @@ Selodía is a body-literacy app for women over 40. People log what they eat, how
 
 ## 3. Who it goes to, and where
 
-**ElevenLabs, settled 1 October 2026 at 20:06.** The training opt-out is on for
-this workspace, so from that date onward nothing said by voice trains their
-models. **It does not stop retention:** audio and transcripts are held by them for
-**up to 3 years**. Two consequences, both acted on rather than noted:
+**ElevenLabs, settled 1 October 2026 at 20:06.**
+
+**The account.** A **business account on ElevenLabs' startup programme** —
+**free for a year, with commercial use permitted**. That matters twice over:
+their terms say the published **DPA at elevenlabs.io/dpa governs business
+clients' content**, which is what makes them a processor under Article 28 with
+the SCCs and UK Addendum set out in the table below; and **the free year ends**,
+so the terms that attach to whatever replaces it must be read before it does.
+See section 6.
+
+**Training.** The opt-out is on for this workspace, so from that date onward
+nothing said by voice trains their models.
+
+**Retention.** It does **not** stop retention: audio and transcripts are held by
+them for **up to 3 years**. **Zero Retention Mode is not part of this plan** and
+is not enabled, so nothing anywhere may say the audio is not retained. Two
+consequences, both acted on rather than noted:
 
 - Anything spoken BEFORE 1 October 2026 was submitted while the opt-out was off.
   The setting is forward-looking - ElevenLabs' own guidance says "any new data you
@@ -204,6 +217,20 @@ notice. Reduced by reading back item by item rather than as a paragraph, and by 
 card being editable in conversation afterwards like any other.
 
 ## 6. What is not done yet
+
+### The ElevenLabs plan expires, and the terms may not survive it
+
+The startup programme is **free for one year from sign-up**. When it ends, the
+account moves onto whatever ElevenLabs' commercial terms are at that point, and
+three things in this document depend on terms that could change with it: that the
+**DPA governs** the content (it governs *business* clients' content, so a change
+of plan tier is a change of basis), the **retention period**, and whether
+**Zero Retention Mode** becomes available — which would be worth taking, because
+it is the one change that would let the voice consent sheet say something better
+than "held for up to 3 years".
+
+**Review it before the year is out, not after.** A renewal that happens quietly is
+a change of processor terms that happens quietly.
 
 | | Priority |
 | --- | --- |
