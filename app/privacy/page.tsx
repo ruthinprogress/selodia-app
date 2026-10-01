@@ -47,6 +47,44 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // the version they agreed to is not the current one, which is how "you will be
 // told in the app" below is kept.
 //
+// BROUGHT UP TO DATE 2026-10-01, and UPDATED moved, which re-asks everybody to
+// confirm. It is the right call and Ruth made it explicitly: three new kinds of
+// SPECIAL CATEGORY data had started being collected and were not named here -
+// where somebody is with the menopause, the hormones they take, and their
+// medication. Eight further categories were missing too (sleep, daily mood and
+// energy ratings, movement constraints including clinical advice, the week,
+// goals and skills, beta membership, in-app feedback, operational records) and
+// one processing activity was absent entirely: clinical documents are
+// photographed, read and discarded.
+//
+// FOUR SENTENCES IN THE DRAFT WERE NOT TRUE, found by checking each against the
+// code before applying - Ruth asked for exactly that check and it earned its
+// keep:
+//
+//   "used for nothing else" - the consent screen takes an OPTIONAL second
+//   permission for de-identified product improvement. Worse, the old text here
+//   said the data is not used "to compare you against other users" while the
+//   consent screen asks to "understand patterns across users". Two documents
+//   describing one thing and disagreeing. The permission is now described, and
+//   the honest part is that NOTHING reads research_opt_in - it is recorded and
+//   acted on by nobody.
+//
+//   "not used to decide anything about you" - too strong. The app decides what
+//   to suggest every day. The defensible claim is the Article 22 one, and it is
+//   what the DPIA already says.
+//
+//   "not used to train anybody's AI model" - evidenced for Anthropic, whose
+//   commercial terms say so. NOT evidenced for ElevenLabs, whose retention
+//   setting has been an open pre-launch item since 10 September. Narrowed to
+//   the claim that can be shown.
+//
+//   "Medication is only ever recorded after you have seen it written down" -
+//   FALSE as a statement about the record. True of the Medications CARD, which
+//   is written only on a yes. But the raw turn goes into chat_messages before
+//   any model call (route.ts, userRowWritten at the top of the turn), so a
+//   medication mentioned in passing is stored the moment Send is pressed. The
+//   sentence now says which of the two it is talking about.
+//
 // 2026-09-28: THE COMPANY'S REGISTERED PARTICULARS WERE ADDED and UPDATED was
 // deliberately LEFT AT 19 SEPTEMBER. The Companies Act and the E-Commerce
 // Regulations want the number, the place of registration and the registered
@@ -62,7 +100,7 @@ export const metadata: Metadata = {
   description: 'What Selodía collects, why, and what you can do about it.',
 };
 
-const UPDATED = '19 September 2026';
+const UPDATED = '1 October 2026';
 
 const SECTIONS: PlainSection[] = [
   {
@@ -88,16 +126,31 @@ const SECTIONS: PlainSection[] = [
         'Account: your email address, and a password held by our authentication provider as a one-way hash that nobody at Selodía can read.',
         'About you: date of birth, biological sex, height, activity level, and the goals you set.',
         'Body measurements: weight, body fat, muscle mass and metabolic rate where you record them, plus any other measurement you choose to track such as waist or resting heart rate.',
-        'Food and drink: what you log, in your own words, with the nutritional breakdown worked out from it, and any photographs you send.',
+        'Food and drink: what you log, in your own words, with the nutritional breakdown worked out from it — calories, protein, carbohydrate, fat, and the nutrients that matter most at this stage of life, including calcium, iron and sodium — and any photographs you send.',
         'Movement: activities, duration and intensity, and — only if you grant the permission — step counts, distance and exercise sessions read from your phone’s own health platform (Health Connect on Android, Apple Health on iPhone).',
         'Health context: conditions, markers and allergies you choose to disclose, and menstrual cycle dates if you record them.',
+        'Where you are with periods: whether you describe yourself as having regular periods, perimenopausal, post-menopausal, or not having periods for another reason — and the reason, if you give one.',
+        'Hormones and medication: whether you use hormonal contraception or HRT, and anything you tell Selodía you take regularly, including prescribed medicine, things bought over the counter, and supplements.',
+        'Sleep: when you slept, for how long, how it felt, and how often you woke.',
+        'How your days feel: the daily ratings you give for things like mood and energy.',
+        'Movement constraints: anything you say you must avoid, including advice a clinician has given you, so it can be kept out of what the app builds for you.',
+        'Your week and your plans: the activities in your week and when you do them, the goals you set, and the skills you are working towards.',
+        'Beta membership: whether you are in the beta, and which version of the beta agreement you accepted and when.',
+        'Feedback: anything you send through the in-app feedback form, together with which screen you were on and which version of the app you were using, so it can be reproduced.',
+        'Documents you show it: if you photograph or upload a letter or a result — for example from a clinic — the pages are sent to be read, and what Selodía understood from them is shown to you. The pages themselves are not stored. What is kept is only what you then agree to keep.',
+        'Operational records: a note of how much of the AI service each conversation used, and timings for the steps inside it, so faults and costs can be traced. These are attached to your account but contain no part of what you said.',
+        'Safety records: if Selodía has raised something with you that it thinks is worth taking to a doctor, a note that it has already been raised, so you are not asked the same thing repeatedly.',
         'Conversations: everything said in chat, including transcripts of anything spoken by voice.',
         'Saved material: plans, insights and notes kept in your Almanac, and the app’s own written observations about your readings.',
         'Device: a notification token if you turn reminders on, so a reminder can reach your phone.',
         'Error reports: if something fails on your phone, a short technical note of which part of the app failed and the error it gave, so it can be fixed. It is stored with your account.',
         'Your consent: what you agreed to on the first screen, and when, so there is a record that your health data is only held with your say-so.',
       ],
-      'Special category data. Health, and information about your menstrual cycle, are special category data under UK GDPR. They are held because you asked an app about your body to help you understand it, which is explicit consent for that specific purpose, and for no other.',
+      'Special category data. Health information is special category data under UK GDPR, and several of the things above are squarely within it: your menstrual cycle, where you are with the menopause, the hormones and medication you take, any condition you disclose, and anything a clinician has told you to avoid.',
+      'They are held on your explicit consent, given on the first screen, for one purpose: so that an app you asked about your own body can answer from your own record.',
+      'On that same screen there is a separate, optional permission: to let de-identified information about how you use Selodía help improve it and understand patterns across people using it. That is a different thing from the consent above, it is recorded separately, and you can change it in Settings at any time. Nothing is done with it today — no such use has been built. If that ever changes, you will be told before it does.',
+      'None of this is shared with any insurer, employer or advertiser. None of it is used to make an automated decision about you that has a legal or similarly significant effect: Selodía describes and suggests, and does not gate anything on what it finds. Anthropic, whose model writes the replies, states in its commercial terms that data sent through its API is not used to train its models.',
+      'Medication, and the card it is kept on. Your Medications card is only ever written after you have seen it written down: Selodía reads back what it understood and keeps nothing unless you agree to it. That is about the card. The conversation itself is saved as you type it, like every other message, so anything you mention in chat is in your record from the moment you send it. Selodía is not a prescriber: it will not tell you whether a dose is right or suggest you start, stop or change anything. That belongs with your GP or pharmacist.',
       'Data read from Apple Health or Health Connect is used only to show you your own movement. It is never used for advertising, never sold, and never shared except with the providers below to make the app work.',
     ],
   },
@@ -105,7 +158,7 @@ const SECTIONS: PlainSection[] = [
     heading: 'Why it is held',
     body: [
       'To answer you. Selodía’s whole proposition is noticing patterns in your own data over time, and a pattern needs history. A single day tells nobody anything.',
-      'It is not used to build a profile of you for anyone else, to compare you against other users, or to train any AI model. See the next section for what that means in practice.',
+      'It is not used to build a profile of you for anyone else, and it is not sold. See the next section for who it reaches and why, and the paragraph on special category data above for the one optional permission that is separate from all of this.',
     ],
   },
   {

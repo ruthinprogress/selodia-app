@@ -1,6 +1,14 @@
-# Privacy policy — proposed update, 1 October 2026
+# Privacy policy — update of 1 October 2026 (APPLIED)
 
-**DRAFT. NOT LIVE.** The policy at selodia.app/privacy is unchanged and still says
+**APPLIED 1 October 2026**, on Ruth's go-ahead, in one commit with the consent
+version. It is live at selodia.app/privacy and everybody is re-asked to confirm.
+
+**FOUR SENTENCES IN THIS DRAFT WERE NOT TRUE** and were corrected before applying
+- she asked for that check and it found them. See `docs/paperwork-review-2026-10-01.md`
+and the header of `app/privacy/page.tsx` for which, and what the live text says
+instead. The draft below is kept as written so the correction is legible.
+
+**Superseded. NOT LIVE as written —** The policy at selodia.app/privacy is unchanged and still says
 19 September. This file is the proposed replacement text, written so Ruth can read
 what would change before it goes anywhere near a user. Nothing here is published
 until she says so.

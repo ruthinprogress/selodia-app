@@ -25,7 +25,10 @@ import { supabase } from '@/lib/supabase';
 
 // The privacy policy's own "Last updated" date (app/privacy/page.tsx). Change
 // the two together: a record says which version of the policy was agreed to.
-export const PRIVACY_POLICY_VERSION = '19 September 2026';
+// MUST MATCH `UPDATED` in app/privacy/page.tsx. Moving it re-asks everybody to
+// confirm their consent, which is the whole point of the pair: 1 October 2026
+// added three new kinds of special category data to the policy.
+export const PRIVACY_POLICY_VERSION = '1 October 2026';
 
 export type ConsentAnswers = {
   coreConsent: boolean;
