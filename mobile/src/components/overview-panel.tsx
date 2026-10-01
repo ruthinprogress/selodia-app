@@ -87,6 +87,9 @@ type OverviewData = {
   todayProtein: number;
   calorieTargetKcal: number | null;
   proteinTargetLabel: string | null;
+  // WHY there is no calorie figure, when there is none. Null when there is
+  // one, or when the reason is something this row cannot help with.
+  calorieTargetBlockedBy: 'focus-unset' | null;
   activityCount: number;
   activityMinutes: number;
   // The NAMES of today's sessions, for the Movement row (Ruth, item 7:
@@ -425,6 +428,14 @@ export function OverviewPanel({
         todayKcal,
         todayProtein,
         calorieTargetKcal: calorieTarget?.targetKcal ?? null,
+        // AN UNCHOSEN FOCUS IS THE ONE MISSING INPUT SHE CAN ACTUALLY FIX.
+        // calculateCalorieTarget returns null for several reasons - no TDEE,
+        // no weight, a pregnancy hold - and only this one has an answer that
+        // belongs on Today. The others are not her job to solve from here.
+        calorieTargetBlockedBy:
+          calorieTarget == null && profile?.fat_focus_state == null && profile?.muscle_focus_state == null
+            ? 'focus-unset'
+            : null,
         proteinTargetLabel: proteinTargetLabel(proteinTarget),
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
@@ -585,7 +596,40 @@ export function OverviewPanel({
             aiming at is here. No remaining figure, no percentage, no bar,
             nothing that can read as behind. Goals are welcome and shame is not,
             and a number counting down is how shame gets in. */}
-        {data.calorieTargetKcal != null || data.proteinTargetLabel ? (
+        {/* NO CALORIE TARGET, AND THE REASON SAID OUT LOUD (Ruth, 1 October
+            2026). Her Today showed "81-97g protein" and no calorie figure, with
+            nothing to explain the gap.
+
+            IT WAS NOT TONIGHT'S REDO. The migration of 28 September dropped the
+            NOT NULL DEFAULT 'maintain' on the focus columns on purpose - "a goal
+            nobody chose stops becoming a target" - and backed the old values up.
+            Everyone's focus became unset that day and nothing has set hers
+            since, so the calorie target has been missing for three days.
+            calculateCalorieTarget returns null without it, by design.
+
+            THE DESIGN IS RIGHT AND THE SILENCE IS NOT. Not inventing a target
+            from a default she never chose is the whole point of that migration;
+            showing her nothing at all, with a goal set and no way to tell why, is
+            a different thing. Restoring the backed-up 'maintain' would undo the
+            migration rather than answer her.
+
+            NO NUMBER IS INVENTED HERE. It says what is missing and offers the
+            screen that asks her. */}
+        {data.calorieTargetKcal == null && data.calorieTargetBlockedBy === 'focus-unset' ? (
+          <Pressable
+            onPress={() => router.push({ pathname: '/onboarding/goals', params: { redo: '1' } })}
+            accessibilityRole="button"
+            accessibilityLabel="Choose what you are working towards, to get a calorie target"
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
+              {data.proteinTargetLabel ? `${data.proteinTargetLabel}g protein. ` : ''}
+              <ThemedText type="small" themeColor="accentDeep">
+                No calorie target yet — say what you are working towards.
+              </ThemedText>
+            </ThemedText>
+          </Pressable>
+        ) : data.calorieTargetKcal != null || data.proteinTargetLabel ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
             {[
               data.calorieTargetKcal != null ? `Aiming for ${data.calorieTargetKcal} kcal` : null,
