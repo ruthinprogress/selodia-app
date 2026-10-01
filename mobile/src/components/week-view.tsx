@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { byTimeOfDay, pillDetail } from '@/lib/day-time';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 import { addToWeek, moveToDays, withDay } from '@/lib/week-move';
@@ -67,7 +68,9 @@ type LoggedName = { activity_type: string | null; happened_at: string };
  */
 function previewDetail(row: WeekRow, from: string | null): string {
   if (from === ANYTIME) return [row.cadence, row.duration].filter(Boolean).join(' · ');
-  return [row.time_of_day, row.duration].filter(Boolean).join(' · ');
+  // THE SAME LINE THE PILL SHOWS, through the same function - so a carried
+  // card cannot disagree with the one it was lifted from about its own time.
+  return pillDetail(row.time_of_day, row.duration);
 }
 
 /** A place a card can be dropped, in window coordinates. */
@@ -223,7 +226,16 @@ export function WeekView({
   const walking = rows.find((r) => isWalking(r.activity)) ?? null;
   const planned = rows.filter((r) => !isWalking(r.activity));
 
-  const onDay = (key: DayKey) => planned.filter((r) => sits(r).includes(key));
+  // CHRONOLOGICAL WITHIN THE DAY (Ruth, 1 October, UI item 3). Her example:
+  // Thursday reads French 10:00 then Gym ~19:00, not whatever order the rows
+  // happen to be stored in. "The goal is not to create a calendar. The goal is
+  // to give the week a natural rhythm."
+  //
+  // THE ORDER COMES OUT OF HER OWN WORDS, derived rather than stored - see
+  // lib/day-time.ts. "Morning" sorts before "evening" without ever being shown
+  // as a clock, and anything with no time at all sorts last, so the timed things
+  // are the spine of the day.
+  const onDay = (key: DayKey) => byTimeOfDay(planned.filter((r) => sits(r).includes(key)));
   // ANYTIME HOLDS WHATEVER IS NOT ON A DAY - the ones with no days at all, and
   // under "Let me lead" the ones she has not placed yet.
   const anytime = planned.filter((r) => sits(r).length === 0);
@@ -579,17 +591,39 @@ export function WeekView({
               // be confused with each other at any size or font scale, which
               // an outline and a slightly thicker outline could.
               type={over === key ? 'accentWash' : 'background'}
-              style={[styles.dayRow, over === key && { borderColor: theme.accentDeep }]}>
+              // AN EMPTY DAY IS THINNER THAN A FULL ONE (Ruth, UI item 6:
+              // "empty days currently consume too much space... the visual
+              // emphasis should naturally fall on days containing activities").
+              //
+              // It keeps its label, its date and its "+", because an empty
+              // Thursday is a real and useful fact about her week and a day she
+              // can still drop onto. It just stops claiming the height of a day
+              // with something in it. That difference IS the emphasis - no extra
+              // weight had to be added to the busy days to get it.
+              style={[
+                styles.dayRow,
+                items.length === 0 && styles.dayRowEmpty,
+                over === key && { borderColor: theme.accentDeep },
+              ]}>
               <View style={styles.dayLabel}>
                 <View style={styles.dayName}>
                   {/* TODAY IS A DOT. Quieter than a filled row, and it says
-                      the one thing today needs to say. */}
+                      the one thing today needs to say.
+                      SAGE, NOT TERRACOTTA (Ruth, 1 October): "it reads like an
+                      alarm at the moment". She is right, and the reason is that
+                      terracotta is this app's ACTION colour - it is the "+", the
+                      chevrons, the buttons - so a small filled terracotta circle
+                      reads as something needing attention rather than as a
+                      marker. Today needs no attention; it is just where she is.
+                      Brand sage is the quiet member of the palette and carries
+                      no instruction. */}
                   {isToday && (
-                    <View style={[styles.todayDot, { backgroundColor: theme.accent }]} />
+                    <View style={[styles.todayDot, { backgroundColor: theme.sage }]} />
                   )}
-                  <ThemedText type="smallBold" themeColor={isToday ? 'accentDeep' : 'text'}>
-                    {DAY_LABEL[key]}
-                  </ThemedText>
+                  {/* AND THE LABEL GOES BACK TO ORDINARY TEXT. With the dot no
+                      longer shouting, an accentDeep day name was the louder half
+                      of the pair and did the same job twice. */}
+                  <ThemedText type="smallBold">{DAY_LABEL[key]}</ThemedText>
                 </View>
                 <ThemedText type="small" themeColor="textSecondary">
                   {shortDate(date)}
@@ -618,20 +652,36 @@ export function WeekView({
                 ))}
               </View>
 
+              {/* THE "+" SUPPORTS THE CONTENT, IT DOES NOT COMPETE WITH IT
+                  (Ruth, UI item 10). Seven of these down a page, each in
+                  full-strength terracotta at 20px, were the loudest marks on the
+                  screen - and they are the least important thing on it.
+                  Smaller, in secondary text rather than the accent, and at
+                  reduced opacity. THE TOUCH TARGET IS UNCHANGED: hitSlop still
+                  gives it 44pt, so it is quieter to look at and no harder to
+                  hit, which is the only version of "quieter" worth having. */}
               <Pressable
                 onPress={() => setAddingTo(key)}
                 accessibilityRole="button"
                 accessibilityLabel={`Add an activity to ${DAY_LABEL[key]} ${shortDate(date)}`}
                 hitSlop={Spacing.three}
-                style={({ pressed }) => pressed && styles.pressed}>
-                <Ionicons name="add" size={20} color={theme.accentDeep} />
+                style={({ pressed }) => [styles.addDay, pressed && styles.pressedStrong]}>
+                <Ionicons name="add" size={16} color={theme.textSecondary} />
               </Pressable>
             </ThemedView>
           );
         })}
 
       {/* ---- anytime ---- */}
-      <ThemedText type="sectionTitle" style={styles.anytimeHeading}>
+      {/* VISUALLY LIGHTER THAN THE SCHEDULED WEEK (Ruth, UI item 8). These are
+          "flexible intentions rather than appointments", so the heading steps
+          down from sectionTitle - which is the size the Plans segments use - to
+          the same small uppercase label the goal block uses. Same family, less
+          weight, and it stops competing with the seven days above it. */}
+      {/* SENTENCE CASE IN THE SOURCE, uppercased by the stylesheet. A literal
+          all-caps string is read out letter by letter by some screen readers;
+          textTransform changes only what is drawn. */}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.anytimeHeading}>
         Anytime this week
       </ThemedText>
       <View
@@ -646,7 +696,7 @@ export function WeekView({
         style={styles.anytimeZone}>
         {anytime.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
-            Everything has a day. Drag a card back here, or hold one and choose Anytime.
+            Everything has a day. Drag a card here to make it flexible.
           </ThemedText>
         ) : (
           <View style={styles.grid}>
@@ -675,18 +725,22 @@ export function WeekView({
         )}
       </View>
 
-      {/* ---- walking, its own card ---- */}
+      {/* ---- walking ---- */}
+      {/* ONE LINE, NOT A CARD (Ruth, UI item 7: "the Walking card is currently
+          much larger than surrounding content... it should feel like another part
+          of the week's rhythm rather than a separate feature").
+          It had a filled background, two stacked lines and its own padding, which
+          made the quietest thing in her week the biggest object on the screen.
+          Now it reads as a line of the page: the name, then the step count.
+          THE NUMBER IS STILL THE PHONE'S, and when there is none it says so
+          rather than showing a zero - a zero is a claim that nobody moved. */}
       {walking && (
-        <ThemedView type="backgroundElement" style={styles.walkCard}>
-          <ThemedText type="smallBold">{walking.activity}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {/* THE NUMBER IS THE PHONE'S, and when there is none the card says
-                so rather than showing a zero. A zero is a claim that nobody
-                has moved. */}
-            {walking.cadence ? `${walking.cadence.toLowerCase()} · ` : ''}
+        <View style={styles.walkRow}>
+          <ThemedText type="small">{walking.activity}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.walkSteps}>
             {steps == null ? 'no step count today' : `${formatSteps(steps)} steps today`}
           </ThemedText>
-        </ThemedView>
+        </View>
       )}
 
       {/* ---- the hint, and the week button ---- */}
@@ -851,6 +905,7 @@ function PlanPill({
   onPress: () => void;
 }) {
   const theme = useTheme();
+  const detail = pillDetail(row.time_of_day, row.duration);
   return (
     <Pressable
       onPress={onPress}
@@ -863,6 +918,10 @@ function PlanPill({
       // is the route that works with a screen reader, and a tap is easier to
       // find than a hold ever was.
       accessibilityRole="button"
+      // SPOKEN IN HER OWN WORDS, not the normalised clock. A screen reader
+      // saying "nineteen thirty" for a card she created by typing "7pm" is
+      // correct and unrecognisable; the 24-hour column exists to be scanned by
+      // eye, and there is nothing to scan when it is being read aloud.
       accessibilityLabel={`${row.activity}${row.time_of_day ? `, ${row.time_of_day}` : ''}${
         row.duration ? `, ${row.duration}` : ''
       }${logged ? ', logged' : ''}`}
@@ -873,15 +932,22 @@ function PlanPill({
       <ThemedView type="backgroundElement" style={styles.pill}>
         {/* A QUIET TICK, AND NOTHING WHEN THERE IS NONE. The absence says
             nothing at all - not "missed", not "0 of 2". */}
-        {logged && <Ionicons name="checkmark-circle" size={14} color={theme.accentDeep} />}
-        <View>
-          <ThemedText type="small">{row.activity}</ThemedText>
-          {/* THE TIME EARNS THE SECOND LINE ahead of the duration, because a
-              time is what makes the evening unavailable. "7pm · 1.5 hrs" when
-              she gave both; whichever she gave when she gave one. */}
-          {row.time_of_day || row.duration ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {[row.time_of_day, row.duration].filter(Boolean).join(' · ')}
+        {logged && <Ionicons name="checkmark-circle" size={13} color={theme.accentDeep} />}
+        {/* TWO LINES, AND THE SECOND ONE IS THE TIME (Ruth, UI item 5: "Gym /
+            ~09:00 • 60 mins instead of multiple rows").
+            THE TIME IS NORMALISED TO A 24-HOUR CLOCK and her own words are kept
+            when there is no clock in them - "evening" shows as evening. The
+            whole reason is scanability: a column of 19:30 and 09:00 can be read
+            down a week, and "7pm / 9.30am / 14:00" cannot. See lib/day-time.ts;
+            the database still holds exactly what she typed, and chat still
+            speaks it back in her words. */}
+        <View style={styles.pillText}>
+          <ThemedText type="small" numberOfLines={1}>
+            {row.activity}
+          </ThemedText>
+          {detail ? (
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              {detail}
             </ThemedText>
           ) : null}
         </View>
@@ -1101,7 +1167,12 @@ function AddToDaySheet({
 }
 
 const styles = StyleSheet.create({
-  block: { gap: Spacing.two },
+  // THE DENSITY PASS (Ruth, 1 October, UI item 2: "the entire week should
+  // ideally fit on one phone screen"). Spacing.two between seven day rows, a
+  // heading, a section and a footer was ~64pt of pure gap. Spacing.one halves it
+  // and the rows keep their own internal padding, so the page gets denser
+  // without anything getting tighter to read.
+  block: { gap: Spacing.one },
   card: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
@@ -1111,31 +1182,58 @@ const styles = StyleSheet.create({
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: CardRadius,
+    // Spacing.two between the label and the pills: enough to read as a column,
+    // not enough to waste a quarter of the width on a phone.
+    gap: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    // SMALLER THAN CardRadius ON PURPOSE. A 20pt radius on a 40pt-tall row is
+    // almost a stadium, and seven stadiums down a page read as seven buttons.
+    // These are lines of a diary, so the corner is barely there.
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'transparent',
-    // Room for two pills before it wraps, and it wraps rather than clipping.
-    minHeight: 52,
+    // ONE FLOOR, DOWN FROM 52. It keeps the seven days an even column when some
+    // are empty and some are not, which is what lets the week be read as a
+    // shape. 44 is a 34pt pill plus the row's own padding - the old 52 was
+    // commented as "room for two pills", which it never was: two pills and
+    // their gap come to 72 and have always wrapped.
+    minHeight: 44,
   },
   // Fixed so every day's activities start at the same x, which is what makes
   // the column read as a week rather than as seven unrelated rows.
-  dayLabel: { width: 58 },
+  // AN EMPTY DAY GIVES UP ITS HEIGHT, not its place. Item 6: the emphasis
+  // falls on the days with something in them, and it falls there because the
+  // empty ones stopped claiming the same room - nothing was added to the busy
+  // ones to achieve it.
+  dayRowEmpty: { minHeight: 30, paddingVertical: 0 },
+  dayLabel: { width: 54 },
   dayName: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   // Small, because it marks a day rather than announcing one.
   todayDot: { width: 6, height: 6, borderRadius: 3 },
-  pills: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  pills: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: CardRadius,
+    // Item 5: a shorter card. The name and the time are two short lines, and
+    // Spacing.two above and below them was making a block out of a label.
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 12,
+    // So a pill on a day and the same pill carried under her finger are the
+    // same object. Without a floor a one-line pill is visibly shorter than a
+    // two-line one and the row wobbles as times get added.
+    minHeight: 34,
   },
-  anytimeHeading: { marginTop: Spacing.three },
+  // Wraps rather than pushing the pill past the edge when an activity has a
+  // long name and a long time. Both lines are numberOfLines={1}.
+  pillText: { flexShrink: 1 },
+  anytimeHeading: {
+    marginTop: Spacing.two,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   // The whole block is the drop target, not each card, so "back to Anytime"
   // does not require her to hit a gap between two cards. The border is
   // transparent until she is over it, so nothing is drawn at rest.
@@ -1177,33 +1275,41 @@ const styles = StyleSheet.create({
     minWidth: 96,
     maxWidth: 220,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
   // Two columns. Percentage rather than a measured width so it survives a
   // rotation and a bigger font without measuring anything.
   gridCell: { width: '48.5%' },
   gridCard: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    borderRadius: CardRadius,
+    // LIGHTER THAN A SCHEDULED DAY (item 8). These are intentions, not
+    // appointments, so they lost half their height and their big radius - a
+    // 64pt card with a 20pt corner was heavier than anything in the week above.
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 12,
     gap: 2,
-    minHeight: 64,
+    minHeight: 40,
     justifyContent: 'center',
   },
   gridCardTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   gridCardName: { flexShrink: 1 },
-  walkCard: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    borderRadius: CardRadius,
-    gap: 2,
-    marginTop: Spacing.two,
+  // A LINE, NOT A CARD (item 7). No fill, no radius, no padding of its own -
+  // the name on the left and the step count on the right, sitting in the page's
+  // own rhythm like a row of a diary.
+  walkRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    marginTop: Spacing.one,
   },
+  walkSteps: { flexShrink: 1, textAlign: 'right' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.three,
-    marginTop: Spacing.three,
+    gap: Spacing.two,
+    marginTop: Spacing.two,
   },
   // AT NORMAL SIZE, which is her instruction. It used to be drawn at a size
   // nobody could read, which is the same as not showing it.
@@ -1261,5 +1367,12 @@ const styles = StyleSheet.create({
   },
   addButton: { alignItems: 'center', paddingVertical: Spacing.three, borderRadius: CardRadius },
   addButtonOff: { opacity: 0.4 },
+  // THE "+" AT REST (item 10). Quiet enough to sit under the content, and the
+  // hitSlop on the Pressable keeps the target at 44pt.
+  addDay: { opacity: 0.5 },
+  // A QUIET CONTROL NEEDS A LOUDER PRESS. Dropping an already-50% mark to 0.7
+  // of its opacity is a change nobody can see, so the "+" confirms a tap by
+  // going the other way - briefly full strength.
+  pressedStrong: { opacity: 1 },
   pressed: { opacity: 0.7 },
 });

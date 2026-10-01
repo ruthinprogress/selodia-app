@@ -404,7 +404,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: PageInset.horizontal,
     paddingTop: PageInset.top,
     paddingBottom: PageInset.bottom,
-    gap: Spacing.three,
+    // SPACING BETWEEN SECTIONS (Ruth, 1 October, UI item 2). Spacing.three
+    // between the title, the goal block, the segments and the week was 48pt of
+    // gap above the week before it started, on a page whose first success
+    // criterion is fitting on one screen. Spacing.two still separates them
+    // clearly - the week's own rows are tighter than this, so the page still
+    // reads as sections rather than one list.
+    gap: Spacing.two,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
