@@ -294,7 +294,12 @@ export function LogPlanSheet({
                 }
                 hitSlop={Spacing.two}
                 style={({ pressed }) => [styles.removeRow, pressed && styles.pressed]}>
-                <ThemedText type="small" themeColor={confirmRemove ? 'accentDeep' : 'textSecondary'}>
+                <ThemedText
+                  type="small"
+                  themeColor={confirmRemove ? 'accentDeep' : 'textSecondary'}
+                  numberOfLines={1}
+                  style={styles.removeLabel}
+                >
                   {confirmRemove ? 'Tap again to take it out' : 'Take out of my week'}
                 </ThemedText>
               </Pressable>
@@ -343,9 +348,16 @@ const styles = StyleSheet.create({
   minutes: { width: 120 },
   note: { minHeight: 88, textAlignVertical: 'top' },
   removeRow: {
-    alignSelf: 'center',
+    // FULL WIDTH, CENTRED TEXT, rather than a centred box that shrinks to its
+    // content. Ruth's screen read "Take out of my": the box took its width from
+    // the text, wrapped, and the second line was cut. A row that owns the full
+    // width cannot wrap a line this short.
+    alignSelf: 'stretch',
     paddingTop: Spacing.three,
     paddingBottom: Spacing.one,
+  },
+  removeLabel: {
+    textAlign: 'center',
   },
   moveRow: {
     flexDirection: 'row',

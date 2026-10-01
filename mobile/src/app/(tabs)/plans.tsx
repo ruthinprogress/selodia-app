@@ -70,6 +70,21 @@ export default function PlansScreen() {
   // a sibling sheet that belongs to someone else.
   const [movingPlan, setMovingPlan] = useState<PlanToLog | null>(null);
   // Bumped after anything writes, so the week reloads its ticks and its days.
+  // THE WEEK RELOADS WHEN THE SHEET CHANGES IT (1 October 2026).
+  //
+  // WeekView holds its own rows and re-reads them when weekKey changes. It
+  // already bumped weekKey through its own onChanged, which covers a drag -
+  // but anything done from the LOG SHEET is handled here, in this file, and
+  // both paths bumped `reloadKey` instead. reloadKey refreshes the rest of the
+  // screen and WeekView never sees it.
+  //
+  // So Ruth tapped twice to take Gym out, the row WAS deleted from user_week,
+  // and the card stayed on screen. From her side the only honest reading was
+  // that the feature did not work.
+  //
+  // Two keys with similar names, one passed down and one not: the kind of thing
+  // that reads as correct in review because the call is right there, just to
+  // the wrong variable.
   const [weekKey, setWeekKey] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const [rows, setRows] = useState<AlmanacRow[]>([]);
@@ -79,6 +94,7 @@ export default function PlansScreen() {
   // itself. useFocusEffect alone does not cover it: the delete happens
   // while this screen is already focused, so focus never changes.
   const [reloadKey, setReloadKey] = useState(0);
+  const [weekError, setWeekError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -221,6 +237,12 @@ export default function PlansScreen() {
                 twice. */}
             <SegmentedTabs items={PLAN_VIEWS} value={view} onChange={setView} />
 
+            {view === 'week' && weekError && (
+              <ThemedText type="small" themeColor="danger">
+                {weekError}
+              </ThemedText>
+            )}
+
             {view === 'week' && (
               <WeekView
                 reloadKey={weekKey}
@@ -271,14 +293,22 @@ export default function PlansScreen() {
             // so by the time it runs she has confirmed.
             onRemove={() => {
               const plan = loggingPlan;
+              setWeekError(null);
               setLoggingPlan(null);
               if (!plan) return;
               void (async () => {
                 try {
                   await removeFromWeek(plan.id);
+                } catch {
+                  // SAID OUT LOUD RATHER THAN SWALLOWED. Thrown inside a void
+                  // async, an error vanishes completely and the screen simply
+                  // does not change - which is indistinguishable from a feature
+                  // that does nothing.
+                  setWeekError('That did not come out. Check your connection and try again.');
                 } finally {
                   // The week is re-read either way: a failed delete must not
                   // leave the card looking gone when it is still there.
+                  setWeekKey((k) => k + 1);
                   setReloadKey((k) => k + 1);
                 }
               })();
@@ -300,6 +330,8 @@ export default function PlansScreen() {
                 try {
                   await moveToDays(plan.id, picked);
                 } finally {
+                  // Same reason as the removal: WeekView holds its own rows.
+                  setWeekKey((k) => k + 1);
                   // Reload either way: on success to show the move, on failure
                   // to show that it did not happen.
                   setWeekKey((k) => k + 1);
