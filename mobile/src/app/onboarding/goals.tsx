@@ -65,10 +65,9 @@ export default function GoalsScreen() {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const [weight, setWeight] = useState<WeightAnswer | null>(null);
-  // WHAT SHE IS SHOWN BEFORE ANYTHING IS WRITTEN. Ruth: "Show her the figures
-  // and how they were worked out before saving." Non-null means the working is
-  // on screen and the next press is the one that saves.
-  const [working, setWorking] = useState<TargetWorking | null>(null);
+  // The figures are DERIVED, not stored: see computeWorking. Holding them in
+  // state is what let them go stale against the answers on screen, and what
+  // made a second press necessary to reconcile them.
   // Her height, age, sex and activity level, for the arithmetic in the preview.
   // Read once; this screen does not change any of them.
   const [body, setBody] = useState<{
@@ -153,25 +152,43 @@ export default function GoalsScreen() {
 
   function toggle(key: GoalKey) {
     setChosen((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
-    // See the render: figures she has read must not be the figures that save
-    // after she changed the goal they were worked out from.
-    setWorking(null);
   }
 
   /**
-   * The figures and how they were reached, for showing her before saving.
+   * The figures and how they were reached, shown live as she answers.
    *
-   * NOTHING IS WRITTEN BY THIS. It is the same arithmetic the app will use, run
-   * on the answers currently on screen, so what she approves is what gets saved.
-   * Her instruction: "Show her the figures and how they were worked out before
-   * saving."
+   * THIS COST RUTH HER GOAL (2 October 2026, and it was my bug, made today).
+   *
+   * Her instruction was "show her the figures and how they were worked out before
+   * saving". I implemented that as a CONFIRM STEP: the first press of Continue
+   * computed the figures, set them in state, and RETURNED WITHOUT WRITING
+   * ANYTHING. A second press on the header button - relabelled from "Continue" to
+   * "Save this" - was what actually saved.
+   *
+   * She went through onboarding, chose her goal, typed "45 kg muscle", pressed
+   * Continue, and nothing was written. The panel that would have explained the
+   * second press renders below the goal options, the weight question AND the
+   * measure box, on a screen 1280px tall - so on a phone it was below the fold.
+   * She saw nothing change and moved on. Her goal was lost and her old one was
+   * never archived.
+   *
+   * THIS IS THE BUG I DIAGNOSED THAT MORNING AND THEN REBUILT. Splits did not save
+   * because a second required interaction rendered below the fold while the screen
+   * implied success. I wrote that up, committed it, and hours later gated a WRITE
+   * on the identical pattern.
+   *
+   * SO THE WRITE IS NEVER GATED ON A SECOND PRESS. Continue saves, once, as it
+   * always did. The figures are satisfied differently and better: they are on
+   * screen the whole time, updating as she taps, so by the time she presses
+   * anything she has already seen them. "Before saving" is a fact about what is
+   * visible, not a reason to add a gate.
    *
    * NULL MEANS THERE IS NOTHING WORTH SHOWING - no body goal chosen, or she said
-   * she does not know her weight. A preview that says "no target" is a step for
-   * nothing, so Continue just saves in that case and Today carries the one line
-   * about what is missing.
+   * she does not know her weight.
    */
   function computeWorking(): TargetWorking | null {
+    // Recomputed on every render from whatever is currently selected. See the
+    // note on `working` below for why this is no longer called on a press.
     const { fat, muscle } = focusFromGoals(chosen);
     const intent = intentFromFocus(fat, muscle);
     if (!intent) return null;
@@ -306,19 +323,8 @@ export default function GoalsScreen() {
       return;
     }
 
-    // THE FIGURES COME BEFORE THE WRITE, ONCE. First press works them out and
-    // shows them; the second press saves what she has just read. When there is
-    // nothing to show - no body goal, or no weight - it saves straight away,
-    // because a preview of "no target" is a step that asks her to approve
-    // nothing.
-    if (working == null) {
-      const next = computeWorking();
-      if (next) {
-        setWorking(next);
-        return;
-      }
-    }
-
+    // NO GATE. One press, one save, as it was before I broke it this afternoon.
+    // The figures are already on screen - see the note on computeWorking.
     setSaving(true);
     const ok = await save();
     setSaving(false);
@@ -330,10 +336,10 @@ export default function GoalsScreen() {
   }
 
   useOnboardingAction({
-    // THE LABEL SAYS WHICH PRESS THIS IS. "Continue" twice would look like the
-    // first press had not registered, which is exactly how a confirm step gets
-    // read as a bug.
-    label: saving ? 'Saving…' : working ? 'Save this' : 'Continue',
+    // ONE LABEL, BECAUSE THERE IS ONE PRESS. It said "Save this" after a first
+    // press that had saved nothing, which is a button describing a state she had
+    // no way to know she was in.
+    label: saving ? 'Saving…' : 'Continue',
     // ENABLED EVEN WITH NOTHING CHOSEN. Nothing here is required, and a
     // Continue that waits for an answer would make an optional question feel
     // compulsory. Choosing nothing is a real answer: both focuses stay unset
@@ -344,6 +350,10 @@ export default function GoalsScreen() {
   });
 
   const showMeasure = invitesMeasure(chosen);
+  // THE FIGURES, RECOMPUTED EVERY RENDER from whatever is selected right now.
+  // Derived rather than stored, so they cannot disagree with the answers above
+  // them - which is what made a second press look necessary.
+  const working = computeWorking();
 
   return (
     <ThemedView style={styles.container}>
@@ -412,13 +422,8 @@ export default function GoalsScreen() {
               any screen saying why. */}
           <WeightQuestion
             value={weight}
-            onChange={(next) => {
-              setWeight(next);
-              // THE WORKING IS DROPPED WHEN AN INPUT CHANGES. Figures she has
-              // already read must never be the figures that get saved after she
-              // changed the weight underneath them.
-              setWorking(null);
-            }}
+            // Nothing to invalidate: the figures below recompute from this.
+            onChange={setWeight}
           />
 
           {/* THE FIGURES, AND HOW THEY WERE REACHED, BEFORE ANYTHING IS SAVED.
@@ -445,7 +450,7 @@ export default function GoalsScreen() {
                 </ThemedText>
               )}
               <ThemedText type="small" themeColor="textSecondary">
-                Nothing is saved until you tap Save this.
+                Saved when you tap Continue.
               </ThemedText>
             </ThemedView>
           )}

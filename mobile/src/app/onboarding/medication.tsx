@@ -114,6 +114,24 @@ export default function MedicationScreen() {
         </ThemedText>
       )}
 
+      {/* DELIBERATE SECOND STEP, and the claim in the copy below is true.
+
+          check-continue-saves.mjs flags any screen that says "nothing is saved
+          until..." because that sentence was a lie on the goals screen - it
+          promised a Save button for a press that had already saved nothing.
+          Here the second step is the CONVERSATION: the panel reads the list
+          back and the write happens on her yes, through the confirm-first
+          proposal machinery in pending-save.ts. Nothing is stored until she
+          answers, so the sentence describes what happens.
+
+          The reason a medication list earns a read-back at all: "75mcg" heard
+          as "75mg" is a thousandfold error sitting quietly in her record, and
+          this is the one screen where a model is transcribing. The plain box on
+          "about your body" needs no read-back precisely because there is no
+          transcription - her characters are the stored characters.
+
+          This screen is off the setup chain as of 2 October; it remains
+          reachable, so its copy still has to be true. */}
       {choice === 'yes' && talking && (
         <SetupChatPanel
           intro="Selodía will read back what it understood and ask before keeping anything. Nothing is saved until you say yes."
