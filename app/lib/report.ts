@@ -179,7 +179,11 @@ export async function loadCatalogue(db: SupabaseClient, userId: string): Promise
       .select('first_name, date_of_birth, biological_sex, height_cm, activity_level', { count: 'exact' })
       .eq('user_id', userId)
       .maybeSingle(),
-    db.from('user_context').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('category', 'goal'),
+    db
+      .from('user_goals')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('archived_at', null),
     db.from('body_measurements').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     db.from('personal_metrics').select('metric_name').eq('user_id', userId),
     db
@@ -345,6 +349,19 @@ export type ReportData = {
 // stated weight or a height - the most recent statement is the true one - and
 // the alternative is a report that cannot tell a replacement from an addition
 // and prints both, which is the bug being fixed.
+/**
+ * THE NEWEST OF SEVERAL ROWS, WHICH NOTHING IN THE REPORT NEEDS ANY MORE.
+ *
+ * Kept, and kept exported, because it is the right answer to the question it was
+ * written for: pick the current goal out of `user_context`, an append-only record
+ * with no notion of "replaced". The report stopped asking that question on
+ * 2 October, when it moved to `user_goals` - which states which goals are current,
+ * so there is nothing left to infer.
+ *
+ * Not deleted, because `user_context` still exists and still has readers, and
+ * probe-current-goal.mjs documents the inference. Anything NEW should read
+ * `user_goals` instead of reaching for this.
+ */
 export function currentGoals(rows: string[]): string[] {
   const newest = rows.map(withoutChangeNote).find((g) => g.length > 0);
   return newest ? [newest] : [];
@@ -408,12 +425,25 @@ export async function loadReport(
             .maybeSingle()
         : Promise.resolve({ data: null }),
       goalsBlock
-        ? db
-            .from('user_context')
-            .select('content, updated_at')
+        ? // HER CURRENT GOALS, FROM THE TABLE THAT KNOWS WHICH ARE CURRENT.
+          //
+          // THIS READ `user_context` UNTIL 2 OCTOBER 2026, and that is why a report
+          // built today would have included "reduce body fat and get back into old
+          // jeans" - a goal she replaced in September. `user_context` is an
+          // append-only record of things she has said; it has no `archived_at`,
+          // because having one would be wrong for what that table is. It is simply
+          // the wrong place to answer "what is she working towards".
+          //
+          // The same fault was found in the first draft screen on 1 October and in
+          // the chat prompt the same day. This was the third reader still on it,
+          // and the only one nobody had looked at - because a report is something
+          // she generates occasionally rather than a screen she opens every day.
+          db
+            .from('user_goals')
+            .select('label, detail, set_on')
             .eq('user_id', userId)
-            .eq('category', 'goal')
-            .order('updated_at', { ascending: false })
+            .is('archived_at', null)
+            .order('set_on', { ascending: false })
         : none,
       bodyBlock
         ? db
@@ -560,7 +590,17 @@ export async function loadReport(
     periodLabel: sel.periodLabel,
     note: sel.note?.trim() || null,
     profile,
-    goals: currentGoals(((goalRows.data ?? []) as { content: string }[]).map((g) => g.content)),
+    // EVERY ACTIVE GOAL, NOT JUST THE NEWEST. `currentGoals` existed to pick one
+    // row out of an append-only history, which was the best available guess while
+    // the source was `user_context`. `user_goals` states which are current, and she
+    // can legitimately have more than one - "lose fat" and "learn a skill" are two
+    // answers to the same question. Taking only the newest would now HIDE a goal.
+    //
+    // withoutChangeNote stays: a label can still carry a parenthetical that
+    // narrates a change rather than stating the goal.
+    goals: ((goalRows.data ?? []) as { label: string; detail: string | null }[])
+      .map((g) => withoutChangeNote(g.label))
+      .filter((label) => label.length > 0),
     weights: ((bodyRows.data ?? []) as {
       measured_at: string;
       weight_kg: number | null;

@@ -121,14 +121,19 @@ await check('the flow opens on question 1', () => {
     /const FIRST: Href = '\/onboarding\/days'/.test(src),
     'the flow does not open on how her days feel'
   );
-  // And "redo my setup" starts there too, which is item 4: a redo is an edit mode
-  // and she must be able to review the whole flow.
+  // AND "REDO MY SETUP" IS GONE (2 October 2026). This used to assert that the
+  // redo started at question 1 - the fourth attempt to make replaying a wizard
+  // safe. Ruth's answer was to stop replaying it: every answer lives on the Body
+  // Manual, editable where it is, and nothing sends a finished account back
+  // through onboarding. So the property worth asserting is the absence.
   const profile = read('mobile/src/app/settings/profile.tsx');
   assert.ok(
-    /pathname: '\/onboarding\/days', params: \{ redo: '1' \}/.test(profile),
-    'redo my setup does not start at question 1'
+    !/label="Redo my setup"/.test(profile),
+    'the redo is back. Every fault of 1 and 2 October came from replaying a wizard ' +
+      'over answers that already existed; the Body Manual is what replaced it'
   );
-  return 'and so does redo my setup';
+  assert.ok(/<BodyManual \/>/.test(profile), 'the Body Manual is not on the profile');
+  return 'and the redo is gone, replaced by the Body Manual';
 });
 
 await check('every step resolves to a route', () => {

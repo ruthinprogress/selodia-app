@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DateOfBirthField } from '@/components/date-of-birth-field';
+import { BodyManual } from '@/components/body-manual';
 import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,7 +11,6 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ActivityLevel } from '@/lib/body-metrics';
 import { currentUserId, verifiedUser } from '@/lib/current-user';
-import { setRedoing } from '@/lib/redo-setup';
 import { supabase } from '@/lib/supabase';
 
 // PROFILE (2026-09-20). Ruth's brief: "This page does not currently exist. I'd
@@ -100,62 +100,34 @@ export default function ProfileScreen() {
     setEditing(null);
   }
 
-  // IT NO LONGER TOUCHES THE STEP AT ALL (30 September 2026), and that single
-  // deletion is the whole fix for the trap.
+  // "REDO MY SETUP" IS GONE, AND THIS IS THE WHOLE OF WHY (Ruth, 2 October 2026).
   //
-  // WHAT IT USED TO DO. It wrote `onboarding_step: 'goals'` the instant she
-  // tapped it - before she had answered one question. From that moment the
-  // account read as unfinished, and use-auth-guard sends an unfinished account
-  // sitting in the app back to RESUME_ROUTE[step]. So there was no way out of
-  // onboarding except to reach 'complete', and force-closing made it worse: the
-  // step is in the database, so the next launch read 'goals' and bounced her
-  // straight back in. Ruth, today: "LOCKED IN. Force-closing twice does not
-  // help."
+  //   "Onboarding is only once. What's the benefit of sending them back? If they
+  //   have completed the whole thing once, all the details can just go into their
+  //   profile like the rest of the details... That way we wouldn't need 'Redo my
+  //   setup' at all. Users could see their answers and choose what to update."
   //
-  // WHY NOTHING NEEDS TO REPLACE IT. Every screen in the flow saves its own
-  // answers as it goes; not one of them reads onboarding_step to decide what to
-  // do. The column's only job is resuming somebody who has not finished, and a
-  // person who finished in August is not that. And advanceOnboardingStep is
-  // forward-only, so walking the whole flow again cannot move a 'complete'
-  // account backwards either - the redo is safe from both ends.
+  // WHAT THE REDO COST OVER TWO DAYS, kept here because the history explains the
+  // removal better than any argument for it would:
   //
-  // So a redo is now exactly what the words say: the same screens, revisited,
-  // with her account still finished the entire time. Leaving halfway leaves
-  // nothing behind.
-  // IT STARTED AT STEP 6 OF 11 (Ruth, 1 October 2026, finding 1).
+  //   Her week deleted, 1 October, by the activities screen replaying itself.
+  //   The entire pre-fill machinery, which existed only to make a redo safe.
+  //   The overwrite semantics, and an exception list for allergies and rules.
+  //   A load flag that left five screens blank with a dead button and no message.
+  //   A confirm step that silently lost the goal she had just typed.
   //
-  // "'Redo my setup' opens at step 6 of 11. Steps 1 to 5 cannot be reached, so
-  // Ruth cannot review the whole flow."
+  // Every one of those is a cost of REPLAYING a wizard over answers that already
+  // exist. None of them is a cost of the answers, or of onboarding itself.
   //
-  // WHAT STEPS 1-5 ARE, since that was her question. In order: consent (Your
-  // data), account (Your account), intro (Hello), equipment (What you have),
-  // first-log (Your first log). It was NOT resuming at her first unanswered
-  // step - it has always pushed to `goals` unconditionally, because when the
-  // redo was written goals was where the interesting questions began.
+  // Three earlier attempts to mend it are in the git history of this file: it
+  // stopped writing onboarding_step on 30 September (it had been locking her into
+  // the flow), it moved from step 6 to step 3 on 1 October (steps 1-5 were
+  // unreachable, so she could not review her own setup), and it moved to question 1
+  // this morning. The fourth attempt is to delete it.
   //
-  // IT NOW STARTS AT `intro`, STEP 3, AND THAT IS NOT ALL ELEVEN. The two it
-  // still cannot show are the two that cannot be re-run from inside a signed-in
-  // app rather than ones I chose to skip:
-  //
-  //   consent happens before a session exists. It has its own re-ask, driven by
-  //   the policy version, and it fired today when the 1 October policy went
-  //   live - so it is reviewable, just not from here.
-  //   account is sign-in. Walking her through account creation while she is
-  //   signed in would be a way to break a login, not a way to review wording.
-  //
-  // So this covers steps 3 to 11, and the first-log screen is the one to watch
-  // in testing: it asks her to log something, and a redo must not leave a
-  // phantom meal behind. It has a skip, which is now labelled "Skip this
-  // question" rather than reading like the header's "Leave setup".
-  function redoSetup() {
-    // The flag is what puts "Leave setup" in the header for the whole chain; the
-    // param is left on so the first screen can tell in its own right.
-    setRedoing(true);
-    // AT QUESTION 1, WITH HER ANSWERS SHOWING. Item 4: a redo is an edit mode.
-    // It used to open on `intro`, which has gone, and before that on step 6 -
-    // which is how she could not review the first half of her own setup.
-    router.push({ pathname: '/onboarding/days', params: { redo: '1' } });
-  }
+  // ONBOARDING IS UNTOUCHED. Seven questions, taps only, then chat, exactly as she
+  // approved it. It still runs for a new account and still resumes a half-finished
+  // one. The only change is that nothing sends a finished account back into it.
 
   const dob = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;
   const sexLabel = profile?.biological_sex
@@ -284,31 +256,19 @@ export default function ProfileScreen() {
           goals, from the same user_context rows, now render above everything
           else in Plans, beside the tapped ones that set the targets. */}
 
-      {/* REDO MY SETUP (Ruth, 29 September 2026), so somebody who onboarded
-          before the tap spine existed can walk it.
+      {/* THE BODY MANUAL. Her design: every answer she has given, in one place,
+          live, collapsed, below Personal details. See lib/body-manual.ts for the
+          reasoning and components/body-manual.tsx for what it draws.
 
-          IT NEVER DELETES A LOG. Her words, and the distinction the whole
-          feature turns on: setup is what she has DECIDED - goals, week, rules,
-          life stage, allergies - and a log is what HAPPENED. Redoing a decision
-          is ordinary; losing a month of meals because you wanted to change a
-          goal is not, and an app that could do the second by accident is one
-          nobody would risk tapping.
+          IT IS A VIEW OF THE SAME ROWS, NOT A COPY OF THEM. There is no
+          body_manual table and nothing is synced. Adding an allergy in chat shows
+          up here immediately, because here IS the allergies table. Her own rule,
+          from the Skills brief: "this team has already built a second system for
+          something that existed."
 
-          It only moves the onboarding step back. Every screen in the spine
-          replaces its own answers when it saves, and the ones that must not be
-          replaced - allergies, and anything said in chat - upsert instead. So
-          walking it again updates, and nothing here has to know which is
-          which. */}
-      <SettingsGroup title="Setup">
-        <SettingsRow
-          first
-          icon="refresh-outline"
-          label="Redo my setup"
-          detail="Walk through the questions again. Your logs are never touched"
-          onPress={() => void redoSetup()}
-        />
-      </SettingsGroup>
-
+          The setup screens are now reached one at a time, from the row that owns
+          the question, instead of being walked through in order. */}
+      <BodyManual />
 
       <ThemedView type="backgroundElement" style={[styles.signOutNote, { borderColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
