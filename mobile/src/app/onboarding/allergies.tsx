@@ -81,7 +81,7 @@ import { supabase } from '@/lib/supabase';
 
 const QUESTION = 'Anything to steer around?';
 const SUBTITLE =
-  'Tap what applies. Only the first group changes what you are offered to eat; the rest are so Selodía knows.';
+  'Tap what applies, and add anything else in your own words. Only the first group changes what you are offered to eat.';
 
 /**
  * THE GROUPS, AND THE KIND EACH ONE WRITES.
@@ -145,6 +145,10 @@ export default function AllergiesScreen() {
   /** Her own words, per group. Saved on blur, exactly as typed. */
   const [boxes, setBoxes] = useState<Record<string, string>>({});
   const [boxState, setBoxState] = useState<Record<string, 'saving' | 'saved' | 'failed'>>({});
+  /** Movements already excluded, shown so she can see what is in force. */
+  const [rules, setRules] = useState<string[]>([]);
+  /** Her "something else" lines, already on the Avoid card. */
+  const [avoids, setAvoids] = useState<string[]>([]);
 
   useEffect(() => {
     let live = true;
@@ -160,6 +164,24 @@ export default function AllergiesScreen() {
       if (!live || error) return;
       const rows = (data ?? []) as Saved[];
       setSaved(rows);
+
+      // ITEM 4 AGAIN: what is already in force, shown rather than implied.
+      // Her exception covers movement rules too, so these are listed with
+      // their own Remove rather than offered as something to untick.
+      const [{ data: ruleRows }, { data: avoidCard }] = await Promise.all([
+        supabase.from('user_rules').select('phrase').eq('user_id', user.id).eq('kind', 'never'),
+        supabase
+          .from('almanac_entries')
+          .select('content')
+          .eq('user_id', user.id)
+          .eq('kind', 'me')
+          .eq('title', 'Avoid')
+          .maybeSingle(),
+      ]);
+      if (!live) return;
+      setRules((ruleRows ?? []).map((r) => String(r.phrase)));
+      const avoidItems = (avoidCard?.content as { items?: { name?: string }[] })?.items;
+      setAvoids(Array.isArray(avoidItems) ? avoidItems.map((i) => String(i?.name ?? '')).filter(Boolean) : []);
       // ITEM 4: SHOWN AS SELECTED. Only the ones this screen offers as a chip -
       // "sardines", typed in chat, has no chip and appears in the saved list
       // below instead, where it can still be removed.
@@ -173,6 +195,115 @@ export default function AllergiesScreen() {
 
   function toggle(name: string) {
     setChosen((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
+  }
+
+  /**
+   * A MOVEMENT TO LEAVE OUT, WRITTEN AS A RULE.
+   *
+   * Ruth, item 5: "movements to leave out of sessions (rules)" is one of the
+   * groups. They are NOT allergies - a movement in the allergies table would be a
+   * food restriction named "overhead press" - so this writes user_rules, which is
+   * what the rules gate reads before anything is built for her.
+   *
+   * match_terms IS NOT OPTIONAL, and this is the trap it avoids. The gate's
+   * enforcement layer filters `kind === 'never' && matchTerms.length > 0`, so a
+   * rule stored with no terms is silently ignored by the code that removes
+   * exercises. She would have typed "no overhead press", seen "Saved.", and been
+   * given overhead presses. The leading refusal is stripped - "no", "avoid",
+   * "not" - and what remains becomes the term, which is exactly the fallback
+   * pending-save.ts already uses for a rule from chat: a poor matcher and an
+   * honest one.
+   *
+   * A TYPED BOX IS DIFFERENT FROM A TAPPED CHIP, which is why this may save
+   * without a conversation. The old steer-around screen deliberately saved
+   * nothing, and was right to: tapping "an injury or a condition" names nothing,
+   * so storing anything from it would have let her believe the app knew about her
+   * shoulder. A sentence she typed names the thing.
+   */
+  async function saveRule(groupKey: string) {
+    const text = (boxes[groupKey] ?? '').trim();
+    if (!text) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setBoxState((st) => ({ ...st, [groupKey]: 'saving' }));
+
+    const term = text
+      .toLowerCase()
+      .replace(/^(no|not|never|avoid|skip|leave out)\b[:,\s]*/i, '')
+      .trim();
+    const { error } = await supabase.from('user_rules').insert({
+      user_id: user.id,
+      kind: 'never',
+      phrase: text,
+      match_terms: [term || text.toLowerCase()],
+      source: 'setup',
+      // SHE TYPED IT HERE, DELIBERATELY, which is the confirmation. The column
+      // records that a person stated it rather than a model inferred it.
+      confirmed_at: new Date().toISOString(),
+    });
+    if (error) {
+      setBoxState((st) => ({ ...st, [groupKey]: 'failed' }));
+      return;
+    }
+    setBoxState((st) => ({ ...st, [groupKey]: 'saved' }));
+    setRules((prev) => [...prev, text]);
+    setBoxes((b) => ({ ...b, [groupKey]: '' }));
+  }
+
+  /**
+   * ANYTHING ELSE, STRAIGHT INTO ME UNDER AVOID.
+   *
+   * Ruth, items 5 and 6: a final "Something else" whose answer goes to "Me under
+   * Avoid". Not an allergy, because it is not known to be edible and must not arm
+   * the food filter; not a rule, because it names no movement. One card called
+   * Avoid, appended to, so saying two things does not make two cards.
+   */
+  async function saveAvoid(groupKey: string) {
+    const text = (boxes[groupKey] ?? '').trim();
+    if (!text) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setBoxState((st) => ({ ...st, [groupKey]: 'saving' }));
+
+    const { data: existing } = await supabase
+      .from('almanac_entries')
+      .select('id, content')
+      .eq('user_id', user.id)
+      .eq('kind', 'me')
+      .eq('title', 'Avoid')
+      .maybeSingle();
+
+    const current = Array.isArray((existing?.content as { items?: unknown })?.items)
+      ? ((existing!.content as { items: unknown[] }).items as { name: string }[])
+      : [];
+    // EXACTLY AS TYPED. Her sentence is the item's name. No parsing and no model
+    // deciding what she meant.
+    const items = [...current, { name: text, when: null, purpose: null }];
+
+    const { error } = existing
+      ? await supabase
+          .from('almanac_entries')
+          .update({ content: { items }, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+      : await supabase.from('almanac_entries').insert({
+          user_id: user.id,
+          kind: 'me',
+          title: 'Avoid',
+          category: 'Avoid',
+          content: { items },
+        });
+
+    if (error) {
+      setBoxState((st) => ({ ...st, [groupKey]: 'failed' }));
+      return;
+    }
+    setBoxState((st) => ({ ...st, [groupKey]: 'saved' }));
+    setAvoids((prev) => [...prev, text]);
+    setBoxes((b) => ({ ...b, [groupKey]: '' }));
   }
 
   /** One typed line, saved as itself. No model, no confirm step. */
@@ -306,6 +437,70 @@ export default function AllergiesScreen() {
           />
         </ThemedView>
       ))}
+
+      {/* MOVEMENTS TO LEAVE OUT OF SESSIONS. Her fourth section.
+          NO CHIPS HERE, DELIBERATELY. The old steer-around screen offered
+          "An injury or a condition" as a tap and then saved nothing, because a
+          tap like that names nothing and storing anything from it would let her
+          believe the app knew about her shoulder. A sentence names the thing, so
+          this group is a box and only a box. */}
+      <ThemedView style={styles.group}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+          Movements to leave out of sessions
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Anything your body will not thank you for, or that a clinician has told you to avoid. It
+          stays out of everything Selodía builds for you.
+        </ThemedText>
+        <SetupTextField
+          label="What should stay out?"
+          placeholder="No overhead pressing, my left shoulder"
+          value={boxes.movements ?? ''}
+          onChangeText={(t) => {
+            setBoxes((b) => ({ ...b, movements: t }));
+            setBoxState((st) => ({ ...st, movements: undefined as never }));
+          }}
+          onSave={() => void saveRule('movements')}
+          saving={boxState.movements === 'saving'}
+          saved={boxState.movements === 'saved'}
+          failed={boxState.movements === 'failed'}
+        />
+        {rules.length > 0 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            Already staying out: {rules.join('; ')}
+          </ThemedText>
+        )}
+      </ThemedView>
+
+      {/* AND ANYTHING ELSE, which goes to Me under Avoid. Her fifth group.
+          NOT AN ALLERGY, because nothing says it is edible and it must not arm the
+          food filter; not a rule, because it names no movement. */}
+      <ThemedView style={styles.group}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+          Something else
+        </ThemedText>
+        <SetupTextField
+          label="Anything else to steer around?"
+          placeholder="Loud gyms. Early mornings."
+          value={boxes.avoid ?? ''}
+          onChangeText={(t) => {
+            setBoxes((b) => ({ ...b, avoid: t }));
+            setBoxState((st) => ({ ...st, avoid: undefined as never }));
+          }}
+          onSave={() => void saveAvoid('avoid')}
+          saving={boxState.avoid === 'saving'}
+          saved={boxState.avoid === 'saved'}
+          failed={boxState.avoid === 'failed'}
+        />
+        <ThemedText type="small" themeColor="textSecondary">
+          Kept on your Me tab, under Avoid, in your words.
+        </ThemedText>
+        {avoids.length > 0 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            Already there: {avoids.join('; ')}
+          </ThemedText>
+        )}
+      </ThemedView>
 
       {/* WHAT IS ALREADY KEPT, AND THE ONLY WAY TO TAKE SOMETHING OUT.
           Her exception for item 4: these come out by an explicit tap, never by

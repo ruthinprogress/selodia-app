@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOnboardingAction } from '@/components/onboarding-action';
@@ -347,7 +348,12 @@ export default function GoalsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          // Room for the next thing below the field, so it never sits
+          // flush against the top of the keyboard.
+          bottomOffset={24}>
           <ThemedText type="sectionTitle">{QUESTION}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {SUBTITLE}
@@ -453,7 +459,7 @@ export default function GoalsScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             All of this lives in Plans afterwards, and changes whenever you say so in chat.
           </ThemedText>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </ThemedView>
   );

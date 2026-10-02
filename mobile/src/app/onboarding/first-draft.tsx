@@ -37,9 +37,36 @@ type Draft = {
   week: string[];
   skills: string[];
   rules: string[];
-  allergies: string[];
+  // GROUPED BY KIND, BECAUSE ONE LIST PUT NICKEL ON HER PLATE.
+  //
+  // Ruth, item 5 of 2 October: "Allergies grouped by KIND in setup, draft and
+  // Me... Nickel and hay fever must not appear under 'your plate'." The draft
+  // listed every row in the allergies table under "Staying off your plate",
+  // so her nickel and her seasonal allergy were both shown as food she avoids.
+  //
+  // The setup screen was fixed first and this was the other half: the screen
+  // that exists to prove the app heard her correctly was proving the opposite.
+  allergiesFood: string[];
+  allergiesSkinAir: string[];
+  allergiesMedicine: string[];
   targetLine: string | null;
 };
+
+/**
+ * The stored rows of one or more kinds, in her words, capitalised.
+ *
+ * A ROW WITH NO KIND COUNTS AS FOOD, matching `filtersFood` on the server: an
+ * unexplained allergy is treated as edible, and the draft must describe what
+ * the app will do rather than what would read more tidily.
+ */
+function byKind(rows: unknown, kinds: string[]): string[] {
+  const list = Array.isArray(rows) ? (rows as { name?: unknown; kind?: unknown }[]) : [];
+  return list
+    .filter((r) => kinds.includes(typeof r.kind === 'string' ? r.kind : 'other'))
+    .map((r) => String(r.name ?? ''))
+    .filter(Boolean)
+    .map((name) => name.charAt(0).toUpperCase() + name.slice(1));
+}
 
 export default function FirstDraftScreen() {
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -106,12 +133,17 @@ export default function FirstDraftScreen() {
           // stored as 'never' because there was no third kind until today.
           .filter((r) => r.kind === 'never')
           .map((r) => r.phrase),
-        // SHOWN BACK IN THE SAME WORDS THEY WERE STORED IN, capitalised only.
-        // A woman who has just told the app she is coeliac should be able to
-        // see that it heard her, on the screen that exists to prove it did.
-        allergies: ((allergyRes.data ?? []) as { name: string }[]).map(
-          (a) => a.name.charAt(0).toUpperCase() + a.name.slice(1)
-        ),
+        // SHOWN BACK IN THE SAME WORDS THEY WERE STORED IN, capitalised only,
+        // and UNDER THE HEADING THAT MATCHES THE KIND. A woman who has just told
+        // the app she is coeliac should see that it heard her; a woman who said
+        // nickel should not be told it is staying off her plate.
+        //
+        // 'other' sits with food because that is what the food filter does with
+        // it - an unexplained allergy is conservatively treated as edible, so the
+        // heading says what the app will actually act on.
+        allergiesFood: byKind(allergyRes.data, ['food', 'other']),
+        allergiesSkinAir: byKind(allergyRes.data, ['contact', 'environmental']),
+        allergiesMedicine: byKind(allergyRes.data, ['medicine']),
         // THE TARGETS ARE DESCRIBED, NOT NUMBERED, on this screen. A calorie
         // figure needs a weight and a TDEE, and onboarding has not necessarily
         // got either yet. Saying what has been set is true; printing a number
@@ -170,9 +202,19 @@ export default function FirstDraftScreen() {
       <Section title="Staying out of your sessions" items={draft.rules} />
       <Section
         title="Staying off your plate"
-        items={draft.allergies}
+        items={draft.allergiesFood}
         emptyNote="Nothing recorded. Say anything in chat and it will show here."
       />
+      {/* ONLY WHEN THERE IS SOMETHING. An empty "Skin and air" heading on every
+          draft would be listing what is empty, which is the commonest way this
+          app has annoyed her. Food keeps its empty note because that section is
+          the one the screen exists to prove. */}
+      {draft.allergiesSkinAir.length > 0 && (
+        <Section title="Skin and air" items={draft.allergiesSkinAir} />
+      )}
+      {draft.allergiesMedicine.length > 0 && (
+        <Section title="Medicines you react to" items={draft.allergiesMedicine} />
+      )}
       <Section
         title="Your targets"
         items={draft.targetLine ? [draft.targetLine] : []}

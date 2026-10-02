@@ -873,7 +873,7 @@ export default function ReportScreen() {
                   <Checkbox
                     checked={whole.has('water')}
                     onToggle={() => setWhole((s) => toggled(s, 'water'))}
-                    label="Hydration — every drink and its volume, day by day"
+                    label="Hydration: every drink and its volume, day by day"
                   />
                 )}
               </View>
@@ -890,7 +890,7 @@ export default function ReportScreen() {
                 <Checkbox
                   checked={whole.has('sleep')}
                   onToggle={() => setWhole((s) => toggled(s, 'sleep'))}
-                  label="Sleep — the nights you described"
+                  label="Sleep: the nights you described"
                 />
               </View>
             </SettingsGroup>

@@ -110,7 +110,7 @@ function requestIOSStepPermission(): Promise<StepPermissionResult> {
             if (!hasData) {
               console.log(
                 'STEP PERMISSION (ios): no step samples in the last 7 days. ' +
-                  'Either access was refused or there genuinely are none — iOS does not say which.'
+                  'Either access was refused or there genuinely are none. iOS does not say which.'
               );
             }
             resolve(hasData ? 'granted' : 'unknown');
