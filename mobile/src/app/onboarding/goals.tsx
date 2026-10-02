@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ButtonRadius, MaxContentWidth, Spacing } from '@/constants/theme';
+import { ButtonRadius, CardRadius, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { WeightQuestion, type WeightAnswer } from '@/components/weight-question';
 import { explainTarget, intentFromFocus, type TargetWorking } from '@/lib/body-intent';
@@ -65,6 +65,8 @@ export default function GoalsScreen() {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const [weight, setWeight] = useState<WeightAnswer | null>(null);
+  /** Goals she already has that no chip can represent. Shown, not hidden. */
+  const [existing, setExisting] = useState<string[]>([]);
   // The figures are DERIVED, not stored: see computeWorking. Holding them in
   // state is what let them go stale against the answers on screen, and what
   // made a second press necessary to reconcile them.
@@ -113,11 +115,14 @@ export default function GoalsScreen() {
         // ITEM 4: A REDO SHOWS WHAT SHE ALREADY CHOSE. Her own onboarding rows,
         // so a goal added in chat is not shown as a chip this screen could
         // then overwrite.
+        // SAME SCOPING FAULT, SAME FIX. Reading only onboarding rows meant a
+        // woman whose goals came from chat opened this screen with nothing
+        // selected and no sign that she had any goals at all - and then her
+        // answer replaced something the screen had never shown her.
         supabase
           .from('user_goals')
-          .select('goal_key, detail')
+          .select('goal_key, detail, label')
           .eq('user_id', user.id)
-          .eq('source', 'onboarding')
           .is('archived_at', null),
       ]);
       const { data: measured } = await supabase
@@ -142,6 +147,16 @@ export default function GoalsScreen() {
         .map((r) => r.goal_key as GoalKey)
         .filter((k) => GOAL_OPTIONS.some((o) => o.key === k));
       if (keys.length > 0) setChosen(keys);
+      // A GOAL IN HER OWN WORDS HAS NO CHIP TO LIGHT UP. Hers reads "Reach 25%
+      // body fat and 40 kg muscle mass", which no tap can represent. Saying so is
+      // the difference between a screen that looks blank and a screen that tells
+      // her what it is about to replace.
+      setExisting(
+        (goalRows ?? [])
+          .filter((r) => !GOAL_OPTIONS.some((o) => o.key === r.goal_key))
+          .map((r) => String(r.label ?? ''))
+          .filter(Boolean)
+      );
       const detail = (goalRows ?? []).find((r) => typeof r.detail === 'string' && r.detail)?.detail;
       if (typeof detail === 'string') setMeasure(detail);
     })();
@@ -245,12 +260,32 @@ export default function GoalsScreen() {
     //
     // Plans and the first draft read `archived_at is null`, so an archived goal
     // leaves them immediately and only the current one is ever shown.
+    // IT ONLY ARCHIVED ITS OWN ROWS, AND HERS CAME FROM CHAT (2 October 2026).
+    //
+    // Ruth: "I went through the onboarding and purposefully selected 45KG muscle
+    // only... it should have replaced my old one and added my old goal to almanac
+    // as under Goal History tag." It did not, and this is why: the filter was
+    // `source = 'onboarding'`, and BOTH her goals are `source = 'chat'`. So her
+    // September goal was never going to be archived by this screen, whatever she
+    // chose - she would have ended up with two active goals and the old one still
+    // showing in Plans.
+    //
+    // THE ORIGINAL SCOPING WAS RIGHT FOR A WIZARD AND IS WRONG FOR THIS. Its
+    // reasoning was sound: "anything that arrived through chat is in her words and
+    // was not part of this question", which is true of a setup flow replaying its
+    // own answers. It is not true now. This screen is reached from one place - the
+    // Body Manual's "Your body goal" row, which shows EVERY active goal - and
+    // "Change this" means change what is shown. Leaving a goal she can see on that
+    // row unarchived is the screen ignoring half of what it displayed.
+    //
+    // NOTHING IS LOST BY WIDENING IT. An archived goal keeps its row, keeps its
+    // dates, and the goal_archived_to_almanac trigger writes it to her Almanac
+    // under the Goals tag - which is exactly the behaviour she described wanting.
     const archivedAt = new Date().toISOString();
     const { error: clearError } = await supabase
       .from('user_goals')
       .update({ archived_at: archivedAt })
       .eq('user_id', user.id)
-      .eq('source', 'onboarding')
       .is('archived_at', null);
     if (clearError) return false;
 
@@ -369,6 +404,26 @@ export default function GoalsScreen() {
             {SUBTITLE}
           </ThemedText>
 
+          {/* WHAT SHE ALREADY HAS, when no chip can show it. Her goal reads
+              "Reach 25% body fat and 40 kg muscle mass" and no tap represents
+              that, so without this line the screen looks like she has never set
+              one - and then quietly replaces it. */}
+          {existing.length > 0 && (
+            <ThemedView type="backgroundElement" style={styles.measureCard}>
+              <ThemedText type="small" themeColor="textSecondary">
+                What you have now
+              </ThemedText>
+              {existing.map((label) => (
+                <ThemedText key={label} type="small">
+                  {label}
+                </ThemedText>
+              ))}
+              <ThemedText type="small" themeColor="textSecondary">
+                Choosing below replaces this. The old one is kept, dated, in your Almanac.
+              </ThemedText>
+            </ThemedView>
+          )}
+
           <View style={styles.options}>
             {GOAL_OPTIONS.map((option) => {
               const on = chosen.includes(option.key);
@@ -461,6 +516,30 @@ export default function GoalsScreen() {
             </ThemedText>
           )}
 
+          {/* A SAVE WHERE SHE FINISHES READING (2 October 2026).
+              The forward action lives in the header, at the top. That is fine on a
+              short screen and wrong on this one: goals, then the measure, then the
+              weight question, then a panel explaining her targets that ends
+              "Saved when you tap Continue" - with no Continue anywhere near it.
+              Ruth read to the bottom of exactly that and her goal was not saved.
+              The header button stays; this is the same action, where the sentence
+              that mentions it is. */}
+          <Pressable
+            onPress={() => void goOn(false)}
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel={saving ? 'Saving' : 'Continue'}
+            accessibilityState={{ disabled: saving }}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedView
+              type={saving ? 'backgroundElement' : 'backgroundSelected'}
+              style={styles.bottomAction}>
+              <ThemedText type="smallBold" themeColor={saving ? 'textSecondary' : 'accentDeep'}>
+                {saving ? 'Saving…' : 'Continue'}
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+
           <ThemedText type="small" themeColor="textSecondary">
             All of this lives in Plans afterwards, and changes whenever you say so in chat.
           </ThemedText>
@@ -497,9 +576,17 @@ const styles = StyleSheet.create({
     borderRadius: ButtonRadius,
     borderWidth: 1,
   },
+  // CardRadius, NOT ButtonRadius. ButtonRadius is 999, which is how you make a
+  // pill out of something one line tall and how you make a BLOB out of anything
+  // taller: the corners round until they meet and the card becomes an ellipse.
+  // Ruth's screenshots of 2 October show it on the weight question and on the
+  // panel that explains her targets - two enormous ovals with text inside them.
+  //
+  // It was invisible to me because I never loaded the screen. A 999 radius reads
+  // as "fully rounded" in source and says nothing about the shape it makes.
   measureCard: {
     padding: Spacing.four,
-    borderRadius: ButtonRadius,
+    borderRadius: CardRadius,
     gap: Spacing.three,
   },
   measureInput: {
@@ -508,6 +595,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
+  },
+  bottomAction: {
+    paddingVertical: Spacing.three,
+    borderRadius: ButtonRadius,
+    alignItems: 'center',
   },
   pressed: { opacity: 0.7 },
 });

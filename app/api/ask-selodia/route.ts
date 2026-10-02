@@ -2973,7 +2973,42 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       const kept = await commitSave(supabase, user.id, note);
       saveNote = saveAppliedNote(kept, true);
       if (kept) savedAlmanac = kept;
-    } else if (!pendingSave.proposal) {
+    } else {
+      // AN OFFER SHE HAS MOVED PAST IS NOT WAITING FOR AN ANSWER (2 October 2026).
+      //
+      // THE EXACT FAILURE. At 13:47 chat offered to keep Ruth's muscle up as an
+      // insight. She never answered it. At 18:32 she typed "Add a muscle up", the
+      // model correctly proposed a SKILL, and the app threw it away - because the
+      // branch here read `!pendingSave.proposal` and an offer had been waiting for
+      // three hours and fifty-two minutes. The model then said "Done." and she was
+      // told her muscle up was already on her Skills list. Nothing had been
+      // written. That is the third time today she has been told something was
+      // saved when it was not.
+      //
+      // TWO JOBS WERE SHARING ONE WINDOW. PENDING_TTL_HOURS is 48, and for its
+      // own job that is defensible: it decides how long a "yes" may still be
+      // applied to the thing that was offered. For deciding whether to make a NEW
+      // offer it is badly wrong - one unanswered question gags the app for two
+      // days.
+      //
+      // SO A TURN THAT DOES NOT ANSWER IT ENDS IT. Reaching this branch means the
+      // model set no saveAnswer, which the prompt defines precisely: "a new topic,
+      // a log, a different question - is NOT an answer". She moved on, so the
+      // question is over. It is cleared here and a new offer may be stored on this
+      // same turn, because making her ask twice for something she just asked for
+      // is the behaviour this is fixing.
+      //
+      // The yes-handling above is untouched: an answer is still an answer, and
+      // still applies to what was offered.
+      if (pendingSave.proposal) {
+        await clearPendingSave(supabase, user.id);
+        console.log(
+          'PENDING SAVE: dropped unanswered —',
+          JSON.stringify({ type: pendingSave.proposal.type, title: pendingSave.proposal.title })
+        );
+        pendingSave = { proposal: null, askedAt: null };
+      }
+
       // A new offer is stored only when none is waiting: one question at a time.
       const proposal = coerceProposal(result.proposedSave);
       // WHY AN OFFER DID NOT HAPPEN, recorded rather than inferred.

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ButtonRadius, Spacing } from '@/constants/theme';
+import { ButtonRadius, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // ROUGHLY WHAT DO YOU WEIGH? No scales, a guess is fine, and a way to say no.
@@ -216,7 +216,15 @@ export function WeightQuestion({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: Spacing.four, borderRadius: ButtonRadius, gap: Spacing.three },
+  // CardRadius, NOT ButtonRadius. ButtonRadius is 999, which is how you make a
+  // pill out of something one line tall and how you make a BLOB out of anything
+  // taller: the corners round until they meet and the card becomes an ellipse.
+  // Ruth's screenshots of 2 October show it on the weight question and on the
+  // panel that explains her targets - two enormous ovals with text inside them.
+  //
+  // It was invisible to me because I never loaded the screen. A 999 radius reads
+  // as "fully rounded" in source and says nothing about the shape it makes.
+  card: { padding: Spacing.four, borderRadius: CardRadius, gap: Spacing.three },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' },
   chip: {
     paddingVertical: Spacing.two,

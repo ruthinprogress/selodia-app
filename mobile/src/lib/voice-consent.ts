@@ -1,6 +1,5 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 
-import { mediaDevices } from '@livekit/react-native-webrtc';
 
 import { supabase } from '@/lib/supabase';
 
@@ -157,7 +156,19 @@ export async function requestMicPermission(): Promise<MicPermission> {
   // because this is a permission check, not the start of a session - leaving it
   // open would hold the microphone with the recording indicator lit and nothing
   // listening.
+  // IMPORTED HERE RATHER THAN AT THE TOP OF THE FILE (2 October 2026).
+  //
+  // @livekit/react-native-webrtc calls `requireNativeComponent`, which does not
+  // exist in react-native-web, so importing it at module load threw the moment
+  // anything on web touched this file. Together with the same fault in
+  // voice-audio-route it returned a 500 for EVERY route of the web build - which
+  // is why I spent two days unable to look at a single screen before telling Ruth
+  // it worked.
+  //
+  // A lazy import keeps one file instead of a .web.ts copy that would duplicate
+  // the consent-writing logic above, which is the part that must never diverge.
   try {
+    const { mediaDevices } = await import('@livekit/react-native-webrtc');
     const stream = await mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((t) => t.stop());
     return 'granted';
