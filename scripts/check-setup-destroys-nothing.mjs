@@ -160,6 +160,50 @@ check('the screen shows her current week selected', () => {
   return 'a redo opens on her answers';
 });
 
+// ---- 2b. the goals screen, which did it a second time -------------------
+const goals = fs
+  .readFileSync(path.join(DIR, 'goals.tsx'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
+
+check('the goals screen archives nothing when nothing is chosen', () => {
+  // IT HAPPENED TWICE IN TWO DAYS, WHICH IS WHY THIS IS A CHECK AND NOT A NOTE.
+  //
+  // 1 October: the activities screen deleted her week on a walk-through with no
+  // chip tapped. 2 October, 18:56: the goals screen archived her goal on a
+  // walk-through with no chip tapped, and inserted nothing - because the archive
+  // was unconditional while the insert sat behind `chosen.length > 0`. Her Body
+  // Manual read "none yet" a minute later.
+  //
+  // Between those two I widened this archive from `source = 'onboarding'` to every
+  // active goal, which is exactly when the guard mattered most, and did not carry
+  // it across. A diagnosis written in a commit message protects nothing.
+  const archiveAt = goals.indexOf('archived_at: archivedAt');
+  ok(archiveAt > 0, 'the goals screen no longer archives anything - has it been rewritten?');
+
+  const before = goals.slice(0, archiveAt);
+  ok(
+    /if \(chosen\.length > 0\) \{/.test(before),
+    'the archive is not inside a "something was chosen" guard, so walking this ' +
+      'screen and touching nothing removes every goal she has and replaces none'
+  );
+  return 'an untouched walk leaves her goals alone';
+});
+
+check('and it does not blank her focus either', () => {
+  // THE OTHER HALF OF THE SAME WIPE. focusFromGoals([]) returns {null, null}, and
+  // writing that over a focus she already had removes her calorie target - the
+  // same destruction, one table across.
+  const updateAt = goals.indexOf('fat_focus_state: fat');
+  ok(updateAt > 0, 'the goals screen no longer writes the focus - has it been rewritten?');
+  ok(
+    /if \(chosen\.length === 0\) return true;/.test(goals.slice(0, updateAt)),
+    'nothing chosen still writes null over her focus states, which erases the ' +
+      'calorie target she already had'
+  );
+  return 'her targets survive an untouched walk';
+});
+
 check('the screen uses the plan the behaviour test exercises', () => {
   // WITHOUT THIS, check-week-write-plan.mjs PROVES NOTHING ABOUT THE APP. A pure
   // function with twelve passing cases that no screen calls is the pattern this

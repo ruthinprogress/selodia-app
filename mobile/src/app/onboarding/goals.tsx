@@ -87,7 +87,7 @@ export default function GoalsScreen() {
   // rest of the setup chain after one tap from Today would be the trap of
   // 1 October in a politer form.
   const params = useLocalSearchParams<{ redo?: string }>();
-  const cameFromToday = params.redo === '1';
+  const fromManual = params.redo === '1';
 
   useEffect(() => {
     let live = true;
@@ -99,7 +99,7 @@ export default function GoalsScreen() {
       // A REDO FROM TODAY IS NOT A STEP OF SETUP. Advancing the stored step
       // would move her setup position because she tapped a link on Today, which
       // is how she ended up pinned to the goals screen on 1 October.
-      if (!cameFromToday) advanceOnboardingStep(supabase, user.id, 'goals');
+      if (!fromManual) advanceOnboardingStep(supabase, user.id, 'goals');
 
       const [{ data: profile }, { data: current }, { data: goalRows }] = await Promise.all([
         supabase
@@ -163,7 +163,7 @@ export default function GoalsScreen() {
     return () => {
       live = false;
     };
-  }, [cameFromToday]);
+  }, [fromManual]);
 
   function toggle(key: GoalKey) {
     setChosen((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
@@ -281,33 +281,55 @@ export default function GoalsScreen() {
     // NOTHING IS LOST BY WIDENING IT. An archived goal keeps its row, keeps its
     // dates, and the goal_archived_to_almanac trigger writes it to her Almanac
     // under the Goals tag - which is exactly the behaviour she described wanting.
-    const archivedAt = new Date().toISOString();
-    const { error: clearError } = await supabase
-      .from('user_goals')
-      .update({ archived_at: archivedAt })
-      .eq('user_id', user.id)
-      .is('archived_at', null);
-    if (clearError) return false;
-
+    // NOTHING CHOSEN CHANGES NOTHING (2 October 2026, 19:10).
+    //
+    // IT WIPED HER GOAL AN HOUR AFTER I WIDENED THE SCOPE. At 18:56:19 the archive
+    // ran, "Reach 25% body fat and 40 kg muscle mass" was archived, and NO row was
+    // inserted - because the archive was unconditional while the insert sat behind
+    // `chosen.length > 0`. Her Body Manual read "none yet" a minute later. She
+    // saved again at 18:57:23 and that worked, so the damage lasted one minute and
+    // was entirely visible to her, which is the only reason it is not worse.
+    //
+    // THIS IS THE WEEK WIPE OF 1 OCTOBER, EXACTLY: a destructive operation running
+    // before anything checks whether there is something to replace. I diagnosed
+    // that one, built check-week-write-plan.mjs around it, and restated it in two
+    // commit messages - then widened this archive from `source = 'onboarding'` to
+    // every active goal without carrying the guard across. Widening a delete is
+    // precisely when that guard matters most.
+    //
+    // THE ARCHIVE AND THE INSERT ARE NOW ONE DECISION. Either she chose a goal, in
+    // which case the old ones are archived and the new ones written, or she did
+    // not, in which case neither happens. There is no arrangement of taps that
+    // removes a goal without putting one in its place.
     if (chosen.length > 0) {
-      const detail = measure.trim() || null;
-      const rows = chosen.map((key, i) => {
-        const option = GOAL_OPTIONS.find((o) => o.key === key)!;
-        return {
-          user_id: user.id,
-          goal_key: key,
-          label: option.label,
-          // The measure belongs to the goal that invited it, not to all of
-          // them: "12 stone" under "more energy" would be nonsense.
-          detail: option.invitesMeasure ? detail : null,
-          source: 'onboarding',
-          // DATED, because item 4 asks for a history and a history needs dates.
-          set_on: new Date().toISOString().slice(0, 10),
-          sort_order: i,
-        };
-      });
-      const { error: insertError } = await supabase.from('user_goals').insert(rows);
-      if (insertError) return false;
+      const archivedAt = new Date().toISOString();
+      const { error: clearError } = await supabase
+        .from('user_goals')
+        .update({ archived_at: archivedAt })
+        .eq('user_id', user.id)
+        .is('archived_at', null);
+      if (clearError) return false;
+
+      if (chosen.length > 0) {
+        const detail = measure.trim() || null;
+        const rows = chosen.map((key, i) => {
+          const option = GOAL_OPTIONS.find((o) => o.key === key)!;
+          return {
+            user_id: user.id,
+            goal_key: key,
+            label: option.label,
+            // The measure belongs to the goal that invited it, not to all of
+            // them: "12 stone" under "more energy" would be nonsense.
+            detail: option.invitesMeasure ? detail : null,
+            source: 'onboarding',
+            // DATED, because item 4 asks for a history and a history needs dates.
+            set_on: new Date().toISOString().slice(0, 10),
+            sort_order: i,
+          };
+        });
+        const { error: insertError } = await supabase.from('user_goals').insert(rows);
+        if (insertError) return false;
+      }
     }
 
     // HER WEIGHT, AS AN ESTIMATE WITH A DATE ON IT.
@@ -331,9 +353,19 @@ export default function GoalsScreen() {
       if (weightError) return false;
     }
 
-    // NULL IS WRITTEN DELIBERATELY when nothing was chosen. It is not a missing
-    // update - it is the app saying it does not know, which is now a state the
-    // target code understands and the column allows.
+    // AND THE SAME GUARD ON THE FOCUS, which is the other half of the wipe.
+    //
+    // This used to write NULL deliberately when nothing was chosen, and that was
+    // right when this screen was a wizard step: an unanswered question meant "she
+    // has not said", and the target code reads null as no target rather than a
+    // maintenance one. Reached from the Body Manual by somebody who opened the row
+    // and tapped nothing, the same line erases the targets she already had.
+    //
+    // Choosing nothing is still a real answer on the FIRST run - the focus has
+    // never been set, so writing null changes nothing and the honest outcome is
+    // unchanged. What it must not do is overwrite.
+    if (chosen.length === 0) return true;
+
     const { error: profileError } = await supabase
       .from('user_profile')
       .update({ fat_focus_state: fat, muscle_focus_state: muscle })
@@ -343,10 +375,18 @@ export default function GoalsScreen() {
 
   /** Where Continue goes once this screen is done with her. */
   function leave() {
-    // BACK TO TODAY WHEN SHE CAME FROM TODAY. Her instruction for item 3, and the
-    // fix for the trap she hit on 1 October: tapping a link on Today used to drop
-    // her into the setup chain with no way back to the screen she started on.
-    if (cameFromToday) router.replace('/');
+    // BACK WHERE SHE CAME FROM, WHICH IS THE BODY MANUAL (2 October 2026).
+    //
+    // Ruth: "it took me to the chat page after, which is not correct. It should
+    // take me back to the goal setting section of the Profile page so I can see my
+    // new goal."
+    //
+    // `router.replace('/')` was written when this screen was reached from Today,
+    // and '/' is the chat tab. Every route into it now comes from the Body
+    // Manual's own row, so that is where it returns - and seeing the new goal on
+    // the row she tapped is the confirmation that the save happened, which no
+    // sentence can replace.
+    if (fromManual) router.replace('/settings/profile');
     else router.push('/onboarding/skill');
   }
 
