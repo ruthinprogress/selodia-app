@@ -78,6 +78,72 @@ check('NEW: and it says what it cannot do, when the caller knows', () => {
   assert.ok(/can't add an item to a meal that is already logged/i.test(note), note);
 });
 
+// ------------------------------------------- "Done." and the offer beneath it
+//
+// RUTH, 2 OCTOBER 2026. She asked chat to add a muscle up. The offer was silently
+// discarded (a stale offer was blocking it), she said Yes, and the reply was:
+//
+//   Done.
+//
+//   Want me to keep that in your Almanac?
+//
+// Nothing was written - user_skills was empty before and after. The guard that
+// exists to contradict exactly that said nothing, for TWO independent reasons,
+// and each of these cases pins one of them.
+
+const DONE_THEN_OFFER = 'Done.\n\nWant me to keep that in your Almanac?';
+
+check('HERS: "Done." with the appended offer under it is still a claim', () => {
+  assert.ok(
+    claimsAWrite(DONE_THEN_OFFER),
+    'the exact reply Ruth received passed the guard untouched'
+  );
+  const note = falseClaimNote({ reply: DONE_THEN_OFFER, wrote: [] });
+  assert.ok(note, 'nothing was written, so the guard must speak');
+});
+
+check('reason one: an offer ANYWHERE used to exempt the whole reply', () => {
+  // `if (IS_AN_OFFER.test(reply)) return null` tested the entire reply, and the
+  // app appends its own offer question to the end of replies - so any false claim
+  // followed by an offer was immune. Per sentence now.
+  assert.ok(
+    claimsAWrite("That's saved.\n\nWant me to keep that in your Almanac?"),
+    'a claim followed by an offer is still a claim'
+  );
+  assert.ok(
+    claimsAWrite("I've added it to your week.\n\nShall I save that?"),
+    'a claim followed by a different offer is still a claim'
+  );
+});
+
+check('reason two: "Done" was not in the list at all', () => {
+  for (const reply of ['Done.', 'Done!', 'All done.']) {
+    assert.ok(claimsAWrite(reply), `"${reply}" is a receipt and must be caught`);
+  }
+});
+
+check('but a sentence that only ASKS is still not a claim', () => {
+  for (const reply of [
+    'Want me to keep that in your Almanac?',
+    'Shall I save that to your Me tab?',
+    'That sounds like a rule. Want me to add it so it stays out of your sessions?',
+  ]) {
+    assert.equal(claimsAWrite(reply), null, `an offer must not read as a claim: ${reply}`);
+  }
+});
+
+check('and ordinary English using the word "done" is left alone', () => {
+  // A word in a position, which is this file's rule. None of these claims a write.
+  for (const reply of [
+    "Tell me when you're done.",
+    'You did three sets, so the hard part is done for today.',
+    'Once that is done the rest is easier.',
+    'That takes about twenty minutes, done slowly.',
+  ]) {
+    assert.equal(claimsAWrite(reply), null, `false positive on: ${reply}`);
+  }
+});
+
 check('the claiming sentence can be quoted back', () => {
   assert.equal(claimsAWrite(PEANUT_REPLY), PEANUT_REPLY);
 });

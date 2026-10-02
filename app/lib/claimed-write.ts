@@ -54,6 +54,25 @@ const CLAIMS: RegExp[] = [
   // "noted back in June", "noted months ago", "you noted".
   /(?:^|[,;]\s*|\s)noted\s*[.!]?\s*$/im,
   /\bduly noted\b/i,
+  // "DONE." ON A LINE OF ITS OWN (2 October 2026).
+  //
+  // Ruth asked chat to add a muscle up. The offer was silently discarded - a
+  // stale offer was blocking it - she said Yes, and the reply was:
+  //
+  //   Done.
+  //
+  //   Want me to keep that in your Almanac?
+  //
+  // Nothing had been written. user_skills was empty before and after. This guard
+  // exists precisely to contradict that sentence and it said nothing, because the
+  // list here had "noted", "saved", "added", "logged" and "got that down" - every
+  // way of claiming a write except the shortest and most natural one.
+  //
+  // A WORD IN A POSITION, which is this file's own rule, written for "noted".
+  // "Done" inside a sentence is ordinary English - "when you're done", "done three
+  // sets", "the hard part is done" - and none of those claims anything. A line
+  // that is ONLY "Done" is not a sentence about anything; it is a receipt.
+  /^\s*(?:all\s+)?done\s*[.!]*\s*$/im,
   // "added to", "I've added", "adding that"
   /\b(?:i(?:'ve| have)\s+)?added\b/i,
   // "saved", "I've saved", "that's saved"
@@ -165,9 +184,28 @@ function sentences(text: string): string[] {
  * null. Returned rather than a boolean so a caller can quote it.
  */
 export function claimsAWrite(reply: string): string | null {
-  // A reply that ASKS to save has not claimed to have saved.
-  if (IS_AN_OFFER.test(reply)) return null;
+  // A SENTENCE THAT ASKS TO SAVE HAS NOT CLAIMED TO HAVE SAVED. Per sentence,
+  // and that word is the fix (2 October 2026).
+  //
+  // THIS TESTED THE WHOLE REPLY, and the app appends its own offer question to
+  // the end of replies - "Want me to keep that in your Almanac?". So ANY reply
+  // carrying an offer was exempt from the claim guard entirely, however false the
+  // rest of it was. Ruth's was:
+  //
+  //   Done.
+  //
+  //   Want me to keep that in your Almanac?
+  //
+  // Nothing had been written, and the guard returned null at the first line
+  // without ever looking at "Done."
+  //
+  // THE ORIGINAL REASONING WAS RIGHT AND THE SCOPE WAS WRONG, which is the same
+  // mistake as the one four lines down: "shall I save that?" genuinely is not a
+  // claim, so the sentence asking it is exempt. An offer SOMEWHERE in a reply
+  // does not make the whole reply an offer - and the one place this app reliably
+  // puts an offer is the end of a reply that may have claimed something first.
   for (const sentence of sentences(reply)) {
+    if (IS_AN_OFFER.test(sentence)) continue;
     if (NOT_A_CLAIM.some((re) => re.test(sentence))) continue;
     if (CLAIMS.some((re) => re.test(sentence))) return sentence;
   }
