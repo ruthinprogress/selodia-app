@@ -154,5 +154,35 @@ check('a screen that says nothing is saved yet must actually have a second step'
   return 'no screen claims a step it does not have';
 });
 
+check('no screen is dead when a read fails', () => {
+  // THE OTHER HALF OF WHY TWO DAYS LOOKED BROKEN. Five screens got this from me:
+  //
+  //   if (error) return;            // `loaded` never becomes true
+  //   if (!loaded) return null;     // renders NOTHING
+  //   enabled: !saving && loaded    // Continue never enables
+  //
+  // It is safe against losing a row and it is the worst possible outcome for her:
+  // a blank screen, a dead button, and no way to tell whether the app is broken or
+  // she is holding it wrong. Two states were collapsed into one boolean - "not
+  // yet", which lasts milliseconds, and "it failed", which lasts forever - and the
+  // second inherited the treatment designed for the first.
+  //
+  // A screen that reads her existing answers must use LoadState, so a failure is
+  // visible, retryable, and never a trap. See lib/load-state.ts.
+  const offenders = [];
+  for (const file of files) {
+    const src = stripComments(readFileSync(path.join(DIR, file), 'utf8'));
+    if (/enabled:\s*!saving\s*&&\s*loaded\b/.test(src)) offenders.push(file);
+  }
+  ok(
+    offenders.length === 0,
+    `${offenders.join(', ')} disable Continue on a boolean that cannot tell "not ` +
+      'yet" from "it failed", so a failed read leaves her stuck on a screen with no ' +
+      'message. Use LoadState from lib/load-state.ts: loading disables, failed says ' +
+      'so and lets her past without writing.'
+  );
+  return `${files.length} screens, none dead on a failed read`;
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);

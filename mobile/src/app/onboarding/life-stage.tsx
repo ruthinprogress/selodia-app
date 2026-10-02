@@ -18,6 +18,12 @@ import {
   type LifeStage,
   type NoPeriodsReason,
 } from '@/lib/life-stage';
+import {
+  LOAD_FAILED_MESSAGE,
+  LOAD_RETRY_LABEL,
+  mayContinue,
+  type LoadState,
+} from '@/lib/load-state';
 import { supabase } from '@/lib/supabase';
 
 // SCREEN 3: WHERE SHE IS WITH PERIODS.
@@ -68,7 +74,10 @@ export default function LifeStageScreen() {
   const [use, setUse] = useState<HormoneUse[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // Three states, not a boolean: see lib/load-state.ts. A failed read used to
+  // leave this screen with a dead Continue and no message.
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [attempt, setAttempt] = useState(0);
   /** Her own words for what she takes. Saved as typed, no model, no confirm. */
   const [takes, setTakes] = useState('');
   const [takesState, setTakesState] = useState<'saving' | 'saved' | 'failed' | null>(null);
@@ -110,12 +119,12 @@ export default function LifeStageScreen() {
       setTaking(
         Array.isArray(items) ? items.map((i) => String(i?.name ?? '')).filter(Boolean) : []
       );
-      setLoaded(true);
+      setLoadState('ready');
     })();
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   /**
    * WHAT SHE TAKES, STRAIGHT ONTO THE MEDICATIONS CARD, EXACTLY AS TYPED.
@@ -232,7 +241,10 @@ export default function LifeStageScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving && loaded,
+    // Pressable once the read settles. This screen's own save guard already
+    // treats "nothing selected" as changing nothing, so a failed read cannot
+    // overwrite her answers on the way past.
+    enabled: mayContinue(loadState, saving),
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
@@ -332,6 +344,22 @@ export default function LifeStageScreen() {
       <ThemedText type="small" themeColor="textSecondary">
         {TAKES_NOTE}
       </ThemedText>
+
+      {loadState === 'failed' && (
+        <>
+          <ThemedText type="small" themeColor="danger">
+            {LOAD_FAILED_MESSAGE}
+          </ThemedText>
+          <ThemedText
+            type="smallBold"
+            themeColor="accentDeep"
+            accessibilityRole="button"
+            accessibilityLabel={LOAD_RETRY_LABEL}
+            onPress={() => setAttempt((n) => n + 1)}>
+            {LOAD_RETRY_LABEL}
+          </ThemedText>
+        </>
+      )}
 
       {failed && (
         <ThemedText type="small" themeColor="danger">

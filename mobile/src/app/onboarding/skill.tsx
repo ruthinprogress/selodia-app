@@ -7,6 +7,13 @@ import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { CLIP_GAPS, LADDERS, placeRungs, type Placement } from '@/lib/skill-ladders';
+import {
+  LOAD_FAILED_MESSAGE,
+  LOAD_RETRY_LABEL,
+  mayContinue,
+  mayWrite,
+  type LoadState,
+} from '@/lib/load-state';
 import { supabase } from '@/lib/supabase';
 
 // SCREEN 2: WHICH SKILL, AND WHERE SHE IS WITH IT.
@@ -55,15 +62,24 @@ export default function SkillScreen() {
   // ladder has no chip here, exactly as a French class has no chip on the
   // activities screen, and for the same reason: this screen cannot create it, so
   // it must not appear to own it.
-  const [loaded, setLoaded] = useState(false);
+  // THREE STATES, NOT A BOOLEAN. `loaded: false` meant both "not yet" and "it
+  // failed", and the second one inherited the treatment built for the first:
+  // a dead Continue and no message, forever. See lib/load-state.ts.
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  // Bumped by Try again, which re-runs the effect.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
     void (async () => {
+      setLoadState('loading');
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        if (live) setLoadState('failed');
+        return;
+      }
       advanceOnboardingStep(supabase, user.id, 'skill');
 
       const { data: skills, error } = await supabase
@@ -72,21 +88,23 @@ export default function SkillScreen() {
         .eq('user_id', user.id)
         .not('ladder_key', 'is', null);
       if (!live) return;
-      // A FAILED READ LEAVES THE SCREEN UNLOADED, so Continue stays disabled
-      // rather than presenting an empty chip row as her answer. Same rule as the
-      // activities screen, and for the same reason it was needed there.
-      if (error) return;
+      // A FAILED READ IS SAID OUT LOUD AND DOES NOT TRAP HER. The screen will
+      // not write without her answers in hand, and she can retry or carry on.
+      if (error) {
+        setLoadState('failed');
+        return;
+      }
 
       const existing = (skills ?? [])
         .map((r) => String(r.ladder_key))
         .find((key) => LADDERS.some((l) => l.key === key));
       if (existing) setLadderKey(existing);
-      setLoaded(true);
+      setLoadState('ready');
     })();
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   async function save(): Promise<boolean> {
     const {
@@ -125,7 +143,10 @@ export default function SkillScreen() {
     // most plainly means and the only reading that claims nothing about her. The
     // screen says which rung that is, so it is a stated default and not a guess
     // made quietly.
-    if (!loaded) return false;
+    // NOTHING IS WRITTEN WITHOUT HER ANSWERS IN HAND. This is the one property
+    // worth keeping from the original design: a blank chip row must never be
+    // mistaken for "no skill", which would silently leave an old one in place.
+    if (!mayWrite(loadState)) return true;
     const ladder = LADDERS.find((l) => l.key === ladderKey);
     if (!ladder) return true; // nothing chosen is a valid answer
     const where: Placement = placement ?? 'starting';
@@ -184,9 +205,9 @@ export default function SkillScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    // Disabled until her skills have been read. An empty chip row before the
-    // read lands is the screen's ignorance, not her answer.
-    enabled: !saving && loaded,
+    // Pressable the moment the read settles, either way. A failed read means
+    // this screen does not write on the way past, not that she is stuck on it.
+    enabled: mayContinue(loadState, saving),
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
@@ -256,6 +277,24 @@ export default function SkillScreen() {
         else can be added later by saying so in chat.
       </ThemedText>
 
+
+      {/* SAID, RATHER THAN SHOWN AS AN EMPTY SCREEN. For two days a failed read
+          here looked identical to having no skills. */}
+      {loadState === 'failed' && (
+        <>
+          <ThemedText type="small" themeColor="danger">
+            {LOAD_FAILED_MESSAGE}
+          </ThemedText>
+          <ThemedText
+            type="smallBold"
+            themeColor="accentDeep"
+            accessibilityRole="button"
+            accessibilityLabel={LOAD_RETRY_LABEL}
+            onPress={() => setAttempt((n) => n + 1)}>
+            {LOAD_RETRY_LABEL}
+          </ThemedText>
+        </>
+      )}
 
       {failed && (
         <ThemedText type="small" themeColor="danger">

@@ -110,26 +110,42 @@ check('a blank screen cannot be read as "she deselected everything"', () => {
   // cannot act on `chosen` before it knows what her week holds: the delete may
   // sit wherever it likes once an empty selection is genuinely her answer. So
   // this now reads the two lines that make that true.
+  // THE GUARANTEE IS UNCHANGED; THE MECHANISM WAS RENAMED ON 2 OCTOBER.
+  //
+  // This used to assert a `loaded` boolean. That boolean could not tell "not yet"
+  // from "it failed", and the failed case inherited the treatment built for the
+  // first: a blank screen with a dead Continue and no message, which is half of
+  // why two days of work looked broken to Ruth. It is now a three-state
+  // LoadState - see lib/load-state.ts.
+  //
+  // WHAT MUST STILL HOLD, and is what these assert: an empty chip row may never be
+  // read as "she deselected everything" unless her week was actually read. The
+  // screen no longer traps her when the read fails, and it still does not write.
   ok(
-    /const \[loaded, setLoaded\] = useState\(false\)/.test(activities),
+    /const \[loadState, setLoadState\] = useState<LoadState>\('loading'\)/.test(activities),
     'the screen does not track whether it has read her week yet, so an empty ' +
       'selection is indistinguishable from an unloaded screen'
   );
   ok(
-    /if \(!loaded\) return false;/.test(activities),
+    /if \(!mayWrite\(loadState\)\) return true;/.test(activities),
     'save() does not refuse to run before her week has been read - a slow read ' +
       'plus a quick Continue deletes every activity this screen knows about'
   );
   ok(
-    /if \(weekError\) return;/.test(activities),
-    'a failed read still marks the screen loaded, so a network error presents ' +
-      'as "she unselected all of them" and Continue acts on it'
+    /loaded: mayWrite\(loadState\)/.test(activities),
+    'the write plan is not told whether her week was read, so its refusal - the ' +
+      'thing check-week-write-plan.mjs case 1 and 2 rely on - never triggers'
   );
   ok(
-    /enabled: !saving && loaded/.test(activities),
-    'Continue is offered before her week has been read'
+    /if \(weekError\) \{\s*setLoadState\('failed'\);/.test(activities),
+    'a failed read does not mark the screen failed, so a network error presents ' +
+      'as "she unselected all of them"'
   );
-  return 'unloaded and empty are different states';
+  ok(
+    /enabled: mayContinue\(loadState, saving\)/.test(activities),
+    'Continue is not gated on the read settling'
+  );
+  return 'loading, failed and ready are three different states';
 });
 
 check('the screen shows her current week selected', () => {

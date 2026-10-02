@@ -17,6 +17,13 @@ import {
   FEEL_SUBTITLE,
 } from '@/lib/feel-goals';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
+import {
+  LOAD_FAILED_MESSAGE,
+  LOAD_RETRY_LABEL,
+  mayContinue,
+  mayWrite,
+  type LoadState,
+} from '@/lib/load-state';
 import { supabase } from '@/lib/supabase';
 
 // QUESTION 1 OF 7: HOW DO YOU WANT YOUR DAYS TO FEEL?
@@ -48,7 +55,12 @@ export default function DaysScreen() {
   const [ownWords, setOwnWords] = useState('');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // THREE STATES, NOT A BOOLEAN. `loaded: false` meant both "not yet" and "it
+  // failed", and the second inherited the treatment built for the first: a dead
+  // Continue and no message, forever. See lib/load-state.ts.
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  /** Bumped by Try again, which re-runs the read. */
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -66,7 +78,11 @@ export default function DaysScreen() {
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('sort_order', { ascending: true });
-      if (!live || error) return;
+      if (!live) return;
+      if (error) {
+        setLoadState('failed');
+        return;
+      }
       const rows = data ?? [];
       setChosen(
         rows
@@ -76,19 +92,19 @@ export default function DaysScreen() {
       );
       const hers = rows.find((r) => r.source === 'her words');
       if (hers) setOwnWords(String(hers.label));
-      setLoaded(true);
+      setLoadState('ready');
     })();
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   function toggle(label: string) {
     setChosen((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
   }
 
   async function save(): Promise<boolean> {
-    if (!loaded) return false;
+    if (!mayWrite(loadState)) return true;
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -144,7 +160,9 @@ export default function DaysScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving && loaded,
+    // Pressable once the read settles, either way. A failed read means this
+    // screen does not write on the way past, not that she is stuck on it.
+    enabled: mayContinue(loadState, saving),
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
@@ -172,6 +190,24 @@ export default function DaysScreen() {
       <ThemedText type="small" themeColor="textSecondary">
         {FEEL_HONEST_NOTE}
       </ThemedText>
+
+      {/* SAID, RATHER THAN SHOWN AS AN EMPTY SCREEN. For two days a failed read
+          on screens like this one looked identical to having nothing saved. */}
+      {loadState === 'failed' && (
+        <>
+          <ThemedText type="small" themeColor="danger">
+            {LOAD_FAILED_MESSAGE}
+          </ThemedText>
+          <ThemedText
+            type="smallBold"
+            themeColor="accentDeep"
+            accessibilityRole="button"
+            accessibilityLabel={LOAD_RETRY_LABEL}
+            onPress={() => setAttempt((n) => n + 1)}>
+            {LOAD_RETRY_LABEL}
+          </ThemedText>
+        </>
+      )}
 
       {failed && (
         <ThemedText type="small" themeColor="danger">

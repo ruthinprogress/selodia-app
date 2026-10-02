@@ -18,6 +18,13 @@ import {
   type AllergyKind,
 } from '@/lib/allergy-options';
 import { MOVEMENT_RULES, MOVEMENT_RULE_BY_KEY, termFromTypedRule } from '@/lib/movement-rules';
+import {
+  LOAD_FAILED_MESSAGE,
+  LOAD_RETRY_LABEL,
+  mayContinue,
+  mayWrite,
+  type LoadState,
+} from '@/lib/load-state';
 import { supabase } from '@/lib/supabase';
 
 // ANYTHING TO STEER AROUND, GROUPED BY WHAT KIND OF THING IT IS.
@@ -138,7 +145,12 @@ export default function AllergiesScreen() {
   const [chosen, setChosen] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // THREE STATES, NOT A BOOLEAN. `loaded: false` meant both "not yet" and "it
+  // failed", and the second inherited the treatment built for the first: a dead
+  // Continue and no message, forever. See lib/load-state.ts.
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  /** Bumped by Try again, which re-runs the read. */
+  const [attempt, setAttempt] = useState(0);
   /** What is already in her record, so the screen can show it and offer Remove. */
   const [saved, setSaved] = useState<Saved[]>([]);
   /** The one she has tapped Remove on, waiting for the second tap. */
@@ -162,7 +174,11 @@ export default function AllergiesScreen() {
         .from('allergies')
         .select('name, kind')
         .eq('user_id', user.id);
-      if (!live || error) return;
+      if (!live) return;
+      if (error) {
+        setLoadState('failed');
+        return;
+      }
       const rows = (data ?? []) as Saved[];
       setSaved(rows);
 
@@ -187,12 +203,12 @@ export default function AllergiesScreen() {
       // "sardines", typed in chat, has no chip and appears in the saved list
       // below instead, where it can still be removed.
       setChosen(rows.map((r) => r.name).filter((n) => ALLERGY_BY_NAME[n]));
-      setLoaded(true);
+      setLoadState('ready');
     })();
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   function toggle(name: string) {
     setChosen((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
@@ -385,7 +401,7 @@ export default function AllergiesScreen() {
   }
 
   async function save(): Promise<boolean> {
-    if (!loaded) return false;
+    if (!mayWrite(loadState)) return true;
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -430,7 +446,9 @@ export default function AllergiesScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving && loaded,
+    // Pressable once the read settles, either way. A failed read means this
+    // screen does not write on the way past, not that she is stuck on it.
+    enabled: mayContinue(loadState, saving),
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
@@ -593,6 +611,24 @@ export default function AllergiesScreen() {
             </ThemedView>
           ))}
         </ThemedView>
+      )}
+
+      {/* SAID, RATHER THAN SHOWN AS AN EMPTY SCREEN. For two days a failed read
+          on screens like this one looked identical to having nothing saved. */}
+      {loadState === 'failed' && (
+        <>
+          <ThemedText type="small" themeColor="danger">
+            {LOAD_FAILED_MESSAGE}
+          </ThemedText>
+          <ThemedText
+            type="smallBold"
+            themeColor="accentDeep"
+            accessibilityRole="button"
+            accessibilityLabel={LOAD_RETRY_LABEL}
+            onPress={() => setAttempt((n) => n + 1)}>
+            {LOAD_RETRY_LABEL}
+          </ThemedText>
+        </>
       )}
 
       {failed && (
