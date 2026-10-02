@@ -16,6 +16,13 @@ export type FocusState = 'reduce' | 'maintain' | 'increase';
 
 export type GoalKey =
   | 'lose_fat'
+  // HER OWN GOAL, AND IT WAS NOT ON THE LIST (2 October 2026). The arithmetic has
+  // supported recomposition since August - fat reduce with muscle increase gives
+  // a maintenance target flagged isRecomposition - but no single tap produced
+  // that pair. She would have had to choose "Lose fat" AND "Build muscle" and
+  // know the combination meant something. Her stated goal is the same weight
+  // with less fat and more muscle, and the screen had no way to say it.
+  | 'recomposition'
   | 'build_muscle'
   | 'get_stronger'
   | 'learn_a_skill'
@@ -44,6 +51,17 @@ export const GOAL_OPTIONS: GoalOption[] = [
     effect: 'Fat focus becomes reduce, so the calorie target becomes a gentle deficit.',
     fat: 'reduce',
     muscle: null,
+    invitesMeasure: true,
+  },
+  {
+    key: 'recomposition',
+    // Her words for it, from the brief: "same weight, less fat, more muscle".
+    // Not "recomposition", which is a term rather than an outcome.
+    label: 'Less fat, more muscle',
+    effect:
+      'Fat reduce with muscle increase: a maintenance target, with protein at the top of the range.',
+    fat: 'reduce',
+    muscle: 'increase',
     invitesMeasure: true,
   },
   {

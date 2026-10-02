@@ -35,22 +35,48 @@ const FOCUS = ['reduce', 'maintain', 'increase', null, undefined];
 const TDEES = [null, 0, 1487, 1490, 1495, 2000, 2317];
 const WEIGHTS = [null, 0, 52.4, 68, 91.7];
 
+// BMRs CHOSEN SO THE FLOOR ACTUALLY BITES (added 2026-10-02 with the floor).
+//
+// A parity probe over inputs that never reach the new branch proves parity of
+// the old code and reports it as parity of all of it. The floor is the higher
+// of her BMR and 1,200, so:
+//
+//   undefined  no BMR given, floor falls back to 1,200
+//   null       the same, by the other spelling
+//   1123       Ruth's own, below the absolute floor, so 1,200 wins
+//   1400       above it, so the BMR wins
+//   1900       high enough to clamp a 2,000 TDEE deficit hard
+//
+// At tdee 1487 and weight 91.7 the deficit is 655/day, which lands at 830 -
+// well under either floor. That combination is the one this exists for.
+const BMRS = [undefined, null, 1123, 1400, 1900];
+
 let checked = 0;
 let mismatched = 0;
+// HOW MANY TIMES THE FLOOR ACTUALLY FIRED. Printed, because a probe that
+// reports parity over inputs that never reach a branch is reporting parity of
+// the code it did not run. If this is 0 the floor is untested and the suite
+// says so rather than passing.
+let floored = 0;
 
 for (const fatFocus of FOCUS) {
   for (const muscleFocus of FOCUS) {
     for (const tdeeKcal of TDEES) {
       for (const weightKg of WEIGHTS) {
-        const params = { tdeeKcal, weightKg, fatFocus, muscleFocus };
-        const a = JSON.stringify(server(params));
-        const b = JSON.stringify(client(params));
-        checked++;
-        if (a !== b) {
-          mismatched++;
-          console.log(`  MISMATCH  fat=${fatFocus} muscle=${muscleFocus} tdee=${tdeeKcal} weight=${weightKg}`);
-          console.log(`      server: ${a}`);
-          console.log(`      client: ${b}`);
+        for (const bmrKcal of BMRS) {
+          const params = { tdeeKcal, weightKg, bmrKcal, fatFocus, muscleFocus };
+          const a = JSON.stringify(server(params));
+          const b = JSON.stringify(client(params));
+          checked++;
+          if (JSON.parse(a || 'null')?.flooredAt != null) floored++;
+          if (a !== b) {
+            mismatched++;
+            console.log(
+              `  MISMATCH  fat=${fatFocus} muscle=${muscleFocus} tdee=${tdeeKcal} weight=${weightKg} bmr=${bmrKcal}`
+            );
+            console.log(`      server: ${a}`);
+            console.log(`      client: ${b}`);
+          }
         }
       }
     }
@@ -70,5 +96,14 @@ for (const fatFocus of FOCUS) {
   }
 }
 
-console.log(`\n  ${checked} combinations checked, ${mismatched} mismatched.\n`);
+console.log(
+  `\n  ${checked} combinations checked, ${mismatched} mismatched. ` +
+    `The floor bit on ${floored} of them.\n`
+);
+if (floored === 0) {
+  console.log(
+    '  FAIL  the floor never fired, so this proves nothing about it. Add inputs that reach it.'
+  );
+  process.exit(1);
+}
 process.exit(mismatched > 0 ? 1 : 0);

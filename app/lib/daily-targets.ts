@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { calculateBMR, calculateTDEE, proteinTarget, type ProteinTarget } from './body-metrics';
 import { pregnancyGuard } from './not-built-for-pregnancy';
+import { calorieFloor } from './body-intent';
 
 // What is left of today, for the chat pipeline. Build item 22's foundation.
 //
@@ -29,6 +30,11 @@ export type CalorieTarget = {
   mode: CalorieTargetMode;
   isRecomposition: boolean;
   deltaKcal: number;
+  /**
+   * The floor, when it raised the figure; null when it did not bite.
+   * The screen says so rather than showing a number with no basis.
+   */
+  flooredAt: number | null;
 };
 
 const KCAL_PER_KG = 7700;
@@ -38,15 +44,36 @@ const ROUND_TO = 10;
 
 const roundTo = (n: number, step: number): number => Math.round(n / step) * step;
 
+// A FLOOR UNDER THE DEFICIT (2026-10-02).
+//
+// Ruth: "lose fat (moderate deficit with a floor)."
+//
+// There was no floor. The deficit is 0.5% of bodyweight a week, which for a
+// small woman can land under what her body uses at rest - nothing in this
+// function stopped it. At 56 kg and a BMR of 1,123 the figure comes out at about
+// 1,430, which is fine; the same arithmetic at a lower TDEE is not, and the
+// function had no opinion about where it stopped.
+//
+// THE HIGHER OF HER BMR AND 1,200, so neither is the loophole: BMR is what her
+// body uses lying still, and 1,200 catches a BMR estimate that is itself
+// implausibly low. The floor lives in lib/body-intent.ts so the figure and the
+// sentence explaining it cannot disagree.
+//
+// `mode` STAYS 'deficit' WHEN THE FLOOR BITES. It is still a fat-loss intent and
+// the UI should still frame it as one; what changed is the number, and
+// `flooredAt` is how the screen knows to say so rather than show an unexplained
+// figure. Silently clamping is the one outcome worse than either.
 export function calculateCalorieTarget(params: {
   tdeeKcal: number | null | undefined;
   weightKg: number | null | undefined;
+  /** Her BMR, for the floor under the deficit. Without it the floor is 1,200. */
+  bmrKcal?: number | null;
   fatFocus: FocusState | null | undefined;
   muscleFocus: FocusState | null | undefined;
   /** Her answer about where she is, so pregnancy can stand this down. */
   lifeStage?: string | null;
 }): CalorieTarget | null {
-  const { tdeeKcal, weightKg, fatFocus, muscleFocus, lifeStage } = params;
+  const { tdeeKcal, weightKg, bmrKcal, fatFocus, muscleFocus, lifeStage } = params;
   if (tdeeKcal == null || tdeeKcal <= 0) return null;
 
   // PREGNANCY STANDS THE ARITHMETIC DOWN ENTIRELY (2026-09-30).
@@ -81,17 +108,25 @@ export function calculateCalorieTarget(params: {
       mode: 'surplus',
       isRecomposition: false,
       deltaKcal: SURPLUS_KCAL,
+      flooredAt: null,
     };
   }
 
   if (fatFocus === 'reduce' && muscleFocus !== 'increase') {
     if (weightKg == null || weightKg <= 0) return null;
     const dailyDeficit = Math.round((WEEKLY_LOSS_FRACTION * weightKg * KCAL_PER_KG) / 7);
+    const floor = calorieFloor(bmrKcal);
+    const wanted = roundTo(tdeeKcal - dailyDeficit, ROUND_TO);
+    const floored = wanted < floor;
     return {
-      targetKcal: roundTo(tdeeKcal - dailyDeficit, ROUND_TO),
+      targetKcal: floored ? roundTo(floor, ROUND_TO) : wanted,
       mode: 'deficit',
       isRecomposition: false,
-      deltaKcal: -dailyDeficit,
+      // THE DELTA STAYS TRUE TO THE FIGURE, not to the intention. A target
+      // held at the floor is a smaller deficit than 0.5% a week asked for,
+      // and reporting the larger one would misdescribe what she is eating.
+      deltaKcal: floored ? roundTo(floor, ROUND_TO) - roundTo(tdeeKcal, ROUND_TO) : -dailyDeficit,
+      flooredAt: floored ? roundTo(floor, ROUND_TO) : null,
     };
   }
 
@@ -100,6 +135,7 @@ export function calculateCalorieTarget(params: {
     mode: 'maintenance',
     isRecomposition: fatFocus === 'reduce' && muscleFocus === 'increase',
     deltaKcal: 0,
+    flooredAt: null,
   };
 }
 

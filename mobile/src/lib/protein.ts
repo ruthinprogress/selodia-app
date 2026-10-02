@@ -55,10 +55,28 @@ export function leanBodyMassKg(
   return weightKg * (1 - bodyFatPct / 100);
 }
 
+// PROTEIN GOES HIGHER WHEN THE GOAL NEEDS IT TO (2026-10-02).
+//
+// Ruth: "recomposition (around maintenance, higher protein)".
+//
+// Recomposition is the one intent whose whole mechanism is protein and training
+// rather than a calorie deficit - the calorie target IS maintenance, so if the
+// protein does not move, choosing it changes nothing at all about what the app
+// asks of her. That would have been another answer that buys a false sense of
+// being understood.
+//
+// ONE STEP UP, NOT A DIFFERENT FORMULA. 2.0-2.4 becomes 2.2-2.6 g per kg of lean
+// mass, and 1.6-2.0 becomes 1.8-2.2 on bodyweight. Both remain inside what the
+// evidence supports for an active woman over 40; this is the top of the same
+// range, not a new claim.
+//
+// A MANUAL TARGET IS UNTOUCHED. She set it; no goal overrides a figure she chose.
 export function calculateProteinTarget(
   manualG: number | null | undefined,
   weightKg: number | null | undefined,
-  bodyFatPct: number | null | undefined
+  bodyFatPct: number | null | undefined,
+  /** True for the goals whose mechanism IS protein: recomposition, muscle gain. */
+  highProtein = false
 ): ProteinTarget | null {
   if (manualG != null && manualG > 0) {
     return { kind: 'manual', grams: Math.round(manualG) };
@@ -68,8 +86,8 @@ export function calculateProteinTarget(
   if (lbm != null && lbm > 0) {
     return {
       kind: 'range',
-      low: Math.round(lbm * 2.0),
-      high: Math.round(lbm * 2.4),
+      low: Math.round(lbm * (highProtein ? 2.2 : 2.0)),
+      high: Math.round(lbm * (highProtein ? 2.6 : 2.4)),
       basis: 'lean_mass',
     };
   }
@@ -77,8 +95,8 @@ export function calculateProteinTarget(
   if (weightKg != null && weightKg > 0) {
     return {
       kind: 'range',
-      low: Math.round(weightKg * 1.6),
-      high: Math.round(weightKg * 2.0),
+      low: Math.round(weightKg * (highProtein ? 1.8 : 1.6)),
+      high: Math.round(weightKg * (highProtein ? 2.2 : 2.0)),
       basis: 'bodyweight',
     };
   }

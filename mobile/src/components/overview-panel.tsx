@@ -89,7 +89,14 @@ type OverviewData = {
   proteinTargetLabel: string | null;
   // WHY there is no calorie figure, when there is none. Null when there is
   // one, or when the reason is something this row cannot help with.
-  calorieTargetBlockedBy: 'focus-unset' | null;
+  /**
+   * Why there is no calorie target, when the reason is one she can fix from
+   * Today. Two of them now: she has not said what she is working towards, or
+   * there is no weight to work from. Each gets its own sentence, because
+   * "say what you are working towards" is useless advice to somebody whose
+   * goal is set and whose weight is missing.
+   */
+  calorieTargetBlockedBy: 'focus-unset' | 'weight-unknown' | null;
   activityCount: number;
   activityMinutes: number;
   // The NAMES of today's sessions, for the Movement row (Ruth, item 7:
@@ -432,10 +439,17 @@ export function OverviewPanel({
         // calculateCalorieTarget returns null for several reasons - no TDEE,
         // no weight, a pregnancy hold - and only this one has an answer that
         // belongs on Today. The others are not her job to solve from here.
+        // FOCUS FIRST, THEN WEIGHT, because that is the order she can act in:
+        // a weight with no goal still produces no target, so asking for the
+        // weight first would be asking for something that changes nothing yet.
         calorieTargetBlockedBy:
-          calorieTarget == null && profile?.fat_focus_state == null && profile?.muscle_focus_state == null
-            ? 'focus-unset'
-            : null,
+          calorieTarget != null
+            ? null
+            : profile?.fat_focus_state == null && profile?.muscle_focus_state == null
+              ? 'focus-unset'
+              : latest?.weight_kg == null || latest.weight_kg <= 0
+                ? 'weight-unknown'
+                : null,
         proteinTargetLabel: proteinTargetLabel(proteinTarget),
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
@@ -615,17 +629,31 @@ export function OverviewPanel({
 
             NO NUMBER IS INVENTED HERE. It says what is missing and offers the
             screen that asks her. */}
-        {data.calorieTargetKcal == null && data.calorieTargetBlockedBy === 'focus-unset' ? (
+        {/* ONE TAP, AND IT SAYS WHICH THING IS MISSING. Both routes open the
+            goals screen, which is where the goal AND the weight are asked.
+
+            NO EM DASH. Ruth, finding 3 of 1 October and again in item 5
+            today: screen copy does not use them. The sentence read "No
+            calorie target yet - say what you are working towards" with an em
+            dash, which she asked to have removed twice. It is now two
+            sentences, which is what the dash was standing in for. */}
+        {data.calorieTargetKcal == null && data.calorieTargetBlockedBy !== null ? (
           <Pressable
             onPress={() => router.push({ pathname: '/onboarding/goals', params: { redo: '1' } })}
             accessibilityRole="button"
-            accessibilityLabel="Choose what you are working towards, to get a calorie target"
+            accessibilityLabel={
+              data.calorieTargetBlockedBy === 'weight-unknown'
+                ? 'Add your weight, to get a calorie target'
+                : 'Choose what you are working towards, to get a calorie target'
+            }
             style={({ pressed }) => pressed && styles.pressed}
           >
             <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
               {data.proteinTargetLabel ? `${data.proteinTargetLabel}g protein. ` : ''}
               <ThemedText type="small" themeColor="accentDeep">
-                No calorie target yet — say what you are working towards.
+                {data.calorieTargetBlockedBy === 'weight-unknown'
+                  ? 'Add your weight to see your targets.'
+                  : 'No calorie target yet. Say what you are working towards.'}
               </ThemedText>
             </ThemedText>
           </Pressable>
