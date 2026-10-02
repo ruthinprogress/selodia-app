@@ -43,11 +43,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * allergy mentioned with no other context is most often one, and that is the
  * conservative way round for a filter.
  */
-export type AllergyKind = 'food' | 'contact' | 'environmental' | 'other';
+// 'medicine' ADDED 2 OCTOBER 2026 (Ruth, item 5: "medicines you react to").
+// It does NOT arm the food filter - see filtersFood below. Penicillin left as
+// 'other' would have armed it, because 'other' is deliberately treated as food.
+export type AllergyKind = 'food' | 'contact' | 'environmental' | 'medicine' | 'other';
 
 export type Allergy = { name: string; disclosed_at: string; kind: AllergyKind };
 
-/** The ones that can be eaten, and so the only ones a food filter may act on. */
+/**
+ * The ones that can be eaten, and so the only ones a food filter may act on.
+ *
+ * 'medicine' IS EXCLUDED DELIBERATELY. A reaction to penicillin is real and is
+ * worth the app knowing, and it says nothing about what she may eat. Leaving it
+ * to fall through to 'other' would have armed the food filter against it, which
+ * is the nickel mistake of September in a new costume.
+ */
 export function filtersFood(a: Allergy): boolean {
   return a.kind === 'food' || a.kind === 'other';
 }
@@ -78,7 +88,10 @@ export async function recordAllergies(
     // invented must not quietly switch the food filter off - 'other' is the
     // honest unknown and is treated as food downstream.
     const kind: AllergyKind =
-      d.kind === 'contact' || d.kind === 'environmental' || d.kind === 'food'
+      d.kind === 'contact' ||
+      d.kind === 'environmental' ||
+      d.kind === 'food' ||
+      d.kind === 'medicine'
         ? d.kind
         : 'other';
     if (!byName.has(name)) byName.set(name, kind);

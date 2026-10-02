@@ -39,10 +39,53 @@ export default function SkillScreen() {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // ITEM 4: A REDO OPENS ON WHAT SHE ALREADY CHOSE.
+  //
+  // Ruth, 2 October 2026: "Pull every current selection from where it is kept
+  // (Week, Skills, Me, Goals) and show it selected. Deselecting, deleting or
+  // choosing something else OVERWRITES, so nothing duplicates."
+  //
+  // This screen showed blank chips to somebody who had already answered, and the
+  // consequence was not only confusion: walking through a redo and pressing
+  // Continue looked like "no skill chosen", which saves nothing and leaves the
+  // old skill in place. So the screen disagreed with the database and neither
+  // the screen nor she could tell.
+  //
+  // ONLY HER CURATED SKILL IS SHOWN AS A CHIP. A skill added in chat with no
+  // ladder has no chip here, exactly as a French class has no chip on the
+  // activities screen, and for the same reason: this screen cannot create it, so
+  // it must not appear to own it.
+  const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) advanceOnboardingStep(supabase, user.id, 'skill');
-    });
+    let live = true;
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      advanceOnboardingStep(supabase, user.id, 'skill');
+
+      const { data: skills, error } = await supabase
+        .from('user_skills')
+        .select('ladder_key')
+        .eq('user_id', user.id)
+        .not('ladder_key', 'is', null);
+      if (!live) return;
+      // A FAILED READ LEAVES THE SCREEN UNLOADED, so Continue stays disabled
+      // rather than presenting an empty chip row as her answer. Same rule as the
+      // activities screen, and for the same reason it was needed there.
+      if (error) return;
+
+      const existing = (skills ?? [])
+        .map((r) => String(r.ladder_key))
+        .find((key) => LADDERS.some((l) => l.key === key));
+      if (existing) setLadderKey(existing);
+      setLoaded(true);
+    })();
+    return () => {
+      live = false;
+    };
   }, []);
 
   async function save(): Promise<boolean> {
@@ -82,6 +125,7 @@ export default function SkillScreen() {
     // most plainly means and the only reading that claims nothing about her. The
     // screen says which rung that is, so it is a stated default and not a guess
     // made quietly.
+    if (!loaded) return false;
     const ladder = LADDERS.find((l) => l.key === ladderKey);
     if (!ladder) return true; // nothing chosen is a valid answer
     const where: Placement = placement ?? 'starting';
@@ -140,7 +184,9 @@ export default function SkillScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving,
+    // Disabled until her skills have been read. An empty chip row before the
+    // read lands is the screen's ignorance, not her answer.
+    enabled: !saving && loaded,
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });

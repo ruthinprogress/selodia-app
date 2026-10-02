@@ -26,7 +26,7 @@
 // two of the four layers rather than three, and it is a real difference in
 // strength between an allergen and a diet.
 
-export type AllergyKind = 'food' | 'contact' | 'environmental' | 'other';
+export type AllergyKind = 'food' | 'contact' | 'environmental' | 'medicine' | 'other';
 
 export type AllergyOption = {
   /** Stored as the allergen name, lowercased by the recorder. */
@@ -85,10 +85,34 @@ export const OTHER_REACTIONS: AllergyOption[] = [
   { name: 'dust', label: 'Dust', kind: 'environmental' },
 ];
 
+/**
+ * MEDICINES SHE REACTS TO. Ruth, item 5, as its own group.
+ *
+ * NOT A FOOD RESTRICTION, and the kind is what guarantees that: 'medicine' does
+ * not arm the food filter, where 'other' would have. See app/lib/allergies.ts.
+ *
+ * A VERY SHORT LIST, ON PURPOSE. These are the handful that come up often
+ * enough to be worth a tap. Anything else goes in this group's own box, in her
+ * words, exactly as typed - and that is the normal case here rather than the
+ * exception, because a list of drugs is even less finishable than a list of
+ * allergens.
+ *
+ * NOTHING IS DONE WITH IT BEYOND KNOWING IT. No interaction warnings, no
+ * comment on alternatives, no advice. Same rule as the Medications card.
+ */
+export const MEDICINE_REACTIONS: AllergyOption[] = [
+  { name: 'penicillin', label: 'Penicillin', kind: 'medicine' },
+  { name: 'aspirin', label: 'Aspirin', kind: 'medicine' },
+  { name: 'ibuprofen', label: 'Ibuprofen or NSAIDs', kind: 'medicine' },
+  { name: 'codeine', label: 'Codeine', kind: 'medicine' },
+  { name: 'sulfa drugs', label: 'Sulfa drugs', kind: 'medicine' },
+];
+
 export const ALL_ALLERGY_OPTIONS: AllergyOption[] = [
   ...FOOD_ALLERGIES,
   ...DIETARY_NEEDS,
   ...OTHER_REACTIONS,
+  ...MEDICINE_REACTIONS,
 ];
 
 export const ALLERGY_BY_NAME: Record<string, AllergyOption> = Object.fromEntries(

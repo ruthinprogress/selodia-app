@@ -1,63 +1,230 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { OnboardingQuestion } from '@/components/onboarding-question';
 import { useOnboardingAction } from '@/components/onboarding-action';
+import { SetupTextField } from '@/components/setup-text-field';
 import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
-import { SetupChatPanel } from '@/components/setup-chat-panel';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import {
   ALLERGY_BY_NAME,
   DIETARY_NEEDS,
   FOOD_ALLERGIES,
+  MEDICINE_REACTIONS,
   OTHER_REACTIONS,
+  type AllergyKind,
 } from '@/lib/allergy-options';
 import { supabase } from '@/lib/supabase';
 
-// ANYTHING YOU CANNOT EAT, OR WOULD RATHER NOT.
+// ANYTHING TO STEER AROUND, GROUPED BY WHAT KIND OF THING IT IS.
 //
-// WHY THIS SCREEN HAD TO EXIST BEFORE THE MERGE. The conversational
-// health-context step used to be the only way an allergy ever reached the
-// database, and the tap spine took it out of the chain. Two things depend on
-// that data and both would have failed silently:
+// WHY THIS SCREEN HAD TO EXIST. The conversational health-context step used to
+// be the only way an allergy ever reached the database, and the tap spine took
+// it out of the chain. Two things depend on that data and both would have failed
+// silently: the ALLERGY GATE, which cannot protect anybody from an allergy it
+// has never been told about, and MEAL SUGGESTIONS, which would cheerfully have
+// offered a vegetarian a chicken salad. Neither throws an error. The app would
+// simply have been confidently wrong at somebody.
 //
-//   the ALLERGY GATE, which is a four-layer safety mechanism that cannot
-//   protect anybody from an allergy it has never been told about; and
+// IT WRITES WHERE THE GATE READS - the `allergies` table, with the same upsert on
+// (user_id, name). No second store and no syncing, because two places holding
+// the same fact is how they come to disagree.
 //
-//   MEAL SUGGESTIONS, which would cheerfully have offered a vegetarian a
-//   chicken salad and a coeliac a sandwich.
+// ---------------------------------------------------------------------------
+// GROUPED BY KIND, AND THE GROUPS ARE NOT COSMETIC (Ruth, 2 October, item 5).
 //
-// Neither would have thrown an error. The app would simply have been confidently
-// wrong at somebody, which is this project's most expensive failure shape.
+// Her wording: "on your plate" is THE ONLY KIND THAT ARMS THE FOOD FILTER.
+// "Nickel and hay fever must not appear under your plate."
 //
-// IT WRITES WHERE THE GATE READS - the `allergies` table, through the same
-// recorder the chat route uses, with the same upsert on (user_id, name). There
-// is no second store and no syncing, because two places holding the same fact
-// is how they come to disagree.
+// That is a safety requirement wearing a layout requirement's clothes. Nickel
+// was once recorded with no kind, defaulted to a food restriction, and blocked
+// two plain questions about nickel within a minute. The heading she reads and
+// the `kind` the gate switches on are now the same decision, taken once, in this
+// file's group list - so a chip cannot be under a heading that means something
+// different from what the database will do with it. `assertGroupsMatchKinds`
+// below fails the build if one ever is.
 //
-// THE LIST IS A SHORTCUT, NOT A VOCABULARY. "Something else" opens chat, where
-// anything can be said in her own words. See lib/allergy-options.ts.
+// MEDICINES ARE THEIR OWN GROUP AND THEIR OWN KIND. Penicillin is not something
+// she eats and not something she touches. Left as 'other' it would have armed
+// the food filter, because 'other' is deliberately treated as food.
+//
+// MOVEMENTS TO LEAVE OUT ARE NOT HERE AT ALL. They are rules, they live in
+// user_rules, and the rules gate removes exercises with them. A movement in the
+// allergies table would be a food restriction named "overhead press".
+//
+// ---------------------------------------------------------------------------
+// NOTHING IS REMOVED BY UNTICKING, AND REMOVING ASKS FIRST.
+//
+// Ruth, item 4: "Deselecting, deleting or choosing something else OVERWRITES, so
+// nothing duplicates. EXCEPTION: allergies, medicines she reacts to and movement
+// rules are removed only by an explicit 'Remove this?' tap."
+//
+// So this screen breaks its own flow's rule, on purpose. Everywhere else a redo
+// overwrites; here an untick does nothing at all, because an allergy quietly
+// disappearing from a safety list is a far worse failure than one lingering.
+// What was missing was the other half: there was no way to remove one from here
+// either, so the screen said "say so in chat" and a woman looking at a mistake
+// had to go and have a conversation about it. Each saved item now carries its
+// own Remove, and tapping it asks before it acts.
+//
+// ---------------------------------------------------------------------------
+// EVERY GROUP HAS ITS OWN BOX, AND THE BOX IS NOT A CONVERSATION.
+//
+// Ruth, item 5: "Text boxes in setup save EXACTLY as typed, straight into Me
+// under the right heading, with no chat panel, no model call and no confirm
+// step." This screen used to open a SetupChatPanel for "Something else", which
+// was a model call, several seconds, and a conversation to finish before she had
+// seen the app. One box per group, saved on blur, in her words.
 
-const QUESTION = 'Anything you cannot eat, or would rather not?';
+const QUESTION = 'Anything to steer around?';
 const SUBTITLE =
-  'This changes every meal Selodía ever suggests. Tap what applies, and say anything else in chat.';
+  'Tap what applies. Only the first group changes what you are offered to eat; the rest are so Selodía knows.';
+
+/**
+ * THE GROUPS, AND THE KIND EACH ONE WRITES.
+ *
+ * ONE DECISION, NOT TWO. The heading she reads and the `kind` the food gate
+ * switches on come from the same row here. Before this they were set in
+ * different files, which is how nickel came to sit under a food heading.
+ */
+const GROUPS: {
+  key: string;
+  heading: string;
+  /** Said only where it changes what the app does. */
+  note?: string;
+  options: { name: string; label: string; kind: AllergyKind }[];
+  kind: AllergyKind;
+  boxLabel: string;
+  boxPlaceholder: string;
+}[] = [
+  {
+    key: 'plate',
+    heading: 'On your plate',
+    note: 'This is the only group that changes what Selodía offers you to eat.',
+    options: [...FOOD_ALLERGIES, ...DIETARY_NEEDS],
+    kind: 'food',
+    boxLabel: 'Something else on your plate?',
+    boxPlaceholder: 'Raw celery, and anything with chilli in it',
+  },
+  {
+    key: 'skin_air',
+    heading: 'Skin and air',
+    options: OTHER_REACTIONS,
+    // The group holds both contact and environmental things. A typed addition
+    // takes 'contact', which is the commoner of the two and, like the other,
+    // does not arm the food filter - so the conservative choice costs nothing.
+    kind: 'contact',
+    boxLabel: 'Something else on your skin, or in the air?',
+    boxPlaceholder: 'Cheap earrings bring my ears up',
+  },
+  {
+    key: 'medicines',
+    heading: 'Medicines you react to',
+    note: 'Kept so Selodía knows. Nothing here is advice, and it never comments on what you take.',
+    options: MEDICINE_REACTIONS,
+    kind: 'medicine',
+    boxLabel: 'Another medicine you react to?',
+    boxPlaceholder: 'Penicillin brings a rash up',
+  },
+];
+
+type Saved = { name: string; kind: string };
 
 export default function AllergiesScreen() {
   const [chosen, setChosen] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  // "Something else" opens a conversation ON THIS SCREEN rather than in the Chat
-  // tab. See components/setup-chat-panel.tsx.
-  const [talking, setTalking] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  /** What is already in her record, so the screen can show it and offer Remove. */
+  const [saved, setSaved] = useState<Saved[]>([]);
+  /** The one she has tapped Remove on, waiting for the second tap. */
+  const [confirming, setConfirming] = useState<string | null>(null);
+  /** Her own words, per group. Saved on blur, exactly as typed. */
+  const [boxes, setBoxes] = useState<Record<string, string>>({});
+  const [boxState, setBoxState] = useState<Record<string, 'saving' | 'saved' | 'failed'>>({});
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('allergies')
+        .select('name, kind')
+        .eq('user_id', user.id);
+      if (!live || error) return;
+      const rows = (data ?? []) as Saved[];
+      setSaved(rows);
+      // ITEM 4: SHOWN AS SELECTED. Only the ones this screen offers as a chip -
+      // "sardines", typed in chat, has no chip and appears in the saved list
+      // below instead, where it can still be removed.
+      setChosen(rows.map((r) => r.name).filter((n) => ALLERGY_BY_NAME[n]));
+      setLoaded(true);
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
 
   function toggle(name: string) {
     setChosen((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
   }
 
+  /** One typed line, saved as itself. No model, no confirm step. */
+  async function saveBox(groupKey: string, kind: AllergyKind) {
+    const text = (boxes[groupKey] ?? '').trim();
+    if (!text) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setBoxState((s) => ({ ...s, [groupKey]: 'saving' }));
+    // EXACTLY AS TYPED. The name IS her sentence, lowercased by the table's own
+    // convention and nothing else. It is worse structured data than a parsed
+    // item and it is a true record, available the same minute; chat can tidy it
+    // into items later, which is the one thing chat is genuinely better at.
+    const { error } = await supabase.from('allergies').upsert(
+      {
+        user_id: user.id,
+        name: text.toLowerCase().slice(0, 80),
+        kind,
+        raw_input: text,
+      },
+      { onConflict: 'user_id,name', ignoreDuplicates: true }
+    );
+    if (error) {
+      setBoxState((s) => ({ ...s, [groupKey]: 'failed' }));
+      return;
+    }
+    setBoxState((s) => ({ ...s, [groupKey]: 'saved' }));
+    setSaved((prev) => [...prev, { name: text.toLowerCase().slice(0, 80), kind }]);
+    setBoxes((b) => ({ ...b, [groupKey]: '' }));
+  }
+
+  /** The second tap on Remove. Asked first, never on one press. */
+  async function remove(name: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('allergies')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('name', name);
+    if (error) return;
+    setSaved((prev) => prev.filter((r) => r.name !== name));
+    setChosen((prev) => prev.filter((n) => n !== name));
+    setConfirming(null);
+  }
+
   async function save(): Promise<boolean> {
+    if (!loaded) return false;
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -69,20 +236,14 @@ export default function AllergiesScreen() {
       name,
       kind: ALLERGY_BY_NAME[name]?.kind ?? 'other',
       // The recorder keeps the raw input beside the name so there is always a
-      // record of HOW the app came to believe this. "Chosen in onboarding" is
-      // the honest answer here; for chat it is her sentence.
-      raw_input: 'Chosen in onboarding',
+      // record of HOW the app came to believe this.
+      raw_input: 'Chosen in setup',
     }));
 
-    // UPSERT, IGNORING DUPLICATES, exactly as recordAllergies does. Somebody
-    // coming back through onboarding must not have her existing allergies
-    // wiped and re-added - `disclosed_at` records when the app FIRST learned
-    // this, and refreshing it would lose the only thing that column is for.
-    //
-    // NOTHING IS DELETED HERE EITHER, and that is deliberate rather than an
-    // oversight. Unticking something on this screen does not remove it, because
-    // an allergy quietly disappearing from a safety list is a far worse failure
-    // than one lingering. Removing one is a conversation.
+    // UPSERT, IGNORING DUPLICATES. `disclosed_at` records when the app FIRST
+    // learned this, and refreshing it would lose the only thing that column is
+    // for. And nothing is deleted: see the header - an untick is not a removal
+    // on this screen, and Remove is its own deliberate tap.
     const { error } = await supabase
       .from('allergies')
       .upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
@@ -108,68 +269,95 @@ export default function AllergiesScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving,
+    enabled: !saving && loaded,
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
+  /** Saved things this screen has no chip for - typed here, or said in chat. */
+  const typedIn = saved.filter((r) => !ALLERGY_BY_NAME[r.name]);
+
   return (
     <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
-      <ThemedView style={styles.group}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-          Food allergies
-        </ThemedText>
-        <TapChoices options={FOOD_ALLERGIES.map(asChoice)} selected={chosen} onSelect={toggle} multi />
-      </ThemedView>
+      {GROUPS.map((group) => (
+        <ThemedView key={group.key} style={styles.group}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+            {group.heading}
+          </ThemedText>
+          {group.note && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {group.note}
+            </ThemedText>
+          )}
+          <TapChoices options={group.options.map(asChoice)} selected={chosen} onSelect={toggle} multi />
 
-      <ThemedView style={styles.group}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-          How you eat
-        </ThemedText>
-        <TapChoices options={DIETARY_NEEDS.map(asChoice)} selected={chosen} onSelect={toggle} multi />
-      </ThemedView>
-
-      <ThemedView style={styles.group}>
-        {/* SEPARATE, AND SAID TO BE SEPARATE. A contact or environmental
-            reaction is not a food restriction, and treating one as a food
-            restriction is exactly what blocked two honest questions about
-            nickel in September. The heading is doing real work. */}
-        <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-          Reactions that are not about food
-        </ThemedText>
-        <TapChoices options={OTHER_REACTIONS.map(asChoice)} selected={chosen} onSelect={toggle} multi />
-      </ThemedView>
-
-      {/* NOT A CHIP. "Something else" is not another thing to tick, it is a way
-          out of the list entirely, and making it look like an option would
-          suggest the list is meant to be complete. It never is. */}
-      <ThemedView type="backgroundElement" style={styles.elseCard}>
-        <ThemedText type="small">Something else?</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Tell Selodía in your own words. Anything at all, however unusual, and however you say it.
-        </ThemedText>
-        <ThemedText
-          type="small"
-          themeColor="accentDeep"
-          accessibilityRole="button"
-          accessibilityLabel="Tell Selodía about something else"
-          // ON THIS SCREEN, NOT THE CHAT TAB (Ruth, 1 October 2026). This was
-          // the third of three setup screens that pushed into the tabs with
-          // nothing to bring anybody back.
-          onPress={() => setTalking(true)}>
-          Tell Selodía
-        </ThemedText>
-
-        {talking && (
-          <SetupChatPanel
-            intro="Anything at all, however unusual. It is kept as an allergy once you have agreed to it, and it never leaves without you saying so."
-            prefill="There's something I can't eat: "
-            placeholder="Nickel - it brings my eczema up. And raw celery…"
-            doneLabel="Done"
-            onDone={() => setTalking(false)}
+          <SetupTextField
+            label={group.boxLabel}
+            placeholder={group.boxPlaceholder}
+            value={boxes[group.key] ?? ''}
+            onChangeText={(t) => {
+              setBoxes((b) => ({ ...b, [group.key]: t }));
+              setBoxState((s) => ({ ...s, [group.key]: undefined as never }));
+            }}
+            onSave={() => void saveBox(group.key, group.kind)}
+            saving={boxState[group.key] === 'saving'}
+            saved={boxState[group.key] === 'saved'}
+            failed={boxState[group.key] === 'failed'}
           />
-        )}
-      </ThemedView>
+        </ThemedView>
+      ))}
+
+      {/* WHAT IS ALREADY KEPT, AND THE ONLY WAY TO TAKE SOMETHING OUT.
+          Her exception for item 4: these come out by an explicit tap, never by
+          unticking. Shown as a list rather than as chips because a chip that
+          cannot be untoggled is a lie about what tapping it does. */}
+      {typedIn.length > 0 && (
+        <ThemedView style={styles.group}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+            Also kept, in your words
+          </ThemedText>
+          {typedIn.map((row) => (
+            <ThemedView key={row.name} type="backgroundElement" style={styles.savedRow}>
+              <ThemedText type="small">{row.name}</ThemedText>
+              {confirming === row.name ? (
+                <ThemedView style={styles.confirmRow}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Remove this?
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => void remove(row.name)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Yes, remove ${row.name}`}
+                    style={({ pressed }) => pressed && styles.pressed}>
+                    <ThemedText type="smallBold" themeColor="danger">
+                      Yes, remove it
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setConfirming(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Keep it"
+                    style={({ pressed }) => pressed && styles.pressed}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Keep it
+                    </ThemedText>
+                  </Pressable>
+                </ThemedView>
+              ) : (
+                <Pressable
+                  onPress={() => setConfirming(row.name)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${row.name}`}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Remove
+                  </ThemedText>
+                </Pressable>
+              )}
+            </ThemedView>
+          ))}
+        </ThemedView>
+      )}
 
       {failed && (
         <ThemedText type="small" themeColor="danger">
@@ -178,7 +366,8 @@ export default function AllergiesScreen() {
       )}
 
       <ThemedText type="small" themeColor="textSecondary">
-        Nothing here is ever removed by unticking it. If something stops applying, say so in chat.
+        Nothing here is ever removed by unticking it. Taking something out is its own tap, and it
+        asks first.
       </ThemedText>
     </OnboardingQuestion>
   );
@@ -186,13 +375,39 @@ export default function AllergiesScreen() {
 
 const asChoice = (o: { name: string; label: string }) => ({ key: o.name, label: o.label });
 
+/**
+ * THE HEADING AND THE KIND CANNOT DISAGREE.
+ *
+ * Every chip in a group must carry a kind that group is allowed to write, and
+ * only the "on your plate" group may write a food kind. This is the mechanical
+ * version of Ruth's "nickel and hay fever must not appear under your plate", and
+ * it runs at module load so a wrong grouping cannot reach a phone.
+ */
+function assertGroupsMatchKinds() {
+  for (const group of GROUPS) {
+    const armsFood = group.key === 'plate';
+    for (const option of group.options) {
+      const optionArmsFood = option.kind === 'food' || option.kind === 'other';
+      if (optionArmsFood !== armsFood) {
+        throw new Error(
+          `${option.label} is under "${group.heading}" with kind "${option.kind}". ` +
+            'Only the "On your plate" group may hold a kind that arms the food filter.'
+        );
+      }
+    }
+  }
+}
+assertGroupsMatchKinds();
+
 const styles = StyleSheet.create({
   group: { gap: Spacing.two },
   eyebrow: { textTransform: 'uppercase', letterSpacing: 0.8 },
-  elseCard: {
+  savedRow: {
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: CardRadius,
     gap: Spacing.one,
   },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  pressed: { opacity: 0.6 },
 });

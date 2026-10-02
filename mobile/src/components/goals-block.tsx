@@ -73,6 +73,10 @@ export function GoalsBlock() {
   // Null until the stored preference arrives, so nothing is drawn in the wrong
   // state first. See below on why that matters more here than usually.
   const [collapsed, setCollapsed] = useState<boolean | null>(null);
+  // HOW MANY EARLIER GOALS THERE ARE, for item 4's small link to the history.
+  // Counted rather than fetched: the link needs to know whether there is
+  // anything behind it, and nothing else.
+  const [earlierCount, setEarlierCount] = useState(0);
   // SHE HID HER GOALS AND IT DID NOT STICK. Said out loud rather than swallowed:
   // they are folded away for now, but they will be back on show next time, and
   // if she is relying on this in a public place she needs to know that. The one
@@ -92,8 +96,13 @@ export function GoalsBlock() {
             .order('created_at', { ascending: false }),
           readGoalsCollapsed(),
         ]);
+        const { count } = await supabase
+          .from('user_goals')
+          .select('id', { count: 'exact', head: true })
+          .not('archived_at', 'is', null);
         if (cancelled) return;
         setGoals(error ? [] : ((data ?? []) as Goal[]));
+        setEarlierCount(count ?? 0);
         setCollapsed(folded);
         setLoaded(true);
       })();
@@ -193,6 +202,29 @@ export function GoalsBlock() {
             </ThemedView>
           </Pressable>
         ))
+      )}
+
+      {/* A SMALL LINK TO THE HISTORY (Ruth, 2 October 2026, item 4: "the Goals
+          section gets a small link to that history").
+
+          ONLY WHEN THERE IS A HISTORY. A link to an empty list is a promise of
+          something that is not there, and until today the Earlier goals screen
+          was always empty because nothing ever archived a goal - it deleted them.
+
+          SMALL, AND NOT A COUNT IN THE HEADING. A number beside "What you are
+          working towards" would read as a score of how many goals she has been
+          through, which is the opposite of the point. */}
+      {!collapsed && earlierCount > 0 && (
+        <Pressable
+          onPress={() => router.push('/goal')}
+          accessibilityRole="link"
+          accessibilityLabel="Earlier goals"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <ThemedText type="small" themeColor="accentDeep">
+            Earlier goals
+          </ThemedText>
+        </Pressable>
       )}
     </ThemedView>
   );
