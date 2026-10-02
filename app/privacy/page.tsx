@@ -29,12 +29,18 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 //     comment asked - naming a controller in a policy is not the same as being
 //     registered as one - is answered.
 //
-//     WHAT IS NOT DONE, and the distinction is the point: C2047751 is the
-//     APPLICATION number, not the registration reference. The reference is the
-//     ZA/ZB number on the certificate and it is the one a privacy policy cites.
-//     Nothing below claims a registration, so nothing below is wrong today;
-//     when the certificate arrives the reference goes in the controller
-//     paragraph. Do not put the application number there instead.
+//     DONE 2026-10-02. The reference arrived: ZC263754, Selodia Ltd, with the
+//     direct debit confirmation. It is in the controller paragraph below, and
+//     the application number C2047751 is NOT - the distinction this comment was
+//     written to protect.
+//
+//     AND PRIVACY_POLICY_VERSION IS DELIBERATELY NOT BUMPED. consent.ts states
+//     the rule: bump "whenever the SUBSTANCE changes". Naming the regulator's
+//     registration reference changes nothing about what is collected, who
+//     handles it, or what anybody may ask for. Bumping it would re-ask every
+//     person for consent and tell them something about their data had changed,
+//     which would be false - and she has already been re-asked once this week.
+//     The UPDATED date below is hers to change if she wants the page to say so.
 //
 // BROUGHT UP TO DATE 2026-09-19 for the store submissions. The 10 September
 // text had fallen behind the app in five places: error reports from the phone
@@ -143,7 +149,7 @@ const SECTIONS: PlainSection[] = [
     heading: 'Who is responsible',
     body: [
       'Selodía is operated by Selodía Ltd, which is the data controller for everything described here. If you have a question about your data, or want to exercise any of the rights below, email hello@selodia.app.',
-      'Selodía Ltd is registered in England and Wales, company number 12246794, registered office 19 Campbell Road, London, E17 6RR.',
+      'Selodía Ltd is registered in England and Wales, company number 12246794, registered office 19 Campbell Road, London, E17 6RR. It is registered with the Information Commissioner’s Office as a data controller, reference ZC263754.',
       'If you are not satisfied with how a request is handled, you can complain to the Information Commissioner’s Office (ICO) at ico.org.uk.',
     ],
   },
