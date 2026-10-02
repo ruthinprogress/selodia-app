@@ -34,6 +34,17 @@ export type CalorieTarget = {
    * The screen says so rather than showing a number with no basis.
    */
   flooredAt: number | null; // signed daily delta vs TDEE (negative deficit, positive surplus, 0 maintenance)
+  /**
+   * WHY THE FIGURE IS NOT WHAT HER GOAL IMPLIES, or null when it is.
+   *
+   * Without this a surface can only say WHAT the target is, so a target held at
+   * maintenance during a pause is indistinguishable from "stay as I am" - and the
+   * screen would either stay silent about a change she did not make, or re-derive
+   * the reason itself. Re-deriving is how Ruth came to be shown two different
+   * protein targets on 2 October: the panel decided from the goal's WISH while the
+   * figures came from the sum. Every surface now reads the reason off the number.
+   */
+  heldBecause: 'training_paused' | 'deficit_paused' | null;
 };
 
 // Energy in one kg of body mass (standard ~7700 kcal/kg), for turning the
@@ -77,8 +88,27 @@ export function calculateCalorieTarget(params: {
   bmrKcal?: number | null;
   fatFocus: FocusState | null | undefined;
   muscleFocus: FocusState | null | undefined;
+  /**
+   * WHETHER THERE IS A TRAINING STIMULUS. Only 'paused' changes anything, and
+   * what it changes is the SURPLUS: 150 kcal a day exists to feed muscle being
+   * built, and with nothing asking for it the same 150 kcal is fat gain under a
+   * label that says muscle. Null is not a pause - see lib/protein.ts.
+   */
+  training?: 'training' | 'paused' | null;
+  /**
+   * WHETHER SHE WANTS THE DEFICIT RUNNING RIGHT NOW (Ruth, 2 October 2026: "if
+   * you go on holiday you may want to pause the deficit").
+   *
+   * A DIFFERENT PAUSE FROM THE ONE ABOVE, deliberately. A holiday is a reason to
+   * stop eating under what she uses and no reason to stop training; an injury is
+   * the reverse. Null and 'on' both mean running, because a deficit is what
+   * choosing to lose fat already asked for.
+   */
+  deficitState?: 'on' | 'paused' | null;
 }): CalorieTarget | null {
   const { tdeeKcal, weightKg, bmrKcal, fatFocus, muscleFocus } = params;
+  const trainingPaused = params.training === 'paused';
+  const deficitPaused = params.deficitState === 'paused';
   if (tdeeKcal == null || tdeeKcal <= 0) return null;
 
   // NOT STATED IS NOT MAINTENANCE (2026-09-28). Mirrors app/lib/daily-targets.ts,
@@ -89,17 +119,44 @@ export function calculateCalorieTarget(params: {
   // Surplus: either focus wants growth. Doesn't stack, doesn't need bodyweight.
   const wantsGrowth = fatFocus === 'increase' || (fatFocus === 'maintain' && muscleFocus === 'increase');
   if (wantsGrowth) {
+    // A SURPLUS WITH NOTHING TO BUILD WITH IS JUST A SURPLUS. Held at what she
+    // uses while training is paused, and it comes back when she starts again.
+    if (trainingPaused) {
+      return {
+        targetKcal: roundTo(tdeeKcal, ROUND_TO),
+        mode: 'maintenance',
+        isRecomposition: false,
+        deltaKcal: 0,
+        flooredAt: null,
+        heldBecause: 'training_paused',
+      };
+    }
     return {
       targetKcal: roundTo(tdeeKcal + SURPLUS_KCAL, ROUND_TO),
       mode: 'surplus',
       isRecomposition: false,
       deltaKcal: SURPLUS_KCAL,
       flooredAt: null,
+      heldBecause: null,
     };
   }
 
   // Deficit: fat-loss without a competing muscle-gain intent. Needs bodyweight.
   if (fatFocus === 'reduce' && muscleFocus !== 'increase') {
+    // PAUSED FOR A HOLIDAY, AND STILL HER GOAL. Nothing is archived and the goal
+    // screen is unchanged; she is simply not eating under what she uses this
+    // week. Checked before the weight requirement, because a paused deficit
+    // needs no bodyweight to work out - it is just maintenance.
+    if (deficitPaused) {
+      return {
+        targetKcal: roundTo(tdeeKcal, ROUND_TO),
+        mode: 'maintenance',
+        isRecomposition: false,
+        deltaKcal: 0,
+        flooredAt: null,
+        heldBecause: 'deficit_paused',
+      };
+    }
     if (weightKg == null || weightKg <= 0) return null;
     const dailyDeficit = Math.round((WEEKLY_LOSS_FRACTION * weightKg * KCAL_PER_KG) / 7);
     const floor = calorieFloor(bmrKcal);
@@ -114,6 +171,7 @@ export function calculateCalorieTarget(params: {
       // and reporting the larger one would misdescribe what she is eating.
       deltaKcal: floored ? roundTo(floor, ROUND_TO) - roundTo(tdeeKcal, ROUND_TO) : -dailyDeficit,
       flooredAt: floored ? roundTo(floor, ROUND_TO) : null,
+      heldBecause: null,
     };
   }
 
@@ -125,5 +183,11 @@ export function calculateCalorieTarget(params: {
     isRecomposition: fatFocus === 'reduce' && muscleFocus === 'increase',
     deltaKcal: 0,
     flooredAt: null,
+    // RECOMPOSITION IS ALREADY MAINTENANCE, so a training pause changes no figure
+    // here - but it changes what the figure MEANS, and the surfaces say so. The
+    // protein is where a paused recomposition actually moves.
+    heldBecause: trainingPaused && fatFocus === 'reduce' && muscleFocus === 'increase'
+      ? 'training_paused'
+      : null,
   };
 }

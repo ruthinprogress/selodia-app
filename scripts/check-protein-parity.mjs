@@ -365,5 +365,186 @@ check('the panel names the assumption when it is making one', () => {
   return 'she is told which fact the number used';
 });
 
+// ---- 8. the two pauses, where the number is actually made ----------------
+//
+// THE SURPLUS RULE LIVED IN THE WRONG PLACE FOR AN HOUR. I put "a pause drops the
+// surplus" into explainTarget - the goals panel - and not into
+// calculateCalorieTarget, which is what Today, Drives and the day sums use. The
+// panel would have said "held at maintenance" while every other screen showed the
+// surplus: the two-protein-targets bug again, one level up, introduced by the
+// commit that fixed it. These run against BOTH calorie implementations.
+const EXPO_CAL = await import(root + '/mobile/src/lib/calorie-target.ts');
+const NEXT_CAL = await import(root + '/app/lib/daily-targets.ts');
+
+const both = (params) => [
+  EXPO_CAL.calculateCalorieTarget(params),
+  NEXT_CAL.calculateCalorieTarget(params),
+];
+
+const BASE = { tdeeKcal: 1740, weightKg: 56, bmrKcal: 1123 };
+
+check('both calorie implementations agree on every pause combination', () => {
+  let n = 0;
+  for (const fatFocus of [null, 'reduce', 'maintain', 'increase'])
+    for (const muscleFocus of [null, 'reduce', 'maintain', 'increase'])
+      for (const training of [null, 'training', 'paused'])
+        for (const deficitState of [null, 'on', 'paused']) {
+          const params = { ...BASE, fatFocus, muscleFocus, training, deficitState };
+          const [a, b] = both(params);
+          assert.deepStrictEqual(
+            a,
+            b,
+            `Expo and Next disagree on ${JSON.stringify({ fatFocus, muscleFocus, training, deficitState })}`
+          );
+          n += 1;
+        }
+  return `${n} combinations, identical on both sides`;
+});
+
+check('a paused training state drops the muscle-gain surplus', () => {
+  const [on] = both({ ...BASE, fatFocus: 'maintain', muscleFocus: 'increase', training: 'training' });
+  const [off] = both({ ...BASE, fatFocus: 'maintain', muscleFocus: 'increase', training: 'paused' });
+  assert.strictEqual(on.mode, 'surplus');
+  assert.strictEqual(off.mode, 'maintenance');
+  assert.strictEqual(off.targetKcal, 1740);
+  assert.strictEqual(off.heldBecause, 'training_paused');
+  return `${on.targetKcal} becomes ${off.targetKcal}, and it says why`;
+});
+
+check('a paused deficit holds at maintenance without touching the goal', () => {
+  const [on] = both({ ...BASE, fatFocus: 'reduce', muscleFocus: 'maintain', deficitState: 'on' });
+  const [off] = both({ ...BASE, fatFocus: 'reduce', muscleFocus: 'maintain', deficitState: 'paused' });
+  assert.strictEqual(on.mode, 'deficit');
+  assert.strictEqual(off.mode, 'maintenance');
+  assert.strictEqual(off.targetKcal, 1740, 'a paused deficit is not maintenance');
+  assert.strictEqual(off.heldBecause, 'deficit_paused');
+  assert.ok(off.targetKcal > on.targetKcal, 'pausing did not raise the target');
+  return `${on.targetKcal} becomes ${off.targetKcal}, goal untouched`;
+});
+
+check('a paused deficit needs no bodyweight', () => {
+  // The deficit branch returns null without a weight. A pause is just
+  // maintenance, so it must not inherit that requirement and leave her with no
+  // target at all while she is away.
+  const [off] = both({
+    ...BASE,
+    weightKg: null,
+    fatFocus: 'reduce',
+    muscleFocus: 'maintain',
+    deficitState: 'paused',
+  });
+  assert.ok(off != null, 'a paused deficit with no weight produced no target');
+  assert.strictEqual(off.targetKcal, 1740);
+  return 'still a figure';
+});
+
+check('the two pauses do not do each other\'s job', () => {
+  // A holiday is no reason to drop her protein; an injury is no reason to stop a
+  // deficit. If either switch starts moving the other one's number, the reason
+  // she gave has been quietly reinterpreted.
+  const body = { weightKg: 56, bodyFatPct: 27.6, muscleFocus: 'increase' };
+  const holiday = calculateProteinTarget({ ...body, training: null });
+  assert.strictEqual(holiday.stepped, 'up', 'pausing a deficit moved her protein');
+
+  const [injured] = both({
+    ...BASE,
+    fatFocus: 'reduce',
+    muscleFocus: 'maintain',
+    training: 'paused',
+  });
+  assert.strictEqual(injured.mode, 'deficit', 'pausing training cancelled her deficit');
+  return 'one switch, one effect';
+});
+
+check('a deficit says what it means per week', () => {
+  // Ruth: "explain roughly what that means in terms of fat loss expected per week
+  // and how that relates to the kcal deficit daily and per week."
+  const w = explainTarget({
+    intent: BODY_INTENT_BY_KEY.lose_fat,
+    weightKg: 56,
+    weightSource: 'measured',
+    bmrKcal: 1123,
+    tdeeKcal: 1740,
+    activityWord: null,
+    proteinLow: 90,
+    proteinHigh: 107,
+    proteinStepped: 'plain',
+    deficitPaused: false,
+  });
+  const all = w.lines.join(' | ');
+  assert.ok(/this is a deficit/i.test(all), 'it never says there is a deficit');
+  assert.ok(/across a week/.test(all), 'the weekly figure is missing');
+  assert.ok(/kg a week/.test(all), 'the expected loss is missing');
+  assert.ok(/direction rather than a schedule/.test(all), 'it reads as a promise');
+  return 'daily, weekly, and roughly how much';
+});
+
+check('the expected loss follows the floor, not the intention', () => {
+  // When the floor bites the real deficit is smaller, and quoting the rate that
+  // was ASKED for would be the app promising a result its own arithmetic refused.
+  const w = explainTarget({
+    intent: BODY_INTENT_BY_KEY.lose_fat,
+    weightKg: 56,
+    weightSource: 'measured',
+    bmrKcal: 1400,
+    tdeeKcal: 1500,
+    activityWord: null,
+    proteinLow: 90,
+    proteinHigh: 107,
+    proteinStepped: 'plain',
+    deficitPaused: false,
+  });
+  assert.strictEqual(w.flooredAt, 1400, 'the floor did not bite in this case');
+  const stated = /about ([0-9.]+) kg a week/.exec(w.lines.join(' | '));
+  assert.ok(stated, 'no expected loss stated');
+  // 1500 - 1400 = 100 kcal/day -> 700/week -> 0.09 kg, not the 0.28 asked for.
+  assert.ok(
+    Number(stated[1]) < 0.15,
+    `${stated[1]} kg is the rate that was asked for, not the one the floor allows`
+  );
+  return `${stated[1]} kg a week, the deficit that survived the floor`;
+});
+
+check('a paused deficit explains itself and keeps the goal', () => {
+  const w = explainTarget({
+    intent: BODY_INTENT_BY_KEY.lose_fat,
+    weightKg: 56,
+    weightSource: 'measured',
+    bmrKcal: 1123,
+    tdeeKcal: 1740,
+    activityWord: null,
+    proteinLow: 90,
+    proteinHigh: 107,
+    proteinStepped: 'plain',
+    deficitPaused: true,
+  });
+  const all = w.lines.join(' | ');
+  assert.strictEqual(w.targetKcal, 1740, 'a paused deficit still eats under maintenance');
+  assert.ok(/still your goal/.test(all), 'it does not say the goal survives');
+  assert.ok(!/this is a deficit/i.test(all), 'it still calls a paused target a deficit');
+  return 'maintenance, and the goal stays';
+});
+
+// ---- 9. chat is told how the figures were reached -------------------------
+check('chat is given the working, not a second version of it', () => {
+  const src = readFileSync('app/lib/daily-targets.ts', 'utf8');
+  assert.ok(
+    /HOW THOSE TARGETS WERE WORKED OUT/.test(src),
+    'the chat prompt carries the targets with no account of where they came from, ' +
+      'so the one surface she can ask a question on cannot answer it'
+  );
+  assert.ok(
+    /explainTarget\(/.test(src),
+    'the prompt builds its own description instead of using explainTarget - two ' +
+      'wordings of one number is the bug this file exists for'
+  );
+  assert.ok(
+    /heldBecause === 'deficit_paused'/.test(src),
+    'chat is never told a paused deficit is a pause, so it can only read it as her ' +
+      'having given up the goal'
+  );
+  return 'the same sentences the screen shows';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);

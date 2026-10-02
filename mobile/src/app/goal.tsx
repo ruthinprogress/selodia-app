@@ -85,7 +85,7 @@ export default function GoalScreen() {
           .order('set_on', { ascending: false }),
         supabase
           .from('user_profile')
-          .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, protein_target_g, training_state')
+          .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, protein_target_g, training_state, deficit_state')
           .maybeSingle(),
         supabase
           .from('body_measurements')
@@ -122,6 +122,8 @@ export default function GoalScreen() {
         weightKg: m?.weight_kg ?? null,
         fatFocus: fat as never,
         muscleFocus: muscle as never,
+        training: (p?.training_state as never) ?? null,
+        deficitState: (p?.deficit_state as never) ?? null,
       });
       // THE GOAL AND THE BODY FAT, BOTH. This screen passed neither the goal nor
       // a training state until 2 October, so it showed the plain range while the

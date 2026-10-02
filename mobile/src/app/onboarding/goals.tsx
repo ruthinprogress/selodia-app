@@ -84,6 +84,7 @@ export default function GoalsScreen() {
     // one, and the two figures Ruth photographed a minute apart were 20 g apart.
     bodyFatPct: number | null;
     trainingState: 'training' | 'paused' | null;
+    deficitState: 'on' | 'paused' | null;
     storedWeightKg: number | null;
     storedWeightSource: 'estimate' | 'measured' | null;
   } | null>(null);
@@ -112,7 +113,7 @@ export default function GoalsScreen() {
       const [{ data: profile }, { data: current }, { data: goalRows }] = await Promise.all([
         supabase
           .from('user_profile')
-          .select('height_cm, date_of_birth, biological_sex, activity_level, training_state')
+          .select('height_cm, date_of_birth, biological_sex, activity_level, training_state, deficit_state')
           .eq('user_id', user.id)
           .maybeSingle(),
         supabase
@@ -159,6 +160,7 @@ export default function GoalsScreen() {
         scaleBmr: Number(measured?.[0]?.bmr) || null,
         bodyFatPct: Number(fatRow?.[0]?.body_fat_pct) || null,
         trainingState: (profile?.training_state as 'training' | 'paused') ?? null,
+        deficitState: (profile?.deficit_state as 'on' | 'paused') ?? null,
         storedWeightKg: Number(current?.weight_kg) || null,
         storedWeightSource: (current?.weight_source as 'estimate' | 'measured') ?? null,
       });
@@ -261,6 +263,7 @@ export default function GoalsScreen() {
       proteinLow: protein?.kind === 'range' ? protein.low : null,
       proteinHigh: protein?.kind === 'range' ? protein.high : null,
       proteinStepped: protein?.kind === 'range' ? protein.stepped : null,
+      deficitPaused: body?.deficitState === 'paused',
     });
   }
 

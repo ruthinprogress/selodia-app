@@ -130,6 +130,7 @@ type ProfileRow = {
   has_scales: boolean | null;
   protein_target_g: number | null;
   training_state: string | null;
+  deficit_state: string | null;
   first_name: string | null;
   guidance_mode: string | null;
   // Read so the cycle day can be suppressed for anybody who is not on a regular
@@ -312,7 +313,7 @@ export function OverviewPanel({
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode, training_state'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode, training_state, deficit_state'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -407,6 +408,8 @@ export function OverviewPanel({
         weightKg: latest?.weight_kg ?? null,
         fatFocus: asFocus(profile?.fat_focus_state ?? null),
         muscleFocus: asFocus(profile?.muscle_focus_state ?? null),
+        training: (profile?.training_state as never) ?? null,
+        deficitState: (profile?.deficit_state as never) ?? null,
       });
       // Lean mass from body fat percentage, not from the scale's muscle field.
       // HER GOAL IS PART OF THE SUM, and this is where Ruth saw it missing: Today

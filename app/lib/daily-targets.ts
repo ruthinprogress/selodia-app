@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { calculateBMR, calculateTDEE, proteinTarget, type ProteinTarget } from './body-metrics';
 import { pregnancyGuard } from './not-built-for-pregnancy';
-import { calorieFloor } from './body-intent';
+import { calorieFloor, explainTarget, intentFromFocus, type TargetWorking } from './body-intent';
 
 // What is left of today, for the chat pipeline. Build item 22's foundation.
 //
@@ -35,6 +35,9 @@ export type CalorieTarget = {
    * The screen says so rather than showing a number with no basis.
    */
   flooredAt: number | null;
+  /** Why the figure is not what her goal implies, or null when it is. Mirrors
+   *  mobile/src/lib/calorie-target.ts, where the reasoning lives. */
+  heldBecause: 'training_paused' | 'deficit_paused' | null;
 };
 
 const KCAL_PER_KG = 7700;
@@ -72,8 +75,14 @@ export function calculateCalorieTarget(params: {
   muscleFocus: FocusState | null | undefined;
   /** Her answer about where she is, so pregnancy can stand this down. */
   lifeStage?: string | null;
+  /** 'paused' removes the muscle-gain surplus. See mobile/src/lib/calorie-target.ts. */
+  training?: 'training' | 'paused' | null;
+  /** 'paused' holds a fat-loss target at maintenance without changing her goal. */
+  deficitState?: 'on' | 'paused' | null;
 }): CalorieTarget | null {
   const { tdeeKcal, weightKg, bmrKcal, fatFocus, muscleFocus, lifeStage } = params;
+  const trainingPaused = params.training === 'paused';
+  const deficitPaused = params.deficitState === 'paused';
   if (tdeeKcal == null || tdeeKcal <= 0) return null;
 
   // PREGNANCY STANDS THE ARITHMETIC DOWN ENTIRELY (2026-09-30).
@@ -103,16 +112,40 @@ export function calculateCalorieTarget(params: {
   const wantsGrowth =
     fatFocus === 'increase' || (fatFocus === 'maintain' && muscleFocus === 'increase');
   if (wantsGrowth) {
+    // A surplus with nothing to build with is just a surplus.
+    if (trainingPaused) {
+      return {
+        targetKcal: roundTo(tdeeKcal, ROUND_TO),
+        mode: 'maintenance',
+        isRecomposition: false,
+        deltaKcal: 0,
+        flooredAt: null,
+        heldBecause: 'training_paused',
+      };
+    }
     return {
       targetKcal: roundTo(tdeeKcal + SURPLUS_KCAL, ROUND_TO),
       mode: 'surplus',
       isRecomposition: false,
       deltaKcal: SURPLUS_KCAL,
       flooredAt: null,
+      heldBecause: null,
     };
   }
 
   if (fatFocus === 'reduce' && muscleFocus !== 'increase') {
+    // Paused for a holiday, and still her goal. Checked before the weight
+    // requirement: a paused deficit is just maintenance and needs no bodyweight.
+    if (deficitPaused) {
+      return {
+        targetKcal: roundTo(tdeeKcal, ROUND_TO),
+        mode: 'maintenance',
+        isRecomposition: false,
+        deltaKcal: 0,
+        flooredAt: null,
+        heldBecause: 'deficit_paused',
+      };
+    }
     if (weightKg == null || weightKg <= 0) return null;
     const dailyDeficit = Math.round((WEEKLY_LOSS_FRACTION * weightKg * KCAL_PER_KG) / 7);
     const floor = calorieFloor(bmrKcal);
@@ -127,6 +160,7 @@ export function calculateCalorieTarget(params: {
       // and reporting the larger one would misdescribe what she is eating.
       deltaKcal: floored ? roundTo(floor, ROUND_TO) - roundTo(tdeeKcal, ROUND_TO) : -dailyDeficit,
       flooredAt: floored ? roundTo(floor, ROUND_TO) : null,
+      heldBecause: null,
     };
   }
 
@@ -136,6 +170,10 @@ export function calculateCalorieTarget(params: {
     isRecomposition: fatFocus === 'reduce' && muscleFocus === 'increase',
     deltaKcal: 0,
     flooredAt: null,
+    heldBecause:
+      trainingPaused && fatFocus === 'reduce' && muscleFocus === 'increase'
+        ? 'training_paused'
+        : null,
   };
 }
 
@@ -156,6 +194,21 @@ export type DayState = {
   proteinEaten: number;
   calorieTarget: CalorieTarget | null;
   protein: ProteinTarget | null;
+  /**
+   * HOW THOSE TWO FIGURES WERE REACHED, so chat can answer "where does that come
+   * from?" without inventing an answer.
+   *
+   * Ruth, 2 October 2026: "I think you should be able to talk to chat to explain
+   * what your targets are made from and what the assumptions are - this is very
+   * important."
+   *
+   * NOT A SECOND DESCRIPTION OF THE SUM. This is `explainTarget` - the same
+   * function, from the same module, that writes the working on the goals screen.
+   * app/lib/body-intent.ts re-exports it from the Expo tree rather than copying
+   * it, so chat and the screen cannot describe the same number differently. A
+   * second wording would have been the two-protein-targets bug in prose.
+   */
+  working: TargetWorking | null;
 };
 
 /**
@@ -209,6 +262,8 @@ export type DayStateProfile = {
   muscle_focus_state?: string | null;
   protein_target_g?: number | null;
   training_state?: string | null;
+  deficit_state?: string | null;
+  deficit_state_set_at?: string | null;
   // Read since 30 September so the arithmetic can stand down in pregnancy.
   life_stage?: string | null;
 } | null;
@@ -233,6 +288,41 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
       biologicalSex: profile?.biological_sex ?? null,
     });
 
+  // The working, when there is enough to work anything out at all. Null is the
+  // honest answer for somebody with no goal set or no height: there is no target,
+  // so there is nothing to explain, and a sentence here would be explaining a
+  // figure that does not exist.
+  const tdeeForWorking = calculateTDEE(bmr, profile?.activity_level);
+  const intent = intentFromFocus(
+    asFocus(profile?.fat_focus_state) as never,
+    asFocus(profile?.muscle_focus_state) as never
+  );
+  const proteinForWorking = proteinTarget({
+    manualG: profile?.protein_target_g ?? null,
+    weightKg: m?.weight_kg ?? null,
+    bodyFatPct: m?.body_fat_pct ?? null,
+    muscleFocus: asFocus(profile?.muscle_focus_state),
+    training: (profile?.training_state as never) ?? null,
+  });
+  function buildWorking(): TargetWorking | null {
+    if (!intent) return null;
+    return explainTarget({
+      intent,
+      weightKg: m?.weight_kg ?? null,
+      // The day state reads body_measurements, so anything here was measured.
+      weightSource: 'measured',
+      bmrKcal: bmr,
+      tdeeKcal: tdeeForWorking,
+      // Chat has her activity level as a stored word rather than the phrase the
+      // screen builds; null simply drops that clause rather than guessing at it.
+      activityWord: null,
+      proteinLow: proteinForWorking?.kind === 'range' ? proteinForWorking.low : null,
+      proteinHigh: proteinForWorking?.kind === 'range' ? proteinForWorking.high : null,
+      proteinStepped: proteinForWorking?.kind === 'range' ? proteinForWorking.stepped : null,
+      deficitPaused: profile?.deficit_state === 'paused',
+    });
+  }
+
   return {
     kcalEaten,
     proteinEaten,
@@ -242,7 +332,10 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
       weightKg: m?.weight_kg ?? null,
       fatFocus: asFocus(profile?.fat_focus_state),
       muscleFocus: asFocus(profile?.muscle_focus_state),
+      training: (profile?.training_state as never) ?? null,
+      deficitState: (profile?.deficit_state as never) ?? null,
     }),
+    working: buildWorking(),
     protein: proteinTarget({
       manualG: profile?.protein_target_g ?? null,
       weightKg: m?.weight_kg ?? null,
@@ -302,6 +395,53 @@ export function buildDayStatePrompt(day: DayState): string {
     );
   } else {
     lines.push(`Protein: ${day.proteinEaten}g logged today, with no target derivable.`);
+  }
+
+  // WHERE THE FIGURES CAME FROM, SO SHE CAN ASK (2026-10-02).
+  //
+  // Ruth: "I think you should be able to talk to chat to explain what your
+  // targets are made from and what the assumptions are - this is very important."
+  //
+  // She is right, and the gap was wider than it looks. The working has only ever
+  // existed on the goals screen, at the one moment she sets a goal - so the
+  // numbers she lives with every day had no explanation attached to them
+  // anywhere, and the one surface she can actually ask a question on knew the
+  // figures and nothing about where they came from. A model told "target 1,350"
+  // and asked "why 1,350?" either says it does not know or makes something up,
+  // and the second is what usually happens.
+  //
+  // THE SAME SENTENCES THE SCREEN SHOWS. This is explainTarget, re-exported from
+  // the Expo tree rather than reworded here, so chat and the goals screen cannot
+  // describe one number two ways. That failure is not hypothetical: on 2 October
+  // two surfaces showed her two different protein targets because each worked out
+  // its own.
+  if (day.working && day.working.lines.length > 0) {
+    lines.push('');
+    lines.push(
+      'HOW THOSE TARGETS WERE WORKED OUT - these are the exact lines the goals screen shows her, ' +
+        'so you may quote or paraphrase them freely when she asks where a number comes from, ' +
+        'what it assumes, or why it changed. Do NOT redo any of this arithmetic yourself:'
+    );
+    for (const line of day.working.lines) lines.push(`  - ${line}`);
+  }
+
+  // THE ASSUMPTIONS, NAMED AS ASSUMPTIONS. Her words again: "what the assumptions
+  // are". The working above states them in passing; these are the two that are
+  // SWITCHES she can throw, and a model that does not know they exist will tell
+  // her the target cannot be changed without changing her goal, which is wrong.
+  if (day.calorieTarget?.heldBecause === 'training_paused') {
+    lines.push(
+      'NOTE: the calorie figure is held at maintenance because she has said her training is ' +
+        'paused, not because her goal changed. Her goal is unchanged and it returns on its own ' +
+        'when she says she is training again, on her Body Manual.'
+    );
+  } else if (day.calorieTarget?.heldBecause === 'deficit_paused') {
+    lines.push(
+      'NOTE: she has paused her deficit - a holiday, a hard stretch, her reason is hers. The ' +
+        'figure is maintenance for now. Her fat-loss goal is NOT cancelled and nothing was ' +
+        'archived; it resumes when she switches it back on in her Body Manual. Never treat a ' +
+        'paused deficit as her having given up on the goal.'
+    );
   }
 
   return `\n\nTODAY SO FAR (computed by the app, not by you - never recalculate or second-guess these figures):\n${lines.join('\n')}`;

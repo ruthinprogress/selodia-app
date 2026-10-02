@@ -59,6 +59,13 @@ export type BodyManualSection = {
    * current value, which is the whole shape the Manual was built for.
    */
   inline?: boolean;
+  /**
+   * True for a row that is meaningless unless her calorie target is a deficit.
+   *
+   * The Manual shows what she has told Selodía; a switch for something her goal
+   * does not do is not that, it is a control looking for a purpose.
+   */
+  onlyWhenDeficit?: boolean;
 };
 
 export const BODY_MANUAL_HEADING = 'Body Manual';
@@ -104,6 +111,27 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     note: 'Protein goes to the top of its range while you are training, because that is what the extra is for. Say you are paused and it comes back to the maintenance range until you start again.',
     empty: 'Not said, so your targets assume you are training.',
     inline: true,
+  },
+  {
+    // PAUSING A DEFICIT IS NOT ABANDONING A GOAL (2026-10-02).
+    //
+    // Ruth: "I think if you go on holiday you may want to pause the deficit."
+    //
+    // A SEPARATE ROW FROM THE TRAINING ONE, on purpose. A fortnight in Spain is a
+    // reason to stop eating under what she uses and no reason at all to drop her
+    // protein; an injury is the reverse. One combined "paused" would make each
+    // one do the other's job badly.
+    //
+    // IT ONLY APPEARS WHERE IT APPLIES. A goal with no deficit in it - staying as
+    // she is, building muscle, recomposition - has nothing to pause, and a switch
+    // for a thing that is not happening is a question she has to work out the
+    // meaning of before she can ignore it.
+    key: 'deficit',
+    heading: 'Your deficit',
+    note: 'Pausing holds your calories at what you use, for a holiday or any other reason. Your goal stays exactly as it is and nothing is lost.',
+    empty: 'Running, as your goal asks.',
+    inline: true,
+    onlyWhenDeficit: true,
   },
   {
     key: 'weight',

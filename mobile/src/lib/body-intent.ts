@@ -165,6 +165,17 @@ export function explainTarget(input: {
    * A caller with nothing to say passes null and means it.
    */
   proteinStepped: 'up' | 'held' | 'plain' | null;
+  /**
+   * Whether she has paused the deficit - a holiday, a hard week, any reason.
+   *
+   * Ruth, 2 October 2026: "if you go on holiday you may want to pause the
+   * deficit". A DIFFERENT PAUSE FROM TRAINING: a fortnight away is a reason to
+   * stop eating under what she uses and no reason to drop her protein.
+   *
+   * REQUIRED THOUGH IT MAY BE NULL, like proteinStepped above and for the reason
+   * written there: an optional flag is one four callers out of five forget.
+   */
+  deficitPaused: boolean | null;
 }): TargetWorking {
   const { intent, weightKg, weightSource, bmrKcal, tdeeKcal, activityWord } = input;
   const lines: string[] = [];
@@ -209,22 +220,58 @@ export function explainTarget(input: {
   let flooredAt: number | null = null;
 
   if (intent.key === 'lose_fat') {
-    // 0.5% of bodyweight a week, at 7,700 kcal per kg, spread over seven days.
-    const daily = Math.round((0.005 * weightKg * 7700) / 7);
-    lines.push(
-      `Losing fat gently is about half a percent of your weight a week, which works out as ${kcal(
-        daily
-      )} a day less than you use.`
-    );
-    target = tdee - daily;
-    if (target < floor) {
-      flooredAt = floor;
+    // PAUSED FOR A HOLIDAY, AND STILL HER GOAL (2026-10-02).
+    if (input.deficitPaused === true) {
       lines.push(
-        `That would come to ${kcal(target)}, which is below what your body uses at rest, so it is held at ${kcal(
-          floor
-        )} instead.`
+        `Your deficit is paused, so this is simply what you use. Losing fat is still your goal and nothing about it has changed - you are just not eating under it at the moment.`
       );
-      target = floor;
+    } else {
+      // 0.5% of bodyweight a week, at 7,700 kcal per kg, spread over seven days.
+      const daily = Math.round((0.005 * weightKg * 7700) / 7);
+      lines.push(
+        `Losing fat gently is about half a percent of your weight a week, which works out as ${kcal(
+          daily
+        )} a day less than you use.`
+      );
+      target = tdee - daily;
+      if (target < floor) {
+        flooredAt = floor;
+        lines.push(
+          `That would come to ${kcal(target)}, which is below what your body uses at rest, so it is held at ${kcal(
+            floor
+          )} instead.`
+        );
+        target = floor;
+      }
+
+      // WHAT THE DEFICIT ACTUALLY MEANS, IN THE UNITS SHE THINKS IN (2026-10-02).
+      //
+      // Ruth: "it needs to be clear if there is a deficit target and explain
+      // roughly what that means in terms of fat loss expected per week and how
+      // that relates to the kcal deficit daily and per week."
+      //
+      // A daily number on its own is the one number that does NOT answer "so how
+      // fast is this?". The week is the unit a person actually lives in, and
+      // seeing 1,960 kcal a week next to "about 0.28 kg" is what makes a gentle
+      // rate feel like a choice rather than a disappointment.
+      //
+      // COMPUTED FROM THE DELTA THAT SURVIVED THE FLOOR, not from the 0.5% that
+      // was asked for. When the floor bites, the real deficit is smaller and so
+      // is the expected loss; quoting the intended rate there would be the app
+      // promising a result its own arithmetic has already refused.
+      const actualDaily = tdee - target;
+      if (actualDaily > 0) {
+        const weekly = actualDaily * 7;
+        const kgPerWeek = (weekly / 7700).toFixed(2);
+        lines.push(
+          `So this is a deficit: ${kcal(actualDaily)} a day under what you use, which is about ${kcal(
+            weekly
+          )} across a week.`
+        );
+        lines.push(
+          `At roughly 7,700 kcal to a kilo of body fat, that is about ${kgPerWeek} kg a week if everything holds steady. Bodies are not that tidy week to week, so read it as a direction rather than a schedule.`
+        );
+      }
     }
   } else if (intent.key === 'build_muscle') {
     // A SURPLUS WITH NOTHING TO BUILD WITH IS JUST A SURPLUS (2026-10-02).

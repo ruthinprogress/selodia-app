@@ -49,6 +49,9 @@ export function BodyManual() {
   const [failed, setFailed] = useState(false);
   const [training, setTraining] = useState<'training' | 'paused' | null>(null);
   const [trainingSetAt, setTrainingSetAt] = useState<string | null>(null);
+  const [deficit, setDeficit] = useState<'on' | 'paused' | null>(null);
+  const [deficitSetAt, setDeficitSetAt] = useState<string | null>(null);
+  const [hasDeficit, setHasDeficit] = useState(false);
   const [savingTraining, setSavingTraining] = useState(false);
 
   useFocusEffect(
@@ -80,7 +83,7 @@ export function BodyManual() {
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state').maybeSingle(),
           supabase.from('almanac_entries').select('title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
         ]);
         if (cancelled) return;
@@ -118,9 +121,21 @@ export function BodyManual() {
           hormone_use?: unknown;
           training_state?: string | null;
           training_state_set_at?: string | null;
+          deficit_state?: string | null;
+          deficit_state_set_at?: string | null;
+          fat_focus_state?: string | null;
+          muscle_focus_state?: string | null;
         } | null;
         setTraining((p?.training_state as 'training' | 'paused') ?? null);
+        setDeficit((p?.deficit_state as 'on' | 'paused') ?? null);
+        // WHETHER THERE IS A DEFICIT TO PAUSE AT ALL. Fat down without muscle up
+        // is the only combination that produces one - recomposition eats around
+        // maintenance, and the other two are maintenance or a surplus.
+        setHasDeficit(
+          p?.fat_focus_state === 'reduce' && p?.muscle_focus_state !== 'increase'
+        );
         setTrainingSetAt((p?.training_state_set_at as string) ?? null);
+        setDeficitSetAt((p?.deficit_state_set_at as string) ?? null);
 
         setData({
           days: {
@@ -258,6 +273,49 @@ export function BodyManual() {
     ];
   }
 
+  /** The same one-tap write as the training row, for the deficit. */
+  async function sayDeficit(next: 'on' | 'paused') {
+    if (savingTraining) return;
+    const previous = deficit;
+    const previousAt = deficitSetAt;
+    const value = previous === next ? null : next;
+    const stamp = value == null ? null : new Date().toISOString();
+    setDeficit(value);
+    setDeficitSetAt(stamp);
+    setSavingTraining(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setDeficit(previous);
+      setDeficitSetAt(previousAt);
+      setSavingTraining(false);
+      return;
+    }
+    const { error } = await supabase
+      .from('user_profile')
+      .update({ deficit_state: value, deficit_state_set_at: stamp })
+      .eq('user_id', user.id);
+    setSavingTraining(false);
+    if (error) {
+      setDeficit(previous);
+      setDeficitSetAt(previousAt);
+    }
+  }
+
+  function deficitLines(): string[] {
+    // NULL READS AS RUNNING, because a deficit is what choosing to lose fat
+    // already asked for. Only an explicit pause is news.
+    if (deficit !== 'paused') return [];
+    return [
+      'Paused, so your calories are held at what you use.',
+      'Your goal has not changed and nothing was lost.',
+      ...(deficitSetAt
+        ? [`Paused on ${new Date(deficitSetAt).toLocaleDateString('en-GB')}.`]
+        : []),
+    ];
+  }
+
   /** Where a row is edited. The setup screen that owns that question. */
   function editRoute(key: string): string | null {
     switch (key) {
@@ -311,11 +369,13 @@ export function BodyManual() {
       </ThemedText>
 
       <ThemedView type="backgroundElement" style={styles.card}>
-        {BODY_MANUAL_SECTIONS.map((section, i) => {
+        {BODY_MANUAL_SECTIONS.filter((s) => !s.onlyWhenDeficit || hasDeficit).map((section, i) => {
           const contents =
             section.key === 'training'
               ? { lines: trainingLines() }
-              : (data[section.key] ?? { lines: [] });
+              : section.key === 'deficit'
+                ? { lines: deficitLines() }
+                : (data[section.key] ?? { lines: [] });
           const has = contents.lines.length > 0;
           const isOpen = open[section.key] === true;
           const route = editRoute(section.key);
@@ -370,6 +430,42 @@ export function BodyManual() {
                   {/* ANSWERED ON THE ROW. One field, two states, no screen to
                       open - which is the shape the Manual replaced the redo
                       wizard with. */}
+                  {section.inline && section.key === 'deficit' && (
+                    <View style={styles.chips}>
+                      {(
+                        [
+                          ['on', 'Keep it running'],
+                          ['paused', 'Pause it for now'],
+                        ] as const
+                      ).map(([value, label]) => {
+                        const on = deficit === value;
+                        return (
+                          <Pressable
+                            key={value}
+                            onPress={() => void sayDeficit(value)}
+                            disabled={savingTraining}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: on, disabled: savingTraining }}
+                            accessibilityLabel={label}
+                            style={({ pressed }) => [
+                              styles.chip,
+                              {
+                                backgroundColor: on ? theme.accentDeep : theme.background,
+                                borderColor: on ? theme.accentDeep : theme.textSecondary,
+                              },
+                              pressed && styles.pressed,
+                            ]}>
+                            <ThemedText
+                              type="small"
+                              style={{ color: on ? theme.background : theme.text }}>
+                              {label}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
+
                   {section.inline && section.key === 'training' && (
                     <View style={styles.chips}>
                       {(
