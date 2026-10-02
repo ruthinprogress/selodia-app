@@ -94,43 +94,108 @@ check('no setup screen deletes every row a person owns', () => {
 // ---- 2. the activities screen specifically -------------------------------
 const activities = fs.readFileSync(path.join(DIR, 'activities.tsx'), 'utf8');
 
-check('nothing is deleted before the "nothing chosen" guard', () => {
-  const guard = activities.indexOf('if (chosen.length === 0) return true;');
-  const del = activities.indexOf('.delete()');
-  ok(guard >= 0, 'the "nothing chosen" early return is gone');
+check('a blank screen cannot be read as "she deselected everything"', () => {
+  // THIS CHECK USED TO PASS ON THE BUG IT WAS WRITTEN FOR (2 October 2026).
+  //
+  // It asserted the ordering of the delete against the "nothing chosen" early
+  // return, and then ended in `|| activities.slice(0, guard).includes('toRemove')`
+  // - an exception for precisely the shape the file had. So the delete stayed
+  // above the guard, the no-op walk stayed destructive, and the check reported
+  // "the no-op walk is a no-op" every time it ran.
+  //
+  // A CHECK WITH AN EXCEPTION FOR THE CURRENT CODE IS NOT A CHECK. It cannot
+  // fail, so it carries no information; worse, it reads in a report as evidence.
+  //
+  // The ordering was never the property anyway. What matters is that the screen
+  // cannot act on `chosen` before it knows what her week holds: the delete may
+  // sit wherever it likes once an empty selection is genuinely her answer. So
+  // this now reads the two lines that make that true.
   ok(
-    del < 0 || del > guard || activities.slice(0, guard).includes('toRemove'),
-    'a delete runs before the code decides whether anything was chosen at all - ' +
-      'so walking through the screen and changing nothing is the destructive path'
+    /const \[loaded, setLoaded\] = useState\(false\)/.test(activities),
+    'the screen does not track whether it has read her week yet, so an empty ' +
+      'selection is indistinguishable from an unloaded screen'
   );
-  return 'the no-op walk is a no-op';
+  ok(
+    /if \(!loaded\) return false;/.test(activities),
+    'save() does not refuse to run before her week has been read - a slow read ' +
+      'plus a quick Continue deletes every activity this screen knows about'
+  );
+  ok(
+    /if \(weekError\) return;/.test(activities),
+    'a failed read still marks the screen loaded, so a network error presents ' +
+      'as "she unselected all of them" and Continue acts on it'
+  );
+  ok(
+    /enabled: !saving && loaded/.test(activities),
+    'Continue is offered before her week has been read'
+  );
+  return 'unloaded and empty are different states';
 });
+
+check('the screen shows her current week selected', () => {
+  // Item 4: redo is an edit mode. This is also what makes the check above true,
+  // so it is not a separate nicety - a screen that displays her selection is a
+  // screen whose empty state means something.
+  ok(
+    /from\('user_week'\)\s*\.select\('activity, cadence'\)/.test(activities),
+    'the screen never reads her week, so a redo starts blank and overwrites'
+  );
+  ok(/setChosen\(picked\)/.test(activities), 'the rows that were read are not shown as selected');
+  return 'a redo opens on her answers';
+});
+
+check('the screen uses the plan the behaviour test exercises', () => {
+  // WITHOUT THIS, check-week-write-plan.mjs PROVES NOTHING ABOUT THE APP. A pure
+  // function with twelve passing cases that no screen calls is the pattern this
+  // codebase keeps hitting: collected, stored, and read by nobody. The test is
+  // evidence only while this line holds.
+  ok(
+    /planWeekWrite\(\{/.test(activities),
+    'the screen has its own copy of the merge logic, so check-week-write-plan.mjs ' +
+      'tests code that never runs on her phone'
+  );
+  ok(
+    /\.delete\(\)\.in\('id', plan\.remove\)/.test(activities),
+    'the delete is not driven by the plan, so the twelve tested cases do not ' +
+      'constrain what actually gets removed'
+  );
+  return 'the tested function is the one that runs';
+});
+
+// The scoping lives in the plan module now, which is where it can be run against
+// every subset of the chips rather than pattern-matched. These three read it
+// there; `check-week-write-plan.mjs` is what actually constrains the behaviour.
+const plan = fs.readFileSync('mobile/src/lib/week-write-plan.ts', 'utf8');
 
 check('it can only remove its own activities', () => {
   ok(
-    /labels\.includes\(String\(r\.activity\)\)/.test(activities),
-    'the delete is not scoped to this screen\'s own ten activities, so a French ' +
+    /own\.has\(r\.activity\) && !keep\.has\(r\.activity\)/.test(plan),
+    "the removal is not scoped to this screen's own ten activities, so a French " +
       'class added in chat can be swept up by a setup redo'
   );
-  return 'scoped to the ten chips';
+  return 'scoped to the ten chips (case 5 tries all 8 subsets)';
 });
 
 check('an activity she keeps is updated, not re-made', () => {
   // A delete-and-reinsert loses days_chosen_at and time_of_day - her Wednesday
   // and her 10am - which is a quieter version of the same loss.
   ok(
-    /alreadyThere/.test(activities) && /\.update\(\{ cadence \}\)/.test(activities),
+    /updateCadence = existing/.test(plan),
+    'nothing updates a kept row in place'
+  );
+  ok(
+    /insert = chosen\s*\n\s*\.filter\(\(c\) => !present\.has\(c\.activity\)\)/.test(plan),
     're-selecting an activity re-creates the row, which throws away the day she ' +
       'chose and the time she gave'
   );
-  return 'her day and time survive';
+  return 'her day and time survive (case 9)';
 });
 
 // ---- 3. the comment that lied --------------------------------------------
 check('no comment claims a scope the code does not have', () => {
   // Narrow on purpose: this exact sentence sat above a wipe for days.
   const claims = /Only the rows onboarding put there are replaced/.test(activities);
-  const scoped = /labels\.includes/.test(activities);
+  const scoped = /own\.has\(r\.activity\)/.test(plan);
   ok(!claims || scoped, 'the comment claims onboarding only replaces its own rows; the code does not');
   return 'the comment and the code agree';
 });

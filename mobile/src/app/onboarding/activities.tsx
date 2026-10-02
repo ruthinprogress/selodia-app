@@ -11,6 +11,7 @@ import { CardRadius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { supabase } from '@/lib/supabase';
+import { planWeekWrite } from '@/lib/week-write-plan';
 
 // SCREEN 4: WHAT SHE ALREADY DOES. This is what fills My Week.
 //
@@ -27,6 +28,12 @@ import { supabase } from '@/lib/supabase';
 //
 // NOTHING HERE IS A COMMITMENT. The week is a description. The spec's hard rule
 // holds: nothing in it is ever marked done or missed.
+//
+// EVERY ACTIVITY TAPPED HERE BECOMES A WEEK ROW, with its frequency and no day.
+// `user_week.days` defaults to '{}', so a row needs no day to exist - the day is
+// something chat can add later, or never. Ruth, 2 October: "Each activity she
+// taps in setup, with its frequency, creates a Week row (activity plus cadence,
+// no day needed)."
 
 const QUESTION = 'What do you already do?';
 const SUBTITLE = 'Whatever is actually in your week. Nothing here is a commitment.';
@@ -65,6 +72,13 @@ const CADENCE_WORDS: Record<CadenceKey, string> = {
   most_days: 'Most days',
 };
 
+// Back the other way, so a redo can show her the frequency she already gave.
+// Chat writes cadences in its own words, so anything unrecognised simply leaves
+// the frequency chips unset rather than guessing which of the four it meant.
+const CADENCE_KEYS: Record<string, CadenceKey> = Object.fromEntries(
+  (Object.keys(CADENCE_WORDS) as CadenceKey[]).map((k) => [CADENCE_WORDS[k], k])
+);
+
 // The everyday-activity level the TDEE estimate needs, from what she actually
 // picked. The busiest answer wins: somebody who walks most days and swims now
 // and then is not sedentary.
@@ -83,11 +97,60 @@ export default function ActivitiesScreen() {
   const [height, setHeight] = useState('');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // HER WEEK AS IT STANDS, READ BEFORE ANYTHING CAN BE OVERWRITTEN BY IT.
+  //
+  // Ruth, 2 October 2026: "Redo is an EDIT MODE. Pull every current selection
+  // from where it is kept and show it selected."
+  //
+  // It is also the guard for item 1, and the two are the same fact. An empty
+  // `chosen` is ambiguous until this has run: it means either "she deselected
+  // everything" or "the screen has not loaded yet". The old code could not tell,
+  // treated both as the first, and deleted her week on the second. Nothing may
+  // be written until the screen knows which it is - so Continue stays disabled
+  // until `loaded`, and `save` refuses outright if it is somehow pressed anyway.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) advanceOnboardingStep(supabase, user.id, 'activities');
-    });
+    let live = true;
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      advanceOnboardingStep(supabase, user.id, 'activities');
+
+      const [{ data: weekRows, error: weekError }, { data: profile }] = await Promise.all([
+        supabase.from('user_week').select('activity, cadence').eq('user_id', user.id),
+        supabase.from('user_profile').select('height_cm').eq('user_id', user.id).maybeSingle(),
+      ]);
+      if (!live) return;
+
+      // A FAILED READ IS NOT AN EMPTY WEEK. If this throws and the screen still
+      // declares itself loaded, every chip is unselected for a reason that has
+      // nothing to do with her, and Continue reads that as "remove all of them".
+      // Staying unloaded keeps Continue disabled, which is the safe failure.
+      if (weekError) return;
+
+      const picked: ActivityKey[] = [];
+      const words: Partial<Record<ActivityKey, CadenceKey>> = {};
+      for (const row of weekRows ?? []) {
+        // Only this screen's own ten can be shown as chips. A French class added
+        // in chat has no chip to light up, and must not be invented one - it
+        // simply is not this screen's to show, or to remove.
+        const match = ACTIVITIES.find((a) => (a.label as string) === String(row.activity));
+        if (!match) continue;
+        picked.push(match.key);
+        const cadenceKey = row.cadence ? CADENCE_KEYS[String(row.cadence)] : undefined;
+        if (cadenceKey) words[match.key] = cadenceKey;
+      }
+      setChosen(picked);
+      setCadences(words);
+      if (typeof profile?.height_cm === 'number') setHeight(String(profile.height_cm));
+      setLoaded(true);
+    })();
+    return () => {
+      live = false;
+    };
   }, []);
 
   function toggle(key: ActivityKey) {
@@ -105,6 +168,11 @@ export default function ActivitiesScreen() {
   }
 
   async function save(): Promise<boolean> {
+    // NOTHING IS WRITTEN FROM A SCREEN THAT HAS NOT READ HER WEEK YET. See
+    // `loaded` above: before the pre-fill lands, an empty `chosen` is the
+    // screen's own ignorance and not her answer.
+    if (!loaded) return false;
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -128,40 +196,79 @@ export default function ActivitiesScreen() {
     // BEFORE the early return for "nothing chosen": walking onto this screen and
     // pressing Continue with no chips selected wiped the table and saved nothing.
     //
-    // THREE CHANGES, and each closes a different half of it:
+    // THE FIRST FIX WAS HALF A FIX, AND THE CHECK AGREED WITH IT (2 October).
     //
-    //   1. Nothing is deleted when nothing is chosen. A redo she walks through
-    //      without touching the chips now changes nothing at all, which is what
-    //      "review the wording" should always have meant.
-    //   2. Only THIS SCREEN'S OWN ACTIVITIES can be removed. The ten labels below
-    //      are the only things this screen can create, so anything else in her
-    //      week - a French class, anything chat added - is hers and is left
-    //      alone. That is what the old comment claimed and this now does.
+    // 1 October's repair scoped the delete to this screen's own activities and
+    // added `if (chosen.length === 0) return true;` - BELOW the delete. So the
+    // destructive path survived in a narrower form: open the redo, press
+    // Continue without touching a chip, and every one of the ten labels was
+    // removed, because `keep` was empty and the early return came too late to
+    // matter. Her French class survived; Gym, Pilates and Dance did not.
+    //
+    // `check-setup-destroys-nothing.mjs` was written to catch exactly this, and
+    // passed, because its assertion ended in `|| ...includes('toRemove')` - an
+    // escape hatch admitting the shape it existed to reject. A check with an
+    // exception for the current code cannot fail on the current code.
+    //
+    // WHAT ACTUALLY FIXES IT is not a better-placed guard but knowing her week
+    // before offering to change it. The screen now loads her current rows and
+    // shows them selected, so `chosen` is her answer rather than a blank, and
+    // the three properties below follow from that:
+    //
+    //   1. A redo she walks through without touching anything writes back the
+    //      selection it displayed, which changes nothing.
+    //   2. Only THIS SCREEN'S OWN ACTIVITIES can be removed. The ten labels
+    //      below are the only things this screen can create, so anything else in
+    //      her week - a French class, anything chat added - is hers and is left
+    //      alone. That is what the comment above claimed and this now does.
     //   3. An activity she keeps is UPDATED, not deleted and re-made. Re-running
     //      setup used to throw away the day she had chosen and the time she had
     //      given, because a new row has neither. Her Wednesday survives.
+    //
+    // And deselecting is still a real removal, which is item 4's requirement:
+    // taking a chip off and pressing Continue overwrites, so nothing duplicates.
+    //
+    // THE DECISION ITSELF LIVES IN `planWeekWrite`, not here, so that it can be
+    // run by something other than a phone. See lib/week-write-plan.ts: the
+    // reason the half-fix survived a day is that its only guard was a check
+    // reading this file as text, and that check had an exception for the shape
+    // the file had. `scripts/check-week-write-plan.mjs` puts the function in the
+    // exact state that cost her Gym, Pilates and Dance and asserts it plans
+    // nothing - twelve cases, including every subset of the chips.
+    //
     // Widened to string: ACTIVITIES is `as const`, so its labels are a literal
     // union, and what comes back from the database is any string at all.
-    const labels: string[] = ACTIVITIES.map((a) => a.label);
-    const keep = new Set<string>(chosen.map((key) => ACTIVITIES.find((a) => a.key === key)!.label));
+    const ownLabels: string[] = ACTIVITIES.map((a) => a.label);
 
     const { data: existingRows, error: readError } = await supabase
       .from('user_week')
-      .select('id, activity, sort_order')
+      .select('id, activity, cadence, sort_order')
       .eq('user_id', user.id);
     if (readError) return false;
-    const existing = existingRows ?? [];
 
-    // Deselected, and only ever one of this screen's own.
-    const toRemove = existing
-      .filter((r) => labels.includes(String(r.activity)) && !keep.has(String(r.activity)))
-      .map((r) => r.id);
-    if (toRemove.length > 0) {
-      const { error } = await supabase.from('user_week').delete().in('id', toRemove);
+    const plan = planWeekWrite({
+      loaded,
+      existing: (existingRows ?? []).map((r) => ({
+        id: String(r.id),
+        activity: String(r.activity),
+        cadence: r.cadence === null || r.cadence === undefined ? null : String(r.cadence),
+        sort_order: typeof r.sort_order === 'number' ? r.sort_order : null,
+      })),
+      ownLabels,
+      chosen: chosen.map((key) => {
+        const activity = ACTIVITIES.find((a) => a.key === key)!.label as string;
+        const cadence = cadences[key] ? CADENCE_WORDS[cadences[key]!] : null;
+        return { activity, cadence };
+      }),
+    });
+    // Refused, because her week had not been read. Nothing to report as failure:
+    // Continue is disabled in that state, so this is defence, not a path.
+    if (!plan) return false;
+
+    if (plan.remove.length > 0) {
+      const { error } = await supabase.from('user_week').delete().in('id', plan.remove);
       if (error) return false;
     }
-
-    if (chosen.length === 0) return true;
 
     // ACTIVITY LEVEL AND HEIGHT COME FROM THIS SCREEN NOW, and they have to.
     //
@@ -182,36 +289,30 @@ export default function ActivitiesScreen() {
 
     // Already in her week: update the cadence she just gave and leave everything
     // else - her day, her time, the order - exactly as it was.
-    for (const row of existing) {
-      const name = String(row.activity);
-      if (!keep.has(name)) continue;
-      const key = ACTIVITIES.find((a) => (a.label as string) === name)?.key;
-      const cadence = key && cadences[key] ? CADENCE_WORDS[cadences[key]!] : null;
-      if (!cadence) continue;
-      await supabase.from('user_week').update({ cadence }).eq('id', row.id);
+    for (const row of plan.updateCadence) {
+      const { error } = await supabase
+        .from('user_week')
+        .update({ cadence: row.cadence })
+        .eq('id', row.id);
+      if (error) return false;
     }
 
-    const alreadyThere = new Set<string>(existing.map((r) => String(r.activity)));
-    const nextOrder = existing.reduce(
-      (max, r) => (typeof r.sort_order === 'number' && r.sort_order >= max ? r.sort_order + 1 : max),
-      0
+    if (plan.insert.length === 0) return true;
+    const { error } = await supabase.from('user_week').insert(
+      plan.insert.map((row) => ({
+        user_id: user.id,
+        activity: row.activity,
+        // NO PURPOSE LINE YET, and that is honest rather than lazy. The purpose
+        // is why a thing is in her week, and nothing on this screen has asked
+        // her. Chat fills it in once there is a conversation to fill it from;
+        // inventing "cardio and bone density" for somebody who said "swimming"
+        // would be the app putting words in her mouth on day one.
+        purpose: null,
+        cadence: row.cadence,
+        // NO `days`. It defaults to '{}', and setup does not ask for a day.
+        sort_order: row.sort_order,
+      }))
     );
-    const rows = chosen
-      .filter((key) => !alreadyThere.has(ACTIVITIES.find((a) => a.key === key)!.label as string))
-      .map((key, i) => ({
-      user_id: user.id,
-      activity: ACTIVITIES.find((a) => a.key === key)!.label,
-      // NO PURPOSE LINE YET, and that is honest rather than lazy. The purpose
-      // is why a thing is in her week, and nothing on this screen has asked
-      // her. Chat fills it in once there is a conversation to fill it from;
-      // inventing "cardio and bone density" for somebody who said "swimming"
-      // would be the app putting words in her mouth on day one.
-      purpose: null,
-      cadence: cadences[key] ? CADENCE_WORDS[cadences[key]!] : null,
-      sort_order: nextOrder + i,
-    }));
-    if (rows.length === 0) return true;
-    const { error } = await supabase.from('user_week').insert(rows);
     return !error;
   }
 
@@ -234,7 +335,10 @@ export default function ActivitiesScreen() {
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving,
+    // Disabled until her week has been read. The pre-fill is normally faster
+    // than she can look at the screen; the one case this covers is a slow or
+    // failed read, where carrying on would overwrite her week with a blank.
+    enabled: !saving && loaded,
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });

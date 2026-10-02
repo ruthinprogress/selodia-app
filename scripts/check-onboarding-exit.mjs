@@ -130,9 +130,29 @@ check('the header keeps its action on a screen it cannot place', () => {
 });
 
 check('there is a visible way out of a redo', () => {
+  // THIS ASSERTED THE WORDING, NOT THE DOOR. It required the literal string
+  // "Not now", which was the label on 30 September. The label is "Leave setup"
+  // now and has been for days, so the check has been failing while the way out
+  // worked perfectly - a check that fails on correct code gets switched off, and
+  // then it is not there for the day somebody deletes the control.
+  //
+  // What matters is that a redo can be left: something she can press, that stops
+  // the redo and takes her out of the flow. Any wording.
   const header = read(path.join(ROOT, 'mobile', 'src', 'components', 'onboarding-header.tsx'));
-  assert.ok(/Not now/.test(header), 'no "Not now" is drawn anywhere in the header');
   assert.ok(/useRedoing/.test(header), 'the header does not know whether this is a redo');
+  assert.ok(
+    /redoing && \(\s*<Pressable/.test(header),
+    'a redo draws no control of its own, so there is nothing to leave by'
+  );
+  assert.ok(
+    /setRedoing\(false\)/.test(header) && /router\.replace\('\/'\)/.test(header),
+    'the way out does not both end the redo and leave the flow, so it either ' +
+      'strands her or drops her back into setup on the next screen'
+  );
+  assert.ok(
+    /accessibilityLabel="Leave setup"/.test(header),
+    'the way out is not reachable or describable by a screen reader'
+  );
 });
 
 
