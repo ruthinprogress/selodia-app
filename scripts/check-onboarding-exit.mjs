@@ -60,7 +60,7 @@ function chainTargets() {
   for (const file of fs.readdirSync(ONBOARDING)) {
     if (!file.endsWith('.tsx') || file === '_layout.tsx') continue;
     const source = stripComments(read(path.join(ONBOARDING, file)));
-    for (const m of source.matchAll(/router\.(?:push|replace)\(\s*(?:\{\s*pathname:\s*)?'\/onboarding\/([a-z-]+)'/g)) {
+    for (const m of source.matchAll(/(?:router\.(?:push|replace)|leave)\(\s*(?:\{\s*pathname:\s*)?'\/onboarding\/([a-z-]+)'/g)) {
       targets.set(m[1], (targets.get(m[1]) ?? []).concat(file));
     }
   }
@@ -165,6 +165,19 @@ check('there is a visible way out of a redo', () => {
 // estimate depends on.
 //
 // Nothing would have caught that. Every other check here is about the way OUT;
+// NAVIGATION IS NOT ALWAYS A BARE router.push (2 October 2026).
+//
+// Every Body Manual row links to the screen that owns its question with redo=1,
+// meaning "one question, then back to her profile". Five screens ignored it and
+// walked her through the rest of the chain into chat. The fix routes them through
+// `leave(next)` in lib/one-question.ts, which goes back to the Manual or on to
+// `next` depending on where she came from.
+//
+// THIS CHECK WENT BLIND THE MOMENT THAT LANDED, and said the chain was broken
+// when it was not - because it reads the chain out of the source by looking for
+// `router.push('/onboarding/x')`, and there were none left. A check that reads
+// code by pattern has to be told when the pattern changes, or it reports on a
+// spelling rather than on the property.
 // this is the first one about the way THROUGH. It walks the pushes the screens
 // actually make, from the first screen a signed-in person sees, and asserts
 // that the walk arrives at the last one without stranding a Configuration
@@ -177,7 +190,7 @@ check('the configuration chain runs from the first question to the first draft',
     const source = stripComments(read(file));
     return [
       ...new Set(
-        [...source.matchAll(/router\.(?:push|replace)\(\s*(?:\{\s*pathname:\s*)?'\/onboarding\/([a-z-]+)'/g)].map(
+        [...source.matchAll(/(?:router\.(?:push|replace)|leave)\(\s*(?:\{\s*pathname:\s*)?'\/onboarding\/([a-z-]+)'/g)].map(
           (m) => m[1]
         )
       ),

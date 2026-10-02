@@ -14,6 +14,7 @@ import {
   mayWrite,
   type LoadState,
 } from '@/lib/load-state';
+import { useOneQuestion } from '@/lib/one-question';
 import { supabase } from '@/lib/supabase';
 
 // SCREEN 2: WHICH SKILL, AND WHERE SHE IS WITH IT.
@@ -41,6 +42,10 @@ const PLACEMENTS: { key: Placement; label: string; hint?: string }[] = [
 ];
 
 export default function SkillScreen() {
+  // ONE QUESTION WHEN SHE CAME FROM HER BODY MANUAL. See lib/one-question.ts:
+  // until tonight only goals.tsx read this, so every other row of the Manual
+  // opened a step of the seven-question chain and walked her into chat.
+  const { fromManual, leave } = useOneQuestion();
   const [ladderKey, setLadderKey] = useState<string | null>(null);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [saving, setSaving] = useState(false);
@@ -80,7 +85,9 @@ export default function SkillScreen() {
         if (live) setLoadState('failed');
         return;
       }
-      advanceOnboardingStep(supabase, user.id, 'skill');
+      // A ROW TAPPED ON HER PROFILE IS NOT A STEP OF SETUP. Advancing here
+      // moves where the app thinks she is in a flow she finished.
+      if (!fromManual) advanceOnboardingStep(supabase, user.id, 'skill');
 
       const { data: skills, error } = await supabase
         .from('user_skills')
@@ -190,7 +197,7 @@ export default function SkillScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/activities');
+      leave('/onboarding/activities');
       return;
     }
     setSaving(true);
@@ -200,7 +207,7 @@ export default function SkillScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/activities');
+    leave('/onboarding/activities');
   }
 
   useOnboardingAction({

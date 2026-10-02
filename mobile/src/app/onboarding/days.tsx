@@ -24,6 +24,7 @@ import {
   mayWrite,
   type LoadState,
 } from '@/lib/load-state';
+import { useOneQuestion } from '@/lib/one-question';
 import { supabase } from '@/lib/supabase';
 
 // QUESTION 1 OF 7: HOW DO YOU WANT YOUR DAYS TO FEEL?
@@ -51,6 +52,10 @@ import { supabase } from '@/lib/supabase';
 
 export default function DaysScreen() {
   const theme = useTheme();
+  // ONE QUESTION WHEN SHE CAME FROM HER BODY MANUAL. See lib/one-question.ts:
+  // until tonight only goals.tsx read this, so every other row of the Manual
+  // opened a step of the seven-question chain and walked her into chat.
+  const { fromManual, leave } = useOneQuestion();
   const [chosen, setChosen] = useState<string[]>([]);
   const [ownWords, setOwnWords] = useState('');
   const [saving, setSaving] = useState(false);
@@ -68,8 +73,33 @@ export default function DaysScreen() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
-      advanceOnboardingStep(supabase, user.id, 'days');
+      // A SCREEN MUST NEVER SIT ON 'loading' FOREVER (2 October 2026, 21:02).
+      //
+      // Ruth: "I tried to add to Week via profile and it dragged me through
+      // onboarding again but saved nothing. Twice. And ended up in Chat at the
+      // end. Twice."
+      //
+      // `if (!user) return;` left loadState on 'loading', and 'loading' is the
+      // one state that disables Continue. So the forward button was dead, the
+      // only live control was "Skip this question", and skipping writes nothing
+      // and walks her to the next screen - five activities and their cadences
+      // discarded without a word, twice over.
+      //
+      // THIS IS THE DEAD SCREEN OF 1 OCTOBER, IN THE ERROR PATH OF THE MODULE
+      // WRITTEN TO END IT. load-state.ts exists because `if (error) return` left
+      // five screens blank with a dead button; I moved the error case to three
+      // states and left the no-user case returning into the same trap.
+      //
+      // 'failed' is the honest state: it says so, offers Try again, and lets her
+      // past without writing - which is what 'loading' pretended to do while
+      // actually just locking the door.
+      if (!user) {
+        setLoadState('failed');
+        return;
+      }
+      // A ROW TAPPED ON HER PROFILE IS NOT A STEP OF SETUP. Advancing here
+      // moves where the app thinks she is in a flow she finished.
+      if (!fromManual) advanceOnboardingStep(supabase, user.id, 'days');
 
       // ITEM 4: A REDO OPENS ON HER ANSWERS.
       const { data, error } = await supabase
@@ -145,7 +175,7 @@ export default function DaysScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/goals');
+      leave('/onboarding/goals');
       return;
     }
     setSaving(true);
@@ -155,7 +185,7 @@ export default function DaysScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/goals');
+    leave('/onboarding/goals');
   }
 
   useOnboardingAction({

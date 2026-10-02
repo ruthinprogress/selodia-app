@@ -1,4 +1,4 @@
-import { router, usePathname } from 'expo-router';
+import { router, useGlobalSearchParams, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useOnboardingActionSlot } from '@/components/onboarding-action';
@@ -11,6 +11,7 @@ import {
   isBodyManual,
   progressForPath,
 } from '@/lib/onboarding-progress';
+import { isOneQuestion } from '@/lib/one-question';
 import { setRedoing, useRedoing } from '@/lib/redo-setup';
 
 // The persistent onboarding header (build item 48). Two jobs, both from live
@@ -35,6 +36,13 @@ export function OnboardingHeader() {
   // Set when she came in through More > redo setup. Her account is still
   // finished for the whole of that visit, so leaving costs her nothing.
   const redoing = useRedoing();
+  // A QUESTION OPENED FROM HER BODY MANUAL IS NOT A STEP (2 October 2026).
+  //
+  // Ruth tapped "Change this" on her week and the header said "Getting to know
+  // you / 4 of 7". It is one question she chose to revisit, not the fourth of
+  // seven things standing between her and a finished app, and saying otherwise
+  // is what made it feel like being dragged through onboarding again.
+  const oneQuestion = isOneQuestion(useGlobalSearchParams<{ redo?: string }>());
 
   // THE WAY OUT IS NOT PART OF THE DECORATION (2026-09-30).
   //
@@ -68,7 +76,7 @@ export function OnboardingHeader() {
       <View style={styles.row}>
         <View style={styles.titleBlock}>
           <ThemedText type="smallBold">{ONBOARDING_TITLE}</ThemedText>
-          {progress?.index != null && (
+          {progress?.index != null && !oneQuestion && (
             <ThemedText type="small" themeColor="textSecondary">
               {progress.index} of {progress.total}
             </ThemedText>

@@ -15,6 +15,7 @@ import { resolveTDEE } from '@/lib/body-metrics';
 import { GOAL_OPTIONS, focusFromGoals, invitesMeasure, type GoalKey } from '@/lib/goals';
 import { calculateProteinTarget } from '@/lib/protein';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
+import { useOneQuestion } from '@/lib/one-question';
 import { supabase } from '@/lib/supabase';
 
 // WHAT BRINGS HER HERE. Taps, not a conversation (Ruth's session brief,
@@ -91,8 +92,10 @@ export default function GoalsScreen() {
   // opens the goals screen only, then returns to Today." Walking her into the
   // rest of the setup chain after one tap from Today would be the trap of
   // 1 October in a politer form.
-  const params = useLocalSearchParams<{ redo?: string }>();
-  const fromManual = params.redo === '1';
+  // THE SAME HELPER AS EVERY OTHER ROW NOW. This screen had its own copy of
+  // this logic, which is precisely why the other eleven rows of the Body Manual
+  // never got it: a fix written as three lines inside one file protects one file.
+  const { fromManual, leave } = useOneQuestion();
 
   useEffect(() => {
     let live = true;
@@ -397,7 +400,7 @@ export default function GoalsScreen() {
   }
 
   /** Where Continue goes once this screen is done with her. */
-  function leave() {
+  function onDone() {
     // BACK WHERE SHE CAME FROM, WHICH IS THE BODY MANUAL (2 October 2026).
     //
     // Ruth: "it took me to the chat page after, which is not correct. It should
@@ -409,15 +412,14 @@ export default function GoalsScreen() {
     // Manual's own row, so that is where it returns - and seeing the new goal on
     // the row she tapped is the confirmation that the save happened, which no
     // sentence can replace.
-    if (fromManual) router.replace('/settings/profile');
-    else router.push('/onboarding/skill');
+    leave('/onboarding/skill');
   }
 
   async function goOn(skipping: boolean) {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      leave();
+      onDone();
       return;
     }
 
@@ -430,7 +432,7 @@ export default function GoalsScreen() {
       setFailed(true);
       return;
     }
-    leave();
+    onDone();
   }
 
   useOnboardingAction({
