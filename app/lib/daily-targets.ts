@@ -208,6 +208,7 @@ export type DayStateProfile = {
   fat_focus_state?: string | null;
   muscle_focus_state?: string | null;
   protein_target_g?: number | null;
+  training_state?: string | null;
   // Read since 30 September so the arithmetic can stand down in pregnancy.
   life_stage?: string | null;
 } | null;
@@ -242,7 +243,13 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
       fatFocus: asFocus(profile?.fat_focus_state),
       muscleFocus: asFocus(profile?.muscle_focus_state),
     }),
-    protein: proteinTarget(profile?.protein_target_g ?? null, m?.weight_kg ?? null, m?.body_fat_pct ?? null),
+    protein: proteinTarget({
+      manualG: profile?.protein_target_g ?? null,
+      weightKg: m?.weight_kg ?? null,
+      bodyFatPct: m?.body_fat_pct ?? null,
+      muscleFocus: asFocus(profile?.muscle_focus_state),
+      training: (profile?.training_state as never) ?? null,
+    }),
   };
 }
 

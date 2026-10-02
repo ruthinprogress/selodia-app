@@ -87,6 +87,8 @@ type OverviewData = {
   todayProtein: number;
   calorieTargetKcal: number | null;
   proteinTargetLabel: string | null;
+  /** 'held' means her training is paused, which Today says out loud. */
+  proteinStepped: 'up' | 'held' | 'plain' | null;
   // WHY there is no calorie figure, when there is none. Null when there is
   // one, or when the reason is something this row cannot help with.
   /**
@@ -127,6 +129,7 @@ type ProfileRow = {
   muscle_focus_state: string | null;
   has_scales: boolean | null;
   protein_target_g: number | null;
+  training_state: string | null;
   first_name: string | null;
   guidance_mode: string | null;
   // Read so the cycle day can be suppressed for anybody who is not on a regular
@@ -309,7 +312,7 @@ export function OverviewPanel({
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode, training_state'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -406,11 +409,17 @@ export function OverviewPanel({
         muscleFocus: asFocus(profile?.muscle_focus_state ?? null),
       });
       // Lean mass from body fat percentage, not from the scale's muscle field.
-      const proteinTarget = calculateProteinTarget(
-        profile?.protein_target_g ?? null,
-        latest?.weight_kg ?? null,
-        latest?.body_fat_pct ?? null
-      );
+      // HER GOAL IS PART OF THE SUM, and this is where Ruth saw it missing: Today
+      // read 82-98 g while the goals screen read 101-123 g, one minute apart, on
+      // the same body. This call had her body fat and not her goal; that one had
+      // her goal and not her body fat. Both now ask the same question.
+      const proteinTarget = calculateProteinTarget({
+        manualG: profile?.protein_target_g ?? null,
+        weightKg: latest?.weight_kg ?? null,
+        bodyFatPct: latest?.body_fat_pct ?? null,
+        muscleFocus: asFocus(profile?.muscle_focus_state ?? null),
+        training: (profile?.training_state as never) ?? null,
+      });
 
       if (cancelled) return;
       const next: OverviewData = {
@@ -451,6 +460,7 @@ export function OverviewPanel({
                 ? 'weight-unknown'
                 : null,
         proteinTargetLabel: proteinTargetLabel(proteinTarget),
+        proteinStepped: proteinTarget?.kind === 'range' ? proteinTarget.stepped : null,
         activityCount: acts.length,
         activityMinutes: acts.reduce((n, a) => n + (a.duration_min ?? 0), 0),
         // Sentence case, de-duplicated, in the order they were logged. Two
@@ -671,6 +681,21 @@ export function OverviewPanel({
             ]
               .filter(Boolean)
               .join(' · ')}
+            {/* SAID ONLY WHILE IT IS TRUE (2026-10-02).
+
+                Ruth: "Flag when the user isn't currently training (injury,
+                pause, etc.) and show a lower maintenance protein range instead,
+                with a note that it steps up once training resumes."
+
+                ONLY ON THE PAUSED SIDE. The matching assumption - that she IS
+                training - is named on the goals screen where the figures are
+                worked out, and on the Body Manual row where she can change it.
+                Printing it here every day as well would make her daily screen
+                carry a permanent caveat about a number that is right, which is
+                how a disclaimer stops being read. */}
+            {data.proteinStepped === 'held'
+              ? '\nThe maintenance range, while your training is paused.'
+              : ''}
           </ThemedText>
         ) : (
           /* NO TARGET IS NOT AN ERROR, and this line is not a nag.

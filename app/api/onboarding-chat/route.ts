@@ -487,9 +487,15 @@ export async function POST(request: NextRequest) {
       // read before anything is computed.
       const { data: prof } = await supabase
         .from('user_profile')
-        .select('protein_target_g')
+        .select('protein_target_g, muscle_focus_state, training_state')
         .maybeSingle();
-      const computed = proteinTarget(prof?.protein_target_g ?? null, w, mm?.body_fat_pct ?? null);
+      const computed = proteinTarget({
+        manualG: prof?.protein_target_g ?? null,
+        weightKg: w,
+        bodyFatPct: mm?.body_fat_pct ?? null,
+        muscleFocus: (prof?.muscle_focus_state as never) ?? null,
+        training: (prof?.training_state as never) ?? null,
+      });
       // The two shapes the rest of this block already expects: a single number
       // when they have chosen one, a span when the app is the one suggesting.
       const target = computed?.kind === 'manual' ? computed.grams : null;

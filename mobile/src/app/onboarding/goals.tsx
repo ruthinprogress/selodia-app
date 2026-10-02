@@ -78,6 +78,11 @@ export default function GoalsScreen() {
     biologicalSex: string | null;
     activityLevel: string | null;
     scaleBmr: number | null;
+    // HER BODY FAT, WHICH THIS SCREEN DID NOT READ. Without it the protein sum
+    // fell to the bodyweight path while every other surface used the lean-mass
+    // one, and the two figures Ruth photographed a minute apart were 20 g apart.
+    bodyFatPct: number | null;
+    trainingState: 'training' | 'paused' | null;
     storedWeightKg: number | null;
     storedWeightSource: 'estimate' | 'measured' | null;
   } | null>(null);
@@ -104,7 +109,7 @@ export default function GoalsScreen() {
       const [{ data: profile }, { data: current }, { data: goalRows }] = await Promise.all([
         supabase
           .from('user_profile')
-          .select('height_cm, date_of_birth, biological_sex, activity_level')
+          .select('height_cm, date_of_birth, biological_sex, activity_level, training_state')
           .eq('user_id', user.id)
           .maybeSingle(),
         supabase
@@ -131,6 +136,16 @@ export default function GoalsScreen() {
         .not('bmr', 'is', null)
         .order('measured_at', { ascending: false })
         .limit(1);
+      // READ SEPARATELY FROM THE BMR ROW ON PURPOSE. The latest row with a BMR
+      // and the latest row with a body fat reading are not always the same row,
+      // and taking body fat from the BMR row would silently use a stale figure
+      // or none at all.
+      const { data: fatRow } = await supabase
+        .from('body_measurements')
+        .select('body_fat_pct')
+        .not('body_fat_pct', 'is', null)
+        .order('measured_at', { ascending: false })
+        .limit(1);
       if (!live) return;
 
       setBody({
@@ -139,6 +154,8 @@ export default function GoalsScreen() {
         biologicalSex: (profile?.biological_sex as string) ?? null,
         activityLevel: (profile?.activity_level as string) ?? null,
         scaleBmr: Number(measured?.[0]?.bmr) || null,
+        bodyFatPct: Number(fatRow?.[0]?.body_fat_pct) || null,
+        trainingState: (profile?.training_state as 'training' | 'paused') ?? null,
         storedWeightKg: Number(current?.weight_kg) || null,
         storedWeightSource: (current?.weight_source as 'estimate' | 'measured') ?? null,
       });
@@ -224,7 +241,12 @@ export default function GoalsScreen() {
       biologicalSex: body?.biologicalSex ?? null,
       activityLevel: body?.activityLevel ?? null,
     });
-    const protein = calculateProteinTarget(null, weightKg, null, intent.highProtein);
+    const protein = calculateProteinTarget({
+      weightKg,
+      bodyFatPct: body?.bodyFatPct ?? null,
+      muscleFocus: intent.muscle,
+      training: body?.trainingState ?? null,
+    });
 
     return explainTarget({
       intent,
@@ -235,6 +257,7 @@ export default function GoalsScreen() {
       activityWord: ACTIVITY_WORD[body?.activityLevel ?? ''] ?? null,
       proteinLow: protein?.kind === 'range' ? protein.low : null,
       proteinHigh: protein?.kind === 'range' ? protein.high : null,
+      proteinStepped: protein?.kind === 'range' ? protein.stepped : null,
     });
   }
 

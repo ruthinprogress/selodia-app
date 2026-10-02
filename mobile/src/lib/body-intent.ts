@@ -147,6 +147,24 @@ export function explainTarget(input: {
   activityWord: string | null | undefined;
   proteinLow: number | null | undefined;
   proteinHigh: number | null | undefined;
+  /**
+   * Which way her goal moved the protein range, from calculateProteinTarget.
+   *
+   * READ FROM THE SUM RATHER THAN RE-DERIVED HERE. This used to print its line
+   * from `intent.highProtein`, which is the intent's WISH, while the figures
+   * beside it came from the protein module, which knows whether the wish was
+   * granted. Two places deciding the same thing is how Ruth ended up with two
+   * different protein targets in the first place; this panel now describes the
+   * number it is actually showing.
+   *
+   * REQUIRED, THOUGH IT MAY BE NULL. Making it optional reintroduced the exact
+   * fault this whole change was about, one file along: a caller that left it out
+   * silently lost the "kept high" sentence and printed a bare range under a
+   * recomposition goal, which is the panel failing to explain the one thing
+   * recomposition DOES. check-weight-and-targets.mjs caught it on the first run.
+   * A caller with nothing to say passes null and means it.
+   */
+  proteinStepped: 'up' | 'held' | 'plain' | null;
 }): TargetWorking {
   const { intent, weightKg, weightSource, bmrKcal, tdeeKcal, activityWord } = input;
   const lines: string[] = [];
@@ -209,8 +227,27 @@ export function explainTarget(input: {
       target = floor;
     }
   } else if (intent.key === 'build_muscle') {
-    lines.push(`Building muscle wants a small surplus, so 150 kcal a day more than you use.`);
-    target = tdee + 150;
+    // A SURPLUS WITH NOTHING TO BUILD WITH IS JUST A SURPLUS (2026-10-02).
+    //
+    // Ruth: "more sedentary weeks should keep to the maintenance kcal".
+    //
+    // The 150 kcal is there to feed muscle being built. With training paused
+    // there is nothing asking for it, and the same 150 kcal a day becomes fat
+    // gain while the screen calls it building muscle. So a pause holds it at
+    // maintenance.
+    //
+    // IT DOES NOT CUT BELOW MAINTENANCE EITHER. A pause is not a reason to put
+    // her in a deficit she did not choose, and it does not touch the deficit of
+    // somebody who DID choose one - losing fat is still the thing she asked for,
+    // training or not.
+    if (input.proteinStepped === 'held') {
+      lines.push(
+        `Your training is paused, so this is held at what you use rather than the small surplus building muscle usually wants. A surplus with no training behind it does not become muscle.`
+      );
+    } else {
+      lines.push(`Building muscle wants a small surplus, so 150 kcal a day more than you use.`);
+      target = tdee + 150;
+    }
   } else if (intent.key === 'recomposition') {
     lines.push(
       `Less fat with more muscle means eating around what you use rather than under it. The change comes from the protein and the training, not from a deficit.`
@@ -222,13 +259,33 @@ export function explainTarget(input: {
   const rounded = Math.round(target / 10) * 10;
   lines.push(`So: about ${kcal(rounded)} a day.`);
 
-  const { proteinLow, proteinHigh } = input;
+  const { proteinLow, proteinHigh, proteinStepped } = input;
   if (proteinLow != null && proteinHigh != null && proteinLow > 0) {
-    lines.push(
-      intent.highProtein
-        ? `Protein ${proteinLow} to ${proteinHigh} g a day, kept high because that is what protects muscle.`
-        : `Protein ${proteinLow} to ${proteinHigh} g a day.`
-    );
+    const span = `Protein ${proteinLow} to ${proteinHigh} g a day`;
+    if (proteinStepped === 'up') {
+      // THE ASSUMPTION IS NAMED, which is what Ruth asked for. "Kept high
+      // because that is what protects muscle" was true and incomplete: it is
+      // kept high because protein plus TRAINING protects muscle, and the app had
+      // not asked whether there was any training. A number resting on a fact
+      // nobody checked should say which fact.
+      lines.push(
+        `${span}, kept high because that is what protects muscle while you are training.`
+      );
+      // NO FIGURE FOR THE OTHER RANGE HERE. Working it back out of this one
+      // means the multipliers written down twice, which is the drift that put
+      // two protein targets on her phone. The panel says what would change, and
+      // the sum stays in one file.
+      lines.push(
+        `That assumes you are lifting or doing something that asks the muscle to work. If you are not at the moment, say so in your Body Manual and this comes back down to the maintenance range.`
+      );
+    } else if (proteinStepped === 'held') {
+      lines.push(`${span}, the maintenance range, because your training is paused.`);
+      lines.push(
+        `It steps back up once you are training again. Protein is what protects the muscle you have, so this is not lower than it should be - it is where it belongs without the training to build on.`
+      );
+    } else {
+      lines.push(`${span}.`);
+    }
   }
 
   // SAID ONCE, AND NOT AS A DISCLAIMER. These are estimates from a formula, and

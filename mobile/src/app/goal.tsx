@@ -85,7 +85,7 @@ export default function GoalScreen() {
           .order('set_on', { ascending: false }),
         supabase
           .from('user_profile')
-          .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, protein_target_g')
+          .select('height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, protein_target_g, training_state')
           .maybeSingle(),
         supabase
           .from('body_measurements')
@@ -123,11 +123,16 @@ export default function GoalScreen() {
         fatFocus: fat as never,
         muscleFocus: muscle as never,
       });
-      const protein = calculateProteinTarget(
-        (p?.protein_target_g as number) ?? null,
-        m?.weight_kg ?? null,
-        m?.body_fat_pct ?? null
-      );
+      // THE GOAL AND THE BODY FAT, BOTH. This screen passed neither the goal nor
+      // a training state until 2 October, so it showed the plain range while the
+      // goals screen showed the stepped-up one. See the note in lib/protein.ts.
+      const protein = calculateProteinTarget({
+        manualG: (p?.protein_target_g as number) ?? null,
+        weightKg: m?.weight_kg ?? null,
+        bodyFatPct: m?.body_fat_pct ?? null,
+        muscleFocus: muscle as never,
+        training: (p?.training_state as never) ?? null,
+      });
       const label = proteinTargetLabel(protein);
 
       setDrives({

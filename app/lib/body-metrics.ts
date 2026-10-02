@@ -77,9 +77,26 @@ export function calculateTDEE(bmr: number | null, activityLevel: string | null |
 // the same rule, and the two must not diverge.
 //
 // body_fat_pct is a PERCENTAGE (26.4, not 0.264), hence the divide by 100.
+export type ProteinFocus = 'reduce' | 'maintain' | 'increase';
+export type TrainingState = 'training' | 'paused';
+
 export type ProteinTarget =
   | { kind: 'manual'; grams: number }
-  | { kind: 'range'; low: number; high: number; basis: 'lean_mass' | 'bodyweight' };
+  | {
+      kind: 'range';
+      low: number;
+      high: number;
+      basis: 'lean_mass' | 'bodyweight';
+      stepped: 'up' | 'held' | 'plain';
+    };
+
+export type ProteinInput = {
+  manualG?: number | null;
+  weightKg: number | null | undefined;
+  bodyFatPct: number | null | undefined;
+  muscleFocus?: ProteinFocus | null;
+  training?: TrainingState | null;
+};
 
 const MIN_PLAUSIBLE_BF_PCT = 3;
 const MAX_PLAUSIBLE_BF_PCT = 70;
@@ -109,21 +126,51 @@ export function leanBodyMassKg(
 // evidence supports for an active woman over 40; this is the top of the same
 // range, not a new claim.
 //
-// A MANUAL TARGET IS UNTOUCHED. She set it; no goal overrides a figure she chose.
-export function proteinTarget(
-  manualG: number | null | undefined,
-  weightKg: number | null | undefined,
-  bodyFatPct: number | null | undefined,
-  /** True for the goals whose mechanism IS protein: recomposition, muscle gain. */
-  highProtein = false
-): ProteinTarget | null {
+// A MANUAL TARGET IS UNTOUCHED. She set it; no goal overrides a figure she chose,
+// and no pause lowers it either.
+//
+// A PAUSE RETURNS THE PLAIN RANGE, IT DOES NOT GO UNDER IT. Ruth's instruction was
+// about the step-up, which a training stimulus earns. Dropping protein below
+// maintenance in a pause would be a different and wrong reading: in a deficit
+// protein matters MORE without training, not less.
+//
+// AN OBJECT, NOT FOUR POSITIONAL ARGUMENTS. On 2 October two surfaces showed Ruth
+// 82-98 g and 101-123 g one minute apart, because `highProtein` was a defaulted
+// trailing boolean that four of five call sites never passed. See the long note in
+// mobile/src/lib/protein.ts; this is the same rule and must stay identical to it.
+export function proteinStep(input: {
+  muscleFocus?: ProteinFocus | null;
+  training?: TrainingState | null;
+}): 'up' | 'held' | 'plain' {
+  if (input.muscleFocus !== 'increase') return 'plain';
+  return input.training === 'paused' ? 'held' : 'up';
+}
+
+export function proteinTarget(input: ProteinInput): ProteinTarget | null {
+  const { manualG, weightKg, bodyFatPct } = input;
   if (manualG != null && manualG > 0) return { kind: 'manual', grams: Math.round(manualG) };
+
+  const stepped = proteinStep(input);
+  const high = stepped === 'up';
+
   const lbm = leanBodyMassKg(weightKg, bodyFatPct);
   if (lbm != null && lbm > 0) {
-    return { kind: 'range', low: Math.round(lbm * (highProtein ? 2.2 : 2.0)), high: Math.round(lbm * (highProtein ? 2.6 : 2.4)), basis: 'lean_mass' };
+    return {
+      kind: 'range',
+      low: Math.round(lbm * (high ? 2.2 : 2.0)),
+      high: Math.round(lbm * (high ? 2.6 : 2.4)),
+      basis: 'lean_mass',
+      stepped,
+    };
   }
   if (weightKg != null && weightKg > 0) {
-    return { kind: 'range', low: Math.round(weightKg * (highProtein ? 1.8 : 1.6)), high: Math.round(weightKg * (highProtein ? 2.2 : 2.0)), basis: 'bodyweight' };
+    return {
+      kind: 'range',
+      low: Math.round(weightKg * (high ? 1.8 : 1.6)),
+      high: Math.round(weightKg * (high ? 2.2 : 2.0)),
+      basis: 'bodyweight',
+      stepped,
+    };
   }
   return null;
 }

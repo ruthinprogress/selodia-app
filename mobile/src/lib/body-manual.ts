@@ -49,6 +49,16 @@ export type BodyManualSection = {
    * only one: the latest real weigh-in already wins over any estimate.
    */
   readOnly?: boolean;
+  /**
+   * True when the row is answered ON the row, with chips, rather than by opening
+   * a setup screen.
+   *
+   * THERE IS NO SETUP SCREEN FOR THIS ONE AND THERE SHOULD NOT BE. She removed
+   * the redo wizard this afternoon; adding a new wizard screen for a single
+   * two-state answer would be walking it back in. It is one field with one
+   * current value, which is the whole shape the Manual was built for.
+   */
+  inline?: boolean;
 };
 
 export const BODY_MANUAL_HEADING = 'Body Manual';
@@ -77,6 +87,23 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     heading: 'Your body goal',
     note: 'Sets your calorie and protein targets. Changing it keeps the old one, dated, in your Almanac.',
     empty: 'Not set yet, so there is no calorie target. Add it any time.',
+  },
+  {
+    // WHETHER THE PROTEIN TARGET'S ASSUMPTION IS TRUE (2026-10-02).
+    //
+    // Ruth: "The protein target (101-123g) assumes you're actively resistance
+    // training to drive the recomp - without that stimulus, it's a
+    // maintenance-range target in disguise. Flag when the user isn't currently
+    // training (injury, pause, etc.)"
+    //
+    // IT SITS UNDER THE GOAL BECAUSE IT CHANGES THE GOAL'S FIGURES. It is not a
+    // fact about her body like the rows below; it is the condition the body
+    // goal's protein and calorie targets rest on.
+    key: 'training',
+    heading: 'Whether you are training',
+    note: 'Protein goes to the top of its range while you are training, because that is what the extra is for. Say you are paused and it comes back to the maintenance range until you start again.',
+    empty: 'Not said, so your targets assume you are training.',
+    inline: true,
   },
   {
     key: 'weight',

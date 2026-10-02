@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { ButtonRadius, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   BODY_MANUAL_HEADING,
@@ -47,6 +47,9 @@ export function BodyManual() {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
+  const [training, setTraining] = useState<'training' | 'paused' | null>(null);
+  const [trainingSetAt, setTrainingSetAt] = useState<string | null>(null);
+  const [savingTraining, setSavingTraining] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,7 +80,7 @@ export function BodyManual() {
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at').maybeSingle(),
           supabase.from('almanac_entries').select('title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
         ]);
         if (cancelled) return;
@@ -113,7 +116,11 @@ export function BodyManual() {
           life_stage?: string | null;
           life_stage_detail?: string | null;
           hormone_use?: unknown;
+          training_state?: string | null;
+          training_state_set_at?: string | null;
         } | null;
+        setTraining((p?.training_state as 'training' | 'paused') ?? null);
+        setTrainingSetAt((p?.training_state_set_at as string) ?? null);
 
         setData({
           days: {
@@ -190,6 +197,67 @@ export function BodyManual() {
     }, [])
   );
 
+  /**
+   * SAYING IT IS ONE TAP AND ONE WRITE.
+   *
+   * The optimistic set comes first so the chips answer immediately, and a failed
+   * write puts it back rather than leaving her looking at a state the database
+   * does not hold. No confirm step: the two-press gate on the goals screen is
+   * what lost her 45 kg goal this afternoon, and a wrong tap here is corrected by
+   * the other chip.
+   */
+  async function sayTraining(next: 'training' | 'paused') {
+    if (savingTraining) return;
+    const previous = training;
+    const previousAt = trainingSetAt;
+    // TAPPING THE ONE THAT IS ALREADY SET UNSETS IT, which is how she gets back
+    // to "not said" without a third chip for it.
+    const value = previous === next ? null : next;
+    const stamp = value == null ? null : new Date().toISOString();
+    setTraining(value);
+    setTrainingSetAt(stamp);
+    setSavingTraining(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setTraining(previous);
+      setTrainingSetAt(previousAt);
+      setSavingTraining(false);
+      return;
+    }
+    const { error } = await supabase
+      .from('user_profile')
+      .update({
+        training_state: value,
+        training_state_set_at: stamp,
+      })
+      .eq('user_id', user.id);
+    setSavingTraining(false);
+    if (error) {
+      setTraining(previous);
+      setTrainingSetAt(previousAt);
+      return;
+    }
+  }
+
+  /**
+   * THE DATE IS PART OF THE ANSWER. "Paused" with no date is a state that
+   * outlives the pause, and nothing expires it on her behalf - an app deciding
+   * she must be training again by now would be inventing the very fact this row
+   * exists to stop it inventing. Showing when she said it is what lets her see
+   * it has gone stale.
+   */
+  function trainingLines(): string[] {
+    if (training == null) return [];
+    return [
+      training === 'paused' ? 'Paused at the moment.' : 'Training at the moment.',
+      ...(trainingSetAt
+        ? [`Said on ${new Date(trainingSetAt).toLocaleDateString('en-GB')}.`]
+        : []),
+    ];
+  }
+
   /** Where a row is edited. The setup screen that owns that question. */
   function editRoute(key: string): string | null {
     switch (key) {
@@ -244,7 +312,10 @@ export function BodyManual() {
 
       <ThemedView type="backgroundElement" style={styles.card}>
         {BODY_MANUAL_SECTIONS.map((section, i) => {
-          const contents = data[section.key] ?? { lines: [] };
+          const contents =
+            section.key === 'training'
+              ? { lines: trainingLines() }
+              : (data[section.key] ?? { lines: [] });
           const has = contents.lines.length > 0;
           const isOpen = open[section.key] === true;
           const route = editRoute(section.key);
@@ -296,10 +367,52 @@ export function BodyManual() {
                     {section.note}
                   </ThemedText>
 
+                  {/* ANSWERED ON THE ROW. One field, two states, no screen to
+                      open - which is the shape the Manual replaced the redo
+                      wizard with. */}
+                  {section.inline && section.key === 'training' && (
+                    <View style={styles.chips}>
+                      {(
+                        [
+                          ['training', 'I am training'],
+                          ['paused', 'Paused for now'],
+                        ] as const
+                      ).map(([value, label]) => {
+                        const on = training === value;
+                        return (
+                          <Pressable
+                            key={value}
+                            onPress={() => void sayTraining(value)}
+                            disabled={savingTraining}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: on, disabled: savingTraining }}
+                            accessibilityLabel={label}
+                            accessibilityHint={
+                              on ? 'Tap again to go back to not saying' : undefined
+                            }
+                            style={({ pressed }) => [
+                              styles.chip,
+                              {
+                                backgroundColor: on ? theme.accentDeep : theme.background,
+                                borderColor: on ? theme.accentDeep : theme.textSecondary,
+                              },
+                              pressed && styles.pressed,
+                            ]}>
+                            <ThemedText
+                              type="small"
+                              style={{ color: on ? theme.background : theme.text }}>
+                              {label}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
+
                   {/* WEIGHT HAS NO EDIT, because it maintains itself: the latest
                       real weigh-in beats any estimate, whatever the dates say. A
                       button here would imply otherwise. */}
-                  {!section.readOnly && route && (
+                  {!section.readOnly && !section.inline && route && (
                     <Pressable
                       onPress={() => router.push({ pathname: route as never, params: { redo: '1' } })}
                       accessibilityRole="link"
@@ -330,5 +443,15 @@ const styles = StyleSheet.create({
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   heading: { flexGrow: 1 },
   body: { gap: Spacing.two, paddingTop: Spacing.three, paddingLeft: Spacing.four },
+  chips: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap', paddingTop: Spacing.one },
+  // ButtonRadius (999) ON A SHORT CHIP IS A PILL AND THAT IS CORRECT HERE. It was
+  // 999 on a TALL card that gave Ruth "some strange blobs" this afternoon; the
+  // radius was never the fault, the height of what it was on was.
+  chip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: ButtonRadius,
+    borderWidth: 1,
+  },
   pressed: { opacity: 0.6 },
 });

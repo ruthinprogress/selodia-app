@@ -143,8 +143,15 @@ check('recomposition is a maintenance figure, not a deficit', () => {
 // ------------------------------------------------------------- the protein
 
 check('the protein moves for recomposition, or choosing it changes nothing', () => {
-  const plain = calculateProteinTarget(null, 56, null, false);
-  const high = calculateProteinTarget(null, 56, null, true);
+  // THE SIGNATURE CHANGED ON 2 OCTOBER, EVENING. It took four positional
+  // arguments ending in a defaulted `highProtein` boolean, and that default is
+  // what let four of five surfaces silently show Ruth the un-stepped range. It
+  // now takes an object and derives the step-up from her stored focus.
+  // check-protein-parity.mjs is where that lives; these two cases stay because
+  // the point they make - choosing recomposition has to change SOMETHING - is
+  // the reason the step-up exists at all.
+  const plain = calculateProteinTarget({ weightKg: 56, bodyFatPct: null, muscleFocus: 'maintain' });
+  const high = calculateProteinTarget({ weightKg: 56, bodyFatPct: null, muscleFocus: 'increase' });
   assert.ok(plain && high, 'no protein target at all');
   assert.ok(high.low > plain.low, `${high.low} is not above ${plain.low}`);
   assert.ok(high.high > plain.high, `${high.high} is not above ${plain.high}`);
@@ -152,7 +159,12 @@ check('the protein moves for recomposition, or choosing it changes nothing', () 
 });
 
 check('a protein figure she set herself is never overridden by a goal', () => {
-  const manual = calculateProteinTarget(120, 56, null, true);
+  const manual = calculateProteinTarget({
+    manualG: 120,
+    weightKg: 56,
+    bodyFatPct: null,
+    muscleFocus: 'increase',
+  });
   assert.strictEqual(manual.kind, 'manual');
   assert.strictEqual(manual.grams, 120);
   return 'her own number stands';
@@ -232,7 +244,7 @@ check('the working shows the weight, the BMR, the arithmetic and the figure', ()
     activityWord: 'moderately active',
     proteinLow: 90,
     proteinHigh: 112,
-  });
+   proteinStepped: 'plain',});
   const all = w.lines.join(' | ');
   assert.ok(/about 56 kg, as you said/.test(all), 'the weight she gave is not stated');
   assert.ok(/1,123 kcal/.test(all), 'the BMR is not shown');
@@ -248,11 +260,11 @@ check('an estimate and a weigh-in are described differently', () => {
   const guess = explainTarget({
     intent: BODY_INTENT_BY_KEY.lose_fat, weightKg: 56, weightSource: 'estimate',
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: null, proteinHigh: null,
-  });
+   proteinStepped: 'plain',});
   const real = explainTarget({
     intent: BODY_INTENT_BY_KEY.lose_fat, weightKg: 56, weightSource: 'measured',
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: null, proteinHigh: null,
-  });
+   proteinStepped: 'plain',});
   assert.ok(/as you said/.test(guess.lines[0]), 'a guess is not described as one');
   assert.ok(/last weigh-in/.test(real.lines[0]), 'a weigh-in is not described as one');
   return 'she can see which kind of number it is built on';
@@ -262,7 +274,7 @@ check('no weight means one sentence about the weight, and no figure', () => {
   const w = explainTarget({
     intent: BODY_INTENT_BY_KEY.lose_fat, weightKg: null, weightSource: null,
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: null, proteinHigh: null,
-  });
+   proteinStepped: 'plain',});
   assert.strictEqual(w.targetKcal, null, 'a target was produced with no weight');
   assert.strictEqual(w.missing, 'Add your weight to see your targets.');
   return 'her exact wording for Today, and no invented figure';
@@ -272,7 +284,7 @@ check('no height says so, rather than showing a target with no basis', () => {
   const w = explainTarget({
     intent: BODY_INTENT_BY_KEY.lose_fat, weightKg: 56, weightSource: 'estimate',
     bmrKcal: null, tdeeKcal: null, activityWord: null, proteinLow: null, proteinHigh: null,
-  });
+   proteinStepped: 'plain',});
   assert.strictEqual(w.targetKcal, null);
   assert.ok(/height/i.test(w.missing ?? ''), 'it does not name what is missing');
   return 'names the input, does not guess it';
@@ -282,7 +294,7 @@ check('the floor is explained when it bites, never applied in silence', () => {
   const w = explainTarget({
     intent: BODY_INTENT_BY_KEY.lose_fat, weightKg: 91.7, weightSource: 'measured',
     bmrKcal: 1400, tdeeKcal: 1487, activityWord: null, proteinLow: null, proteinHigh: null,
-  });
+   proteinStepped: 'plain',});
   assert.strictEqual(w.flooredAt, 1400);
   const all = w.lines.join(' | ');
   assert.ok(/below what your body uses at rest/.test(all), 'the clamp is not explained');
@@ -294,7 +306,7 @@ check('recomposition explains why there is no deficit', () => {
   const w = explainTarget({
     intent: BODY_INTENT_BY_KEY.recomposition, weightKg: 56, weightSource: 'measured',
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: 102, proteinHigh: 123,
-  });
+   proteinStepped: 'up',});
   const all = w.lines.join(' | ');
   assert.ok(/not from a deficit/.test(all), 'it does not say why the figure is maintenance');
   assert.ok(/kept high/.test(all), 'it does not say the protein is the mechanism');
@@ -307,7 +319,7 @@ check('no target weight and no deadline appear anywhere in the working', () => {
     const w = explainTarget({
       intent, weightKg: 56, weightSource: 'measured', bmrKcal: 1123, tdeeKcal: 1740,
       activityWord: 'moderately active', proteinLow: 90, proteinHigh: 112,
-    });
+     proteinStepped: 'plain',});
     const all = w.lines.join(' ').toLowerCase();
     for (const banned of ['by week', 'in 12 weeks', 'goal weight', 'target weight', 'by the end of', 'months']) {
       assert.ok(!all.includes(banned), `"${banned}" appears for ${intent.key}`);
