@@ -39,7 +39,29 @@ export type LadderRung = {
   /** A target on the rung she is on; a prerequisite on the ones above it. */
   target?: string;
   needs?: string;
+  /** Why this step is here. Ruth's "Why:" line. */
   detail?: string;
+  /**
+   * What this rung builds. Ruth's "Develops:" line, kept apart from the why
+   * because a reason and an outcome are different things and she wrote them
+   * separately. Never a prediction about her.
+   */
+  develops?: string;
+  /**
+   * How to perform it - a breathing cue, say. Ruth's "Add:" line.
+   *
+   * GUIDANCE, NEVER AN EXCLUSION. Her note on the approved wording: "This is
+   * guidance for HOW to do a move. It is not a Rule. It excludes nothing and
+   * must NOT be written to user_rules." Keeping it on the rung is what stops it
+   * reaching the rules gate, which removes movements.
+   */
+  cue?: string;
+  /**
+   * Her own grouping, where she has given one. Set on every rung of a ladder or
+   * none of them: `placeRungs` treats any declared stage as "she grouped this
+   * herself" and stops imposing one Now and one Next.
+   */
+  stage?: Stage;
   /** movement_assets.match_key, or null when nothing can demonstrate it. */
   clip: string | null;
 };
@@ -49,6 +71,8 @@ export type Ladder = {
   name: string;
   /** One of the six Insights dimensions. */
   dimension: string;
+  /** One note that applies to every rung. Guidance, not a rule. */
+  note?: string;
   /** Lowest rung first. Stage is assigned from her answer, not stored here. */
   rungs: LadderRung[];
 };
@@ -138,46 +162,70 @@ export const LADDERS: Ladder[] = [
     key: 'muscle_up',
     name: 'Muscle up',
     dimension: 'strength',
+    // RUTH'S OWN WORDS, APPROVED 1 OCTOBER 2026, in "2026-10-01 For Claude Code
+    // - approved wording and onboarding findings". Every line below is hers.
+    //
+    // DO NOT EDIT THE COPY. The previous version was mine, written from her plan
+    // rather than from her sentences, and it differed in ways that mattered: it
+    // called the third rung "Strict pull-up" where she wrote "Pull-up volume"
+    // with a target of 3 x 5, and it carried no breathing cues at all. Her brief
+    // for Skills says only store what she said.
+    note:
+      'Keep breathing through every rep. Breathe out on the effort. Do not hold your breath or bear down.',
     rungs: [
       {
         name: 'Dead hang',
-        target: '3 x 20-30 seconds',
-        detail:
-          'Hang from the bar with straight arms and shoulders relaxed away from your ears. Grip and shoulder decompression. Always the first thing you do at the bar.',
+        target: '3 x 20-30s',
+        stage: 'now',
+        detail: 'Every pull starts here, and it decompresses the shoulders and builds grip.',
+        develops: 'Grip and shoulder comfort.',
         clip: null,
       },
       {
         name: 'Scapular pulls',
-        target: '3 x 8-10',
+        target: '3 x 8-10 clean reps',
+        stage: 'now',
         detail:
-          'From a dead hang, arms stay straight and you only depress your shoulder blades, so your body rises an inch or two. It looks like almost nothing and it is what protects the shoulder in everything above.',
+          'Arms straight, shoulder blades pulled down. It teaches the shoulder to set before the arms pull and protects it.',
+        develops: 'Shoulder-blade control.',
         clip: null,
       },
       {
-        name: 'Strict pull-up',
-        needs: 'scapular pulls you can do without bending your arms',
-        detail: 'From a straight-arm start to chin over the bar, with nothing swinging.',
+        name: 'Pull-up volume',
+        target: '3 x 5 strict',
+        stage: 'now',
+        detail:
+          'Full range from a dead hang with no kipping. This is the gate to everything above, so build the number before adding anything harder.',
+        develops: 'Pulling strength.',
+        // The only rung in this ladder the library can show.
         clip: 'grip normal pull up',
       },
       {
-        name: 'High pull-up',
+        name: 'High pull-ups',
         needs: '5 strict pull-ups',
+        stage: 'next',
+        target: '3 x 3-5 with full rest',
         detail:
-          'An explosive pull so your chest clears the bar rather than your chin. This is where the height and momentum for the transition come from.',
+          'Pull so the chest reaches the bar, not just the chin. This trains the height and momentum the transition needs.',
+        develops: 'Explosive pulling.',
+        cue: 'Breathe out as you pull.',
         clip: null,
       },
       {
         name: 'Bar dips',
-        target: '3 x 8, full range',
-        detail:
-          'On the bar rather than on rings, because the bar is where the muscle up finishes. Lower until your shoulders are below your elbows, then press.',
+        target: '3 x 8 full range',
+        stage: 'next',
+        detail: 'The last part of a muscle up is a press above the bar.',
+        develops: 'Pushing strength in the chest, shoulders and triceps.',
         clip: null,
       },
       {
         name: 'Muscle up',
-        needs: '8-10 pull-ups, high pull-ups and bar dips',
-        detail:
-          'The pull and the dip joined by a transition over the bar. Nothing here is a fitness test; it is a skill, and skills arrive when the pieces are ready.',
+        needs: '8-10 pull-ups, bar dips and high pull-ups',
+        stage: 'goal',
+        detail: 'This puts the three together.',
+        develops: 'The move over the bar.',
+        cue: 'Breathe out through the move over the bar.',
         clip: null,
       },
     ],
@@ -272,15 +320,31 @@ export type Placement = 'starting' | 'some' | 'nearly';
 /**
  * Where she says she is, turned into stages.
  *
- * "Just starting" puts her on the bottom rung; "some of it" on the middle;
- * "nearly there" on the top. Everything below her Now is dropped rather than
- * shown as done, because a completed list is a score, and everything above the
- * one after it is a Goal.
+ * TWO RULES, because two kinds of ladder exist.
  *
- * ONE 'now' AND ONE 'next', ALWAYS. Two Nows is two answers to "what am I
- * working on", which is the question this screen exists to answer.
+ * A LADDER SHE HAS GROUPED HERSELF keeps her grouping. The muscle-up ladder she
+ * approved on 1 October puts THREE rungs under NOW - dead hang, scapular pulls,
+ * pull-up volume - and two under NEXT. The rule below used to force exactly one
+ * Now and one Next, on the reasoning that "two Nows is two answers to what am I
+ * working on". That reasoning is sound for a ladder nobody has grouped and wrong
+ * for one she wrote: her three Now rungs are not three answers, they are the
+ * three things she does at the bar in one visit. Overriding her grouping would
+ * have shown her a ladder she had just approved, rearranged.
+ *
+ * Placement then only says how much she has already passed:
+ *   starting - her grouping as written
+ *   some     - the lowest rung dropped, the rest unchanged
+ *   nearly   - the whole Now group dropped and Next promoted to Now
+ *
+ * A LADDER WITH NO GROUPING gets the old rule: one Now, one Next, the rest Goal.
+ *
+ * Nothing below her Now is ever shown as done, because a completed list is a
+ * score.
  */
 export function placeRungs(ladder: Ladder, placement: Placement): (LadderRung & { stage: Stage })[] {
+  const grouped = ladder.rungs.some((r) => r.stage !== undefined);
+  if (grouped) return placeGrouped(ladder, placement);
+
   const last = ladder.rungs.length - 1;
   const nowIndex =
     placement === 'nearly' ? last : placement === 'some' ? Math.min(1, last) : 0;
@@ -293,4 +357,28 @@ export function placeRungs(ladder: Ladder, placement: Placement): (LadderRung & 
         | null,
     }))
     .filter((r): r is LadderRung & { stage: Stage } => r.stage !== null);
+}
+
+function placeGrouped(
+  ladder: Ladder,
+  placement: Placement
+): (LadderRung & { stage: Stage })[] {
+  // Her own stages, defaulting to 'goal' for anything she left unlabelled.
+  const all = ladder.rungs.map((r) => ({ ...r, stage: r.stage ?? 'goal' }));
+
+  if (placement === 'starting') return all;
+
+  if (placement === 'some') {
+    // One rung in. Dropping only the lowest keeps every other label hers.
+    const [, ...rest] = all;
+    return rest.length > 0 ? rest : all;
+  }
+
+  // Nearly there: what she called Next is what she is working on.
+  const promoted = all
+    .filter((r) => r.stage !== 'now')
+    .map((r) => ({ ...r, stage: (r.stage === 'next' ? 'now' : r.stage) as Stage }));
+  // A ladder that was all Now has nothing to promote; keep the top rung rather
+  // than return an empty ladder.
+  return promoted.length > 0 ? promoted : [all[all.length - 1]];
 }

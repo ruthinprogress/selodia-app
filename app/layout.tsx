@@ -19,6 +19,24 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Selodía",
   description: "A body literacy app for women 40+.",
+  // GOOGLE SEARCH CONSOLE, for the Play Console listing (Ruth, 2 October 2026).
+  // Play requires a verified domain, Search Console is how the domain is
+  // verified, and this tag is how Search Console checks it.
+  //
+  // IN THE ROOT LAYOUT, NOT THE LANDING PAGE, because verification is a property
+  // of the site rather than of one page. app/page.tsx exports its own metadata
+  // and overrides the title and description above - but Next merges metadata
+  // field by field, and that page sets neither `verification` nor anything near
+  // it, so this is inherited and rendered on / where Search Console looks for
+  // it. Putting it on the page instead would have verified the home page and
+  // quietly left every other route unverified.
+  //
+  // `verification.google` is Next's own field for it and renders exactly
+  // <meta name="google-site-verification" content="..." />. Written as the
+  // field rather than pasted as raw HTML so it survives a future <head> change.
+  verification: {
+    google: "amYM5jS7H0c3mKYLBYCysqrKYUjdMfCpwKiXF3lZSpg",
+  },
 };
 
 export default function RootLayout({

@@ -50,6 +50,10 @@ type Rung = {
   target: string | null;
   needs: string | null;
   detail: string | null;
+  /** What it builds. Ruth's "Develops:" line. */
+  develops: string | null;
+  /** How to do it, e.g. a breathing cue. Guidance, never an exclusion. */
+  cue: string | null;
   clip_match_key: string | null;
   session_entry_id: string | null;
 };
@@ -57,6 +61,8 @@ type Rung = {
 type Skill = {
   id: string;
   name: string;
+  /** One note for the whole ladder, e.g. her breathing note. Guidance. */
+  ladder_note: string | null;
   rungs: Rung[];
 };
 
@@ -79,10 +85,15 @@ export function SkillsView({ onOpenSession }: { onOpenSession?: (entryId: string
       let cancelled = false;
       (async () => {
         const [skillsRes, rungsRes] = await Promise.all([
-          supabase.from('user_skills').select('id, name').order('sort_order', { ascending: true }),
+          supabase
+            .from('user_skills')
+            .select('id, name, ladder_note')
+            .order('sort_order', { ascending: true }),
           supabase
             .from('user_skill_rungs')
-            .select('id, skill_id, name, stage, target, needs, detail, clip_match_key, session_entry_id')
+            .select(
+              'id, skill_id, name, stage, target, needs, detail, develops, cue, clip_match_key, session_entry_id'
+            )
             .order('sort_order', { ascending: true }),
         ]);
         if (cancelled) return;
@@ -96,9 +107,9 @@ export function SkillsView({ onOpenSession }: { onOpenSession?: (entryId: string
         }
 
         setSkills(
-          ((skillsRes.error ? [] : (skillsRes.data ?? [])) as { id: string; name: string }[]).map(
-            (s) => ({ ...s, rungs: bySkill.get(s.id) ?? [] })
-          )
+          (
+            (skillsRes.error ? [] : (skillsRes.data ?? [])) as Omit<Skill, 'rungs'>[]
+          ).map((s) => ({ ...s, rungs: bySkill.get(s.id) ?? [] }))
         );
         setLoaded(true);
       })();
@@ -134,6 +145,20 @@ export function SkillsView({ onOpenSession }: { onOpenSession?: (entryId: string
           <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
             {skill.name}
           </ThemedText>
+          {/* THE WHOLE-LADDER NOTE, above the rungs it applies to. Ruth's
+              muscle-up ladder carries "keep breathing through every rep",
+              which is true of all six rungs rather than any one of them.
+
+              IT IS GUIDANCE AND NOT A RULE, which is why it is here and not
+              in Rules. Her own note on approving it: "It excludes nothing and
+              must NOT be written to user_rules." Rules remove movements; this
+              describes how to do one. */}
+          {skill.ladder_note ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {skill.ladder_note}
+            </ThemedText>
+          ) : null}
+
           {skill.rungs.map((rung) => (
             <RungRow key={rung.id} rung={rung} onOpenSession={onOpenSession} />
           ))}
@@ -185,9 +210,23 @@ function RungRow({
           Needs: {rung.needs} first
         </ThemedText>
       ) : null}
+      {/* WHY THIS STEP, then WHAT IT BUILDS, then HOW TO DO IT. Three lines
+          Ruth wrote as three lines. They were being folded into one
+          paragraph, which reads as a wall and loses the distinction she made:
+          a reason, an outcome, and a cue are not the same kind of sentence. */}
       {rung.detail ? (
         <ThemedText type="small" themeColor="textSecondary">
           {rung.detail}
+        </ThemedText>
+      ) : null}
+      {rung.develops ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Develops: {rung.develops}
+        </ThemedText>
+      ) : null}
+      {rung.cue ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {rung.cue}
         </ThemedText>
       ) : null}
 

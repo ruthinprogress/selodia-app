@@ -57,7 +57,20 @@ for (const ladder of LADDERS) {
       // 29 September: "name, cue, and the Needs line"). A rung with no clip
       // AND no cue is a name on a card, which is the thing that reads as
       // broken. This is the check that keeps the new rule honest.
-      const cue = typeof rung.detail === 'string' ? rung.detail.trim() : '';
+      // WHAT A RUNG SAYS IS NOW SPREAD OVER THREE FIELDS, not one. Ruth's
+      // approved wording (1 October) separates the why, what it develops, and a
+      // cue for how to do it - so measuring `detail` alone called her goal rung
+      // cue-less. Her text for it is "This puts the three together." plus
+      // "Develops: the move over the bar." plus "Breathe out through the move
+      // over the bar.", which is a well-described rung by any reading.
+      //
+      // The question this check asks is unchanged: is there enough here that a
+      // text-only rung is more than a name on a card? So it asks it of
+      // everything the rung actually shows.
+      const cue = [rung.detail, rung.develops, rung.cue]
+        .filter((t) => typeof t === 'string' && t.trim())
+        .join(' ')
+        .trim();
       if (cue.length < 40) {
         missing += 1;
         console.log(`    NO  ${rung.name}  - text-only and has no usable cue`);

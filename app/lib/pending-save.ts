@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { addSkill, skillAddNote, type SkillAddOutcome } from './skill-add';
+
 import { saveAlmanacEntry } from './almanac';
 import { coerceStatus, normaliseSection } from './me-card';
 import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
@@ -60,8 +62,21 @@ import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './m
 // "Something else - tell chat", and not chat, which had no route. Her week was
 // fixed at setup for good. Adding a remove on 1 October without this made it a
 // one-way door, which is how she lost Gym.
-export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'rule' | 'week';
-export const SAVE_TYPES: readonly SaveType[] = ['symptom', 'insight', 'note', 'me', 'rule', 'week'];
+export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'rule' | 'week' | 'skill';
+export const SAVE_TYPES: readonly SaveType[] = [
+  'symptom',
+  'insight',
+  'note',
+  'me',
+  'rule',
+  'week',
+  // A SKILL IS A DESTINATION, AND IT IS NOT HER WEEK. Added 2 October 2026.
+  // Ruth asked chat to help her learn a muscle up and was told it was
+  // "already sitting there in your week" - her Park slot. Nothing was saved,
+  // and nothing could be: no save type existed for a thing she wants to
+  // become able to do. See lib/skill-add.ts.
+  'skill',
+];
 
 export function coerceSaveType(v: unknown): SaveType | null {
   if (typeof v !== 'string') return null;
@@ -320,6 +335,7 @@ const TYPE_WORD: Record<SaveType, string> = {
   me: 'part of their own protocol',
   rule: 'a movement rule',
   week: 'something in their week',
+  skill: 'something they want to be able to do',
 };
 
 /**
@@ -333,7 +349,13 @@ export function pendingSavePrompt(pending: PendingSave): string {
   // A rule does not go to the Almanac, so the prompt must not say it does -
   // the model reads this and writes the next reply from it.
   const where =
-    type === 'rule' ? 'to their rules' : type === 'week' ? 'to their week' : 'to their Almanac';
+    type === 'rule'
+      ? 'to their rules'
+      : type === 'week'
+        ? 'to their week'
+        : type === 'skill'
+          ? 'to their Skills'
+          : 'to their Almanac';
   return `
 
 YOU OFFERED TO KEEP SOMETHING AND ARE WAITING ON AN ANSWER. In an earlier turn you offered to save "${title}" ${where} as ${TYPE_WORD[type]}, and they have not answered yet.
@@ -369,10 +391,16 @@ export const RULE_OFFER_QUESTION =
 // week and the app would be asking permission to file it somewhere else.
 export const WEEK_OFFER_QUESTION = 'Want me to put that in your week?';
 
+// A SKILL OFFER NAMES SKILLS, for the reason the week one names the week: the
+// mistake being corrected is the app filing a thing she wants to LEARN as a
+// slot in her week, so the question has to make the destination unmistakable.
+export const SKILL_OFFER_QUESTION = 'Want me to add that to your Skills?';
+
 export function offerQuestionFor(type: SaveType): string {
   if (type === 'me') return ME_OFFER_QUESTION;
   if (type === 'rule') return RULE_OFFER_QUESTION;
   if (type === 'week') return WEEK_OFFER_QUESTION;
+  if (type === 'skill') return SKILL_OFFER_QUESTION;
   return SAVE_OFFER_QUESTION;
 }
 
@@ -394,6 +422,11 @@ export function offerQuestion(reply: string, type: SaveType = 'note'): string | 
     // "...in your week?" / "...to your week?" - the week's own phrasing,
     // which the broad keep|save|add test below misses when the verb is "put".
     /\b(in|to)\s+your\s+week[^.!?\n]*\?/i.test(reply) ||
+    // "...to your Skills?" - the same gap the week line closed, for the
+    // same reason: the broad keep|save|add test below misses "shall I add a
+    // muscle up to your Skills?", because the object is the skill, not
+    // "that".
+    /\byour\s+skills[^.!?\n]*\?/i.test(reply) ||
     /\b(keep|save|add)\b[^.!?\n]*\b(that|this|it)\b[^.!?\n]*\?/i.test(reply);
   return alreadyAsks ? null : offerQuestionFor(type);
 }
@@ -519,6 +552,20 @@ export function applyRedirect(
   return { ...proposal, type, content };
 }
 
+// WHAT THE SKILL WRITE ACTUALLY DID, so the sentence can say it.
+//
+// A skill has three successful outcomes that read differently to her - saved
+// with a ladder, saved with no ladder because nobody has written one, and
+// already there - and `commitSave` returns only {kind, title}, which cannot
+// carry that. Telling her "6 steps from where you are now" about a skill that
+// got none would be the app claiming something it did not do, which is the
+// failure this whole route is built to avoid.
+//
+// Module-scope and set on the way through, which is ugly and is the smallest
+// change that keeps commitSave's signature. Read ONCE, immediately, by
+// saveAppliedNote in the same turn; the route is one request per call.
+let lastSkillOutcome: SkillAddOutcome | null = null;
+
 export async function commitSave(
   supabase: SupabaseClient,
   userId: string,
@@ -532,6 +579,33 @@ export async function commitSave(
   // HER WEEK IS NOT THE ALMANAC. user_week is what the Week screen reads and
   // what Sessions are planned against; filing this as an almanac entry would
   // make it a note ABOUT a commitment rather than the commitment.
+  // A SKILL IS NOT AN ALMANAC ENTRY EITHER, and it is not her week. Skills is
+  // what she wants to become able to do; user_week is when she trains. Filing
+  // this to the Almanac would make it a note ABOUT a goal, which is exactly the
+  // substitution chat made when it told her a muscle up was already in her week.
+  //
+  // THE LADDER COMES FROM THE CURATED LIBRARY OR NOWHERE. See lib/skill-add.ts:
+  // a skill with no curated ladder is saved as a destination with no steps, and
+  // she is told so. Nothing is invented.
+  if (proposal.type === 'skill') {
+    const content = proposal.content as Record<string, unknown>;
+    // HER SENTENCE, for matching against the curated ladders. "I want to learn
+    // to pull up to muscle up" names two ladders and means the muscle up, which
+    // only the longest-alias rule in skill-add.ts can get right - so it needs the
+    // sentence, not just the title. `summary` is where coerceProposal puts a
+    // content given as a plain string, which is how the model usually sends it.
+    const said =
+      typeof content.said === 'string'
+        ? content.said
+        : typeof content.summary === 'string'
+          ? content.summary
+          : proposal.title;
+    const outcome = await addSkill(supabase, userId, said, proposal.title);
+    lastSkillOutcome = outcome;
+    if (outcome.kind === 'failed') return null;
+    return { kind: 'skill', title: outcome.name };
+  }
+
   if (proposal.type === 'week') {
     const content = proposal.content as Record<string, unknown>;
     const days = Array.isArray(content.days)
@@ -736,6 +810,15 @@ export function saveAppliedNote(
     // week" - wrong tab, wrong screen, and talking about her in the third
     // person in a sentence addressed to her.
     if (type === 'week') return `Added to your week, in Plans.`;
+    // A SKILL SAYS WHICH OF THE THREE THINGS HAPPENED. skillAddNote owns the
+    // wording, including the honest one for a skill with no ladder written yet.
+    if (type === 'skill') {
+      const outcome = lastSkillOutcome;
+      lastSkillOutcome = null;
+      return outcome
+        ? skillAddNote(outcome)
+        : `${saved.title} is in your Skills, in Plans.`;
+    }
     return `Kept in your Almanac, under Insights, as ${TYPE_WORD[type]}.`;
   }
   if (attempted) return "That didn't save to your Almanac just now. Ask me again and I'll try once more.";
