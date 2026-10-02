@@ -40,41 +40,53 @@ export type OnboardingScreen = {
 };
 
 export const ONBOARDING_SCREENS: OnboardingScreen[] = [
-  // 'Before we start' until 2026-09-03, when it started competing with the
-  // screen's own heading. Consent is the only onboarding screen that is a form
-  // rather than a conversation, so it is the only one carrying a heading of its
-  // own - and once that heading became "Welcome to Selodia", the header read
-  // "Getting to know you", then "Before we start", then a third greeting. This
-  // label now names the step in the same voice as its siblings and leaves the
-  // welcoming to the heading.
-  { route: 'consent', label: 'Your data' , kind: 'configuration' },
-  { route: 'account', label: 'Your account' , kind: 'configuration' },
-  { route: 'intro', label: 'Hello' , kind: 'configuration' },
-  { route: 'equipment', label: 'What you have' , kind: 'configuration' },
-  { route: 'first-log', label: 'Your first log' , kind: 'configuration' },
-  { route: 'goals', label: 'What matters to you' , kind: 'configuration' },
-  // ADDED 30 SEPTEMBER 2026, AND THE OMISSION WAS THE TRAP. The seven screens
-  // below have been in the push chain since the spine was rebuilt and were
-  // never added here. That alone should have been cosmetic - a screen without a
-  // count - but the Continue button lives in the same header as the count, and
-  // the header hid itself on any screen it did not recognise. So the whole of
-  // the flow after Goals had no way forward. See onboarding-header.tsx: the
-  // header no longer hides its action, so a future omission costs a number
-  // rather than the way out.
-  { route: 'skill', label: 'Something to work on' , kind: 'configuration' },
-  { route: 'life-stage', label: 'Where you are' , kind: 'manual' },
-  { route: 'activities', label: 'How you move' , kind: 'configuration' },
-  { route: 'steer-around', label: 'What to steer around' , kind: 'manual' },
-  // Added 30 September 2026. A Body Manual screen: it opens chat rather than
-  // saving, because a medication list is exactly where an interpretation can be
-  // confidently wrong. See medication.tsx for the full reasoning, and for the
-  // asymmetry it closes - HRT was the only medication the app had ever asked
-  // about, which is fine as a start and strange as a resting state.
-  { route: 'medication', label: 'What you take', kind: 'manual' },
-  { route: 'allergies', label: 'Anything to avoid' , kind: 'configuration' },
-  { route: 'guidance', label: 'How much to steer' , kind: 'configuration' },
-  { route: 'first-draft', label: 'Your first draft' , kind: 'configuration' },
+  // SEVEN QUESTIONS THEN CHAT (Ruth, 2 October 2026, item 6, built from her
+  // approved preview rather than from my notes of it).
+  //
+  // WHAT CAME OUT, AND WHY IT IS NOT A LOSS. Her instruction: "Leave out intro,
+  // equipment and first log."
+  //
+  //   intro        a screen that asked nothing and changed nothing. Her own rule
+  //                from 28 September is that every answer must change something;
+  //                a screen with no answer at all cannot pass it.
+  //   equipment    collected and read by nobody. It was going to matter when
+  //                Sessions generate against it, and until then it was a minute
+  //                spent for a row nothing reads.
+  //   first-log    asking somebody to log a meal before she has seen the app is
+  //                asking for work in exchange for nothing yet.
+  //   steer-around a signpost into chat, now that allergies IS the steer-around
+  //                screen with all five of her groups on it.
+  //   medication   merged into "about your body", where her preview puts it, as a
+  //                plain box rather than a conversation.
+  //   guidance     a real preference and not one of her seven. It moves to
+  //                Settings, and unset means the look-back is never nudged -
+  //                which is the safe default for "nudge only if she chose Guide
+  //                me".
+  //
+  // THE ORDER IS HERS AND THE FIRST SCREEN IS THE ARGUMENT. Every earlier version
+  // opened on the body. The app's purpose is to take mental load off, reduce
+  // friction and stress, and support long-term health, so it opens on how she
+  // wants her days to feel.
+  { route: 'consent', label: 'Your data', kind: 'configuration' },
+  { route: 'account', label: 'Your account', kind: 'configuration' },
+  { route: 'days', label: 'How your days feel', kind: 'configuration' },
+  { route: 'goals', label: 'Your body', kind: 'configuration' },
+  { route: 'skill', label: 'Something to work on', kind: 'configuration' },
+  { route: 'activities', label: 'How you move', kind: 'configuration' },
+  { route: 'allergies', label: 'What to steer around', kind: 'configuration' },
+  { route: 'life-stage', label: 'About your body', kind: 'configuration' },
+  { route: 'first-draft', label: 'Your first draft', kind: 'configuration' },
 ];
+
+// WHY EVERY SCREEN IS 'configuration' NOW. The Body Manual distinction existed to
+// warn her when a question had no feature behind it - "a question whose answer
+// changes nothing costs a minute and buys a false sense of being understood". The
+// seven that remain all change something the same day: how she is spoken to, her
+// targets, her Skills, her week, the food filter, how a cycle day is read. There
+// is nothing left in the chain that needs the warning, so nothing carries it.
+//
+// The flag and BODY_MANUAL_NOTE stay, because the Manual screens still exist off
+// the chain and the next question with no feature behind it should say so.
 
 // NOT IN THE LIST, ON PURPOSE, AND THIS IS NOT THE PLACE TO FIX IT.
 // `health-context`, `technical`, `nutrition` and `activity` are real screens
@@ -94,9 +106,20 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
 // of the time. They keep their title and their note and simply carry no
 // "4 of 11"; the header has drawn its action independently of the count since
 // the night the whole flow lost its Continue button.
-export const ONBOARDING_TOTAL = ONBOARDING_SCREENS.filter(
-  (s) => s.kind === 'configuration'
-).length;
+/**
+ * THE QUESTIONS SHE IS ASKED: consent and account are not among them.
+ *
+ * Her approved preview reads "Getting to know you \u00b7 1 of 7", and the seven are
+ * the questions. Consent and creating an account are things that happen before
+ * the questions start - they are not optional, they are not skippable, and
+ * neither is a question about her. Counting them gave "1 of 9" on the screen she
+ * approved as "1 of 7", and made the first question look like the third.
+ */
+export const COUNTED_SCREENS = ONBOARDING_SCREENS.filter(
+  (s) => s.kind === 'configuration' && s.route !== 'consent' && s.route !== 'account'
+);
+
+export const ONBOARDING_TOTAL = COUNTED_SCREENS.length;
 
 /**
  * Is this screen building the Body Manual rather than configuring the app?
@@ -148,9 +171,13 @@ export function progressForPath(pathname: string | null | undefined): Onboarding
   // A Body Manual screen has a label and no position: it is not a step on the
   // way to anything, it is a thing she chose to add.
   if (screen.kind === 'manual') return { index: null, total: null, label: screen.label };
-  const among = ONBOARDING_SCREENS.filter((s) => s.kind === 'configuration');
+  // THE SAME SET THE TOTAL COUNTS, or the numerator and the denominator
+  // disagree. Consent and account carry a title and no position: they are not
+  // questions, so "1 of 7" starts at the first question.
+  const at = COUNTED_SCREENS.findIndex((s) => s.route === screen.route);
+  if (at < 0) return { index: null, total: null, label: screen.label };
   return {
-    index: among.findIndex((s) => s.route === screen.route) + 1,
+    index: at + 1,
     total: ONBOARDING_TOTAL,
     label: screen.label,
   };
@@ -172,8 +199,25 @@ export function progressForPath(pathname: string | null | undefined): Onboarding
 // legitimately be on must not be policed. See the note above.
 export const FLOW_SCREENS: ReadonlySet<string> = new Set([
   ...ONBOARDING_SCREENS.map((s) => s.route).filter((r) => r !== 'consent' && r !== 'account'),
+  // OFF THE CHAIN AND STILL REACHABLE, so still never policed. The seven
+  // questions no longer walk through these, but they are real files with real
+  // routes: RESUME_ROUTE can still land on one for somebody mid-setup from an
+  // older build, the first draft offers the Manual chain, and any of them can be
+  // opened directly. A screen somebody can legitimately be on must not be
+  // thrown out of.
+  //
+  // THE LIST GREW ON 2 OCTOBER with the four the new flow dropped. Leaving them
+  // out would have reproduced exactly the bug this set was built to stop: a
+  // finished account opening one gets thrown back to the app, an unfinished one
+  // gets dragged into the flow.
   'health-context',
   'technical',
   'nutrition',
   'activity',
+  'intro',
+  'equipment',
+  'first-log',
+  'steer-around',
+  'medication',
+  'guidance',
 ]);

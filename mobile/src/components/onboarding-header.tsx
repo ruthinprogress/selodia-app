@@ -5,7 +5,6 @@ import { useOnboardingActionSlot } from '@/components/onboarding-action';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ButtonRadius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import {
   BODY_MANUAL_NOTE,
   ONBOARDING_TITLE,
@@ -141,12 +140,21 @@ export function OnboardingHeader() {
         </View>
       </View>
 
-      {/* Only a counted screen has a bar. A Body Manual screen keeps its title
-          and its note and carries no position, because it is not a step on the
-          way to anything - it is something she chose to add. */}
-      {progress?.index != null && progress.total != null && (
-        <Segments index={progress.index} total={progress.total} label={progress.label} />
-      )}
+      {/* NO PROGRESS BAR (Ruth, 2 October 2026, item 6). The segmented counter
+          that used to sit here is gone; the "2 of 7" line above it stays, because
+          her own approved preview carries exactly that line.
+
+          WHY THE DISTINCTION IS REAL AND NOT ME SPLITTING HAIRS. The bar's own
+          defence, written when it was built, was that segments "promise only what
+          is true: nine steps, this is the fourth". That was an argument against a
+          CONTINUOUS bar, and it answered the wrong objection. A bar of any kind
+          draws the eye to how much is left, every screen, in a flow whose whole
+          promise is that it takes about a minute - and it makes seven taps look
+          like a form to get through. Four words do the same job and ask for no
+          attention.
+
+          The step LABEL went with it. "How you move" under a heading that already
+          says "What do you already do?" is the same fact twice. */}
 
       {/* THE HONESTY THE SPLIT EXISTS FOR (Ruth, 30 September 2026). A Body
           Manual question has no feature behind it today, which breaks her own
@@ -161,40 +169,9 @@ export function OnboardingHeader() {
   );
 }
 
-/**
- * The segmented counter, taking a position it is certain of.
- *
- * Pulled out on 30 September 2026 when the index became nullable for Body
- * Manual screens. A component with non-null props is a better answer than an
- * assertion at each use: there is one place that knows a bar needs a number,
- * and it is this one.
- */
-function Segments({ index, total, label }: { index: number; total: number; label: string }) {
-  const theme = useTheme();
-  return (
-    <>
-      <View
-        style={styles.segments}
-        accessibilityRole="progressbar"
-        accessibilityLabel={`${ONBOARDING_TITLE}: step ${index} of ${total}, ${label}`}
-      >
-        {Array.from({ length: total }, (_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.segment,
-              { backgroundColor: i < index ? theme.text : theme.backgroundElement },
-            ]}
-          />
-        ))}
-      </View>
-
-      <ThemedText type="small" themeColor="textSecondary" style={styles.stepLabel}>
-        {label}
-      </ThemedText>
-    </>
-  );
-}
+// THE SEGMENTED COUNTER WAS HERE, and was removed on 2 October 2026 with the
+// rest of the progress bar. Its props and its accessibility label went with it;
+// the counter line in the header keeps the only promise it was making.
 
 const styles = StyleSheet.create({
   wrap: {
@@ -229,15 +206,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
-  },
-  segments: {
-    flexDirection: 'row',
-    gap: Spacing.half,
-  },
-  segment: {
-    flex: 1,
-    height: 3,
-    borderRadius: 2,
   },
   stepLabel: {
     fontSize: 11,

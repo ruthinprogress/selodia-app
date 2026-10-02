@@ -170,7 +170,7 @@ check('there is a visible way out of a redo', () => {
 // that the walk arrives at the last one without stranding a Configuration
 // screen nobody can get to.
 
-check('the configuration chain runs from intro to the first draft', () => {
+check('the configuration chain runs from the first question to the first draft', () => {
   const nextOf = (route) => {
     const file = path.join(ONBOARDING, route + '.tsx');
     if (!fs.existsSync(file)) return [];
@@ -191,7 +191,16 @@ check('the configuration chain runs from intro to the first draft', () => {
   for (const entry of ['consent', 'account']) configuration.delete(entry);
 
   const seen = new Set();
-  const queue = ['intro'];
+  // THE FLOW OPENS ON QUESTION 1 (2 October 2026). It used to open on `intro`,
+  // a screen that asked nothing and changed nothing, which Ruth's own rule for
+  // setup forbids. The entry is read from onboarding-step.ts rather than named
+  // here, so moving the first question again cannot leave this check describing
+  // a chain nobody walks.
+  const firstMatch = read(path.join(ROOT, 'mobile', 'src', 'lib', 'onboarding-step.ts')).match(
+    /const FIRST: Href = '\/onboarding\/([a-z-]+)'/
+  );
+  assert.ok(firstMatch, 'onboarding-step.ts no longer declares which screen the flow opens on');
+  const queue = [firstMatch[1]];
   while (queue.length > 0) {
     const route = queue.shift();
     if (seen.has(route)) continue;
@@ -205,7 +214,7 @@ check('the configuration chain runs from intro to the first draft', () => {
   assert.equal(
     stranded.length,
     0,
-    'these configuration screens cannot be reached by walking the chain from intro: ' +
+    'these configuration screens cannot be reached by walking the chain from the first question: ' +
       stranded.join(', ') +
       ' - which is what splitting the Body Manual out did to `activities`, the screen the ' +
       'metabolic estimate needs'
@@ -214,10 +223,17 @@ check('the configuration chain runs from intro to the first draft', () => {
 });
 
 check('and the Body Manual is entered from the draft, not wired into the chain', () => {
+  // `life-stage` UNTIL 2 OCTOBER, when it became question 6 of the seven and so
+  // stopped being the Manual's entrance. The Manual chain now starts at
+  // health-context. Asserted on the SET of Manual screens rather than one name,
+  // so the next reshuffle fails here rather than silently stranding them.
   const draft = stripComments(read(path.join(ONBOARDING, 'first-draft.tsx')));
+  const MANUAL = ['health-context', 'technical', 'nutrition', 'activity'];
+  const offered = MANUAL.filter((r) => draft.includes(`/onboarding/${r}`));
   assert.ok(
-    /\/onboarding\/life-stage/.test(draft),
-    'the first draft must offer the Body Manual, or nothing reaches those screens at all'
+    offered.length > 0,
+    'the first draft offers none of the Body Manual screens, so nothing reaches them at all: ' +
+      MANUAL.join(', ')
   );
 });
 

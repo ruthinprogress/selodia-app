@@ -151,7 +151,10 @@ export default function ProfileScreen() {
     // The flag is what puts "Leave setup" in the header for the whole chain; the
     // param is left on so the first screen can tell in its own right.
     setRedoing(true);
-    router.push({ pathname: '/onboarding/intro', params: { redo: '1' } });
+    // AT QUESTION 1, WITH HER ANSWERS SHOWING. Item 4: a redo is an edit mode.
+    // It used to open on `intro`, which has gone, and before that on step 6 -
+    // which is how she could not review the first half of her own setup.
+    router.push({ pathname: '/onboarding/days', params: { redo: '1' } });
   }
 
   const dob = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;

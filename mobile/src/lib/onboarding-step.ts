@@ -91,7 +91,10 @@ const LEGACY_STEPS: Record<string, string> = {
 };
 
 /** The first screen of the flow proper, and the answer when nothing else fits. */
-const FIRST: Href = '/onboarding/intro';
+// QUESTION 1, NOT THE OLD WELCOME SCREEN. `intro` asked nothing and changed
+// nothing, which is the one thing Ruth's own rule for setup forbids, so it is
+// out of the chain. The flow now opens on how she wants her days to feel.
+const FIRST: Href = '/onboarding/days';
 
 /**
  * Where to send somebody, given whatever is stored on their account.

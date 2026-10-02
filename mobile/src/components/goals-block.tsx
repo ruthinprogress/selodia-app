@@ -9,6 +9,7 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { displayGoal } from '@/lib/goal-display';
 import { readGoalsCollapsed, writeGoalsCollapsed } from '@/lib/goals-collapsed';
+import { lookbackLabel } from '@/lib/feel-goals';
 import { supabase } from '@/lib/supabase';
 
 // WHAT YOU'RE WORKING TOWARDS. The top of Plans, above the segmented control.
@@ -61,6 +62,21 @@ export type Goal = {
   set_on: string | null;
 };
 
+/**
+ * Whether a nudge is worth offering: never looked back, or a fortnight since.
+ *
+ * NOT A SCHEDULE AND NOT A STREAK. It gates one sentence. Nothing counts how
+ * many times she has looked back, nothing says she is overdue, and a fortnight
+ * is chosen because asking weekly about how somebody's days feel is itself the
+ * friction this app exists to take off her.
+ */
+export function dueForLookback(lastAt: string | null): boolean {
+  if (!lastAt) return true;
+  const then = new Date(lastAt).getTime();
+  if (Number.isNaN(then)) return true;
+  return Date.now() - then >= 14 * 24 * 60 * 60 * 1000;
+}
+
 export const GOALS_EMPTY = 'Nothing set yet';
 export const GOALS_EMPTY_BODY =
   'Say what you would like to work towards in chat, and it will show here.';
@@ -77,6 +93,22 @@ export function GoalsBlock() {
   // Counted rather than fetched: the link needs to know whether there is
   // anything behind it, and nothing else.
   const [earlierCount, setEarlierCount] = useState(0);
+  // HOW SHE WANTS HER DAYS TO FEEL (item 7). Grouped separately from the body
+  // goals because they are a different kind of thing, and because the one that
+  // has a look-back is this one.
+  const [days, setDays] = useState<{ label: string; source: string }[]>([]);
+  /** Her last answer, so the section can say when she last looked. */
+  const [lastLookback, setLastLookback] = useState<{ answer: string; at: string } | null>(null);
+  /**
+   * HER PACE. Ruth, item 7: "The look-back is nudged ONLY if she chose Guide me;
+   * otherwise only by tap in Plans."
+   *
+   * NULL IS NOT GUIDE ME, and that matters now that `guidance` is no longer one
+   * of the seven questions: somebody who has never been asked is never nudged,
+   * which is the quiet default and the right way round. Let me lead is also
+   * never nudged. The tap below is always there either way.
+   */
+  const [guidance, setGuidance] = useState<string | null>(null);
   // SHE HID HER GOALS AND IT DID NOT STICK. Said out loud rather than swallowed:
   // they are folded away for now, but they will be back on show next time, and
   // if she is relying on this in a public place she needs to know that. The one
@@ -100,9 +132,28 @@ export function GoalsBlock() {
           .from('user_goals')
           .select('id', { count: 'exact', head: true })
           .not('archived_at', 'is', null);
+        const [{ data: feelRows }, { data: lookRows }, { data: pace }] = await Promise.all([
+          supabase
+            .from('feel_goals')
+            .select('label, source')
+            .is('archived_at', null)
+            .order('sort_order', { ascending: true }),
+          supabase
+            .from('feel_lookbacks')
+            .select('answer, created_at')
+            .order('created_at', { ascending: false })
+            .limit(1),
+          supabase.from('user_profile').select('guidance_mode').maybeSingle(),
+        ]);
         if (cancelled) return;
         setGoals(error ? [] : ((data ?? []) as Goal[]));
         setEarlierCount(count ?? 0);
+        setDays((feelRows ?? []).map((r) => ({ label: String(r.label), source: String(r.source) })));
+        const last = (lookRows ?? [])[0];
+        setLastLookback(
+          last ? { answer: String(last.answer), at: String(last.created_at) } : null
+        );
+        setGuidance((pace as { guidance_mode?: string | null } | null)?.guidance_mode ?? null);
         setCollapsed(folded);
         setLoaded(true);
       })();
@@ -165,6 +216,16 @@ export function GoalsBlock() {
         </ThemedText>
       )}
 
+      {/* GROUPED: YOUR BODY, THEN YOUR DAYS (Ruth, item 7).
+          The eyebrow appears only when there is something in the other group,
+          because a lone "Your body" heading over the only list on the screen is
+          a label doing no work. */}
+      {!collapsed && goals.length > 0 && days.length > 0 && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.groupLabel}>
+          Your body
+        </ThemedText>
+      )}
+
       {/* COLLAPSED IS THE HEADING AND NOTHING ELSE. No count, no preview. */}
       {collapsed ? null : goals.length === 0 ? (
         <Pressable
@@ -214,6 +275,64 @@ export function GoalsBlock() {
           SMALL, AND NOT A COUNT IN THE HEADING. A number beside "What you are
           working towards" would read as a score of how many goals she has been
           through, which is the opposite of the point. */}
+      {/* YOUR DAYS. Her feel goals, and the one tap that opens the look-back.
+          NO SCORE, NO COUNT, NO STREAK. The last answer is shown as the words she
+          chose and nothing else: not "3rd look-back", not a direction, not a
+          trend. Her instruction for item 7 forbids all of those, and the reason is
+          that a look-back which grades her is the thing this is replacing.
+
+          THE LOOK-BACK IS A TAP HERE. It is nudged only if she chose Guide me;
+          this link is how she reaches it otherwise, and it is always available. */}
+      {!collapsed && days.length > 0 && (
+        <>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.groupLabel}>
+            Your days
+          </ThemedText>
+          <ThemedView type="backgroundElement" style={styles.card}>
+            {days.filter((d) => d.source === 'chip').length > 0 && (
+              <ThemedText type="small">
+                {days.filter((d) => d.source === 'chip').map((d) => d.label).join(' · ')}
+              </ThemedText>
+            )}
+            {days
+              .filter((d) => d.source === 'her words')
+              .map((d) => (
+                <ThemedText key={d.label} type="small" themeColor="textSecondary">
+                  {d.label}
+                </ThemedText>
+              ))}
+            {lastLookback && (
+              <ThemedText type="small" themeColor="textSecondary">
+                Last time you looked back: {lookbackLabel(lastLookback.answer)?.toLowerCase()}.
+              </ThemedText>
+            )}
+          </ThemedView>
+          {/* THE NUDGE, AND ONLY FOR GUIDE ME. Her instruction. It is one quiet
+              line above a link that is always there, never a badge, a count or a
+              reminder that something is overdue - there is no schedule to be late
+              for. Shown when she has never looked back, or when the last time was
+              a fortnight or more ago, because asking weekly about how her days
+              feel is the friction this app exists to remove. */}
+          {guidance === 'guide_me' && dueForLookback(lastLookback?.at ?? null) && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {lastLookback
+                ? 'It has been a while. Worth a look back when you have a minute.'
+                : 'Whenever you are ready, you can look back on how your days feel.'}
+            </ThemedText>
+          )}
+          <Pressable
+            onPress={() => router.push('/look-back')}
+            accessibilityRole="link"
+            accessibilityLabel="Look back on how your days feel"
+            hitSlop={Spacing.two}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedText type="small" themeColor="accentDeep">
+              Look back on this
+            </ThemedText>
+          </Pressable>
+        </>
+      )}
+
       {!collapsed && earlierCount > 0 && (
         <Pressable
           onPress={() => router.push('/goal')}
@@ -231,6 +350,7 @@ export function GoalsBlock() {
 }
 
 const styles = StyleSheet.create({
+  groupLabel: { textTransform: 'uppercase', letterSpacing: 0.8 },
   // Spacing.one rather than two: the heading sits closer to its own card now,
   // which is part of the density pass and makes the fold read as one object.
   block: { gap: Spacing.one },

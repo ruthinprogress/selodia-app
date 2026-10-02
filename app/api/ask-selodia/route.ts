@@ -44,6 +44,7 @@ import { logFoodFromText } from '../../lib/food-logging';
 import { lifeStageFacts } from '../../lib/life-stage-facts';
 import { weekFacts } from '../../lib/week-facts';
 import { skillFacts } from '../../lib/skill-facts';
+import { feelFacts } from '../../lib/feel-facts';
 import {
   answerWrittenAfter,
   earlierTwin,
@@ -246,6 +247,12 @@ type TurnContext = {
   // without the read is how her week came to be addable and unreadable for an
   // hour on 1 October.
   skillRows: unknown;
+  // HOW SHE WANTS HER DAYS TO FEEL, and her last look-back. Item 7, selected by
+  // turn_context from 2 October 2026 - in the same commit as the write, because
+  // a feel goal the model cannot see is the first question in setup changing
+  // nothing.
+  feelRows: unknown;
+  feelLookback: unknown;
   // HER WEEK, selected by turn_context from 1 October 2026 and not before.
   // See the migration week_time_of_day_and_chat_can_see_it.
   weekRows: {
@@ -588,6 +595,8 @@ export async function POST(request: NextRequest) {
     meRows,
     weekRows,
     skillRows,
+    feelRows,
+    feelLookback,
     pendingCardRow,
     dayFood,
     latestMeasurement,
@@ -871,6 +880,10 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   // already in her week and saved nothing, because it could not see Skills and
   // had no way to add one. Both halves land together. See lib/skill-facts.ts.
   const skillBlock = skillFacts(skillRows);
+
+  // HOW SHE WANTS HER DAYS TO FEEL (item 7). The guiding source for tone, not
+  // another list to read back. See lib/feel-facts.ts.
+  const feelBlock = feelFacts(feelRows, feelLookback);
 
   // An outstanding offer to change their Focus, if there is one. Read from the
   // database rather than from the conversation, so a confirmation can never be
@@ -1784,7 +1797,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           safetyBlock: SAFETY_PROMPT_BLOCK,
           // The same context the sequential call gets. A spoken turn that
           // cannot see her Me tab gives the same wrong answer as a typed one.
-          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock, skillBlock],
+          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
         })
       : null;
 
@@ -3414,7 +3427,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // it was given has food, movement, water, sleep, measurements and
           // cycle, and nothing else. It was obeying the baseline instruction
           // to say only what the record shows.
-          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock, skillBlock],
+          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's

@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { StyleSheet } from 'react-native';
 
 import { OnboardingQuestion } from '@/components/onboarding-question';
+import { SetupTextField } from '@/components/setup-text-field';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
@@ -38,9 +40,22 @@ import { supabase } from '@/lib/supabase';
 // the moment somebody decides the app is too nosy. It asks once, it explains
 // what the answer changes, and it takes no for an answer.
 
-const QUESTION = 'Where are you with periods?';
-const SUBTITLE =
-  'This changes how your weight is read and how your cycle is talked about. Skip it if you would rather, and change it any time.';
+// QUESTION 6 OF 7: A LITTLE ABOUT YOUR BODY. Her approved preview's heading and
+// subtitle, which cover three things rather than one - periods, hormones, and
+// anything she takes regularly. The old heading named only the first.
+const QUESTION = 'A little about your body';
+const SUBTITLE = 'All optional. It helps make sense of your week. Skip any of it, or all of it.';
+
+const PERIODS_HEADING = 'Periods';
+const HORMONES_HEADING = 'Hormones';
+const TAKES_HEADING = 'Anything you take regularly?';
+const TAKES_LABEL = 'Medication or supplements';
+const TAKES_PLACEHOLDER = 'In your own words';
+// HER WORDING, AND THE SECOND SENTENCE IS NOT BOILERPLATE. A box that accepts a
+// drug list has to say what the app will and will not do with it; the Medications
+// rule in the chat prompt says the same thing to the model.
+const TAKES_NOTE =
+  'Kept in Me exactly as you type it. Selod\u00eda is not a medical service and does not replace advice from your doctor. Edit or remove it any time.';
 
 const REASON_QUESTION = 'Which of these is closest?';
 const USE_QUESTION = 'Are you using any of these?';
@@ -53,12 +68,114 @@ export default function LifeStageScreen() {
   const [use, setUse] = useState<HormoneUse[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  /** Her own words for what she takes. Saved as typed, no model, no confirm. */
+  const [takes, setTakes] = useState('');
+  const [takesState, setTakesState] = useState<'saving' | 'saved' | 'failed' | null>(null);
+  /** Already on the Medications card, so a redo shows what is there. */
+  const [taking, setTaking] = useState<string[]>([]);
 
+  // ITEM 4: A REDO OPENS ON HER ANSWERS. This screen showed blank chips to
+  // somebody who had already answered, which on the most personal screen in
+  // setup reads as the app having forgotten - and combined with the save guard
+  // below meant a redo could look like it had lost her menopause answer.
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) advanceOnboardingStep(supabase, user.id, 'life_stage');
-    });
+    let live = true;
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      advanceOnboardingStep(supabase, user.id, 'life_stage');
+
+      const [{ data: profile }, { data: card }] = await Promise.all([
+        supabase
+          .from('user_profile')
+          .select('life_stage, life_stage_detail, hormone_use')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('almanac_entries')
+          .select('content')
+          .eq('user_id', user.id)
+          .eq('kind', 'me')
+          .eq('title', 'Medications')
+          .maybeSingle(),
+      ]);
+      if (!live) return;
+      if (profile?.life_stage) setStage(profile.life_stage as LifeStage);
+      if (profile?.life_stage_detail) setReason(profile.life_stage_detail as NoPeriodsReason);
+      if (Array.isArray(profile?.hormone_use)) setUse(profile.hormone_use as HormoneUse[]);
+      const items = (card?.content as { items?: { name?: string }[] })?.items;
+      setTaking(
+        Array.isArray(items) ? items.map((i) => String(i?.name ?? '')).filter(Boolean) : []
+      );
+      setLoaded(true);
+    })();
+    return () => {
+      live = false;
+    };
   }, []);
+
+  /**
+   * WHAT SHE TAKES, STRAIGHT ONTO THE MEDICATIONS CARD, EXACTLY AS TYPED.
+   *
+   * Ruth, item 5: "Text boxes in setup save EXACTLY as typed, straight into Me
+   * under the right heading, with no chat panel, no model call and no confirm
+   * step." Item 6 puts medication here, "in a plain box".
+   *
+   * THIS REPLACES A CONVERSATION, AND THE EARLIER REASONING FOR THAT CONVERSATION
+   * WAS SOUND. medication.tsx read the list back and asked before keeping it,
+   * because "75mcg" heard as "75mg" is a thousandfold error sitting quietly in her
+   * record. What makes the box safe is that there is no hearing involved: her
+   * characters are the stored characters, so there is nothing to mishear and
+   * nothing to confirm. The read-back existed to catch a model's transcription,
+   * and with the model gone the error it guarded against cannot occur.
+   *
+   * ONE CARD CALLED Medications, appended to, so two sittings do not make two
+   * lists. Chat can still tidy it into items later.
+   */
+  async function saveTakes() {
+    const text = takes.trim();
+    if (!text) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setTakesState('saving');
+
+    const { data: existing } = await supabase
+      .from('almanac_entries')
+      .select('id, content')
+      .eq('user_id', user.id)
+      .eq('kind', 'me')
+      .eq('title', 'Medications')
+      .maybeSingle();
+    const current = Array.isArray((existing?.content as { items?: unknown })?.items)
+      ? ((existing!.content as { items: unknown[] }).items as { name: string }[])
+      : [];
+    const items = [...current, { name: text, when: null, purpose: null }];
+
+    const { error } = existing
+      ? await supabase
+          .from('almanac_entries')
+          .update({ content: { items }, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+      : await supabase.from('almanac_entries').insert({
+          user_id: user.id,
+          kind: 'me',
+          title: 'Medications',
+          category: 'Medications',
+          content: { items },
+        });
+    if (error) {
+      setTakesState('failed');
+      return;
+    }
+    setTakesState('saved');
+    setTaking((prev) => [...prev, text]);
+    setTakes('');
+  }
 
   async function save(): Promise<boolean> {
     const {
@@ -100,7 +217,7 @@ export default function LifeStageScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/steer-around');
+      router.push('/onboarding/first-draft');
       return;
     }
     setSaving(true);
@@ -110,12 +227,12 @@ export default function LifeStageScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/steer-around');
+    router.push('/onboarding/first-draft');
   }
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    enabled: !saving,
+    enabled: !saving && loaded,
     onPress: () => void goOn(false),
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
@@ -140,6 +257,13 @@ export default function LifeStageScreen() {
 
   return (
     <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
+      {/* THREE SECTIONS WITH THREE HEADINGS, as her preview has them. The screen
+          used to run the period chips, the reason chips and the hormone chips
+          together under one question, so a woman tapping Continue could not tell
+          which of them she had answered. */}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+        {PERIODS_HEADING}
+      </ThemedText>
       <TapChoices
         options={LIFE_STAGES}
         selected={stage ? [stage] : []}
@@ -167,6 +291,9 @@ export default function LifeStageScreen() {
         </>
       )}
 
+      <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+        {HORMONES_HEADING}
+      </ThemedText>
       <ThemedText type="small">{USE_QUESTION}</ThemedText>
       <TapChoices
         options={HORMONE_USE_OPTIONS}
@@ -177,6 +304,35 @@ export default function LifeStageScreen() {
         {USE_WHY}
       </ThemedText>
 
+      {/* ANYTHING SHE TAKES REGULARLY, in a plain box (Ruth, item 6). This
+          replaces the chat panel on medication.tsx - see saveTakes() for why a
+          box is safe where a conversation was needed: there is no transcription
+          to get wrong, so there is nothing to read back. */}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+        {TAKES_HEADING}
+      </ThemedText>
+      <SetupTextField
+        label={TAKES_LABEL}
+        placeholder={TAKES_PLACEHOLDER}
+        value={takes}
+        onChangeText={(t) => {
+          setTakes(t);
+          setTakesState(null);
+        }}
+        onSave={() => void saveTakes()}
+        saving={takesState === 'saving'}
+        saved={takesState === 'saved'}
+        failed={takesState === 'failed'}
+      />
+      {taking.length > 0 && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Already kept: {taking.join('; ')}
+        </ThemedText>
+      )}
+      <ThemedText type="small" themeColor="textSecondary">
+        {TAKES_NOTE}
+      </ThemedText>
+
       {failed && (
         <ThemedText type="small" themeColor="danger">
           That didn&apos;t save. Check your connection and try again.
@@ -185,3 +341,7 @@ export default function LifeStageScreen() {
     </OnboardingQuestion>
   );
 }
+
+const styles = StyleSheet.create({
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 0.8 },
+});

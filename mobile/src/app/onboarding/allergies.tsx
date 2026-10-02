@@ -17,6 +17,7 @@ import {
   OTHER_REACTIONS,
   type AllergyKind,
 } from '@/lib/allergy-options';
+import { MOVEMENT_RULES, MOVEMENT_RULE_BY_KEY, termFromTypedRule } from '@/lib/movement-rules';
 import { supabase } from '@/lib/supabase';
 
 // ANYTHING TO STEER AROUND, GROUPED BY WHAT KIND OF THING IT IS.
@@ -229,15 +230,11 @@ export default function AllergiesScreen() {
     if (!user) return;
     setBoxState((st) => ({ ...st, [groupKey]: 'saving' }));
 
-    const term = text
-      .toLowerCase()
-      .replace(/^(no|not|never|avoid|skip|leave out)\b[:,\s]*/i, '')
-      .trim();
     const { error } = await supabase.from('user_rules').insert({
       user_id: user.id,
       kind: 'never',
       phrase: text,
-      match_terms: [term || text.toLowerCase()],
+      match_terms: [termFromTypedRule(text)],
       source: 'setup',
       // SHE TYPED IT HERE, DELIBERATELY, which is the confirmation. The column
       // records that a person stated it rather than a model inferred it.
@@ -337,6 +334,39 @@ export default function AllergiesScreen() {
     setBoxes((b) => ({ ...b, [groupKey]: '' }));
   }
 
+  /**
+   * A TAPPED MOVEMENT CHIP, WITH THE TERMS THAT MAKE IT WORK.
+   *
+   * Unlike every other chip on this screen, this one writes user_rules rather
+   * than allergies, and it carries its own match terms from
+   * lib/movement-rules.ts. A label is not a matcher: "Impact, such as jumping"
+   * appears in no session plan ever written, so storing the label as the term
+   * would have produced a rule that looked right in Plans and excluded nothing.
+   *
+   * SAVED ON THE TAP, not on Continue, so the list below updates and she can see
+   * it took. Deselecting does NOT remove it - her exception for item 4 covers
+   * movement rules, and Remove is its own tap with its own question.
+   */
+  async function toggleMovementRule(key: string) {
+    const option = MOVEMENT_RULE_BY_KEY[key];
+    if (!option) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    if (rules.includes(option.phrase)) return; // already in force; Remove takes it out
+    const { error } = await supabase.from('user_rules').insert({
+      user_id: user.id,
+      kind: 'never',
+      phrase: option.phrase,
+      match_terms: option.matchTerms,
+      source: 'setup',
+      confirmed_at: new Date().toISOString(),
+    });
+    if (error) return;
+    setRules((prev) => [...prev, option.phrase]);
+  }
+
   /** The second tap on Remove. Asked first, never on one press. */
   async function remove(name: string) {
     const {
@@ -385,7 +415,7 @@ export default function AllergiesScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping) {
-      router.push('/onboarding/guidance');
+      router.push('/onboarding/life-stage');
       return;
     }
     setSaving(true);
@@ -395,7 +425,7 @@ export default function AllergiesScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/guidance');
+    router.push('/onboarding/life-stage');
   }
 
   useOnboardingAction({
@@ -452,6 +482,17 @@ export default function AllergiesScreen() {
           Anything your body will not thank you for, or that a clinician has told you to avoid. It
           stays out of everything Selodía builds for you.
         </ThemedText>
+        {/* HER FOUR CHIPS. I left these out first time, reasoning that a tap names
+            nothing specific - which was right about the OLD steer-around screen's
+            "An injury or a condition" and wrong about these. "Overhead work" names
+            a category of movement precisely enough to exclude, and her approved
+            preview has them. Each carries its own match terms. */}
+        <TapChoices
+          options={MOVEMENT_RULES.map((r) => ({ key: r.key, label: r.label }))}
+          selected={MOVEMENT_RULES.filter((r) => rules.includes(r.phrase)).map((r) => r.key)}
+          onSelect={(key) => void toggleMovementRule(String(key))}
+          multi
+        />
         <SetupTextField
           label="What should stay out?"
           placeholder="No overhead pressing, my left shoulder"

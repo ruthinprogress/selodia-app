@@ -187,8 +187,10 @@ export default function FirstDraftScreen() {
       })();
     },
     secondary: {
+      // THE MANUAL SCREENS ARE STILL THERE, off the chain, for somebody who
+      // wants to add more. They are no longer part of the seven.
       label: 'Add more about you',
-      onPress: () => router.push('/onboarding/life-stage'),
+      onPress: () => router.push('/onboarding/health-context'),
     },
   });
 
