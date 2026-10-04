@@ -468,10 +468,43 @@ export async function logFoodFromText(
   // IS ANY OF THIS A MEAL ALREADY RECORDED? See lib/food-dedupe.ts for the
   // evening that made this necessary. One read covers the whole batch; RLS
   // scopes it to this person.
+  //
+  // AROUND THE ENTRY'S OWN TIME, NOT AROUND NOW (2026-10-04).
+  //
+  // This used to ask for rows whose happened_at was within ten minutes of NOW,
+  // which silently meant the duplicate guard could only ever see meals being
+  // logged as they were eaten. A catch-up - "I forgot to log yesterday" - is
+  // stamped with YESTERDAY's happened_at, so it was never in the candidate list,
+  // findSameMeal had nothing to compare against, and a re-log always wrote a
+  // second full set of rows. Backdated logging had no duplicate protection at
+  // all, and it is one of the things people use this for most.
+  //
+  // WHAT IT COST. Ruth, 4 October 2026, voice-logging her Saturday: "in the log
+  // page itself everything came through twice." Her four meals went in twice,
+  // sixteen seconds apart, from two different turns - "Hi, I forgot to log the
+  // food yesterday. So I had..." and then "Yeah, that's right. Could you log it,
+  // please?". The second was a fair instruction; nothing in the app knew it had
+  // already done it. The two sets were not even identical - lunch 264 then 320
+  // kcal, dinner 650 then 680 - because each parse estimated separately, so no
+  // exact-match guard would have caught them either.
+  //
+  // findSameMeal ALREADY compares |incoming.happened_at - existing.happened_at|
+  // against the window, in both directions, so a catch-up for last Monday still
+  // cannot merge with this afternoon. The window logic was right; it was never
+  // being given the rows. This only widens what it is allowed to look at.
+  const times = rows
+    .map((r) => Date.parse(r.happenedAt))
+    .filter((t) => Number.isFinite(t));
+  const span = FOOD_DEDUPE_WINDOW_MIN * 60_000;
+  // The batch can describe several meals at different times; the candidates have
+  // to cover all of them, so the range runs from the earliest to the latest.
+  const from = times.length > 0 ? Math.min(...times) - span : Date.now() - span;
+  const to = times.length > 0 ? Math.max(...times) + span : Date.now() + span;
   const { data: recentData } = await supabase
     .from('food_logs')
     .select('id, raw_text, happened_at')
-    .gte('happened_at', new Date(Date.now() - FOOD_DEDUPE_WINDOW_MIN * 60_000).toISOString())
+    .gte('happened_at', new Date(from).toISOString())
+    .lte('happened_at', new Date(to).toISOString())
     .order('happened_at', { ascending: false })
     .limit(25);
   const recent = (recentData ?? []) as RecentLog[];
