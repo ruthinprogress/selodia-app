@@ -46,7 +46,6 @@ for a fact only Ruth has.
 """
 
 import re
-import shutil
 import sys
 import zipfile
 # ALIASED, because the local variable holding the document is called `xml`.
@@ -234,11 +233,31 @@ def append(entry_path: Path, before: int | None = None, continue_from: int | Non
     xml = xml[:i] + block + xml[i:]
     xml = rebuild_contents(xml)
 
-    # A BACKUP FIRST, BECAUSE THIS FILE IS THE ONLY COPY. Everything else in the
-    # close-out is regenerated from the repository; the build log is not, and its
-    # nine missing sessions are not recoverable from anywhere.
-    backup = BOOK.with_name(BOOK.stem + " (backup before append).docx")
-    shutil.copy2(BOOK, backup)
+    # NO BACKUP COPY. REMOVED 2026-10-04, AND THE PREMISE WAS WRONG.
+    #
+    # This used to write "<name> (backup before append).docx" next to the live
+    # file, on the stated grounds that "this file is the only copy". It is not.
+    # It lives in H:\My Drive - Google Drive for Desktop - and Drive keeps
+    # version history for every file in it. The protection was already there,
+    # free, without anybody naming a copy after the edit they were nervous about.
+    #
+    # WHAT IT ACTUALLY COST. Ruth, 4 October 2026: "Why are there multiple copies
+    # of the session close out and build log in the folder?" Thirteen of them,
+    # six here and seven from the close-out workbook, going back to 23 September.
+    # Every one a strict subset of the live file - verified before they were
+    # deleted, none of them holding anything the live file lacked. They were not
+    # insurance, they were thirteen near-identical documents in the folder she has
+    # to find real work in, and the folder is one of the few places she can see
+    # what this project has produced.
+    #
+    # A GUARD AT THE WRITE REPLACED IT, and is the better protection anyway: the
+    # XML is parsed below and NOTHING is written unless it is well-formed. That
+    # catches the failure a backup only lets you recover from afterwards - and it
+    # catches it before the damage, rather than leaving a copy behind in case.
+    #
+    # If a future edit genuinely needs a restore point, use Drive's own version
+    # history (right-click the file, Version history) rather than adding a
+    # fourteenth copy.
 
     # WELL-FORMED OR NOTHING IS WRITTEN (added 2026-09-28).
     #
@@ -262,7 +281,7 @@ def append(entry_path: Path, before: int | None = None, continue_from: int | Non
             z.writestr(name, data)
 
     print(f"  appended to session {continue_from}" if continue_from else f"  appended: {header}")
-    print(f"  {len(paragraphs)} paragraph(s), backup at {backup.name}")
+    print(f"  {len(paragraphs)} paragraph(s) appended")
     return 0
 
 

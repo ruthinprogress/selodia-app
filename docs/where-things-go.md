@@ -53,6 +53,25 @@ Under `Selodia App Project Master Folder\`:
 - **Superseded files get renamed, not deleted.** Prefix with `SUPERSEDED - ` and
   say what replaced it. There are already several. Deleting any of her files
   needs her say-so first.
+- **Never write a backup copy next to a file you are editing.** `H:\My Drive` is
+  Google Drive, and Drive keeps version history on every file in it. A
+  `(backup before append)` copy duplicates protection that is already there, and
+  the copy then becomes a thing to reason about.
+
+  Ruth, 4 October 2026: *"Why are there multiple copies of the session close out
+  and build log in the folder?"* and *"there's tons of backups across multiple
+  files and it's very cluttered."* There were **29** — Build Log, Session
+  Closeouts, Open Actionables, Costs and Subscriptions, the FemTech email, the
+  Women in Innovation note, the competitor watch — going back to 23 September,
+  every one written automatically by a script before an edit that then worked.
+  This folder is one of the few places she can see what the project has produced,
+  and it had four near-identical documents for every real one.
+
+  If an edit is risky, **guard the write instead**: `build_log_append.py` parses
+  the XML and writes nothing unless it is well-formed, which stops the damage
+  rather than leaving a copy to recover from. If a restore point is genuinely
+  needed, use Drive's own version history (right-click the file → Version
+  history). Do not add another copy.
 
 ## Two ways in, and when to use each
 
