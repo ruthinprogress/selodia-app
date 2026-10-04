@@ -197,6 +197,7 @@ export default function ChatScreen() {
     discussId,
     discussType,
     askNow,
+    askNonce,
     seedTitle,
     seedWhen,
     seedDetail,
@@ -213,12 +214,19 @@ export default function ChatScreen() {
     seedDetail?: string;
     seedKcal?: string;
     seedProtein?: string;
+    askNonce?: string;
   }>();
   const [lastPrefill, setLastPrefill] = useState<string | null>(null);
   const [pendingTag, setPendingTag] = useState<DiscussTag | null>(null);
   // Set during render, acted on in an effect below: sending from the render body
   // would be a side effect in a render pass.
-  const [autoAsk, setAutoAsk] = useState<{ text: string; tag: DiscussTag } | null>(null);
+  const [autoAsk, setAutoAsk] = useState<{
+    key: string;
+    text: string;
+    // NULL IS A REAL CASE. "Change goal" and "add something to my week" open a
+    // conversation about no particular entry, and there is nothing to tag.
+    tag: DiscussTag | null;
+  } | null>(null);
   // WHAT THE CONVERSATION IS ANCHORED TO, as the server last reported it
   // (2026-09-19). Ruth: "The anchor card is not just UI - it preserves the
   // context of the conversation... When reading conversations back months
@@ -229,8 +237,27 @@ export default function ChatScreen() {
   // Set by Close; travels on the next message, which is when the server next
   // decides what that message belongs to.
   const [closeNext, setCloseNext] = useState(false);
-  if (typeof prefill === 'string' && prefill.length > 0 && prefill !== lastPrefill) {
-    setLastPrefill(prefill);
+  // THE SAME BUTTON, TWICE, IS TWO TAPS (2026-10-04).
+  //
+  // Ruth: "Many screens say 'ask about this' and they are meant to create a card
+  // in chat so chat refers to it and begins the conversation. This doesn't work
+  // anywhere."
+  //
+  // This block used to be keyed on the PREFILL TEXT, and the text is the same
+  // every time a given button is pressed. So the first tap worked and every tap
+  // after it in the same session did nothing at all - not even filling the box -
+  // because `prefill !== lastPrefill` was false and the whole block was skipped.
+  // A guard meant to stop a re-render re-sending was also stopping the person
+  // from asking twice.
+  //
+  // The sender now supplies a nonce, which is what distinguishes one navigation
+  // from a second render of the same one. check-ask-about-this.mjs fails if a
+  // caller passes askNow without it, so a new button cannot quietly inherit the
+  // old behaviour.
+  const askKey =
+    typeof askNonce === 'string' && askNonce.length > 0 ? askNonce : (prefill ?? '');
+  if (typeof prefill === 'string' && prefill.length > 0 && askKey !== lastPrefill) {
+    setLastPrefill(askKey);
     // Router params arrive as strings, so the two numbers are parsed here rather
     // than at the point of use. An unparseable one becomes null and the card
     // simply waits for its read, which is the behaviour this replaced.
@@ -267,7 +294,19 @@ export default function ChatScreen() {
     // message went, there was nothing to show. A button named "Ask about this"
     // that silently waits for a second, undisclosed action is the fault -
     // opening a conversation is what it says it does.
-    if (askNow === '1' && tag) setAutoAsk({ text: prefill, tag });
+    // AND IT SENDS WHETHER OR NOT THERE IS AN ENTRY TO TAG (2026-10-04).
+    //
+    // This read `askNow === '1' && tag`, so a button with nothing to point at
+    // never sent. Three of the five callers are exactly that: "Change goal" and
+    // both "add something to my week" buttons open a conversation about no
+    // particular entry. Their text landed in the composer and stopped, which is
+    // the behaviour the name of the button promises not to have.
+    //
+    // The tag says WHICH ENTRY the conversation is about. It is worth having and
+    // it was never a reason to withhold the message: handleSend's tag argument
+    // has always been optional. A question with nothing to anchor it is still a
+    // question.
+    if (askNow === '1') setAutoAsk({ key: askKey, text: prefill, tag });
     else if (input.length === 0) setInput(prefill);
   }
   const [sending, setSending] = useState(false);
@@ -314,11 +353,11 @@ export default function ChatScreen() {
   // same params does nothing.
   const sentAskRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoAsk || sentAskRef.current === autoAsk.text) return;
-    sentAskRef.current = autoAsk.text;
+    if (!autoAsk || sentAskRef.current === autoAsk.key) return;
+    sentAskRef.current = autoAsk.key;
     // The tag goes WITH the text. Reading it from state here is the race that
     // left the entry card off her turn while the request carried the tag.
-    void handleSend(autoAsk.text, autoAsk.tag);
+    void handleSend(autoAsk.text, autoAsk.tag ?? undefined);
     // handleSend is redefined every render; depending on it would re-run this
     // on every keystroke. autoAsk is the trigger, and the ref is the guard.
     // eslint-disable-next-line react-hooks/exhaustive-deps

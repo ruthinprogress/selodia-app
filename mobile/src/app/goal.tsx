@@ -214,6 +214,8 @@ export default function GoalScreen() {
                     params: {
                       prefill: "I'd like to change what I'm working towards.",
                       askNow: '1',
+                      // One navigation, one nonce - see (tabs)/index.tsx.
+                      askNonce: String(Date.now()),
                     },
                   })
                 }>

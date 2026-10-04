@@ -380,6 +380,8 @@ export default function PlansScreen() {
                 discussId: entry.id,
                 discussType: 'plan',
                 askNow: '1',
+                // One navigation, one nonce - see the note in (tabs)/index.tsx.
+                askNonce: String(Date.now()),
                 seedTitle: entry.title,
               },
             });

@@ -225,6 +225,9 @@ export function FoodBreakdownCard({
         // sentence SHE has to finish; sending it would ask the model to guess
         // what she meant to change.
         askNow: mode === 'ask' ? '1' : '',
+        // One navigation, one nonce. Without it a second "Ask about this" on the
+        // same entry did nothing, because the guard was keyed on the text.
+        askNonce: String(Date.now()),
       },
     });
   }

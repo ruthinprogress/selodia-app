@@ -548,7 +548,12 @@ export function WeekView({
             setAddingTo(null);
             router.push({
               pathname: '/',
-              params: { prefill: "I'd like to add something to my week.", askNow: '1' },
+              params: {
+                prefill: "I'd like to add something to my week.",
+                askNow: '1',
+                // One navigation, one nonce - see (tabs)/index.tsx.
+                askNonce: String(Date.now()),
+              },
             });
           }}
         />
@@ -844,6 +849,8 @@ export function WeekView({
                 ? `I'd like to add something to my week on ${DAY_LABEL[key]}.`
                 : "I'd like to add something to my week.",
               askNow: '1',
+              // One navigation, one nonce - see (tabs)/index.tsx.
+              askNonce: String(Date.now()),
             },
           });
         }}
