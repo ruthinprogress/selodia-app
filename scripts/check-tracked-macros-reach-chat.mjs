@@ -90,45 +90,84 @@ await check('only the macros she actually switched on', () => {
   return 'unknown keys dropped, kcal and protein never toggles';
 });
 
-await check('tracking nothing optional costs no query and says nothing', async () => {
-  // An empty block and a block saying "nothing is tracked" are different claims.
-  let called = false;
-  const spy = { from() { called = true; throw new Error('should not query'); } };
-  const out = await buildTrackedMacroBlock(spy, 'u', []);
-  assert.strictEqual(out, '', 'a block was produced for somebody tracking nothing');
-  assert.strictEqual(called, false, 'it queried anyway');
-  return 'no query, no claim';
+const ROWS = [
+  { happened_at: '2026-10-03T12:00:00Z', saturated_fat_g: 12, fat_g: 30, sugar_g: 9 },
+  { happened_at: '2026-10-02T12:00:00Z', saturated_fat_g: 8, fat_g: 22, sugar_g: 5 },
+];
+const stubWith = (rows) => ({
+  from: () => ({
+    select: () => ({
+      eq: () => ({ gte: () => ({ order: () => ({ limit: async () => ({ data: rows, error: null }) }) }) }),
+    }),
+  }),
 });
 
-await check('the rendered block forbids the sentence she actually got', async () => {
-  // READ THE OUTPUT, NOT THE SOURCE. The first version matched the module's
-  // text and failed on its own line wrapping: the sentence is built by template
-  // concatenation, so "never send her elsewhere" and "for it" are not adjacent
-  // in the file. A check that reads a spelling rather than a result reports on
-  // formatting - the same lesson as the comment-stripping in
-  // check-ask-about-this.mjs, one layer along.
-  const rows = [
-    { happened_at: '2026-10-03T12:00:00Z', saturated_fat_g: 12 },
-    { happened_at: '2026-10-02T12:00:00Z', saturated_fat_g: 8 },
-  ];
-  const stub = {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          gte: () => ({
-            order: () => ({ limit: async () => ({ data: rows, error: null }) }),
-          }),
-        }),
-      }),
-    }),
-  };
-  const out = await buildTrackedMacroBlock(stub, 'u', ['saturated']);
-  assert.ok(out.length > 0, 'no block was produced');
-  assert.ok(/not tracked/.test(out), 'the block never forbids claiming it is untracked');
-  assert.ok(/send her elsewhere/.test(out), 'nothing stops it pointing her at her GP');
-  assert.ok(/12g saturated fat/.test(out), `the figures are missing: ${out.slice(-120)}`);
-  assert.ok(/What I track/.test(out), 'it does not say where she switched these on');
-  return 'the figures, and the instruction, in the text the model receives';
+await check('a macro she has NOT switched on is offered, never denied', async () => {
+  // HER CORRECTION, AND IT IS THE WHOLE POINT: "I switched them on after the
+  // chat said it wasn't seeing them, but she should have told me they were
+  // available and suggested i turn them on."
+  //
+  // The toggle has never gated capture - tracked_macros appears nowhere in the
+  // parse or in food-logging - so "that's not something your record tracks" was
+  // false with the switch off exactly as it was with it on.
+  const out = await buildTrackedMacroBlock(stubWith(ROWS), 'u', []);
+  assert.ok(out.length > 0, 'nothing is said at all when she tracks nothing, so the ' +
+    'model is left to guess - and last time it guessed that her record does not keep it');
+  assert.ok(/ALSO RECORDED, BUT NOT SWITCHED ON/.test(out), 'it does not say the figures exist');
+  assert.ok(/saturated fat/.test(out), 'saturated fat is not named as available');
+  assert.ok(/What I track/.test(out), 'it does not say where she can switch it on');
+  assert.ok(/offer to switch it on/.test(out), 'it does not tell the model to OFFER');
+  return 'named, with the switch offered';
+});
+
+await check('an untracked macro is named, not totalled', async () => {
+  // Answering with the numbers anyway would override a setting she is entitled
+  // to have meant. The offer is the respectful shape; it costs her one tap.
+  const out = await buildTrackedMacroBlock(stubWith(ROWS), 'u', []);
+  assert.ok(!/12g saturated fat/.test(out), 'it quotes figures she has not asked to see');
+  assert.ok(!/2026-10-03:/.test(out), 'it prints daily totals for switched-off macros');
+  return 'the offer, not the nutrition label';
+});
+
+await check('a macro with no figures is not offered', async () => {
+  // Offering something the parse never managed to estimate would be the same
+  // false promise one step along.
+  const out = await buildTrackedMacroBlock(
+    stubWith([{ happened_at: '2026-10-03T12:00:00Z', saturated_fat_g: 12 }]),
+    'u',
+    []
+  );
+  assert.ok(/saturated fat/.test(out), 'the one it does have is missing');
+  assert.ok(!/fibre/.test(out), 'fibre was offered with no figures behind it');
+  return 'only what is actually there';
+});
+
+await check('no food at all says nothing rather than nothing-is-tracked', async () => {
+  const out = await buildTrackedMacroBlock(stubWith([]), 'u', ['saturated']);
+  assert.strictEqual(out, '', 'a claim was made with no rows to back it');
+  return 'silence, not a claim';
+});
+
+await check('a switched-on macro arrives with its figures and its caveat', async () => {
+  // READ THE OUTPUT, NOT THE SOURCE. An earlier version matched the module's own
+  // text and failed on its own line wrapping - the sentences are built by
+  // template concatenation, so the words are not adjacent in the file. A check
+  // that reads a spelling reports on formatting. Same lesson as the
+  // comment-stripping in check-ask-about-this.mjs, one layer along.
+  const out = await buildTrackedMacroBlock(stubWith(ROWS), 'u', ['saturated']);
+  assert.ok(/12g saturated fat/.test(out), 'the figures are missing');
+  assert.ok(/2026-10-03:/.test(out), 'the days are not broken out, so a week cannot be summed');
+  assert.ok(/you HAVE the figures/.test(out), 'the model is not told it can answer from them');
+  assert.ok(
+    /as complete as her logging/.test(out),
+    'nothing says the totals are only as good as what she logged, which is the one ' +
+      'honest caveat on a figure summed from her own entries'
+  );
+  assert.ok(
+    /do not use it to avoid answering/.test(out),
+    'the caveat has no limit on it, so it becomes a reason to dodge the question'
+  );
+  return 'figures, days, and one honest caveat';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

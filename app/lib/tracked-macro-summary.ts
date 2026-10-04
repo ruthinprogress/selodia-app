@@ -33,6 +33,25 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // answer that; sixty meals with eight figures each is a nutrition label, and a
 // nutrition label is the thing this app exists to stop her reading. The per-meal
 // figures are already one tap away in her log.
+//
+// AND THE SWITCH WAS OFF WHEN SHE ASKED (her correction, same evening): "I
+// switched them on after the chat said it wasn't seeing them, but she should
+// have told me they were available and suggested i turn them on."
+//
+// She is right, and it makes the original answer worse rather than better. The
+// toggle has NEVER gated capture - tracked_macros appears nowhere in the parse
+// or in food-logging, so saturated fat has been measured on every meal she has
+// ever logged. "What I track" decides what is SHOWN on a row, not what is kept.
+// So "that's not something your record tracks" was false with the switch off
+// exactly as it was with it on, and the honest answer was always "I do have
+// that - it is not switched on, shall I show it?".
+//
+// SO AN UNTRACKED MACRO IS NAMED, NOT TOTALLED. Naming it tells the truth about
+// what exists and offers her the switch. Printing the figures anyway would
+// override a setting she is entitled to have meant - she turned these off, or
+// never turned them on, and a direct question is not permission to start
+// rendering a nutrition label at her. The offer is the respectful shape: it
+// costs her one tap and it never pretends.
 
 /** Mirrors mobile/src/lib/tracked-macros.ts. Calories and protein are never toggles. */
 const MACRO_COLUMN: Record<string, { column: string; label: string; unit: string }> = {
@@ -66,9 +85,11 @@ export async function buildTrackedMacroBlock(
   now: Date = new Date()
 ): Promise<string> {
   const keys = trackedMacroKeys(trackedMacrosStored);
-  if (keys.length === 0) return '';
-
-  const columns = keys.map((k) => MACRO_COLUMN[k].column);
+  // EVERY COLUMN IS READ, NOT ONLY THE SWITCHED-ON ONES, because the block has
+  // to be able to say "I have this and it is not switched on". Same rows either
+  // way; the cost is a few more fields on a query that was already happening.
+  const allKeys = Object.keys(MACRO_COLUMN);
+  const columns = allKeys.map((k) => MACRO_COLUMN[k].column);
   const since = new Date(now.getTime() - MACRO_SUMMARY_DAYS * 86_400_000).toISOString();
 
   const { data, error } = await supabase
@@ -91,7 +112,7 @@ export async function buildTrackedMacroBlock(
     // The local day, so a 9pm dinner in summer counts to the day she ate it.
     const day = new Date(at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
     const totals = byDay.get(day) ?? {};
-    for (const key of keys) {
+    for (const key of allKeys) {
       const v = row[MACRO_COLUMN[key].column];
       if (typeof v === 'number') totals[key] = (totals[key] ?? 0) + v;
     }
@@ -100,23 +121,49 @@ export async function buildTrackedMacroBlock(
   if (byDay.size === 0) return '';
 
   const days = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  const lines = days.map(([day, totals]) => {
-    const parts = keys
-      .filter((k) => totals[k] != null)
-      .map((k) => `${Math.round(totals[k])}${MACRO_SUMMARY_UNIT(k)} ${MACRO_COLUMN[k].label}`);
-    return `  ${day}: ${parts.length > 0 ? parts.join(', ') : 'nothing recorded'}`;
-  });
 
-  const names = keys.map((k) => MACRO_COLUMN[k].label).join(', ');
-  return (
-    `\n\nWHAT SHE TRACKS, BY DAY (computed by the app from her own log - never recalculate these).\n` +
-    `She has switched these on in "What I track": ${names}. They are recorded on every meal ` +
-    `she logs, so when she asks about any of them you HAVE the figures and must answer from ` +
-    `them. Never tell her a macro on this list is not tracked, and never send her elsewhere ` +
-    `for it. Totals are the sum of her logged meals, so they are as complete as her logging ` +
-    `that day and no more - say so if it matters, but do not use it to avoid answering.\n` +
-    lines.join('\n')
+  // Which of the switched-off ones she actually has figures for. A macro the
+  // parse never managed to estimate is not something to offer her.
+  const available = allKeys.filter(
+    (k) => !keys.includes(k) && days.some(([, t]) => t[k] != null)
   );
+
+  const sections: string[] = [];
+
+  if (keys.length > 0) {
+    const lines = days.map(([day, totals]) => {
+      const parts = keys
+        .filter((k) => totals[k] != null)
+        .map((k) => `${Math.round(totals[k])}${MACRO_SUMMARY_UNIT(k)} ${MACRO_COLUMN[k].label}`);
+      return `  ${day}: ${parts.length > 0 ? parts.join(', ') : 'nothing recorded'}`;
+    });
+    const names = keys.map((k) => MACRO_COLUMN[k].label).join(', ');
+    sections.push(
+      `WHAT SHE TRACKS, BY DAY (computed by the app from her own log - never recalculate these).\n` +
+        `She has switched these on in "What I track": ${names}. They are recorded on every meal ` +
+        `she logs, so when she asks about any of them you HAVE the figures and must answer from ` +
+        `them. Totals are the sum of her logged meals, so they are as complete as her logging ` +
+        `that day and no more - say so if it matters, but do not use it to avoid answering.\n` +
+        lines.join('\n')
+    );
+  }
+
+  if (available.length > 0) {
+    const names = available.map((k) => MACRO_COLUMN[k].label).join(', ');
+    sections.push(
+      `ALSO RECORDED, BUT NOT SWITCHED ON: ${names}. Every meal she logs is measured for ` +
+        `these whether or not they are switched on - "What I track" decides what is SHOWN on ` +
+        `a row, never what is kept. So if she asks about any of them, say plainly that you DO ` +
+        `have it and offer to switch it on for her in Profile > What I track, where the past ` +
+        `weeks will then show too. NEVER say her record does not track it, never say there is ` +
+        `nothing to show for a past window, and never send her to her GP or another app for a ` +
+        `figure this one is holding. Do not quote the daily numbers for these until she has ` +
+        `said yes - she has not asked to see them on her rows, and the offer is the answer.`
+    );
+  }
+
+  if (sections.length === 0) return '';
+  return `\n\n${sections.join('\n\n')}`;
 }
 
 function MACRO_SUMMARY_UNIT(key: string): string {
