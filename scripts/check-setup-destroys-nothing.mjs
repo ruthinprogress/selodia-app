@@ -126,10 +126,31 @@ check('a blank screen cannot be read as "she deselected everything"', () => {
     'the screen does not track whether it has read her week yet, so an empty ' +
       'selection is indistinguishable from an unloaded screen'
   );
+  // THE REFUSAL IS THE PROPERTY; `return true` WAS THE BUG (2026-10-04).
+  //
+  // This asserted the exact line `if (!mayWrite(loadState)) return true;` - and
+  // that `true` is what sent Ruth back to her profile believing her week had
+  // saved when the screen had deliberately written nothing. "From Profile,
+  // filled in 'What you already do' but nothing was populated anywhere in week."
+  //
+  // save() now returns an outcome rather than a boolean, so the refusal says
+  // which refusal it was and the screen tells her. What must still hold - and
+  // what this now reads - is that nothing past the gate runs when the week is
+  // not in hand.
   ok(
-    /if \(!mayWrite\(loadState\)\) return true;/.test(activities),
+    /if \(!mayWrite\(loadState\)\) \{/.test(activities),
     'save() does not refuse to run before her week has been read - a slow read ' +
       'plus a quick Continue deletes every activity this screen knows about'
+  );
+  ok(
+    !/if \(!mayWrite\(loadState\)\) return true;/.test(activities),
+    'the refusal reports SUCCESS to its caller, so she is moved on and told ' +
+      'nothing - which is indistinguishable from a save that worked'
+  );
+  ok(
+    /return 'not-ready';/.test(activities),
+    'the refusal does not name itself, so the screen cannot tell her which of ' +
+      '"nothing saved" and "nothing chosen" happened'
   );
   ok(
     /loaded: mayWrite\(loadState\)/.test(activities),

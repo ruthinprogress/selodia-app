@@ -18,6 +18,7 @@ import {
   type LoadState,
 } from '@/lib/load-state';
 import { useOneQuestion } from '@/lib/one-question';
+import { logClientError } from '@/lib/client-error-log';
 import { supabase } from '@/lib/supabase';
 import { planWeekWrite } from '@/lib/week-write-plan';
 
@@ -124,6 +125,8 @@ export default function ActivitiesScreen() {
   // failed", and the second inherited the treatment built for the first: a dead
   // Continue and no message, forever. See lib/load-state.ts.
   const [loadState, setLoadState] = useState<LoadState>('loading');
+  // Said when Continue deliberately wrote nothing. Not an error - an outcome.
+  const [notSaved, setNotSaved] = useState<string | null>(null);
   /** Bumped by Try again, which re-runs the read. */
   const [attempt, setAttempt] = useState(0);
 
@@ -212,19 +215,42 @@ export default function ActivitiesScreen() {
     });
   }
 
-  async function save(): Promise<boolean> {
-    // NOTHING IS WRITTEN FROM A SCREEN THAT HAS NOT READ HER WEEK YET. See
-    // `loaded` above: before the pre-fill lands, an empty `chosen` is the
-    // screen's own ignorance and not her answer.
+  /**
+   * WHAT ACTUALLY HAPPENED, NOT WHETHER IT WENT WRONG (2026-10-04).
+   *
+   * Ruth: "From Profile, filled in 'What you already do' but nothing was
+   * populated anywhere in week." On the current build, so not the stale install.
+   *
+   * This returned a BOOLEAN, and returned `true` when it had deliberately written
+   * nothing - the not-ready path below. `true` means "carry on" to the caller, so
+   * she was moved along and told nothing, which is indistinguishable from a save
+   * that worked. Her week still holds one row from Friday.
+   *
+   * A boolean cannot carry the difference between "saved", "there was nothing to
+   * save" and "I refused to save because I do not know what your week holds", and
+   * those three need three different things said to her. So it says which.
+   */
+  type SaveOutcome = 'saved' | 'nothing-chosen' | 'not-ready' | 'failed';
+
+  async function save(): Promise<SaveOutcome> {
     // NOTHING IS WRITTEN WITHOUT HER WEEK IN HAND. The one property worth
     // keeping from the original design: an empty chip row must never be read as
     // "she deselected everything", which is what deleted her week on 1 October.
-    if (!mayWrite(loadState)) return true;
+    //
+    // IT NO LONGER PRETENDS THAT WENT WELL. The refusal is right; reporting it as
+    // success is what cost her the input.
+    if (!mayWrite(loadState)) {
+      void logClientError('week-save', `refused: loadState=${loadState}, chosen=${chosen.length}`);
+      return 'not-ready';
+    }
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) {
+      void logClientError('week-save', 'no signed-in user at save time');
+      return 'failed';
+    }
 
     // THIS SCREEN DELETED HER ENTIRE WEEK (1 October 2026, ~19:05).
     //
@@ -292,7 +318,10 @@ export default function ActivitiesScreen() {
       .from('user_week')
       .select('id, activity, cadence, sort_order')
       .eq('user_id', user.id);
-    if (readError) return false;
+    if (readError) {
+      void logClientError('week-save', `reading her week failed: ${readError.message}`);
+      return 'failed';
+    }
 
     const plan = planWeekWrite({
       // The plan refuses outright unless her week is in hand. Same guarantee as
@@ -314,11 +343,17 @@ export default function ActivitiesScreen() {
     });
     // Refused, because her week had not been read. Nothing to report as failure:
     // Continue is disabled in that state, so this is defence, not a path.
-    if (!plan) return false;
+    if (!plan) {
+      void logClientError('week-save', 'the write plan refused - her week was not in hand');
+      return 'failed';
+    }
 
     if (plan.remove.length > 0) {
       const { error } = await supabase.from('user_week').delete().in('id', plan.remove);
-      if (error) return false;
+      if (error) {
+        void logClientError('week-save', `removing rows failed: ${error.message}`);
+        return 'failed';
+      }
     }
 
     // ACTIVITY LEVEL AND HEIGHT COME FROM THIS SCREEN NOW, and they have to.
@@ -345,10 +380,18 @@ export default function ActivitiesScreen() {
         .from('user_week')
         .update({ cadence: row.cadence })
         .eq('id', row.id);
-      if (error) return false;
+      if (error) {
+        void logClientError('week-save', `updating a cadence failed: ${error.message}`);
+        return 'failed';
+      }
     }
 
-    if (plan.insert.length === 0) return true;
+    // NOTHING TO ADD IS NOT THE SAME AS SAVED. If she chose nothing at all, say
+    // so rather than returning her to a profile that looks unchanged because it
+    // is unchanged.
+    if (plan.insert.length === 0) {
+      return chosen.length === 0 ? 'nothing-chosen' : 'saved';
+    }
     const { error } = await supabase.from('user_week').insert(
       plan.insert.map((row) => ({
         user_id: user.id,
@@ -364,21 +407,42 @@ export default function ActivitiesScreen() {
         sort_order: row.sort_order,
       }))
     );
-    return !error;
+    if (error) {
+      void logClientError('week-save', `inserting ${plan.insert.length} row(s) failed: ${error.message}`);
+      return 'failed';
+    }
+    return 'saved';
   }
 
   async function goOn(skipping: boolean) {
     if (saving) return;
     setFailed(false);
+    setNotSaved(null);
     if (skipping) {
       leave('/onboarding/allergies');
       return;
     }
     setSaving(true);
-    const ok = await save();
+    const outcome = await save();
     setSaving(false);
-    if (!ok) {
+
+    // SHE IS NEVER MOVED ON FROM A WRITE THAT DID NOT HAPPEN. Each of these used
+    // to be `true`, which sent her back to a profile showing the week she already
+    // had, with nothing said.
+    if (outcome === 'failed') {
       setFailed(true);
+      return;
+    }
+    if (outcome === 'not-ready') {
+      setNotSaved(
+        'Your week could not be loaded just now, so nothing was saved and nothing was changed. Try again, or close this and come back.'
+      );
+      return;
+    }
+    if (outcome === 'nothing-chosen') {
+      setNotSaved(
+        'Nothing was selected, so your week is unchanged. Tap what you already do, then Continue.'
+      );
       return;
     }
     leave('/onboarding/allergies');
@@ -393,7 +457,12 @@ export default function ActivitiesScreen() {
     // screen does not write on the way past, not that she is stuck on it.
     enabled: mayContinue(loadState, saving),
     onPress: () => void goOn(false),
-    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
+    // SKIP WAS THE ONLY LIVE CONTROL WHEN THE SCREEN WAS STUCK, and skipping
+    // writes nothing and moves on - so a dead Continue beside a live Skip is a
+    // trapdoor. It is now gated on exactly what Continue is gated on.
+    secondary: mayContinue(loadState, saving)
+      ? { label: 'Skip this question', onPress: () => void goOn(true) }
+      : undefined,
   });
 
   return (
@@ -461,6 +530,16 @@ export default function ActivitiesScreen() {
       {failed && (
         <ThemedText type="small" themeColor="danger">
           That didn&apos;t save. Check your connection and try again.
+        </ThemedText>
+      )}
+
+      {/* A WRITE THAT DELIBERATELY DID NOT HAPPEN SAYS SO (2026-10-04). Not an
+          error, so not in the danger colour: the app refused to guess at her
+          week, or she selected nothing. Either way she is told, instead of being
+          returned to a profile that looks unchanged because it is. */}
+      {notSaved && !failed && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {notSaved}
         </ThemedText>
       )}
     </OnboardingQuestion>
