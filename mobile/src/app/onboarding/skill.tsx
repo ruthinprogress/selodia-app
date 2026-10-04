@@ -15,6 +15,8 @@ import {
   type LoadState,
 } from '@/lib/load-state';
 import { useOneQuestion } from '@/lib/one-question';
+import { logClientError } from '@/lib/client-error-log';
+import { saveOutcomeMessage, type SaveOutcome } from '@/lib/save-outcome';
 import { supabase } from '@/lib/supabase';
 
 // SCREEN 2: WHICH SKILL, AND WHERE SHE IS WITH IT.
@@ -50,6 +52,8 @@ export default function SkillScreen() {
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Said when Continue deliberately wrote nothing. Not an error - an outcome.
+  const [notSaved, setNotSaved] = useState<string | null>(null);
 
   // ITEM 4: A REDO OPENS ON WHAT SHE ALREADY CHOSE.
   //
@@ -113,11 +117,11 @@ export default function SkillScreen() {
     };
   }, [attempt]);
 
-  async function save(): Promise<boolean> {
+  async function save(): Promise<SaveOutcome> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) return 'failed';
     // WHY SPLITS DID NOT SAVE (Ruth, 2 October 2026; diagnosed by reading this
     // line, then confirmed against the schema and the policies).
     //
@@ -153,9 +157,14 @@ export default function SkillScreen() {
     // NOTHING IS WRITTEN WITHOUT HER ANSWERS IN HAND. This is the one property
     // worth keeping from the original design: a blank chip row must never be
     // mistaken for "no skill", which would silently leave an old one in place.
-    if (!mayWrite(loadState)) return true;
+    // THE REFUSAL IS RIGHT; REPORTING IT AS SUCCESS WAS THE BUG. See
+    // lib/save-outcome.ts.
+    if (!mayWrite(loadState)) {
+      void logClientError('setup-save', `skill refused: loadState=${loadState}`);
+      return 'not-ready';
+    }
     const ladder = LADDERS.find((l) => l.key === ladderKey);
-    if (!ladder) return true; // nothing chosen is a valid answer
+    if (!ladder) return 'nothing-chosen';
     const where: Placement = placement ?? 'starting';
 
     // Replaced rather than merged, for the same reason the goals are: coming
@@ -174,7 +183,7 @@ export default function SkillScreen() {
       })
       .select('id')
       .single();
-    if (error || !skill) return false;
+    if (error || !skill) return 'failed';
 
     const rungs = placeRungs(ladder, where).map((rung, i) => ({
       skill_id: (skill as { id: string }).id,
@@ -190,21 +199,28 @@ export default function SkillScreen() {
       sort_order: i,
     }));
     const { error: rungError } = await supabase.from('user_skill_rungs').insert(rungs);
-    return !rungError;
+    return rungError ? 'failed' : 'saved';
   }
 
   async function goOn(skipping: boolean) {
     if (saving) return;
     setFailed(false);
+    setNotSaved(null);
     if (skipping) {
       leave('/onboarding/activities');
       return;
     }
     setSaving(true);
-    const ok = await save();
+    const outcome = await save();
     setSaving(false);
-    if (!ok) {
+    if (outcome === 'failed') {
       setFailed(true);
+      return;
+    }
+    // SHE IS NEVER MOVED ON FROM A WRITE THAT DID NOT HAPPEN.
+    const message = saveOutcomeMessage(outcome, 'skills');
+    if (message) {
+      setNotSaved(message);
       return;
     }
     leave('/onboarding/activities');
@@ -306,6 +322,16 @@ export default function SkillScreen() {
       {failed && (
         <ThemedText type="small" themeColor="danger">
           That didn&apos;t save. Check your connection and try again.
+        </ThemedText>
+      )}
+
+      {/* A WRITE THAT DELIBERATELY DID NOT HAPPEN SAYS SO. Not an error, so not
+          in the danger colour: either the screen refused to guess at her existing
+          answers, or she selected nothing. Either way she is told, instead of
+          being moved on believing it saved. See lib/save-outcome.ts. */}
+      {notSaved && !failed && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {notSaved}
         </ThemedText>
       )}
     </OnboardingQuestion>

@@ -26,6 +26,8 @@ import {
   type LoadState,
 } from '@/lib/load-state';
 import { useOneQuestion } from '@/lib/one-question';
+import { logClientError } from '@/lib/client-error-log';
+import { saveOutcomeMessage, type SaveOutcome } from '@/lib/save-outcome';
 import { supabase } from '@/lib/supabase';
 
 // ANYTHING TO STEER AROUND, GROUPED BY WHAT KIND OF THING IT IS.
@@ -150,6 +152,8 @@ export default function AllergiesScreen() {
   const [chosen, setChosen] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Said when Continue deliberately wrote nothing. Not an error - an outcome.
+  const [notSaved, setNotSaved] = useState<string | null>(null);
   // THREE STATES, NOT A BOOLEAN. `loaded: false` meant both "not yet" and "it
   // failed", and the second inherited the treatment built for the first: a dead
   // Continue and no message, forever. See lib/load-state.ts.
@@ -428,13 +432,20 @@ export default function AllergiesScreen() {
     setConfirming(null);
   }
 
-  async function save(): Promise<boolean> {
-    if (!mayWrite(loadState)) return true;
+  async function save(): Promise<SaveOutcome> {
+    // THE REFUSAL IS RIGHT; REPORTING IT AS SUCCESS WAS THE BUG. See
+    // lib/save-outcome.ts - this returned `true`, so she was moved on and told
+    // nothing, which is why a whole table could stay empty without either of us
+    // knowing where her answers went.
+    if (!mayWrite(loadState)) {
+      void logClientError('setup-save', `${'allergies'} refused: loadState=${loadState}`);
+      return 'not-ready';
+    }
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return false;
-    if (chosen.length === 0) return true;
+    if (!user) return 'failed';
+    if (chosen.length === 0) return 'nothing-chosen';
 
     const rows = chosen.map((name) => ({
       user_id: user.id,
@@ -452,21 +463,28 @@ export default function AllergiesScreen() {
     const { error } = await supabase
       .from('allergies')
       .upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
-    return !error;
+    return error ? 'failed' : 'saved';
   }
 
   async function goOn(skipping: boolean) {
     if (saving) return;
     setFailed(false);
+    setNotSaved(null);
     if (skipping) {
       leave('/onboarding/life-stage');
       return;
     }
     setSaving(true);
-    const ok = await save();
+    const outcome = await save();
     setSaving(false);
-    if (!ok) {
+    if (outcome === 'failed') {
       setFailed(true);
+      return;
+    }
+    // SHE IS NEVER MOVED ON FROM A WRITE THAT DID NOT HAPPEN.
+    const message = saveOutcomeMessage(outcome, 'list');
+    if (message) {
+      setNotSaved(message);
       return;
     }
     leave('/onboarding/life-stage');
@@ -662,6 +680,16 @@ export default function AllergiesScreen() {
       {failed && (
         <ThemedText type="small" themeColor="danger">
           That didn&apos;t save. Check your connection and try again.
+        </ThemedText>
+      )}
+
+      {/* A WRITE THAT DELIBERATELY DID NOT HAPPEN SAYS SO. Not an error, so not
+          in the danger colour: either the screen refused to guess at her existing
+          answers, or she selected nothing. Either way she is told, instead of
+          being moved on believing it saved. See lib/save-outcome.ts. */}
+      {notSaved && !failed && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {notSaved}
         </ThemedText>
       )}
 

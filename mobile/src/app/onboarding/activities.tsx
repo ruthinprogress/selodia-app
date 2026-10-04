@@ -19,6 +19,7 @@ import {
 } from '@/lib/load-state';
 import { useOneQuestion } from '@/lib/one-question';
 import { logClientError } from '@/lib/client-error-log';
+import { saveOutcomeMessage, type SaveOutcome } from '@/lib/save-outcome';
 import { supabase } from '@/lib/supabase';
 import { planWeekWrite } from '@/lib/week-write-plan';
 
@@ -230,8 +231,6 @@ export default function ActivitiesScreen() {
    * save" and "I refused to save because I do not know what your week holds", and
    * those three need three different things said to her. So it says which.
    */
-  type SaveOutcome = 'saved' | 'nothing-chosen' | 'not-ready' | 'failed';
-
   async function save(): Promise<SaveOutcome> {
     // NOTHING IS WRITTEN WITHOUT HER WEEK IN HAND. The one property worth
     // keeping from the original design: an empty chip row must never be read as
@@ -433,16 +432,13 @@ export default function ActivitiesScreen() {
       setFailed(true);
       return;
     }
-    if (outcome === 'not-ready') {
-      setNotSaved(
-        'Your week could not be loaded just now, so nothing was saved and nothing was changed. Try again, or close this and come back.'
-      );
-      return;
-    }
-    if (outcome === 'nothing-chosen') {
-      setNotSaved(
-        'Nothing was selected, so your week is unchanged. Tap what you already do, then Continue.'
-      );
+    // ONE WORDING FOR ALL FOUR SCREENS. This had its own two sentences, written
+    // before days, allergies and skill turned out to have the same fault - and
+    // four screens each wording the same outcome their own way is how two of
+    // them end up saying something subtly different about the same refusal.
+    const message = saveOutcomeMessage(outcome, 'week');
+    if (message) {
+      setNotSaved(message);
       return;
     }
     leave('/onboarding/allergies');
