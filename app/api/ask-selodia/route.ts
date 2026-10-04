@@ -88,6 +88,7 @@ import {
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, filtersFood, recordAllergies, type Allergy } from '../../lib/allergies';
 import { planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
+import { buildTrackedMacroBlock } from '../../lib/tracked-macro-summary';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
 import { buildDayState, buildDayStatePrompt } from '../../lib/daily-targets';
@@ -866,6 +867,10 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
     life_stage_detail: string | null;
     hrt: string | null;
     hormone_use: unknown;
+    // THE MACROS SHE SWITCHED ON. Stored since 24 September by "What I track",
+    // and read by nothing on this side until 4 October - see
+    // lib/tracked-macro-summary.ts for what that cost her.
+    tracked_macros: unknown;
   } | null;
 
   // WHERE SHE IS WITH PERIODS, AND WHETHER SHE IS ON HRT (2026-09-30). Asked by
@@ -942,6 +947,23 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   const foodSummary = recentFood && recentFood.length > 0
     ? recentFood.map((f) => humanDate(f.happened_at) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
     : 'No food logged in the last 7 days.';
+
+  // THE SIX FIGURES THAT WERE ON THE ROW AND NEVER ON THE PAGE (2026-10-04).
+  //
+  // The line above hands the model every recent meal with its calories and its
+  // protein. Saturated fat, fat, carbs, sugar, fibre and salt are stored on those
+  // same rows by the same parse, and were simply never selected. Asked "what
+  // about saturated fat in the past week", the model answered that her record
+  // does not track it and pointed her at her GP - while 38g sat on the Sunday
+  // pizza and 29.6g on the cheesy omelette.
+  //
+  // Only what she has actually switched on, so somebody tracking nothing optional
+  // pays for no query and is told nothing.
+  const trackedMacroBlock = await buildTrackedMacroBlock(
+    supabase,
+    user.id,
+    profile?.tracked_macros ?? null
+  );
 
   // Eccentric load is appended only when it was classified, so an older row with
   // nulls reads as it always did rather than as 'eccentric load: null'.
@@ -1173,7 +1195,7 @@ ${isVoice ? VOICE_CONDUCT_BLOCK : APP_STRUCTURE_PROMPT_BLOCK}`;
 
 Here is their food log from the last 7 days:
 ${foodSummary}
-${buildDayStatePrompt(dayState)}
+${buildDayStatePrompt(dayState)}${trackedMacroBlock}
 
 Here is their activity log from the last 7 days - these are SESSIONS, things they set out and did:
 ${activitySummary}
