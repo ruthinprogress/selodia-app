@@ -50,13 +50,23 @@ console.log('\n  HER WEIGHT, AND THE TARGETS IT PRODUCES\n');
 
 // ------------------------------------------------------------- the intents
 
-check('all four intents she asked for exist, and each is reachable', () => {
-  const keys = BODY_INTENTS.map((i) => i.key).sort();
-  assert.deepStrictEqual(keys, ['build_muscle', 'lose_fat', 'recomposition', 'stay_as_i_am']);
-  // Each must map to a DISTINCT focus pair, or two taps mean the same thing.
+check('the four intents from her session 62 brief still exist and are distinct', () => {
+  // WHY THIS IS NO LONGER AN EXACT LIST. It asserted exactly these four, which
+  // was right for the brief of 2 October and wrong by the evening of the 4th,
+  // when she added gaining weight: "We need a third category, 'Gain Weight'."
+  //
+  // An exact-list assertion on something designed to grow fails on the growth
+  // rather than on a fault, and the next person's instinct is to edit the list
+  // and move on - which is how a check stops meaning anything. What matters is
+  // that her original four are still reachable and that no two intents mean the
+  // same stored thing, and both of those hold however many are added.
+  const keys = BODY_INTENTS.map((i) => i.key);
+  for (const required of ['build_muscle', 'lose_fat', 'recomposition', 'stay_as_i_am']) {
+    assert.ok(keys.includes(required), `${required} has been removed`);
+  }
   const pairs = new Set(BODY_INTENTS.map((i) => `${i.fat}/${i.muscle}`));
-  assert.strictEqual(pairs.size, 4, 'two intents share a focus pair');
-  return 'four intents, four distinct focus pairs';
+  assert.strictEqual(pairs.size, BODY_INTENTS.length, 'two intents share a focus pair, so two taps mean one thing');
+  return `${BODY_INTENTS.length} intents, ${pairs.size} distinct focus pairs, her original four intact`;
 });
 
 check('recomposition is what her own goal maps to', () => {

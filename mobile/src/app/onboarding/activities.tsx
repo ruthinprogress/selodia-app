@@ -366,11 +366,33 @@ export default function ActivitiesScreen() {
     //
     // Asking here is also better than inferring from prose: "a few times a
     // week" is a chosen answer, not a guess at what somebody meant.
-    const level = activityLevelFrom(Object.values(cadences));
+    // NOTHING CHOSEN MUST NOT REWRITE HER ACTIVITY LEVEL (4 October 2026).
+    //
+    // Ruth: "explain why her maintenance is 1,354 kcal when on 28 Sept the app
+    // gave her 1,440 kcal as a fat-loss figure."
+    //
+    // Because activityLevelFrom([]) returns 'sedentary', and this write was not
+    // guarded. On 28 September she was on MODERATE: BMR 1,133 x 1.55 = 1,756,
+    // less a 313 kcal deficit, is the 1,440 she saw. She is on sedentary now:
+    // 1,128 x 1.2 = 1,354. Every walk through this screen with no cadence picked
+    // overwrote the first with the second, and her chips were not saving, so the
+    // cadence list was empty every time. Four hundred kilocalories a day, moved
+    // silently, with nothing on any screen saying so.
+    //
+    // THIS IS THE THIRD "NOTHING CHOSEN CHANGES SOMETHING" in four days - after
+    // the week deleted on 1 October and the goal archived on 2 October - and the
+    // worst of them, because the other two were visible the moment she looked.
+    //
+    // The level is only written when she actually answered the cadences. Height
+    // is hers whenever she typed one, and is written on its own.
     const cm = Number(height.replace(/[^0-9.]/g, ''));
-    const profilePatch: Record<string, unknown> = { activity_level: level };
+    const answeredCadences = Object.values(cadences).filter(Boolean).length > 0;
+    const profilePatch: Record<string, unknown> = {};
+    if (answeredCadences) profilePatch.activity_level = activityLevelFrom(Object.values(cadences));
     if (cm >= 100 && cm <= 230) profilePatch.height_cm = Math.round(cm);
-    await supabase.from('user_profile').update(profilePatch).eq('user_id', user.id);
+    if (Object.keys(profilePatch).length > 0) {
+      await supabase.from('user_profile').update(profilePatch).eq('user_id', user.id);
+    }
 
     // Already in her week: update the cadence she just gave and leave everything
     // else - her day, her time, the order - exactly as it was.

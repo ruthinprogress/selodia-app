@@ -47,7 +47,7 @@ const INTENT = await import(root + '/mobile/src/lib/body-intent.ts');
 
 const { calculateProteinTarget, proteinStep, proteinAssumptionNote } = MOBILE;
 const { proteinTarget } = NEXT;
-const { BODY_INTENTS } = INTENT;
+const { BODY_INTENTS, gainSurplusKcal } = INTENT;
 
 let pass = 0;
 const failures = [];
@@ -293,86 +293,8 @@ const body = {
   proteinHigh: 107,
 };
 
-check('a surplus needs training behind it', () => {
-  const training = explainTarget({
-    ...body,
-    intent: BODY_INTENT_BY_KEY.build_muscle,
-    proteinStepped: 'up',
-  });
-  const paused = explainTarget({
-    ...body,
-    intent: BODY_INTENT_BY_KEY.build_muscle,
-    proteinStepped: 'held',
-  });
-
-  assert.strictEqual(training.targetKcal, 1890, 'the surplus is not there when she is training');
-  assert.strictEqual(paused.targetKcal, 1740, 'a paused week still adds the 150 kcal surplus');
-  assert.ok(
-    /no training behind it/.test(paused.lines.join(' | ')),
-    'it holds at maintenance without saying why'
-  );
-  return '1,890 becomes 1,740 - what she uses, not a surplus';
-});
-
-check('a pause does not put her in a deficit she did not choose', () => {
-  // THE OTHER DIRECTION, AND THE LIMIT OF HER INSTRUCTION. "Keep to the
-  // maintenance kcal" must not become "cut to maintenance": a pause is not a
-  // reason to feed somebody less than they use.
-  const paused = explainTarget({
-    ...body,
-    intent: BODY_INTENT_BY_KEY.build_muscle,
-    proteinStepped: 'held',
-  });
-  assert.ok(paused.targetKcal >= 1740, `${paused.targetKcal} is under what she uses`);
-  return 'held AT maintenance, not under it';
-});
-
-check('a pause does not cancel a deficit she did choose', () => {
-  // LOSING FAT IS STILL THE THING SHE ASKED FOR, training or not - the deficit
-  // is what does it, and the floor already stops it going too far. Reading
-  // "sedentary weeks keep to maintenance" as "stop her deficit when she stops
-  // training" would quietly end the goal she set.
-  // BOTH SIDES MUST DIFFER OR THIS PROVES NOTHING. The first version of this
-  // case passed 'plain' twice and compared the results - two identical calls,
-  // asserted equal, which cannot fail and so carries no information. The
-  // property is that the fat-loss deficit does not depend on the training state
-  // at all, so the two calls have to actually differ in it.
-  const kcalFor = (proteinStepped) =>
-    explainTarget({ ...body, intent: BODY_INTENT_BY_KEY.lose_fat, proteinStepped }).targetKcal;
-
-  assert.strictEqual(kcalFor('plain'), kcalFor('held'), 'a pause moved the fat-loss target');
-  assert.strictEqual(kcalFor('plain'), kcalFor('up'), 'the step-up moved the fat-loss target');
-  assert.ok(kcalFor('held') < 1740, 'the deficit disappeared in a pause');
-  return `${kcalFor('held')} kcal whatever the training state`;
-});
-
-check('the panel names the assumption when it is making one', () => {
-  const up = explainTarget({
-    ...body,
-    intent: BODY_INTENT_BY_KEY.recomposition,
-    proteinStepped: 'up',
-  }).lines.join(' | ');
-  const held = explainTarget({
-    ...body,
-    intent: BODY_INTENT_BY_KEY.recomposition,
-    proteinStepped: 'held',
-  }).lines.join(' | ');
-
-  assert.ok(/assumes you are lifting/.test(up), 'the stepped-up panel hides its assumption');
-  assert.ok(/Body Manual/.test(up), 'it does not say where she can correct it');
-  assert.ok(/steps back up/.test(held), 'the paused panel does not say it comes back');
-  assert.ok(!/kept high/.test(held), 'the paused panel still claims the protein is kept high');
-  return 'she is told which fact the number used';
-});
-
-// ---- 8. the two pauses, where the number is actually made ----------------
-//
-// THE SURPLUS RULE LIVED IN THE WRONG PLACE FOR AN HOUR. I put "a pause drops the
-// surplus" into explainTarget - the goals panel - and not into
-// calculateCalorieTarget, which is what Today, Drives and the day sums use. The
-// panel would have said "held at maintenance" while every other screen showed the
-// surplus: the two-protein-targets bug again, one level up, introduced by the
-// commit that fixed it. These run against BOTH calorie implementations.
+// Both calorie implementations, so a rule proved here is proved on both sides
+// of the Next/Expo boundary rather than on whichever one the test imported.
 const EXPO_CAL = await import(root + '/mobile/src/lib/calorie-target.ts');
 const NEXT_CAL = await import(root + '/app/lib/daily-targets.ts');
 
@@ -383,32 +305,64 @@ const both = (params) => [
 
 const BASE = { tdeeKcal: 1740, weightKg: 56, bmrKcal: 1123 };
 
-check('both calorie implementations agree on every pause combination', () => {
-  let n = 0;
-  for (const fatFocus of [null, 'reduce', 'maintain', 'increase'])
-    for (const muscleFocus of [null, 'reduce', 'maintain', 'increase'])
-      for (const training of [null, 'training', 'paused'])
-        for (const deficitState of [null, 'on', 'paused']) {
-          const params = { ...BASE, fatFocus, muscleFocus, training, deficitState };
-          const [a, b] = both(params);
-          assert.deepStrictEqual(
-            a,
-            b,
-            `Expo and Next disagree on ${JSON.stringify({ fatFocus, muscleFocus, training, deficitState })}`
-          );
-          n += 1;
-        }
-  return `${n} combinations, identical on both sides`;
+check('building muscle does not add calories, and says so', () => {
+  // REWRITTEN ON 4 OCTOBER 2026 (Ruth's decision A). It used to assert that
+  // build_muscle produced a 150 kcal surplus and that a paused training state
+  // took it away. Neither is true any more: nothing adds calories unless she has
+  // asked to gain weight, so there is no surplus for a pause to remove.
+  //
+  // The property that survives, and matters more, is that choosing it still
+  // CHANGES something - the protein - or the choice is decorative.
+  const w = explainTarget({
+    ...body,
+    intent: BODY_INTENT_BY_KEY.build_muscle,
+    proteinStepped: 'up',
+  });
+  assert.strictEqual(w.targetKcal, 1740, `building muscle moved her calories to ${w.targetKcal}`);
+  const all = w.lines.join(' | ');
+  assert.ok(/not over it/.test(all), 'it does not say the calories stay where they are');
+  assert.ok(!/150 kcal/.test(all), 'it still quotes the old flat surplus');
+  return 'protein moves, calories do not';
 });
 
-check('a paused training state drops the muscle-gain surplus', () => {
-  const [on] = both({ ...BASE, fatFocus: 'maintain', muscleFocus: 'increase', training: 'training' });
-  const [off] = both({ ...BASE, fatFocus: 'maintain', muscleFocus: 'increase', training: 'paused' });
-  assert.strictEqual(on.mode, 'surplus');
-  assert.strictEqual(off.mode, 'maintenance');
-  assert.strictEqual(off.targetKcal, 1740);
-  assert.strictEqual(off.heldBecause, 'training_paused');
-  return `${on.targetKcal} becomes ${off.targetKcal}, and it says why`;
+check('only gaining weight adds calories, scaled and capped', () => {
+  // Her decision A, the other half: "Gain and Gain+Build use the
+  // bodyweight-scaled surplus (about 0.25% a week, shown honestly on screen with
+  // a ceiling and a stated kcal-per-kg constant)."
+  const w = explainTarget({
+    ...body,
+    intent: BODY_INTENT_BY_KEY.gain_weight,
+    proteinStepped: 'plain',
+  });
+  assert.ok(w.targetKcal > 1740, `gaining weight did not raise anything: ${w.targetKcal}`);
+  const all = w.lines.join(' | ');
+  assert.ok(/quarter of a percent/.test(all), 'the rate is not stated');
+  assert.ok(/7,700 kcal to a kilo/.test(all), 'the energy constant is not stated');
+  assert.ok(/never goes above 300/.test(all), 'the ceiling is not stated');
+  assert.ok(/nothing to reach and no date/.test(all), 'it reads as a target to hit');
+  return `${w.targetKcal} kcal, with the rule shown`;
+});
+
+check('the surplus scales with bodyweight and stops at the ceiling', () => {
+  // A flat figure is a different thing at 50 kg and at 100 kg; an unbounded
+  // scale is a different problem. Both are checked rather than described.
+  assert.ok(gainSurplusKcal(50) < gainSurplusKcal(90), 'the surplus does not scale');
+  assert.strictEqual(gainSurplusKcal(200), 300, 'the ceiling does not bind');
+  assert.ok(gainSurplusKcal(56.55) < 200, 'her own surplus is not gentle');
+  return `${gainSurplusKcal(56.55)} kcal at 56.55 kg, 300 at the top`;
+});
+
+check('Pause puts every combination at what she uses', () => {
+  // One rule, checked across every focus pair rather than described once.
+  for (const [fat, muscle] of [
+    ['reduce', 'maintain'], ['reduce', 'increase'], ['maintain', 'maintain'],
+    ['maintain', 'increase'], ['increase', 'maintain'], ['increase', 'increase'],
+  ]) {
+    const [a] = both({ ...BASE, fatFocus: fat, muscleFocus: muscle, paused: true });
+    assert.strictEqual(a.targetKcal, 1740, `${fat}/${muscle} paused to ${a.targetKcal}`);
+    assert.strictEqual(a.heldBecause, 'paused');
+  }
+  return 'six combinations, one place';
 });
 
 check('a paused deficit holds at maintenance without touching the goal', () => {

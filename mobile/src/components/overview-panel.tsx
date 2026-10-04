@@ -3,7 +3,6 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { BodyModes } from '@/components/body-modes';
 import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -833,18 +832,6 @@ export function OverviewPanel({
             and a zero would pick the one reading that accuses somebody of not
             moving (lib/steps.ts). */}
       </View>
-
-      {/* HOW SHE IS EATING THIS WEEK, UNDER THE FIGURES IT CHANGES (4 October
-          2026). Ruth, about the training switch living in her profile: "This is
-          lovely, if it works, but useless hidden away in profile settings.
-          Please move it to the Today page as a toggle."
-
-          It sits directly below Food, Body and Movement because it is the thing
-          that decides those targets, and it is SHUT by default showing one quiet
-          line - her instruction that the explanations stay hidden "most of the
-          time as they only really need the explanation occasionally". */}
-      <View style={{ height: Spacing.three }} />
-      <BodyModes />
 
       {/* Hydration has no header because it is not a view to go into. It is the
           one thing on this screen you can DO, so it sits inline as an action -

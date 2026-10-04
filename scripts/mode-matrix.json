@@ -1,0 +1,359 @@
+{
+  "generatedFrom": "mobile/src/lib/body-mode.ts, calorie-target.ts, protein.ts, body-intent.ts",
+  "body": {
+    "bmrKcal": 1128,
+    "tdeeKcal": 1551,
+    "weightKg": 56.55,
+    "bodyFatPct": 27.6,
+    "activityWord": "the level you have set"
+  },
+  "switchOrder": [
+    "loseFat",
+    "maintainWeight",
+    "gainWeight",
+    "buildMuscle"
+  ],
+  "rows": [
+    {
+      "switches": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "blocked": false,
+      "empty": true,
+      "name": "No goal chosen",
+      "kcal": null,
+      "mode": null,
+      "protein": null,
+      "stepped": null,
+      "intent": null,
+      "stored": "nothing stored",
+      "line": "No goal chosen. Say what you are working towards and your daily guide appears.",
+      "safety": null,
+      "safetyDetail": null
+    },
+    {
+      "switches": [
+        true,
+        false,
+        false,
+        false
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Losing fat",
+      "kcal": 1240,
+      "mode": "deficit",
+      "delta": -311,
+      "floored": null,
+      "protein": "82–98 g",
+      "stepped": "plain",
+      "intent": "lose_fat",
+      "stored": "fat reduce · muscle maintain",
+      "line": "Today's guide sits a little under that, with a floor it will not go below. Protein stays high, because that is what protects muscle while you lose fat.",
+      "safety": null,
+      "safetyDetail": null
+    },
+    {
+      "switches": [
+        false,
+        true,
+        false,
+        false
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Maintaining weight",
+      "kcal": 1550,
+      "mode": "maintenance",
+      "delta": 0,
+      "floored": null,
+      "protein": "82–98 g",
+      "stepped": "plain",
+      "intent": "stay_as_i_am",
+      "stored": "fat maintain · muscle maintain",
+      "line": "Eating around that keeps your weight steady.",
+      "safety": null,
+      "safetyDetail": null
+    },
+    {
+      "switches": [
+        true,
+        true,
+        false,
+        false
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        false,
+        false,
+        true,
+        false
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Gaining weight",
+      "kcal": 1710,
+      "mode": "surplus",
+      "delta": 156,
+      "floored": null,
+      "protein": "82–98 g",
+      "stepped": "plain",
+      "intent": "gain_weight",
+      "stored": "fat increase · muscle maintain",
+      "line": "Today's guide sits a little over that: 150 kcal, and never more. Steady rather than fast, because faster is mostly fat. There is nothing to reach and no date.",
+      "safety": "If you have been losing weight without meaning to, it is worth telling your doctor.",
+      "safetyDetail": "Selodía is not a medical service, and this is not a plan for recovering from an eating disorder - that needs a clinician who knows you. Whatever the reason, this stays gentle: a small surplus, nothing to reach, and no date."
+    },
+    {
+      "switches": [
+        true,
+        false,
+        true,
+        false
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        false,
+        true,
+        true,
+        false
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Building muscle",
+      "kcal": 1630,
+      "mode": "surplus",
+      "delta": 78,
+      "floored": null,
+      "protein": "90–106 g",
+      "stepped": "up",
+      "intent": "build_muscle",
+      "stored": "fat maintain · muscle increase",
+      "line": "Today's guide sits a little over that - 5% more, which is the low side on purpose, because fat is easier to gain at this stage of life. Protein goes to the top of its range for recovery and new muscle.",
+      "safety": null,
+      "safetyDetail": null
+    },
+    {
+      "switches": [
+        true,
+        false,
+        false,
+        true
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Less fat, more muscle",
+      "kcal": 1550,
+      "mode": "maintenance",
+      "delta": 0,
+      "floored": null,
+      "protein": "90–106 g",
+      "stepped": "up",
+      "intent": "recomposition",
+      "stored": "fat reduce · muscle increase",
+      "line": "Today's guide sits around what you use rather than under it, with protein at the top of its range. The change comes from the protein and the training.",
+      "safety": null,
+      "safetyDetail": null
+    },
+    {
+      "switches": [
+        false,
+        true,
+        false,
+        true
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Holding weight, building muscle",
+      "kcal": 1550,
+      "mode": "maintenance",
+      "delta": 0,
+      "floored": null,
+      "protein": "90–106 g",
+      "stepped": "up",
+      "intent": "build_muscle",
+      "stored": "fat maintain · muscle increase",
+      "line": "Eating around that keeps your weight steady, with protein at the top of its range for recovery and new muscle.",
+      "safety": null,
+      "safetyDetail": null
+    },
+    {
+      "switches": [
+        true,
+        true,
+        false,
+        true
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "blocked": false,
+      "empty": false,
+      "name": "Gaining weight and building muscle",
+      "kcal": 1710,
+      "mode": "surplus",
+      "delta": 156,
+      "floored": null,
+      "protein": "90–106 g",
+      "stepped": "up",
+      "intent": "gain_and_muscle",
+      "stored": "fat increase · muscle increase",
+      "line": "Today's guide sits a little over that - 150 kcal, never more - with protein at the top of its range so more of what you gain is muscle.",
+      "safety": "If you have been losing weight without meaning to, it is worth telling your doctor.",
+      "safetyDetail": "Selodía is not a medical service, and this is not a plan for recovering from an eating disorder - that needs a clinician who knows you. Whatever the reason, this stays gentle: a small surplus, nothing to reach, and no date."
+    },
+    {
+      "switches": [
+        true,
+        false,
+        true,
+        true
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    },
+    {
+      "switches": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "blocked": true,
+      "why": "Lose fat, Maintain weight and Gain weight are one weight direction. Turning one on turns the others off, so this cannot be reached."
+    }
+  ],
+  "paused": {
+    "kcal": 1550,
+    "protein": "82–98 g",
+    "line": "Paused. At the level you have set, your body uses around 1,551 kcal a day. Resume puts your goal back exactly as it was.",
+    "explanation": "Pause puts everything at what your body uses, without changing what you have chosen. Your switches stay as they are, dimmed, and Resume puts them back exactly. Use it for a holiday, an injury, or any stretch where life gets in the way. Nothing is lost and nothing is counted.",
+    "rule": "One rule for every combination: calories at what her body uses, protein at the maintenance range. The switches are untouched and stay visible, dimmed. Resume restores them exactly."
+  },
+  "usesLine": "At the level you have set, your body uses around 1,551 kcal a day.",
+  "rules": [
+    {
+      "key": "deficit_rate",
+      "rule": "Losing fat takes about 0.5% of bodyweight a week off what she uses.",
+      "value": "0.5% per week",
+      "basis": "The slow end of the commonly cited 0.5-1% per week. The slower rate is chosen because it is the one that preserves lean mass, which is the whole point for a woman over forty - a faster deficit costs muscle she is simultaneously trying to keep.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "deficit_floor",
+      "rule": "The deficit never goes below the higher of her BMR and 1,200 kcal.",
+      "value": "max(BMR, 1200)",
+      "basis": "1,200 is the conventional absolute minimum for an adult woman, and BMR is what her body uses lying still - eating under it as a standing arrangement is a different thing from a gentle deficit. The higher of the two, so neither can be the loophole.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "energy_per_kg",
+      "rule": "One kilo of body mass is treated as 7,700 kcal.",
+      "value": "7,700 kcal/kg",
+      "basis": "The standard figure, and deliberately the SAME constant for losing and for gaining. It is an approximation in both directions - tissue gained is not identical to tissue lost - and using one number keeps the two rates comparable instead of making a difference that the evidence does not support.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "recomposition",
+      "rule": "Losing fat while building muscle eats around what she uses, not under it.",
+      "value": "maintenance",
+      "basis": "Recomposition is driven by the protein and the training rather than by a deficit. A deficit on top would compete with the muscle side, which is the thing she is least able to afford to lose.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "build_surplus",
+      "rule": "Building muscle, with nothing said about weight, adds 5% of what she uses.",
+      "value": "5% of TDEE (78 kcal at TDEE 1,551)",
+      "basis": "A STARTING POINT, not a settled figure, and Ruth set it as one: \"start at 5% of TDEE; refine with user data later\". Low on purpose, because fat is easier to gain than muscle at this stage of life and the cost of being slightly under is slower progress rather than fat gained. A percentage of what she burns rather than of what she weighs, because what building costs tracks the former.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "build_surplus_not_when_maintaining",
+      "rule": "The build surplus does not apply when she has said Maintain weight.",
+      "value": "no surplus",
+      "basis": "She said not to move her weight. Overriding that would be the app arguing with the switch she just pressed - the same fault as \"Get stronger\" silently adding calories.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "gain_rate",
+      "rule": "Gaining weight adds about 0.25% of bodyweight a week.",
+      "value": "0.25% per week (156 kcal at 56.55 kg)",
+      "basis": "Half the fat-loss rate, which is the right order: muscle is laid down more slowly than fat is lost, and a faster surplus is mostly fat and harder to keep. Scaled to bodyweight because gaining weight is about the body being added to.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "gain_bounds",
+      "rule": "The gain surplus is never below 100 kcal a day, nor above 300.",
+      "value": "floor 100, ceiling 300",
+      "basis": "The ceiling binds above about 109 kg and exists so that scaling can never become a reason the number keeps growing. The floor binds below about 36 kg and exists so the surplus stays large enough to do anything at all. Both are stated rather than implied, because an unbounded rule is one nobody can check.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "pause",
+      "rule": "Pause puts every combination at what her body uses, with protein at the maintenance range.",
+      "value": "TDEE, maintenance protein",
+      "basis": "One rule for every state, so it cannot mean different things on different screens. Her switches are untouched, so Resume restores them exactly and nothing is lost by taking a week off.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "protein_lean",
+      "rule": "Protein is 2.0-2.4 g per kg of lean mass, or 2.2-2.6 when building muscle.",
+      "value": "2.0-2.4 / 2.2-2.6 g per kg LBM",
+      "basis": "Within the range supported for an active woman over forty; the higher band is the top of the same range rather than a new claim. Lean mass rather than bodyweight wherever a body fat reading exists, because muscle_kg is not a standardised field across scale manufacturers.",
+      "lastReviewed": "2026-10-04"
+    },
+    {
+      "key": "activity_level",
+      "rule": "The activity multiplier covers the whole week INCLUDING her usual training.",
+      "value": "1.2 to 1.9 on BMR",
+      "basis": "The standard Harris-Benedict style multipliers, which assume the whole day. The question used to ask about movement OUTSIDE exercise and feed the answer to a whole-day multiplier, which left her training out of her own estimate - about 400 kcal a day in her case.",
+      "lastReviewed": "2026-10-04"
+    }
+  ]
+}

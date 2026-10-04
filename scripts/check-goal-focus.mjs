@@ -62,8 +62,17 @@ const CHECKS = [
     },
   ],
   [
-    'build muscle produces a surplus',
+    'build muscle raises protein and does NOT add calories',
     (f) => {
+      // INVERTED ON 4 OCTOBER 2026, and the inversion is the point. This used to
+      // assert a surplus. Ruth's decision A: "Build muscle never adds calories on
+      // its own; calories rise only when Gain weight is on."
+      //
+      // Building muscle at the weight she is now is recomposition - it needs the
+      // protein, not extra food - and a control that quietly added 150 kcal a day
+      // is the same fault as "Get stronger" setting a surplus, which she found
+      // the same evening. The muscle focus must still move, or the choice means
+      // nothing at all.
       const { fat, muscle } = f(['build_muscle']);
       if (muscle !== 'increase') return false;
       const target = calculateCalorieTarget({
@@ -72,7 +81,7 @@ const CHECKS = [
         fatFocus: fat,
         muscleFocus: muscle,
       });
-      return target?.mode === 'surplus';
+      return target?.mode === 'maintenance' && target.deltaKcal === 0;
     },
   ],
   [

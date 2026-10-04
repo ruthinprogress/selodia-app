@@ -31,7 +31,13 @@
 
 export type FocusState = 'reduce' | 'maintain' | 'increase';
 
-export type BodyIntentKey = 'lose_fat' | 'recomposition' | 'build_muscle' | 'stay_as_i_am';
+export type BodyIntentKey =
+  | 'lose_fat'
+  | 'recomposition'
+  | 'build_muscle'
+  | 'stay_as_i_am'
+  | 'gain_weight'
+  | 'gain_and_muscle';
 
 export type BodyIntent = {
   key: BodyIntentKey;
@@ -68,8 +74,50 @@ export const BODY_INTENTS: BodyIntent[] = [
   {
     key: 'build_muscle',
     label: 'Build muscle',
-    note: 'A small surplus, and protein high.',
+    // NO LONGER A SURPLUS (4 October 2026, her decision A). Building muscle at
+    // the weight she is now is recomposition, and it needs the protein rather
+    // than extra calories. Only Gain weight adds any.
+    note: 'Eating around what you use, with protein high.',
     fat: 'maintain',
+    muscle: 'increase',
+    highProtein: true,
+  },
+  // GAINING WEIGHT NEEDS CARE THE OTHERS DO NOT (Ruth, 4 October 2026).
+  //
+  //   "A capped surplus. It's modest and steady, never aggressive, whatever
+  //   someone types. A calm line about unintended weight loss... No pressure. No
+  //   target weight, no deadline, and no 'you are underweight' label from the
+  //   app. Handle eating-disorder recovery with care. Someone in recovery needs
+  //   a clinician's plan. The app shouldn't act as their coach."
+  //
+  // WHY THE SURPLUS IS ALREADY SAFE, and stays that way by being a constant.
+  // SURPLUS_KCAL is 150 in code, in both mirrors, and nothing anywhere lets a
+  // number be typed into it - the only lever is which focus is set. So "capped
+  // whatever someone types" is a property of the shape rather than a limit that
+  // has to be enforced, and check-gain-weight.mjs asserts it stays one.
+  //
+  // NO FIGURE AND NO DATE, EVER. The weight question offers a number to WRITE
+  // DOWN, never one to count towards, and nothing here produces a target weight
+  // or a rate. A gentle surplus with no finish line is the whole design: the
+  // failure mode for everything else in this app is a woman feeling behind, and
+  // for this one it is considerably worse than that.
+  //
+  // THE APP DOES NOT NAME HER BODY. There is no "underweight", no BMI band, no
+  // assessment of any kind - only what she asked for and what that does to the
+  // figures. A label is a judgement, and a judgement here is a clinician's.
+  {
+    key: 'gain_weight',
+    label: 'Gain weight',
+    note: 'A small, steady surplus. Nothing aggressive, and nothing to hit.',
+    fat: 'increase',
+    muscle: 'maintain',
+    highProtein: false,
+  },
+  {
+    key: 'gain_and_muscle',
+    label: 'Gain weight and build muscle',
+    note: 'A gentle surplus scaled to your weight, with protein high so more of it is muscle.',
+    fat: 'increase',
     muscle: 'increase',
     highProtein: true,
   },
@@ -109,6 +157,39 @@ export function intentFromFocus(
  * THE HIGHER OF THE TWO, so neither can be the loophole.
  */
 export const ABSOLUTE_FLOOR_KCAL = 1200;
+
+// MOVED HERE FROM calorie-target.ts (4 October 2026) to break a cycle:
+// calorie-target already imports calorieFloor from this file, so the gain
+// rule lives beside the floor rather than importing backwards.
+const GAIN_KCAL_PER_KG = 7700;
+// 0.25% of bodyweight a week - half the fat-loss rate, which is the right order
+// for gaining, and gentle on purpose. Faster is mostly fat and harder to keep.
+const WEEKLY_GAIN_FRACTION = 0.0025;
+// Building muscle with no weight direction stated: 5% of what she uses. Low on
+// purpose - fat is easier to gain than muscle at this stage of life, and the
+// cost of being slightly under is slower progress rather than fat gained.
+//
+// A PERCENTAGE OF TDEE, NOT OF BODYWEIGHT, and the difference is deliberate:
+// what building costs tracks what she already burns. The gain-weight surplus is
+// scaled to bodyweight instead, because gaining weight is about the body being
+// added to.
+export const BUILD_SURPLUS_FRACTION = 0.05;
+// The ceiling, stated rather than implied. It binds above about 109 kg, so for
+// almost everybody the scaled figure is what applies; it exists so that scaling
+// can never become a reason the number keeps growing.
+const SURPLUS_CEILING_KCAL = 300;
+const SURPLUS_FLOOR_KCAL = 100;
+
+/** The daily surplus for gaining weight: scaled, capped, and never typed in. */
+export function gainSurplusKcal(weightKg: number): number {
+  const daily = Math.round((WEEKLY_GAIN_FRACTION * weightKg * GAIN_KCAL_PER_KG) / 7);
+  // BOTH BOUNDS STATED. The ceiling binds above about 109 kg so that scaling can
+  // never become a reason the number keeps growing; the floor binds below about
+  // 36 kg so the surplus stays large enough to do anything at all. Ruth asked for
+  // both to be named rather than implied - an unbounded rule is one nobody can
+  // check. See lib/calorie-rules.ts, key `gain_bounds`.
+  return Math.min(Math.max(daily, SURPLUS_FLOOR_KCAL), SURPLUS_CEILING_KCAL);
+}
 
 export function calorieFloor(bmrKcal: number | null | undefined): number {
   const bmr = typeof bmrKcal === 'number' && bmrKcal > 0 ? Math.round(bmrKcal) : 0;
@@ -273,6 +354,34 @@ export function explainTarget(input: {
         );
       }
     }
+  } else if (intent.key === 'gain_weight' || intent.key === 'gain_and_muscle') {
+    // THE SAME 150 AS BUILDING MUSCLE, and said in the same plain way. A larger
+    // surplus gains faster and gains fat; it is also the number somebody under
+    // pressure would reach for, which is the reason it is not offered.
+    // THE RULE AND ITS CONSTANT, SHOWN RATHER THAN A BARE NUMBER (her item 5).
+    // Half the fat-loss rate, scaled to her, with the ceiling and the energy
+    // constant both stated so the figure can be checked rather than trusted.
+    const surplus = gainSurplusKcal(weightKg);
+    lines.push(
+      `Gaining steadily is about a quarter of a percent of your weight a week. At 7,700 kcal to a kilo that comes to ${kcal(
+        surplus
+      )} a day more than you use, and it never goes above 300.`
+    );
+    lines.push(
+      `Nothing faster, because faster is mostly fat and harder to keep. There is nothing to reach and no date.`
+    );
+    target = tdee + surplus;
+    if (intent.key === 'gain_and_muscle') {
+      lines.push(
+        `Protein stays high alongside it, so more of what you gain is muscle rather than fat.`
+      );
+    }
+    // SAID EVERY TIME, CALMLY, AND NOT AS A WARNING ABOUT HER. It is one line
+    // about a fact of medicine, placed where somebody choosing this will read
+    // it, and it carries no assessment of her body and no instruction.
+    lines.push(
+      `If you have been losing weight without meaning to, it is worth telling your doctor. Selodía is not a medical service and this is not a plan for recovering from an eating disorder - that needs a clinician, and this stays gentle either way.`
+    );
   } else if (intent.key === 'build_muscle') {
     // A SURPLUS WITH NOTHING TO BUILD WITH IS JUST A SURPLUS (2026-10-02).
     //
@@ -287,14 +396,12 @@ export function explainTarget(input: {
     // her in a deficit she did not choose, and it does not touch the deficit of
     // somebody who DID choose one - losing fat is still the thing she asked for,
     // training or not.
-    if (input.proteinStepped === 'held') {
-      lines.push(
-        `Your training is paused, so this is held at what you use rather than the small surplus building muscle usually wants. A surplus with no training behind it does not become muscle.`
-      );
-    } else {
-      lines.push(`Building muscle wants a small surplus, so 150 kcal a day more than you use.`);
-      target = tdee + 150;
-    }
+    // BUILDING MUSCLE NO LONGER ADDS CALORIES (her decision A, 4 October 2026).
+    // It is recomposition at the weight she is now: the change comes from the
+    // protein and the training, and nothing is added unless she asked to gain.
+    lines.push(
+      `Building muscle means eating around what you use, not over it. The change comes from the protein and the training.`
+    );
   } else if (intent.key === 'recomposition') {
     lines.push(
       `Less fat with more muscle means eating around what you use rather than under it. The change comes from the protein and the training, not from a deficit.`
