@@ -2154,6 +2154,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   }
 
   let breakdownFoodLogId: string | null = null;
+  // EVERY MEAL THE TURN LOGGED, not just the one it could draw a table for.
+  // See the note at the assignment below.
+  let breakdownFoodLogIds: string[] = [];
   // A correction or deletion of something just logged (build item 10d). Runs
   // BEFORE the logging branches so a corrected value can never also be stored
   // as a second, new entry.
@@ -2662,7 +2665,23 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // ONLY FOR A SINGLE MEAL. A catch-up of seven days has seven rows and
           // no single table to show, and picking one of them would show that
           // day's breakdown under a reply about the week.
+          // A DAY LOGGED AT ONCE STILL SHOWS WHAT WENT IN (2026-10-04).
+          //
+          // Ruth, after voice-logging a whole Saturday: "no summary table came
+          // through in the chat to show what was logged."
+          //
+          // This was `entries.length === 1 ? entries[0].id : null`, on the
+          // reasoning that a catch-up of seven days has no single table to show
+          // and picking one would put that day's breakdown under a reply about
+          // the week. The reasoning is right; the conclusion was not. Showing
+          // NOTHING leaves her with a sentence claiming a save and no way to
+          // check it - which is the failure this whole project keeps relearning.
+          //
+          // So the single-meal case is unchanged and still draws its itemised
+          // table, and a turn that logged several now carries all of them for a
+          // meal-per-row summary. The client reads the list from meta.
           breakdownFoodLogId = entries.length === 1 ? entries[0].id : null;
+          breakdownFoodLogIds = entries.map((e) => e.id);
           // A new food log ends any prior clarification (that moment has passed);
           // then pin this log's own question, if the model asked one (slice 2a).
           await supabase
@@ -3678,6 +3697,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         escalation_step: nextEscalationStep,
         distress_revisit_count: nextRevisitCount,
         food_log_id: breakdownFoodLogId,
+        // ONLY WHEN THERE IS MORE THAN ONE. A single meal already travels in
+        // food_log_id and draws the itemised table; writing meta as well would
+        // give the client two sources for one answer.
+        ...(breakdownFoodLogIds.length > 1
+          ? { meta: { food_log_ids: breakdownFoodLogIds } }
+          : {}),
       }
     );
   // 23505 is the partial unique index doing its job: another copy of this turn
@@ -3729,6 +3754,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     healthGuidanceApplied,
     saved,
     foodLogId: breakdownFoodLogId,
+    foodLogIds: breakdownFoodLogIds.length > 1 ? breakdownFoodLogIds : undefined,
     // The days something happened beside how they felt afterwards, drawn as a
     // real table beneath the reply from these stored figures. Null on every
     // turn that did not ask for one.

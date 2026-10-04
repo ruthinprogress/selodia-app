@@ -29,6 +29,80 @@ export type BreakdownRow = {
   isTotal: boolean;
 };
 
+// SEVERAL MEALS AT ONCE GET A SUMMARY, NOT SILENCE (2026-10-04).
+//
+// Ruth, after voice-logging a whole Saturday: "no summary table came through in
+// the chat to show what was logged."
+//
+// The itemised table above is built for ONE meal, and the turn that logs several
+// used to set its food_log_id to null - "a catch-up of seven days has seven rows
+// and no single table to show, and picking one of them would show that day's
+// breakdown under a reply about the week." That reasoning is right and the
+// conclusion was wrong: showing NOTHING leaves her with a sentence claiming a
+// save and no way to check it, which is the one thing this project keeps
+// learning not to do.
+//
+// A MEAL PER ROW, NOT AN ITEM PER ROW. Itemising four meals in a chat bubble
+// would be thirty lines. The summary answers the question she actually has -
+// "did it get all of it, and roughly what was that?" - and tapping any entry
+// still opens its full breakdown.
+export type DayLog = {
+  id: string;
+  meal_label: string | null;
+  raw_text: string | null;
+  happened_at: string | null;
+  kcal: number | null;
+  protein_g: number | null;
+};
+
+/** One row per meal, then a total. Pure; node-tested. */
+export function buildDaySummaryRows(logs: DayLog[]): BreakdownRow[] {
+  const ordered = [...logs].sort(
+    (a, b) => Date.parse(a.happened_at ?? '') - Date.parse(b.happened_at ?? '')
+  );
+  const rows: BreakdownRow[] = ordered.map((log) => ({
+    key: log.id,
+    label: mealSummaryLabel(log),
+    kcal: kcalCell(log.kcal),
+    protein: proteinCell(log.protein_g, true),
+    isTotal: false,
+  }));
+  // THE TOTAL IS THE SUM OF WHAT IS SHOWN. A meal with no figure contributes
+  // nothing rather than zero, and the total is marked approximate because every
+  // part of it is.
+  const kcal = ordered.reduce((n, l) => n + (l.kcal ?? 0), 0);
+  const protein = ordered.reduce((n, l) => n + (l.protein_g ?? 0), 0);
+  rows.push({
+    key: 'total',
+    label: ordered.length === 1 ? 'Total' : `Total, ${ordered.length} meals`,
+    kcal: kcalCell(kcal),
+    protein: proteinCell(protein, true),
+    isTotal: true,
+  });
+  return rows;
+}
+
+/**
+ * What a meal is called in the summary: its own words where there are any, the
+ * category otherwise. Same flip as breakdownHeading, for the same reason - the
+ * category is inferred and the words are hers.
+ */
+export function mealSummaryLabel(log: DayLog): string {
+  const meal = log.meal_label?.trim();
+  const raw = log.raw_text?.trim();
+  if (!raw) return meal || 'Logged';
+  // The parse writes "Dinner - fish and chips"; the label column already carries
+  // "Dinner", so the repeat is dropped rather than printed twice.
+  let text = raw;
+  if (meal) {
+    const lead = new RegExp('^\\s*(?:yesterday\\s*[:,-]\\s*)?' + meal + '\\s*[-:\\u2013\\u2014]\\s*', 'i');
+    text = text.replace(lead, '');
+  }
+  text = text.replace(/^\s*yesterday\s*[:,-]\s*/i, '').trim();
+  const named = text.length > 44 ? `${text.slice(0, 41)}\u2026` : text;
+  return meal ? `${meal} \u00b7 ${named}` : named;
+}
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',

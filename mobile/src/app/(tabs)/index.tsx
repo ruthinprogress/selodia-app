@@ -14,6 +14,7 @@ import { VoiceNoteButton } from '@/components/voice-note-button';
 import { ConversationLayout } from '@/components/conversation-layout';
 import { CycleDiscoveryCard } from '@/components/cycle-discovery-card';
 import { EntrySummaryCard, type SummaryEntryType } from '@/components/entry-summary-card';
+import { DaySummaryTable } from '@/components/day-summary-table';
 import { FoodBreakdownTable } from '@/components/food-breakdown-table';
 import { PatternTable } from '@/components/pattern-table';
 import type { PatternPayload } from '@/lib/pattern-table';
@@ -78,6 +79,8 @@ type Message = {
   // the REFERENCE; the table itself is read from food_items at render time, so
   // it always shows what was stored rather than what the reply said.
   foodLogId?: string | null;
+  /** Several meals logged by one turn: a summary instead of one itemised table. */
+  foodLogIds?: string[] | null;
   // The pattern check this turn asked for, when it asked for one - her own days
   // beside how she felt afterwards. Unlike the food table this carries the
   // FIGURES rather than a reference, because they are arithmetic over a window
@@ -139,6 +142,7 @@ function sameThread(a: Message[], b: Message[]): boolean {
     if (a[i].content !== b[i].content) return false;
     if ((a[i].imagePath ?? null) !== (b[i].imagePath ?? null)) return false;
     if ((a[i].foodLogId ?? null) !== (b[i].foodLogId ?? null)) return false;
+    if ((a[i].foodLogIds ?? []).join(',') !== (b[i].foodLogIds ?? []).join(',')) return false;
     // The entry card counts as rendered content too (2026-09-16). Without this
     // line a reload that changes only a session or reading card is judged "no
     // change", React bails out, and the card never appears - the same class of
@@ -395,6 +399,11 @@ export default function ChatScreen() {
         // and it is named whether or not anybody asked about it.
         foodLogId:
           m.food_log_id ?? (opensDiscussion && tagType === 'food' ? tagId : null),
+        foodLogIds: Array.isArray((m.meta as { food_log_ids?: unknown })?.food_log_ids)
+          ? ((m.meta as { food_log_ids: unknown[] }).food_log_ids.filter(
+              (v) => typeof v === 'string'
+            ) as string[])
+          : null,
         entry:
           opensDiscussion && (tagType === 'activity' || tagType === 'measurement' || tagType === 'plan')
             ? { type: tagType, id: tagId }
@@ -1017,6 +1026,12 @@ ${result.message}`;
                       : null
                   }
                 />
+              )}
+              {/* SEVERAL MEALS IN ONE TURN get a meal-per-row summary instead of
+                  nothing. The itemised table above still draws for a single
+                  meal; these two are never both set. */}
+              {!m.foodLogId && (m.foodLogIds?.length ?? 0) > 1 && (
+                <DaySummaryTable foodLogIds={m.foodLogIds as string[]} />
               )}
               {m.patternCheck && <PatternTable payload={m.patternCheck} />}
               {/* The week's figures, under the roundup's own words. The card
