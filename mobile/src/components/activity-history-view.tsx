@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
 import { ActivityIcon } from '@/components/activity-icon';
+import { QuickLogBar } from '@/components/quick-log-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useFocusReload } from '@/hooks/use-focus-reload';
@@ -191,6 +192,16 @@ export function ActivityHistoryView({ initialWeekStart }: { initialWeekStart?: D
 
   return (
     <View style={styles.wrap}>
+      {/* THE SAME BAR THE OTHER LOGS HAVE (Ruth, 4 October 2026: "Movement is
+          Missing a quick log bar like the other logs").
+
+          QuickLogBar has supported kind="activity" since it was written - Food
+          and Measurements both use it, and this view simply never called it. A
+          control that exists, works, and is wired into two of the three places
+          it belongs is the quietest kind of missing: nothing is broken, so
+          nothing reports it, and the one log without it just feels harder. */}
+      <QuickLogBar kind="activity" onLogged={() => setReloadKey((k) => k + 1)} />
+
       <DayLog
         days={days}
         weekStart={weekStart}

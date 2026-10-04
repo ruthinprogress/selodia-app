@@ -127,12 +127,25 @@ const CHECKS = [
     },
   ],
   [
-    'get stronger moves muscle, and says nothing about fat on its own',
+    'no option raises muscle except the two that are meant to',
     (f) => {
-      const { fat, muscle } = f(['get_stronger']);
-      // fat resolves to maintain because she DID choose something; the point is
-      // that no goal said 'reduce'.
-      return muscle === 'increase' && fat === 'maintain';
+      // GET STRONGER DID, and that was the fault: it wrote muscle 'increase',
+      // identical to Build muscle, so ticking a training aspiration silently
+      // added calories to somebody's daily figure. Removed 4 October 2026.
+      //
+      // Asserted through the MAPPING rather than by looking for a missing key,
+      // so it catches the next chip that quietly does the same thing under a
+      // different name - which is the actual risk, not this one key returning.
+      // BOTH HALVES, because "nothing does X" passes trivially against a stub
+      // where nothing does anything - which is exactly what the usefulness test
+      // caught when this only asserted the absence.
+      const allowed = new Set(['build_muscle', 'recomposition']);
+      const noneElse = GOAL_OPTIONS.every((o) => {
+        const { muscle } = f([o.key]);
+        return muscle !== 'increase' || allowed.has(o.key);
+      });
+      const theseDo = [...allowed].every((key) => f([key]).muscle === 'increase');
+      return noneElse && theseDo;
     },
   ],
   [

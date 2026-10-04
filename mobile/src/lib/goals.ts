@@ -24,7 +24,6 @@ export type GoalKey =
   // with less fat and more muscle, and the screen had no way to say it.
   | 'recomposition'
   | 'build_muscle'
-  | 'get_stronger'
   | 'learn_a_skill'
   | 'keep_steady'
   | 'more_energy'
@@ -44,6 +43,20 @@ export type GoalOption = {
   opensSkills?: boolean;
 };
 
+// GET STRONGER IS NOT IN THIS LIST (Ruth, 4 October 2026): "Get rid of Get
+// Stronger entirely, there should be a 'Feel Stronger' in 'How do you want your
+// days to feel'." There already is - FEEL_CHIPS has carried "Feel stronger"
+// since the feel goals were built, so nothing needed adding.
+//
+// IT WAS ALSO QUIETLY SETTING A CALORIE SURPLUS. It wrote muscle: 'increase',
+// identical to Build muscle, so ticking a training aspiration added calories to
+// somebody's daily figure without saying so. Its own comment argued the calorie
+// consequence was "the same direction" - which was the reasoning, and the
+// reasoning was the fault: getting stronger is about what you can do, and this
+// list is only for the calorie and body-composition calls.
+//
+// A stored goal_key of 'get_stronger' from before today simply stops matching a
+// chip, which the goals screen already handles - it filters to known keys.
 export const GOAL_OPTIONS: GoalOption[] = [
   {
     key: 'lose_fat',
@@ -71,17 +84,6 @@ export const GOAL_OPTIONS: GoalOption[] = [
     fat: null,
     muscle: 'increase',
     invitesMeasure: true,
-  },
-  {
-    key: 'get_stronger',
-    label: 'Get stronger',
-    // NOT the same goal as build muscle, and the app should not pretend it is -
-    // but the CALORIE consequence is the same direction, because strength work
-    // does not go well in a deficit. Recorded separately so the wording, the
-    // plan and the roundup can differ even where the target does not.
-    effect: 'Muscle focus becomes increase, for the same calorie reason as building muscle.',
-    fat: null,
-    muscle: 'increase',
   },
   {
     key: 'learn_a_skill',
