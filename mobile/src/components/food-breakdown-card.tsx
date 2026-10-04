@@ -13,7 +13,7 @@ import { pairCard, showsPair, type PairItem } from '@/lib/pair';
 import { aminoProfile } from '@/lib/protein-quality';
 import { removeFoodItem } from '@/lib/remove-food-item';
 import { supabase } from '@/lib/supabase';
-import { MACROS, macroLine, type MacroKey } from '@/lib/tracked-macros';
+import { MACROS, macroFigure, macroLine, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
 
 // The "What's In Here" breakdown card (build item 13) — the READ-ONLY half of
@@ -65,17 +65,13 @@ type FoodItem = {
 const g = (n: number | null): string => (n == null ? '—' : `${Math.round(n)}g`);
 const kcal = (n: number | null): string => (n == null ? '—' : `${Math.round(n)} kcal`);
 
-// One macro, worded exactly as the row above words it - macroLine formats a
-// whole line, so ask it for this macro alone. An em dash where there is no
-// figure, because this grid has a slot per macro and an empty slot reads as a
-// rendering fault; on a row the macro is simply left out instead.
 // The screen reader's actions menu for one item. `label` is what it reads out,
 // so it says what goes rather than naming a gesture nobody using it can make.
 const ITEM_ACTIONS = [{ name: 'delete', label: 'Delete item' }];
 
-function macroValue(row: Record<string, unknown>, key: MacroKey): string {
-  return macroLine(row, [key]) || '—';
-}
+// macroValue() went with the grid on 4 October 2026: it returned the row's own
+// wording, which repeats the macro's name, and the card now has a heading doing
+// that job. See macroFigure in lib/tracked-macros.ts.
 
 export function FoodBreakdownCard({
   foodLogId,
@@ -180,6 +176,9 @@ export function FoodBreakdownCard({
   // Both fall back to the log's own description and macros, so the card always
   // says something true rather than showing an empty ingredient list.
   const hasItems = items.length > 0;
+
+  // The macros she has switched on, in the order they appear everywhere else.
+  const shownMacros = MACROS.filter((m) => tracked.includes(m.key));
 
   // ONE ROUTE INTO THE CONVERSATION, TWO OPENING LINES.
   //
@@ -437,14 +436,53 @@ export function FoodBreakdownCard({
                     grid was a fixed four - calories, protein, carbs, fat -
                     which meant the detail view disagreed with the list above it
                     for anybody who had switched carbs off or fibre on. */}
+                {/* ONE ROW OF NAMES, ONE ROW OF FIGURES (Ruth, 4 October 2026).
+                    "The addition of the other nutrients has garbled the close up
+                    views. Please change the format for this so all nutrients go in
+                    one row and the readings in a second row. Please make sure it
+                    is clear but calm."
+
+                    It was eight columns at flex: 1, so on a phone each was about
+                    forty pixels and "Saturated fat" wrapped one letter at a time -
+                    and every figure repeated its own name underneath, because `say`
+                    is written for a row where nothing else names it. Two faults
+                    compounding in the same small box.
+
+                    CALM MEANS THE FIGURES CARRY THE WEIGHT. The names are small and
+                    quiet above them; nothing is boxed, ruled or coloured. It scrolls
+                    sideways rather than shrinking, so eight macros at a large system
+                    font size stay readable instead of becoming a puzzle. */}
                 <ThemedView type="backgroundElement" style={styles.macros}>
-                  {MACROS.filter((m) => tracked.includes(m.key)).map((m) => (
-                    <Macro
-                      key={m.key}
-                      label={m.label}
-                      value={macroValue(log as unknown as Record<string, unknown>, m.key)}
-                    />
-                  ))}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.macroScroll}>
+                    <View>
+                      <View style={styles.macroRow}>
+                        {shownMacros.map((m) => (
+                          <ThemedText
+                            key={m.key}
+                            type="small"
+                            themeColor="textSecondary"
+                            numberOfLines={1}
+                            style={styles.macroHead}>
+                            {m.short}
+                          </ThemedText>
+                        ))}
+                      </View>
+                      <View style={styles.macroRow}>
+                        {shownMacros.map((m) => (
+                          <ThemedText
+                            key={m.key}
+                            type="smallBold"
+                            numberOfLines={1}
+                            style={styles.macroHead}>
+                            {macroFigure(m.key, log as unknown as Record<string, unknown>) ?? '—'}
+                          </ThemedText>
+                        ))}
+                      </View>
+                    </View>
+                  </ScrollView>
                 </ThemedView>
 
                 {/* ASK ABOUT THIS (build item 30's interactive half), built
@@ -550,16 +588,10 @@ function PairSheet({
   );
 }
 
-function Macro({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.macro}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.macroLabel}>
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
-    </View>
-  );
-}
+// The one-column-per-macro Macro() that used to live here is gone with the grid
+// it was written for (4 October 2026). It stacked a full label over a value that
+// repeated the label, in a column sized by flex: 1 - fine at four macros, and
+// unreadable at eight. The card now draws two rows directly.
 
 const styles = StyleSheet.create({
   // The gesture root must fill the modal window, or the backdrop inside it has
@@ -618,15 +650,25 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   macros: {
-    flexDirection: 'row',
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.two,
   },
-  macro: {
-    flex: 1,
-    alignItems: 'center',
-    gap: Spacing.half,
+  macroScroll: {
+    paddingHorizontal: Spacing.one,
+  },
+  macroRow: {
+    flexDirection: 'row',
+  },
+  // A FIXED COLUMN, NOT flex: 1. Equal shares of a phone's width is what put
+  // forty pixels under "Saturated fat"; a column wide enough for its own
+  // heading, with the row scrolling when there are too many, keeps every one of
+  // them readable at any font size.
+  macroHead: {
+    minWidth: 62,
+    paddingRight: Spacing.two,
+    paddingVertical: 2,
+    fontVariant: ['tabular-nums'],
   },
   macroLabel: {
     fontSize: 11,

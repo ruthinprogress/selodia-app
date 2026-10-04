@@ -88,6 +88,7 @@ import {
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, filtersFood, recordAllergies, type Allergy } from '../../lib/allergies';
 import { planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
+import { contentWords } from '../../lib/food-dedupe';
 import { buildTrackedMacroBlock } from '../../lib/tracked-macro-summary';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
@@ -1585,6 +1586,17 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
     },
+    correctionMatch: {
+      type: 'string',
+      description:
+        'WHAT they named, when they name a thing rather than "that last one" - '
+        + '"delete Saturday\'s fish and chips", "remove the flapjack", "get rid of the '
+        + 'pub round". Give their words for the food itself, not the whole sentence. '
+        + 'Without this the app removes the most recent entry in the window, which is '
+        + 'the right answer for "undo that" and the WRONG one for anything named - it '
+        + 'will delete a different meal and report success. Leave unset only when they '
+        + 'genuinely mean the last thing logged.',
+    },
     correctionDate: {
       type: 'string',
       description:
@@ -1991,6 +2003,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     removePlanTitled?: string;
     correctionKind?: string;
     correctionDate?: string;
+    correctionMatch?: string;
     correctionAction?: string;
     correctionScope?: string;
     suggestsFood?: boolean;
@@ -2244,13 +2257,73 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         col: string
       ): T => (namedDay ? q.gte(col, namedDay.from).lt(col, namedDay.to) : q.gte(col, correctionCutoff()));
 
-      const { data: target } = await inWindow(
+      // THE ONE SHE NAMED, NOT THE ONE LOGGED LAST (2026-10-04).
+      //
+      // Ruth: "I asked her to delete Saturday's fish and chips, she didn't. She
+      // said she did."
+      //
+      // She was right twice over. This used to be `.order(time desc).limit(1)` -
+      // the most recent entry in the window, with no reference whatsoever to what
+      // she had named. For "delete that last one", which is what the machinery was
+      // built for, that is exactly right. For "Saturday's fish and chips" it
+      // removes whichever meal happened to be logged last that day, and then the
+      // app states a deletion that did happen, of something she never asked about.
+      // Her fish and chips were still there; something else was not.
+      //
+      // So a named thing is matched on its CONTENT WORDS, the same comparison the
+      // duplicate guard uses - grammar dropped, order ignored, so "fish and chips"
+      // finds "Dinner - fish and chips and mushy peas". Nothing is parsed out of
+      // the sentence here; the model hands over the words for the food and this
+      // does arithmetic on them.
+      const { data: candidates } = await inWindow(
         supabase.from(table).select('*').eq('user_id', user.id),
         timeCol
-      )
-        .order(timeCol, { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      ).order(timeCol, { ascending: false });
+
+      const rows = (candidates ?? []) as Record<string, unknown>[];
+      const named =
+        typeof result.correctionMatch === 'string' && result.correctionMatch.trim().length > 0
+          ? result.correctionMatch.trim()
+          : null;
+
+      let target: Record<string, unknown> | null = rows[0] ?? null;
+      let ambiguous = false;
+
+      if (named && rows.length > 0) {
+        const wanted = contentWords(named);
+        // Every word she used has to appear in the entry. "fish and chips" must
+        // not match a salad because both contain "and" - the function words are
+        // already dropped, and what is left has to be present in full.
+        const hits = rows.filter((r) => {
+          const text = [r.raw_text, r.meal_label].filter((v) => typeof v === 'string').join(' ');
+          const have = contentWords(text);
+          return wanted.size > 0 && [...wanted].every((w) => have.has(w));
+        });
+        if (hits.length === 0) {
+          // NOTHING MATCHED IS NOT "DELETE SOMETHING ELSE". Falling back to the
+          // newest row is how a mis-heard word becomes a lost dinner.
+          target = null;
+        } else if (hits.length === 1) {
+          target = hits[0];
+        } else {
+          // Several copies of the same thing is the duplicates case, which the
+          // scope below handles; several DIFFERENT things is a question, not a
+          // guess. Same rule as the two plans sharing a title.
+          const texts = new Set(hits.map((r) => contentWords(String(r.raw_text ?? '')).size));
+          const allSame = hits.every(
+            (r) =>
+              contentWords(String(r.raw_text ?? '')).size === [...texts][0] &&
+              [...contentWords(String(r.raw_text ?? ''))].every((w) =>
+                contentWords(String(hits[0].raw_text ?? '')).has(w)
+              )
+          );
+          if (allSame) target = hits[0];
+          else {
+            target = null;
+            ambiguous = true;
+          }
+        }
+      }
 
       // A personal-metric UPDATE finds its own row, per metric name, inside the
       // branch below - so `target` is not its precondition and must not gate it.
@@ -2262,7 +2335,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       const findsItsOwnTarget = correction.kind === 'personal_metric' && correction.action === 'update';
 
       if (!target && !findsItsOwnTarget) {
-        correctionNote = nothingToCorrectMessage(correction.kind);
+        // NAMED AND NOT FOUND IS A DIFFERENT ANSWER from "nothing recent to
+        // change". She is owed the distinction: one means her words did not match
+        // anything in that day, the other that the day is empty.
+        correctionNote = ambiguous
+          ? 'There is more than one thing there that matches, so nothing was removed - say which one and it will go.'
+          : named
+            ? `Nothing matching "${named}" was found on that day, so nothing was removed.`
+            : nothingToCorrectMessage(correction.kind);
       } else if (correction.action === 'delete' && target) {
         // DUPLICATES GO TOGETHER, OR ONE GOES ALONE.
         //
@@ -2277,7 +2357,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         const scope = coerceCorrectionScope(result.correctionScope);
         const matchOn = DUPLICATE_MATCH_COLUMNS[correction.kind];
 
-        let ids = [target.id];
+        let ids = [String(target.id)];
         if (scope === 'duplicates' && supportsDuplicateRemoval(correction.kind) && matchOn) {
           let q = inWindow(
             supabase.from(table).select('id').eq('user_id', user.id),
@@ -2344,7 +2424,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         const { data: targetRow } = await supabase
           .from('body_measurements')
           .select('weight_kg, body_fat_pct, muscle_kg')
-          .eq('id', target.id)
+          .eq('id', String(target.id))
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -2353,7 +2433,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           user.id,
           message,
           undefined,
-          target.id,
+          String(target.id),
           targetRow ?? undefined
         );
         if (ambiguous) {
@@ -2371,7 +2451,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         const { data: foodRow } = await supabase
           .from('food_logs')
           .select('raw_text')
-          .eq('id', target.id)
+          .eq('id', String(target.id))
           .eq('user_id', user.id)
           .maybeSingle();
         const updated = await logFoodFromText(
@@ -2379,7 +2459,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           user.id,
           message,
           undefined,
-          target.id,
+          String(target.id),
           typeof foodRow?.raw_text === 'string' && foodRow.raw_text.trim() ? foodRow.raw_text : undefined
         );
         if (updated.length > 0) {
@@ -2406,7 +2486,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // replacement is genuinely in the table.
         const entries = await logActivityFromText(supabase, user.id, message);
         if (entries[0]) {
-          await supabase.from(table).delete().eq('id', target.id).eq('user_id', user.id);
+          await supabase.from(table).delete().eq('id', String(target.id)).eq('user_id', user.id);
           saved = { kind: 'activity', summary: activitySaveSummary(entries) };
           attempt.landed.push('activity');
         } else {
