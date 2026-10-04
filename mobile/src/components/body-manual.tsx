@@ -52,6 +52,7 @@ export function BodyManual() {
   const [deficit, setDeficit] = useState<'on' | 'paused' | null>(null);
   const [deficitSetAt, setDeficitSetAt] = useState<string | null>(null);
   const [hasDeficit, setHasDeficit] = useState(false);
+  const [wantsFatLoss, setWantsFatLoss] = useState(false);
   const [savingTraining, setSavingTraining] = useState(false);
 
   useFocusEffect(
@@ -131,6 +132,12 @@ export function BodyManual() {
         // WHETHER THERE IS A DEFICIT TO PAUSE AT ALL. Fat down without muscle up
         // is the only combination that produces one - recomposition eats around
         // maintenance, and the other two are maintenance or a surplus.
+        // TWO DIFFERENT QUESTIONS, and conflating them is what hid the row.
+        //   wantsFatLoss - she has asked to lose fat at all
+        //   hasDeficit   - the arithmetic actually produces one
+        // Fat down WITH muscle up is the case where those two differ: it is a
+        // fat-loss goal that eats at maintenance.
+        setWantsFatLoss(p?.fat_focus_state === 'reduce');
         setHasDeficit(
           p?.fat_focus_state === 'reduce' && p?.muscle_focus_state !== 'increase'
         );
@@ -304,9 +311,21 @@ export function BodyManual() {
   }
 
   function deficitLines(): string[] {
+    // A FAT-LOSS GOAL THAT EATS AT MAINTENANCE SAYS SO. This is the "Lose fat"
+    // plus "Less fat, more muscle" case: both are fat-loss answers, together
+    // they mean recomposition, and recomposition has no deficit in it. Saying
+    // that here is the whole repair - she went looking for a pause and found an
+    // absence.
+    if (!hasDeficit) {
+      return [
+        'You are on less fat with more muscle, so there is no deficit to pause.',
+        'That eats around what you use rather than under it. The change comes from protein and training, not from eating less.',
+        'Change your body goal above if you would rather lose fat with a deficit.',
+      ];
+    }
     // NULL READS AS RUNNING, because a deficit is what choosing to lose fat
     // already asked for. Only an explicit pause is news.
-    if (deficit !== 'paused') return [];
+    if (deficit !== 'paused') return ['Running, as your goal asks.'];
     return [
       'Paused, so your calories are held at what you use.',
       'Your goal has not changed and nothing was lost.',
@@ -369,7 +388,7 @@ export function BodyManual() {
       </ThemedText>
 
       <ThemedView type="backgroundElement" style={styles.card}>
-        {BODY_MANUAL_SECTIONS.filter((s) => !s.onlyWhenDeficit || hasDeficit).map((section, i) => {
+        {BODY_MANUAL_SECTIONS.filter((s) => !s.onlyWhenFatLoss || wantsFatLoss).map((section, i) => {
           const contents =
             section.key === 'training'
               ? { lines: trainingLines() }
@@ -430,7 +449,7 @@ export function BodyManual() {
                   {/* ANSWERED ON THE ROW. One field, two states, no screen to
                       open - which is the shape the Manual replaced the redo
                       wizard with. */}
-                  {section.inline && section.key === 'deficit' && (
+                  {section.inline && section.key === 'deficit' && hasDeficit && (
                     <View style={styles.chips}>
                       {(
                         [

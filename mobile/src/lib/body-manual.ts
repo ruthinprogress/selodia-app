@@ -60,12 +60,26 @@ export type BodyManualSection = {
    */
   inline?: boolean;
   /**
-   * True for a row that is meaningless unless her calorie target is a deficit.
+   * True for a row that only belongs when she has asked to lose fat at all.
    *
-   * The Manual shows what she has told Selodía; a switch for something her goal
-   * does not do is not that, it is a control looking for a purpose.
+   * IT USED TO HIDE UNLESS A DEFICIT WAS ACTUALLY RUNNING, on the reasoning that
+   * a switch for something her goal does not do is a control looking for a
+   * purpose. Ruth, 4 October 2026, having selected "Lose fat" AND "Less fat,
+   * more muscle": "no pause button appeared for the deficit. If 'lose fat, build
+   * muscle' blocks a pause then they need to be mutually exclusive upon
+   * selection."
+   *
+   * Those two combine to fat down WITH muscle up, which eats around what she
+   * uses rather than under it - so there was no deficit, and the row correctly
+   * hid itself. The reasoning was right and the outcome was worse than the thing
+   * it avoided: she picked something called "Lose fat" and went looking for a
+   * control that had silently become inapplicable, with nothing anywhere saying
+   * why. An absent explanation is not calm, it is a puzzle.
+   *
+   * So the row appears whenever she has asked to lose fat, and says plainly
+   * which of the two she is on.
    */
-  onlyWhenDeficit?: boolean;
+  onlyWhenFatLoss?: boolean;
 };
 
 export const BODY_MANUAL_HEADING = 'Body Manual';
@@ -131,7 +145,7 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     note: 'Pausing holds your calories at what you use, for a holiday or any other reason. Your goal stays exactly as it is and nothing is lost.',
     empty: 'Running, as your goal asks.',
     inline: true,
-    onlyWhenDeficit: true,
+    onlyWhenFatLoss: true,
   },
   {
     key: 'weight',
