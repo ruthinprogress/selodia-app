@@ -872,6 +872,13 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
     // and read by nothing on this side until 4 October - see
     // lib/tracked-macro-summary.ts for what that cost her.
     tracked_macros: unknown;
+    // THE SWITCHES, THE PAUSE, AND THE DAY SHE SET HER ACTIVITY LEVEL. Selected
+    // by turn_context from 4 October 2026 - see the migration
+    // chat_reads_the_switches_and_the_pause, which also added tracked_macros
+    // above, a key this cast had been reading as undefined since the morning.
+    body_mode: unknown;
+    paused_at: string | null;
+    activity_level_set_at: string | null;
   } | null;
 
   // WHERE SHE IS WITH PERIODS, AND WHETHER SHE IS ON HRT (2026-09-30). Asked by

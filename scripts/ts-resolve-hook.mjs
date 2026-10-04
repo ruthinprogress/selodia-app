@@ -4,7 +4,7 @@
 //
 // Node 24 strips TypeScript types natively, but its resolver still demands an
 // explicit extension, and it knows nothing about the mobile app's `@/` alias.
-// Two separate reasons a check could not import the code it was checking.
+// Three separate reasons a check could not import the code it was checking.
 //
 // 1. EXTENSIONLESS IMPORTS. The app is written the normal way - `import { x } from
 //    './almanac'` - so the moment a module under test gained an extensionless
@@ -67,8 +67,21 @@ register(
       return await next(specifier, context);
     } catch (err) {
       if (err?.code !== 'ERR_MODULE_NOT_FOUND') throw err;
-      if (!specifier.startsWith('.') && !specifier.startsWith('/')) throw err;
-      for (const ext of ['.ts', '.tsx', '/index.ts']) {
+      // A SUBPATH OF A PACKAGE WITH NO EXPORTS MAP gets the same treatment, which
+      // is reason 3 and the one that cost a check. next@16 ships no "exports"
+      // field, so 'next/server' is resolved as a plain path - node_modules/next/
+      // server - and that path has no extension either. Node's own advice in the
+      // error is "did you mean next/server.js", which is exactly the retry below.
+      //
+      // check-food-parse stopped running the day app/lib/usage-record.ts began
+      // importing next/server: the same shape as the almanac failure in reason 1,
+      // and the same cost. Bare specifiers go through the retry too now, and a
+      // specifier with no slash at all cannot gain an extension, so it is left
+      // alone rather than probed four times for nothing.
+      if (!specifier.startsWith('.') && !specifier.startsWith('/') && !specifier.includes('/')) {
+        throw err;
+      }
+      for (const ext of ['.ts', '.tsx', '/index.ts', '.js', '/index.js']) {
         try {
           const candidate = await next(specifier + ext, context);
           if (existsSync(fileURLToPath(candidate.url))) return candidate;

@@ -85,6 +85,14 @@ export default function SettingsHub() {
         {/* WHAT I TRACK (Ruth, 24 September 2026). Directly under Profile,
             because it is the same kind of thing: what this app is for her
             rather than what it does in general. */}
+        {/* FIRST AFTER PROFILE, because it is the thing she opens most and the
+            thing everything else in the app is built from. */}
+        <SettingsRow
+          icon="book-outline"
+          label="Body Manual"
+          detail="Everything you have told Selodía about your body"
+          onPress={() => router.push('/settings/body-manual' as never)}
+        />
         <SettingsRow
           icon="nutrition-outline"
           label="What I track"

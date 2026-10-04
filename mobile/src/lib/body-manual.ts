@@ -80,6 +80,8 @@ export type BodyManualSection = {
    * which of the two she is on.
    */
   onlyWhenFatLoss?: boolean;
+  /** Shown here, changed on Today. One control, one record. */
+  toToday?: boolean;
 };
 
 export const BODY_MANUAL_HEADING = 'Body Manual';
@@ -104,10 +106,18 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     empty: 'Not said yet. Add it any time.',
   },
   {
+    // SET ON TODAY, SHOWN HERE (Ruth, 4 October 2026): "The same control appears
+    // in setup, Today and the Body Manual and writes ONE record."
+    //
+    // The control itself lives on Today, where she already is every day. This row
+    // shows the same state and sends her there rather than offering a second way
+    // to change it - two screens writing one value is the shape that gave her two
+    // protein targets and a goal she had to set twice.
     key: 'goal',
     heading: 'Your body goal',
-    note: 'Sets your calorie and protein targets. Changing it keeps the old one, dated, in your Almanac.',
-    empty: 'Not set yet, so there is no calorie target. Add it any time.',
+    note: 'Set on Today, where it sits with your figures.',
+    empty: 'Nothing chosen yet, so there is no calorie figure. Set it on Today.',
+    toToday: true,
   },
   {
     // WHETHER THE PROTEIN TARGET'S ASSUMPTION IS TRUE (2026-10-02).

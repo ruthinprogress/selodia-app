@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DateOfBirthField } from '@/components/date-of-birth-field';
-import { BodyManual } from '@/components/body-manual';
 import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -268,7 +267,14 @@ export default function ProfileScreen() {
 
           The setup screens are now reached one at a time, from the row that owns
           the question, instead of being walked through in order. */}
-      <BodyManual />
+      {/* THE BODY MANUAL MOVED TO MORE (Ruth, 4 October 2026, item 6: "Body
+          Manual lives in More, not Profile").
+
+          It is not profile information. Profile is name, date of birth, height -
+          the few facts the app needs about her. The Manual is everything she has
+          told it about her body, which is a different and much larger thing, and
+          burying it under a heading about personal details is why she described
+          the training switch as "useless hidden away in profile settings". */}
 
       <ThemedView type="backgroundElement" style={[styles.signOutNote, { borderColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>

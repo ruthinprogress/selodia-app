@@ -132,7 +132,26 @@ await check('the flow opens on question 1', () => {
     'the redo is back. Every fault of 1 and 2 October came from replaying a wizard ' +
       'over answers that already existed; the Body Manual is what replaced it'
   );
-  assert.ok(/<BodyManual \/>/.test(profile), 'the Body Manual is not on the profile');
+  // IT MOVED TO MORE ON 4 OCTOBER, at Ruth's instruction - "Body Manual lives in
+  // More, not Profile". Profile is the few facts the app needs about her; the
+  // Manual is everything she has told it about her body, and burying the second
+  // under a heading about the first is why the training switch read as "useless
+  // hidden away in profile settings".
+  //
+  // The property is unchanged: the Manual exists and is reachable without going
+  // back through onboarding. Only where it hangs has moved, so this follows it
+  // rather than asserting the old address.
+  const manualScreen = read('mobile/src/app/settings/body-manual.tsx');
+  assert.ok(/<BodyManual \/>/.test(manualScreen), 'the Body Manual has no screen');
+  const more = read('mobile/src/app/settings/index.tsx');
+  assert.ok(
+    /label="Body Manual"/.test(more),
+    'nothing in More links to the Body Manual, so it exists and cannot be reached'
+  );
+  assert.ok(
+    !/<BodyManual \/>/.test(profile),
+    'the Body Manual is still mounted on the profile as well, so it is in two places'
+  );
   return 'and the redo is gone, replaced by the Body Manual';
 });
 

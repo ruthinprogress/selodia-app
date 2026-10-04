@@ -12,7 +12,27 @@ import { useTheme } from '@/hooks/use-theme';
 import { WeightQuestion, type WeightAnswer } from '@/components/weight-question';
 import { explainTarget, intentFromFocus, type TargetWorking } from '@/lib/body-intent';
 import { resolveTDEE } from '@/lib/body-metrics';
-import { GOAL_OPTIONS, focusFromGoals, invitesMeasure, type GoalKey } from '@/lib/goals';
+import { BodyModeToggles } from '@/components/body-mode-toggles';
+import {
+  NO_MODE,
+  focusFromMode,
+  isEmpty,
+  modeExplanation,
+  modeFromFocus,
+  modeFromRecord,
+  modeSafetyDetail,
+  modeSafetyLine,
+  modeWrite,
+  weightDirectionStated,
+  type BodyMode,
+} from '@/lib/body-mode';
+import {
+  GOAL_OPTIONS,
+  OTHER_GOAL_OPTIONS,
+  goalKeysFromMode,
+  invitesMeasure,
+  type GoalKey,
+} from '@/lib/goals';
 import { calculateProteinTarget } from '@/lib/protein';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { useOneQuestion } from '@/lib/one-question';
@@ -40,8 +60,34 @@ import { supabase } from '@/lib/supabase';
 // none of them carries a number, and the optional measure below is shown as one
 // line and never counted down from.
 
-const QUESTION = 'What brings you here?';
-const SUBTITLE = 'Pick as many as fit. Each one changes what Selodía works out for you.';
+// FOUR SWITCHES AND THREE CHIPS, not seven chips (Ruth, 4 October 2026).
+//
+//   "we already covered that More energy and perimenoause are not the same thing
+//   as calorie and bosy fat calls."
+//
+// WHY THE ONE LIST WAS WRONG. Seven chips in a row implied seven answers of the
+// same kind, and four of them were not separate answers at all - they were one
+// answer with overlapping names. "Lose fat" and "Less fat, more muscle" are two
+// taps for states that share a half; tick both and the second quietly won. There
+// was no way to say "gain weight", and no way to tell "I have decided to hold
+// steady" from "I have never said" - the distinction a NOT NULL DEFAULT destroyed
+// in the first place.
+//
+// The four switches express every combination exactly once, and they are the same
+// component as the Today card - see body-mode-toggles.tsx. The three that stay as
+// chips open a different question and move no figure.
+//
+// SAME CONTROL, SAME RECORD, THREE DOORS. Her requirement, and the reason this
+// screen writes body_mode rather than inventing a shape of its own: setup, Today
+// and the Body Manual are one answer seen from three places.
+
+const QUESTION = 'What are you working towards?';
+const SUBTITLE = 'Nothing here is required, and you can change any of it later.';
+const BODY_HEADING = 'Your body';
+const BODY_NOTE =
+  'These set your daily calorie figure and your protein range. Leave them all off and no figure is worked out.';
+const OTHER_HEADING = 'Anything else going on';
+const OTHER_NOTE = 'These change nothing about your calories. Pick as many as fit.';
 
 // Ruth's own wording, from the brief.
 const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
@@ -59,9 +105,16 @@ const ACTIVITY_WORD: Record<string, string> = {
   very_active: 'very active',
 };
 
+/** Every key any control here can produce, for the "what you have now" line. */
+const KNOWN_KEYS = new Set<string>(GOAL_OPTIONS.map((o) => o.key));
+
 export default function GoalsScreen() {
   const theme = useTheme();
+  /** The three chips: a skill, energy, life stage. Never a body answer. */
   const [chosen, setChosen] = useState<GoalKey[]>([]);
+  /** The four switches. Null until she ticks one - see focusFromMode. */
+  const [mode, setMode] = useState<BodyMode | null>(null);
+  const [explaining, setExplaining] = useState<'mode' | 'safety' | null>(null);
   const [measure, setMeasure] = useState('');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -113,7 +166,7 @@ export default function GoalsScreen() {
       const [{ data: profile }, { data: current }, { data: goalRows }] = await Promise.all([
         supabase
           .from('user_profile')
-          .select('height_cm, date_of_birth, biological_sex, activity_level, training_state, deficit_state')
+          .select('height_cm, date_of_birth, biological_sex, activity_level, training_state, deficit_state, body_mode, fat_focus_state, muscle_focus_state')
           .eq('user_id', user.id)
           .maybeSingle(),
         supabase
@@ -165,9 +218,27 @@ export default function GoalsScreen() {
         storedWeightSource: (current?.weight_source as 'estimate' | 'measured') ?? null,
       });
 
+      // WHAT SHE TICKED, FROM THE RECORD - not rebuilt from the goal rows.
+      //
+      // body_mode holds the switches exactly; the focus columns are a view of it,
+      // and reading the view back cannot tell Build-alone from Maintain + Build.
+      // The fallback is for rows written before body_mode existed, and it returns
+      // the reading that adds no calories.
+      const stored = (profile as { body_mode?: unknown } | null)?.body_mode;
+      setMode(
+        modeFromRecord(stored) ??
+          modeFromFocus(
+            (profile?.fat_focus_state as never) ?? null,
+            (profile?.muscle_focus_state as never) ?? null
+          )
+      );
+
+      // ONLY THE CHIPS' OWN KEYS. A body goal row is a view of the switches now,
+      // so lighting a chip from one would put the same answer on screen twice and
+      // give her a second, contradicting way to change it.
       const keys = (goalRows ?? [])
         .map((r) => r.goal_key as GoalKey)
-        .filter((k) => GOAL_OPTIONS.some((o) => o.key === k));
+        .filter((k) => OTHER_GOAL_OPTIONS.some((o) => o.key === k));
       if (keys.length > 0) setChosen(keys);
       // A GOAL IN HER OWN WORDS HAS NO CHIP TO LIGHT UP. Hers reads "Reach 25%
       // body fat and 40 kg muscle mass", which no tap can represent. Saying so is
@@ -175,7 +246,7 @@ export default function GoalsScreen() {
       // her what it is about to replace.
       setExisting(
         (goalRows ?? [])
-          .filter((r) => !GOAL_OPTIONS.some((o) => o.key === r.goal_key))
+          .filter((r) => !KNOWN_KEYS.has(String(r.goal_key)))
           .map((r) => String(r.label ?? ''))
           .filter(Boolean)
       );
@@ -226,8 +297,8 @@ export default function GoalsScreen() {
   function computeWorking(): TargetWorking | null {
     // Recomputed on every render from whatever is currently selected. See the
     // note on `working` below for why this is no longer called on a press.
-    const { fat, muscle } = focusFromGoals(chosen);
-    const intent = intentFromFocus(fat, muscle);
+    const focus = focusFromMode(mode);
+    const intent = intentFromFocus(focus?.fat ?? null, focus?.muscle ?? null);
     if (!intent) return null;
 
     // HER ANSWER FIRST, THEN WHAT IS ALREADY STORED. She may be re-running this
@@ -264,6 +335,10 @@ export default function GoalsScreen() {
       proteinHigh: protein?.kind === 'range' ? protein.high : null,
       proteinStepped: protein?.kind === 'range' ? protein.stepped : null,
       deficitPaused: body?.deficitState === 'paused',
+      // SO THIS PANEL AND TODAY AGREE ABOUT BUILD MUSCLE. Without it the setup
+      // screen would say "around what you use" while Today showed 5% over, for
+      // the same four switches on the same evening.
+      weightDirectionStated: weightDirectionStated(mode),
     });
   }
 
@@ -273,7 +348,12 @@ export default function GoalsScreen() {
     } = await supabase.auth.getUser();
     if (!user) return false;
 
-    const { fat, muscle } = focusFromGoals(chosen);
+    // THE SWITCHES ARE THE RECORD; THE ROWS ARE A VIEW OF THEM. Plans, her
+    // measure and the Almanac's dated history all read goal_key, so the rows are
+    // still written - derived by goalKeysFromMode, in one place.
+    const bodyKeys = goalKeysFromMode(mode);
+    const rowKeys: GoalKey[] = [...bodyKeys, ...chosen];
+    const nothingChosen = isEmpty(mode) && chosen.length === 0;
 
     // THE GOAL ROWS ARE REPLACED, NOT MERGED. A multi-select is a set, and
     // somebody coming back through onboarding means the new set, not the union
@@ -330,7 +410,7 @@ export default function GoalsScreen() {
     // which case the old ones are archived and the new ones written, or she did
     // not, in which case neither happens. There is no arrangement of taps that
     // removes a goal without putting one in its place.
-    if (chosen.length > 0) {
+    if (!nothingChosen) {
       const archivedAt = new Date().toISOString();
       const { error: clearError } = await supabase
         .from('user_goals')
@@ -339,9 +419,9 @@ export default function GoalsScreen() {
         .is('archived_at', null);
       if (clearError) return false;
 
-      if (chosen.length > 0) {
+      if (rowKeys.length > 0) {
         const detail = measure.trim() || null;
-        const rows = chosen.map((key, i) => {
+        const rows = rowKeys.map((key, i) => {
           const option = GOAL_OPTIONS.find((o) => o.key === key)!;
           return {
             user_id: user.id,
@@ -393,11 +473,14 @@ export default function GoalsScreen() {
     // Choosing nothing is still a real answer on the FIRST run - the focus has
     // never been set, so writing null changes nothing and the honest outcome is
     // unchanged. What it must not do is overwrite.
-    if (chosen.length === 0) return true;
+    if (nothingChosen) return true;
 
+    // ONE WRITE, THREE COLUMNS, AND THEY CANNOT DISAGREE. modeWrite builds the
+    // record and both views of it together; writing the focus columns by hand is
+    // what dropped her Maintain tick on reload before body_mode existed.
     const { error: profileError } = await supabase
       .from('user_profile')
-      .update({ fat_focus_state: fat, muscle_focus_state: muscle })
+      .update(modeWrite(mode))
       .eq('user_id', user.id);
     return !profileError;
   }
@@ -452,7 +535,11 @@ export default function GoalsScreen() {
     secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
-  const showMeasure = invitesMeasure(chosen);
+  // A MEASURE BELONGS TO A BODY GOAL. "12 stone" under "more energy" is
+  // nonsense and under "learn a skill" it is worse, so the box appears when a
+  // switch that can carry one is on.
+  const showMeasure = invitesMeasure([...goalKeysFromMode(mode), ...chosen]);
+  const current = mode ?? NO_MODE;
   // THE FIGURES, RECOMPUTED EVERY RENDER from whatever is selected right now.
   // Derived rather than stored, so they cannot disagree with the answers above
   // them - which is what made a second press look necessary.
@@ -492,8 +579,76 @@ export default function GoalsScreen() {
             </ThemedView>
           )}
 
+          {/* THE FOUR SWITCHES. Same component as Today, same rules, same
+              record - see body-mode-toggles.tsx. */}
+          <View style={styles.group}>
+            <ThemedText type="smallBold">{BODY_HEADING}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {BODY_NOTE}
+            </ThemedText>
+            <BodyModeToggles
+              mode={current}
+              disabled={saving}
+              // NOTHING IS WRITTEN HERE. This screen has a Continue; the Today
+              // card has none, which is why that one saves on the tap and this
+              // one does not. The switches know about neither.
+              onChange={setMode}
+            />
+
+            <Pressable
+              onPress={() => setExplaining((e) => (e === 'mode' ? null : 'mode'))}
+              accessibilityRole="button"
+              accessibilityLabel="What this does"
+              accessibilityState={{ expanded: explaining === 'mode' }}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}>
+              <ThemedText type="small" themeColor="accentDeep">
+                What this does
+              </ThemedText>
+            </Pressable>
+            {explaining === 'mode' && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {modeExplanation(mode)}
+              </ThemedText>
+            )}
+
+            {/* SHOWN WHENEVER GAINING IS ON: one calm line stating a fact of
+                medicine. The longer wording about recovery sits behind a second
+                press, because putting eating disorders in front of everybody who
+                taps Gain weight would be the app deciding something about her
+                that it has no way to know. */}
+            {modeSafetyLine(current) ? (
+              <>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {modeSafetyLine(current)}
+                </ThemedText>
+                <Pressable
+                  onPress={() => setExplaining((e) => (e === 'safety' ? null : 'safety'))}
+                  accessibilityRole="button"
+                  accessibilityLabel="More about this"
+                  accessibilityState={{ expanded: explaining === 'safety' }}
+                  hitSlop={Spacing.two}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  <ThemedText type="small" themeColor="accentDeep">
+                    More about this
+                  </ThemedText>
+                </Pressable>
+                {explaining === 'safety' && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {modeSafetyDetail(current)}
+                  </ThemedText>
+                )}
+              </>
+            ) : null}
+          </View>
+
+          <ThemedText type="smallBold">{OTHER_HEADING}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {OTHER_NOTE}
+          </ThemedText>
+
           <View style={styles.options}>
-            {GOAL_OPTIONS.map((option) => {
+            {OTHER_GOAL_OPTIONS.map((option) => {
               const on = chosen.includes(option.key);
               return (
                 <Pressable
@@ -628,6 +783,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.six,
     gap: Spacing.four,
   },
+  group: { gap: Spacing.two },
   options: {
     flexDirection: 'row',
     flexWrap: 'wrap',

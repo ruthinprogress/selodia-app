@@ -3,6 +3,7 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { BodyModes } from '@/components/body-modes';
 import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -832,6 +833,13 @@ export function OverviewPanel({
             and a zero would pick the one reading that accuses somebody of not
             moving (lib/steps.ts). */}
       </View>
+
+      {/* HOW SHE IS EATING, DIRECTLY UNDER THE FIGURES IT DECIDES (Ruth,
+          4 October 2026). Shut by default to one quiet line with Pause on it -
+          her instruction that the explanations stay hidden "most of the time as
+          they only really need the explanation occasionally". */}
+      <View style={{ height: Spacing.three }} />
+      <BodyModes />
 
       {/* Hydration has no header because it is not a view to go into. It is the
           one thing on this screen you can DO, so it sits inline as an action -

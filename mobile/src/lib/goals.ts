@@ -16,6 +16,11 @@ export type FocusState = 'reduce' | 'maintain' | 'increase';
 
 export type GoalKey =
   | 'lose_fat'
+  // THE FOURTH BODY ANSWER, which had no chip and no column value (Ruth,
+  // 4 October 2026): "We need a third category, 'Gain Weight'." Somebody who
+  // needs to put weight on could say "build muscle" and get a 5% surplus, or say
+  // nothing and get no target at all. Neither is the thing she asked for.
+  | 'gain_weight'
   // HER OWN GOAL, AND IT WAS NOT ON THE LIST (2 October 2026). The arithmetic has
   // supported recomposition since August - fat reduce with muscle increase gives
   // a maintenance target flagged isRecomposition - but no single tap produced
@@ -41,6 +46,26 @@ export type GoalOption = {
   invitesMeasure?: boolean;
   /** Whether choosing it opens the skill question (brief, screen 2). */
   opensSkills?: boolean;
+  /**
+   * A body-composition answer: set by the four switches, never by a chip.
+   *
+   * THE CHIPS AND THE SWITCHES WERE SAYING THE SAME THING BADLY (Ruth,
+   * 4 October 2026): "we already covered that More energy and perimenopause are
+   * not the same thing as calorie and body fat calls."
+   *
+   * That is the whole division. Four of these options decide a calorie figure and
+   * a protein range; three of them open a different question and touch no figure
+   * at all. As one undifferentiated list of chips, "Lose fat" and "Less fat, more
+   * muscle" were two taps for overlapping states - tick both and the second won,
+   * silently - while the four switches express every combination exactly once.
+   *
+   * THE ROWS ARE STILL WRITTEN. These options keep their labels and their goal
+   * rows, because the row is what Plans reads, what carries her measure, and what
+   * the Almanac trigger archives with a date on it. What changed is the control:
+   * the switches are the answer, goalKeysFromMode turns them into rows, and
+   * body_mode is the record both are read back from.
+   */
+  body?: true;
 };
 
 // GET STRONGER IS NOT IN THIS LIST (Ruth, 4 October 2026): "Get rid of Get
@@ -65,6 +90,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     fat: 'reduce',
     muscle: null,
     invitesMeasure: true,
+    body: true,
   },
   {
     key: 'recomposition',
@@ -76,6 +102,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     fat: 'reduce',
     muscle: 'increase',
     invitesMeasure: true,
+    body: true,
   },
   {
     key: 'build_muscle',
@@ -84,6 +111,17 @@ export const GOAL_OPTIONS: GoalOption[] = [
     fat: null,
     muscle: 'increase',
     invitesMeasure: true,
+    body: true,
+  },
+  {
+    key: 'gain_weight',
+    label: 'Gain weight',
+    effect:
+      'Fat focus becomes increase: a small surplus, a quarter of a percent of bodyweight a week, capped at 300 kcal.',
+    fat: 'increase',
+    muscle: null,
+    invitesMeasure: true,
+    body: true,
   },
   {
     key: 'learn_a_skill',
@@ -95,7 +133,10 @@ export const GOAL_OPTIONS: GoalOption[] = [
   },
   {
     key: 'keep_steady',
-    label: 'Keep things steady',
+    // HER WORDING (4 October 2026): "Keep things steady is too vague. Rename
+    // please." And then, plainly: "Keep it steady - change that to Maintain my
+    // weight." Steady at what was the question it did not answer.
+    label: 'Maintain my weight',
     // THE ONLY OPTION THAT WRITES 'maintain', and that is the whole point of
     // this file. Maintenance used to be what everybody got by accident, from a
     // NOT NULL DEFAULT on the column. Now it is something a person can choose
@@ -103,6 +144,7 @@ export const GOAL_OPTIONS: GoalOption[] = [
     effect: 'Both focuses become maintain. A maintenance target, chosen rather than inherited.',
     fat: 'maintain',
     muscle: 'maintain',
+    body: true,
   },
   {
     key: 'more_energy',
@@ -119,6 +161,19 @@ export const GOAL_OPTIONS: GoalOption[] = [
     muscle: null,
   },
 ];
+
+/**
+ * The ones a chip still asks about: everything that is not a calorie call.
+ *
+ * Three, and each opens a different question rather than moving a figure - a
+ * skill, the sleep and energy reading in the roundup, the life-stage question.
+ * They are a multi-select because they genuinely combine and none of them
+ * contradicts another.
+ */
+export const OTHER_GOAL_OPTIONS: GoalOption[] = GOAL_OPTIONS.filter((o) => !o.body);
+
+/** The four the switches own. Shown here for the checks to count. */
+export const BODY_GOAL_OPTIONS: GoalOption[] = GOAL_OPTIONS.filter((o) => o.body === true);
 
 export const GOAL_BY_KEY: Record<GoalKey, GoalOption> = Object.fromEntries(
   GOAL_OPTIONS.map((g) => [g.key, g])
@@ -173,4 +228,33 @@ export function invitesMeasure(keys: GoalKey[]): boolean {
 
 export function opensSkills(keys: GoalKey[]): boolean {
   return keys.some((k) => GOAL_BY_KEY[k]?.opensSkills);
+}
+
+// ------------------------------------------------- the switches, as goal rows
+//
+// ONE RECORD, TWO READERS. body_mode is what she ticked and what every figure is
+// worked out from. The goal rows are how Plans, the first draft, her measure and
+// the Almanac's dated history see the same thing, and they are all built on
+// goal_key - so the switches write rows too, derived here rather than guessed at
+// a call site.
+//
+// NOT REVERSIBLE, AND IT DOES NOT NEED TO BE. "Build muscle" alone and "Maintain
+// my weight" with it both produce a build_muscle row, and the two mean different
+// calorie figures. That distinction lives in body_mode, which is read first
+// everywhere; these rows are a view, and a view is allowed to be lossy as long as
+// nothing reads a figure back out of it.
+
+import type { BodyMode } from './body-mode';
+
+export function goalKeysFromMode(mode: BodyMode | null): GoalKey[] {
+  if (!mode) return [];
+  const keys: GoalKey[] = [];
+  // Lose fat with Build muscle is her own goal and has its own name: "same
+  // weight, less fat, more muscle". One row, not two.
+  if (mode.loseFat && mode.buildMuscle) return ['recomposition'];
+  if (mode.loseFat) keys.push('lose_fat');
+  if (mode.maintainWeight) keys.push('keep_steady');
+  if (mode.gainWeight) keys.push('gain_weight');
+  if (mode.buildMuscle) keys.push('build_muscle');
+  return keys;
 }

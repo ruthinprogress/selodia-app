@@ -257,6 +257,22 @@ export function explainTarget(input: {
    * written there: an optional flag is one four callers out of five forget.
    */
   deficitPaused: boolean | null;
+  /**
+   * Whether she stated a weight direction at all - lose, maintain or gain.
+   *
+   * THE WHOLE OF THE BUILD-ALONE DISTINCTION (her final rules, 4 October 2026):
+   * "Build muscle" with nothing said about weight gets a small surplus, 5% of
+   * what she uses; "Maintain my weight" with it does not, because she said so.
+   * The fat/muscle pair is maintain/increase either way, so the intent cannot
+   * tell them apart and this is the only thing that can.
+   *
+   * REQUIRED THOUGH IT MAY BE NULL, like the two flags above. It arrived here
+   * BECAUSE calculateCalorieTarget grew the rule and this panel did not: Today
+   * would have shown her 5% over and the setup screen "around what you use", for
+   * the same switches, on the same evening. Null and undefined both read as
+   * stated, which is the branch that adds nothing.
+   */
+  weightDirectionStated: boolean | null;
 }): TargetWorking {
   const { intent, weightKg, weightSource, bmrKcal, tdeeKcal, activityWord } = input;
   const lines: string[] = [];
@@ -399,9 +415,28 @@ export function explainTarget(input: {
     // BUILDING MUSCLE NO LONGER ADDS CALORIES (her decision A, 4 October 2026).
     // It is recomposition at the weight she is now: the change comes from the
     // protein and the training, and nothing is added unless she asked to gain.
-    lines.push(
-      `Building muscle means eating around what you use, not over it. The change comes from the protein and the training.`
-    );
+    //
+    // UNLESS SHE SAID NOTHING ABOUT HER WEIGHT, which her final rules make a
+    // different answer rather than the same one: building with no instruction
+    // either way gets 5% of what she uses, "on the low side because fat is
+    // easier to gain at this stage of life". Maintain plus Build is the case
+    // this line was written for, and it keeps it.
+    if (input.weightDirectionStated === false) {
+      const surplus = Math.round(tdee * BUILD_SURPLUS_FRACTION);
+      lines.push(
+        `Building muscle asks for a little more than you use: 5%, which is ${kcal(
+          surplus
+        )} a day. The low side on purpose, because fat is easier to gain at this stage of life.`
+      );
+      lines.push(
+        `Say "maintain my weight" alongside it and this comes back to what you use - the switches decide, not the app.`
+      );
+      target = tdee + surplus;
+    } else {
+      lines.push(
+        `Building muscle means eating around what you use, not over it. The change comes from the protein and the training.`
+      );
+    }
   } else if (intent.key === 'recomposition') {
     lines.push(
       `Less fat with more muscle means eating around what you use rather than under it. The change comes from the protein and the training, not from a deficit.`

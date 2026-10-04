@@ -1,4 +1,8 @@
-import type { FocusState } from '@/lib/body-intent';
+// RELATIVE, NOT '@/lib/body-intent'. The server re-exports this file directly
+// (app/lib/body-mode.ts) and the Next build resolves no '@/' alias, so an aliased
+// import here is a module the server cannot find. body-intent.ts beside it is
+// relative for the same reason.
+import type { FocusState } from './body-intent';
 
 // FOUR SWITCHES AND ONE PAUSE (Ruth's matrix reply, 4 October 2026).
 //
@@ -84,6 +88,51 @@ export function withToggle(mode: BodyMode, key: keyof BodyMode, on: boolean): Bo
   // what she ticked, and the focus columns are written from it. See the migration
   // the_switches_she_ticked_are_the_record.
   return next;
+}
+
+// --------------------------------------------- the four switches, as data
+//
+// ONE LIST, READ BY BOTH SCREENS. The Today card and the setup question are the
+// same four switches with the same rules, and until now that was a promise kept
+// by two copies of the same JSX. Two copies is how "Keep things steady" survived
+// on one screen after being renamed on the other, and how the chips came to store
+// something the toggles could not express.
+//
+// The labels are hers: "Keep it steady - change that to Maintain my weight."
+
+export const MODE_ORDER: (keyof BodyMode)[] = [
+  'loseFat',
+  'maintainWeight',
+  'gainWeight',
+  'buildMuscle',
+];
+
+export const MODE_LABEL: Record<keyof BodyMode, string> = {
+  loseFat: 'Lose fat',
+  maintainWeight: 'Maintain my weight',
+  gainWeight: 'Gain weight',
+  buildMuscle: 'Build muscle',
+};
+
+/** How the one that is on reads in "Not while you are ___". */
+const WEIGHT_DOING: Record<WeightKey, string> = {
+  loseFat: 'losing fat',
+  maintainWeight: 'maintaining',
+  gainWeight: 'gaining weight',
+};
+
+/**
+ * Why a switch is dimmed, or null when it is free to press.
+ *
+ * SAYING WHY, NOT JUST REFUSING. A control that is dim with no reason reads as
+ * broken - her own word for the first version of this card - so the rule that
+ * made it dim is the sentence underneath it. Build muscle is never dimmed: it
+ * combines with all three and with none.
+ */
+export function toggleHint(mode: BodyMode, key: keyof BodyMode): string | null {
+  if (!isWeightKey(key) || mode[key]) return null;
+  const blocking = WEIGHT_KEYS.find((other) => other !== key && mode[other]);
+  return blocking ? `Not while you are ${WEIGHT_DOING[blocking]}` : null;
 }
 
 /**

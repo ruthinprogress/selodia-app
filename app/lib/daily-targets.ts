@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { calculateBMR, calculateTDEE, proteinTarget, type ProteinTarget } from './body-metrics';
 import { pregnancyGuard } from './not-built-for-pregnancy';
 import { calorieFloor, explainTarget, intentFromFocus, type TargetWorking } from './body-intent';
+import { modeFromRecord, weightDirectionStated } from './body-mode';
 
 // What is left of today, for the chat pipeline. Build item 22's foundation.
 //
@@ -380,6 +381,25 @@ export type DayStateProfile = {
   training_state?: string | null;
   deficit_state?: string | null;
   deficit_state_set_at?: string | null;
+  /**
+   * EXACTLY WHAT SHE TICKED, and the two columns above are a view of it.
+   *
+   * Read here since 4 October 2026 because her final rules made two states
+   * differ that the view cannot distinguish: Build muscle alone sits 5% over
+   * what she uses, Maintain + Build sits at it, and both store
+   * maintain/increase. Chat quoting the wrong one of those is chat disagreeing
+   * with her Today screen about what she should eat.
+   */
+  body_mode?: unknown;
+  /**
+   * HER ONE PAUSE, which was the more serious of the two gaps.
+   *
+   * Pause holds every combination at maintenance without changing her goal.
+   * Until this was read, she could tap Pause on Today, ask chat what she should
+   * be eating, and be given her deficit figure - the app contradicting a choice
+   * she had just made, which is worse than not offering the choice.
+   */
+  paused_at?: string | null;
   // Read since 30 September so the arithmetic can stand down in pregnancy.
   life_stage?: string | null;
 } | null;
@@ -413,6 +433,11 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
     asFocus(profile?.fat_focus_state) as never,
     asFocus(profile?.muscle_focus_state) as never
   );
+  // THE SWITCHES, AND WHETHER SHE SAID ANYTHING ABOUT HER WEIGHT. Read once,
+  // used by both the figure and the explanation below, so the two cannot
+  // disagree with each other either.
+  const mode = modeFromRecord(profile?.body_mode);
+  const paused = Boolean(profile?.paused_at);
   const proteinForWorking = proteinTarget({
     manualG: profile?.protein_target_g ?? null,
     weightKg: m?.weight_kg ?? null,
@@ -436,6 +461,7 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
       proteinHigh: proteinForWorking?.kind === 'range' ? proteinForWorking.high : null,
       proteinStepped: proteinForWorking?.kind === 'range' ? proteinForWorking.stepped : null,
       deficitPaused: profile?.deficit_state === 'paused',
+      weightDirectionStated: weightDirectionStated(mode),
     });
   }
 
@@ -450,6 +476,12 @@ export function buildDayState(rowsIn: DayStateRows, profile: DayStateProfile): D
       muscleFocus: asFocus(profile?.muscle_focus_state),
       training: (profile?.training_state as never) ?? null,
       deficitState: (profile?.deficit_state as never) ?? null,
+      // BOTH OF THESE EXISTED HERE AND WERE PASSED BY NOBODY. calculateCalorieTarget
+      // has had a `paused` branch since this evening and `weightDirectionStated`
+      // alongside it; this one call site is how every figure chat quotes is
+      // reached, and it was still answering as though she had never paused.
+      paused,
+      weightDirectionStated: weightDirectionStated(mode),
     }),
     working: buildWorking(),
     protein: proteinTarget({

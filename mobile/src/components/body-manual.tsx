@@ -14,6 +14,7 @@ import {
   type SectionContents,
 } from '@/lib/body-manual';
 import { lookbackLabel } from '@/lib/feel-goals';
+import { modeExplanation, modeFromRecord, modeLabel, type BodyMode } from '@/lib/body-mode';
 import { supabase } from '@/lib/supabase';
 
 // EVERY ANSWER SHE HAS GIVEN, ON ONE PAGE, LIVE.
@@ -52,6 +53,7 @@ export function BodyManual() {
   const [deficit, setDeficit] = useState<'on' | 'paused' | null>(null);
   const [deficitSetAt, setDeficitSetAt] = useState<string | null>(null);
   const [hasDeficit, setHasDeficit] = useState(false);
+  const [mode, setMode] = useState<BodyMode | null>(null);
   const [wantsFatLoss, setWantsFatLoss] = useState(false);
   const [savingTraining, setSavingTraining] = useState(false);
 
@@ -84,7 +86,7 @@ export function BodyManual() {
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode').maybeSingle(),
           supabase.from('almanac_entries').select('title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
         ]);
         if (cancelled) return;
@@ -129,6 +131,7 @@ export function BodyManual() {
         } | null;
         setTraining((p?.training_state as 'training' | 'paused') ?? null);
         setDeficit((p?.deficit_state as 'on' | 'paused') ?? null);
+        setMode(modeFromRecord((p as { body_mode?: unknown } | null)?.body_mode));
         // WHETHER THERE IS A DEFICIT TO PAUSE AT ALL. Fat down without muscle up
         // is the only combination that produces one - recomposition eats around
         // maintenance, and the other two are maintenance or a surplus.
@@ -340,8 +343,9 @@ export function BodyManual() {
     switch (key) {
       case 'days':
         return '/onboarding/days';
+      // The goal is set on Today now - see the `toToday` flag on the section.
       case 'goal':
-        return '/onboarding/goals';
+        return null;
       case 'skills':
         return '/onboarding/skill';
       case 'week':
@@ -392,8 +396,10 @@ export function BodyManual() {
           const contents =
             section.key === 'training'
               ? { lines: trainingLines() }
-              : section.key === 'deficit'
-                ? { lines: deficitLines() }
+              : section.key === 'goal'
+                ? { lines: mode ? [modeLabel(mode), modeExplanation(mode)] : [] }
+                : section.key === 'deficit'
+                  ? { lines: deficitLines() }
                 : (data[section.key] ?? { lines: [] });
           const has = contents.lines.length > 0;
           const isOpen = open[section.key] === true;
@@ -527,7 +533,22 @@ export function BodyManual() {
                   {/* WEIGHT HAS NO EDIT, because it maintains itself: the latest
                       real weigh-in beats any estimate, whatever the dates say. A
                       button here would imply otherwise. */}
-                  {!section.readOnly && !section.inline && route && (
+                  {/* SET ON TODAY. A link rather than an editor, so there is
+                      one control for one value. */}
+                  {section.toToday && (
+                    <Pressable
+                      onPress={() => router.replace('/' as never)}
+                      accessibilityRole="link"
+                      accessibilityLabel="Set this on Today"
+                      hitSlop={Spacing.two}
+                      style={({ pressed }) => pressed && styles.pressed}>
+                      <ThemedText type="smallBold" themeColor="accentDeep">
+                        Set this on Today
+                      </ThemedText>
+                    </Pressable>
+                  )}
+
+                  {!section.readOnly && !section.inline && !section.toToday && route && (
                     <Pressable
                       onPress={() => router.push({ pathname: route as never, params: { redo: '1' } })}
                       accessibilityRole="link"

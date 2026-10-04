@@ -203,24 +203,44 @@ check('the goals screen archives nothing when nothing is chosen', () => {
   ok(archiveAt > 0, 'the goals screen no longer archives anything - has it been rewritten?');
 
   const before = goals.slice(0, archiveAt);
+  // THE GUARD MOVED WHEN THE CHIPS BECAME SWITCHES (4 October 2026), and this
+  // reads the new one rather than the shape of the old one. `chosen` is only the
+  // three chips now; the four body answers live in `mode`, so a guard that still
+  // counted chips would let a switch-only walk archive her goals and replace
+  // nothing - the 18:56 wipe again, through the door I had just built.
   ok(
-    /if \(chosen\.length > 0\) \{/.test(before),
+    /if \(!nothingChosen\) \{/.test(before),
     'the archive is not inside a "something was chosen" guard, so walking this ' +
       'screen and touching nothing removes every goal she has and replaces none'
   );
-  return 'an untouched walk leaves her goals alone';
+  // AND THE GUARD HAS TO COUNT BOTH. This is the half a pattern-match would miss:
+  // the name reads correctly while meaning only the chips.
+  ok(
+    /const nothingChosen = isEmpty\(mode\) && chosen\.length === 0;/.test(goals),
+    'nothingChosen does not count both the four switches and the three chips, so ' +
+      'one of the two kinds of answer walks straight past the guard'
+  );
+  return 'an untouched walk leaves her goals alone, switches and chips alike';
 });
 
 check('and it does not blank her focus either', () => {
   // THE OTHER HALF OF THE SAME WIPE. focusFromGoals([]) returns {null, null}, and
   // writing that over a focus she already had removes her calorie target - the
   // same destruction, one table across.
-  const updateAt = goals.indexOf('fat_focus_state: fat');
-  ok(updateAt > 0, 'the goals screen no longer writes the focus - has it been rewritten?');
+  // ONE WRITE OF THREE COLUMNS NOW. modeWrite builds body_mode and both focus
+  // columns together, which is what stops them disagreeing - writing the focus
+  // by hand beside the record is how her Maintain tick was dropped on reload.
+  const updateAt = goals.indexOf('.update(modeWrite(mode))');
+  ok(updateAt > 0, 'the goals screen no longer writes the mode - has it been rewritten?');
   ok(
-    /if \(chosen\.length === 0\) return true;/.test(goals.slice(0, updateAt)),
-    'nothing chosen still writes null over her focus states, which erases the ' +
+    /if \(nothingChosen\) return true;/.test(goals.slice(0, updateAt)),
+    'nothing chosen still writes null over her switches, which erases the ' +
       'calorie target she already had'
+  );
+  ok(
+    !/fat_focus_state:/.test(goals),
+    'the screen sets a focus column by hand as well as through modeWrite, so the ' +
+      'record and its view can disagree'
   );
   return 'her targets survive an untouched walk';
 });
