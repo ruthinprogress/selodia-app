@@ -74,6 +74,7 @@ import {
 import {
   coerceCorrectionScope,
   correctionCutoff,
+  correctionDayRange,
   deletionMessage,
   duplicatesRemovedMessage,
   DUPLICATE_MATCH_COLUMNS,
@@ -1117,7 +1118,7 @@ AND DO NOT PROMISE A VERDICT. The table shows the days and says how many there w
 
 REMOVING A SAVED PLAN: set removePlanTitled when they ask for one of their own saved plans to be deleted. This is NOT a correction and has nothing to do with correctionKind, which is for something just logged: a plan is named and can be months old. The app matches the title, works out for itself what to do when two plans share a name, removes it and states the outcome - including when it could not. So never say a plan has been deleted, and never say which copy went; acknowledge, and let the app report. If you cannot tell which plan they mean, leave it unset and ask.
 
-CORRECTIONS: When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
+CORRECTIONS: Set correctionDate whenever they name a day - "yesterday's food", "Saturday's entries". Without it only the last day or so is reachable, which is how somebody asking on Sunday for Saturday's lunch gets told it cannot be found. When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
 
@@ -1562,6 +1563,17 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
     },
+    correctionDate: {
+      type: 'string',
+      description:
+        'The DAY they are talking about, as yyyy-mm-dd, whenever they name one - '
+        + '"delete yesterday\'s food", "remove Saturday\'s entries", "that lunch on '
+        + 'Monday". Work out the actual date; a named day without a year means the '
+        + 'most recent one that has already happened, never a future date. Without '
+        + 'this the app only looks at roughly the last day, so anything older is '
+        + 'invisible to it and they are told it cannot be found. Leave unset when '
+        + 'they are fixing something they just logged and have named no day.',
+    },
     proposedFatFocus: {
       type: 'string',
       enum: ['reduce', 'maintain', 'increase'],
@@ -1956,6 +1968,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     reminderWeekday?: number;
     removePlanTitled?: string;
     correctionKind?: string;
+    correctionDate?: string;
     correctionAction?: string;
     correctionScope?: string;
     suggestsFood?: boolean;
@@ -2191,11 +2204,28 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // they are looking at, not whichever row was written most recently.
       // Selecting the whole row, not just the id: the duplicate match below
       // compares against this row's own values, so it needs them.
-      const { data: target } = await supabase
-        .from(table)
-        .select('*')
-        .eq('user_id', user.id)
-        .gte(timeCol, correctionCutoff())
+      // THE DAY SHE NAMED, WHEN SHE NAMED ONE (2026-10-04).
+      //
+      // Ruth asked on Sunday afternoon to delete Saturday's food. Every row
+      // carried a happened_at around Saturday lunchtime - twenty-six hours back,
+      // just outside the rolling day - so the lookup found nothing and said so.
+      // She answered the follow-up with "Saturday" and got the same refusal,
+      // because naming the day had nowhere to go. See correctionDayRange.
+      const namedDay =
+        typeof result.correctionDate === 'string'
+          ? correctionDayRange(result.correctionDate)
+          : null;
+      // One expression, used by every read below, so the target and its
+      // duplicates can never be looked for in two different windows.
+      const inWindow = <T extends { gte: (c: string, v: string) => T; lt: (c: string, v: string) => T }>(
+        q: T,
+        col: string
+      ): T => (namedDay ? q.gte(col, namedDay.from).lt(col, namedDay.to) : q.gte(col, correctionCutoff()));
+
+      const { data: target } = await inWindow(
+        supabase.from(table).select('*').eq('user_id', user.id),
+        timeCol
+      )
         .order(timeCol, { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -2227,11 +2257,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
 
         let ids = [target.id];
         if (scope === 'duplicates' && supportsDuplicateRemoval(correction.kind) && matchOn) {
-          let q = supabase
-            .from(table)
-            .select('id')
-            .eq('user_id', user.id)
-            .gte(timeCol, correctionCutoff());
+          let q = inWindow(
+            supabase.from(table).select('id').eq('user_id', user.id),
+            timeCol
+          );
           // A null column has to be matched with `is`, not `eq` - a meal logged
           // with no meal_label would otherwise match nothing and quietly fall back
           // to deleting one row while claiming to have deleted several.

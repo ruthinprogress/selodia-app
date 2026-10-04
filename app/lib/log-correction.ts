@@ -80,6 +80,58 @@ export function correctionCutoff(now: Date = new Date()): string {
   return new Date(now.getTime() - CORRECTION_WINDOW_MIN * 60 * 1000).toISOString();
 }
 
+// A NAMED DAY IS A WINDOW OF ITS OWN (2026-10-04).
+//
+// Ruth: "Chat says it can't delete Saturdays entries. It most definitely should
+// be able to see and do that for the user."
+//
+// WHAT HAPPENED. She logged Saturday's food on Sunday lunchtime, so every row
+// carries a happened_at around 13:00 Saturday. She asked for them on Sunday at
+// 16:35 - twenty-six and a half hours later, just past the rolling day above -
+// so the lookup genuinely found nothing and said so. She then answered the
+// follow-up with "Saturday", and that changed nothing at all, because naming the
+// day had nowhere to go.
+//
+// THE COMMENT ABOVE ALREADY PROMISED THIS: "last week's dinner needs the day
+// named explicitly, which nothingToCorrectMessage below already asks for." The
+// message asks. Nothing read the answer. An app that asks a question it cannot
+// act on is worse than one that does not ask: she gave the right answer twice
+// and got the same refusal.
+//
+// SAME SHAPE AS THE DUPLICATE GUARD FIXED THIS MORNING, which could not see a
+// meal logged for a past day because its candidate query was anchored to NOW
+// rather than to the entry. Any window measured from the clock excludes exactly
+// the entries somebody is catching up on, and catching up is ordinary.
+//
+// BOUNDED, STILL. A named day is one day - local midnight to local midnight -
+// not an unbounded reach backwards. The caller passes the day the person named;
+// nothing here guesses one.
+export function correctionDayRange(
+  isoDate: string,
+  timeZone = 'Europe/London'
+): { from: string; to: string } | null {
+  // yyyy-mm-dd only. Anything else is not a day somebody named, and a
+  // half-parsed date pointed at a delete is the wrong thing to be lenient about.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  const [y, m, d] = isoDate.split('-').map(Number);
+  if (!y || !m || !d || m > 12 || d > 31) return null;
+
+  // THE OFFSET IS READ, NOT ASSUMED. British clocks move, and a fixed Z would
+  // put an hour of every summer evening on the wrong day. Midday on the named
+  // day is used to find the offset because it is never ambiguous, even on the
+  // two days a year when midnight could be.
+  const noon = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const asLocal = new Date(noon.toLocaleString('en-US', { timeZone }));
+  const asUtc = new Date(noon.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const offsetMs = asLocal.getTime() - asUtc.getTime();
+
+  const startUtc = Date.UTC(y, m - 1, d, 0, 0, 0) - offsetMs;
+  return {
+    from: new Date(startUtc).toISOString(),
+    to: new Date(startUtc + 86_400_000).toISOString(),
+  };
+}
+
 const KINDS: CorrectionKind[] = ['food', 'activity', 'measurement', 'personal_metric'];
 const ACTIONS: CorrectionAction[] = ['update', 'delete'];
 const SCOPES: CorrectionScope[] = ['one', 'duplicates'];
