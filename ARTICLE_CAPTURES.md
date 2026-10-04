@@ -700,3 +700,21 @@ Splitting the optional half of onboarding out of the required half left one scre
 ## 1 October 2026 — Offering it is what makes it get done
 
 The instinct with a feature like a health record is to require it: ask everything up front, while you have their attention. The opposite turns out to be true. The flow was already thirteen screens and the new material would have made it seventeen, and the failure that risks is not a thin record — it is no record at all, because somebody put the phone down at screen nine. So the required part now ends completely, and the rest sits behind one line on the last screen. A record that grows over years does not need to be complete on the first evening, and insisting that it is is the surest way to end up with nothing.
+
+---
+
+## 4 October 2026 — The feature built to answer the complaint could not answer it
+
+She asked the app for a week of her saturated fat. It said it could not see that, and did not mention she could switch it on in two taps. The fix took an hour: read the macros she has chosen, and offer the ones she has not. It was wired to a column, typechecked, and shipped — and the column was not one the chat context actually sends. It had been reading nothing from the moment it landed. The interesting part is that neither language could object. The database never saw the request; the type system believed the declaration; the value arrived as "undefined", which every reader downstream treats as "she has not set that" — the single most plausible wrong answer available. The fault was never the missing column. It was two lists, one in a migration and one in TypeScript, that nothing compared.
+
+---
+
+## 4 October 2026 — Four hundred calories a day, because the question derived an answer instead of asking for one
+
+Her maintenance figure read 1,350 and she said the obvious thing: that is nothing. The app had not asked how active she is. It worked it out, every time she opened a particular screen, from some chips on that screen — and the function that works it out returns the lowest possible answer when handed nothing. Her chips were not saving. So the most important single number in the app was being quietly overwritten with "mostly sitting" by the act of visiting a page. A derived answer has no date on it and nobody to ask. The replacement is a question with five plain descriptions of a whole week, each showing the number it produces, and the date she last chose one.
+
+---
+
+## 4 October 2026 — Seven options, four of which were one option
+
+The setup screen offered seven goals to tick. It looked like a reasonable list. Four of them were a single answer wearing overlapping names: "lose fat" and "less fat, more muscle" share a half, and ticking both meant the second quietly won. One state had no way to be said at all. And all seven unticked meant the same thing as never having been asked, which is how an app ends up showing someone a target nobody chose. The replacement is four switches, three of them mutually exclusive, which say every combination exactly once — and where nothing ticked is a real answer with a real consequence: no figure at all. Adding the ability to say nothing was the change that made the rest coherent.

@@ -3626,6 +3626,104 @@ Ruth's decision, 30 September: build first, update the paperwork after. She is t
 
 *Capture-only. Nothing in this section is scoped, planned, or a roadmap item, and nothing here should be turned into a build item, a task, or a reference in build planning. It exists so that ideas raised in passing are not lost and do not have to be re-derived later. Distinct from **NOT CURRENTLY IN SCOPE**, which holds things deliberately parked out of the current build — these are further out than that.*
 
+## Four switches, one Pause, and the figures they produce (4 October 2026)
+
+**Her instruction, and it started as a complaint about where something lived:**
+
+> This is lovely, if it works, but useless hidden away in profile settings. Please
+> move it to the Today page as a toggle.
+
+And then, after four rounds of narrowing:
+
+> Keep things steady is too vague. Rename please. Get rid of Get Stronger
+> entirely... We need a third category, "Gain Weight".
+
+**The model.** Four switches on the Today card, and the same four at the top of
+setup:
+
+| Switch | Combines with | What it does to the daily figure |
+| --- | --- | --- |
+| **Lose fat** | Build muscle | A deficit of 0.5% of bodyweight a week, with a floor at the higher of her BMR and 1,200 kcal |
+| **Maintain my weight** | Build muscle | Around what she uses |
+| **Gain weight** | Build muscle | A surplus of 0.25% of bodyweight a week, floor 100, **ceiling 300** |
+| **Build muscle** | any of the above, or none | On its own: **5% of what she uses**, added. With any weight switch: nothing added |
+
+The three weight switches are mutually exclusive and the UI dims the other two,
+but the rule is enforced in `withToggle` as well, because the data is what the
+figures are read from.
+
+**All four off is "nothing chosen", not maintenance.** It produces no calorie
+figure at all. That distinction is the whole reason the switches exist: a NOT NULL
+DEFAULT of `maintain` once showed every account in the database a maintenance
+target presented as theirs, and an app cannot tell "I have decided to hold steady"
+from "nobody ever asked me" unless both are sayable.
+
+**One Pause, not a pause per switch.** Her words: *"NO 'Pause training', NO
+per-row paused states. ONE quick Pause."* It holds every combination at what her
+body uses, leaves the switches exactly as they are (shown, dimmed), and Resume
+restores them. One rule for every row of the matrix rather than a second copy of
+every row.
+
+**Where it is stored.** `user_profile.body_mode` holds exactly what she ticked;
+`fat_focus_state` and `muscle_focus_state` are written from it and kept as the
+view that chat, the day sums, the protein rule and every existing check already
+read. `paused_at` is the Pause. The record is the switches; the columns are a
+view of them. Before this, two columns had to carry three weight answers plus
+"nothing said", and the reader guessed - which dropped her Maintain tick on
+reload the same evening the switches were built.
+
+**The activity level is a link, not a question.** One whole-week answer chosen
+from plain descriptions, each showing the kcal it produces, with "Last set on
+[date]". It was previously DERIVED from the cadence chips on the activities
+screen with no guard, and `activityLevelFrom([])` returns `sedentary` - so every
+walk through that screen wrote sedentary over her moderate, about 400 kcal a day,
+silently. That is why her maintenance read 1,350 when she expected 1,550.
+
+**Where to look:**
+
+| | |
+| --- | --- |
+| The switches, the rules, the wording | `mobile/src/lib/body-mode.ts` |
+| The one control both screens use | `mobile/src/components/body-mode-toggles.tsx` |
+| The arithmetic | `mobile/src/lib/calorie-target.ts`, mirrored at `app/lib/daily-targets.ts` |
+| Every combination, generated from the code | `scripts/mode-matrix.json`, built by `scripts/build-mode-matrix.mjs` |
+| The eleven rules with their evidence and dates | `mobile/src/lib/calorie-rules.ts` |
+
+**The matrix is generated and checked, never written.** `check-body-mode.mjs`
+recomputes every row of `mode-matrix.json` against the real modules, so the
+document cannot describe an app that no longer exists. Her requirement: *"The
+final matrix is a machine-readable file that the checks read, so the code cannot
+drift from it."*
+
+## Regular scans: where they are documented (4 October 2026)
+
+**Her question:** *"Is there a Place in the Build specs that documents Regular
+scans with frequencies and where to go for the reports created?"*
+
+There is now, and it is deliberately not here. Scans change - frequencies move,
+reports get a new folder, a job gets added - and a table of them embedded in a
+52,000-word specification is a table that goes stale between the day it is written
+and the day somebody needs it.
+
+**`docs/recurring-scans.md` is the index.** Every scheduled job, how often it
+runs, the folder its reports land in, and whether it is allowed to change
+anything. If something runs on a schedule and produces a report, it belongs in
+that table.
+
+**`docs/research-log.md` is where the research reports themselves go**, the way
+the build log holds sessions - one place, appended to, so a finding from March is
+findable in November.
+
+**The monthly research scan proposes and never applies.** First real run is
+Monday 2 November 2026. It opens a branch, writes a proposal, and merges nothing;
+any suggestion that would lower a calorie floor or raise a surplus ceiling has to
+say so in its first line. A scan that could quietly move a safety bound is not a
+scan, it is an unattended edit.
+
+**All of them only run while the Claude desktop app is open.** A task due while
+the laptop is shut runs on next launch. Fine for a monthly job, a real weakness
+for anything that must happen on a given day - see the doc.
+
 ## Selodía hardware / wearable
 
 **Raised 5 September 2026. Status: speculative, far future. Not scoped, not a roadmap item.**
