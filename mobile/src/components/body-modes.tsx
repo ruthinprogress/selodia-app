@@ -76,7 +76,10 @@ export function BodyModes({
   const [mode, setMode] = useState<BodyMode | null>(null);
   const [paused, setPaused] = useState(false);
   const [tdee, setTdee] = useState<number | null>(null);
-  const [activityWord, setActivityWord] = useState<string>('your activity level');
+  // NULL UNTIL SHE HAS SAID. "When you are your activity level" is not a
+  // sentence, and the old fallback made one - so an unanswered question read as
+  // an answer. Null gets its own wording below.
+  const [activityWord, setActivityWord] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [explaining, setExplaining] = useState<'mode' | 'pause' | 'safety' | null>(null);
   const [saving, setSaving] = useState(false);
@@ -102,7 +105,7 @@ export function BodyModes({
       } | null;
       setMode(modeFromRecord(p?.body_mode));
       setPaused(Boolean(p?.paused_at));
-      setActivityWord(p?.activity_level ? ACTIVITY_WORD[p.activity_level] ?? 'your activity level' : 'your activity level');
+      setActivityWord(p?.activity_level ? ACTIVITY_WORD[p.activity_level] ?? null : null);
     })();
     return () => {
       cancelled = true;
@@ -270,7 +273,7 @@ export function BodyModes({
               target. */}
           {tdee != null && (
             <ThemedText type="small" themeColor="textSecondary">
-              At{' '}
+              {activityWord ? 'When you are ' : 'Set '}
               <ThemedText
                 type="small"
                 themeColor="accentDeep"
@@ -280,10 +283,14 @@ export function BodyModes({
                 // the file exists at app/settings/activity-level.tsx.
                 onPress={() => router.push('/settings/activity-level' as never)}
                 accessibilityRole="link"
-                accessibilityLabel="Change activity level">
-                {activityWord}
+                accessibilityLabel="How active are you?">
+                {activityWord ?? 'how active your weeks are'}
               </ThemedText>
-              , your body uses around {tdee.toLocaleString('en-GB')} kcal a day.
+              {activityWord
+                ? `, your body uses around ${tdee.toLocaleString('en-GB')} kcal a day.`
+                : ` and this follows it. For now your body is read as using around ${tdee.toLocaleString(
+                    'en-GB'
+                  )} kcal a day.`}
             </ThemedText>
           )}
 

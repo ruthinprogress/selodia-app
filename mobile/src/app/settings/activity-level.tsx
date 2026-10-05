@@ -126,9 +126,16 @@ export default function ActivityLevelScreen() {
   // broke.
   return (
     <SettingsPage
-      title="Your activity level"
+      // HER WORDING (5 October 2026): "change Your Activity Level to 'How active
+      // are you?' - reads warmer." A question, which is what the page is, rather
+      // than a label for a setting somebody is being asked to configure.
+      title="How active are you?"
       subtitle="Pick the line that sounds most like a usual week, training included. It is the single biggest thing in your daily calorie figure, so it is worth a moment."
-      footer="Nothing here is worked out from what you log. It is what you have said, and it stays as you left it until you change it.">
+      // NO footer HERE. The footer is the app's closing line, in the display
+      // italic - "Small settings support big change." This page's last sentence
+      // is a plain explanation of where the answer comes from, and setting prose
+      // in a quote's clothes makes it sound like a motto. It sits in the body.
+      >
       <View style={styles.choices}>
         {ACTIVITY_CHOICES.map((choice) => {
           const chosen = current === choice.key;
@@ -171,6 +178,11 @@ export default function ActivityLevelScreen() {
             That didn&apos;t save. Check your connection and try again.
           </ThemedText>
         )}
+
+        <ThemedText type="small" themeColor="textSecondary">
+          Nothing here is worked out from what you log. It is what you have said,
+          and it stays as you left it until you change it.
+        </ThemedText>
       </View>
     </SettingsPage>
   );

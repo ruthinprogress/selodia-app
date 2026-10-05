@@ -7,7 +7,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, MaxContentWidth, Spacing } from '@/constants/theme';
+import { CardRadius, DisplayFont, MaxContentWidth, Spacing } from '@/constants/theme';
 import { FigureMark } from '@/components/seed-marks';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -94,12 +94,21 @@ export function SettingsPage({
 
           <View style={styles.body}>{children}</View>
 
+          {/* THE CLOSING LINE IS A QUOTE, NOT A PILL (Ruth, 5 October 2026: "I
+              noticed that the 'small settings support big change' is in a pill.
+              It needs to be italic and the same font as all quotes in the app -
+              same as the one at the bottom of the Today screen").
+
+              It was a card in the element colour, which is the treatment this app
+              gives a THING - a row of settings, a figure, something to act on.
+              These lines are none of those; they are the app speaking in its own
+              voice at the foot of a page, which is exactly what the Today screen's
+              closing epigraph is. Same face, same italic, same centring, smaller,
+              because a settings page closes more quietly than a day does. */}
           {footer && (
-            <ThemedView type="backgroundElement" style={styles.footer}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.footerText}>
-                {footer}
-              </ThemedText>
-            </ThemedView>
+            <ThemedText themeColor="textSecondary" style={styles.footerText}>
+              {footer}
+            </ThemedText>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -248,7 +257,20 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six * 2,
     gap: Spacing.four,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  // ONE LEFT EDGE DOWN THE PAGE (Ruth, 5 October 2026): "the headings and text
+  // below are set too far to the left. they need to be inline with the left edge
+  // of the first icon, text or arrow icon in the content below."
+  //
+  // The page insets its content by Spacing.three and every card insets its own
+  // rows by Spacing.three again, so the title started one step further left than
+  // every word under it - a small misalignment, repeated on every settings page,
+  // which is the kind that reads as carelessness rather than as a choice.
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+  },
   headerText: { flex: 1, gap: Spacing.one },
   back: { alignSelf: 'flex-start', marginBottom: Spacing.one },
   // NO maxWidth (5 October 2026). 260 was a measure chosen to keep the
@@ -259,7 +281,7 @@ const styles = StyleSheet.create({
   subtitle: { lineHeight: 20 },
   body: { gap: Spacing.four },
   group: { gap: Spacing.one },
-  groupTitle: { marginLeft: Spacing.two },
+  groupTitle: { marginLeft: Spacing.three },
   card: { borderRadius: CardRadius, paddingHorizontal: Spacing.three },
   row: {
     flexDirection: 'row',
@@ -269,11 +291,15 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   rowDetail: { lineHeight: 18 },
-  footer: {
-    borderRadius: CardRadius,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+  // THE SAME VOICE AS THE TODAY EPIGRAPH, a size quieter. See overview-panel's
+  // `epigraph`: the display face's italic is the one italic in the app, and it
+  // means "this is the app speaking" rather than "this is a thing on the page".
+  footerText: {
+    fontFamily: DisplayFont.italic,
+    fontSize: 19,
+    lineHeight: 26,
+    textAlign: 'center',
+    paddingTop: Spacing.three,
   },
-  footerText: { lineHeight: 20, textAlign: 'center' },
   pressed: { opacity: 0.6 },
 });

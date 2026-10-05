@@ -251,7 +251,25 @@ export function modeLabel(mode: BodyMode | null): string {
  * one sentence rather than as a figure of its own.
  */
 export function usesLine(activityWord: string, tdeeKcal: number): string {
-  return `At ${activityWord}, your body uses around ${tdeeKcal.toLocaleString('en-GB')} kcal a day.`;
+  // "WHEN YOU ARE", NOT "AT" (Ruth, 5 October 2026): "'At' actually isn't good
+  // grammar and cheapens the feel."
+  //
+  // She is right, and the fault was mine for writing the sentence around the
+  // link rather than the other way round. "At training once or twice a week" is
+  // a preposition doing a job it cannot do - you are not AT a frequency - and it
+  // reads like a form field with a value dropped into it, which is exactly the
+  // register this app is trying not to have.
+  //
+  // THE WORDS WERE CHANGED TO SUIT THE SENTENCE, which is the half that makes it
+  // work: every activity phrase now follows "When you are" cleanly - mostly
+  // sitting, training once or twice a week, training most days. A phrase that
+  // only reads after a preposition was a phrase chosen for the wrong sentence.
+  return `When you are ${activityWord}, your body uses around ${tdeeKcal.toLocaleString('en-GB')} kcal a day.`;
+}
+
+/** The same figure when she has never said how active her weeks are. */
+export function usesLineUnset(tdeeKcal: number): string {
+  return `Your body uses around ${tdeeKcal.toLocaleString('en-GB')} kcal a day, going on very little movement.`;
 }
 
 /**
