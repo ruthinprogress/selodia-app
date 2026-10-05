@@ -356,6 +356,69 @@
       "lastReviewed": "2026-10-04"
     }
   ],
+  "skillScreen": {
+    "screen": {
+      "question": "What would you love to be able to do?",
+      "subtitle": "It could be a fitness skill, a sport, or simply something you'd like your body to find easier. Big or small, it all belongs here. You can add more later in chat.",
+      "ideasLabel": "Ideas",
+      "ideas": [
+        "do a pull-up",
+        "run 5 km",
+        "touch my toes",
+        "carry heavy shopping",
+        "get up from the floor easily",
+        "swim further",
+        "hike all day",
+        "play with my children"
+      ],
+      "entryLabel": "I'd love to be able to",
+      "entryPlaceholder": "climb Snowdon",
+      "placementHeading": "Where are you with it?",
+      "placementNote": "This tells Selodía where you are starting today. There are no dates and no deadlines. Leave this and it starts from the beginning.",
+      "footer": "Nothing coming to mind is fine. Skills can be added any time in chat.",
+      "error": "That didn't save. Check your connection and try again."
+    },
+    "placements": [
+      {
+        "key": "starting",
+        "label": "Just starting"
+      },
+      {
+        "key": "some",
+        "label": "I've made a start"
+      },
+      {
+        "key": "nearly",
+        "label": "Nearly there"
+      }
+    ],
+    "emptyTab": "Nothing here yet. Add something you are working on, in your own words.",
+    "laddersEnabled": false,
+    "shownOnScreen": [
+      "What would you love to be able to do?",
+      "It could be a fitness skill, a sport, or simply something you'd like your body to find easier. Big or small, it all belongs here. You can add more later in chat.",
+      "Ideas",
+      "do a pull-up",
+      "run 5 km",
+      "touch my toes",
+      "carry heavy shopping",
+      "get up from the floor easily",
+      "swim further",
+      "hike all day",
+      "play with my children",
+      "I'd love to be able to",
+      "climb Snowdon",
+      "Where are you with it?",
+      "Just starting",
+      "I've made a start",
+      "Nearly there",
+      "This tells Selodía where you are starting today. There are no dates and no deadlines. Leave this and it starts from the beginning.",
+      "Nothing coming to mind is fine. Skills can be added any time in chat.",
+      "That didn't save. Check your connection and try again."
+    ],
+    "whatASkillIs": "Her own words as the title, first letter capitalised and saved exactly as typed; where she is with it, changeable by a tap; and the date it was added. Nothing else. No model call on the screen.",
+    "quickLog": "Text only, inside Skills. A short dated note on the skill, newest first, editable and deletable, searchable and available to the Report Builder. No tap button, no session picker, nothing logs itself, no counts or streaks on the card."
+  },
   "startingGuide": {
     "frame": {
       "title": "Your starting guide",

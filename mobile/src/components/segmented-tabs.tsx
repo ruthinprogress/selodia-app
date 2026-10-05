@@ -161,8 +161,22 @@ export function SegmentedTabs<T extends string>({
               themeColor={selected ? 'text' : 'textSecondary'}
               style={styles.label}
               numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
+              // NO adjustsFontSizeToFit (5 October 2026). "Week" came back as
+              // "Wee" on her phone again, after the font size had already been
+              // tuned twice for this control.
+              //
+              // THE MECHANISM IS THE FAULT, NOT THE SIZE. On Android that prop
+              // becomes autoSizeTextType, which measures the string in the
+              // SYSTEM face and then draws it in Manrope - the same mismatch
+              // this file's own header blames for "Movemen". A four letter word
+              // in eighty points of tab does not need shrinking; it was being
+              // shrunk, mismeasured and then clipped.
+              //
+              // Clip rather than ellipsize, so if a label ever really is too
+              // long the tail is missing rather than a word being replaced
+              // wholesale by dots - and check-segmented-tabs.mjs keeps the
+              // longest label inside the narrowest tab.
+              ellipsizeMode="clip"
               // 1.25 rather than 1.3, for the same fourth-tab reason as the
               // font size. Capped at all because a tab-bar label that wraps
               // or loses letters is less readable than a slightly smaller one,

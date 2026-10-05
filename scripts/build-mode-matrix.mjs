@@ -24,6 +24,7 @@ const PRO = await import(root + '/mobile/src/lib/protein.ts');
 const INTENT = await import(root + '/mobile/src/lib/body-intent.ts');
 const RULES = await import(root + '/mobile/src/lib/calorie-rules.ts');
 const GUIDE = await import(root + '/mobile/src/lib/starting-guide.ts');
+const SKILLS = await import(root + '/mobile/src/lib/skills-copy.ts');
 
 // HER OWN FIGURES, at the activity level she says is right (4 October 2026:
 // "mine TDEE is around 1550 so the calculation should land around there").
@@ -160,6 +161,37 @@ const out = {
   // COPIED, NOT RETYPED. It comes out of lib/starting-guide.ts, which is the file
   // the app itself renders from, so the record and the screen cannot say two
   // different things. check-starting-guide.mjs compares them both ways.
+  // SCREEN 3 OF 7, AS THE PERMANENT RECORD (Ruth, 5 October 2026): "Add the
+  // screen text to the matrix as the permanent record." Copied out of
+  // lib/skills-copy.ts, which is what the screen itself renders, so the record
+  // and the screen cannot say two different things.
+  skillScreen: {
+    screen: SKILLS.SKILL_SCREEN,
+    placements: SKILLS.PLACEMENTS,
+    emptyTab: SKILLS.SKILLS_EMPTY,
+    laddersEnabled: SKILLS.LADDERS_ENABLED,
+    shownOnScreen: [
+      SKILLS.SKILL_SCREEN.question,
+      SKILLS.SKILL_SCREEN.subtitle,
+      SKILLS.SKILL_SCREEN.ideasLabel,
+      ...SKILLS.SKILL_SCREEN.ideas,
+      SKILLS.SKILL_SCREEN.entryLabel,
+      SKILLS.SKILL_SCREEN.entryPlaceholder,
+      SKILLS.SKILL_SCREEN.placementHeading,
+      ...SKILLS.PLACEMENTS.map((p) => p.label),
+      SKILLS.SKILL_SCREEN.placementNote,
+      SKILLS.SKILL_SCREEN.footer,
+      SKILLS.SKILL_SCREEN.error,
+    ],
+    whatASkillIs:
+      'Her own words as the title, first letter capitalised and saved exactly as typed; ' +
+      'where she is with it, changeable by a tap; and the date it was added. Nothing else. ' +
+      'No model call on the screen.',
+    quickLog:
+      'Text only, inside Skills. A short dated note on the skill, newest first, editable and ' +
+      'deletable, searchable and available to the Report Builder. No tap button, no session ' +
+      'picker, nothing logs itself, no counts or streaks on the card.',
+  },
   startingGuide: {
     frame: GUIDE.GUIDE_FRAME,
     states: GUIDE.GUIDE_STATES.map((g) => ({
