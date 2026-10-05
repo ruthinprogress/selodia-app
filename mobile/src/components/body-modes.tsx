@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
@@ -71,7 +71,15 @@ export function BodyModes({
    * worse than not refreshing at all: it looks like the switch did nothing.
    */
   onChanged,
-}: { onChanged?: () => void } = {}) {
+  /**
+   * Bumped by the screen to ask this card to open itself.
+   *
+   * WHY A COUNTER AND NOT A BOOLEAN: she can shut the card again afterwards, and
+   * a boolean the parent holds would spring it back open on the next render.
+   * This says "open now", once, and then the card's own state is hers again.
+   */
+  openSignal = 0,
+}: { onChanged?: () => void; openSignal?: number } = {}) {
   const theme = useTheme();
   const [mode, setMode] = useState<BodyMode | null>(null);
   const [paused, setPaused] = useState(false);
@@ -81,6 +89,9 @@ export function BodyModes({
   // an answer. Null gets its own wording below.
   const [activityWord, setActivityWord] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true);
+  }, [openSignal]);
   const [explaining, setExplaining] = useState<'mode' | 'pause' | 'safety' | null>(null);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);

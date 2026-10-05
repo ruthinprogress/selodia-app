@@ -305,6 +305,9 @@ export function OverviewPanel({
   //
   // The ref stops the first focus doubling the first read: the effect below has
   // already run by then, on key 0.
+  /** Bumped by the "say what you are working towards" line, to open the card. */
+  const [openModes, setOpenModes] = useState(0);
+
   const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -684,14 +687,31 @@ export function OverviewPanel({
             calorie target yet - say what you are working towards" with an em
             dash, which she asked to have removed twice. It is now two
             sentences, which is what the dash was standing in for. */}
+        {/* IT OPENS THE CARD BELOW, IT DOES NOT LEAVE THE SCREEN (Ruth, 5 October
+            2026): "The link from Today takes them to an onboarding page that then
+            blanks out. It seems broken now and the onboarding screen looks
+            totally confused."
+
+            The link was written when the only place to say what she was working
+            towards was the setup question, so it pushed her into onboarding with
+            a redo flag - a whole setup screen, header, Skip and Continue, for one
+            answer. That answer is four switches on this very screen now, about
+            three inches below the sentence offering to go and find them.
+
+            A weight she has not given is the one case that still needs another
+            screen, because this card cannot ask for it. */}
         {data.calorieTargetKcal == null && data.calorieTargetBlockedBy !== null ? (
           <Pressable
-            onPress={() => router.push({ pathname: '/onboarding/goals', params: { redo: '1' } })}
+            onPress={() =>
+              data.calorieTargetBlockedBy === 'weight-unknown'
+                ? router.push({ pathname: '/onboarding/goals', params: { redo: '1' } })
+                : setOpenModes((n) => n + 1)
+            }
             accessibilityRole="button"
             accessibilityLabel={
               data.calorieTargetBlockedBy === 'weight-unknown'
                 ? 'Add your weight, to get a calorie target'
-                : 'Choose what you are working towards, to get a calorie target'
+                : 'Open your goal switches, to get a calorie target'
             }
             style={({ pressed }) => pressed && styles.pressed}
           >
@@ -877,7 +897,7 @@ export function OverviewPanel({
           the calorie guide"). The card writes, then says so, and this re-runs the
           same read that focus runs - every figure on this screen is derived from
           that read, so there is nothing else to keep in step. */}
-      <BodyModes onChanged={() => setReloadKey((k) => k + 1)} />
+      <BodyModes onChanged={() => setReloadKey((k) => k + 1)} openSignal={openModes} />
 
       {/* Hydration has no header because it is not a view to go into. It is the
           one thing on this screen you can DO, so it sits inline as an action -
