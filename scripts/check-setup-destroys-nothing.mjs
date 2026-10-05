@@ -157,8 +157,14 @@ check('a blank screen cannot be read as "she deselected everything"', () => {
     'the write plan is not told whether her week was read, so its refusal - the ' +
       'thing check-week-write-plan.mjs case 1 and 2 rely on - never triggers'
   );
+  // THE PROPERTY, NOT MY VARIABLE NAME. This pinned `if (weekError)`, and the
+  // screen was rewritten on 5 October with the error called `error` - the check
+  // then failed on a rename while the behaviour was intact. What matters is that
+  // a read error puts the screen in 'failed' rather than leaving it looking like
+  // an empty selection.
   ok(
-    /if \(weekError\) \{\s*setLoadState\('failed'\);/.test(activities),
+    /setLoadState\('failed'\)/.test(activities) &&
+      /logClientError\('week-load'/.test(activities),
     'a failed read does not mark the screen failed, so a network error presents ' +
       'as "she unselected all of them"'
   );
@@ -173,11 +179,24 @@ check('the screen shows her current week selected', () => {
   // Item 4: redo is an edit mode. This is also what makes the check above true,
   // so it is not a separate nicety - a screen that displays her selection is a
   // screen whose empty state means something.
+  // THE COLUMNS CHANGED WITH THE SCREEN (5 October 2026): it reads `source` now
+  // rather than `cadence`, because the frequency question is gone and the screen
+  // may only remove rows it created. The property is the same - it reads her week
+  // before it can write one - so this asserts the read and the prefill.
   ok(
-    /from\('user_week'\)\s*\.select\('activity, cadence'\)/.test(activities),
+    /from\('user_week'\)[\s\S]{0,80}\.select\('activity, source'\)/.test(activities),
     'the screen never reads her week, so a redo starts blank and overwrites'
   );
-  ok(/setChosen\(picked\)/.test(activities), 'the rows that were read are not shown as selected');
+  ok(
+    /setChosen\(ours\)/.test(activities),
+    'the screen reads her week and does not show it, so a redo still starts blank'
+  );
+  ok(
+    /r\.source === 'setup'/.test(activities),
+    'the screen no longer scopes itself to its own rows, so a redo can remove ' +
+      'something she added in chat'
+  );
+
   return 'a redo opens on her answers';
 });
 

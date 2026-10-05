@@ -67,12 +67,27 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
   // opened on the body. The app's purpose is to take mental load off, reduce
   // friction and stress, and support long-term health, so it opens on how she
   // wants her days to feel.
+  // HER ORDER, 5 October 2026, and the logic is hers too: "1. how do your days
+  // feel, 2. approach, 3. How active are you?, 4. what do you already do,
+  // 5. something you would like to do, 6. anything to steer, 7. about body".
+  //
+  // WHAT MOVED AND WHY. The activity level was a settings page; it is a question
+  // now, and it sits directly after the approach because the approach decides
+  // what the figure is FOR and the level decides what it is built on. The panel
+  // on step 2 already quotes it, so being asked next is the first point at which
+  // it means anything. "Something you would like to do" drops from third to
+  // fifth, after the activities she already has, which is the order a person
+  // thinks in: what my week is, then what I would like to add to it.
+  //
+  // FIRST DRAFT IS NOT ONE OF THE SEVEN. It is the draft the seven produce, not
+  // a question about her, which is also what makes her seven seven.
   { route: 'consent', label: 'Your data', kind: 'configuration' },
   { route: 'account', label: 'Your account', kind: 'configuration' },
   { route: 'days', label: 'How your days feel', kind: 'configuration' },
-  { route: 'goals', label: 'Your body', kind: 'configuration' },
+  { route: 'goals', label: 'Your approach', kind: 'configuration' },
+  { route: 'activity-level', label: 'How active you are', kind: 'configuration' },
+  { route: 'activities', label: 'What you already do', kind: 'configuration' },
   { route: 'skill', label: 'Something to work on', kind: 'configuration' },
-  { route: 'activities', label: 'How you move', kind: 'configuration' },
   { route: 'allergies', label: 'What to steer around', kind: 'configuration' },
   { route: 'life-stage', label: 'About your body', kind: 'configuration' },
   { route: 'first-draft', label: 'Your first draft', kind: 'configuration' },
@@ -116,7 +131,15 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
  * approved as "1 of 7", and made the first question look like the third.
  */
 export const COUNTED_SCREENS = ONBOARDING_SCREENS.filter(
-  (s) => s.kind === 'configuration' && s.route !== 'consent' && s.route !== 'account'
+  (s) =>
+    s.kind === 'configuration' &&
+    s.route !== 'consent' &&
+    s.route !== 'account' &&
+    // AND NOT THE FIRST DRAFT (5 October 2026). Her seven are questions about
+    // her; the draft is what they produce. Counting it would make the last
+    // question "6 of 7" and the summary "7 of 7", which is the app calling its
+    // own answer a question.
+    s.route !== 'first-draft'
 );
 
 export const ONBOARDING_TOTAL = COUNTED_SCREENS.length;

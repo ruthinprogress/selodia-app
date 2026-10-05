@@ -47,14 +47,21 @@ console.log('\n  SEVEN QUESTIONS, AND NOTHING SCORED\n');
 // ------------------------------------------------------------------ the flow
 
 /** Her order, from the canvas: 1 How days feel ... 7 First draft. */
+// HER ORDER, RESTATED 5 OCTOBER 2026: "1. how do your days feel, 2. approach,
+// 3. How active are you?, 4. what do you already do, 5. something you would like
+// to do, 6. anything to steer, 7. about body".
+//
+// The activity level joins the seven as a question rather than a settings page,
+// and the first draft leaves the count: it is what the seven produce, not a
+// question about her, which is what makes seven come to seven.
 const HER_ORDER = [
   'days',
   'goals',
-  'skill',
+  'activity-level',
   'activities',
+  'skill',
   'allergies',
   'life-stage',
-  'first-draft',
 ];
 
 await check('seven questions, in her order', () => {

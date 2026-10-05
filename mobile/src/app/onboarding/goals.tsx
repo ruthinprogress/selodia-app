@@ -137,6 +137,18 @@ export default function GoalsScreen() {
   const [explaining, setExplaining] = useState<'mode' | 'safety' | null>(null);
   const [showWorking, setShowWorking] = useState(false);
   const [measure, setMeasure] = useState('');
+  /**
+   * HEIGHT, MOVED HERE FROM "WHAT DO YOU ALREADY DO" (Ruth, 5 October 2026):
+   * "2/7 inherits the weight question next to height. That makes more sense, it's
+   * used for the calculations there."
+   *
+   * It was on the activities screen because that screen used to derive her
+   * activity level, so the two metabolic inputs were collected together. The
+   * level is its own question now and the activities screen collects activities,
+   * which left height sitting on a screen that had no use for it - while the
+   * panel that needs it, and shows what it produces, was two steps earlier.
+   */
+  const [height, setHeight] = useState('');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const [weight, setWeight] = useState<WeightAnswer | null>(null);
@@ -271,6 +283,9 @@ export default function GoalsScreen() {
           .map((r) => String(r.label ?? ''))
           .filter(Boolean)
       );
+      // Her height as it stands, so a redo opens on her answer rather than blank.
+      if (typeof profile?.height_cm === 'number') setHeight(String(profile.height_cm));
+
       const detail = (goalRows ?? []).find((r) => typeof r.detail === 'string' && r.detail)?.detail;
       if (typeof detail === 'string') setMeasure(detail);
     })();
@@ -472,6 +487,17 @@ export default function GoalsScreen() {
     //
     // ONLY WHEN SHE GAVE ONE. "I do not know yet" writes nothing, which is the
     // difference between it and a guess: there is no number to keep.
+    // HEIGHT, WRITTEN ONLY WHEN IT IS PLAUSIBLE. The same guard it had on the
+    // other screen: a stray keystroke should not become a metabolic input.
+    const cm = Number(height.replace(/[^0-9.]/g, ''));
+    if (cm >= 100 && cm <= 230) {
+      const { error: heightError } = await supabase
+        .from('user_profile')
+        .update({ height_cm: Math.round(cm) })
+        .eq('user_id', user.id);
+      if (heightError) return false;
+    }
+
     if (weight?.known === true) {
       const { error: weightError } = await supabase.from('body_measurements').insert({
         user_id: user.id,
@@ -519,7 +545,7 @@ export default function GoalsScreen() {
     // Manual's own row, so that is where it returns - and seeing the new goal on
     // the row she tapped is the confirmation that the save happened, which no
     // sentence can replace.
-    leave('/onboarding/skill');
+    leave('/onboarding/activity-level');
   }
 
   async function goOn(skipping: boolean) {
@@ -706,6 +732,29 @@ export default function GoalsScreen() {
               week, which is not a figure at all without a bodyweight. Before
               today the goal saved and the target stayed blank, with nothing on
               any screen saying why. */}
+          {/* HEIGHT BESIDE WEIGHT, because the panel below uses both and shows
+              what they come to. Her words: "it's used for the calculations
+              there." */}
+          <ThemedView type="backgroundElement" style={styles.measureCard}>
+            <ThemedText type="small">Roughly how tall are you?</ThemedText>
+            <TextInput
+              value={height}
+              onChangeText={setHeight}
+              placeholder="Height in cm"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="numeric"
+              accessibilityLabel="Your height in centimetres"
+              style={[
+                styles.measureInput,
+                { color: theme.text, borderColor: theme.backgroundSelected },
+              ]}
+            />
+            <ThemedText type="small" themeColor="textSecondary">
+              Used for the metabolic estimate, and nothing else. Skip it and
+              Selod&iacute;a works without it.
+            </ThemedText>
+          </ThemedView>
+
           <WeightQuestion
             value={weight}
             // Nothing to invalidate: the figures below recompute from this.

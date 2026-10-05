@@ -1,15 +1,13 @@
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { OnboardingQuestion } from '@/components/onboarding-question';
 import { useOnboardingAction } from '@/components/onboarding-action';
-import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { CardRadius } from '@/constants/theme';
+import { ButtonRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { advanceOnboardingStep } from '@/lib/onboarding-step';
+import { ACTIVITIES_SCREEN, activityTitle } from '@/lib/activities-copy';
+import { logClientError } from '@/lib/client-error-log';
 import {
   LOAD_FAILED_MESSAGE,
   LOAD_RETRY_LABEL,
@@ -17,117 +15,52 @@ import {
   mayWrite,
   type LoadState,
 } from '@/lib/load-state';
+import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { useOneQuestion } from '@/lib/one-question';
-import { logClientError } from '@/lib/client-error-log';
 import { saveOutcomeMessage, type SaveOutcome } from '@/lib/save-outcome';
 import { supabase } from '@/lib/supabase';
 import { planWeekWrite } from '@/lib/week-write-plan';
 
-// SCREEN 4: WHAT SHE ALREADY DOES. This is what fills My Week.
+// WHAT YOU ALREADY DO. Her final text, 5 October 2026: see lib/activities-copy.ts
+// for the record and for why the frequency question is gone.
 //
-// IT ASKS WHAT SHE DOES, NOT WHAT SHE SHOULD DO, and the difference is the
-// whole screen. Every other app in this market opens by assigning a programme.
-// This one starts from her actual life and gives it a shape, which is what
-// "a rhythm to work with" means in the brief.
+// SHE FOUND IT BY ASKING WHAT THE ANSWER WAS FOR. "When the user says eg. ballet
+// and selects 'weekly' does it go into the weekly view on a random day? or do
+// they all go into the Anytime category at the bottom... if it's the second, why
+// do we ask the frequency at all?" It was the second. Nothing was placed on a day,
+// and the cadence fed a second write of her activity level that overwrote the one
+// she had stated on its own screen.
 //
-// THE FREQUENCIES ARE VAGUE ON PURPOSE. "Now and then", "most days" - not
-// "3x per week". A precise number invites a comparison against a precise
-// number, and this screen has no business creating something to fall short of.
-// They are stored as the words she picked and shown back as the words she
-// picked.
+// SO THE SCREEN COLLECTS ACTIVITIES AND NOTHING ELSE. No frequency, and no height
+// either - height sits beside the weight question on the approach screen now,
+// where the figure it feeds is shown.
 //
-// NOTHING HERE IS A COMMITMENT. The week is a description. The spec's hard rule
-// holds: nothing in it is ever marked done or missed.
-//
-// EVERY ACTIVITY TAPPED HERE BECOMES A WEEK ROW, with its frequency and no day.
-// `user_week.days` defaults to '{}', so a row needs no day to exist - the day is
-// something chat can add later, or never. Ruth, 2 October: "Each activity she
-// taps in setup, with its frequency, creates a Week row (activity plus cadence,
-// no day needed)."
-
-const QUESTION = 'What do you already do?';
-const SUBTITLE = 'Whatever is actually in your week. Nothing here is a commitment.';
-
-// The starting set, not a vocabulary. Anything else is added by saying so in
-// chat, the same way everything else in this app is.
-const ACTIVITIES = [
-  { key: 'walking', label: 'Walking' },
-  { key: 'running', label: 'Running' },
-  { key: 'gym', label: 'Gym or weights' },
-  { key: 'yoga', label: 'Yoga' },
-  { key: 'pilates', label: 'Pilates' },
-  { key: 'swimming', label: 'Swimming' },
-  { key: 'cycling', label: 'Cycling' },
-  { key: 'dance', label: 'Dance or ballet' },
-  { key: 'calisthenics', label: 'Bar work or calisthenics' },
-  { key: 'classes', label: 'Classes of some kind' },
-] as const;
-
-type ActivityKey = (typeof ACTIVITIES)[number]['key'];
-
-const CADENCES = [
-  { key: 'now_and_then', label: 'Now and then' },
-  { key: 'weekly', label: 'Weekly' },
-  { key: 'few_times', label: 'A few times a week' },
-  { key: 'most_days', label: 'Most days' },
-] as const;
-
-type CadenceKey = (typeof CADENCES)[number]['key'];
-
-// Stored as the words she picked, so the week reads back in her own terms.
-const CADENCE_WORDS: Record<CadenceKey, string> = {
-  now_and_then: 'Now and then',
-  weekly: '1x/week',
-  few_times: 'A few times a week',
-  most_days: 'Most days',
-};
-
-// Back the other way, so a redo can show her the frequency she already gave.
-// Chat writes cadences in its own words, so anything unrecognised simply leaves
-// the frequency chips unset rather than guessing which of the four it meant.
-const CADENCE_KEYS: Record<string, CadenceKey> = Object.fromEntries(
-  (Object.keys(CADENCE_WORDS) as CadenceKey[]).map((k) => [CADENCE_WORDS[k], k])
-);
-
-// The everyday-activity level the TDEE estimate needs, from what she actually
-// picked. The busiest answer wins: somebody who walks most days and swims now
-// and then is not sedentary.
-// activityLevelFrom IS GONE (5 October 2026). It turned the cadence chips into a
-// whole-day multiplier - the single biggest term in her calorie figure - and was
-// the wrong source twice over: the chips describe a few named activities rather
-// than a week, and the level is now something she states on its own screen with a
-// date on it. See app/settings/activity-level.tsx.
+// AND SHE CAN TYPE HER OWN. The ideas are examples; anything she adds is kept in
+// her words.
 
 export default function ActivitiesScreen() {
   const theme = useTheme();
-  // ONE QUESTION WHEN SHE CAME FROM HER BODY MANUAL. See lib/one-question.ts:
-  // until tonight only goals.tsx read this, so every other row of the Manual
-  // opened a step of the seven-question chain and walked her into chat.
   const { fromManual, leave } = useOneQuestion();
-  const [chosen, setChosen] = useState<ActivityKey[]>([]);
-  const [cadences, setCadences] = useState<Partial<Record<ActivityKey, CadenceKey>>>({});
-  const [height, setHeight] = useState('');
+
+  /** Her chosen activities, in the order they were added. Labels, not keys. */
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [own, setOwn] = useState('');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  // HER WEEK AS IT STANDS, READ BEFORE ANYTHING CAN BE OVERWRITTEN BY IT.
-  //
-  // Ruth, 2 October 2026: "Redo is an EDIT MODE. Pull every current selection
-  // from where it is kept and show it selected."
-  //
-  // It is also the guard for item 1, and the two are the same fact. An empty
-  // `chosen` is ambiguous until this has run: it means either "she deselected
-  // everything" or "the screen has not loaded yet". The old code could not tell,
-  // treated both as the first, and deleted her week on the second. Nothing may
-  // be written until the screen knows which it is - so Continue stays disabled
-  // until `loaded`, and `save` refuses outright if it is somehow pressed anyway.
-  // THREE STATES, NOT A BOOLEAN. `loaded: false` meant both "not yet" and "it
-  // failed", and the second inherited the treatment built for the first: a dead
-  // Continue and no message, forever. See lib/load-state.ts.
   const [loadState, setLoadState] = useState<LoadState>('loading');
-  // Said when Continue deliberately wrote nothing. Not an error - an outcome.
   const [notSaved, setNotSaved] = useState<string | null>(null);
-  /** Bumped by Try again, which re-runs the read. */
   const [attempt, setAttempt] = useState(0);
+  /**
+   * The rows this screen created, read at mount.
+   *
+   * IT MAY REMOVE ONLY ITS OWN. Until today that was a fixed list of ten labels
+   * in this file; with a box she can type into, a label cannot tell "Lake
+   * swimming, typed here" from "Lake swimming, mentioned in chat". user_week.source
+   * says which, and this is what the write plan is given as its scope. The goals
+   * screen widened exactly this boundary on 2 October and archived a goal it had
+   * never shown her.
+   */
+  const [mine, setMine] = useState<string[]>([]);
 
   useEffect(() => {
     let live = true;
@@ -135,195 +68,82 @@ export default function ActivitiesScreen() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      // A SCREEN MUST NEVER SIT ON 'loading' FOREVER (2 October 2026, 21:02).
-      //
-      // Ruth: "I tried to add to Week via profile and it dragged me through
-      // onboarding again but saved nothing. Twice. And ended up in Chat at the
-      // end. Twice."
-      //
-      // `if (!user) return;` left loadState on 'loading', and 'loading' is the
-      // one state that disables Continue. So the forward button was dead, the
-      // only live control was "Skip this question", and skipping writes nothing
-      // and walks her to the next screen - five activities and their cadences
-      // discarded without a word, twice over.
-      //
-      // THIS IS THE DEAD SCREEN OF 1 OCTOBER, IN THE ERROR PATH OF THE MODULE
-      // WRITTEN TO END IT. load-state.ts exists because `if (error) return` left
-      // five screens blank with a dead button; I moved the error case to three
-      // states and left the no-user case returning into the same trap.
-      //
-      // 'failed' is the honest state: it says so, offers Try again, and lets her
-      // past without writing - which is what 'loading' pretended to do while
-      // actually just locking the door.
       if (!user) {
-        setLoadState('failed');
+        if (live) setLoadState('failed');
         return;
       }
-      // A ROW TAPPED ON HER PROFILE IS NOT A STEP OF SETUP. Advancing here
-      // moves where the app thinks she is in a flow she finished.
       if (!fromManual) advanceOnboardingStep(supabase, user.id, 'activities');
 
-      const [{ data: weekRows, error: weekError }, { data: profile }] = await Promise.all([
-        supabase.from('user_week').select('activity, cadence').eq('user_id', user.id),
-        supabase.from('user_profile').select('height_cm').eq('user_id', user.id).maybeSingle(),
-      ]);
+      const { data, error } = await supabase
+        .from('user_week')
+        .select('activity, source')
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: true });
       if (!live) return;
-
-      // A FAILED READ IS NOT AN EMPTY WEEK. If this throws and the screen still
-      // declares itself loaded, every chip is unselected for a reason that has
-      // nothing to do with her, and Continue reads that as "remove all of them".
-      // Staying unloaded keeps Continue disabled, which is the safe failure.
-      if (weekError) {
+      if (error) {
+        void logClientError('week-load', `reading her week failed: ${error.message}`);
         setLoadState('failed');
         return;
       }
-
-      const picked: ActivityKey[] = [];
-      const words: Partial<Record<ActivityKey, CadenceKey>> = {};
-      for (const row of weekRows ?? []) {
-        // Only this screen's own ten can be shown as chips. A French class added
-        // in chat has no chip to light up, and must not be invented one - it
-        // simply is not this screen's to show, or to remove.
-        const match = ACTIVITIES.find((a) => (a.label as string) === String(row.activity));
-        if (!match) continue;
-        picked.push(match.key);
-        const cadenceKey = row.cadence ? CADENCE_KEYS[String(row.cadence)] : undefined;
-        if (cadenceKey) words[match.key] = cadenceKey;
-      }
-      setChosen(picked);
-      setCadences(words);
-      if (typeof profile?.height_cm === 'number') setHeight(String(profile.height_cm));
+      // A REDO IS AN EDIT MODE. Her own instruction: "Pull every current selection
+      // from where it is kept and show it selected." Only this screen's rows, so
+      // nothing from chat appears here to be taken away by accident.
+      const rows = (data ?? []) as { activity: string; source: string | null }[];
+      const ours = rows.filter((r) => r.source === 'setup').map((r) => r.activity);
+      setMine(ours);
+      setChosen(ours);
       setLoadState('ready');
     })();
     return () => {
       live = false;
     };
-  }, [attempt]);
+  }, [fromManual, attempt]);
 
-  function toggle(key: ActivityKey) {
-    setChosen((prev) => {
-      if (prev.includes(key)) {
-        setCadences((c) => {
-          const next = { ...c };
-          delete next[key];
-          return next;
-        });
-        return prev.filter((k) => k !== key);
-      }
-      return [...prev, key];
-    });
+  function toggle(label: string) {
+    setChosen((list) =>
+      list.includes(label) ? list.filter((l) => l !== label) : [...list, label]
+    );
   }
 
-  /**
-   * WHAT ACTUALLY HAPPENED, NOT WHETHER IT WENT WRONG (2026-10-04).
-   *
-   * Ruth: "From Profile, filled in 'What you already do' but nothing was
-   * populated anywhere in week." On the current build, so not the stale install.
-   *
-   * This returned a BOOLEAN, and returned `true` when it had deliberately written
-   * nothing - the not-ready path below. `true` means "carry on" to the caller, so
-   * she was moved along and told nothing, which is indistinguishable from a save
-   * that worked. Her week still holds one row from Friday.
-   *
-   * A boolean cannot carry the difference between "saved", "there was nothing to
-   * save" and "I refused to save because I do not know what your week holds", and
-   * those three need three different things said to her. So it says which.
-   */
-  async function save(): Promise<SaveOutcome> {
-    // NOTHING IS WRITTEN WITHOUT HER WEEK IN HAND. The one property worth
-    // keeping from the original design: an empty chip row must never be read as
-    // "she deselected everything", which is what deleted her week on 1 October.
-    //
-    // IT NO LONGER PRETENDS THAT WENT WELL. The refusal is right; reporting it as
-    // success is what cost her the input.
-    if (!mayWrite(loadState)) {
-      void logClientError('week-save', `refused: loadState=${loadState}, chosen=${chosen.length}`);
-      return 'not-ready';
-    }
+  function addOwn() {
+    const label = activityTitle(own);
+    if (!label) return;
+    setOwn('');
+    setChosen((list) => (list.includes(label) ? list : [...list, label]));
+  }
 
+  async function save(): Promise<SaveOutcome> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      void logClientError('week-save', 'no signed-in user at save time');
-      return 'failed';
+    if (!user) return 'failed';
+    if (!mayWrite(loadState)) {
+      void logClientError('week-save', `activities refused: loadState=${loadState}`);
+      return 'not-ready';
     }
-
-    // THIS SCREEN DELETED HER ENTIRE WEEK (1 October 2026, ~19:05).
-    //
-    // The two lines that used to be here said:
-    //
-    //   "Only the rows onboarding put there are replaced. Anything added later
-    //    in chat is hers and is not this screen's to remove."
-    //
-    // ...immediately above `.delete().eq('user_id', user.id)`, which removes
-    // EVERY row she has. The comment described an intention nobody implemented,
-    // and it read so reasonably that it survived several reviews including mine.
-    //
-    // WHAT IT COST. Ruth opened "redo my setup" to review the wording, walked to
-    // this screen, and continued. Gym on Wednesdays and her French class on
-    // Thursday - both of which she had added through chat four hours earlier -
-    // were deleted. Nothing was written in their place, because the delete ran
-    // BEFORE the early return for "nothing chosen": walking onto this screen and
-    // pressing Continue with no chips selected wiped the table and saved nothing.
-    //
-    // THE FIRST FIX WAS HALF A FIX, AND THE CHECK AGREED WITH IT (2 October).
-    //
-    // 1 October's repair scoped the delete to this screen's own activities and
-    // added `if (chosen.length === 0) return true;` - BELOW the delete. So the
-    // destructive path survived in a narrower form: open the redo, press
-    // Continue without touching a chip, and every one of the ten labels was
-    // removed, because `keep` was empty and the early return came too late to
-    // matter. Her French class survived; Gym, Pilates and Dance did not.
-    //
-    // `check-setup-destroys-nothing.mjs` was written to catch exactly this, and
-    // passed, because its assertion ended in `|| ...includes('toRemove')` - an
-    // escape hatch admitting the shape it existed to reject. A check with an
-    // exception for the current code cannot fail on the current code.
-    //
-    // WHAT ACTUALLY FIXES IT is not a better-placed guard but knowing her week
-    // before offering to change it. The screen now loads her current rows and
-    // shows them selected, so `chosen` is her answer rather than a blank, and
-    // the three properties below follow from that:
-    //
-    //   1. A redo she walks through without touching anything writes back the
-    //      selection it displayed, which changes nothing.
-    //   2. Only THIS SCREEN'S OWN ACTIVITIES can be removed. The ten labels
-    //      below are the only things this screen can create, so anything else in
-    //      her week - a French class, anything chat added - is hers and is left
-    //      alone. That is what the comment above claimed and this now does.
-    //   3. An activity she keeps is UPDATED, not deleted and re-made. Re-running
-    //      setup used to throw away the day she had chosen and the time she had
-    //      given, because a new row has neither. Her Wednesday survives.
-    //
-    // And deselecting is still a real removal, which is item 4's requirement:
-    // taking a chip off and pressing Continue overwrites, so nothing duplicates.
-    //
-    // THE DECISION ITSELF LIVES IN `planWeekWrite`, not here, so that it can be
-    // run by something other than a phone. See lib/week-write-plan.ts: the
-    // reason the half-fix survived a day is that its only guard was a check
-    // reading this file as text, and that check had an exception for the shape
-    // the file had. `scripts/check-week-write-plan.mjs` puts the function in the
-    // exact state that cost her Gym, Pilates and Dance and asserts it plans
-    // nothing - twelve cases, including every subset of the chips.
-    //
-    // Widened to string: ACTIVITIES is `as const`, so its labels are a literal
-    // union, and what comes back from the database is any string at all.
-    const ownLabels: string[] = ACTIVITIES.map((a) => a.label);
 
     const { data: existingRows, error: readError } = await supabase
       .from('user_week')
-      .select('id, activity, cadence, sort_order')
+      .select('id, activity, cadence, sort_order, source')
       .eq('user_id', user.id);
     if (readError) {
       void logClientError('week-save', `reading her week failed: ${readError.message}`);
       return 'failed';
     }
 
+    // ITS OWN ROWS, AND THE ONES IT IS ABOUT TO CREATE. Anything else in her week
+    // is out of scope and cannot be removed by any arrangement of taps here.
+    const ownLabels = Array.from(
+      new Set([
+        ...mine,
+        ...((existingRows ?? [])
+          .filter((r) => r.source === 'setup')
+          .map((r) => String(r.activity))),
+        ...chosen,
+      ])
+    );
+
     const plan = planWeekWrite({
-      // The plan refuses outright unless her week is in hand. Same guarantee as
-      // before, now expressed through the three-state read rather than a boolean
-      // that could not tell "not yet" from "it failed".
       loaded: mayWrite(loadState),
       existing: (existingRows ?? []).map((r) => ({
         id: String(r.id),
@@ -332,14 +152,11 @@ export default function ActivitiesScreen() {
         sort_order: typeof r.sort_order === 'number' ? r.sort_order : null,
       })),
       ownLabels,
-      chosen: chosen.map((key) => {
-        const activity = ACTIVITIES.find((a) => a.key === key)!.label as string;
-        const cadence = cadences[key] ? CADENCE_WORDS[cadences[key]!] : null;
-        return { activity, cadence };
-      }),
+      // NO CADENCE. The screen does not ask, so it does not write one; a cadence
+      // she gives in chat ("I swim twice a week") still lands on the row and is
+      // still what the week's conflict check reads.
+      chosen: chosen.map((activity) => ({ activity, cadence: null })),
     });
-    // Refused, because her week had not been read. Nothing to report as failure:
-    // Continue is disabled in that state, so this is defence, not a path.
     if (!plan) {
       void logClientError('week-save', 'the write plan refused - her week was not in hand');
       return 'failed';
@@ -353,97 +170,40 @@ export default function ActivitiesScreen() {
       }
     }
 
-    // ACTIVITY LEVEL AND HEIGHT COME FROM THIS SCREEN NOW, and they have to.
-    //
-    // Until tonight neither was collected by any onboarding SCREEN: the
-    // conversational steps sent prose to the chat route and the model extracted
-    // them. Replacing those screens with taps would have quietly removed the
-    // only path to both - and without height there is no BMR, without BMR no
-    // TDEE, and without TDEE no calorie target at all. Slice 1 would have fixed
-    // the target and Slice 5 would have removed its inputs.
-    //
-    // Asking here is also better than inferring from prose: "a few times a
-    // week" is a chosen answer, not a guess at what somebody meant.
-    // NOTHING CHOSEN MUST NOT REWRITE HER ACTIVITY LEVEL (4 October 2026).
-    //
-    // Ruth: "explain why her maintenance is 1,354 kcal when on 28 Sept the app
-    // gave her 1,440 kcal as a fat-loss figure."
-    //
-    // Because activityLevelFrom([]) returns 'sedentary', and this write was not
-    // guarded. On 28 September she was on MODERATE: BMR 1,133 x 1.55 = 1,756,
-    // less a 313 kcal deficit, is the 1,440 she saw. She is on sedentary now:
-    // 1,128 x 1.2 = 1,354. Every walk through this screen with no cadence picked
-    // overwrote the first with the second, and her chips were not saving, so the
-    // cadence list was empty every time. Four hundred kilocalories a day, moved
-    // silently, with nothing on any screen saying so.
-    //
-    // THIS IS THE THIRD "NOTHING CHOSEN CHANGES SOMETHING" in four days - after
-    // the week deleted on 1 October and the goal archived on 2 October - and the
-    // worst of them, because the other two were visible the moment she looked.
-    //
-    // AND IT DOES NOT WRITE THE LEVEL AT ALL ANY MORE (5 October 2026). Guarding
-    // the write was the right fix for the silent overwrite, and not the whole
-    // fix: the activity level became a stated answer that morning, on its own
-    // screen, with a date on it. Leaving this write in place left TWO controls
-    // for one fact, with this one winning because it comes later in the chain -
-    // somebody who set their level carefully and then answered this screen would
-    // have it replaced by a number derived from four chips.
-    //
-    // Ruth asked the question that found it: "is it feeding a weekly estimate for
-    // calorie and activity calculations? if it's the second, why do we ask the
-    // frequency at all?"
-    //
-    // THE FREQUENCY STILL EARNS ITS PLACE for the other reason: cadenceConflict
-    // compares what she said against where the cards actually sit, so the week can
-    // notice when "weekly" is sitting on three days.
-    //
-    // Height is hers whenever she typed one, and is written on its own.
-    const cm = Number(height.replace(/[^0-9.]/g, ''));
-    const profilePatch: Record<string, unknown> = {};
-    if (cm >= 100 && cm <= 230) profilePatch.height_cm = Math.round(cm);
-    if (Object.keys(profilePatch).length > 0) {
-      await supabase.from('user_profile').update(profilePatch).eq('user_id', user.id);
+    if (plan.insert.length > 0) {
+      const { error } = await supabase.from('user_week').insert(
+        plan.insert.map((row) => ({
+          user_id: user.id,
+          activity: row.activity,
+          cadence: row.cadence,
+          sort_order: row.sort_order,
+          // SAYS WHERE IT CAME FROM, so a later visit knows what it may remove.
+          source: 'setup',
+        }))
+      );
+      if (error) {
+        void logClientError('week-save', `writing her week failed: ${error.message}`);
+        return 'failed';
+      }
     }
 
-    // Already in her week: update the cadence she just gave and leave everything
-    // else - her day, her time, the order - exactly as it was.
+    // A ROW SHE KEPT IS UPDATED IN PLACE, never removed and re-made, so the day
+    // and time she gave it survive. The plan only ever carries a cadence here,
+    // and this screen no longer sets one - so in practice this is empty, and it
+    // stays because a cadence from chat on a row she also ticked here is a real
+    // case the plan already handles.
     for (const row of plan.updateCadence) {
       const { error } = await supabase
         .from('user_week')
         .update({ cadence: row.cadence })
         .eq('id', row.id);
       if (error) {
-        void logClientError('week-save', `updating a cadence failed: ${error.message}`);
+        void logClientError('week-save', `updating a row failed: ${error.message}`);
         return 'failed';
       }
     }
 
-    // NOTHING TO ADD IS NOT THE SAME AS SAVED. If she chose nothing at all, say
-    // so rather than returning her to a profile that looks unchanged because it
-    // is unchanged.
-    if (plan.insert.length === 0) {
-      return chosen.length === 0 ? 'nothing-chosen' : 'saved';
-    }
-    const { error } = await supabase.from('user_week').insert(
-      plan.insert.map((row) => ({
-        user_id: user.id,
-        activity: row.activity,
-        // NO PURPOSE LINE YET, and that is honest rather than lazy. The purpose
-        // is why a thing is in her week, and nothing on this screen has asked
-        // her. Chat fills it in once there is a conversation to fill it from;
-        // inventing "cardio and bone density" for somebody who said "swimming"
-        // would be the app putting words in her mouth on day one.
-        purpose: null,
-        cadence: row.cadence,
-        // NO `days`. It defaults to '{}', and setup does not ask for a day.
-        sort_order: row.sort_order,
-      }))
-    );
-    if (error) {
-      void logClientError('week-save', `inserting ${plan.insert.length} row(s) failed: ${error.message}`);
-      return 'failed';
-    }
-    return 'saved';
+    return chosen.length === 0 && plan.remove.length === 0 ? 'nothing-chosen' : 'saved';
   }
 
   async function goOn(skipping: boolean) {
@@ -451,136 +211,173 @@ export default function ActivitiesScreen() {
     setFailed(false);
     setNotSaved(null);
     if (skipping) {
-      leave('/onboarding/allergies');
+      leave('/onboarding/skill');
       return;
     }
     setSaving(true);
     const outcome = await save();
     setSaving(false);
-
-    // SHE IS NEVER MOVED ON FROM A WRITE THAT DID NOT HAPPEN. Each of these used
-    // to be `true`, which sent her back to a profile showing the week she already
-    // had, with nothing said.
-    if (outcome === 'failed') {
-      setFailed(true);
+    if (outcome === 'saved' || outcome === 'nothing-chosen') {
+      leave('/onboarding/skill');
       return;
     }
-    // ONE WORDING FOR ALL FOUR SCREENS. This had its own two sentences, written
-    // before days, allergies and skill turned out to have the same fault - and
-    // four screens each wording the same outcome their own way is how two of
-    // them end up saying something subtly different about the same refusal.
-    const message = saveOutcomeMessage(outcome, 'week');
+    const message = saveOutcomeMessage(outcome, 'your week');
     if (message) {
       setNotSaved(message);
       return;
     }
-    leave('/onboarding/allergies');
+    setFailed(true);
   }
 
   useOnboardingAction({
     label: saving ? 'Saving…' : 'Continue',
-    // Disabled until her week has been read. The pre-fill is normally faster
-    // than she can look at the screen; the one case this covers is a slow or
-    // failed read, where carrying on would overwrite her week with a blank.
-    // Pressable once the read settles, either way. A failed read means this
-    // screen does not write on the way past, not that she is stuck on it.
     enabled: mayContinue(loadState, saving),
     onPress: () => void goOn(false),
-    // SKIP WAS THE ONLY LIVE CONTROL WHEN THE SCREEN WAS STUCK, and skipping
-    // writes nothing and moves on - so a dead Continue beside a live Skip is a
-    // trapdoor. It is now gated on exactly what Continue is gated on.
-    secondary: mayContinue(loadState, saving)
-      ? { label: 'Skip this question', onPress: () => void goOn(true) }
-      : undefined,
+    secondary: { label: 'Skip this question', onPress: () => void goOn(true) },
   });
 
+  const ideasLeft = ACTIVITIES_SCREEN.ideas.filter((i) => !chosen.includes(i));
+
   return (
-    <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
-      <TapChoices options={ACTIVITIES} selected={chosen} onSelect={toggle} multi />
-
-      {chosen.length > 0 && (
-        <ThemedView style={{ gap: 16 }}>
-          <ThemedText type="small">How often, roughly?</ThemedText>
-          {chosen.map((key) => (
-            <ThemedView key={key} style={{ gap: 8 }}>
-              <ThemedText type="small" themeColor="textSecondary">
-                {ACTIVITIES.find((a) => a.key === key)!.label}
-              </ThemedText>
-              <TapChoices
-                options={CADENCES}
-                selected={cadences[key] ? [cadences[key]!] : []}
-                onSelect={(c) => setCadences((prev) => ({ ...prev, [key]: c }))}
-              />
-            </ThemedView>
-          ))}
-          <ThemedText type="small" themeColor="textSecondary">
-            Roughly is fine. This becomes the shape of your week, not a target to hit.
-          </ThemedText>
-        </ThemedView>
-      )}
-
-      {/* HEIGHT, ASKED PLAINLY AND ONLY ONCE. It is the one number the
-          metabolic estimate cannot do without, and saying what it is for is
-          what stops it feeling like an audit. */}
-      <ThemedView style={{ gap: 8 }}>
-        <ThemedText type="small">Roughly how tall are you?</ThemedText>
-        <TextInput
-          value={height}
-          onChangeText={setHeight}
-          keyboardType="numeric"
-          placeholder="Height in cm"
-          placeholderTextColor={theme.textSecondary}
-          accessibilityLabel="Your height in centimetres"
-          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-        />
-        <ThemedText type="small" themeColor="textSecondary">
-          Used for the metabolic estimate, and nothing else. Skip it and Selodía works without it.
-        </ThemedText>
-      </ThemedView>
-
-      {/* SAID, RATHER THAN SHOWN AS AN EMPTY SCREEN. For two days a failed read
-          on screens like this one looked identical to having nothing saved. */}
-      {loadState === 'failed' && (
+    <OnboardingQuestion
+      question={ACTIVITIES_SCREEN.question}
+      subtitle={ACTIVITIES_SCREEN.subtitle}>
+      {/* IDEAS, AND THE ONES SHE HAS TAKEN LEAVE THE LIST rather than sitting
+          there in a selected state. What she has chosen is shown below as her
+          week, which is the thing she is building. */}
+      {ideasLeft.length > 0 && (
         <>
-          <ThemedText type="small" themeColor="danger">
-            {LOAD_FAILED_MESSAGE}
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.label}>
+            {ACTIVITIES_SCREEN.ideasLabel}
           </ThemedText>
-          <ThemedText
-            type="smallBold"
-            themeColor="accentDeep"
-            accessibilityRole="button"
-            accessibilityLabel={LOAD_RETRY_LABEL}
-            onPress={() => setAttempt((n) => n + 1)}>
-            {LOAD_RETRY_LABEL}
-          </ThemedText>
+          <View style={styles.chips}>
+            {ideasLeft.map((idea) => (
+              <Pressable
+                key={idea}
+                onPress={() => toggle(idea)}
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${idea}`}
+                style={({ pressed }) => pressed && styles.pressed}>
+                <View style={[styles.chip, { backgroundColor: theme.backgroundElement }]}>
+                  <ThemedText type="small">{idea}</ThemedText>
+                </View>
+              </Pressable>
+            ))}
+          </View>
         </>
       )}
 
-      {failed && (
-        <ThemedText type="small" themeColor="danger">
-          That didn&apos;t save. Check your connection and try again.
-        </ThemedText>
+      <ThemedText type="small">{ACTIVITIES_SCREEN.ownLabel}</ThemedText>
+      <View style={styles.addRow}>
+        <TextInput
+          value={own}
+          onChangeText={setOwn}
+          placeholder={ACTIVITIES_SCREEN.ownPlaceholder}
+          placeholderTextColor={theme.textSecondary}
+          accessibilityLabel={ACTIVITIES_SCREEN.ownPlaceholder}
+          onSubmitEditing={addOwn}
+          returnKeyType="done"
+          style={[
+            styles.entry,
+            styles.grow,
+            { color: theme.text, borderColor: theme.backgroundSelected },
+          ]}
+        />
+        <Pressable
+          onPress={addOwn}
+          disabled={!own.trim()}
+          accessibilityRole="button"
+          accessibilityLabel="Add this activity"
+          style={({ pressed }) => pressed && styles.pressed}>
+          <ThemedText type="smallBold" themeColor={own.trim() ? 'accentDeep' : 'textSecondary'}>
+            Add
+          </ThemedText>
+        </Pressable>
+      </View>
+
+      {chosen.length > 0 && (
+        <View style={styles.chips}>
+          {chosen.map((label) => (
+            <Pressable
+              key={label}
+              onPress={() => toggle(label)}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${label}`}
+              style={({ pressed }) => pressed && styles.pressed}>
+              <View
+                style={[
+                  styles.chip,
+                  { backgroundColor: theme.backgroundSelected, borderColor: theme.accentDeep },
+                  styles.chosen,
+                ]}>
+                <ThemedText type="small" themeColor="accentDeep">
+                  {label} ×
+                </ThemedText>
+              </View>
+            </Pressable>
+          ))}
+        </View>
       )}
 
-      {/* A WRITE THAT DELIBERATELY DID NOT HAPPEN SAYS SO (2026-10-04). Not an
-          error, so not in the danger colour: the app refused to guess at her
-          week, or she selected nothing. Either way she is told, instead of being
-          returned to a profile that looks unchanged because it is. */}
+      {loadState === 'failed' && (
+        <View style={styles.group}>
+          <ThemedText type="small" themeColor="danger">
+            {LOAD_FAILED_MESSAGE}
+          </ThemedText>
+          <Pressable
+            onPress={() => {
+              setLoadState('loading');
+              setAttempt((a) => a + 1);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={LOAD_RETRY_LABEL}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedText type="smallBold" themeColor="accentDeep">
+              {LOAD_RETRY_LABEL}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Quiet, not alarming: a deliberate non-write is not an error. */}
       {notSaved && !failed && (
         <ThemedText type="small" themeColor="textSecondary">
           {notSaved}
         </ThemedText>
       )}
+      {failed && (
+        <ThemedText type="small" themeColor="danger">
+          {ACTIVITIES_SCREEN.error}
+        </ThemedText>
+      )}
+
+      {/* THE LINE THAT REPLACED THE FREQUENCY QUESTION. It says where these go,
+          that arranging them comes later, and that none of it is a measurement. */}
+      <ThemedText type="small" themeColor="textSecondary">
+        {ACTIVITIES_SCREEN.footer}
+      </ThemedText>
     </OnboardingQuestion>
   );
 }
 
 const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderRadius: CardRadius,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    fontSize: 16,
+  label: { textTransform: 'uppercase', letterSpacing: 0.8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chip: {
+    borderRadius: ButtonRadius,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
   },
+  chosen: { borderWidth: 1 },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  grow: { flex: 1, minWidth: 0 },
+  entry: {
+    borderWidth: 1,
+    borderRadius: ButtonRadius,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    fontSize: 15,
+  },
+  group: { gap: Spacing.two },
+  pressed: { opacity: 0.6 },
 });

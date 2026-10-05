@@ -452,6 +452,15 @@ export type ActivityChoice = {
   description: string;
 };
 
+// THE QUESTION ITSELF, SAID ONCE (5 October 2026). It is asked in setup as step
+// three and from More as a page, and two copies of a question is how two screens
+// come to disagree about what they are asking.
+export const ACTIVITY_SCREEN = {
+  question: 'How active are you?',
+  subtitle:
+    'Think about a usual week, including your usual training, work, chores and everyday movement. Choose the description that fits best. Selodía uses this as the starting point for your daily calorie guide.',
+} as const;
+
 export const ACTIVITY_CHOICES: ActivityChoice[] = [
   {
     key: 'sedentary',

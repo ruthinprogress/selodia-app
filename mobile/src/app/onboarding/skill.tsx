@@ -150,14 +150,14 @@ export default function SkillScreen() {
     setFailed(false);
     setNotSaved(null);
     if (skipping) {
-      leave('/onboarding/activities');
+      leave('/onboarding/allergies');
       return;
     }
     setSaving(true);
     const outcome = await save();
     setSaving(false);
     if (outcome === 'saved' || outcome === 'nothing-chosen') {
-      leave('/onboarding/activities');
+      leave('/onboarding/allergies');
       return;
     }
     const message = saveOutcomeMessage(outcome, 'what you would love to be able to do');
