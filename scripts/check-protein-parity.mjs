@@ -486,8 +486,8 @@ check('a paused deficit explains itself and keeps the goal', () => {
 check('chat is given the working, not a second version of it', () => {
   const src = readFileSync('app/lib/daily-targets.ts', 'utf8');
   assert.ok(
-    /HOW THOSE TARGETS WERE WORKED OUT/.test(src),
-    'the chat prompt carries the targets with no account of where they came from, ' +
+    /HOW THAT GUIDE WAS WORKED OUT/.test(src),
+    'the chat prompt carries the guide with no account of where it came from, ' +
       'so the one surface she can ask a question on cannot answer it'
   );
   assert.ok(
@@ -498,7 +498,7 @@ check('chat is given the working, not a second version of it', () => {
   assert.ok(
     /heldBecause === 'deficit_paused'/.test(src),
     'chat is never told a paused deficit is a pause, so it can only read it as her ' +
-      'having given up the goal'
+      'having given up what she chose'
   );
   return 'the same sentences the screen shows';
 });

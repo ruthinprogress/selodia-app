@@ -517,14 +517,14 @@ export function buildDayStatePrompt(day: DayState): string {
   if (day.calorieTarget) {
     const left = day.calorieTarget.targetKcal - day.kcalEaten;
     lines.push(
-      `Energy: ${day.kcalEaten} kcal logged today against a target of ` +
+      `Energy: ${day.kcalEaten} kcal logged today against a guide of ` +
         `${day.calorieTarget.targetKcal} (${day.calorieTarget.mode}` +
         `${day.calorieTarget.isRecomposition ? ', recomposition - slow simultaneous change, never promised as a guarantee' : ''}` +
         `), so ${left >= 0 ? `${left} left` : `${Math.abs(left)} over`}.`
     );
   } else {
     lines.push(
-      `Energy: ${day.kcalEaten} kcal logged today. THERE IS NO CALORIE TARGET - the data ` +
+      `Energy: ${day.kcalEaten} kcal logged today. THERE IS NO CALORIE GUIDE - the data ` +
         `needed to work one out is missing, so do not state, estimate or imply one.`
     );
   }
@@ -532,7 +532,7 @@ export function buildDayStatePrompt(day: DayState): string {
   if (day.protein?.kind === 'manual') {
     const left = day.protein.grams - day.proteinEaten;
     lines.push(
-      `Protein: ${day.proteinEaten}g logged against their own set target of ${day.protein.grams}g, ` +
+      `Protein: ${day.proteinEaten}g logged against their own set guide of ${day.protein.grams}g, ` +
         `so ${left >= 0 ? `${left}g left` : `${Math.abs(left)}g over`}.`
     );
   } else if (day.protein?.kind === 'range') {
@@ -542,7 +542,7 @@ export function buildDayStatePrompt(day: DayState): string {
         `${day.protein.basis === 'bodyweight' ? 'That basis is a fallback and less precise, so treat the range as approximate.' : ''}`
     );
   } else {
-    lines.push(`Protein: ${day.proteinEaten}g logged today, with no target derivable.`);
+    lines.push(`Protein: ${day.proteinEaten}g logged today, with no guide derivable.`);
   }
 
   // WHERE THE FIGURES CAME FROM, SO SHE CAN ASK (2026-10-02).
@@ -566,7 +566,7 @@ export function buildDayStatePrompt(day: DayState): string {
   if (day.working && day.working.lines.length > 0) {
     lines.push('');
     lines.push(
-      'HOW THOSE TARGETS WERE WORKED OUT - these are the exact lines the goals screen shows her, ' +
+      'HOW THAT GUIDE WAS WORKED OUT - these are the exact lines her approach screen shows her, ' +
         'so you may quote or paraphrase them freely when she asks where a number comes from, ' +
         'what it assumes, or why it changed. Do NOT redo any of this arithmetic yourself:'
     );
@@ -579,16 +579,17 @@ export function buildDayStatePrompt(day: DayState): string {
   // her the target cannot be changed without changing her goal, which is wrong.
   if (day.calorieTarget?.heldBecause === 'training_paused') {
     lines.push(
-      'NOTE: the calorie figure is held at maintenance because she has said her training is ' +
-        'paused, not because her goal changed. Her goal is unchanged and it returns on its own ' +
-        'when she says she is training again, on her Body Manual.'
+      'NOTE: the calorie figure is held at maintenance because the week she described has no ' +
+        'regular training in it, not because her approach changed. Her approach is unchanged ' +
+        'and the figure returns on its own when she says her weeks have training in them again, ' +
+        'on the "How active are you?" screen.'
     );
   } else if (day.calorieTarget?.heldBecause === 'deficit_paused') {
     lines.push(
       'NOTE: she has paused her deficit - a holiday, a hard stretch, her reason is hers. The ' +
-        'figure is maintenance for now. Her fat-loss goal is NOT cancelled and nothing was ' +
+        'figure is maintenance for now. Her fat-loss approach is NOT cancelled and nothing was ' +
         'archived; it resumes when she switches it back on in her Body Manual. Never treat a ' +
-        'paused deficit as her having given up on the goal.'
+        'paused deficit as her having given up on it.'
     );
   }
 
