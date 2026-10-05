@@ -100,7 +100,12 @@ const SUBTITLE =
 
 // Ruth's own wording, from the brief.
 const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
-const MEASURE_NOTE = 'Optional. It sits under your approach as a reminder of what you said, and is never counted down from.';
+// HER WORDING (5 October 2026). Mine described where the note is kept and then
+// denied a behaviour - "is never counted down from" - which plants the idea of
+// counting down in the sentence that promises not to. Hers names what the thing
+// IS: a note to her future self.
+const MEASURE_NOTE =
+  'Optional. This is just a note to your future self. Selodía never counts down to it.';
 
 // HOW ACTIVE SHE SAID SHE IS, in words, for the line that explains the figure.
 // The stored values are the TDEE multiplier's own vocabulary; "with your days
@@ -717,7 +722,11 @@ export default function GoalsScreen() {
               NO TARGET WEIGHT AND NO DATE appear in any of these lines. */}
           {working && (
             <ThemedView type="backgroundElement" style={styles.measureCard}>
-              <ThemedText type="small">How that works out</ThemedText>
+              {/* "YOUR STARTING GUIDE", her wording. "How that works out" names
+                  the arithmetic; this names the thing the arithmetic produces,
+                  which is what she is looking at - and it is the same word the
+                  rest of the app now uses for it. */}
+              <ThemedText type="small">Your starting guide</ThemedText>
               {working.lines.map((line, i) => {
                 // THE ACTIVITY LINE CARRIES A WAY BACK (Ruth, 5 October 2026):
                 // "'lightly active' needs to be in bold and a link so they can go
@@ -796,7 +805,8 @@ export default function GoalsScreen() {
           </Pressable>
 
           <ThemedText type="small" themeColor="textSecondary">
-            All of this lives in Plans afterwards, and changes whenever you say so in chat.
+            Don&apos;t worry about getting this perfect. You can change any of it
+            later in your Body Manual or simply tell Selod&iacute;a in chat.
           </ThemedText>
         </KeyboardAwareScrollView>
       </SafeAreaView>

@@ -5,7 +5,7 @@
     "tdeeKcal": 1551,
     "weightKg": 56.55,
     "bodyFatPct": 27.6,
-    "activityWord": "the level you have set"
+    "activityWord": "training once or twice a week"
   },
   "switchOrder": [
     "loseFat",
@@ -272,11 +272,11 @@
   "paused": {
     "kcal": 1550,
     "protein": "82–98 g",
-    "line": "Paused. When you are the level you have set, your body uses around 1,551 kcal a day. Resume puts your goal back exactly as it was.",
+    "line": "Paused. When you are training once or twice a week, your body uses around 1,551 kcal a day. Resume puts your approach back exactly as it was.",
     "explanation": "Pause puts everything at what your body uses, without changing what you have chosen. Your switches stay as they are, dimmed, and Resume puts them back exactly. Use it for a holiday, an injury, or any stretch where life gets in the way. Nothing is lost and nothing is counted.",
     "rule": "One rule for every combination: calories at what her body uses, protein at the maintenance range. The switches are untouched and stay visible, dimmed. Resume restores them exactly."
   },
-  "usesLine": "When you are the level you have set, your body uses around 1,551 kcal a day.",
+  "usesLine": "When you are training once or twice a week, your body uses around 1,551 kcal a day.",
   "rules": [
     {
       "key": "deficit_rate",

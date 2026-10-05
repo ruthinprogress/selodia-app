@@ -117,7 +117,7 @@ export function WeightQuestion({
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="small">{WEIGHT_QUESTION}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        A guess is fine. No scales needed, and it can change any time.
+        A guess is fine. You can change it any time.
       </ThemedText>
 
       <View style={styles.row}>

@@ -33,7 +33,12 @@ export const BODY = {
   tdeeKcal: 1551,
   weightKg: 56.55,
   bodyFatPct: 27.6,
-  activityWord: 'the level you have set',
+  // ONE OF THE REAL PHRASES, not a placeholder. This said "the level you have
+  // set" - wording the app stopped using on 5 October, kept alive here because
+  // the builder had its own copy of it. A generated document carrying a string
+  // the app no longer contains is the drift this file exists to prevent, one
+  // level up.
+  activityWord: 'training once or twice a week',
 };
 
 const ORDER = ['loseFat', 'maintainWeight', 'gainWeight', 'buildMuscle'];
