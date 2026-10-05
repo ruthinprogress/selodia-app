@@ -284,6 +284,12 @@ export function OverviewPanel({
   // `loading` is never set back to true here. It guards the first paint only;
   // flipping it on every return would blink the whole screen away for a refresh
   // that usually changes one number.
+  /**
+   * Bumped when something on this screen changes a figure behind the panel's
+   * back. The switches are the only such thing today - see BodyModes.
+   */
+  const [reloadKey, setReloadKey] = useState(0);
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -501,7 +507,7 @@ export function OverviewPanel({
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [reloadKey])
   );
 
   if (loading || !data) {
@@ -839,7 +845,12 @@ export function OverviewPanel({
           her instruction that the explanations stay hidden "most of the time as
           they only really need the explanation occasionally". */}
       <View style={{ height: Spacing.three }} />
-      <BodyModes />
+      {/* THE FIGURES FOLLOW THE SWITCHES IMMEDIATELY (Ruth, 5 October 2026:
+          "They need to be instant so the user can see the effect each one has on
+          the calorie guide"). The card writes, then says so, and this re-runs the
+          same read that focus runs - every figure on this screen is derived from
+          that read, so there is nothing else to keep in step. */}
+      <BodyModes onChanged={() => setReloadKey((k) => k + 1)} />
 
       {/* Hydration has no header because it is not a view to go into. It is the
           one thing on this screen you can DO, so it sits inline as an action -

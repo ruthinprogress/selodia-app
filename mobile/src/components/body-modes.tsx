@@ -52,7 +52,26 @@ import { supabase } from '@/lib/supabase';
 // moves something - the lesson from four setup screens that reported saves they
 // had refused to do.
 
-export function BodyModes() {
+export function BodyModes({
+  /**
+   * Called after a switch or the Pause has been WRITTEN, not when it is tapped.
+   *
+   * RUTH, 5 OCTOBER 2026: "Toggles only show if you toggle, come out of the
+   * screen and then go back in. They need to be instant so the user can see the
+   * effect each one has on the calorie guide."
+   *
+   * The figures above this card - the calorie guide and the protein range - are
+   * read by the panel that owns the screen, on focus. This card wrote straight to
+   * the database and told nobody, so the only way to see what a switch had done
+   * was to leave Today and come back. For a control whose entire purpose is to
+   * show the effect of a choice, that is the effect hidden behind a round trip.
+   *
+   * AFTER THE WRITE, NOT ON THE TAP. A refresh fired on the tap would read the
+   * row the write has not finished changing and redraw the old figure, which is
+   * worse than not refreshing at all: it looks like the switch did nothing.
+   */
+  onChanged,
+}: { onChanged?: () => void } = {}) {
   const theme = useTheme();
   const [mode, setMode] = useState<BodyMode | null>(null);
   const [paused, setPaused] = useState(false);
@@ -157,7 +176,10 @@ export function BodyModes() {
       setMode(wasMode);
       setPaused(wasPaused);
       setFailed(true);
+      return;
     }
+    // THE FIGURES ABOVE ARE NOW WRONG UNTIL SOMETHING RE-READS THEM.
+    onChanged?.();
   }
 
   const current = mode ?? NO_MODE;

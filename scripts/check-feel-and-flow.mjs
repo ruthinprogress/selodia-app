@@ -372,5 +372,31 @@ await check('every settings page uses the shared page shell', async () => {
   return `${pages.length} pages, all on the shell`;
 });
 
+await check('a switch that writes tells the screen that reads', async () => {
+  // Ruth, 5 October 2026: "Toggles only show if you toggle, come out of the
+  // screen and then go back in. They need to be instant so the user can see the
+  // effect each one has on the calorie guide."
+  //
+  // The calorie guide and the protein range are read by the overview panel on
+  // focus. The switches wrote straight to the database and told nobody, so the
+  // one control whose whole job is showing the effect of a choice hid that
+  // effect behind leaving the screen and coming back.
+  //
+  // BOTH HALVES, because either alone is silent. A callback nobody passes is
+  // dead code; a reload key the read does not depend on never re-runs.
+  const card = read('mobile/src/components/body-modes.tsx');
+  assert.ok(/onChanged/.test(card), 'the switches no longer announce a write');
+  const panel = read('mobile/src/components/overview-panel.tsx');
+  assert.ok(
+    /<BodyModes onChanged=/.test(panel),
+    'the screen does not listen, so the figures stay stale until she leaves and returns'
+  );
+  assert.ok(
+    /\}, \[reloadKey\]\)/.test(panel),
+    'the read does not depend on the reload key, so announcing a write changes nothing'
+  );
+  return 'write, announce, re-read';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
