@@ -160,7 +160,24 @@ export function SegmentedTabs<T extends string>({
               type="small"
               themeColor={selected ? 'text' : 'textSecondary'}
               style={styles.label}
-              numberOfLines={1}
+              // NO numberOfLines AND NOTHING TO CLIP AGAINST (5 October 2026,
+              // the third attempt at this control).
+              //
+              // HER SCREENSHOT RULED OUT WIDTH. Every UNSELECTED label had lost
+              // exactly its last letter - "Wee", "Session", "Rule" - while the
+              // selected one, "Skills", was whole. A tab too narrow for its word
+              // does not lose one character from three different words of
+              // different lengths and none from the fourth.
+              //
+              // It is the measurement. Android lays the string out in the system
+              // face and then draws it in Manrope, which is wider, so the last
+              // glyph falls outside a box measured for something else - the same
+              // mismatch this file's header blames for "Movemen", surviving two
+              // rounds of making the font smaller.
+              //
+              // SO NOTHING CONSTRAINS THE TEXT NOW. No line limit, no ellipsize
+              // mode, and the tab takes its width from its content (see `tab`
+              // below). A word cannot be cut off by a box it defines.
               // NO adjustsFontSizeToFit (5 October 2026). "Week" came back as
               // "Wee" on her phone again, after the font size had already been
               // tuned twice for this control.
@@ -172,11 +189,6 @@ export function SegmentedTabs<T extends string>({
               // in eighty points of tab does not need shrinking; it was being
               // shrunk, mismeasured and then clipped.
               //
-              // Clip rather than ellipsize, so if a label ever really is too
-              // long the tail is missing rather than a word being replaced
-              // wholesale by dots - and check-segmented-tabs.mjs keeps the
-              // longest label inside the narrowest tab.
-              ellipsizeMode="clip"
               // 1.25 rather than 1.3, for the same fourth-tab reason as the
               // font size. Capped at all because a tab-bar label that wraps
               // or loses letters is less readable than a slightly smaller one,
@@ -216,7 +228,18 @@ const styles = StyleSheet.create({
   // EQUAL PARTS. Not because it is tidy, but because unequal segments make the
   // longest word look cramped while the shortest floats in space.
   tab: {
-    flex: 1,
+    // CONTENT FIRST, EQUAL PARTS SECOND (5 October 2026). This was `flex: 1`
+    // with `minWidth: 0`, which is the pair that says "an equal quarter, and
+    // narrower than your content if it comes to it". It came to it, and the
+    // words lost their last letters.
+    //
+    // flexGrow shares the spare room out equally, flexShrink 0 refuses to go
+    // under the word, and flexBasis auto starts from the word itself. With four
+    // short labels the result is still four even tabs; with a long one the tabs
+    // are uneven and every word is whole, which is the right way round.
+    flexGrow: 1,
+    flexShrink: 0,
+    flexBasis: 'auto',
     paddingVertical: 8,
     // TWO, NOT FOUR, FROM 2026-09-29. The control was built for THREE tabs and
     // Plans gave it four, so every tab lost a quarter of its width at a stroke
@@ -228,14 +251,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    // WITHOUT THIS A FLEX CHILD WILL NOT GO BELOW ITS CONTENT WIDTH, so a long
-    // label pushes its own tab wider, steals width from its neighbours, and the
-    // one that loses is whichever comes last. minWidth:0 is what makes `flex:1`
-    // mean "an equal quarter" rather than "at least my content".
-    minWidth: 0,
   },
   label: {
     textAlign: 'center',
+    // Android reserves extra room above and below a glyph box for the system
+    // face; off, the label sits where it is drawn.
+    includeFontPadding: false,
     // TWELVE, FROM 2026-09-29, for the fourth tab. At 13 the margin on
     // "Sessions" was a couple of points; at 12 it is about 24, and at the 1.25
     // cap below the worst case is roughly 62 points of word in 76 of room.

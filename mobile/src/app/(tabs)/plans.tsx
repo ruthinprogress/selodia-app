@@ -1,6 +1,10 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet, type ScrollView } from 'react-native';
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewRef,
+} from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AlmanacDetail, type DetailEntry } from '@/components/almanac-detail';
@@ -86,7 +90,10 @@ export default function PlansScreen() {
   // that reads as correct in review because the call is right there, just to
   // the wrong variable.
   const [weekKey, setWeekKey] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  // THE REF IS THE SCROLL VIEW'S OWN TYPE NOW. KeyboardAwareScrollView exposes
+  // assureFocusedInputVisible alongside the ScrollView methods, and SpotlightScroll
+  // only calls scrollTo, which both have.
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   const [rows, setRows] = useState<AlmanacRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -216,7 +223,14 @@ export default function PlansScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {/* Scrolling closes an open swipe (Ruth, item 2). */}
-        <ScrollView
+        {/* THE KEYBOARD STOPS COVERING THE BOX (Ruth, 5 October 2026: "Can't
+            see type box when typing"). Skills gained two text inputs today, and
+            this screen was a plain ScrollView - so the keyboard came up over the
+            thing she was typing into. The same component the onboarding screens
+            use, with room below the field for whatever follows it. */}
+        <KeyboardAwareScrollView
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={24}
           ref={scrollRef}
           onScrollBeginDrag={closeOpenSwipe}
           contentContainerStyle={styles.content}
@@ -279,7 +293,7 @@ export default function PlansScreen() {
 
             {view === 'rules' && <RulesView />}
           </SpotlightScroll>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {loggingPlan && (
           <LogPlanSheet
