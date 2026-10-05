@@ -132,7 +132,12 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     // goal's protein and calorie targets rest on.
     key: 'activity',
     heading: 'How active your weeks are',
-    note: 'The biggest single thing in your daily calorie figure.',
+    // HER WORDING (5 October 2026). Mine ranked it - "the biggest single thing
+    // in your daily calorie figure" - which is true and is the app telling her
+    // how much a question matters rather than what it is for. Hers says what it
+    // does, in the same words as the screen it opens, so the row and the page
+    // are plainly the same thing.
+    note: 'This gives Selodía the best starting point for your daily calorie guide.',
     empty: 'Not set yet, so your figure assumes very little movement. Worth a moment.',
   },
   {

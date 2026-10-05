@@ -124,13 +124,27 @@ export default function ActivityLevelScreen() {
   // SettingsPage decides all of that once. Writing a page without it is choosing
   // to re-decide five things, and the two I did not decide were the two that
   // broke.
+  // THE FIGURE THE CHOSEN LINE COMES TO. The same arithmetic as the number on
+  // each card, so the guide below cannot disagree with the option above it.
+  const guideKcal = (() => {
+    if (!bmr || !current) return null;
+    const choice = ACTIVITY_CHOICES.find((c) => c.key === current);
+    return choice ? Math.round(bmr * choice.factor) : null;
+  })();
+
   return (
     <SettingsPage
       // HER WORDING (5 October 2026): "change Your Activity Level to 'How active
       // are you?' - reads warmer." A question, which is what the page is, rather
       // than a label for a setting somebody is being asked to configure.
       title="How active are you?"
-      subtitle="Pick the line that sounds most like a usual week, training included. It is the single biggest thing in your daily calorie figure, so it is worth a moment."
+      // HER WORDING, VERBATIM (5 October 2026). Mine told her the answer was
+      // important and to take a moment over it, which is the app asking for
+      // care without saying what care would consist of. Hers says what to think
+      // about - a usual week, including training, work, chores and everyday
+      // movement - which is the only part she cannot work out for herself, and
+      // then says plainly what the app does with it.
+      subtitle="Think about a usual week, including your usual training, work, chores and everyday movement. Choose the description that fits best. Selodía uses this as the starting point for your daily calorie guide."
       // NO footer HERE. The footer is the app's closing line, in the display
       // italic - "Small settings support big change." This page's last sentence
       // is a plain explanation of where the answer comes from, and setting prose
@@ -169,6 +183,32 @@ export default function ActivityLevelScreen() {
           );
         })}
 
+        {/* WHAT THE CHOICE COMES TO, AND PERMISSION TO DIFFER FROM IT (Ruth,
+            5 October 2026, her words for both lines).
+
+            Her note on why: "That single paragraph gives users permission to
+            trust both the guide and their own experience, which feels much more
+            aligned with your philosophy than trying to calculate every workout."
+
+            It is the argument against the feature I would otherwise have been
+            asked for - reading each session and adjusting the figure daily. A
+            number that moves with every workout is a number that has to be
+            right, and it invites the person to earn it back. One steady starting
+            point, said out loud, with the day's own variation acknowledged
+            rather than computed, is the quieter and the more honest of the two. */}
+        {guideKcal != null && (
+          <View style={styles.guide}>
+            <ThemedText type="smallBold">
+              Your guide: around {guideKcal.toLocaleString('en-GB')} kcal/day
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Based on the kind of week you described. On unusually active or
+              restful days, your body may naturally need a little more or a little
+              less.
+            </ThemedText>
+          </View>
+        )}
+
         <ThemedText type="small" themeColor="textSecondary" style={styles.setLine}>
           {activitySetLine(setAt)}
         </ThemedText>
@@ -203,6 +243,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   figure: { fontVariant: ['tabular-nums'] },
+  guide: { gap: Spacing.one, paddingTop: Spacing.two },
   setLine: { paddingTop: Spacing.two },
   pressed: { opacity: 0.6 },
 });
