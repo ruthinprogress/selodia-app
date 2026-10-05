@@ -157,9 +157,9 @@ const SCREENS = [
   },
   {
     n: 8,
-    file: 'first-draft.tsx',
-    title: constant('first-draft.tsx', 'QUESTION'),
-    note: constant('first-draft.tsx', 'SUBTITLE'),
+    file: 'life-stage.tsx',
+    title: constant('life-stage.tsx', 'QUESTION'),
+    note: constant('life-stage.tsx', 'SUBTITLE'),
     options: [
       ["What you're working towards", ''],
       ['Your week', ''],

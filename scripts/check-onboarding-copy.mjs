@@ -37,7 +37,6 @@ const SPINE = [
   'steer-around.tsx',
   'allergies.tsx',
   'guidance.tsx',
-  'first-draft.tsx',
 ];
 
 // Strings a screen displays. Comments are not copy, and stripping them matters:

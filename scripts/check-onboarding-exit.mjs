@@ -232,21 +232,37 @@ check('the configuration chain runs from the first question to the first draft',
       ' - which is what splitting the Body Manual out did to `activities`, the screen the ' +
       'metabolic estimate needs'
   );
-  assert.ok(seen.has('first-draft'), 'the chain never arrives at the first draft');
+  // THE CHAIN ENDS ON THE WELCOME NOW (5 October 2026). The first draft screen
+  // is gone: it summarised the seven answers back one screen after she gave
+  // them, and her Body Manual is the same summary where it lives from now on.
+  //
+  // ASSERTED ON THE END, not on a screen name in the middle, because the end is
+  // the thing that can go missing: a chain whose last question leads nowhere
+  // strands somebody with every answer saved and no way to finish.
+  assert.ok(
+    seen.has('welcome'),
+    'the chain never arrives at the welcome, so the last question does not finish setup'
+  );
 });
 
-check('and the Body Manual is entered from the draft, not wired into the chain', () => {
-  // `life-stage` UNTIL 2 OCTOBER, when it became question 6 of the seven and so
-  // stopped being the Manual's entrance. The Manual chain now starts at
-  // health-context. Asserted on the SET of Manual screens rather than one name,
-  // so the next reshuffle fails here rather than silently stranding them.
-  const draft = stripComments(read(path.join(ONBOARDING, 'first-draft.tsx')));
-  const MANUAL = ['health-context', 'technical', 'nutrition', 'activity'];
-  const offered = MANUAL.filter((r) => draft.includes(`/onboarding/${r}`));
+check('the welcome leads to the Body Manual and nowhere else', () => {
+  // WHAT REPLACED THE DRAFT, AND WHAT WENT WITH IT. The draft carried "Add more
+  // about you", which was the only route into the four legacy Manual screens -
+  // health-context, technical, nutrition, activity. Removing it strands them,
+  // and that is deliberate: every row of the Body Manual now opens the screen
+  // that owns its question, so a separate chain of extra screens is a second
+  // way to answer the same things.
+  //
+  // THE ONE THING THAT MUST NOT BE LOST is the ending. Setup now finishes on the
+  // welcome, and the welcome goes to the Manual.
+  const welcome = stripComments(read(path.join(ONBOARDING, 'welcome.tsx')));
   assert.ok(
-    offered.length > 0,
-    'the first draft offers none of the Body Manual screens, so nothing reaches them at all: ' +
-      MANUAL.join(', ')
+    /AFTER_WELCOME_ROUTE/.test(welcome),
+    'the welcome does not use the shared destination, so it can disagree with it'
+  );
+  assert.ok(
+    /router\.replace/.test(welcome) && !/router\.push/.test(welcome),
+    'the welcome pushes rather than replaces, so a back gesture returns to it'
   );
 });
 

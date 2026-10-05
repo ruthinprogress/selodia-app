@@ -25,7 +25,12 @@ import {
   type BodyMode,
 } from '@/lib/body-mode';
 import { OPEN_ROW_PARAM } from '@/lib/one-question';
+import { Image } from 'expo-image';
+import { AccessibilityInfo, Animated, Easing } from 'react-native';
+
 import { bodyLines } from '@/lib/body-manual-words';
+import { markChatOpened } from '@/lib/finish-setup';
+import { WELCOME_SEED } from '@/lib/welcome';
 import { removeMeCardItem } from '@/lib/me-card-write';
 import { supabase } from '@/lib/supabase';
 
@@ -98,6 +103,28 @@ export function BodyManual({
    * and on a list of allergies that is the worst failure available - and
    * useFocusEffect cannot be asked to run again without leaving the screen.
    */
+  /**
+   * THE SEED THAT LEADS INTO CHAT, after the welcome and until she has used it.
+   *
+   * HER CORRECTION, 5 October 2026. I proposed a pulsing seed inside the Chat
+   * tab; the bottom bar is a real native tab bar, which is what fixed the "Wee"
+   * label, and a native tab item cannot hold an animation. Hers was better:
+   *
+   *   "I meant that the seed would be a button on top of the Body Manual to
+   *   avoid pressing back twice to enter the app."
+   *
+   * AND SHE HAD DIAGNOSED THE REASON EXACTLY. This screen lives inside Settings,
+   * which is presented over the tabs, so the tabs are not underneath it when
+   * setup hands her here: leaving takes one press out of the Manual and another
+   * out of Settings. The seed is the way in, in one tap.
+   *
+   * IT DISAPPEARS THE MOMENT IT IS USED. chat_first_opened_at is stamped on the
+   * tap, and a pointer to somewhere she has already been is clutter.
+   */
+  const [showSeed, setShowSeed] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [pulse] = useState(() => new Animated.Value(0));
+
   const [reloadKey, setReloadKey] = useState(0);
   useFocusEffect(
     useCallback(() => {
@@ -137,7 +164,7 @@ export function BodyManual({
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at, welcome_seen_at, chat_first_opened_at').maybeSingle(),
           // `id` NOW, for the same reason: removing one item out of a card
           // means reading that card by id and writing it back.
           supabase.from('almanac_entries').select('id, title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
@@ -209,6 +236,12 @@ export function BodyManual({
           fat_focus_state?: string | null;
           muscle_focus_state?: string | null;
         } | null;
+        // HAS SHE OPENED CHAT YET? The seed is for somebody who has just
+        // finished setup and has a message waiting that she does not know about.
+        setShowSeed(
+          Boolean((p as { welcome_seen_at?: string | null } | null)?.welcome_seen_at) &&
+            !(p as { chat_first_opened_at?: string | null } | null)?.chat_first_opened_at
+        );
         setDeficit((p?.deficit_state as 'on' | 'paused') ?? null);
         setMode(modeFromRecord((p as { body_mode?: unknown } | null)?.body_mode));
         setActivityLevel((p?.activity_level as string) ?? null);
@@ -336,6 +369,50 @@ export function BodyManual({
    * carries a removal. This says that in one place instead of three.
    */
   const plain = (texts: string[]): ManualLine[] => texts.map((text) => ({ text }));
+
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => {
+        if (alive) setReduceMotion(on);
+      })
+      // No answer is not a reason to animate at somebody.
+      .catch(() => {
+        if (alive) setReduceMotion(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showSeed || reduceMotion) {
+      pulse.setValue(0);
+      return;
+    }
+    // A FEW TIMES, THEN STOP. Her words: "It pulses a few times, then stops."
+    // Something that breathes for ever on a settings screen stops being a
+    // pointer and becomes a thing to put up with.
+    const breath = Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]);
+    const run = Animated.loop(breath, { iterations: 3 });
+    run.start();
+    return () => run.stop();
+  }, [showSeed, reduceMotion, pulse]);
+
+  /** One tap into Chat, and the seed has done its job. */
+  async function openChat() {
+    setShowSeed(false);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) await markChatOpened(user.id);
+    // '/' IS THE CHAT TAB. Written out because this project has got it wrong in
+    // the other direction twice: '/' is Chat, '/today' is Today.
+    router.replace('/' as never);
+  }
 
   /** A stable name for a line, so the confirm state knows which one it is on. */
   const lineKey = (sectionKey: string, n: number) => `${sectionKey}:${n}`;
@@ -498,8 +575,43 @@ export function BodyManual({
 
   if (!data) return null;
 
+  const seedScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+
   return (
     <View style={styles.group}>
+      {/* THE SEED, AND IT IS A BUTTON RATHER THAN AN ORNAMENT. Her design, and her
+          diagnosis: this screen sits inside Settings, which is presented over the
+          tabs, so arriving here from setup means two back presses to reach the
+          app. This is one tap, and it goes the moment it is used.
+
+          IT IS NEVER THE ONLY CUE. The label and the line underneath say where it
+          goes in words, so reduce motion loses the breathing and nothing else. */}
+      {showSeed && (
+        <Pressable
+          onPress={() => void openChat()}
+          accessibilityRole="button"
+          accessibilityLabel={`${WELCOME_SEED.label}. ${WELCOME_SEED.hint}`}
+          style={({ pressed }) => [styles.seedRow, pressed && styles.pressed]}>
+          <Animated.View style={{ transform: [{ scale: reduceMotion ? 1 : seedScale }] }}>
+            <Image
+              source={require('../../assets/images/mark.png')}
+              style={styles.seedMark}
+              contentFit="contain"
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </Animated.View>
+          <View style={styles.seedWords}>
+            <ThemedText type="smallBold" themeColor="accentDeep">
+              {WELCOME_SEED.label}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {WELCOME_SEED.hint}
+            </ThemedText>
+          </View>
+        </Pressable>
+      )}
+
       {/* THE HEADING IS THE PAGE'S NOW, NOT THE SECTION'S (Ruth, 5 October 2026:
           "Needs title font in the agreed large format and font as Plans etc.").
 
@@ -733,6 +845,14 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
   lineText: { flexGrow: 1, flexShrink: 1 },
   confirmRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  seedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  seedMark: { width: 36, height: 36 },
+  seedWords: { flexShrink: 1 },
   // ButtonRadius (999) ON A SHORT CHIP IS A PILL AND THAT IS CORRECT HERE. It was
   // 999 on a TALL card that gave Ruth "some strange blobs" this afternoon; the
   // radius was never the fault, the height of what it was on was.

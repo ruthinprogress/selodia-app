@@ -90,8 +90,25 @@ export const ONBOARDING_SCREENS: OnboardingScreen[] = [
   { route: 'skill', label: 'Something to work on', kind: 'configuration' },
   { route: 'allergies', label: 'What to steer around', kind: 'configuration' },
   { route: 'life-stage', label: 'About your body', kind: 'configuration' },
-  { route: 'first-draft', label: 'Your first draft', kind: 'configuration' },
+  // THE MOMENT AT THE END, which is part of the flow and is not a question.
+  //
+  // IT IS IN THIS LIST FOR TWO REASONS, both of which were bugs before it was.
+  // FLOW_SCREENS is derived from here, and the auth guard reads that - so a
+  // screen reached AFTER setup is marked complete, which is exactly what this is,
+  // would be thrown out the instant it opened. And check-onboarding-exit walks
+  // this list to prove the chain has an end; a destination it does not know
+  // about is a chain that appears to stop at the last question.
+  { route: 'welcome', label: 'Welcome', kind: 'configuration' },
 ];
+
+// THE FIRST DRAFT IS GONE (Ruth, 5 October 2026): "The 'Your first draft' screen
+// is NOT needed. Remove it, its route, its 'Add more about you / Start' header
+// and its checks."
+//
+// It summarised the seven answers back one screen after she gave them, which is
+// a receipt for something somebody has just done - and her Body Manual is the
+// same summary in the place it lives from now on. Setup ends on the last
+// question, with a button that says Finish.
 
 // WHY EVERY SCREEN IS 'configuration' NOW. The Body Manual distinction existed to
 // warn her when a question had no feature behind it - "a question whose answer
@@ -135,11 +152,15 @@ export const COUNTED_SCREENS = ONBOARDING_SCREENS.filter(
     s.kind === 'configuration' &&
     s.route !== 'consent' &&
     s.route !== 'account' &&
-    // AND NOT THE FIRST DRAFT (5 October 2026). Her seven are questions about
-    // her; the draft is what they produce. Counting it would make the last
-    // question "6 of 7" and the summary "7 of 7", which is the app calling its
-    // own answer a question.
-    s.route !== 'first-draft'
+    // THE DRAFT USED TO BE EXCLUDED HERE and is now not in the list at all, so
+    // this reads as true for everything that is left. Kept as a named condition
+    // rather than deleted, because the reason outlives the screen: what counts
+    // towards her seven is a QUESTION ABOUT HER, never something the app
+    // produces from the answers.
+    s.route !== 'first-draft' &&
+    // AND NOT THE WELCOME, for the same reason: her seven are questions about
+    // her, and this is what happens when they are answered.
+    s.route !== 'welcome'
 );
 
 export const ONBOARDING_TOTAL = COUNTED_SCREENS.length;
@@ -243,4 +264,10 @@ export const FLOW_SCREENS: ReadonlySet<string> = new Set([
   'steer-around',
   'medication',
   'guidance',
+  // 'welcome' IS NOT HERE, and that is the point of the list above. It was
+  // hand-added here first and then moved into ONBOARDING_SCREENS, because a
+  // screen named in two places is the exact fault this set was built to end: a
+  // guard that policed the welcome would throw her off it the moment it opened,
+  // since it is reached AFTER setup is marked complete.
+  'first-draft',
 ]);

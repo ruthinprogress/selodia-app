@@ -50,7 +50,7 @@ export default function GuidanceScreen() {
     if (saving) return;
     setFailed(false);
     if (skipping || !mode) {
-      router.push('/onboarding/first-draft');
+      router.replace('/today');
       return;
     }
     setSaving(true);
@@ -65,7 +65,7 @@ export default function GuidanceScreen() {
       setFailed(true);
       return;
     }
-    router.push('/onboarding/first-draft');
+    router.replace('/today');
   }
 
   useOnboardingAction({

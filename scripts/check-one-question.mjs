@@ -108,7 +108,13 @@ for (const route of routes) {
       `${file} still pushes the next setup screen directly (${pushes.length} place(s)), so ` +
         'Continue walks her onward instead of returning her to the row she tapped'
     );
-    ok(/leave\('\/onboarding\//.test(src), `${file} never calls leave()`);
+    // leave() IS WHAT MUST BE CALLED; WHERE IT FALLS BACK TO IS THE SCREEN'S OWN
+    // BUSINESS. This asserted that the fallback was another /onboarding/ route,
+    // which was true of every screen until life-stage became the last question on
+    // 5 October: it finishes setup, so its fallback is /today and its one-question
+    // trip still returns to the Manual. The rule is "leave() decides", not "leave()
+    // decides and the next screen is in setup".
+    ok(/leave\(/.test(src), `${file} never calls leave()`);
     return 'leave() decides, not a bare push';
   });
 

@@ -88,6 +88,16 @@ const LEGACY_STEPS: Record<string, string> = {
   nutrition_targets: 'goals',
   activity_tdee: 'goals',
   first_log: 'first_log',
+  // THE FIRST DRAFT WAS REMOVED ON 5 OCTOBER 2026, and this line is the only
+  // thing standing between that and somebody being walked through setup again.
+  //
+  // Anybody whose stored step is 'first_draft' had answered all seven questions
+  // and stopped on the summary. resumeRoute cannot find that screen any more and
+  // falls back to FIRST, which is question one - so the app would reopen on "how
+  // do your days feel" for somebody who had finished. 'complete' is what that
+  // state actually meant: every question was answered before the draft was
+  // reached.
+  first_draft: 'complete',
 };
 
 /** The first screen of the flow proper, and the answer when nothing else fits. */
@@ -111,6 +121,8 @@ export function resumeRoute(step: string | null | undefined): Href {
   if (!step || step === 'not_started') return FIRST;
   if (step === 'complete') return '/';
   const route = LEGACY_STEPS[step] ?? step;
+  // A LEGACY STEP MAY MAP TO 'complete', which is not a screen. first_draft does.
+  if (route === 'complete') return '/';
   const screen = ONBOARDING_SCREENS.find((s) => s.route.replace(/-/g, '_') === route);
   if (!screen) return FIRST;
   return `/onboarding/${screen.route}` as Href;
