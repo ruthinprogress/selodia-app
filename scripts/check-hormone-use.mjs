@@ -21,6 +21,7 @@ import {
   HORMONE_USE_OPTIONS,
   bleedMayNotBeACycle,
   hrtFromHormoneUse,
+  onContraception,
   toggleHormoneUse,
 } from '../mobile/src/lib/life-stage.ts';
 
@@ -96,9 +97,51 @@ check('a woman on neither is reasoned about normally', () => {
 });
 
 check('the options say what they mean in her words', () => {
-  const contraception = HORMONE_USE_OPTIONS.find((o) => o.key === 'hormonal_contraception');
-  assert.ok(/pill|coil|implant/i.test(contraception.hint ?? ''), 'name the actual things');
-  assert.equal(HORMONE_USE_OPTIONS.length, 4);
+  // HER FOUR, 5 OCTOBER 2026: "HRT · The pill · Coil · None". The single
+  // "Hormonal contraception" chip is gone, because nobody says that. This case
+  // used to look that key up by name and read its hint - so it broke the moment
+  // the chip it was pinned to stopped existing, which is the right behaviour for
+  // a check and the wrong shape for one. It now asserts the property: between
+  // them, the offered chips name the things she would actually say.
+  const offered = HORMONE_USE_OPTIONS.map((o) => `${o.label} ${o.hint ?? ''}`).join(' ');
+  for (const thing of ['pill', 'coil', 'implant', 'injection']) {
+    assert.ok(new RegExp(thing, 'i').test(offered), `nothing on the screen names the ${thing}`);
+  }
+  assert.ok(/HRT/.test(offered), 'HRT is not offered');
+
+  // A COPPER COIL IS NOT HORMONAL, and a chip reading "Coil" would record a
+  // hormone that is not there. The word never appears without it being said.
+  for (const option of HORMONE_USE_OPTIONS) {
+    if (!/coil/i.test(option.label)) continue;
+    assert.ok(
+      /hormonal/i.test(option.label),
+      `"${option.label}" would catch a copper coil, which is not hormonal`
+    );
+  }
+
+  // AND SAYING NOTHING IS STILL AN ANSWER, on the most personal screen in setup.
+  assert.ok(
+    HORMONE_USE_OPTIONS.some((o) => o.key === 'prefer_not_to_say'),
+    'prefer not to say is gone from the question it exists for'
+  );
+  assert.ok(
+    HORMONE_USE_OPTIONS.some((o) => o.key === 'neither'),
+    'there is no way to say none of these'
+  );
+});
+
+check('the old stored value still counts as contraception', () => {
+  // A PHONE ON YESTERDAY'S BUNDLE WRITES IT, and the answer it recorded has not
+  // changed meaning. This is the case that would have gone silently false: the
+  // split of one value into two does not fail anywhere, it just stops being true
+  // for everybody on the pill.
+  assert.ok(onContraception(['hormonal_contraception']), 'an older answer stopped counting');
+  assert.ok(onContraception(['the_pill']), 'the pill does not count');
+  assert.ok(onContraception(['hormonal_coil']), 'a hormonal coil does not count');
+  assert.ok(!onContraception(['hrt']), 'HRT is being counted as contraception');
+  assert.ok(!onContraception(['neither']), 'none is being counted as contraception');
+  // AND THE RULE THE WHOLE QUESTION BUYS, through the same list.
+  assert.ok(bleedMayNotBeACycle(['the_pill']), 'a withdrawal bleed on the pill reads as a cycle');
 });
 
 // ── MUTATION ────────────────────────────────────────────────────────────────

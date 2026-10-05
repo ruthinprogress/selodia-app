@@ -12,12 +12,11 @@ import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import {
   HORMONE_USE_OPTIONS,
   LIFE_STAGES,
-  NO_PERIODS_REASONS,
+  followUpFor,
   hrtFromHormoneUse,
   toggleHormoneUse,
   type HormoneUse,
   type LifeStage,
-  type NoPeriodsReason,
 } from '@/lib/life-stage';
 import {
   LOAD_FAILED_MESSAGE,
@@ -58,7 +57,16 @@ export default function LifeStageScreen() {
   // opened a step of the seven-question chain and walked her into chat.
   const { fromManual, leave } = useOneQuestion();
   const [stage, setStage] = useState<LifeStage | null>(null);
-  const [reason, setReason] = useState<NoPeriodsReason | null>(null);
+  /**
+   * HER ANSWER TO THE FOLLOW-UP, WHICHEVER FOLLOW-UP IT WAS.
+   *
+   * A plain string rather than one question's union, because two chips open a
+   * follow-up now and both write life_stage_detail: which kind of menopause, and
+   * why there are no periods. The stage says which question was asked, so the
+   * value needs no type of its own - and typing it as one question's answers is
+   * how the second question ends up with a column it cannot write to.
+   */
+  const [reason, setReason] = useState<string | null>(null);
   const [use, setUse] = useState<HormoneUse[]>([]);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -126,7 +134,7 @@ export default function LifeStageScreen() {
       ]);
       if (!live) return;
       if (profile?.life_stage) setStage(profile.life_stage as LifeStage);
-      if (profile?.life_stage_detail) setReason(profile.life_stage_detail as NoPeriodsReason);
+      if (profile?.life_stage_detail) setReason(String(profile.life_stage_detail));
       if (Array.isArray(profile?.hormone_use)) setUse(profile.hormone_use as HormoneUse[]);
       const items = (card?.content as { items?: { name?: string }[] })?.items;
       setTaking(
@@ -225,7 +233,10 @@ export default function LifeStageScreen() {
         // The detail only belongs to the branch that asked for it. Leaving a
         // stale "coil" on a profile that later says "regular" would be a fact
         // about her that nothing on screen could explain.
-        life_stage_detail: stage === 'no_periods_other' ? reason : null,
+        // WRITTEN WHENEVER THE STAGE ASKS A FOLLOW-UP, which is two stages now.
+        // Pinned to one of them, her menopause kind would have been collected on
+        // screen and dropped at the write.
+        life_stage_detail: followUpFor(stage) ? reason : null,
         hormone_use: use,
         // Derived and kept in step, so everything written before this column
         // existed keeps working without a migration at ten at night.
@@ -297,7 +308,11 @@ export default function LifeStageScreen() {
         selected={stage ? [stage] : []}
         onSelect={(key) => {
           setStage(key);
-          if (key !== 'no_periods_other') setReason(null);
+          // A DETAIL BELONGS TO THE STAGE THAT ASKED FOR IT. Moving from
+          // Menopause to No periods keeps the column but changes the question, so
+          // "after surgery" would be filed as the reason she has no periods.
+          // Changing the stage clears it, every time.
+          if (key !== stage) setReason(null);
         }}
       />
 
@@ -309,21 +324,31 @@ export default function LifeStageScreen() {
         {BODY_NOTES_SCREEN.periodsNote}
       </ThemedText>
 
-      {stage === 'no_periods_other' && (
+      {/* THE FOLLOW-UP, AND THERE IS ONE BRANCH FOR BOTH OF THEM (5 October
+          2026). Her five chips replaced nine, and the four kinds of menopause
+          moved one tap back rather than being deleted - the pattern she invented
+          on 28 September for "No periods". Which options appear is
+          followUpFor(stage), in lib/life-stage.ts, where the chip's own
+          opensReason flag is asserted against it at module load. */}
+      {followUpFor(stage) && (
         <>
           <ThemedText type="small">{BODY_NOTES_SCREEN.reasonQuestion}</ThemedText>
           <TapChoices
-            options={NO_PERIODS_REASONS}
+            options={followUpFor(stage)?.options ?? []}
             selected={reason ? [reason] : []}
             onSelect={setReason}
           />
-          {/* ONE SENTENCE THAT ONLY APPLIES HERE, kept because it says what
-              happens INSTEAD. Her general note above says the app assumes
-              nothing; this says symptoms become the thing worth tracking. */}
-          <ThemedText type="small" themeColor="textSecondary">
-            Symptoms become the thing worth tracking instead.
-          </ThemedText>
         </>
+      )}
+
+      {/* ONE SENTENCE THAT ONLY APPLIES TO NO PERIODS, kept because it says what
+          happens INSTEAD. Her note above the chips says the app assumes nothing;
+          this says symptoms become the thing worth tracking. It is not true of
+          menopause, where there is a stage to reason from. */}
+      {stage === 'no_periods_other' && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Symptoms become the thing worth tracking instead.
+        </ThemedText>
       )}
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>

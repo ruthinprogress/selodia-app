@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { chipSpan } from '@/lib/chip-layout';
 
 // THE ONE TAP CONTROL ONBOARDING USES, written once rather than six times.
 //
@@ -22,6 +23,20 @@ import { useTheme } from '@/hooks/use-theme';
 // A HINT SITS UNDER ITS LABEL, not beside it. "Surgical menopause / Caused by
 // surgery, with the ovaries removed" is two lines on a phone and reads as one
 // thought; the same words on one line wrap in the middle of the distinction.
+//
+// THREE TO A ROW (Ruth, 5 October 2026): "just put the tap chips next to each
+// other in rows of 3 so they don't take up so much space". One per line made the
+// steer-around screen a column of twenty-five.
+//
+// WHICH CHIPS GET A THIRD AND WHICH GET THE WHOLE WIDTH is lib/chip-layout.ts, so
+// the rule is a pure function a check can run over every real chip list in the
+// app rather than a style that can only be judged on a phone. Short labels take a
+// third; anything long, or anything carrying a hint, takes the row.
+//
+// NOTHING SHRINKS AND NOTHING CLIPS. A label too wide for a third takes the full
+// width and wraps. That is the "Wee" tab rule: Android measured an autosizing
+// label in the system face and drew it in Manrope, and every unselected tab lost
+// its last letter for three attempts running.
 
 export type Choice<T extends string> = {
   key: T;
@@ -54,7 +69,11 @@ export function TapChoices<T extends string>({
             accessibilityRole={multi ? 'checkbox' : 'radio'}
             accessibilityState={multi ? { checked: on } : { selected: on }}
             accessibilityLabel={option.hint ? `${option.label}. ${option.hint}` : option.label}
-            style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}>
+            style={({ pressed }) => [
+              styles.wrap,
+              chipSpan(option) === 'third' ? styles.third : styles.full,
+              pressed && styles.pressed,
+            ]}>
             <ThemedView
               type={on ? 'backgroundSelected' : 'backgroundElement'}
               style={[styles.option, { borderColor: on ? theme.accentDeep : 'transparent' }]}>
@@ -75,14 +94,34 @@ export function TapChoices<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  list: { gap: Spacing.two },
+  // WRAPPING ROWS. `gap` spaces both axes, so the rows and the chips within a row
+  // are separated by the same amount without a margin on either.
+  list: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   wrap: { borderRadius: CardRadius },
+  /**
+   * A THIRD, ALLOWING FOR THE TWO GAPS. Three chips and two gaps fill the row, so
+   * each chip is a third of what is left rather than a third of the whole: 31%
+   * leaves 7% for the two gaps, which at phone width is the Spacing.two either
+   * side. Written as a percentage rather than a measured width because the
+   * container is whatever the screen gives it.
+   */
+  third: { flexBasis: '31%', flexGrow: 1 },
+  /** Its own row. See chipSpan: a long label or anything carrying a hint. */
+  full: { flexBasis: '100%' },
   option: {
     paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
+    // NARROWER THAN IT WAS, because a third of a phone has no room for
+    // Spacing.four either side and the padding was eating the label.
+    paddingHorizontal: Spacing.three,
     borderRadius: CardRadius,
     borderWidth: 1,
     gap: Spacing.one,
+    // EVERY CHIP IN A ROW THE SAME HEIGHT. A two-line label next to two
+    // one-line ones leaves the short ones short unless they stretch, and three
+    // boxes of different heights on one row is what makes a wrapped grid look
+    // like a mistake rather than a layout.
+    height: '100%',
+    justifyContent: 'center',
   },
   pressed: { opacity: 0.7 },
 });

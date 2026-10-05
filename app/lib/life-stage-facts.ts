@@ -1,3 +1,5 @@
+import { onContraception as isOnContraception } from './life-stage';
+
 // WHAT SHE TOLD THE APP ABOUT PERIODS, PUT IN FRONT OF THE MODEL THAT ANSWERS.
 //
 // Ruth, 30 September 2026, asking for a menopause knowledge base. This is the
@@ -40,24 +42,54 @@ type LifeStageProfile = {
   hormone_use?: unknown;
 };
 
-/** Her answer, in the words the screen used, so nothing is re-labelled. */
+/**
+ * Her answer, in the words the screen used, so nothing is re-labelled.
+ *
+ * THE OLD KEYS STAY. Her five chips replaced nine on 5 October 2026 and the four
+ * kinds of menopause moved behind a follow-up, but a phone still running an
+ * earlier bundle writes the old values and the answer it recorded has not
+ * changed meaning. A row the app can no longer describe is a row it reads as
+ * nothing.
+ */
 const STAGE_WORDS: Record<string, string> = {
   regular: 'Regular periods',
-  perimenopause: 'Perimenopause - changing or irregular periods',
+  // HER OWN ANSWER SINCE 5 OCTOBER, and it is the one the old list could not
+  // hold: "Perimenopause - changing or irregular" filed an irregular cycle at
+  // twenty-eight as perimenopause.
+  irregular: 'Irregular periods',
+  perimenopause: 'Perimenopause',
+  menopause: 'Menopause',
+  no_periods_other: 'No periods, for another reason',
+  prefer_not_to_say: 'Preferred not to say',
+  // STORED BY EARLIER BUNDLES, described exactly as they were.
   post_menopause: 'Post-menopause - periods stopped naturally',
   surgical: 'Surgical menopause - caused by surgery, with the ovaries removed',
   induced: 'Induced menopause - brought on by medical treatment',
   early: 'Early menopause - before 45',
-  no_periods_other: 'No periods, for another reason',
   not_sure: 'Not sure',
-  prefer_not_to_say: 'Preferred not to say',
 };
 
-const REASON_WORDS: Record<string, string> = {
+/**
+ * THE FOLLOW-UP ANSWER, whichever follow-up it came from.
+ *
+ * ONE MAP FOR BOTH, because both write life_stage_detail and the stage says which
+ * question was asked. The keys are distinct on purpose - 'after_treatment' for a
+ * menopause brought on by treatment, 'treatment' for periods absent because of
+ * it - so a map lookup cannot quietly answer the wrong question.
+ */
+const DETAIL_WORDS: Record<string, string> = {
+  // After "No periods".
   coil: 'a coil or implant',
   hysterectomy_ovaries_kept: 'a hysterectomy with the ovaries kept',
   treatment: 'treatment for something else',
   other: 'something else',
+  // After "Menopause". The surgical one keeps the distinction Ruth drew: ovaries
+  // removed, which arrives at once rather than over years.
+  naturally: 'periods stopped naturally',
+  after_surgery: 'after surgery, with the ovaries removed',
+  after_treatment: 'brought on by medical treatment',
+  before_45: 'before 45',
+  not_sure: 'she does not know why',
 };
 
 /**
@@ -74,16 +106,26 @@ export function lifeStageFacts(profile: LifeStageProfile | null | undefined): st
   const use = Array.isArray(profile.hormone_use)
     ? (profile.hormone_use as unknown[]).filter((v): v is string => typeof v === 'string')
     : [];
-  const onContraception = use.includes('hormonal_contraception');
+  // THROUGH THE SHARED RULE, not a value name. 'hormonal_contraception' split
+  // into 'the_pill' and 'hormonal_coil' on 5 October, and a line reading
+  // `includes('hormonal_contraception')` would have gone on answering false for
+  // everybody on the pill without failing anywhere.
+  const onContraception = isOnContraception(use);
   if (!stage && !hrt && use.length === 0) return '';
   if (stage === 'prefer_not_to_say' && !hrt && use.length === 0) return '';
 
   const lines: string[] = ['', 'WHERE SHE IS WITH PERIODS, in her own answers:'];
 
   if (stage && stage !== 'prefer_not_to_say') {
+    // THE DETAIL NOW BELONGS TO TWO STAGES. Before 5 October only "No periods"
+    // asked a follow-up; Menopause asks one too, and it carries the whole of
+    // what the four old chips used to say. Pinning this to one stage would have
+    // kept storing her answer and stopped reading it, which is the commonest
+    // fault in this repository.
+    const asksFollowUp = stage === 'menopause' || stage === 'no_periods_other';
     const detail =
-      stage === 'no_periods_other' && profile.life_stage_detail
-        ? ` (${REASON_WORDS[profile.life_stage_detail] ?? profile.life_stage_detail})`
+      asksFollowUp && profile.life_stage_detail
+        ? ` (${DETAIL_WORDS[profile.life_stage_detail] ?? profile.life_stage_detail})`
         : '';
     lines.push(`- ${STAGE_WORDS[stage] ?? stage}${detail}`);
   }
