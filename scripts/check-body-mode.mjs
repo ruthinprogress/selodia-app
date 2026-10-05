@@ -174,8 +174,17 @@ check('nothing chosen produces no figure at all', () => {
   assert.ok(empty, 'the matrix has no "nothing chosen" row');
   assert.strictEqual(empty.kcal, null, `nothing chosen shows ${empty.kcal} kcal`);
   assert.strictEqual(MODE.focusFromMode(MODE.NO_MODE), null, 'nothing chosen still writes a focus');
-  assert.ok(/No goal chosen/.test(empty.line), `it reads "${empty.line}"`);
-  return 'no goal, no number';
+  // "NOTHING CHOSEN YET", NOT "NO GOAL CHOSEN" (Ruth, 5 October 2026). Her
+  // distinction: "You choose your approach. Selodia provides the guide." A goal
+  // is a thing you are measured against; an approach is what you are doing at the
+  // moment, and not having picked one is not a failure to have a goal.
+  //
+  // The property under test is unchanged and is the one that matters: no choice,
+  // no number, and nothing written to the focus columns.
+  assert.ok(/Nothing chosen yet/.test(empty.line), `it reads "${empty.line}"`);
+  assert.ok(!/goal/i.test(empty.line), `the empty line still says goal: "${empty.line}"`);
+  return 'nothing chosen, no number'
+;
 });
 
 check('the maintenance figure is never called a target', () => {

@@ -82,11 +82,21 @@ import { supabase } from '@/lib/supabase';
 // screen writes body_mode rather than inventing a shape of its own: setup, Today
 // and the Body Manual are one answer seen from three places.
 
-const QUESTION = 'What are you working towards?';
-const SUBTITLE = 'Nothing here is required, and you can change any of it later.';
-const BODY_HEADING = 'Your body';
-const BODY_NOTE =
-  'These set your daily calorie figure and your protein range. Leave them all off and no figure is worked out.';
+// HER WORDING, VERBATIM (5 October 2026), and the pairing is the point:
+//
+//   "What does a usual week look like?" - What's your current approach?
+//   One describes your life; the other describes your intention right now.
+//   Together, they give Selodia what it needs to provide a sensible guide,
+//   without making the user feel like they're signing up to a rigid plan.
+//
+// NO MENTION OF TARGETS OR GOALS, her instruction. The old subtitle named the
+// calorie figure and the protein range, which is the app explaining its own
+// machinery at the moment somebody is being asked about themselves - and both
+// words carry a pass mark with them. What they are choosing is an approach; the
+// figures are Selodia's answer to it, and they appear below as the panel.
+const QUESTION = "What's your current approach?";
+const SUBTITLE =
+  "Choose the option that best matches what you'd like Selodía to help with at the moment. You can change it whenever life changes.";
 
 // Ruth's own wording, from the brief.
 const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
@@ -96,12 +106,17 @@ const MEASURE_NOTE = 'Optional. It sits under your goals as a reminder of what y
 // The stored values are the TDEE multiplier's own vocabulary; "with your days
 // being moderate" is not a sentence, so each one gets a phrase she would
 // recognise as a description of her week.
+// THE SAME WORDS AS THE TODAY CARD (5 October 2026). This map said "lightly
+// active" and the card said "training once or twice a week", for one stored
+// value - two vocabularies for one fact, and the one here is the app's internal
+// label rather than anything she picked. Hers are the sentences she chose from on
+// the activity screen, shortened to fit mid-sentence.
 const ACTIVITY_WORD: Record<string, string> = {
-  sedentary: 'mostly still',
-  light: 'lightly active',
-  moderate: 'moderately active',
-  active: 'active most days',
-  very_active: 'very active',
+  sedentary: 'mostly sitting',
+  light: 'training once or twice a week',
+  moderate: 'training three to five times a week',
+  active: 'training most days',
+  very_active: 'training twice a day',
 };
 
 /** Every key any control here can produce, for the "what you have now" line. */
@@ -580,11 +595,10 @@ export default function GoalsScreen() {
 
           {/* THE FOUR SWITCHES. Same component as Today, same rules, same
               record - see body-mode-toggles.tsx. */}
+          {/* NO SECTION HEADING ANY MORE. "Your body" divided a question that is
+              now the whole screen, and the chips it was dividing this from are
+              gone. */}
           <View style={styles.group}>
-            <ThemedText type="smallBold">{BODY_HEADING}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {BODY_NOTE}
-            </ThemedText>
             <BodyModeToggles
               mode={current}
               disabled={saving}
@@ -704,11 +718,42 @@ export default function GoalsScreen() {
           {working && (
             <ThemedView type="backgroundElement" style={styles.measureCard}>
               <ThemedText type="small">How that works out</ThemedText>
-              {working.lines.map((line, i) => (
-                <ThemedText key={i} type="small" themeColor="textSecondary">
-                  {line}
-                </ThemedText>
-              ))}
+              {working.lines.map((line, i) => {
+                // THE ACTIVITY LINE CARRIES A WAY BACK (Ruth, 5 October 2026):
+                // "'lightly active' needs to be in bold and a link so they can go
+                // back to where they selected it in onboarding when they didn't
+                // realise what it meant."
+                //
+                // It is the one line in this panel built on an answer she gave on
+                // a different screen, and the one most likely to be wrong -
+                // because until yesterday it was derived from chips rather than
+                // asked for. explainTarget says which line it is; the word to
+                // make tappable is the one we handed it.
+                const word = ACTIVITY_WORD[body?.activityLevel ?? ''] ?? null;
+                if (working.activityLineIndex !== i || !word || !line.includes(word)) {
+                  return (
+                    <ThemedText key={i} type="small" themeColor="textSecondary">
+                      {line}
+                    </ThemedText>
+                  );
+                }
+                const [before, after] = line.split(word);
+                return (
+                  <ThemedText key={i} type="small" themeColor="textSecondary">
+                    {before}
+                    <ThemedText
+                      type="smallBold"
+                      themeColor="accentDeep"
+                      style={styles.activityLink}
+                      onPress={() => router.push('/settings/activity-level' as never)}
+                      accessibilityRole="link"
+                      accessibilityLabel="How active are you?">
+                      {word}
+                    </ThemedText>
+                    {after}
+                  </ThemedText>
+                );
+              })}
               {working.missing && (
                 <ThemedText type="small" themeColor="accentDeep">
                   {working.missing}
@@ -771,6 +816,7 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   group: { gap: Spacing.two },
+  activityLink: { textDecorationLine: 'underline' },
   options: {
     flexDirection: 'row',
     flexWrap: 'wrap',

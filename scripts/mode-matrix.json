@@ -23,14 +23,14 @@
       ],
       "blocked": false,
       "empty": true,
-      "name": "No goal chosen",
+      "name": "Nothing chosen yet",
       "kcal": null,
       "mode": null,
       "protein": null,
       "stepped": null,
       "intent": null,
       "stored": "nothing stored",
-      "line": "No goal chosen. Say what you are working towards and your daily guide appears.",
+      "line": "Nothing chosen yet. Pick what you are working on and your daily guide appears.",
       "safety": null,
       "safetyDetail": null
     },
@@ -52,7 +52,7 @@
       "stepped": "plain",
       "intent": "lose_fat",
       "stored": "fat reduce · muscle maintain",
-      "line": "Today's guide sits a little under that, with a floor it will not go below. Protein stays high, because that is what protects muscle while you lose fat.",
+      "line": "Your daily guide sits a little below what your body uses - half a percent of your weight a week, which is gentle on purpose. It never drops below what your body burns lying still, whatever the sum says. Protein goes to the top of its range, because that is what protects muscle while you lose fat.",
       "safety": null,
       "safetyDetail": null
     },
@@ -74,7 +74,7 @@
       "stepped": "plain",
       "intent": "stay_as_i_am",
       "stored": "fat maintain · muscle maintain",
-      "line": "Eating around that keeps your weight steady.",
+      "line": "Your daily guide sits at what your body uses, which is what keeps your weight where it is.",
       "safety": null,
       "safetyDetail": null
     },
@@ -106,7 +106,7 @@
       "stepped": "plain",
       "intent": "gain_weight",
       "stored": "fat increase · muscle maintain",
-      "line": "Today's guide sits a little over that: 150 kcal, and never more. Steady rather than fast, because faster is mostly fat. There is nothing to reach and no date.",
+      "line": "Your daily guide sits a little above what your body uses - a quarter of a percent of your weight a week, and never more than 300 kcal a day extra. Steady rather than fast, because faster is mostly fat. There is nothing to reach and no date.",
       "safety": "If you have been losing weight without meaning to, it is worth telling your doctor.",
       "safetyDetail": "Selodía is not a medical service, and this is not a plan for recovering from an eating disorder - that needs a clinician who knows you. Whatever the reason, this stays gentle: a small surplus, nothing to reach, and no date."
     },
@@ -158,7 +158,7 @@
       "stepped": "up",
       "intent": "build_muscle",
       "stored": "fat maintain · muscle increase",
-      "line": "Today's guide sits a little over that - 5% more, which is the low side on purpose, because fat is easier to gain at this stage of life. Protein goes to the top of its range for recovery and new muscle.",
+      "line": "Your daily guide sits a little above what your body uses - 5% more, which is the low side on purpose, because fat is easier to gain at this stage of life. Protein goes to the top of its range, for recovery and new muscle.",
       "safety": null,
       "safetyDetail": null
     },
@@ -180,7 +180,7 @@
       "stepped": "up",
       "intent": "recomposition",
       "stored": "fat reduce · muscle increase",
-      "line": "Today's guide sits around what you use rather than under it, with protein at the top of its range. The change comes from the protein and the training.",
+      "line": "Your daily guide sits at what your body uses, not under it, and protein goes to the top of its range. Asking for less fat AND more muscle at once means the change comes from the protein and the training rather than from eating less.",
       "safety": null,
       "safetyDetail": null
     },
@@ -202,7 +202,7 @@
       "stepped": "up",
       "intent": "build_muscle",
       "stored": "fat maintain · muscle increase",
-      "line": "Eating around that keeps your weight steady, with protein at the top of its range for recovery and new muscle.",
+      "line": "Your daily guide sits at what your body uses, which is what keeps your weight where it is. Protein goes to the top of its range, for recovery and new muscle.",
       "safety": null,
       "safetyDetail": null
     },
@@ -234,7 +234,7 @@
       "stepped": "up",
       "intent": "gain_and_muscle",
       "stored": "fat increase · muscle increase",
-      "line": "Today's guide sits a little over that - 150 kcal, never more - with protein at the top of its range so more of what you gain is muscle.",
+      "line": "Your daily guide sits a little above what your body uses - a quarter of a percent of your weight a week, and never more than 300 kcal a day extra. Protein goes to the top of its range, so more of what you gain is muscle rather than fat.",
       "safety": "If you have been losing weight without meaning to, it is worth telling your doctor.",
       "safetyDetail": "Selodía is not a medical service, and this is not a plan for recovering from an eating disorder - that needs a clinician who knows you. Whatever the reason, this stays gentle: a small surplus, nothing to reach, and no date."
     },
@@ -272,11 +272,11 @@
   "paused": {
     "kcal": 1550,
     "protein": "82–98 g",
-    "line": "Paused. At the level you have set, your body uses around 1,551 kcal a day. Resume puts your goal back exactly as it was.",
+    "line": "Paused. When you are the level you have set, your body uses around 1,551 kcal a day. Resume puts your goal back exactly as it was.",
     "explanation": "Pause puts everything at what your body uses, without changing what you have chosen. Your switches stay as they are, dimmed, and Resume puts them back exactly. Use it for a holiday, an injury, or any stretch where life gets in the way. Nothing is lost and nothing is counted.",
     "rule": "One rule for every combination: calories at what her body uses, protein at the maintenance range. The switches are untouched and stay visible, dimmed. Resume restores them exactly."
   },
-  "usesLine": "At the level you have set, your body uses around 1,551 kcal a day.",
+  "usesLine": "When you are the level you have set, your body uses around 1,551 kcal a day.",
   "rules": [
     {
       "key": "deficit_rate",

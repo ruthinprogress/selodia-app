@@ -183,7 +183,15 @@ export default function FirstDraftScreen() {
         if (user) await advanceOnboardingStep(supabase, user.id, 'complete');
         // The visit is over, so the door goes with it.
         setRedoing(false);
-        router.replace('/');
+        // TODAY, NOT CHAT (Ruth, 5 October 2026): "finishing onboarding should
+        // take you to the Today Page."
+        //
+        // '/' is the chat tab. Landing there at the end of setup drops somebody
+        // into a conversation at the exact moment the app has just worked out
+        // their figures - and Today is where those figures are. The seven
+        // questions were answered to make that screen mean something; it should
+        // be the first thing they see.
+        router.replace('/today');
       })();
     },
     secondary: {

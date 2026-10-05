@@ -14,6 +14,7 @@ import {
   isEmpty,
   modeExplanation,
   modeFromRecord,
+  APPROACH_HEADING,
   modeLabel,
   modeSafetyDetail,
   modeSafetyLine,
@@ -214,7 +215,17 @@ export function BodyModes({
       : paused
         ? `Around ${tdee.toLocaleString('en-GB')} kcal`
         : null;
-  const summary = [modeLabel(mode), paused ? 'Paused' : null, figure].filter(Boolean).join(' · ');
+  // THE CARD SAYS WHAT IT IS (Ruth, 5 October 2026: "Change the Card title with
+  // the toggles to: 'Current Approach'"). It had no name at all - the shut line
+  // was the state and nothing said what the state was OF, so the first thing on
+  // the card was an answer to an unasked question.
+  const summary = [
+    `${APPROACH_HEADING}: ${modeLabel(mode)}`,
+    paused ? 'Paused' : null,
+    figure,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>

@@ -207,6 +207,19 @@ export type TargetWorking = {
   missing: string | null;
   /** True when the floor raised the figure, so the screen can say so. */
   flooredAt: number | null;
+  /**
+   * Which line names her activity level, so a screen can make it a link.
+   *
+   * Ruth, 5 October 2026: "'lightly active' needs to be in bold and a link so
+   * they can go back to where they selected it in onboarding when they didn't
+   * realise what it meant."
+   *
+   * AN INDEX RATHER THAN A STRUCTURED LINE. These lines are also joined into a
+   * prose block for the chat model, which wants sentences and not a tree, and
+   * every other caller renders them as plain text. The one screen that wants a
+   * link is told which line to split, on a word it already has.
+   */
+  activityLineIndex: number | null;
 };
 
 const kcal = (n: number) => `${n.toLocaleString('en-GB')} kcal`;
@@ -283,6 +296,7 @@ export function explainTarget(input: {
       targetKcal: null,
       missing: 'Add your weight to see your targets.',
       flooredAt: null,
+      activityLineIndex: null,
     };
   }
 
@@ -300,15 +314,23 @@ export function explainTarget(input: {
       // screen is where it is asked.
       missing: 'Your height is needed as well, to work out the rest.',
       flooredAt: null,
+      activityLineIndex: null,
     };
   }
 
   const bmr = Math.round(bmrKcal);
   const tdee = Math.round(tdeeKcal);
   lines.push(`At rest your body uses about ${kcal(bmr)} a day.`);
+  // THE SAME SENTENCE SHAPE AND THE SAME WORDS AS THE TODAY CARD (5 October
+  // 2026). That card says "When you are training once or twice a week, your body
+  // uses around 1,551 kcal a day"; this said "With your days being lightly
+  // active", which is a second vocabulary for one fact - and "lightly active" is
+  // the app's own label rather than anything she chose. One wording, and the
+  // phrase is the week she picked.
+  const activityLineIndex = activityWord ? lines.length : null;
   lines.push(
     activityWord
-      ? `With your days being ${activityWord}, that comes to about ${kcal(tdee)} used altogether.`
+      ? `When you are ${activityWord}, that comes to about ${kcal(tdee)} used altogether.`
       : `Altogether that comes to about ${kcal(tdee)} a day.`
   );
 
@@ -481,5 +503,5 @@ export function explainTarget(input: {
   // she should know that without being told to distrust them.
   lines.push(`These are estimates, and they move as anything else does. Nothing here has a date on it.`);
 
-  return { lines, targetKcal: rounded, missing: null, flooredAt };
+  return { lines, targetKcal: rounded, missing: null, flooredAt, activityLineIndex };
 }

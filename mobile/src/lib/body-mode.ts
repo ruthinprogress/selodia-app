@@ -230,9 +230,24 @@ export function weightDirectionStated(mode: BodyMode | null): boolean {
   return Boolean(mode && WEIGHT_KEYS.some((k) => mode[k]));
 }
 
-/** The outcome's name, in plain words. */
+/**
+ * WHAT THIS CARD IS CALLED, AND WHAT IT HOLDS (Ruth, 5 October 2026).
+ *
+ *   "Change the Card title with the toggles to: 'Current Approach'... You choose
+ *   your approach. Selodia provides the guide."
+ *
+ * The distinction is hers and it is a good one. A GOAL is a thing you are
+ * measured against; an APPROACH is what you are doing at the moment, and it can
+ * change when life does without anybody having failed. Everything on this card is
+ * the second kind: four switches she can move in a second, and a Pause.
+ *
+ * So the empty state is "Nothing chosen yet" rather than "No goal chosen" - an
+ * approach nobody has picked is simply not picked.
+ */
+export const APPROACH_HEADING = 'Current approach';
+
 export function modeLabel(mode: BodyMode | null): string {
-  if (isEmpty(mode) || !mode) return 'No goal chosen';
+  if (isEmpty(mode) || !mode) return 'Nothing chosen yet';
   if (mode.gainWeight && mode.buildMuscle) return 'Gaining weight and building muscle';
   if (mode.gainWeight) return 'Gaining weight';
   if (mode.loseFat && mode.buildMuscle) return 'Less fat, more muscle';
@@ -275,33 +290,48 @@ export function usesLineUnset(tdeeKcal: number): string {
 /**
  * The line under the switches: where today's guide sits against that, and why.
  *
- * DESCRIBES, NEVER PROMISES. No rate, no timescale, no outcome, and no "a choice,
- * not a default" - her design test for all of it.
+ * DESCRIBES, NEVER PROMISES. No outcome, no date, and no "a choice, not a
+ * default" - her design test for all of it.
+ *
+ * AND IT ASSUMES NOTHING THAT IS NOT ON THE SCREEN (Ruth, 5 October 2026): "the
+ * 'What this does' explanation is extremely vague and expects knowledge that is
+ * not present on the screen."
+ *
+ * Every line began "Today's guide sits a little under that" - and on the setup
+ * screen there is no "that". The sentence was written for the Today card, where a
+ * figure sits directly above it, and then reused on a page where the figure is
+ * three sections further down. It says "what your body uses" now, which is true
+ * in both places and needs nothing above it.
+ *
+ * THE RATES ARE NAMED. "A little under, with a floor it will not go below" asks
+ * her to take two unexplained quantities on trust; half a percent of bodyweight a
+ * week, and never below what she burns lying still, are the actual rules and are
+ * no harder to read.
  */
 export function modeExplanation(mode: BodyMode | null): string {
   if (isEmpty(mode) || !mode) {
-    return 'No goal chosen. Say what you are working towards and your daily guide appears.';
+    return 'Nothing chosen yet. Pick what you are working on and your daily guide appears.';
   }
   if (mode.gainWeight && mode.buildMuscle) {
-    return "Today's guide sits a little over that - 150 kcal, never more - with protein at the top of its range so more of what you gain is muscle.";
+    return 'Your daily guide sits a little above what your body uses - a quarter of a percent of your weight a week, and never more than 300 kcal a day extra. Protein goes to the top of its range, so more of what you gain is muscle rather than fat.';
   }
   if (mode.gainWeight) {
-    return "Today's guide sits a little over that: 150 kcal, and never more. Steady rather than fast, because faster is mostly fat. There is nothing to reach and no date.";
+    return 'Your daily guide sits a little above what your body uses - a quarter of a percent of your weight a week, and never more than 300 kcal a day extra. Steady rather than fast, because faster is mostly fat. There is nothing to reach and no date.';
   }
   if (mode.loseFat && mode.buildMuscle) {
-    return "Today's guide sits around what you use rather than under it, with protein at the top of its range. The change comes from the protein and the training.";
+    return 'Your daily guide sits at what your body uses, not under it, and protein goes to the top of its range. Asking for less fat AND more muscle at once means the change comes from the protein and the training rather than from eating less.';
   }
   if (mode.loseFat) {
-    return "Today's guide sits a little under that, with a floor it will not go below. Protein stays high, because that is what protects muscle while you lose fat.";
+    return 'Your daily guide sits a little below what your body uses - half a percent of your weight a week, which is gentle on purpose. It never drops below what your body burns lying still, whatever the sum says. Protein goes to the top of its range, because that is what protects muscle while you lose fat.';
   }
   if (mode.maintainWeight && mode.buildMuscle) {
-    return 'Eating around that keeps your weight steady, with protein at the top of its range for recovery and new muscle.';
+    return 'Your daily guide sits at what your body uses, which is what keeps your weight where it is. Protein goes to the top of its range, for recovery and new muscle.';
   }
   if (mode.maintainWeight) {
-    return 'Eating around that keeps your weight steady.';
+    return 'Your daily guide sits at what your body uses, which is what keeps your weight where it is.';
   }
   // Build muscle, nothing said about weight: the small surplus building needs.
-  return "Today's guide sits a little over that - 5% more, which is the low side on purpose, because fat is easier to gain at this stage of life. Protein goes to the top of its range for recovery and new muscle.";
+  return 'Your daily guide sits a little above what your body uses - 5% more, which is the low side on purpose, because fat is easier to gain at this stage of life. Protein goes to the top of its range, for recovery and new muscle.';
 }
 
 /**

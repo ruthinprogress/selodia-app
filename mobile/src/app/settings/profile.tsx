@@ -8,7 +8,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { ActivityLevel } from '@/lib/body-metrics';
 import { currentUserId, verifiedUser } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
@@ -44,13 +43,6 @@ type Profile = {
   activity_level: string | null;
 };
 
-const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
-  sedentary: 'Mostly sitting',
-  light: 'Lightly active',
-  moderate: 'Moderately active',
-  active: 'Active',
-  very_active: 'Very active',
-};
 
 type Editing = 'name' | 'dob' | 'sex' | 'height' | 'activity' | null;
 
@@ -219,27 +211,19 @@ export default function ProfileScreen() {
           />
         )}
 
-        <SettingsRow
-          icon="walk-outline"
-          label="Everyday activity"
-          detail="How much you move outside exercise"
-          value={
-            profile?.activity_level && profile.activity_level in ACTIVITY_LABELS
-              ? ACTIVITY_LABELS[profile.activity_level as ActivityLevel]
-              : 'Not given'
-          }
-          onPress={() => setEditing(editing === 'activity' ? null : 'activity')}
-        />
-        {editing === 'activity' && (
-          <Choices
-            options={(Object.keys(ACTIVITY_LABELS) as ActivityLevel[]).map((id) => ({
-              id,
-              label: ACTIVITY_LABELS[id],
-            }))}
-            selected={profile?.activity_level ?? null}
-            onSelect={(id) => void save({ activity_level: id })}
-          />
-        )}
+        {/* "EVERYDAY ACTIVITY" IS GONE FROM HERE (Ruth, 5 October 2026): "The
+            Everyday Activity is in Profile when it should be in Body Manual."
+
+            IT WAS THE THIRD CONTROL FOR ONE ANSWER, and the most dangerous of
+            them. It asked "how much you move outside exercise" and wrote
+            activity_level - the whole-day multiplier that is meant to INCLUDE
+            exercise - so answering it honestly took her ballet and her training
+            out of her own estimate. That wording is half of why her maintenance
+            read 1,350 instead of about 1,550.
+
+            It is asked once now, on its own screen, as "How active are you?",
+            from the Body Manual row that owns the question. One place, one
+            wording, and a date on the answer. */}
       </SettingsGroup>
 
       {failed && (
