@@ -119,10 +119,13 @@ def main() -> int:
             "in the list but not in the total: a refunded charge nets to nothing, and a direct "
             "debit that has not been taken is not money spent. "
             "EVERYTHING FROM AUGUST 2026 ONWARDS IS A SELOD\u00cdA COST - that is when the "
-            "full-time work started, which is why the ledger begins there. Where an invoice "
-            "still carries another name (Claude.ai bills Alicante Property Guide; the Anthropic "
-            "API bills \u0027Ruth\u0027s Individual Org\u0027) that is a billing setting to put "
-            "right, not a question about whether the cost belongs here."
+            "full-time work started, which is why the ledger begins there. "
+            "IT ALL GOES TO THE DIRECTOR\u0027S LOAN ACCOUNT, settled 5 October 2026: there "
+            "is no company bank account yet, so every payment here is personal money spent "
+            "on the company and reclaimable. The names still on some invoices (Claude.ai "
+            "bills Alicante Property Guide; the Anthropic API bills \u0027Ruth\u0027s "
+            "Individual Org\u0027) get corrected when the company account opens, and not "
+            "before - there is no income to route and nothing turns on it until then."
         ),
     ).alignment = wrap
 
