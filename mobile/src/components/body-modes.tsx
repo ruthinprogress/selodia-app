@@ -327,7 +327,10 @@ export function BodyModes({
           />
 
           <Disclosure
-            label="What this does"
+            // THE SAME LABEL AS SETUP (Ruth, 5 October 2026). She renamed it on the
+            // setup screen; one control in two places answers to one name, which
+            // is the rule the switches themselves are built on.
+            label="How this changes your guide"
             open={explaining === 'mode'}
             onToggle={() => setExplaining((e) => (e === 'mode' ? null : 'mode'))}
             text={modeExplanation(mode)}

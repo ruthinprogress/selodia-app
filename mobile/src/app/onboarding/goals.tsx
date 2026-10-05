@@ -96,7 +96,7 @@ import { supabase } from '@/lib/supabase';
 // figures are Selodia's answer to it, and they appear below as the panel.
 const QUESTION = "What's your current approach?";
 const SUBTITLE =
-  "Choose the option that best matches what you'd like Selodía to help with at the moment. You can change it whenever life changes.";
+  'Choose what best matches your current approach. You can change it whenever life changes.';
 
 // Ruth's own wording, from the brief.
 const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
@@ -611,12 +611,12 @@ export default function GoalsScreen() {
             <Pressable
               onPress={() => setExplaining((e) => (e === 'mode' ? null : 'mode'))}
               accessibilityRole="button"
-              accessibilityLabel="What this does"
+              accessibilityLabel="How this changes your guide"
               accessibilityState={{ expanded: explaining === 'mode' }}
               hitSlop={Spacing.two}
               style={({ pressed }) => pressed && styles.pressed}>
               <ThemedText type="small" themeColor="accentDeep">
-                What this does
+                How this changes your guide
               </ThemedText>
             </Pressable>
             {explaining === 'mode' && (

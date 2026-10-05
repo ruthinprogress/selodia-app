@@ -200,10 +200,25 @@ await check('her four look-back answers, in her order and her words', () => {
   return 'four answers, no fifth';
 });
 
-await check('the screen says it cannot promise to fix any of it', () => {
+await check('the screen never implies it will fix how her days feel', () => {
+  // SHE REWROTE THIS ON 5 OCTOBER, and the property it protects is unchanged.
+  // Mine said it by denial - "Selodia cannot promise to fix any of this" - which
+  // is a denial standing where an explanation belongs, on the first question
+  // anybody is asked. Hers says what the screen IS: "This is simply your starting
+  // point. As you use Selodia, you'll be able to look back and see what changed
+  // over time."
+  //
+  // SO THIS ASSERTS THE PROPERTY, NOT MY SENTENCE. A check that pins exact wording
+  // makes every improvement to the copy look like a regression, and the thing
+  // worth protecting was never the phrase - it was that the screen does not
+  // promise to fix anything.
   assert.ok(
-    /cannot promise to fix/.test(FEEL.FEEL_HONEST_NOTE),
-    'the honest line has gone from the feel screen'
+    /starting point/.test(FEEL.FEEL_HONEST_NOTE),
+    'the screen no longer frames this as a starting point rather than a cure'
+  );
+  assert.ok(
+    !/\b(fix|cure|solve|guarantee|promise to)\b/i.test(FEEL.FEEL_HONEST_NOTE),
+    'the line now says the app will fix, cure or guarantee how her days feel'
   );
   const screen = read('mobile/src/app/onboarding/days.tsx');
   assert.ok(/FEEL_HONEST_NOTE/.test(screen), 'the screen no longer renders it');

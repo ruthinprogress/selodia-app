@@ -21,8 +21,12 @@
 // are stored as words.
 
 export const FEEL_QUESTION = 'How do you want your days to feel?';
+// HER WORDING (5 October 2026). Mine told her what to compare against and then
+// what to do; hers asks the question again in the comparison, which is what makes
+// "compared with today" land as part of the question rather than as an
+// instruction attached to it.
 export const FEEL_SUBTITLE =
-  'Compared with how they feel now. Pick whatever fits, and say it in your own words if you like.';
+  'Compared with today, how would you like your days to feel? Choose any that fit, or describe it in your own words.';
 
 /** Her six, in her order. */
 export const FEEL_CHIPS = [
@@ -38,8 +42,13 @@ export const FEEL_OWN_WORDS_LABEL = 'In your own words';
 export const FEEL_OWN_WORDS_PLACEHOLDER =
   'How do your days feel now? How would you like them to feel?';
 
+// HER WORDING (5 October 2026). Mine opened by saying what the app cannot do -
+// "Selodía cannot promise to fix any of this" - which is honest and is a denial
+// standing where an explanation belongs, on the first question anybody is asked.
+// Hers says the same thing by saying what this IS: a starting point, and
+// something to look back at. Nothing is promised either way.
 export const FEEL_HONEST_NOTE =
-  'Selodía cannot promise to fix any of this. It holds where you are starting from, so later you can look back and see which way things are moving.';
+  "This is simply your starting point. As you use Selodía, you'll be able to look back and see what changed over time.";
 
 // ------------------------------------------------------------- looking back
 
