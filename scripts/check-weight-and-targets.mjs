@@ -256,13 +256,30 @@ check('the working shows the weight, the BMR, the arithmetic and the figure', ()
     proteinHigh: 112,
    proteinStepped: 'plain',});
   const all = w.lines.join(' | ');
-  assert.ok(/about 56 kg, as you said/.test(all), 'the weight she gave is not stated');
+  // THE PANEL NO LONGER REPEATS HER WEIGHT (Ruth, 5 October 2026). Her final copy
+  // opens "Based on what you've told Selodia:" and goes straight to the two
+  // figures that follow from it. The weight is two boxes above, in the question
+  // that asked for it, where it already says "A guess is fine. You can change it
+  // any time" - so the panel was restating a number she had just typed.
+  //
+  // WHAT IS STILL WORTH ASSERTING is that the panel shows its inputs rather than
+  // only its conclusion: what she burns at rest, what her week adds to it, and
+  // the figure that follows.
+  assert.ok(/at rest/.test(all), 'the panel no longer says what she burns at rest');
   assert.ok(/1,123 kcal/.test(all), 'the BMR is not shown');
   assert.ok(/1,740 kcal/.test(all), 'the TDEE is not shown');
-  assert.ok(/half a percent/.test(all), 'the rule behind the deficit is not explained');
+  // THE RULE BEHIND THE DEFICIT IS NO LONGER SPELLED OUT IN PROSE HERE (Ruth,
+  // 5 October 2026, final copy). Her paragraph says "a gentle calorie deficit. It
+  // never goes below what your body uses at rest" and leaves the arithmetic to
+  // the figure. The rule itself is unchanged, is enforced in calculateCalorieTarget,
+  // and is asserted on the number below - which is the better place for it: a
+  // sentence can say "half a percent" while the sum does something else.
+  assert.strictEqual(w.targetKcal, 1430, 'the deficit is no longer half a percent a week');
   assert.ok(/moderately active/.test(all), 'what she said about her days is not used');
-  assert.strictEqual(w.targetKcal, 1430);
-  assert.ok(/has a date on it/i.test(all), 'it does not say there are no dates on it');
+  assert.ok(
+    /nothing here is fixed/i.test(all),
+    'the panel no longer closes by saying these are starting estimates'
+  );
   return `${w.lines.length} lines, ending at 1,430 kcal`;
 });
 
@@ -275,8 +292,20 @@ check('an estimate and a weigh-in are described differently', () => {
     intent: BODY_INTENT_BY_KEY.lose_fat, weightKg: 56, weightSource: 'measured',
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: null, proteinHigh: null,
    proteinStepped: 'plain',});
-  assert.ok(/as you said/.test(guess.lines[0]), 'a guess is not described as one');
-  assert.ok(/last weigh-in/.test(real.lines[0]), 'a weigh-in is not described as one');
+  // AN ESTIMATE AND A WEIGH-IN NO LONGER READ DIFFERENTLY HERE, because neither
+  // is quoted here at all - see the note above. The distinction still exists
+  // where it matters: current_weight keeps the source, the Body Manual's weight
+  // row says which it was, and the weight question itself invites a guess.
+  //
+  // So this asserts the panel is the SAME for both, which is the new property and
+  // the one that would break if a weight line crept back in describing only one
+  // of them.
+  assert.deepStrictEqual(
+    guess.lines,
+    real.lines,
+    'the panel describes an estimate and a weigh-in differently again'
+  );
+
   return 'she can see which kind of number it is built on';
 });
 
@@ -321,8 +350,20 @@ check('recomposition explains why there is no deficit', () => {
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: 102, proteinHigh: 123,
    proteinStepped: 'up',});
   const all = w.lines.join(' | ');
-  assert.ok(/not from a deficit/.test(all), 'it does not say why the figure is maintenance');
-  assert.ok(/kept high/.test(all), 'it does not say the protein is the mechanism');
+  // HER WORDING (5 October 2026), so the property is asserted rather than the
+  // phrase. The panel must still say two things about recomposition: that the
+  // figure is not a deficit, and that protein and training are what change
+  // anything. Hers says both - "keeps your guide close to what your body uses,
+  // instead of pushing it as low as possible" and "Any change comes from protein
+  // and training, not simply from eating less."
+  assert.ok(
+    /instead of pushing it as low as possible|not from a deficit/.test(all),
+    'it does not say why the figure is not a deficit'
+  );
+  assert.ok(
+    /protein and training/.test(all),
+    'it does not say protein and training are the mechanism'
+  );
   assert.strictEqual(w.targetKcal, 1740);
   return 'the maintenance figure is explained rather than looking like a mistake';
 });

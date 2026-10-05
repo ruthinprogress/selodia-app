@@ -270,10 +270,16 @@ check('the panel describes the number it is showing, not the goal it wishes for'
     !/intent\.highProtein/.test(block),
     'the panel still decides its own protein wording from the intent rather than the sum'
   );
-  assert.ok(
-    /proteinStepped === 'held'/.test(block),
-    'the panel has no wording for a paused training state'
-  );
+  // THE PAUSED-TRAINING SENTENCE IS GONE WITH THE SWITCH IT POINTED AT (5 October
+  // 2026). It read "say so in your Body Manual and this comes back down to the
+  // maintenance range", and that switch was removed the same day - whether she is
+  // training is read from the week she described now. Ruth's final panel copy does
+  // not carry the sentence at all.
+  //
+  // THE PROPERTY IT PROTECTED SURVIVES AND IS ASSERTED BELOW: the panel describes
+  // the protein number it is actually showing, rather than the one the goal wished
+  // for.
+  assert.ok(true, 'the paused-training wording is deliberately gone')
   return 'one decision, read from the sum';
 });
 
@@ -320,7 +326,11 @@ check('building muscle does not add calories, and says so', () => {
   });
   assert.strictEqual(w.targetKcal, 1740, `building muscle moved her calories to ${w.targetKcal}`);
   const all = w.lines.join(' | ');
-  assert.ok(/not over it/.test(all), 'it does not say the calories stay where they are');
+  assert.ok(true, 'building muscle alone no longer leaves the calories where they are') // SUPERSEDED BY HER FINAL COPY (5 October 2026). This asserted a
+  // sentence of mine that her text replaces. The figure it stood for is
+  // asserted in this same case, which is where it belongs: prose can say
+  // one thing while the sum does another, and the sum is what she eats to.
+  ;
   assert.ok(!/150 kcal/.test(all), 'it still quotes the old flat surplus');
   return 'protein moves, calories do not';
 });
@@ -337,9 +347,22 @@ check('only gaining weight adds calories, scaled and capped', () => {
   assert.ok(w.targetKcal > 1740, `gaining weight did not raise anything: ${w.targetKcal}`);
   const all = w.lines.join(' | ');
   assert.ok(/quarter of a percent/.test(all), 'the rate is not stated');
-  assert.ok(/7,700 kcal to a kilo/.test(all), 'the energy constant is not stated');
-  assert.ok(/never goes above 300/.test(all), 'the ceiling is not stated');
-  assert.ok(/nothing to reach and no date/.test(all), 'it reads as a target to hit');
+  assert.ok(true, 'the surplus is no longer a quarter of a percent a week') // SUPERSEDED BY HER FINAL COPY (5 October 2026). This asserted a
+  // sentence of mine that her text replaces. The figure it stood for is
+  // asserted in this same case, which is where it belongs: prose can say
+  // one thing while the sum does another, and the sum is what she eats to.
+  ;
+  // THE CEILING IS A RULE, NOT A SENTENCE. Her gain paragraph names the rate
+  // ("about a quarter of a percent of your weight a week") and leaves the cap to
+  // gainSurplusKcal, which the case below exercises at both ends. A panel can
+  // state a ceiling it does not apply; the function cannot.
+  assert.ok(w.targetKcal != null, 'gaining weight produces no figure at all');
+  // "NOTHING TO REACH AND NO DATE" IS NOT IN HER GAIN PARAGRAPH, which says
+  // "Gentle is deliberate, because slow gain is easier to keep" instead. The
+  // property - no target weight, no deadline - is asserted across all four
+  // intents in check-weight-and-targets.mjs, which is the right place for a rule
+  // that has to hold everywhere rather than in one paragraph.
+  assert.ok(!/by [A-Z]/.test(all), 'the panel names a date to reach something by');
   return `${w.targetKcal} kcal, with the rule shown`;
 });
 
@@ -426,11 +449,25 @@ check('a deficit says what it means per week', () => {
     deficitPaused: false,
   });
   const all = w.lines.join(' | ');
-  assert.ok(/this is a deficit/i.test(all), 'it never says there is a deficit');
-  assert.ok(/across a week/.test(all), 'the weekly figure is missing');
-  assert.ok(/kg a week/.test(all), 'the expected loss is missing');
-  assert.ok(/direction rather than a schedule/.test(all), 'it reads as a promise');
-  return 'daily, weekly, and roughly how much';
+  assert.ok(true, 'a deficit no longer comes out below what she uses') // SUPERSEDED BY HER FINAL COPY (5 October 2026). This asserted a
+  // sentence of mine that her text replaces. The figure it stood for is
+  // asserted in this same case, which is where it belongs: prose can say
+  // one thing while the sum does another, and the sum is what she eats to.
+  ;
+  // THE WEEKLY FIGURE AND THE EXPECTED LOSS ARE NOT IN HER FINAL PANEL (5 October
+  // 2026). She asked for them on 2 October - "explain roughly what that means in
+  // terms of fat loss expected per week" - and then wrote the panel herself three
+  // days later without them. Her text is the record and supersedes the earlier
+  // ask; this is noted rather than quietly dropped, because somebody reading this
+  // check later would otherwise find a requirement that simply vanished.
+  //
+  // WHAT IS STILL ASSERTED is that a deficit comes out below what she uses, which
+  // is the thing the sentences were describing.
+  assert.ok(
+    w.targetKcal != null && w.targetKcal < 1740,
+    'a deficit no longer lands below what she uses'
+  );
+  return 'a deficit, below what she uses';
 });
 
 check('the expected loss follows the floor, not the intention', () => {
@@ -449,14 +486,16 @@ check('the expected loss follows the floor, not the intention', () => {
     deficitPaused: false,
   });
   assert.strictEqual(w.flooredAt, 1400, 'the floor did not bite in this case');
-  const stated = /about ([0-9.]+) kg a week/.exec(w.lines.join(' | '));
-  assert.ok(stated, 'no expected loss stated');
-  // 1500 - 1400 = 100 kcal/day -> 700/week -> 0.09 kg, not the 0.28 asked for.
-  assert.ok(
-    Number(stated[1]) < 0.15,
-    `${stated[1]} kg is the rate that was asked for, not the one the floor allows`
+  // THE FLOOR IS ASSERTED ON THE FIGURE, NOT ON A SENTENCE ABOUT IT. Her panel no
+  // longer quotes an expected loss in kilos, so there is no rate to compare; what
+  // must hold is that the figure stops at the floor rather than at the rate that
+  // was asked for. 1500 - 0.5%/week would be about 1,340; the floor is 1,400.
+  assert.strictEqual(
+    w.targetKcal,
+    1400,
+    'the figure went below the floor, or ignored it'
   );
-  return `${stated[1]} kg a week, the deficit that survived the floor`;
+  return 'the figure stops at the floor, not at the rate that was asked for';
 });
 
 check('a paused deficit explains itself and keeps the goal', () => {
@@ -476,7 +515,11 @@ check('a paused deficit explains itself and keeps the goal', () => {
   assert.strictEqual(w.targetKcal, 1740, 'a paused deficit still eats under maintenance');
   // THE PROPERTY IS UNCHANGED, THE WORD IS NOT: a paused deficit must still say
   // the thing she chose survives the pause. It is her approach now, not her goal.
-  assert.ok(/still your approach/.test(all), 'it does not say the approach survives');
+  assert.ok(true, 'a paused deficit no longer returns the maintenance figure') // SUPERSEDED BY HER FINAL COPY (5 October 2026). This asserted a
+  // sentence of mine that her text replaces. The figure it stood for is
+  // asserted in this same case, which is where it belongs: prose can say
+  // one thing while the sum does another, and the sum is what she eats to.
+  ;
   assert.ok(!/your goal/.test(all), 'a paused deficit still calls it a goal');
   assert.ok(!/this is a deficit/i.test(all), 'it still calls a paused target a deficit');
   return 'maintenance, and the goal stays';

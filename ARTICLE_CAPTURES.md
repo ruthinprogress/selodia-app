@@ -718,3 +718,9 @@ Her maintenance figure read 1,350 and she said the obvious thing: that is nothin
 ## 4 October 2026 — Seven options, four of which were one option
 
 The setup screen offered seven goals to tick. It looked like a reasonable list. Four of them were a single answer wearing overlapping names: "lose fat" and "less fat, more muscle" share a half, and ticking both meant the second quietly won. One state had no way to be said at all. And all seven unticked meant the same thing as never having been asked, which is how an app ends up showing someone a target nobody chose. The replacement is four switches, three of them mutually exclusive, which say every combination exactly once — and where nothing ticked is a real answer with a real consequence: no figure at all. Adding the ability to say nothing was the change that made the rest coherent.
+
+---
+
+## 5 October 2026 — The first thing you buy to ship an iPhone app is an iPhone
+
+Apple Developer enrolment was approved, and then every card was declined at "Complete your purchase". Apple's template reply says to re-enrol through their app. The app needs iOS 26. I own no Apple devices, nobody I know does, and my old iPad Air 2 is stuck on iPadOS 15. So I am trying to ship an Apple app for a phone ecosystem I have never touched, and the first thing I am buying is the test device.

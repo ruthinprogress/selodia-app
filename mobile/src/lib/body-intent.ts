@@ -29,6 +29,15 @@
 // NO TARGET WEIGHT AND NO DEADLINE, anywhere in this file. Her instruction, and
 // the reason there is no "by when" and no goal figure in any of the lines below.
 
+// THE SENTENCES LIVE IN ONE PLACE (Ruth, 5 October 2026): "Store the sentences in
+// the matrix so Today and the Body Manual reuse them." body-mode.ts holds them,
+// and this panel reads them rather than keeping a second copy.
+//
+// NO CYCLE: body-mode's only import from here is `import type`, which is erased
+// at build time, so there is no runtime edge back.
+import type { BodyMode } from './body-mode';
+import { GUIDE_FRAME, fill, guideStateFor } from './starting-guide';
+
 export type FocusState = 'reduce' | 'maintain' | 'increase';
 
 export type BodyIntentKey =
@@ -198,8 +207,34 @@ export function calorieFloor(bmrKcal: number | null | undefined): number {
 
 // ------------------------------------------------------- what she is shown
 
+/**
+ * One part of the starting-guide panel.
+ *
+ * Ruth set the shape on 5 October 2026: an intro, two bullets, the paragraph for
+ * her approach, a quiet serif line where it is true, the two figures, and a
+ * closing line. The screen needs to know which is which - the serif line is not a
+ * bullet and the figures are not prose - so the panel is a list of parts rather
+ * than a list of strings.
+ */
+export type WorkingBlock = {
+  kind: 'intro' | 'bullet' | 'para' | 'italic' | 'figure' | 'closing';
+  text: string;
+  /** Set on the bullet that names her activity level, for the link. */
+  activityWord?: string;
+};
+
 export type TargetWorking = {
-  /** One line each, in the order they were worked out. */
+  /**
+   * The panel, in parts. The screen renders these.
+   */
+  blocks: WorkingBlock[];
+  /**
+   * The same panel as plain sentences, for the chat prompt.
+   *
+   * DERIVED FROM blocks, NEVER WRITTEN TWICE. The model wants prose and the
+   * screen wants structure; building them separately is how one number ends up
+   * described two ways, which is the fault this whole file exists to prevent.
+   */
   lines: string[];
   /** The figure itself, or null when something needed is missing. */
   targetKcal: number | null;
@@ -287,12 +322,16 @@ export function explainTarget(input: {
    */
   weightDirectionStated: boolean | null;
 }): TargetWorking {
-  const { intent, weightKg, weightSource, bmrKcal, tdeeKcal, activityWord } = input;
-  const lines: string[] = [];
+  const { intent, weightKg, bmrKcal, tdeeKcal, activityWord } = input;
+  // THE EARLY RETURNS CARRY NO SENTENCES. Both of them say what is missing in
+  // `missing`, which is the one thing a screen shows when there is no panel to
+  // show - a half-built panel above "Add your weight to see your guide" is the
+  // app talking over its own question.
 
   if (weightKg == null || weightKg <= 0) {
     return {
       lines: [],
+      blocks: [],
       targetKcal: null,
       missing: 'Add your weight to see your guide.',
       flooredAt: null,
@@ -300,15 +339,10 @@ export function explainTarget(input: {
     };
   }
 
-  lines.push(
-    weightSource === 'estimate'
-      ? `Weight: about ${weightKg} kg, as you said. A guess is fine here.`
-      : `Weight: ${weightKg} kg, from your last weigh-in.`
-  );
-
   if (bmrKcal == null || bmrKcal <= 0 || tdeeKcal == null || tdeeKcal <= 0) {
     return {
-      lines,
+      blocks: [],
+      lines: [],
       targetKcal: null,
       // Height is the other input BMR cannot do without, and the activities
       // screen is where it is asked.
@@ -319,21 +353,41 @@ export function explainTarget(input: {
   }
 
   const bmr = Math.round(bmrKcal);
-  const tdee = Math.round(tdeeKcal);
-  lines.push(`At rest your body uses about ${kcal(bmr)} a day.`);
-  // THE SAME SENTENCE SHAPE AND THE SAME WORDS AS THE TODAY CARD (5 October
-  // 2026). That card says "When you are training once or twice a week, your body
-  // uses around 1,551 kcal a day"; this said "With your days being lightly
-  // active", which is a second vocabulary for one fact - and "lightly active" is
-  // the app's own label rather than anything she chose. One wording, and the
-  // phrase is the week she picked.
-  const activityLineIndex = activityWord ? lines.length : null;
-  lines.push(
+  // ROUNDED TO THE NEAREST TEN, like the figure it leads to. It read 1,551 here
+  // and 1,550 three lines down, which looks like two different numbers and is
+  // one number at two precisions. The estimate does not have units of one.
+  const tdee = Math.round(Math.round(tdeeKcal) / 10) * 10;
+
+  // HER PANEL (5 October 2026), and the weight line is deliberately not in it.
+  // It said "Weight: 56.55 kg, from your last weigh-in" above everything else,
+  // which opens a panel about her guide with a number she did not ask about.
+  const blocks: WorkingBlock[] = [{ kind: 'intro', text: GUIDE_FRAME.intro }];
+  blocks.push({
+    kind: 'bullet',
+    text: fill(GUIDE_FRAME.restBullet, { resting: bmr.toLocaleString('en-GB') }),
+  });
+  blocks.push(
     activityWord
-      ? `When you are ${activityWord}, that comes to about ${kcal(tdee)} used altogether.`
-      : `Altogether that comes to about ${kcal(tdee)} a day.`
+      ? {
+          kind: 'bullet',
+          text: fill(GUIDE_FRAME.activityBullet, {
+            'activity phrase': activityWord,
+            'activity kcal': tdee.toLocaleString('en-GB'),
+          }),
+          activityWord,
+        }
+      : {
+          kind: 'bullet',
+          // NO ACTIVITY LEVEL YET, so her second bullet has nothing to name. The
+          // sum is still true, and the phrase it would have linked to is the
+          // thing she has not answered.
+          text: `Altogether that comes to about ${tdee.toLocaleString('en-GB')} kcal a day.`,
+        }
   );
 
+  const paras: string[] = [];
+  // Kept only so the branches below compile unchanged; nothing reads it.
+  void paras;
   const floor = calorieFloor(bmr);
   let target = tdee;
   let flooredAt: number | null = null;
@@ -341,13 +395,13 @@ export function explainTarget(input: {
   if (intent.key === 'lose_fat') {
     // PAUSED FOR A HOLIDAY, AND STILL HER GOAL (2026-10-02).
     if (input.deficitPaused === true) {
-      lines.push(
+      paras.push(
         `Your deficit is paused, so this is simply what you use. Losing fat is still your approach and nothing about it has changed - you are just not eating under it at the moment.`
       );
     } else {
       // 0.5% of bodyweight a week, at 7,700 kcal per kg, spread over seven days.
       const daily = Math.round((0.005 * weightKg * 7700) / 7);
-      lines.push(
+      paras.push(
         `Losing fat gently is about half a percent of your weight a week, which works out as ${kcal(
           daily
         )} a day less than you use.`
@@ -355,7 +409,7 @@ export function explainTarget(input: {
       target = tdee - daily;
       if (target < floor) {
         flooredAt = floor;
-        lines.push(
+        paras.push(
           `That would come to ${kcal(target)}, which is below what your body uses at rest, so it is held at ${kcal(
             floor
           )} instead.`
@@ -382,12 +436,12 @@ export function explainTarget(input: {
       if (actualDaily > 0) {
         const weekly = actualDaily * 7;
         const kgPerWeek = (weekly / 7700).toFixed(2);
-        lines.push(
+        paras.push(
           `So this is a deficit: ${kcal(actualDaily)} a day under what you use, which is about ${kcal(
             weekly
           )} across a week.`
         );
-        lines.push(
+        paras.push(
           `At roughly 7,700 kcal to a kilo of body fat, that is about ${kgPerWeek} kg a week if everything holds steady. Bodies are not that tidy week to week, so read it as a direction rather than a schedule.`
         );
       }
@@ -400,24 +454,24 @@ export function explainTarget(input: {
     // Half the fat-loss rate, scaled to her, with the ceiling and the energy
     // constant both stated so the figure can be checked rather than trusted.
     const surplus = gainSurplusKcal(weightKg);
-    lines.push(
+    paras.push(
       `Gaining steadily is about a quarter of a percent of your weight a week. At 7,700 kcal to a kilo that comes to ${kcal(
         surplus
       )} a day more than you use, and it never goes above 300.`
     );
-    lines.push(
+    paras.push(
       `Nothing faster, because faster is mostly fat and harder to keep. There is nothing to reach and no date.`
     );
     target = tdee + surplus;
     if (intent.key === 'gain_and_muscle') {
-      lines.push(
+      paras.push(
         `Protein stays high alongside it, so more of what you gain is muscle rather than fat.`
       );
     }
     // SAID EVERY TIME, CALMLY, AND NOT AS A WARNING ABOUT HER. It is one line
     // about a fact of medicine, placed where somebody choosing this will read
     // it, and it carries no assessment of her body and no instruction.
-    lines.push(
+    paras.push(
       `If you have been losing weight without meaning to, it is worth telling your doctor. Selodía is not a medical service and this is not a plan for recovering from an eating disorder - that needs a clinician, and this stays gentle either way.`
     );
   } else if (intent.key === 'build_muscle') {
@@ -445,63 +499,78 @@ export function explainTarget(input: {
     // this line was written for, and it keeps it.
     if (input.weightDirectionStated === false) {
       const surplus = Math.round(tdee * BUILD_SURPLUS_FRACTION);
-      lines.push(
+      paras.push(
         `Building muscle asks for a little more than you use: 5%, which is ${kcal(
           surplus
         )} a day. The low side on purpose, because fat is easier to gain at this stage of life.`
       );
-      lines.push(
+      paras.push(
         `Say "maintain my weight" alongside it and this comes back to what you use - the switches decide, not the app.`
       );
       target = tdee + surplus;
     } else {
-      lines.push(
+      paras.push(
         `Building muscle means eating around what you use, not over it. The change comes from the protein and the training.`
       );
     }
   } else if (intent.key === 'recomposition') {
-    lines.push(
+    paras.push(
       `Less fat with more muscle means eating around what you use rather than under it. The change comes from the protein and the training, not from a deficit.`
     );
   } else {
-    lines.push(`Staying as you are means eating around what you use.`);
+    paras.push(`Staying as you are means eating around what you use.`);
   }
 
   const rounded = Math.round(target / 10) * 10;
-  lines.push(`So: about ${kcal(rounded)} a day.`);
 
-  const { proteinLow, proteinHigh, proteinStepped } = input;
+  // HER TEN STATES, FROM THE RECORD (5 October 2026). The branches above work out
+  // the FIGURE; this is the text she wrote for whichever state that figure
+  // belongs to, filled at the braces and not edited anywhere else.
+  //
+  // THE PARAGRAPHS THE OLD BRANCHES PUSHED ARE GONE. They said the same things in
+  // my words - the weekly deficit in kilos, the surplus ceiling, the floor - and
+  // her paragraph says what it says. Two descriptions of one number is the fault
+  // this file has been rebuilt around twice.
+  const asMode: BodyMode = {
+    loseFat: intent.fat === 'reduce',
+    gainWeight: intent.fat === 'increase',
+    maintainWeight: intent.fat === 'maintain' && input.weightDirectionStated !== false,
+    buildMuscle: intent.muscle === 'increase',
+  };
+  const state = guideStateFor({ mode: asMode, paused: false, weightKnown: true });
+  const values = {
+    guide: rounded.toLocaleString('en-GB'),
+    surplus: Math.abs(rounded - tdee).toLocaleString('en-GB'),
+  };
+
+  blocks.push({ kind: 'para', text: fill(state.paragraph, values) });
+  if (state.italic) blocks.push({ kind: 'italic', text: state.italic });
+  if (state.smallLine) blocks.push({ kind: 'para', text: state.smallLine });
+
+  blocks.push({ kind: 'figure', text: fill(GUIDE_FRAME.guideFigure, values) });
+
+  const { proteinLow, proteinHigh } = input;
   if (proteinLow != null && proteinHigh != null && proteinLow > 0) {
-    const span = `Protein ${proteinLow} to ${proteinHigh} g a day`;
-    if (proteinStepped === 'up') {
-      // THE ASSUMPTION IS NAMED, which is what Ruth asked for. "Kept high
-      // because that is what protects muscle" was true and incomplete: it is
-      // kept high because protein plus TRAINING protects muscle, and the app had
-      // not asked whether there was any training. A number resting on a fact
-      // nobody checked should say which fact.
-      lines.push(
-        `${span}, kept high because that is what protects muscle while you are training.`
-      );
-      // NO FIGURE FOR THE OTHER RANGE HERE. Working it back out of this one
-      // means the multipliers written down twice, which is the drift that put
-      // two protein targets on her phone. The panel says what would change, and
-      // the sum stays in one file.
-      lines.push(
-        `That assumes you are lifting or doing something that asks the muscle to work. If you are not at the moment, say so in your Body Manual and this comes back down to the maintenance range.`
-      );
-    } else if (proteinStepped === 'held') {
-      lines.push(`${span}, the maintenance range, because your training is paused.`);
-      lines.push(
-        `It steps back up once you are training again. Protein is what protects the muscle you have, so this is not lower than it should be - it is where it belongs without the training to build on.`
-      );
-    } else {
-      lines.push(`${span}.`);
-    }
+    blocks.push({
+      kind: 'figure',
+      text: fill(GUIDE_FRAME.proteinFigure, {
+        'protein low': proteinLow,
+        'protein high': proteinHigh,
+      }),
+    });
   }
 
-  // SAID ONCE, AND NOT AS A DISCLAIMER. These are estimates from a formula, and
-  // she should know that without being told to distrust them.
-  lines.push(`These are estimates, and they move as anything else does. Nothing here has a date on it.`);
+  blocks.push({ kind: 'closing', text: GUIDE_FRAME.closing });
 
-  return { lines, targetKcal: rounded, missing: null, flooredAt, activityLineIndex };
+  const lines = blocks.map((b) => b.text);
+  const activityLineIndex = blocks.findIndex((b) => b.activityWord != null);
+
+  return {
+    blocks,
+    lines,
+    targetKcal: rounded,
+    missing: null,
+    flooredAt,
+    activityLineIndex: activityLineIndex === -1 ? null : activityLineIndex,
+  };
 }

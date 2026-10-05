@@ -23,6 +23,7 @@ const CAL = await import(root + '/mobile/src/lib/calorie-target.ts');
 const PRO = await import(root + '/mobile/src/lib/protein.ts');
 const INTENT = await import(root + '/mobile/src/lib/body-intent.ts');
 const RULES = await import(root + '/mobile/src/lib/calorie-rules.ts');
+const GUIDE = await import(root + '/mobile/src/lib/starting-guide.ts');
 
 // HER OWN FIGURES, at the activity level she says is right (4 October 2026:
 // "mine TDEE is around 1550 so the calculation should land around there").
@@ -150,6 +151,39 @@ const out = {
   // at, in the same file the checks read, so a number cannot change without its
   // reason changing with it. The monthly scan proposes against these entries.
   rules: RULES.CALORIE_RULES,
+  // HER STARTING-GUIDE COPY, AS THE PERMANENT RECORD (5 October 2026): "Add the
+  // 'Your starting guide' text block I pasted to the matrix as the permanent
+  // record: one 'text shown on screen' entry per state (ten), with the frame, the
+  // italic lines and the placeholders as written. The checks read it. Do not
+  // paraphrase it."
+  //
+  // COPIED, NOT RETYPED. It comes out of lib/starting-guide.ts, which is the file
+  // the app itself renders from, so the record and the screen cannot say two
+  // different things. check-starting-guide.mjs compares them both ways.
+  startingGuide: {
+    frame: GUIDE.GUIDE_FRAME,
+    states: GUIDE.GUIDE_STATES.map((g) => ({
+      key: g.key,
+      name: g.name,
+      shownOnScreen: [
+        GUIDE.GUIDE_FRAME.title,
+        GUIDE.GUIDE_FRAME.intro,
+        GUIDE.GUIDE_FRAME.restBullet,
+        GUIDE.GUIDE_FRAME.activityBullet,
+        g.paragraph,
+        ...(g.italic ? [g.italic] : []),
+        ...(g.smallLine ? [g.smallLine] : []),
+        ...(g.showsFigures
+          ? [GUIDE.GUIDE_FRAME.guideFigure, GUIDE.GUIDE_FRAME.proteinFigure, GUIDE.GUIDE_FRAME.closing]
+          : [GUIDE.GUIDE_FRAME.closingNoGuide]),
+      ],
+      paragraph: g.paragraph,
+      italic: g.italic ?? null,
+      smallLine: g.smallLine ?? null,
+      showsFigures: g.showsFigures,
+      teaches: g.teaches ?? null,
+    })),
+  },
 };
 
 writeFileSync('scripts/mode-matrix.json', JSON.stringify(out, null, 2));

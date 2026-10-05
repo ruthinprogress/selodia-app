@@ -308,6 +308,47 @@ export function usesLineUnset(tdeeKcal: number): string {
  * week, and never below what she burns lying still, are the actual rules and are
  * no harder to read.
  */
+export const GUIDE_INTRO = "Based on what you've told Selodía:";
+
+/** The first bullet: what she burns lying still. */
+export function restLine(bmrKcal: number): string {
+  return `Your body uses about ${bmrKcal.toLocaleString('en-GB')} kcal a day at rest.`;
+}
+
+/** The second bullet, with the activity phrase a screen can make a link. */
+export function becomesLine(activityWord: string, tdeeKcal: number): string {
+  return `With ${activityWord}, that becomes about ${tdeeKcal.toLocaleString('en-GB')} kcal a day.`;
+}
+
+/** The same bullet when she has never said how active her weeks are. */
+export function becomesLineUnset(tdeeKcal: number): string {
+  return `Altogether that comes to about ${tdeeKcal.toLocaleString('en-GB')} kcal a day.`;
+}
+
+export const GUIDE_CLOSING =
+  'Nothing here is fixed. If your activity, body or approach changes, your guide changes with it.';
+
+/**
+ * THE QUIET SERIF LINE, AND ONLY WHERE IT IS TRUE (Ruth, 5 October 2026).
+ *
+ *   "the italic line 'Any change comes from protein and training, not simply
+ *   from eating less.' shown only for Lose fat + Build muscle and Maintain
+ *   weight + Build muscle... Other approaches don't show the italic line,
+ *   because it wouldn't be true for them."
+ *
+ * That last clause is the whole rule. Under a deficit the change DOES come
+ * partly from eating less, and saying otherwise there would be a nice sentence
+ * that happens to be false - which is the one thing this app cannot afford to
+ * put in a serif.
+ */
+export function modeFootnote(mode: BodyMode | null): string | null {
+  if (!mode || !mode.buildMuscle) return null;
+  if (mode.loseFat || mode.maintainWeight) {
+    return 'Any change comes from protein and training, not simply from eating less.';
+  }
+  return null;
+}
+
 export function modeExplanation(mode: BodyMode | null): string {
   if (isEmpty(mode) || !mode) {
     return 'Nothing chosen yet. Pick what you are working on and your daily guide appears.';
@@ -319,13 +360,19 @@ export function modeExplanation(mode: BodyMode | null): string {
     return 'Your daily guide sits a little above what your body uses - a quarter of a percent of your weight a week, and never more than 300 kcal a day extra. Steady rather than fast, because faster is mostly fat. There is nothing to reach and no date.';
   }
   if (mode.loseFat && mode.buildMuscle) {
-    return 'Your daily guide sits at what your body uses, not under it, and protein goes to the top of its range. Asking for less fat AND more muscle at once means the change comes from the protein and the training rather than from eating less.';
+    // HER WORDING, VERBATIM AND FINAL (5 October 2026). Mine described what the
+    // app does to the number; hers starts from what SHE chose, explains why
+    // building muscle needs a reason to grow, and only then says what Selodia
+    // does about it.
+    return "You've chosen to lose fat and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide close to what your body uses, instead of pushing it as low as possible.";
   }
   if (mode.loseFat) {
     return 'Your daily guide sits a little below what your body uses - half a percent of your weight a week, which is gentle on purpose. It never drops below what your body burns lying still, whatever the sum says. Protein goes to the top of its range, because that is what protects muscle while you lose fat.';
   }
   if (mode.maintainWeight && mode.buildMuscle) {
-    return 'Your daily guide sits at what your body uses, which is what keeps your weight where it is. Protein goes to the top of its range, for recovery and new muscle.';
+    // Her wording. Only the last clause differs from the recomposition one, which
+    // is the only thing that actually differs between the two.
+    return "You've chosen to hold your weight and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide at what your body uses.";
   }
   if (mode.maintainWeight) {
     return 'Your daily guide sits at what your body uses, which is what keeps your weight where it is.';

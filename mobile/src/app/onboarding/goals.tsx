@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ButtonRadius, CardRadius, MaxContentWidth, Spacing } from '@/constants/theme';
+import { ButtonRadius, CardRadius, DisplayFont, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { WeightQuestion, type WeightAnswer } from '@/components/weight-question';
 import { explainTarget, intentFromFocus, type TargetWorking } from '@/lib/body-intent';
@@ -727,29 +727,48 @@ export default function GoalsScreen() {
                   which is what she is looking at - and it is the same word the
                   rest of the app now uses for it. */}
               <ThemedText type="small">Your starting guide</ThemedText>
-              {working.lines.map((line, i) => {
-                // THE ACTIVITY LINE CARRIES A WAY BACK (Ruth, 5 October 2026):
-                // "'lightly active' needs to be in bold and a link so they can go
-                // back to where they selected it in onboarding when they didn't
-                // realise what it meant."
-                //
-                // It is the one line in this panel built on an answer she gave on
-                // a different screen, and the one most likely to be wrong -
-                // because until yesterday it was derived from chips rather than
-                // asked for. explainTarget says which line it is; the word to
-                // make tappable is the one we handed it.
-                const word = ACTIVITY_WORD[body?.activityLevel ?? ''] ?? null;
-                if (working.activityLineIndex !== i || !word || !line.includes(word)) {
+              {/* HER PANEL, IN PARTS (5 October 2026). It was a list of
+                  sentences; she set the shape - an intro, two bullets, the
+                  paragraph for her approach, a quiet serif line where it is true,
+                  the two figures, then the closing line - so explainTarget returns
+                  parts and this draws each kind as itself.
+
+                  THE ACTIVITY PHRASE CARRIES A WAY BACK: "'lightly active' needs
+                  to be in bold and a link so they can go back to where they
+                  selected it in onboarding when they didn't realise what it
+                  meant." It is the one part of this panel built on an answer she
+                  gave on another screen. */}
+              {working.blocks.map((block, i) => {
+                if (block.kind === 'italic') {
                   return (
-                    <ThemedText key={i} type="small" themeColor="textSecondary">
-                      {line}
+                    <ThemedText key={i} themeColor="textSecondary" style={styles.serifLine}>
+                      {block.text}
                     </ThemedText>
                   );
                 }
-                const [before, after] = line.split(word);
+                if (block.kind === 'figure') {
+                  return (
+                    <ThemedText key={i} type="smallBold">
+                      {block.text}
+                    </ThemedText>
+                  );
+                }
+                const word = block.activityWord ?? null;
+                if (!word || !block.text.includes(word)) {
+                  return (
+                    <ThemedText
+                      key={i}
+                      type="small"
+                      themeColor="textSecondary"
+                      style={block.kind === 'bullet' ? styles.bulletLine : undefined}>
+                      {block.kind === 'bullet' ? `\u00b7  ${block.text}` : block.text}
+                    </ThemedText>
+                  );
+                }
+                const [before, after] = block.text.split(word);
                 return (
-                  <ThemedText key={i} type="small" themeColor="textSecondary">
-                    {before}
+                  <ThemedText key={i} type="small" themeColor="textSecondary" style={styles.bulletLine}>
+                    {`\u00b7  ${before}`}
                     <ThemedText
                       type="smallBold"
                       themeColor="accentDeep"
@@ -827,6 +846,17 @@ const styles = StyleSheet.create({
   },
   group: { gap: Spacing.two },
   activityLink: { textDecorationLine: 'underline' },
+  bulletLine: { paddingLeft: Spacing.two },
+  // THE QUIET SERIF, her words for it: "in the quiet serif style, not bold." The
+  // same face as Today's closing line, which is the app speaking rather than
+  // labelling - and this sentence is the one claim on the panel that is about
+  // what change comes FROM, rather than a figure.
+  serifLine: {
+    fontFamily: DisplayFont.italic,
+    fontSize: 16,
+    lineHeight: 22,
+    paddingVertical: Spacing.one,
+  },
   options: {
     flexDirection: 'row',
     flexWrap: 'wrap',

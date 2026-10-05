@@ -180,7 +180,7 @@
       "stepped": "up",
       "intent": "recomposition",
       "stored": "fat reduce · muscle increase",
-      "line": "Your daily guide sits at what your body uses, not under it, and protein goes to the top of its range. Asking for less fat AND more muscle at once means the change comes from the protein and the training rather than from eating less.",
+      "line": "You've chosen to lose fat and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide close to what your body uses, instead of pushing it as low as possible.",
       "safety": null,
       "safetyDetail": null
     },
@@ -202,7 +202,7 @@
       "stepped": "up",
       "intent": "build_muscle",
       "stored": "fat maintain · muscle increase",
-      "line": "Your daily guide sits at what your body uses, which is what keeps your weight where it is. Protein goes to the top of its range, for recovery and new muscle.",
+      "line": "You've chosen to hold your weight and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide at what your body uses.",
       "safety": null,
       "safetyDetail": null
     },
@@ -355,5 +355,211 @@
       "basis": "The standard Harris-Benedict style multipliers, which assume the whole day. The question used to ask about movement OUTSIDE exercise and feed the answer to a whole-day multiplier, which left her training out of her own estimate - about 400 kcal a day in her case.",
       "lastReviewed": "2026-10-04"
     }
-  ]
+  ],
+  "startingGuide": {
+    "frame": {
+      "title": "Your starting guide",
+      "intro": "Based on what you've told Selodía:",
+      "restBullet": "Your body uses about {resting} kcal a day at rest.",
+      "activityBullet": "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+      "activityLinkLabel": "Change activity level",
+      "guideFigure": "Around {guide} kcal a day",
+      "proteinFigure": "{protein low}–{protein high} g protein a day",
+      "closing": "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it.",
+      "closingNoGuide": "Nothing here is fixed."
+    },
+    "states": [
+      {
+        "key": "lose_fat",
+        "name": "Lose fat",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to lose fat, so Selodía sets a gentle calorie deficit. It never goes below what your body uses at rest, and protein stays high to help protect your muscle.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to lose fat, so Selodía sets a gentle calorie deficit. It never goes below what your body uses at rest, and protein stays high to help protect your muscle.",
+        "italic": null,
+        "smallLine": null,
+        "showsFigures": true,
+        "teaches": "Deficits are gentle and muscle is worth protecting."
+      },
+      {
+        "key": "lose_fat_build",
+        "name": "Lose fat + Build muscle",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to lose fat and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide close to what your body uses, instead of pushing it as low as possible.",
+          "Any change comes from protein and training, not simply from eating less.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to lose fat and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide close to what your body uses, instead of pushing it as low as possible.",
+        "italic": "Any change comes from protein and training, not simply from eating less.",
+        "smallLine": null,
+        "showsFigures": true,
+        "teaches": "Protein and training drive the change, not a bigger deficit."
+      },
+      {
+        "key": "maintain",
+        "name": "Maintain weight",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to maintain your weight, so Selodía keeps your guide around what your body uses. The aim is for your weight to stay broadly where it is.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to maintain your weight, so Selodía keeps your guide around what your body uses. The aim is for your weight to stay broadly where it is.",
+        "italic": null,
+        "smallLine": null,
+        "showsFigures": true,
+        "teaches": "Holding steady is an active choice."
+      },
+      {
+        "key": "maintain_build",
+        "name": "Maintain weight + Build muscle",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to maintain your weight and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide around what your body uses and raises protein to support recovery and growth.",
+          "Any change comes from protein and training, not simply from eating more.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to maintain your weight and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide around what your body uses and raises protein to support recovery and growth.",
+        "italic": "Any change comes from protein and training, not simply from eating more.",
+        "smallLine": null,
+        "showsFigures": true,
+        "teaches": null
+      },
+      {
+        "key": "build",
+        "name": "Build muscle",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to build muscle. Building muscle needs enough energy, enough protein and a reason for the muscle to grow, usually strength training. So Selodía adds a small surplus, about 5% above what your body uses, and keeps protein at the top of its range.",
+          "Extra energy helps, but protein and training are what build muscle.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to build muscle. Building muscle needs enough energy, enough protein and a reason for the muscle to grow, usually strength training. So Selodía adds a small surplus, about 5% above what your body uses, and keeps protein at the top of its range.",
+        "italic": "Extra energy helps, but protein and training are what build muscle.",
+        "smallLine": null,
+        "showsFigures": true,
+        "teaches": "Muscle needs energy, protein and training."
+      },
+      {
+        "key": "gain",
+        "name": "Gain weight",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to gain weight, so Selodía adds a small, steady surplus: about a quarter of a percent of your weight a week, around {surplus} kcal a day. Gentle is deliberate, because slow gain is easier to keep.",
+          "If you have been losing weight without meaning to, it is worth telling your doctor.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to gain weight, so Selodía adds a small, steady surplus: about a quarter of a percent of your weight a week, around {surplus} kcal a day. Gentle is deliberate, because slow gain is easier to keep.",
+        "italic": null,
+        "smallLine": "If you have been losing weight without meaning to, it is worth telling your doctor.",
+        "showsFigures": true,
+        "teaches": "Faster is not better."
+      },
+      {
+        "key": "gain_build",
+        "name": "Gain weight + Build muscle",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You've chosen to gain weight and build muscle. Selodía adds a small, steady surplus, about a quarter of a percent of your weight a week, around {surplus} kcal a day, and keeps protein at the top of its range. That helps more of what you gain to be muscle.",
+          "If you have been losing weight without meaning to, it is worth telling your doctor.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "You've chosen to gain weight and build muscle. Selodía adds a small, steady surplus, about a quarter of a percent of your weight a week, around {surplus} kcal a day, and keeps protein at the top of its range. That helps more of what you gain to be muscle.",
+        "italic": null,
+        "smallLine": "If you have been losing weight without meaning to, it is worth telling your doctor.",
+        "showsFigures": true,
+        "teaches": null
+      },
+      {
+        "key": "none",
+        "name": "No approach chosen",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "You haven't chosen an approach yet, so there is no guide yet. Choose one and your guide appears, built around the number above.",
+          "Nothing here is fixed."
+        ],
+        "paragraph": "You haven't chosen an approach yet, so there is no guide yet. Choose one and your guide appears, built around the number above.",
+        "italic": null,
+        "smallLine": null,
+        "showsFigures": false,
+        "teaches": null
+      },
+      {
+        "key": "no_weight",
+        "name": "Weight not known",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "Selodía needs your weight to work out your guide. A guess is fine, and you can add it any time.",
+          "Nothing here is fixed."
+        ],
+        "paragraph": "Selodía needs your weight to work out your guide. A guess is fine, and you can add it any time.",
+        "italic": null,
+        "smallLine": null,
+        "showsFigures": false,
+        "teaches": null
+      },
+      {
+        "key": "paused",
+        "name": "Paused",
+        "shownOnScreen": [
+          "Your starting guide",
+          "Based on what you've told Selodía:",
+          "Your body uses about {resting} kcal a day at rest.",
+          "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
+          "Your approach is paused, so Selodía shows what your body uses. Resume when you like and your approach comes back as you set it.",
+          "Around {guide} kcal a day",
+          "{protein low}–{protein high} g protein a day",
+          "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
+        ],
+        "paragraph": "Your approach is paused, so Selodía shows what your body uses. Resume when you like and your approach comes back as you set it.",
+        "italic": null,
+        "smallLine": null,
+        "showsFigures": true,
+        "teaches": null
+      }
+    ]
+  }
 }
