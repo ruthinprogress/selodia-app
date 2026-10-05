@@ -791,7 +791,7 @@ export default function ReportScreen() {
                 <Checkbox
                   checked={whole.has('goals')}
                   onToggle={() => setWhole((s) => toggled(s, 'goals'))}
-                  label="Your goals, under their own heading"
+                  label="Your approach, under its own heading"
                 />
               </View>
             </SettingsGroup>

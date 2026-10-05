@@ -720,7 +720,7 @@ export function OverviewPanel({
           <Pressable
             onPress={() => router.push('/')}
             accessibilityRole="link"
-            accessibilityLabel="Add a goal to see targets, opens chat"
+            accessibilityLabel="Choose an approach to see your guide, opens chat"
             style={({ pressed }) => [styles.targetLine, pressed && styles.pressed]}>
             <ThemedText type="small" themeColor="accentDeep">
               Add a goal to see targets

@@ -238,7 +238,7 @@ export function BodyModes({
           accessibilityRole="button"
           accessibilityState={{ expanded: open }}
           accessibilityLabel={summary}
-          accessibilityHint={open ? 'Hides your goal settings' : 'Shows your goal settings'}
+          accessibilityHint={open ? 'Hides your approach' : 'Shows your approach'}
           hitSlop={Spacing.two}
           style={({ pressed }) => [styles.headLine, pressed && styles.pressed]}>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>

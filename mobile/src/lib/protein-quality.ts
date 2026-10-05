@@ -48,7 +48,7 @@ export function dayLevelProteinNudge(
     baseTargetG != null && baseTargetG > 0 ? Math.round(baseTargetG * PROTEIN_BUFFER_FACTOR) : null;
   const targetClause =
     bufferedTarget != null
-      ? ` Plant protein is absorbed a little less efficiently, so nudging your target up a touch today (around ${bufferedTarget}g rather than ${Math.round(baseTargetG!)}g) covers the difference.`
+      ? ` Plant protein is absorbed a little less efficiently, so nudging your protein up a touch today (around ${bufferedTarget}g rather than ${Math.round(baseTargetG!)}g) covers the difference.`
       : '';
   const message =
     `Most of today's protein so far is from incomplete sources (collagen or plant). Pairing a complementary source (a grain alongside the legumes, or a little dairy) rounds out the amino acids.${targetClause}`;

@@ -372,7 +372,7 @@ export const PAUSE_EXPLANATION =
 
 /** What the card says while paused, in place of the mode line. */
 export function pausedLine(activityWord: string, tdeeKcal: number): string {
-  return `Paused. ${usesLine(activityWord, tdeeKcal)} Resume puts your goal back exactly as it was.`;
+  return `Paused. ${usesLine(activityWord, tdeeKcal)} Resume puts your approach back exactly as it was.`;
 }
 
 // ---------------------------------------------- the activity level, in words

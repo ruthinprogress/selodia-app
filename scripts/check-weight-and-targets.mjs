@@ -286,7 +286,10 @@ check('no weight means one sentence about the weight, and no figure', () => {
     bmrKcal: 1123, tdeeKcal: 1740, activityWord: null, proteinLow: null, proteinHigh: null,
    proteinStepped: 'plain',});
   assert.strictEqual(w.targetKcal, null, 'a target was produced with no weight');
-  assert.strictEqual(w.missing, 'Add your weight to see your targets.');
+  // "YOUR GUIDE", NOT "YOUR TARGETS" (Ruth, 5 October 2026). Her distinction:
+  // "You choose your approach. Selodia provides the guide." A target is a thing
+  // you are measured against; a guide is something offered.
+  assert.strictEqual(w.missing, 'Add your weight to see your guide.');
   return 'her exact wording for Today, and no invented figure';
 });
 

@@ -28,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 // special downstream, which is why there is no chip-specific branch anywhere in
 // ask-selodia: a tap is a shortcut past typing, not a different kind of message.
 export const CHAT_CHIPS = [
-  'My body goals',
+  'My current approach',
   "Log what I've eaten",
   'My activity and workouts',
   'What can I log here?',

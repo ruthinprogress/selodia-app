@@ -114,7 +114,7 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     // to change it - two screens writing one value is the shape that gave her two
     // protein targets and a goal she had to set twice.
     key: 'goal',
-    heading: 'Your body goal',
+    heading: 'Your current approach',
     note: 'Set on Today, where it sits with your figures.',
     empty: 'Nothing chosen yet, so there is no calorie figure. Set it on Today.',
     toToday: true,
@@ -164,8 +164,8 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     // meaning of before she can ignore it.
     key: 'deficit',
     heading: 'Your deficit',
-    note: 'Pausing holds your calories at what you use, for a holiday or any other reason. Your goal stays exactly as it is and nothing is lost.',
-    empty: 'Running, as your goal asks.',
+    note: 'Pausing holds your calories at what you use, for a holiday or any other reason. Your approach stays exactly as it is and nothing is lost.',
+    empty: 'Running, as your approach asks.',
     inline: true,
     onlyWhenFatLoss: true,
   },
@@ -173,7 +173,7 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     key: 'weight',
     heading: 'Your weight',
     note: 'Updates itself from your latest reading. A real weigh-in always beats a guess.',
-    empty: 'No weight yet. Add one and your targets appear.',
+    empty: 'No weight yet. Add one and your guide appears.',
     readOnly: true,
   },
   {
@@ -185,7 +185,7 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
   {
     key: 'week',
     heading: 'What you already do',
-    note: 'The shape of your week, not a target to hit. Nothing in it is ever marked done or missed.',
+    note: 'The shape of your week, not something to hit. Nothing in it is ever marked done or missed.',
     empty: 'Nothing yet. Add it here or say so in chat.',
   },
   {

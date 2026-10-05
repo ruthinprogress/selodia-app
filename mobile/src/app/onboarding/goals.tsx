@@ -100,7 +100,7 @@ const SUBTITLE =
 
 // Ruth's own wording, from the brief.
 const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
-const MEASURE_NOTE = 'Optional. It sits under your goals as a reminder of what you said, and is never counted down from.';
+const MEASURE_NOTE = 'Optional. It sits under your approach as a reminder of what you said, and is never counted down from.';
 
 // HOW ACTIVE SHE SAID SHE IS, in words, for the line that explains the figure.
 // The stored values are the TDEE multiplier's own vocabulary; "with your days
@@ -471,7 +471,7 @@ export default function GoalsScreen() {
         weight_kg: weight.kg,
         weight_source: 'estimate',
         measured_at: new Date().toISOString(),
-        notes: 'Given on the goals screen. A guess, not a weigh-in.',
+        notes: 'Given when you chose your approach. A guess, not a weigh-in.',
       });
       if (weightError) return false;
     }

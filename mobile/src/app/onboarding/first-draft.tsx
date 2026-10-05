@@ -150,7 +150,7 @@ export default function FirstDraftScreen() {
         // that might be built on nothing is not.
         targetLine:
           profile?.fat_focus_state || profile?.muscle_focus_state
-            ? 'Set from your goals. They show on Today.'
+            ? 'Set from your approach. They show on Today.'
             : null,
       });
     })();
@@ -226,9 +226,9 @@ export default function FirstDraftScreen() {
         <Section title="Medicines you react to" items={draft.allergiesMedicine} />
       )}
       <Section
-        title="Your targets"
+        title="Your guide"
         items={draft.targetLine ? [draft.targetLine] : []}
-        emptyNote="Add a goal any time and they will appear."
+        emptyNote="Choose an approach any time and it will appear."
       />
 
       <ThemedText type="small" themeColor="textSecondary">

@@ -93,7 +93,7 @@ export default function SettingsHub() {
           first
           mark="figure"
           label="Profile"
-          detail="Your details and goals"
+          detail="Your name, your height, your date of birth"
           onPress={() => router.push('/settings/profile')}
         />
         {/* WHAT I TRACK (Ruth, 24 September 2026). Directly under Profile,

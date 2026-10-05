@@ -474,7 +474,10 @@ check('a paused deficit explains itself and keeps the goal', () => {
   });
   const all = w.lines.join(' | ');
   assert.strictEqual(w.targetKcal, 1740, 'a paused deficit still eats under maintenance');
-  assert.ok(/still your goal/.test(all), 'it does not say the goal survives');
+  // THE PROPERTY IS UNCHANGED, THE WORD IS NOT: a paused deficit must still say
+  // the thing she chose survives the pause. It is her approach now, not her goal.
+  assert.ok(/still your approach/.test(all), 'it does not say the approach survives');
+  assert.ok(!/your goal/.test(all), 'a paused deficit still calls it a goal');
   assert.ok(!/this is a deficit/i.test(all), 'it still calls a paused target a deficit');
   return 'maintenance, and the goal stays';
 });

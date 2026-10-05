@@ -199,7 +199,7 @@ export default function GoalScreen() {
               <Drives
                 label="Daily energy"
                 value={drives?.kcal != null ? `${drives.kcal.toLocaleString('en-GB')} kcal` : null}
-                empty="Needs a goal and a weight"
+                empty="Needs an approach and a weight"
               />
               <Drives label="Daily protein" value={drives?.protein} empty="Needs a body fat reading" />
 
@@ -207,7 +207,7 @@ export default function GoalScreen() {
                 type="small"
                 themeColor="accentDeep"
                 accessibilityRole="link"
-                accessibilityLabel="Change goal, opens chat"
+                accessibilityLabel="Change your approach, opens chat"
                 style={styles.change}
                 onPress={() =>
                   router.push({

@@ -280,15 +280,15 @@ export function BodyManual({
       return [
         'You are on less fat with more muscle, so there is no deficit to pause.',
         'That eats around what you use rather than under it. The change comes from protein and training, not from eating less.',
-        'Change your body goal above if you would rather lose fat with a deficit.',
+        'Change your approach on Today if you would rather lose fat with a deficit.',
       ];
     }
     // NULL READS AS RUNNING, because a deficit is what choosing to lose fat
     // already asked for. Only an explicit pause is news.
-    if (deficit !== 'paused') return ['Running, as your goal asks.'];
+    if (deficit !== 'paused') return ['Running, as your approach asks.'];
     return [
       'Paused, so your calories are held at what you use.',
-      'Your goal has not changed and nothing was lost.',
+      'Your approach has not changed and nothing was lost.',
       ...(deficitSetAt
         ? [`Paused on ${new Date(deficitSetAt).toLocaleDateString('en-GB')}.`]
         : []),

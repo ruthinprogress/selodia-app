@@ -294,7 +294,7 @@ export function explainTarget(input: {
     return {
       lines: [],
       targetKcal: null,
-      missing: 'Add your weight to see your targets.',
+      missing: 'Add your weight to see your guide.',
       flooredAt: null,
       activityLineIndex: null,
     };
@@ -342,7 +342,7 @@ export function explainTarget(input: {
     // PAUSED FOR A HOLIDAY, AND STILL HER GOAL (2026-10-02).
     if (input.deficitPaused === true) {
       lines.push(
-        `Your deficit is paused, so this is simply what you use. Losing fat is still your goal and nothing about it has changed - you are just not eating under it at the moment.`
+        `Your deficit is paused, so this is simply what you use. Losing fat is still your approach and nothing about it has changed - you are just not eating under it at the moment.`
       );
     } else {
       // 0.5% of bodyweight a week, at 7,700 kcal per kg, spread over seven days.
