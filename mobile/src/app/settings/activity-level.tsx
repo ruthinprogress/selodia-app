@@ -219,12 +219,15 @@ export default function ActivityLevelScreen() {
           </ThemedText>
         )}
 
-        {/* HER WORDING, VERBATIM (5 October 2026). Mine said the same thing from
-            the app's side - "nothing here is worked out from what you log" -
-            which is an engineer explaining what the system does not do. Hers
-            says it from the person's: it is based on what you chose, and it
-            waits for you. Same fact, and the second one is warmer because it
-            puts her at the centre of the sentence rather than the mechanism. */}
+        {/* HER WORDING, VERBATIM. Mine said the same fact from the app's side -
+            "nothing here is worked out from what you log" - which is an engineer
+            explaining what the system does not do. Hers says it from the
+            person's, and that is the whole of why it is warmer: she is the
+            subject of the sentence rather than the mechanism.
+
+            IT WAS BRIEFLY REMOVED AND PUT BACK the same morning. She asked for it
+            gone, then found she had been reading an older build - the page she
+            was judging did not have the guide line above it yet. */}
         <ThemedText type="small" themeColor="textSecondary">
           This is based only on the activity level you choose. It won&apos;t change
           automatically unless you update it.

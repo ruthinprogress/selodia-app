@@ -392,8 +392,16 @@ await check('a switch that writes tells the screen that reads', async () => {
     'the screen does not listen, so the figures stay stale until she leaves and returns'
   );
   assert.ok(
-    /\}, \[reloadKey\]\)/.test(panel),
+    /\[reloadKey\]/.test(panel),
     'the read does not depend on the reload key, so announcing a write changes nothing'
+  );
+  // AND THE READ IS NOT THE FOCUS EFFECT. It was, with the key as its dependency,
+  // and on her phone it did not re-run - the figures stayed stale until she left
+  // Today and came back. Focus asks for a re-read now; the read is an ordinary
+  // effect on the key, with no navigation semantics in it to be subtle about.
+  assert.ok(
+    /useFocusEffect\(\s*useCallback\(\(\) => \{\s*if \(firstFocus\.current\)/.test(panel),
+    'the read is back inside the focus effect, where changing the key did not re-run it'
   );
   return 'write, announce, re-read';
 });

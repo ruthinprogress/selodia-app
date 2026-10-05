@@ -290,8 +290,34 @@ export function OverviewPanel({
    */
   const [reloadKey, setReloadKey] = useState(0);
 
+  // COMING BACK TO THE SCREEN IS JUST ANOTHER REASON TO RE-READ (5 October 2026).
+  //
+  // The read used to BE the focus effect, with the reload key as its dependency.
+  // That should re-run when the key changes - useFocusEffect re-runs when its
+  // callback's identity changes while focused - and on Ruth's phone it did not:
+  // she toggled Maintain, the switches moved, and the Food row above went on
+  // saying "No calorie target yet" until she left Today and came back.
+  //
+  // RATHER THAN KEEP REASONING ABOUT WHY, the two jobs are separated. Focus does
+  // one thing: ask for a re-read. The read is a plain useEffect on the key, which
+  // has no navigation semantics in it at all. One mechanism, one trigger, nothing
+  // to be subtle about.
+  //
+  // The ref stops the first focus doubling the first read: the effect below has
+  // already run by then, on key 0.
+  const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      setReloadKey((k) => k + 1);
+    }, [])
+  );
+
+  useEffect(
+    () => {
       let cancelled = false;
       (async () => {
       const dayStart = startOfToday();
@@ -507,7 +533,8 @@ export function OverviewPanel({
       return () => {
         cancelled = true;
       };
-    }, [reloadKey])
+    },
+    [reloadKey]
   );
 
   if (loading || !data) {
