@@ -3720,9 +3720,16 @@ any suggestion that would lower a calorie floor or raise a surplus ceiling has t
 say so in its first line. A scan that could quietly move a safety bound is not a
 scan, it is an unattended edit.
 
-**All of them only run while the Claude desktop app is open.** A task due while
-the laptop is shut runs on next launch. Fine for a monthly job, a real weakness
-for anything that must happen on a given day - see the doc.
+**They all run at night, and that is why they work.** They only run while the
+Claude desktop app is open, and every one of them was scheduled for Monday
+morning - which is why the weekly funding check had never once fired. Ruth,
+5 October 2026: *"turn it to a night time task and that will be fine as i leave it
+on overnight - it's daytime use that can be choppy as i move around."* So the
+three Monday jobs moved into the overnight window, staggered into the gaps between
+the overnight queue's four slots: funding at 00:40, the research scan at 02:10,
+November readiness at 04:20. Nothing competes with her using the machine, and
+"only runs while the app is open" became a fact about them rather than a weakness
+in them.
 
 ## Selodía hardware / wearable
 

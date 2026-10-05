@@ -13,24 +13,41 @@ us noticing.
 
 | What | When | Where the report goes | Applies changes? |
 | --- | --- | --- | --- |
-| **Monthly research scan** | First Monday of the month, 09:11. First real run **Mon 2 Nov 2026**. | `Build Specs\Research scans\YYYY-MM-DD Selodia research scan.docx` | **No.** Proposes on a branch, never merges. |
-| **Weekly funding check** | Mondays, 09:02 | Appended to `Competitor analysis\Competitor analysis and funding watch.docx` | No |
-| **November readiness** | Mondays, 09:18 | Reported in chat | No |
-| **Overnight queue** | 23:00, 01:00, 03:00, 05:00 daily | Commits and a close-out line | Yes — it builds |
+| **Weekly funding check** | Monday **00:40** | Appended to `Competitor analysis\Competitor analysis and funding watch.docx` | No |
+| **Overnight queue** | 23:00, **01:00**, 03:00, 05:00 daily | Commits and a close-out line | Yes — it builds |
+| **Monthly research scan** | Monday **02:10**, first Monday of the month only. First real run **Mon 2 Nov 2026**. | `Build Specs\Research scans\YYYY-MM-DD Selodia research scan.docx` | **No.** Proposes on a branch, never merges. |
+| **November readiness** | Monday **04:20** | Reported in chat | No |
 
-## The thing to know about all of them
+Listed in the order they fire, and staggered into the gaps between the overnight
+queue's four slots so two jobs never start together.
 
-**They only run while the Claude desktop app is open.** If the app is shut when a
-task is due, it runs on next launch instead. That is why the two Monday jobs above
-have no `lastRunAt` at all, and why the overnight queue last ran on 2 October
-despite being due four times a day.
+## Why they all run at night (5 October 2026)
 
-This is fine for the monthly scan — a month has plenty of slack, and a first
-Monday missed because the laptop was closed simply runs on the Tuesday. It is a
-real weakness for anything that has to happen on a particular day. If one of these
-ever genuinely must fire on time, it needs GitHub Actions instead, which runs in
+**They only run while the Claude desktop app is open**, and a task due while it is
+shut runs on next launch instead. Everything above was scheduled for Monday
+morning, which is the worst possible time: the funding check had never once fired,
+and the November readiness check had the same problem.
+
+Ruth's answer, and it is the right one:
+
+> turn it to a night time task and that will be fine as i leave it on overnight -
+> it's daytime use that can be choppy as i move around
+
+So all three joined the overnight queue's window. The laptop is on and the app is
+open through the night, which makes "only runs while the app is open" a fact about
+these jobs rather than a weakness in them — and nothing now competes with her
+using the machine.
+
+**What is still true.** If the laptop is genuinely off overnight on a Monday, the
+job runs when she next opens the app. That is fine for all four: a funding round
+and a research finding are both things where a day late costs nothing. If
+something ever genuinely must fire on time, it needs GitHub Actions, which runs in
 the cloud whether or not anything is open here. There is no cloud Routine on this
 account; what exists is a desktop task tied to the app.
+
+**The clock times shown in the sidebar are a few minutes later than the ones
+above.** Recurring tasks get a small fixed delay at dispatch to spread load, so
+00:40 is listed as 00:42 and so on. Nothing to correct.
 
 ## The monthly research scan, in more detail
 
