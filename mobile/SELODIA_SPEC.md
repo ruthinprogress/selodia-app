@@ -1559,7 +1559,7 @@ One-tap export from My Rules — clean, plain language summary suitable to share
 
 - **Week** maps to My Week, and its shape is worth keeping: a list, not a calendar. Each row is an activity, a one-line purpose and a cadence on the right ("1×/week, 1.5 hrs"; "daily, ~8k avg"; "when possible"). The purpose line ties each movement to why it matters, which is the orientation the brief asks for.
 - **Gym and Park** map to My Plans: sessions done exercise by exercise, each with sets and reps, a short cue and a tick.
-- **Skills** ("the joy track") is a progression ladder in three tiers, Now, Next and Goal, each skill with a target and what it needs first. The structural note lists skills goals for Movement; the brief has no place for a progression.
+- **Skills** ("the joy track") was mapped as a progression ladder in three tiers, Now, Next and Goal, each skill with a target and what it needs first. **Superseded 5 October 2026 — see "Skills is a place to keep things" below.** It is her own words, where she is with it and the date, with her own notes underneath. No tiers, no targets, no "needs first".
 - **Rules** matches My Rules closely: a plain-language context box naming the condition and who advised, then Never and Always lists.
 - **After** holds a standing post-session routine and a set of daily movement goals. Neither has a home in the brief.
 - **Plan** maps onto Me, not Movement: nutrition targets, supplements, and AM and PM skincare. It confirms the Me status vocabulary: Taking, Ordered, a dietary source, and "have it, if needed" for As needed.
@@ -1589,9 +1589,60 @@ One-tap export from My Rules — clean, plain language summary suitable to share
 
 9. **My Week: a cadence list or a calendar?** Her own reference is a cadence list. The brief describes slots with days and times, and classes placed week to week. Recommended: her shape, a cadence list with a purpose line, with a day and time shown only where a class really is fixed. That also answers decision 7, since nothing would need placing by hand. **Built as recommended.** Days exist on a week row but are set only in Guide me.
 10. **Plans by goal, or also by place?** Her reference groups sessions by where they happen (gym, park). The brief groups plans by goal only. Both, or goal only?
-11. **Where does the joy track live?** Recommended: a goal in My Plans can carry a ladder like hers, with Now, Next and Goal tiers and what each step needs first, so the progression sits with the plans that build it. **Overruled, and better: Skills is its own segment of Plans**, and a rung links to the session that trains it rather than the ladder living inside a plan.
+11. **Where does the joy track live?** Recommended: a goal in My Plans can carry a ladder like hers, with Now, Next and Goal tiers and what each step needs first, so the progression sits with the plans that build it. **Overruled, and better: Skills is its own segment of Plans**, and a rung links to the session that trains it rather than the ladder living inside a plan. **The segment stands; the ladder and the session link do not, from 5 October 2026 — see below.**
 12. **Where do the after-session routine and the daily movement goals go?** Recommended: daily cadences join My Week, where her own reference already lists walking and running; the after-session routine becomes an Always rule attached to the sessions it follows. **Daily cadences are in My Week as recommended. The routine is NOT built** — it belongs at the end of a session, and a routine detached from the session it follows is a thing to remember rather than a thing that happens. One caution: a walking baseline measured in steps is one the app cannot currently see, because step tracking has never read a step (Part Four).
 13. **In-session counters.** Her Gym and Park pages show "1 of 8 done" with a progress bar. The brief and the Witness Principle both rule out completion rates. Recommended: the per-exercise tick stays, because it records what was done, and the counter and progress bar do not come across. **Built as recommended, and hardened: `user_week` has no completion column at all**, so the rule is enforced by the schema rather than by everybody remembering it.
+
+### Skills is a place to keep things (Ruth, 5 October 2026)
+
+**Her principle, and it replaces the ladder everywhere above:**
+
+> Skills is just a place to keep the things someone is working on. The user does
+> not know about progression ladders and does not need to. Progression ladders are
+> parked until the app is working well and real users have shown which skills they
+> keep.
+
+**A skill is three things.** Her own words as the title, saved exactly as typed
+with only the first letter capitalised; where she is with it, one of Just
+starting, I've made a start, Nearly there, changeable by a tap; and the date it
+was added. Nothing else, and no model is called on the screen that asks.
+
+**And a quick log underneath.** Short dated notes in her words, newest first,
+editable and deletable, searchable and available to the Report Builder. Text only.
+No tap button, no session picker, nothing logs itself, and **nothing is counted** —
+no streak, no total, no "3 of 7 rungs". `skill_notes` deliberately has no column
+anything could sum, because the moment a number exists somebody renders it, and a
+quiet record of what she did becomes a score she can be behind on.
+
+**What this corrects, and the fault was not the wording.** The setup screen offered
+five calisthenics ladders — a strict pull-up, hanging core, a front lever, a
+handstand, the splits — because those were the movements the clip library could
+demonstrate end to end. Somebody whose answer is "run 5 km", "carry heavy shopping"
+or "get up from the floor easily" had nothing to tap and nowhere to type. **A
+limitation of the asset library had become the question being asked.** Half of her
+eight example answers now have nothing to do with a gym, and the box is always the
+answer: tapping an example fills it, where it can be changed.
+
+**The ladders are OFF, not deleted.** One flag, `LADDERS_ENABLED` in
+`mobile/src/lib/skills-copy.ts`. The written ladders stay in
+`mobile/src/lib/skill-ladders.ts`, the approved muscle-up wording stays in the
+Build Specs, and `user_skill_rungs` keeps its rows and is read by nothing. Turning
+them back on is a line rather than an excavation — which is the point of parking
+something rather than removing it.
+
+**No session link for now.** The data to let a skill reference a Session later is
+kept; nothing uses it. Revisit when the app is working and real users have chosen
+skills.
+
+**Chat reads and writes the same card.** `turn_context` used to send every rung of
+every ladder and nothing she had written; it sends her words, her placement, the
+date and her five newest notes. The prompt forbids steps, progressions and
+timescales, and leaves the model free to talk about practice the way a
+knowledgeable friend would.
+
+**The permanent record** is `scripts/mode-matrix.json`, generated from
+`mobile/src/lib/skills-copy.ts`, with `scripts/check-skills-copy.mjs` comparing the
+two both ways so nothing paraphrases her text.
 
 ### Ruth's answers, 2026-09-12. MOVEMENT BRIEF CONFIRMED.
 
@@ -1607,7 +1658,7 @@ One-tap export from My Rules — clean, plain language summary suitable to share
 8. **The roundup describes what happened alongside the baseline**, never as missed or short of it.
 9. **My Week is a list with purpose and rhythm**, not a calendar with days and times, as in her reference. *This settles decision 7: nothing is placed by hand.*
 10. **Plans are organised by goal only**, not by place.
-11. **A goal can carry a Now / Next / Goal progression ladder**, the joy track from her reference.
+11. **A goal can carry a Now / Next / Goal progression ladder**, the joy track from her reference. **Reversed 5 October 2026 — see below.**
 12. **Daily movement goes in My Week.** Calf stretches and equivalent post-session work become an Always rule on the sessions they follow.
 13. **No progress bar and no "1 of 8 done".** Only the ticks, during execution.
 
@@ -3326,7 +3377,7 @@ Three consequences, and they are build items rather than wording:
 Recorded here because it is the answer to "what would money actually be for", which is the question every application asks and the one that is hardest to reconstruct afterwards.
 
 - **A clinical advisor.** Named already by the red-flag layer and the menopause reference layer, both of which are built and switched off waiting for exactly this.
-- **The missing exercise clips.** Ten movements still being drawn, including the handstand and the muscle up. The skills ladder offers nothing it cannot demonstrate, so these are a hard limit on what Skills can contain.
+- **The missing exercise clips.** Ten movements still being drawn, including the handstand and the muscle up. **No longer a limit on Skills, from 5 October 2026:** a skill is her own words and shows no clips, so the library constrains Sessions rather than what she may want to be able to do. It was that constraint leaking into the question that made the old screen offer five calisthenics ladders and nothing else.
 - **Legal review** of the terms, the privacy policy and the beta agreement. Currently a first draft by somebody who is not a lawyer, which the DPIA says of itself in its own first line.
 - **A coach partnership.**
 
