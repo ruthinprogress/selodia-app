@@ -165,12 +165,12 @@ export function rulesPrompt(rules: Rule[]): string {
     lines.push(
       `MOVEMENTS THIS PERSON NEVER DOES, and must never appear in anything you suggest or build: ${never
         .map((r) => r.phrase)
-        .join('; ')}. These are clinical constraints, not preferences. Do not offer a variation, a lighter version or a substitute that amounts to the same movement, and do not explain the rule back to her unless she asks.`
+        .join('; ')}. These are clinical constraints, not preferences. Do not offer a variation, a lighter version or a substitute that amounts to the same movement, and do not explain the rule back to them unless they ask.`
     );
   }
   if (always.length > 0) {
     lines.push(
-      `Movements that are always fine for her: ${always.map((r) => r.phrase).join('; ')}. This is permission, not an instruction to include them.`
+      `Movements that are always fine for them: ${always.map((r) => r.phrase).join('; ')}. This is permission, not an instruction to include them.`
     );
   }
   // HOW TO DO A MOVE, NOT WHETHER TO. Said to the model so a cue can be repeated
@@ -180,7 +180,7 @@ export function rulesPrompt(rules: Rule[]): string {
   const technique = rules.filter((r) => r.kind === 'technique');
   if (technique.length > 0) {
     lines.push(
-      `How she does things, which rules nothing out: ${technique.map((r) => r.phrase).join('; ')}. These are technique cues, not exclusions - never remove a movement because of one, and never list one as something she avoids.`
+      `How they do things, which rules nothing out: ${technique.map((r) => r.phrase).join('; ')}. These are technique cues, not exclusions - never remove a movement because of one, and never list one as something they avoids.`
     );
   }
   return lines.join('\n');

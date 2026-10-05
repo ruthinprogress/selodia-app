@@ -157,9 +157,13 @@ await check('a switched-on macro arrives with its figures and its caveat', async
   const out = await buildTrackedMacroBlock(stubWith(ROWS), 'u', ['saturated']);
   assert.ok(/12g saturated fat/.test(out), 'the figures are missing');
   assert.ok(/2026-10-03:/.test(out), 'the days are not broken out, so a week cannot be summed');
-  assert.ok(/you HAVE the figures/.test(out), 'the model is not told it can answer from them');
+  // THE BLOCK ADDRESSES HER DIRECTLY SINCE 5 OCTOBER. These two assertions were
+  // pinned to its third-person wording, which is the wording that cost her the
+  // answer: see check-second-person.mjs. The claim is the same; only the person
+  // speaking changed.
+  assert.ok(/I HAVE the figures/.test(out), 'the model is not told it can answer from them');
   assert.ok(
-    /as complete as her logging/.test(out),
+    /as complete as your logging/.test(out),
     'nothing says the totals are only as good as what she logged, which is the one ' +
       'honest caveat on a figure summed from her own entries'
   );

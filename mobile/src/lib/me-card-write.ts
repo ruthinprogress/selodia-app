@@ -1,4 +1,5 @@
 import { readMeCard, type MeStatus } from '@/lib/me-card';
+import { itemKey, itemsOf } from '@/lib/me-items';
 import { supabase } from '@/lib/supabase';
 
 // CHANGING A Me CARD FROM THE CARD ITSELF (Ruth, 25 September 2026, item 15).
@@ -88,6 +89,74 @@ export async function updateMeCard(id: string, patch: MeCardPatch): Promise<bool
     // Said, not swallowed: a change that looks saved and is not is the one
     // thing an edit form must never do.
     console.log('ME CARD UPDATE FAILED:', writeError.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Take one item off a card, by name.
+ *
+ * WHY THIS EXISTS (Ruth, 5 October 2026): "Body Manual needs a line for each
+ * item that is editable." Two rows of the Manual read their contents out of Me
+ * cards - what she would rather avoid, and what she takes regularly - and
+ * neither had any way to change a single line. The only route to removing one
+ * was a conversation about it.
+ *
+ * READ THEN FILTER, never a blind write of the screen's state. Same reasoning as
+ * updateMeCard above: a card can carry fields this app does not know about, and
+ * an overwrite throws them away.
+ *
+ * MATCHED ON itemKey, NOT ON THE STRING. "Retinol 1%" and "retinol 1 %" are the
+ * same item, and the name on the row came from the card itself - so a strict
+ * comparison would mostly work and fail on exactly the items somebody typed
+ * twice in two ways.
+ *
+ * AND IT GOES IN THE HISTORY. The card's history is "how it has changed", and a
+ * line disappearing with no record of it is the thing the history exists to stop.
+ * Status is unchanged, because removing an item is not a change of status.
+ */
+export async function removeMeCardItem(id: string, name: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('almanac_entries')
+    .select('content')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.log('ME ITEM REMOVE: could not read the entry -', error?.message ?? 'no row');
+    return false;
+  }
+
+  const existing =
+    data.content != null && typeof data.content === 'object' && !Array.isArray(data.content)
+      ? (data.content as Record<string, unknown>)
+      : {};
+
+  const items = itemsOf(existing);
+  const target = itemKey(name);
+  const kept = items.filter((i) => itemKey(i.name) !== target);
+
+  // NOTHING MATCHED IS NOT A SUCCESS. A tap that reports "removed" and removes
+  // nothing is the failure this project has spent two days on in other forms.
+  if (kept.length === items.length) {
+    console.log('ME ITEM REMOVE: no item on this card matches', name);
+    return false;
+  }
+
+  const card = readMeCard(existing);
+  const content: Record<string, unknown> = {
+    ...existing,
+    items: kept,
+    history: [...card.history, { date: today(), status: card.status, reason: `Removed ${name}` }],
+  };
+
+  const { error: writeError } = await supabase
+    .from('almanac_entries')
+    .update({ content })
+    .eq('id', id);
+  if (writeError) {
+    console.log('ME ITEM REMOVE FAILED:', writeError.message);
     return false;
   }
   return true;

@@ -123,19 +123,19 @@ export function weighInFacts(
     const was = round1(last.weight_kg);
     const gap = daysBetween(last.measured_at, nowIso);
     lines.push(
-      `HER LAST WEIGH-IN ON RECORD: ${was} kg, on ${dayKey(last.measured_at)}, which was ${saidAsDays(gap)}. That date is a fact - never say "a couple of days ago" or guess an interval, say what this line says.`
+      `YOUR LAST WEIGH-IN ON RECORD: ${was} kg, on ${dayKey(last.measured_at)}, which was ${saidAsDays(gap)}. That date is a fact - never say "a couple of days ago" or guess an interval, say what this line says.`
     );
     if (!anchorIsToday) {
       lines.push(
-        `THAT READING IS NOT FROM TODAY. Today is ${dayKey(nowIso)} and her newest reading is from ${dayKey(last.measured_at)}, ${saidAsDays(gap)}. Everything below describes the day of the reading, not today. So do not say "today", "this morning" or "tomorrow" as though the reading had just been taken: there is no reading for today, and "worth seeing where tomorrow lands" is about a day she has not weighed herself on. If a next reading is worth mentioning at all, say "your next weigh-in" rather than naming a day.`
+        `THAT READING IS NOT FROM TODAY. Today is ${dayKey(nowIso)} and their newest reading is from ${dayKey(last.measured_at)}, ${saidAsDays(gap)}. Everything below describes the day of the reading, not today. So do not say "today", "this morning" or "tomorrow" as though the reading had just been taken: there is no reading for today, and "worth seeing where tomorrow lands" is about a day they have not weighed themselves on. If a next reading is worth mentioning at all, say "your next weigh-in" rather than naming a day.`
       );
     }
     lines.push(
-      `IF SHE HAS JUST GIVEN YOU A NEW WEIGHT, compare it against ${was} kg and against that date. ROUND EACH FIGURE TO ONE DECIMAL PLACE AND THEN SUBTRACT, which is what the screen does - rounding the difference instead gives a number she cannot reproduce by looking at her own readings, and a figure she cannot check is wrong even when the arithmetic is right. Give one figure, not two.`
+      `IF A NEW WEIGHT HAS JUST BEEN GIVEN TO YOU, compare it against ${was} kg and against that date. ROUND EACH FIGURE TO ONE DECIMAL PLACE AND THEN SUBTRACT, which is what the screen does - rounding the difference instead gives a number they cannot reproduce by looking at their own readings, and a figure they cannot check is wrong even when the arithmetic is right. Give one figure, not two.`
     );
   } else {
     lines.push(
-      'HER LAST WEIGH-IN ON RECORD: there is not one. So if she gives you a weight, do not describe it as a rise, a fall or a change of any kind - there is nothing to change from.'
+      'YOUR LAST WEIGH-IN ON RECORD: there is not one. So if a weight is given to you now, do not describe it as a rise, a fall or a change of any kind - there is nothing to change from.'
     );
   }
 
@@ -162,7 +162,7 @@ export function weighInFacts(
 
   if (recent.length === 0) {
     lines.push(
-      `MOVEMENT ${window}: NOTHING AT ALL IS LOGGED. So you may not say she trained, exercised, had a hard session, did a heavy workout, or anything of that shape. Not as a statement, not as a reminder, not as "after yesterday's session". There was no session in the record.`
+      `MOVEMENT ${window}: NOTHING AT ALL IS LOGGED. So you may not say they trained, exercised, had a hard session, did a heavy workout, or anything of that shape. Not as a statement, not as a reminder, not as "after yesterday's session". There was no session in the record.`
     );
   } else {
     const said = recent
@@ -185,16 +185,16 @@ export function weighInFacts(
   const known = dayFood.some((f) => f.sodium_mg != null);
   if (!known || dayFood.length === 0) {
     lines.push(
-      `${saltDay}: not known, because nothing was logged with a sodium figure. So do not suggest a salty day as the reason. You may say in general terms that salt and hydration move the scale, as long as it is plainly a general possibility and not something she did.`
+      `${saltDay}: not known, because nothing was logged with a sodium figure. So do not suggest a salty day as the reason. You may say in general terms that salt and hydration move the scale, as long as it is plainly a general possibility and not something they did.`
     );
   } else {
     lines.push(
-      `${saltDay}: about ${Math.round(sodium)} mg of sodium across what she logged. Mention it only if it is genuinely high for her, and say it as one possibility among several rather than as the cause.`
+      `${saltDay}: about ${Math.round(sodium)} mg of sodium across what they logged. Mention it only if it is genuinely high for them, and say it as one possibility among several rather than as the cause.`
     );
   }
 
   lines.push(
-    'THE RULE BEHIND ALL OF THIS. You may only name a meal, a session, an event or a day as SOMETHING SHE DID when it is in the record above with that date. Anything else is a general possibility and has to sound like one - "a salty day or a hard session can do this" is fine, "you had a hard session a day or two ago" is not, and the difference is whether you are describing her life or describing bodies in general. A single invented event undoes the reason this app exists.'
+    'THE RULE BEHIND ALL OF THIS. You may only name a meal, a session, an event or a day as SOMETHING THEY DID when it is in the record above with that date. Anything else is a general possibility and has to sound like one - "a salty day or a hard session can do this" is fine, "you had a hard session a day or two ago" is not, and the difference is whether you are describing their life or describing bodies in general. A single invented event undoes the reason this app exists.'
   );
 
   return lines.join('\n');

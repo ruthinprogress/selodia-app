@@ -2,6 +2,29 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 // THE MACROS SHE SWITCHED ON, PUT IN FRONT OF THE MODEL (2026-10-04).
 //
+// ---------------------------------------------------------------------------
+// WRITTEN IN THE SECOND PERSON SINCE 5 OCTOBER 2026, and that is not a style
+// note. Ruth, 20:38 tonight, asked about her saturated fat and was told twice
+// that the log does not hold it. The second refusal read:
+//
+//   "What I can see from HER log is calories and protein."
+//
+// Her saturated fat was in the database all along: 46 of her last 53 meals carry
+// a figure, 309 g across the fortnight, and she had the macro switched on. The
+// block below was built, and it was the newest and most emphatic thing in the
+// context - so the model took its register from it and answered about a third
+// party it had been told about rather than the person who was typing.
+//
+// A PROMPT THAT SAYS "SHE" TEACHES THE MODEL TO SAY "SHE". It also leaves the
+// model to work out that the "she" in the context and the "I" in the message are
+// the same person, which it does not reliably do - and getting that wrong looks
+// exactly like not having the data. Ruth: "this is basic stuff it's failing
+// on."
+//
+// So every line of model-visible text here addresses her directly, and
+// check-second-person.mjs fails the build on a third-person pronoun in any
+// string the model can see.
+//
 // Ruth asked: "What about saturated fat in the past week?" and was told "That's
 // not something your record tracks - I've got calories and protein logged, but
 // no breakdown of fat types. If it matters to you, your GP or a food diary with
@@ -139,10 +162,10 @@ export async function buildTrackedMacroBlock(
     });
     const names = keys.map((k) => MACRO_COLUMN[k].label).join(', ');
     sections.push(
-      `WHAT SHE TRACKS, BY DAY (computed by the app from her own log - never recalculate these).\n` +
-        `She has switched these on in "What I track": ${names}. They are recorded on every meal ` +
-        `she logs, so when she asks about any of them you HAVE the figures and must answer from ` +
-        `them. Totals are the sum of her logged meals, so they are as complete as her logging ` +
+      `WHAT YOU TRACK, BY DAY (computed by the app from your own log - never recalculate these).\n` +
+        `You have switched these on in "What I track": ${names}. They are recorded on every meal ` +
+        `you log, so when you ask about any of them I HAVE the figures and must answer from ` +
+        `them. Totals are the sum of your logged meals, so they are as complete as your logging ` +
         `that day and no more - say so if it matters, but do not use it to avoid answering.\n` +
         lines.join('\n')
     );
@@ -151,14 +174,14 @@ export async function buildTrackedMacroBlock(
   if (available.length > 0) {
     const names = available.map((k) => MACRO_COLUMN[k].label).join(', ');
     sections.push(
-      `ALSO RECORDED, BUT NOT SWITCHED ON: ${names}. Every meal she logs is measured for ` +
+      `ALSO RECORDED, BUT NOT SWITCHED ON: ${names}. Every meal you log is measured for ` +
         `these whether or not they are switched on - "What I track" decides what is SHOWN on ` +
-        `a row, never what is kept. So if she asks about any of them, say plainly that you DO ` +
-        `have it and offer to switch it on for her in Profile > What I track, where the past ` +
-        `weeks will then show too. NEVER say her record does not track it, never say there is ` +
-        `nothing to show for a past window, and never send her to her GP or another app for a ` +
-        `figure this one is holding. Do not quote the daily numbers for these until she has ` +
-        `said yes - she has not asked to see them on her rows, and the offer is the answer.`
+        `a row, never what is kept. So if you ask about any of them, say plainly that I DO ` +
+        `have it and offer to switch it on for you in Profile > What I track, where the past ` +
+        `weeks will then show too. NEVER say your record does not track it, never say there is ` +
+        `nothing to show for a past window, and never send you to your GP or another app for a ` +
+        `figure this one is holding. Do not quote the daily numbers for these until you have ` +
+        `said yes - you have not asked to see them on your rows, and the offer is the answer.`
     );
   }
 

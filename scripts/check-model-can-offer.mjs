@@ -126,8 +126,11 @@ check('a skill is told apart from her week and from an insight', () => {
   const block = route.slice(at, at + 6000);
   // The two mistakes actually observed: her week (the deflection of 1 October) and
   // an insight (what it did on 2 October).
+  // "HER WEEK" BECAME "THEIR WEEK" ON 5 OCTOBER, when every context block stopped
+  // referring to her in the third person - see check-second-person.mjs for the
+  // night that forced it. The rule is the same rule.
   ok(
-    /A SKILL IS NEVER HER WEEK/.test(block),
+    /A SKILL IS NEVER THEIR WEEK/.test(block),
     'nothing in the schema stops a skill being offered as a week entry'
   );
   ok(

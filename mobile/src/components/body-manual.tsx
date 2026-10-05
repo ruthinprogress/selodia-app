@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,6 +11,8 @@ import {
   BODY_MANUAL_HEADING,
   BODY_MANUAL_NOTE,
   BODY_MANUAL_SECTIONS,
+  type ManualLine,
+  type Removal,
   type SectionContents,
 } from '@/lib/body-manual';
 import { lookbackLabel } from '@/lib/feel-goals';
@@ -23,6 +25,8 @@ import {
   type BodyMode,
 } from '@/lib/body-mode';
 import { OPEN_ROW_PARAM } from '@/lib/one-question';
+import { bodyLines } from '@/lib/body-manual-words';
+import { removeMeCardItem } from '@/lib/me-card-write';
 import { supabase } from '@/lib/supabase';
 
 // EVERY ANSWER SHE HAS GIVEN, ON ONE PAGE, LIVE.
@@ -81,8 +85,28 @@ export function BodyManual({
   const [wantsFatLoss, setWantsFatLoss] = useState(false);
   const [savingTraining, setSavingTraining] = useState(false);
 
+  /**
+   * TWO JOBS, SPLIT, because doing both in one hook did not work on her phone.
+   *
+   * On 5 October a live figure would not refresh after a toggle. The first
+   * attempt put the dependency on the useCallback inside useFocusEffect, which
+   * is the obvious shape and did nothing on her device. What worked is this:
+   * FOCUS BUMPS A KEY, and a plain useEffect watching that key does the read.
+   *
+   * It is also what makes a removal visible. Taking a line off has to re-read -
+   * splicing it out of state would show a removal that may not have happened,
+   * and on a list of allergies that is the worst failure available - and
+   * useFocusEffect cannot be asked to run again without leaving the screen.
+   */
+  const [reloadKey, setReloadKey] = useState(0);
   useFocusEffect(
     useCallback(() => {
+      setReloadKey((n) => n + 1);
+    }, [])
+  );
+
+  useEffect(() => {
+    {
       let cancelled = false;
       void (async () => {
         const {
@@ -102,7 +126,10 @@ export function BodyManual({
           profile,
           meCards,
         ] = await Promise.all([
-          supabase.from('feel_goals').select('label, source, started_at').is('archived_at', null).order('sort_order'),
+          // `id` NOW, because a line she can take off needs one. The row was
+          // read for its label alone, which is why nothing on this row could
+          // ever be removed.
+          supabase.from('feel_goals').select('id, label, source, started_at').is('archived_at', null).order('sort_order'),
           supabase.from('feel_lookbacks').select('answer, created_at').order('created_at', { ascending: false }).limit(1),
           supabase.from('user_goals').select('label, detail, set_on').is('archived_at', null).order('set_on', { ascending: false }),
           supabase.from('current_weight').select('weight_kg, weight_source, as_of').maybeSingle(),
@@ -111,7 +138,9 @@ export function BodyManual({
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
           supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at').maybeSingle(),
-          supabase.from('almanac_entries').select('title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
+          // `id` NOW, for the same reason: removing one item out of a card
+          // means reading that card by id and writing it back.
+          supabase.from('almanac_entries').select('id, title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
         ]);
         if (cancelled) return;
 
@@ -123,21 +152,48 @@ export function BodyManual({
           return;
         }
 
-        const itemsOf = (title: string): string[] => {
+        /**
+         * THE ITEMS ON A ME CARD, each as a line that knows how to come off.
+         *
+         * This returned bare strings, which is why "what you'd rather avoid" and
+         * "what you take regularly" could be read and never changed: there was
+         * nothing on the line to act on. Now each carries the card's id and its
+         * own name, which is what removeMeCardItem needs.
+         */
+        const itemLines = (title: string): ManualLine[] => {
           const card = (meCards.data ?? []).find((c) => c.title === title);
-          const items = (card?.content as { items?: { name?: string }[] })?.items;
-          return Array.isArray(items) ? items.map((i) => String(i?.name ?? '')).filter(Boolean) : [];
+          if (!card) return [];
+          const items = (card.content as { items?: { name?: string }[] } | null)?.items;
+          if (!Array.isArray(items)) return [];
+          return items
+            .map((i) => String(i?.name ?? ''))
+            .filter(Boolean)
+            .map((name) => ({
+              text: name,
+              removal: { kind: 'me-item', cardId: String(card.id), name } as Removal,
+            }));
         };
         const byKind = (kinds: string[]) =>
           (allergies.data ?? []).filter((a) => kinds.includes(String(a.kind)));
-        const asRemovable = (
+        /**
+         * ROWS AS LINES, each with the delete that belongs to it.
+         *
+         * THE LABEL AND THE REMOVAL ARE ONE THING NOW. This built a second list
+         * beside `lines`, and nothing compared the two - so a line could be shown
+         * with no way out, or an item could carry a delete and never be drawn.
+         * Both happened: the component rendered `lines` and never looked at
+         * `removable` at all.
+         */
+        const rowLines = (
           rows: { id: unknown; name?: unknown; phrase?: unknown; activity?: unknown }[],
-          table: 'allergies' | 'user_rules' | 'user_week' | 'user_skills'
-        ) =>
+          table: 'allergies' | 'user_rules' | 'user_week' | 'user_skills',
+          text?: (r: Record<string, unknown>) => string
+        ): ManualLine[] =>
           rows.map((r) => ({
-            label: String(r.name ?? r.phrase ?? r.activity ?? ''),
-            table,
-            id: String(r.id),
+            text: text
+              ? text(r as Record<string, unknown>)
+              : String(r.name ?? r.phrase ?? r.activity ?? ''),
+            removal: { kind: 'row', table, id: String(r.id) } as Removal,
           }));
 
         const last = (lookback.data ?? [])[0];
@@ -174,79 +230,152 @@ export function BodyManual({
         setData({
           days: {
             lines: [
-              ...(feel.data ?? []).filter((r) => r.source === 'chip').map((r) => String(r.label)),
-              ...(feel.data ?? []).filter((r) => r.source === 'her words').map((r) => `"${String(r.label)}"`),
-              ...(last ? [`Last look back: ${lookbackLabel(String(last.answer))?.toLowerCase() ?? ''}`] : []),
+              // ARCHIVED, NOT DELETED. A feel goal carries started_at and its
+              // look-backs are a record of what she was working towards; this row
+              // and Plans both read "not archived", so archiving takes it out of
+              // every current view and keeps the history. Deleting it would throw
+              // away the only thing the look-backs are about.
+              ...(feel.data ?? [])
+                .filter((r) => r.source === 'chip')
+                .map((r) => ({
+                  text: String(r.label),
+                  removal: { kind: 'archive', table: 'feel_goals', id: String(r.id) } as Removal,
+                })),
+              ...(feel.data ?? [])
+                .filter((r) => r.source === 'her words')
+                .map((r) => ({
+                  text: `"${String(r.label)}"`,
+                  removal: { kind: 'archive', table: 'feel_goals', id: String(r.id) } as Removal,
+                })),
+              // NOT REMOVABLE, because it is not a thing she said she wanted - it
+              // is what she answered when the app asked how it was going.
+              ...(last
+                ? [{ text: `Last look back: ${lookbackLabel(String(last.answer))?.toLowerCase() ?? ''}` }]
+                : []),
             ],
           },
           goal: {
-            lines: (goals.data ?? []).map((g) =>
-              [String(g.label), g.detail ? String(g.detail) : null].filter(Boolean).join(' · ')
-            ),
+            // SET ON TODAY, so no line carries a removal. One control, one record.
+            lines: (goals.data ?? []).map((g) => ({
+              text: [String(g.label), g.detail ? String(g.detail) : null].filter(Boolean).join(' · '),
+            })),
           },
           weight: {
+            // IT MAINTAINS ITSELF. The latest real weigh-in beats any estimate,
+            // so there is nothing here to take off.
             lines:
               w?.weight_kg != null
                 ? [
-                    `${w.weight_kg} kg, ${
-                      w.weight_source === 'estimate' ? 'as you said' : 'from your last weigh-in'
-                    }${w.as_of ? ` on ${new Date(String(w.as_of)).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`,
+                    {
+                      text: `${w.weight_kg} kg, ${
+                        w.weight_source === 'estimate' ? 'as you said' : 'from your last weigh-in'
+                      }${w.as_of ? ` on ${new Date(String(w.as_of)).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`,
+                    },
                   ]
                 : [],
           },
-          skills: {
-            lines: (skills.data ?? []).map((s) => String(s.name)),
-            removable: asRemovable(skills.data ?? [], 'user_skills'),
-          },
+          skills: { lines: rowLines(skills.data ?? [], 'user_skills') },
           week: {
-            lines: (week.data ?? []).map((r) =>
+            lines: rowLines(week.data ?? [], 'user_week', (r) =>
               [
                 String(r.activity),
                 r.cadence ? String(r.cadence) : null,
-                Array.isArray(r.days) && r.days.length > 0 ? (r.days as string[]).join(', ') : null,
+                Array.isArray(r.days) && (r.days as string[]).length > 0
+                  ? (r.days as string[]).join(', ')
+                  : null,
                 r.time_of_day ? String(r.time_of_day) : null,
               ]
                 .filter(Boolean)
                 .join(' · ')
             ),
-            removable: asRemovable(week.data ?? [], 'user_week'),
           },
-          plate: {
-            lines: byKind(['food', 'other']).map((a) => String(a.name)),
-            removable: asRemovable(byKind(['food', 'other']), 'allergies'),
-          },
-          skin_air: {
-            lines: byKind(['contact', 'environmental']).map((a) => String(a.name)),
-            removable: asRemovable(byKind(['contact', 'environmental']), 'allergies'),
-          },
-          medicines: {
-            lines: byKind(['medicine']).map((a) => String(a.name)),
-            removable: asRemovable(byKind(['medicine']), 'allergies'),
-          },
-          movements: {
-            lines: (rules.data ?? []).map((r) => String(r.phrase)),
-            removable: asRemovable(rules.data ?? [], 'user_rules'),
-          },
-          avoid: { lines: itemsOf('Avoid') },
+          plate: { lines: rowLines(byKind(['food', 'other']), 'allergies') },
+          skin_air: { lines: rowLines(byKind(['contact', 'environmental']), 'allergies') },
+          medicines: { lines: rowLines(byKind(['medicine']), 'allergies') },
+          movements: { lines: rowLines(rules.data ?? [], 'user_rules') },
+          avoid: { lines: itemLines('Avoid') },
           body: {
-            lines: [
-              p?.life_stage ? `Periods: ${String(p.life_stage).replace(/_/g, ' ')}` : null,
-              p?.life_stage_detail ? String(p.life_stage_detail).replace(/_/g, ' ') : null,
-              Array.isArray(p?.hormone_use) && p.hormone_use.length > 0
-                ? `Hormones: ${(p.hormone_use as string[]).map((h) => h.replace(/_/g, ' ')).join(', ')}`
-                : null,
-            ].filter((l): l is string => Boolean(l)),
+            // HER WORDS FOR HER OWN ANSWERS. This rendered the stored value with
+            // its underscores swapped for spaces, so the Manual read "Periods: no
+            // periods other" - a column name with a haircut, on the row most
+            // likely to be read a year later. lib/body-manual-words.ts takes the
+            // labels off the chips she tapped.
+            //
+            // NO REMOVAL PER LINE: these are three columns on her profile, and the
+            // way to change an answer is to answer it again. "Change this" opens
+            // the question.
+            lines: bodyLines(p ?? {}).map((l) => ({ text: `${l.label}: ${l.value}` })),
           },
-          takes: { lines: itemsOf('Medications') },
+          takes: { lines: itemLines('Medications') },
         });
       })();
       return () => {
         cancelled = true;
       };
-    }, [])
-  );
+    }
+  }, [reloadKey]);
 
 
+
+  /**
+   * WHICH LINE IS ASKING, and nothing is removed until it asks twice.
+   *
+   * Ruth's own exception, 2 October: allergies, medicines and movement rules come
+   * out only by an explicit "Remove this?" tap. It applies to every row here, not
+   * only those three - a line disappearing because somebody's thumb landed on it
+   * is the same loss whichever table it was in.
+   */
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  /**
+   * A LINE WITH NO WAY OFF IT.
+   *
+   * The three rows computed here rather than read - her approach, how active she
+   * is, and the deficit - are all set somewhere else, so none of their lines
+   * carries a removal. This says that in one place instead of three.
+   */
+  const plain = (texts: string[]): ManualLine[] => texts.map((text) => ({ text }));
+
+  /** A stable name for a line, so the confirm state knows which one it is on. */
+  const lineKey = (sectionKey: string, n: number) => `${sectionKey}:${n}`;
+
+  /**
+   * TAKE ONE LINE OFF, BY THE MECHANISM THAT LINE CARRIES.
+   *
+   * THREE MECHANISMS AND THE TYPE NAMES THEM. A delete for a row that is only
+   * itself; an archive for a feel goal, whose look-backs are a record of what she
+   * was working towards and would be orphaned by a delete; and a read-then-filter
+   * for one item inside a Me card's JSON.
+   *
+   * THE READ IS REDONE AFTERWARDS rather than the line being spliced out of
+   * state. A list that updates itself optimistically shows a removal that may not
+   * have happened, which on a list of allergies is the worst available failure.
+   */
+  async function removeLine(removal: Removal) {
+    if (removing) return;
+    setRemoving(true);
+    let ok = false;
+    if (removal.kind === 'row') {
+      const { error } = await supabase.from(removal.table).delete().eq('id', removal.id);
+      ok = !error;
+      if (error) console.log('BODY MANUAL REMOVE FAILED:', error.message);
+    } else if (removal.kind === 'archive') {
+      const { error } = await supabase
+        .from(removal.table)
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', removal.id);
+      ok = !error;
+      if (error) console.log('BODY MANUAL ARCHIVE FAILED:', error.message);
+    } else {
+      ok = await removeMeCardItem(removal.cardId, removal.name);
+    }
+    setRemoving(false);
+    setConfirming(null);
+    // A FAILED REMOVAL LEAVES THE LINE THERE, which is the honest outcome: the
+    // row is still in the database and the screen still shows it.
+    if (ok) setReloadKey((n) => n + 1);
+  }
 
   /** The same one-tap write as the training row, for the deficit. */
   async function sayDeficit(next: 'on' | 'paused') {
@@ -394,11 +523,11 @@ export function BodyManual({
         {BODY_MANUAL_SECTIONS.filter((s) => !s.onlyWhenFatLoss || wantsFatLoss).map((section, i) => {
           const contents =
             section.key === 'goal'
-                ? { lines: mode ? [modeLabel(mode), modeExplanation(mode)] : [] }
+                ? { lines: plain(mode ? [modeLabel(mode), modeExplanation(mode)] : []) }
                 : section.key === 'activity'
-                  ? { lines: activityLines() }
+                  ? { lines: plain(activityLines()) }
                 : section.key === 'deficit'
-                  ? { lines: deficitLines() }
+                  ? { lines: plain(deficitLines()) }
                 : (data[section.key] ?? { lines: [] });
           const has = contents.lines.length > 0;
           const isOpen = open[section.key] === true;
@@ -436,11 +565,59 @@ export function BodyManual({
               {isOpen && (
                 <View style={styles.body}>
                   {has ? (
-                    contents.lines.map((line, n) => (
-                      <ThemedText key={n} type="small">
-                        {line}
-                      </ThemedText>
-                    ))
+                    contents.lines.map((line: ManualLine, n: number) => {
+                      const key = lineKey(section.key, n);
+                      const asking = confirming === key;
+                      return (
+                        <View key={key} style={styles.line}>
+                          <ThemedText type="small" style={styles.lineText}>
+                            {line.text}
+                          </ThemedText>
+                          {/* A LINE THAT CAN COME OFF SAYS SO, and asks first.
+                              Lines with no removal - her approach, her weight,
+                              what she answered about periods - simply have no
+                              control, because the way to change those is to
+                              answer them again. */}
+                          {line.removal && !asking && (
+                            <Pressable
+                              onPress={() => setConfirming(key)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Remove ${line.text}`}
+                              hitSlop={Spacing.two}
+                              style={({ pressed }) => pressed && styles.pressed}>
+                              <ThemedText type="small" themeColor="textSecondary">
+                                Remove
+                              </ThemedText>
+                            </Pressable>
+                          )}
+                          {line.removal && asking && (
+                            <View style={styles.confirmRow}>
+                              <Pressable
+                                onPress={() => void removeLine(line.removal as Removal)}
+                                disabled={removing}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Yes, remove ${line.text}`}
+                                hitSlop={Spacing.two}
+                                style={({ pressed }) => pressed && styles.pressed}>
+                                <ThemedText type="smallBold" themeColor="danger">
+                                  {removing ? 'Removing...' : 'Yes, remove it'}
+                                </ThemedText>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => setConfirming(null)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Keep it"
+                                hitSlop={Spacing.two}
+                                style={({ pressed }) => pressed && styles.pressed}>
+                                <ThemedText type="small" themeColor="textSecondary">
+                                  Keep it
+                                </ThemedText>
+                              </Pressable>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })
                   ) : (
                     <ThemedText type="small" themeColor="textSecondary">
                       {section.empty}
@@ -551,6 +728,11 @@ const styles = StyleSheet.create({
   heading: { flexGrow: 1 },
   body: { gap: Spacing.two, paddingTop: Spacing.three, paddingLeft: Spacing.four },
   chips: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap', paddingTop: Spacing.one },
+  // A LINE AND ITS CONTROL ON ONE ROW. The text takes what is left, so a long
+  // activity name wraps instead of pushing Remove off the screen.
+  line: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
+  lineText: { flexGrow: 1, flexShrink: 1 },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   // ButtonRadius (999) ON A SHORT CHIP IS A PILL AND THAT IS CORRECT HERE. It was
   // 999 on a TALL card that gave Ruth "some strange blobs" this afternoon; the
   // radius was never the fault, the height of what it was on was.

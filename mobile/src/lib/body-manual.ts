@@ -196,7 +196,7 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
   },
   {
     key: 'week',
-    heading: 'What you already do',
+    heading: 'What you already do each week',
     note: 'The shape of your week, not something to hit. Nothing in it is ever marked done or missed.',
     empty: 'Nothing yet. Add it here or say so in chat.',
   },
@@ -208,13 +208,13 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
   },
   {
     key: 'plate',
-    heading: 'On your plate',
+    heading: 'Food you avoid or react to',
     note: 'The only part of this that changes what you are offered to eat.',
     empty: 'Nothing yet.',
   },
   {
     key: 'skin_air',
-    heading: 'Skin and air',
+    heading: 'Skin and air you react to',
     note: 'Kept so Selodía knows. It does not change what you are offered to eat.',
     empty: 'Nothing yet.',
   },
@@ -226,13 +226,13 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
   },
   {
     key: 'movements',
-    heading: 'Movements to leave out',
+    heading: 'Movements left out of your sessions',
     note: 'These stay out of everything Selodía builds for you.',
     empty: 'Nothing yet.',
   },
   {
     key: 'avoid',
-    heading: 'Anything else to steer around',
+    heading: "Anything else you'd rather avoid",
     note: 'Your words, kept as you typed them.',
     empty: 'Nothing yet.',
   },
@@ -250,9 +250,49 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
   },
 ];
 
+/**
+ * HOW ONE ITEM COMES OFF A ROW, and the three ways are genuinely different.
+ *
+ * Ruth, 5 October 2026: "Body Manual needs a line for each item that is
+ * editable... please adapt each section to fully show in Body Manual (some are
+ * currently missing it seems)."
+ *
+ * WHAT WAS MISSING WAS THE WHOLE MECHANISM. Six sections built a `removable`
+ * array and NOTHING RENDERED IT. So every list on the Manual could be read and
+ * none of it could be changed one line at a time, and three rows - how her days
+ * feel, what she would rather avoid, what she takes regularly - had no removal
+ * path at all. Collected, stored, and read by nobody, in the component that
+ * exists to show her what the app holds.
+ *
+ * AND A DELETE IS NOT AN ARCHIVE IS NOT AN ITEM. Naming the mechanism in the type
+ * is the point: an allergy row is deleted, a feel goal is archived because the
+ * Manual and Plans both read "not archived" and its history is the record of what
+ * she was working towards, and a line on a Me card is one entry inside a JSON
+ * document that has to be read before it is written. One union, so a new row
+ * cannot be added without saying which of the three it is.
+ */
+export type Removal =
+  /** A row that comes out. Her own exception for allergies: it asks first. */
+  | { kind: 'row'; table: 'allergies' | 'user_rules' | 'user_week' | 'user_skills'; id: string }
+  /** Kept, dated, and out of every current view. Goals have a history. */
+  | { kind: 'archive'; table: 'feel_goals'; id: string }
+  /** One item out of a Me card's items, read-then-filtered. */
+  | { kind: 'me-item'; cardId: string; name: string };
+
 /** What a row currently holds: lines to show, and whether she has answered it. */
 export type SectionContents = {
-  lines: string[];
-  /** Shown under the lines where removal is a tap rather than an edit. */
-  removable?: { label: string; table: 'allergies' | 'user_rules' | 'user_week' | 'user_skills'; id: string }[];
+  /**
+   * ONE FACT PER LINE, and each one may carry its own way out.
+   *
+   * `lines` was a list of strings and the removable items were a second list
+   * beside it, which is two lists nothing compares - the shape that has cost this
+   * project four separate faults. A line and its removal are one thing now.
+   */
+  lines: ManualLine[];
+};
+
+export type ManualLine = {
+  text: string;
+  /** How this line comes off, where it can. */
+  removal?: Removal;
 };

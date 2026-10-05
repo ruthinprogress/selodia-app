@@ -2,6 +2,14 @@ import { onContraception as isOnContraception } from './life-stage';
 
 // WHAT SHE TOLD THE APP ABOUT PERIODS, PUT IN FRONT OF THE MODEL THAT ANSWERS.
 //
+// THE BLOCK ADDRESSES HER DIRECTLY SINCE 5 OCTOBER 2026. It opened "WHERE SHE IS
+// WITH PERIODS" and closed by telling the model never to tell "her" what stage
+// "she" is in - about the most personal thing in the record, written as though
+// she were not in the room. See the note on tracked-macro-summary.ts for the
+// night that proved what that costs: the model copied the register, said "what I
+// can see from HER log", and denied her a figure the database was holding.
+// check-second-person.mjs now fails the build on it.
+//
 // Ruth, 30 September 2026, asking for a menopause knowledge base. This is the
 // step before it, and it costs nothing: onboarding Screen 3 has been asking
 // nine careful questions and storing three columns - life_stage,
@@ -89,7 +97,7 @@ const DETAIL_WORDS: Record<string, string> = {
   after_surgery: 'after surgery, with the ovaries removed',
   after_treatment: 'brought on by medical treatment',
   before_45: 'before 45',
-  not_sure: 'she does not know why',
+  not_sure: 'they do not know why',
 };
 
 /**
@@ -114,7 +122,7 @@ export function lifeStageFacts(profile: LifeStageProfile | null | undefined): st
   if (!stage && !hrt && use.length === 0) return '';
   if (stage === 'prefer_not_to_say' && !hrt && use.length === 0) return '';
 
-  const lines: string[] = ['', 'WHERE SHE IS WITH PERIODS, in her own answers:'];
+  const lines: string[] = ['', 'WHERE YOU ARE WITH PERIODS, in your own answers:'];
 
   if (stage && stage !== 'prefer_not_to_say') {
     // THE DETAIL NOW BELONGS TO TWO STAGES. Before 5 October only "No periods"
@@ -150,12 +158,12 @@ export function lifeStageFacts(profile: LifeStageProfile | null | undefined): st
   }
   if (stage === 'no_periods_other' || stage === 'not_sure') {
     lines.push(
-      '- No periods does not mean not cycling, and her stage is NOT established. Never state or imply she is menopausal; symptoms are the signal here, not dates.'
+      '- No periods does not mean not cycling, and your stage is NOT established. Never state or imply the person you are talking to is menopausal; symptoms are the signal here, not dates.'
     );
   }
 
   lines.push(
-    '- This is what she said about herself, not a diagnosis. Never tell her what stage she is in, and never advise on HRT or any medication - that belongs with her GP.'
+    '- This is what you said about yourself, not a diagnosis. Never tell the person what stage they are in, and never advise on HRT or any medication - that belongs with their GP.'
   );
   lines.push('');
   return lines.join('\n');

@@ -50,6 +50,14 @@ const check = (name, fn) => {
 
 const prompt = replyPrompt({ voice: false });
 
+// THESE ASSERTIONS QUOTE THE PROMPT, AND THE PROMPT CHANGED PERSON ON 5 OCTOBER.
+// Four of them read "her" and went red together. That is the check working: the
+// rules are the same rules and the wording moved under them. Worth knowing why
+// the wording moved, because it is the most expensive thing found this week -
+// every context block addressed her in the third person, the model copied the
+// register, and it told her twice that her saturated fat was not in her log
+// while the database held 309 g of it. See check-second-person.mjs.
+
 check('the live prompt tells the model it can add to the Me tab', () => {
   assert.ok(/me tab/i.test(prompt), 'the Me tab is not mentioned at all');
   assert.ok(
@@ -60,13 +68,13 @@ check('the live prompt tells the model it can add to the Me tab', () => {
 
 check('and tells it never to claim it cannot', () => {
   assert.ok(
-    /never tell her you cannot add to her me tab/i.test(prompt),
+    /never tell them you cannot add to their me tab/i.test(prompt),
     'the exact refusal she hit must be forbidden by name'
   );
 });
 
 check('it must offer first and save on a yes', () => {
-  assert.ok(/offer first and save on her yes/i.test(prompt));
+  assert.ok(/offer first and save on their yes/i.test(prompt));
 });
 
 check('it must not take back an offer the app has already made', () => {
@@ -81,7 +89,7 @@ check('it must not write an outcome she did not state', () => {
   // Tightened 30 September after "Redness already reducing" appeared in a
   // proposal. She had not typed it - it came out of the text she pasted, which
   // is not the same as her saying it.
-  assert.ok(/only what she typed/i.test(prompt), 'the pasted-text rule must be stated');
+  assert.ok(/only what they typed/i.test(prompt), 'the pasted-text rule must be stated');
   assert.ok(
     /never propose or store a current result or a prediction/i.test(prompt),
     'a result and a prediction must both be named'
@@ -96,7 +104,7 @@ check('proposals must be glanceable, grouped, and free of markdown', () => {
 });
 
 check('it must never scold her for repeating herself', () => {
-  assert.ok(/never tell her off/i.test(prompt));
+  assert.ok(/never tell them off/i.test(prompt));
   assert.ok(/repeating it will not help/i.test(prompt));
 });
 
