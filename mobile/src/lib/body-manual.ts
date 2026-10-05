@@ -177,16 +177,16 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     readOnly: true,
   },
   {
-    key: 'skills',
-    heading: 'What you want to be able to do',
-    note: 'Each one keeps its own steps. Nothing has a date on it.',
-    empty: 'Nothing yet. Say one in chat any time.',
-  },
-  {
     key: 'week',
     heading: 'What you already do',
     note: 'The shape of your week, not something to hit. Nothing in it is ever marked done or missed.',
     empty: 'Nothing yet. Add it here or say so in chat.',
+  },
+  {
+    key: 'skills',
+    heading: 'What you want to be able to do',
+    note: 'Each one keeps its own steps. Nothing has a date on it.',
+    empty: 'Nothing yet. Say one in chat any time.',
   },
   {
     key: 'plate',

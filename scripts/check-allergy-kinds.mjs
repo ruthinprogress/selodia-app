@@ -145,9 +145,12 @@ await check('a group holds its own kinds, read from the groups themselves', () =
   // The group list is in a .tsx and cannot be imported without a renderer, so
   // its shape is read as text. What is verified is the thing that matters: the
   // plate group is the only one built from the food lists.
-  const plate = SCREEN.indexOf("key: 'plate'");
-  const skin = SCREEN.indexOf("key: 'skin_air'");
-  const meds = SCREEN.indexOf("key: 'medicines'");
+  // THE GROUPS MOVED HOUSE ON 5 OCTOBER. Her wording went to lib/steer-copy.ts
+  // and the chips stayed here, joined by key - so this reads GROUP_DATA, where
+  // the kinds now are, rather than the old combined list.
+  const plate = SCREEN.indexOf('plate: {');
+  const skin = SCREEN.indexOf('skin_air: {');
+  const meds = SCREEN.indexOf('medicines: {');
   assert.ok(plate >= 0 && skin >= 0 && meds >= 0, 'her three named groups are not all present');
   const plateBlock = SCREEN.slice(plate, skin);
   assert.ok(
@@ -156,7 +159,7 @@ await check('a group holds its own kinds, read from the groups themselves', () =
   );
   assert.ok(
     !/OTHER_REACTIONS/.test(plateBlock) && !/MEDICINE_REACTIONS/.test(plateBlock),
-    'skin, air or medicines are offered under "On your plate"'
+    'skin, air or medicines are offered under the food heading'
   );
   return 'plate is food and diet only';
 });

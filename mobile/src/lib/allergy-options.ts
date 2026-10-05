@@ -8,6 +8,13 @@
 // words. A woman with an allergy that is not below must never feel the app has
 // no room for it.
 //
+// THE LABELS ARE HERS AND THE NAMES ARE THE APP'S (5 October 2026). Her
+// steer-around deck names "Dairy", "Gluten", "Soy", "Pollen" and "Fragrance"
+// where this said "Milk or dairy", "Gluten or wheat", "Soya", "Pollen or hay
+// fever" and "Fragrance or perfume". Only the label moved. The `name` is the
+// stored allergen and what the gate's string layer matches a reply against, so
+// renaming one would quietly stop catching an allergy already recorded.
+//
 // THE KIND IS A ROUTING DECISION, not her word for her own body. It decides
 // whether the food gate may act, and the four values are the ones code switches
 // on. Getting it wrong in the permissive direction is what blocked two plain
@@ -40,12 +47,12 @@ export type AllergyOption = {
 export const FOOD_ALLERGIES: AllergyOption[] = [
   { name: 'peanuts', label: 'Peanuts', kind: 'food' },
   { name: 'tree nuts', label: 'Tree nuts', kind: 'food' },
-  { name: 'milk', label: 'Milk or dairy', kind: 'food' },
+  { name: 'milk', label: 'Dairy', kind: 'food' },
   { name: 'eggs', label: 'Eggs', kind: 'food' },
   { name: 'fish', label: 'Fish', kind: 'food' },
   { name: 'shellfish', label: 'Shellfish', kind: 'food' },
-  { name: 'soya', label: 'Soya', kind: 'food' },
-  { name: 'gluten', label: 'Gluten or wheat', kind: 'food' },
+  { name: 'soya', label: 'Soy', kind: 'food' },
+  { name: 'gluten', label: 'Gluten', kind: 'food' },
   { name: 'sesame', label: 'Sesame', kind: 'food' },
 ];
 
@@ -80,8 +87,8 @@ export const DIETARY_NEEDS: AllergyOption[] = [
 export const OTHER_REACTIONS: AllergyOption[] = [
   { name: 'nickel', label: 'Nickel', kind: 'contact' },
   { name: 'latex', label: 'Latex', kind: 'contact' },
-  { name: 'fragrance', label: 'Fragrance or perfume', kind: 'contact' },
-  { name: 'pollen', label: 'Pollen or hay fever', kind: 'environmental' },
+  { name: 'fragrance', label: 'Fragrance', kind: 'contact' },
+  { name: 'pollen', label: 'Pollen', kind: 'environmental' },
   { name: 'dust', label: 'Dust', kind: 'environmental' },
 ];
 

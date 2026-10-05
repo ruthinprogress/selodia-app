@@ -19,6 +19,12 @@ import {
 } from '@/lib/allergy-options';
 import { MOVEMENT_RULES, MOVEMENT_RULE_BY_KEY, termFromTypedRule } from '@/lib/movement-rules';
 import {
+  STEER_GROUPS,
+  STEER_MOVEMENT,
+  STEER_OTHER,
+  STEER_SCREEN,
+} from '@/lib/steer-copy';
+import {
   LOAD_FAILED_MESSAGE,
   LOAD_RETRY_LABEL,
   mayContinue,
@@ -90,9 +96,8 @@ import { supabase } from '@/lib/supabase';
 // was a model call, several seconds, and a conversation to finish before she had
 // seen the app. One box per group, saved on blur, in her words.
 
-const QUESTION = 'Anything to steer around?';
-const SUBTITLE =
-  'Tap what applies, and add anything else in your own words. Only the first group changes what you are offered to eat.';
+// HER WORDING LIVES IN lib/steer-copy.ts, which is the record the matrix copies
+// and check-steer-copy.mjs compares. Nothing on this screen restates it.
 
 /**
  * THE GROUPS, AND THE KIND EACH ONE WRITES.
@@ -101,46 +106,33 @@ const SUBTITLE =
  * switches on come from the same row here. Before this they were set in
  * different files, which is how nickel came to sit under a food heading.
  */
-const GROUPS: {
-  key: string;
-  heading: string;
-  /** Said only where it changes what the app does. */
-  note?: string;
-  options: { name: string; label: string; kind: AllergyKind }[];
-  kind: AllergyKind;
-  boxLabel: string;
-  boxPlaceholder: string;
-}[] = [
-  {
-    key: 'plate',
-    heading: 'On your plate',
-    note: 'This is the only group that changes what Selodía offers you to eat.',
-    options: [...FOOD_ALLERGIES, ...DIETARY_NEEDS],
-    kind: 'food',
-    boxLabel: 'Something else on your plate?',
-    boxPlaceholder: 'Raw celery, and anything with chilli in it',
-  },
-  {
-    key: 'skin_air',
-    heading: 'Skin and air',
-    options: OTHER_REACTIONS,
-    // The group holds both contact and environmental things. A typed addition
-    // takes 'contact', which is the commoner of the two and, like the other,
-    // does not arm the food filter - so the conservative choice costs nothing.
-    kind: 'contact',
-    boxLabel: 'Something else on your skin, or in the air?',
-    boxPlaceholder: 'Cheap earrings bring my ears up',
-  },
-  {
-    key: 'medicines',
-    heading: 'Medicines you react to',
-    note: 'Kept so Selodía knows. Nothing here is advice, and it never comments on what you take.',
-    options: MEDICINE_REACTIONS,
-    kind: 'medicine',
-    boxLabel: 'Another medicine you react to?',
-    boxPlaceholder: 'Penicillin brings a rash up',
-  },
-];
+/**
+ * WHAT EACH GROUP OFFERS AND WHAT KIND IT WRITES, which is this file's business,
+ * joined to HER WORDING, which is lib/steer-copy.ts's.
+ *
+ * The join is by key, and it is asserted: a group in her deck with no chips and
+ * no kind here, or a kind here with no heading there, fails at module load. That
+ * is the same guarantee assertGroupsMatchKinds gives for the heading and the
+ * kind, which is the pair that put nickel under a food heading once.
+ */
+const GROUP_DATA: Record<string, { options: { name: string; label: string; kind: AllergyKind }[]; kind: AllergyKind }> = {
+  plate: { options: [...FOOD_ALLERGIES, ...DIETARY_NEEDS], kind: 'food' },
+  // The group holds both contact and environmental things. A typed addition
+  // takes 'contact', which is the commoner of the two and, like the other,
+  // does not arm the food filter - so the conservative choice costs nothing.
+  skin_air: { options: OTHER_REACTIONS, kind: 'contact' },
+  medicines: { options: MEDICINE_REACTIONS, kind: 'medicine' },
+};
+
+const GROUPS = STEER_GROUPS.map((g) => {
+  const data = GROUP_DATA[g.key];
+  if (!data) throw new Error(`steer-copy has a group "${g.key}" that this screen has no chips for.`);
+  return { ...g, ...data };
+});
+
+if (Object.keys(GROUP_DATA).length !== GROUPS.length) {
+  throw new Error('This screen has chips for a group her copy does not name.');
+}
 
 type Saved = { name: string; kind: string };
 
@@ -503,7 +495,7 @@ export default function AllergiesScreen() {
   const typedIn = saved.filter((r) => !ALLERGY_BY_NAME[r.name]);
 
   return (
-    <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
+    <OnboardingQuestion question={STEER_SCREEN.question} subtitle={STEER_SCREEN.subtitle}>
       {GROUPS.map((group) => (
         <ThemedView key={group.key} style={styles.group}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
@@ -540,11 +532,7 @@ export default function AllergiesScreen() {
           this group is a box and only a box. */}
       <ThemedView style={styles.group}>
         <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-          Movements to leave out of sessions
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Anything your body will not thank you for, or that a clinician has told you to avoid. It
-          stays out of everything Selodía builds for you.
+          {STEER_MOVEMENT.heading}
         </ThemedText>
         {/* HER FOUR CHIPS. I left these out first time, reasoning that a tap names
             nothing specific - which was right about the OLD steer-around screen's
@@ -558,8 +546,8 @@ export default function AllergiesScreen() {
           multi
         />
         <SetupTextField
-          label="What should stay out?"
-          placeholder="No overhead pressing, my left shoulder"
+          label={STEER_MOVEMENT.boxLabel}
+          placeholder={STEER_MOVEMENT.boxPlaceholder}
           value={boxes.movements ?? ''}
           onChangeText={(t) => {
             setBoxes((b) => ({ ...b, movements: t }));
@@ -572,7 +560,7 @@ export default function AllergiesScreen() {
         />
         {rules.length > 0 && (
           <ThemedText type="small" themeColor="textSecondary">
-            Already staying out: {rules.join('; ')}
+            {STEER_MOVEMENT.alreadyLabel} {rules.join('; ')}
           </ThemedText>
         )}
       </ThemedView>
@@ -582,11 +570,11 @@ export default function AllergiesScreen() {
           food filter; not a rule, because it names no movement. */}
       <ThemedView style={styles.group}>
         <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-          Something else
+          {STEER_OTHER.heading}
         </ThemedText>
         <SetupTextField
-          label="Anything else to steer around?"
-          placeholder="Loud gyms. Early mornings."
+          label={STEER_OTHER.boxLabel}
+          placeholder={STEER_OTHER.boxPlaceholder}
           value={boxes.avoid ?? ''}
           onChangeText={(t) => {
             setBoxes((b) => ({ ...b, avoid: t }));
@@ -597,12 +585,9 @@ export default function AllergiesScreen() {
           saved={boxState.avoid === 'saved'}
           failed={boxState.avoid === 'failed'}
         />
-        <ThemedText type="small" themeColor="textSecondary">
-          Kept on your Me tab, under Avoid, in your words.
-        </ThemedText>
         {avoids.length > 0 && (
           <ThemedText type="small" themeColor="textSecondary">
-            Already there: {avoids.join('; ')}
+            {STEER_OTHER.alreadyLabel} {avoids.join('; ')}
           </ThemedText>
         )}
       </ThemedView>
@@ -615,6 +600,10 @@ export default function AllergiesScreen() {
         <ThemedView style={styles.group}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
             Also kept, in your words
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Nothing here is ever removed by unticking it. Taking something out is its own tap, and
+            it asks first.
           </ThemedText>
           {typedIn.map((row) => (
             <ThemedView key={row.name} type="backgroundElement" style={styles.savedRow}>
@@ -693,9 +682,9 @@ export default function AllergiesScreen() {
         </ThemedText>
       )}
 
+      {/* HER CLOSING LINE, and the last thing on the screen. */}
       <ThemedText type="small" themeColor="textSecondary">
-        Nothing here is ever removed by unticking it. Taking something out is its own tap, and it
-        asks first.
+        {STEER_SCREEN.closing}
       </ThemedText>
     </OnboardingQuestion>
   );
@@ -719,7 +708,7 @@ function assertGroupsMatchKinds() {
       if (optionArmsFood !== armsFood) {
         throw new Error(
           `${option.label} is under "${group.heading}" with kind "${option.kind}". ` +
-            'Only the "On your plate" group may hold a kind that arms the food filter.'
+            `Only the "${STEER_GROUPS[0].heading}" group may hold a kind that arms the food filter.`
         );
       }
     }

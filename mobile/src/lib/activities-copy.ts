@@ -20,7 +20,13 @@
 //
 // THIS FILE IS THE RECORD, like starting-guide.ts and skills-copy.ts: copied into
 // scripts/mode-matrix.json by the generator and compared both ways by
-// check-activities-copy.mjs, so nothing paraphrases it.
+// check-setup-copy-records.mjs, so nothing paraphrases it.
+//
+// THAT SENTENCE WAS A PROMISE BEFORE IT WAS TRUE. It named
+// check-activities-copy.mjs, and neither the record nor the check was ever
+// written - so for a day this file described a guard that did not exist, which is
+// worse than describing none, because the next reader stops looking. Both are
+// there now.
 //
 // NO EM DASHES. Her standing rule.
 

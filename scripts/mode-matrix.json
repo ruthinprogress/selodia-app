@@ -419,6 +419,143 @@
     "whatASkillIs": "Her own words as the title, first letter capitalised and saved exactly as typed; where she is with it, changeable by a tap; and the date it was added. Nothing else. No model call on the screen.",
     "quickLog": "Text only, inside Skills. A short dated note on the skill, newest first, editable and deletable, searchable and available to the Report Builder. No tap button, no session picker, nothing logs itself, no counts or streaks on the card."
   },
+  "activitiesScreen": {
+    "screen": {
+      "question": "What do you already do?",
+      "subtitle": "Add the activities that are already part of your life. They don't need a schedule yet.",
+      "ideasLabel": "Ideas",
+      "ideas": [
+        "Walking",
+        "Running",
+        "Gym or weights",
+        "Yoga",
+        "Pilates",
+        "Cycling",
+        "Swimming",
+        "Dance",
+        "Team sports"
+      ],
+      "ownLabel": "Or add your own...",
+      "ownPlaceholder": "Add an activity...",
+      "footer": "You'll be able to arrange these into a typical week afterwards. Think of this as a sketch of a normal week. It's here to help you see how everything fits together, not to keep score.",
+      "error": "That didn't save. Check your connection and try again."
+    },
+    "shownOnScreen": [
+      "What do you already do?",
+      "Add the activities that are already part of your life. They don't need a schedule yet.",
+      "Ideas",
+      "Walking",
+      "Running",
+      "Gym or weights",
+      "Yoga",
+      "Pilates",
+      "Cycling",
+      "Swimming",
+      "Dance",
+      "Team sports",
+      "Or add your own...",
+      "Add an activity...",
+      "You'll be able to arrange these into a typical week afterwards. Think of this as a sketch of a normal week. It's here to help you see how everything fits together, not to keep score."
+    ],
+    "noFrequency": "The screen asks how often nothing. Her question, 5 October: \"if they all go into the Anytime category at the bottom, why do we ask the frequency at all?\" They did, and the cadence had a second consumer that overwrote her stated activity level."
+  },
+  "steerScreen": {
+    "screen": {
+      "question": "Anything to steer around?",
+      "subtitle": "Tell Selodía about anything you'd rather avoid. You can always change this later.",
+      "closing": "Everything stays in your own words and can be changed at any time."
+    },
+    "groups": [
+      {
+        "key": "plate",
+        "heading": "Food",
+        "note": "Only choose things you avoid or react to.",
+        "boxLabel": "Anything else?",
+        "boxPlaceholder": "e.g. Celery, chilli, kiwi..."
+      },
+      {
+        "key": "skin_air",
+        "heading": "Skin & air",
+        "note": null,
+        "boxLabel": "Anything else?",
+        "boxPlaceholder": "e.g. Nickel jewellery, perfume, cats..."
+      },
+      {
+        "key": "medicines",
+        "heading": "Medicines",
+        "note": null,
+        "boxLabel": "Anything to note?",
+        "boxPlaceholder": "e.g. Penicillin causes a rash."
+      }
+    ],
+    "movement": {
+      "heading": "Movement",
+      "boxLabel": "Anything you'd rather avoid in sessions?",
+      "boxPlaceholder": "e.g. Overhead pressing, deep lunges, jumping...",
+      "alreadyLabel": "Already staying out:"
+    },
+    "other": {
+      "heading": "Anything else?",
+      "boxLabel": "Anything that helps Selodía understand you.",
+      "boxPlaceholder": "e.g. Loud gyms, early mornings...",
+      "alreadyLabel": "Already there:"
+    },
+    "shownOnScreen": [
+      "Anything to steer around?",
+      "Tell Selodía about anything you'd rather avoid. You can always change this later.",
+      "Food",
+      "Only choose things you avoid or react to.",
+      "Anything else?",
+      "e.g. Celery, chilli, kiwi...",
+      "Skin & air",
+      "Anything else?",
+      "e.g. Nickel jewellery, perfume, cats...",
+      "Medicines",
+      "Anything to note?",
+      "e.g. Penicillin causes a rash.",
+      "Movement",
+      "Anything you'd rather avoid in sessions?",
+      "e.g. Overhead pressing, deep lunges, jumping...",
+      "Anything else?",
+      "Anything that helps Selodía understand you.",
+      "e.g. Loud gyms, early mornings...",
+      "Everything stays in your own words and can be changed at any time."
+    ],
+    "onlyGroupThatArmsTheFoodFilter": "Food"
+  },
+  "bodyNotesScreen": {
+    "screen": {
+      "question": "Anything else about your body?",
+      "subtitle": "Completely optional. It simply helps Selodía make a little more sense of what you log.",
+      "periodsHeading": "Periods",
+      "periodsQuestion": "Which feels closest?",
+      "periodsNote": "No periods doesn't necessarily mean you're no longer cycling. Selodía won't assume anything from this alone.",
+      "hormonesHeading": "Hormones",
+      "hormonesQuestion": "Are any of these part of your life?",
+      "hormonesNote": "These simply help Selodía interpret what you log.",
+      "takesHeading": "Anything you take regularly?",
+      "takesLabel": "Medication or supplements.",
+      "takesPlaceholder": "In your own words...",
+      "takesAlreadyLabel": "Already kept:",
+      "closing": "Kept exactly as you write it, and you can change it at any time.",
+      "reasonQuestion": "Which of these is closest?"
+    },
+    "shownOnScreen": [
+      "Anything else about your body?",
+      "Completely optional. It simply helps Selodía make a little more sense of what you log.",
+      "Periods",
+      "Which feels closest?",
+      "No periods doesn't necessarily mean you're no longer cycling. Selodía won't assume anything from this alone.",
+      "Hormones",
+      "Are any of these part of your life?",
+      "These simply help Selodía interpret what you log.",
+      "Anything you take regularly?",
+      "Medication or supplements.",
+      "In your own words...",
+      "Kept exactly as you write it, and you can change it at any time."
+    ],
+    "neverInfersMenopause": "stageForReasoning returns null for \"no periods for another reason\", so the app knows she has no periods and knows nothing about her menopause status. Two different facts."
+  },
   "startingGuide": {
     "frame": {
       "title": "Your starting guide",

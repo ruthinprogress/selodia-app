@@ -25,6 +25,9 @@ const INTENT = await import(root + '/mobile/src/lib/body-intent.ts');
 const RULES = await import(root + '/mobile/src/lib/calorie-rules.ts');
 const GUIDE = await import(root + '/mobile/src/lib/starting-guide.ts');
 const SKILLS = await import(root + '/mobile/src/lib/skills-copy.ts');
+const ACTS = await import(root + '/mobile/src/lib/activities-copy.ts');
+const STEER = await import(root + '/mobile/src/lib/steer-copy.ts');
+const NOTES = await import(root + '/mobile/src/lib/body-notes-copy.ts');
 
 // HER OWN FIGURES, at the activity level she says is right (4 October 2026:
 // "mine TDEE is around 1550 so the calculation should land around there").
@@ -191,6 +194,80 @@ const out = {
       'Text only, inside Skills. A short dated note on the skill, newest first, editable and ' +
       'deletable, searchable and available to the Report Builder. No tap button, no session ' +
       'picker, nothing logs itself, no counts or streaks on the card.',
+  },
+  // THE REST OF HER SETUP WORDING, AS THE PERMANENT RECORD. Steps 4, 6 and 7,
+  // on the same arrangement as the starting guide and screen 5: the module the
+  // screen renders from is copied here, and check-setup-copy-records.mjs compares
+  // the two both ways.
+  //
+  // ACTIVITIES CLAIMED A CHECK THAT DID NOT EXIST. lib/activities-copy.ts has
+  // said since it was written that it is "copied into scripts/mode-matrix.json by
+  // the generator and compared both ways by check-activities-copy.mjs". Neither
+  // the record nor the check was ever written, so for a day the file carried a
+  // promise of a guard instead of a guard. That is the same shape as "collected,
+  // stored, and read by nobody", wearing a comment.
+  activitiesScreen: {
+    screen: ACTS.ACTIVITIES_SCREEN,
+    shownOnScreen: [
+      ACTS.ACTIVITIES_SCREEN.question,
+      ACTS.ACTIVITIES_SCREEN.subtitle,
+      ACTS.ACTIVITIES_SCREEN.ideasLabel,
+      ...ACTS.ACTIVITIES_SCREEN.ideas,
+      ACTS.ACTIVITIES_SCREEN.ownLabel,
+      ACTS.ACTIVITIES_SCREEN.ownPlaceholder,
+      ACTS.ACTIVITIES_SCREEN.footer,
+    ],
+    noFrequency:
+      'The screen asks how often nothing. Her question, 5 October: "if they all go into the ' +
+      'Anytime category at the bottom, why do we ask the frequency at all?" They did, and the ' +
+      'cadence had a second consumer that overwrote her stated activity level.',
+  },
+  steerScreen: {
+    screen: STEER.STEER_SCREEN,
+    groups: STEER.STEER_GROUPS,
+    movement: STEER.STEER_MOVEMENT,
+    other: STEER.STEER_OTHER,
+    shownOnScreen: [
+      STEER.STEER_SCREEN.question,
+      STEER.STEER_SCREEN.subtitle,
+      ...STEER.STEER_GROUPS.flatMap((g) => [
+        g.heading,
+        ...(g.note ? [g.note] : []),
+        g.boxLabel,
+        g.boxPlaceholder,
+      ]),
+      STEER.STEER_MOVEMENT.heading,
+      STEER.STEER_MOVEMENT.boxLabel,
+      STEER.STEER_MOVEMENT.boxPlaceholder,
+      STEER.STEER_OTHER.heading,
+      STEER.STEER_OTHER.boxLabel,
+      STEER.STEER_OTHER.boxPlaceholder,
+      STEER.STEER_SCREEN.closing,
+    ],
+    onlyGroupThatArmsTheFoodFilter: STEER.STEER_GROUPS[0].heading,
+  },
+  bodyNotesScreen: {
+    screen: NOTES.BODY_NOTES_SCREEN,
+    shownOnScreen: [
+      NOTES.BODY_NOTES_SCREEN.question,
+      NOTES.BODY_NOTES_SCREEN.subtitle,
+      NOTES.BODY_NOTES_SCREEN.periodsHeading,
+      NOTES.BODY_NOTES_SCREEN.periodsQuestion,
+      NOTES.BODY_NOTES_SCREEN.periodsNote,
+      NOTES.BODY_NOTES_SCREEN.hormonesHeading,
+      NOTES.BODY_NOTES_SCREEN.hormonesQuestion,
+      NOTES.BODY_NOTES_SCREEN.hormonesNote,
+      NOTES.BODY_NOTES_SCREEN.takesHeading,
+      NOTES.BODY_NOTES_SCREEN.takesLabel,
+      NOTES.BODY_NOTES_SCREEN.takesPlaceholder,
+      NOTES.BODY_NOTES_SCREEN.closing,
+    ],
+    // WHAT THE WORDING PROMISES THE CODE DOES. Her periods note says Selodia
+    // assumes nothing from an absent bleed, and stageForReasoning is where that
+    // is true or not.
+    neverInfersMenopause:
+      'stageForReasoning returns null for "no periods for another reason", so the app knows ' +
+      'she has no periods and knows nothing about her menopause status. Two different facts.',
   },
   startingGuide: {
     frame: GUIDE.GUIDE_FRAME,

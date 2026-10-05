@@ -7,6 +7,7 @@ import { SetupTextField } from '@/components/setup-text-field';
 import { useOnboardingAction } from '@/components/onboarding-action';
 import { TapChoices } from '@/components/tap-choices';
 import { ThemedText } from '@/components/themed-text';
+import { BODY_NOTES_SCREEN } from '@/lib/body-notes-copy';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import {
   HORMONE_USE_OPTIONS,
@@ -47,27 +48,9 @@ import { supabase } from '@/lib/supabase';
 // the moment somebody decides the app is too nosy. It asks once, it explains
 // what the answer changes, and it takes no for an answer.
 
-// QUESTION 6 OF 7: A LITTLE ABOUT YOUR BODY. Her approved preview's heading and
-// subtitle, which cover three things rather than one - periods, hormones, and
-// anything she takes regularly. The old heading named only the first.
-const QUESTION = 'A little about your body';
-const SUBTITLE = 'All optional. It helps make sense of your week. Skip any of it, or all of it.';
-
-const PERIODS_HEADING = 'Periods';
-const HORMONES_HEADING = 'Hormones';
-const TAKES_HEADING = 'Anything you take regularly?';
-const TAKES_LABEL = 'Medication or supplements';
-const TAKES_PLACEHOLDER = 'In your own words';
-// HER WORDING, AND THE SECOND SENTENCE IS NOT BOILERPLATE. A box that accepts a
-// drug list has to say what the app will and will not do with it; the Medications
-// rule in the chat prompt says the same thing to the model.
-const TAKES_NOTE =
-  'Kept in Me exactly as you type it. Selod\u00eda is not a medical service and does not replace advice from your doctor. Edit or remove it any time.';
-
-const REASON_QUESTION = 'Which of these is closest?';
-const USE_QUESTION = 'Are you using any of these?';
-const USE_WHY =
-  'So a monthly bleed on HRT or the pill is not read as a natural cycle. Tick anything that applies.';
+// HER WORDING LIVES IN lib/body-notes-copy.ts, which is the record the matrix
+// copies and check-body-notes-copy.mjs compares. Nothing here restates it, and
+// that file carries the three things her wording changes besides the words.
 
 export default function LifeStageScreen() {
   // ONE QUESTION WHEN SHE CAME FROM HER BODY MANUAL. See lib/one-question.ts:
@@ -298,14 +281,17 @@ export default function LifeStageScreen() {
   // and separating them is what made the gap visible.
 
   return (
-    <OnboardingQuestion question={QUESTION} subtitle={SUBTITLE}>
+    <OnboardingQuestion
+      question={BODY_NOTES_SCREEN.question}
+      subtitle={BODY_NOTES_SCREEN.subtitle}>
       {/* THREE SECTIONS WITH THREE HEADINGS, as her preview has them. The screen
           used to run the period chips, the reason chips and the hormone chips
           together under one question, so a woman tapping Continue could not tell
           which of them she had answered. */}
       <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-        {PERIODS_HEADING}
+        {BODY_NOTES_SCREEN.periodsHeading}
       </ThemedText>
+      <ThemedText type="small">{BODY_NOTES_SCREEN.periodsQuestion}</ThemedText>
       <TapChoices
         options={LIFE_STAGES}
         selected={stage ? [stage] : []}
@@ -315,35 +301,42 @@ export default function LifeStageScreen() {
         }}
       />
 
+      {/* HER NOTE, SHOWN ALWAYS (5 October 2026). The screen only said this after
+          she had already picked the ninth option, so the woman about to pick the
+          wrong one never read it. It is the rule the app follows: see
+          stageForReasoning, which returns null rather than a menopause status. */}
+      <ThemedText type="small" themeColor="textSecondary">
+        {BODY_NOTES_SCREEN.periodsNote}
+      </ThemedText>
+
       {stage === 'no_periods_other' && (
         <>
-          <ThemedText type="small">{REASON_QUESTION}</ThemedText>
+          <ThemedText type="small">{BODY_NOTES_SCREEN.reasonQuestion}</ThemedText>
           <TapChoices
             options={NO_PERIODS_REASONS}
             selected={reason ? [reason] : []}
             onSelect={setReason}
           />
-          {/* SAID OUT LOUD, because it is the whole reason the option exists and
-              because a woman who has been told for years that no periods means
-              menopause deserves to see an app get it right. */}
+          {/* ONE SENTENCE THAT ONLY APPLIES HERE, kept because it says what
+              happens INSTEAD. Her general note above says the app assumes
+              nothing; this says symptoms become the thing worth tracking. */}
           <ThemedText type="small" themeColor="textSecondary">
-            No periods does not mean not cycling. Nothing here will assume anything about your
-            menopause, and symptoms become the thing worth tracking instead.
+            Symptoms become the thing worth tracking instead.
           </ThemedText>
         </>
       )}
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-        {HORMONES_HEADING}
+        {BODY_NOTES_SCREEN.hormonesHeading}
       </ThemedText>
-      <ThemedText type="small">{USE_QUESTION}</ThemedText>
+      <ThemedText type="small">{BODY_NOTES_SCREEN.hormonesQuestion}</ThemedText>
       <TapChoices
         options={HORMONE_USE_OPTIONS}
         selected={use}
         onSelect={(key) => setUse((current) => toggleHormoneUse(current, key))}
       />
       <ThemedText type="small" themeColor="textSecondary">
-        {USE_WHY}
+        {BODY_NOTES_SCREEN.hormonesNote}
       </ThemedText>
 
       {/* ANYTHING SHE TAKES REGULARLY, in a plain box (Ruth, item 6). This
@@ -351,11 +344,11 @@ export default function LifeStageScreen() {
           box is safe where a conversation was needed: there is no transcription
           to get wrong, so there is nothing to read back. */}
       <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-        {TAKES_HEADING}
+        {BODY_NOTES_SCREEN.takesHeading}
       </ThemedText>
       <SetupTextField
-        label={TAKES_LABEL}
-        placeholder={TAKES_PLACEHOLDER}
+        label={BODY_NOTES_SCREEN.takesLabel}
+        placeholder={BODY_NOTES_SCREEN.takesPlaceholder}
         value={takes}
         onChangeText={(t) => {
           setTakes(t);
@@ -368,11 +361,16 @@ export default function LifeStageScreen() {
       />
       {taking.length > 0 && (
         <ThemedText type="small" themeColor="textSecondary">
-          Already kept: {taking.join('; ')}
+          {BODY_NOTES_SCREEN.takesAlreadyLabel} {taking.join('; ')}
         </ThemedText>
       )}
+      {/* HER CLOSING LINE. It replaces "Selodía is not a medical service and does
+          not replace advice from your doctor", which is still on the Body
+          Manual's own row for this and in the privacy policy. See the note at the
+          top of lib/body-notes-copy.ts: this is the removal worth a second look,
+          because this box is the first place anybody types a drug name. */}
       <ThemedText type="small" themeColor="textSecondary">
-        {TAKES_NOTE}
+        {BODY_NOTES_SCREEN.closing}
       </ThemedText>
 
       {loadState === 'failed' && (
