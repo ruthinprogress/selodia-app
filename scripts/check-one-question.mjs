@@ -68,10 +68,22 @@ check('the Manual passes redo=1 on every link', () => {
   // Without this the screens below have nothing to read, and all of them fall
   // back to behaving like a step of the chain.
   ok(
-    /params: \{ redo: '1' \}/.test(manual),
-    'the Body Manual no longer tells the screen she came from her profile'
+    /redo: '1'/.test(manual),
+    'the Body Manual no longer tells the screen she came from the Manual'
   );
-  return 'every row says where she came from';
+  // AND WHICH ROW, since 5 October. Ruth: "It should take you back to the open
+  // drop down where it came from." Landing at the top of a closed list of
+  // fourteen rows is not returning somebody to where they were, and the open row
+  // is the only confirmation the save happened.
+  ok(
+    /\[OPEN_ROW_PARAM\]: section\.key/.test(manual),
+    'the row she opened is not carried out with her, so she comes back to a closed list'
+  );
+  ok(
+    /returningTo \? \{ \[returningTo\]: true \}/.test(manual),
+    'the row she came back from is not reopened, so the key travels and does nothing'
+  );
+  return 'every row says where she came from, and which row it was';
 });
 
 // ---- each screen, three properties ----------------------------------------

@@ -25,8 +25,16 @@
 
 import { router, useLocalSearchParams } from 'expo-router';
 
-/** Where a row of the Body Manual lives, and where one question returns to. */
-export const BODY_MANUAL_ROUTE = '/settings/profile';
+/**
+ * Where a row of the Body Manual lives, and where one question returns to.
+ *
+ * IT POINTED AT THE PROFILE UNTIL 5 OCTOBER, which is where the Manual used to
+ * live. The Manual moved to More that morning and this constant did not follow
+ * it, so every one-question trip ended on a screen the question had nothing to do
+ * with. Ruth: "it then takes you back to Profile. It should take you back to the
+ * open drop down where it came from."
+ */
+export const BODY_MANUAL_ROUTE = '/settings/body-manual';
 
 export type OneQuestion = {
   /**
@@ -47,6 +55,17 @@ export type OneQuestion = {
   leave: (next: string) => void;
 };
 
+/**
+ * The row she opened, carried out and back.
+ *
+ * ARRIVING AT THE TOP OF A LIST OF FOURTEEN ROWS is not returning somebody to
+ * where they were. She opened "What you want to be able to do", typed splits,
+ * and came back to a closed list with no sign of what she had just done. The key
+ * travels with her and the row is open when she lands - which is also the only
+ * confirmation the save happened, and the one no sentence can replace.
+ */
+export const OPEN_ROW_PARAM = 'openRow';
+
 /** The parameter shape, so the header and the screens read it the same way. */
 export function isOneQuestion(params: { redo?: string | string[] }): boolean {
   const redo = Array.isArray(params.redo) ? params.redo[0] : params.redo;
@@ -54,8 +73,9 @@ export function isOneQuestion(params: { redo?: string | string[] }): boolean {
 }
 
 export function useOneQuestion(): OneQuestion {
-  const params = useLocalSearchParams<{ redo?: string }>();
+  const params = useLocalSearchParams<{ redo?: string; openRow?: string }>();
   const fromManual = isOneQuestion(params);
+  const openRow = Array.isArray(params.openRow) ? params.openRow[0] : params.openRow;
 
   return {
     fromManual,
@@ -63,8 +83,14 @@ export function useOneQuestion(): OneQuestion {
       // REPLACE, NOT PUSH, so Back from her profile does not walk her into the
       // question again. Her own words after the goals screen did this: "it took
       // me to the chat page after, which is not correct."
-      if (fromManual) router.replace(BODY_MANUAL_ROUTE as never);
-      else router.push(next as never);
+      if (fromManual) {
+        router.replace({
+          pathname: BODY_MANUAL_ROUTE,
+          params: openRow ? { [OPEN_ROW_PARAM]: openRow } : {},
+        } as never);
+        return;
+      }
+      router.push(next as never);
     },
   };
 }

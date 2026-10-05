@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -22,6 +22,7 @@ import {
   modeLabel,
   type BodyMode,
 } from '@/lib/body-mode';
+import { OPEN_ROW_PARAM } from '@/lib/one-question';
 import { supabase } from '@/lib/supabase';
 
 // EVERY ANSWER SHE HAS GIVEN, ON ONE PAGE, LIVE.
@@ -61,7 +62,14 @@ export function BodyManual({
   heading = true,
 }: { heading?: boolean } = {}) {
   const theme = useTheme();
-  const [open, setOpen] = useState<Record<string, boolean>>({});
+  // THE ROW SHE CAME BACK FROM, OPEN. See OPEN_ROW_PARAM: landing at the top of
+  // a closed list of fourteen is not returning somebody to where they were, and
+  // the open row is the only confirmation the save happened.
+  const params = useLocalSearchParams<{ openRow?: string }>();
+  const returningTo = Array.isArray(params.openRow) ? params.openRow[0] : params.openRow;
+  const [open, setOpen] = useState<Record<string, boolean>>(
+    returningTo ? { [returningTo]: true } : {}
+  );
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [deficit, setDeficit] = useState<'on' | 'paused' | null>(null);
@@ -508,7 +516,12 @@ export function BodyManual({
 
                   {!section.readOnly && !section.inline && !section.toToday && route && (
                     <Pressable
-                      onPress={() => router.push({ pathname: route as never, params: { redo: '1' } })}
+                      onPress={() =>
+                        router.push({
+                          pathname: route as never,
+                          params: { redo: '1', [OPEN_ROW_PARAM]: section.key },
+                        })
+                      }
                       accessibilityRole="link"
                       accessibilityLabel={`${has ? 'Change' : 'Add'} ${section.heading.toLowerCase()}`}
                       hitSlop={Spacing.two}
