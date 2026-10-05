@@ -179,9 +179,15 @@ export default function ActivityLevelScreen() {
           </ThemedText>
         )}
 
+        {/* HER WORDING, VERBATIM (5 October 2026). Mine said the same thing from
+            the app's side - "nothing here is worked out from what you log" -
+            which is an engineer explaining what the system does not do. Hers
+            says it from the person's: it is based on what you chose, and it
+            waits for you. Same fact, and the second one is warmer because it
+            puts her at the centre of the sentence rather than the mechanism. */}
         <ThemedText type="small" themeColor="textSecondary">
-          Nothing here is worked out from what you log. It is what you have said,
-          and it stays as you left it until you change it.
+          This is based only on the activity level you choose. It won&apos;t change
+          automatically unless you update it.
         </ThemedText>
       </View>
     </SettingsPage>
