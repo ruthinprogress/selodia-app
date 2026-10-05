@@ -27,6 +27,7 @@ import {
   weightDirectionStated,
   type BodyMode,
 } from '@/lib/body-mode';
+import { GUIDE_FRAME } from '@/lib/starting-guide';
 import {
   GOAL_OPTIONS,
   OTHER_GOAL_OPTIONS,
@@ -134,6 +135,7 @@ export default function GoalsScreen() {
   /** The four switches. Null until she ticks one - see focusFromMode. */
   const [mode, setMode] = useState<BodyMode | null>(null);
   const [explaining, setExplaining] = useState<'mode' | 'safety' | null>(null);
+  const [showWorking, setShowWorking] = useState(false);
   const [measure, setMeasure] = useState('');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -739,6 +741,33 @@ export default function GoalsScreen() {
                   meant." It is the one part of this panel built on an answer she
                   gave on another screen. */}
               {working.blocks.map((block, i) => {
+                if (block.kind === 'working') {
+                  // BEHIND A TAP, NOT ON THE PANEL (Ruth, 5 October 2026): "add
+                  // it to the collapsed working for Lose fat ONLY, not the main
+                  // panel". A rate in kilos on the face of the screen reads as a
+                  // promise; one tap down it is there for somebody asking how the
+                  // figure works.
+                  return (
+                    <View key={i} style={styles.group}>
+                      <Pressable
+                        onPress={() => setShowWorking((w) => !w)}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: showWorking }}
+                        accessibilityLabel={GUIDE_FRAME.workingLabel}
+                        hitSlop={Spacing.two}
+                        style={({ pressed }) => pressed && styles.pressed}>
+                        <ThemedText type="small" themeColor="accentDeep">
+                          {GUIDE_FRAME.workingLabel}
+                        </ThemedText>
+                      </Pressable>
+                      {showWorking && (
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {block.text}
+                        </ThemedText>
+                      )}
+                    </View>
+                  );
+                }
                 if (block.kind === 'italic') {
                   return (
                     <ThemedText key={i} themeColor="textSecondary" style={styles.serifLine}>

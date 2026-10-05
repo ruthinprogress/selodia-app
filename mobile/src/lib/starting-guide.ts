@@ -45,6 +45,18 @@ export type GuideState = {
   smallLine?: string;
   /** Whether this state shows the two figures and the closing line. */
   showsFigures: boolean;
+  /**
+   * The line behind "The working", where a state has one.
+   *
+   * Ruth, 5 October 2026: "add it to the collapsed working for Lose fat ONLY, not
+   * the main panel... It's an important piece of body literacy nearly lost."
+   *
+   * IT IS NOT ON THE PANEL ITSELF, and that placement is the decision. A rate in
+   * kilos on the face of the screen reads as a promise and invites her to weigh
+   * herself against it; the same sentence one tap down is there for somebody
+   * asking how the figure works, which is what a working is for.
+   */
+  working?: string;
   /** What the state teaches. Her matrix note, not shown on screen. */
   teaches?: string;
 };
@@ -52,6 +64,8 @@ export type GuideState = {
 /** The frame every state that shows a guide is drawn in. */
 export const GUIDE_FRAME = {
   title: 'Your starting guide',
+  /** What the collapsed section is called. Her word for it. */
+  workingLabel: 'The working',
   intro: "Based on what you've told Selodía:",
   restBullet: 'Your body uses about {resting} kcal a day at rest.',
   activityBullet: 'With {activity phrase}, that becomes about {activity kcal} kcal a day.',
@@ -76,6 +90,11 @@ export const GUIDE_STATES: GuideState[] = [
     name: 'Lose fat',
     paragraph:
       "You've chosen to lose fat, so Selodía sets a gentle calorie deficit. It never goes below what your body uses at rest, and protein stays high to help protect your muscle.",
+    // HER WORDING (5 October 2026). The second sentence is the half that stops
+    // the first being a schedule: the scale moves more than this in a day, for
+    // reasons that have nothing to do with fat.
+    working:
+      'At this pace the sum comes to roughly {weekly kg} kg of fat a week. Real life is less tidy, and your weight on the scale moves around more than that.',
     showsFigures: true,
     teaches: 'Deficits are gentle and muscle is worth protecting.',
   },

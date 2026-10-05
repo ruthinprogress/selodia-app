@@ -177,6 +177,9 @@ const out = {
           ? [GUIDE.GUIDE_FRAME.guideFigure, GUIDE.GUIDE_FRAME.proteinFigure, GUIDE.GUIDE_FRAME.closing]
           : [GUIDE.GUIDE_FRAME.closingNoGuide]),
       ],
+      // HER WORDING FOR THE COLLAPSED WORKING, where a state has one. Shown on
+      // screen behind one tap rather than on the panel.
+      shownInWorking: g.working ?? null,
       paragraph: g.paragraph,
       italic: g.italic ?? null,
       smallLine: g.smallLine ?? null,

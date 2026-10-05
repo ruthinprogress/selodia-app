@@ -172,6 +172,56 @@ process.stdout.write(`<title>Selodía Mode Matrix</title>
     </table>
   </div>
 
+  <style>
+    .frame { border: 1px solid #D9CDBC; border-radius: 10px; padding: 12px 14px; margin: 10px 0 18px; }
+    .guideline { padding: 2px 0; }
+    .guideline.bullet { padding-left: 14px; }
+    .guideline.fig { font-weight: 600; }
+    .italic { font-style: italic; padding-top: 6px; }
+    .teaches { opacity: 0.75; padding-top: 4px; }
+  </style>
+  <h2>Your starting guide: the text shown on screen</h2>
+  <p class="small">Ruth's final copy, 5 October 2026, held verbatim in
+  <code>lib/starting-guide.ts</code> and copied here by the generator.
+  <strong>Nothing paraphrases it</strong>: <code>check-starting-guide.mjs</code>
+  compares the record with the module both ways, and proves it can fail by running
+  its own comparison against a reworded sentence. Braces are placeholders the app
+  fills.</p>
+
+  <div class="frame small">
+    <strong>The frame</strong>, on every state that shows a guide:
+    <div class="guideline"><em>${esc(m.startingGuide.frame.title)}</em></div>
+    <div class="guideline">${esc(m.startingGuide.frame.intro)}</div>
+    <div class="guideline bullet">${esc(m.startingGuide.frame.restBullet)}</div>
+    <div class="guideline bullet">${esc(m.startingGuide.frame.activityBullet)}</div>
+    <div class="guideline">[approach paragraph]</div>
+    <div class="guideline">[italic line, where shown]</div>
+    <div class="guideline fig">${esc(m.startingGuide.frame.guideFigure)}</div>
+    <div class="guideline fig">${esc(m.startingGuide.frame.proteinFigure)}</div>
+    <div class="guideline">${esc(m.startingGuide.frame.closing)}</div>
+    <p class="small">The activity phrase is the live, underlined link; accessible
+    name &ldquo;${esc(m.startingGuide.frame.activityLinkLabel)}&rdquo;; no bracketed text.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>State</th><th>What it says</th><th>Figures</th></tr></thead>
+    <tbody>
+      ${m.startingGuide.states
+        .map(
+          (g) => `<tr>
+        <td><strong>${esc(g.name)}</strong>${g.teaches ? `<div class="small teaches">Teaches: ${esc(g.teaches)}</div>` : ''}</td>
+        <td>
+          <div>${esc(g.paragraph)}</div>
+          ${g.italic ? `<div class="italic">${esc(g.italic)}</div>` : ''}
+          ${g.smallLine ? `<div class="small">${esc(g.smallLine)}</div>` : ''}
+        </td>
+        <td class="small">${g.showsFigures ? 'Guide and protein, then the closing line.' : 'None. Closes with &ldquo;Nothing here is fixed.&rdquo;'}</td>
+      </tr>`
+        )
+        .join('')}
+    </tbody>
+  </table>
+
   <h2>What is stored</h2>
   <p class="small"><code>body_mode</code> holds the four switches exactly as ticked, and is the record. <code>fat_focus_state</code> and <code>muscle_focus_state</code> are written from it and kept as the view that turn_context, the day sums, the protein rule and every existing probe already read. Null everywhere means never answered — which is what makes “no goal chosen” a real state rather than a silent maintenance default, the fault that showed three people a figure nobody had chosen on 28 September. <code>paused_at</code> records the one Pause; nothing expires it and no timer reads it.</p>
 </div>

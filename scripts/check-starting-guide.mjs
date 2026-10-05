@@ -20,6 +20,8 @@ import { readFileSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const GUIDE = await import(root + '/mobile/src/lib/starting-guide.ts');
+const INTENT = await import(root + '/mobile/src/lib/body-intent.ts');
+const { explainTarget } = INTENT;
 
 const matrix = JSON.parse(readFileSync('scripts/mode-matrix.json', 'utf8'));
 
@@ -206,6 +208,62 @@ check('a pause and a missing weight win over the switches', () => {
     'without a weight there is still a guide'
   );
   return 'no weight first, then paused, then the switches';
+});
+
+check('the weekly fat-loss line is in the working, on Lose fat only', () => {
+  // Ruth, 5 October 2026: "add it to the collapsed working for Lose fat ONLY, not
+  // the main panel... It's an important piece of body literacy nearly lost."
+  //
+  // THE CHECK MOVED RATHER THAN DIED. It used to assert this sentence was in the
+  // panel; her final copy took it off the panel, and for a few hours the check
+  // asserted nothing. It now points at where she put it.
+  const withWorking = GUIDE.GUIDE_STATES.filter((g) => g.working).map((g) => g.key);
+  assert.deepStrictEqual(withWorking, ['lose_fat'], `the working is on ${withWorking.join(', ')}`);
+
+  const text = GUIDE.GUIDE_BY_KEY.lose_fat.working;
+  assert.ok(/\{weekly kg\}/.test(text), 'the weekly figure is no longer a placeholder');
+  assert.ok(/kg of fat a week/.test(text), 'it no longer says kilos of fat a week');
+  assert.ok(
+    /less tidy|moves around/.test(text),
+    'it reads as a schedule, with nothing saying real life is less tidy'
+  );
+
+  const rec = matrix.startingGuide.states.find((x) => x.key === 'lose_fat');
+  assert.strictEqual(rec.shownInWorking, text, 'the matrix does not carry the same working line');
+  for (const other of matrix.startingGuide.states.filter((x) => x.key !== 'lose_fat')) {
+    assert.strictEqual(
+      other.shownInWorking,
+      null,
+      `${other.key} has a working line it should not have`
+    );
+  }
+  return 'one state, her sentence, same in the record';
+});
+
+check('the working is computed at 7,700 kcal to the kilo', () => {
+  // Her instruction: "Compute it with the same 7,700 kcal per kg." The same
+  // constant as gaining, which is its own rule in the matrix.
+  const w = explainTarget({
+    intent: INTENT.BODY_INTENT_BY_KEY.lose_fat,
+    weightKg: 56.55,
+    weightSource: 'measured',
+    bmrKcal: 1128,
+    tdeeKcal: 1551,
+    activityWord: 'training once or twice a week',
+    proteinLow: 82,
+    proteinHigh: 98,
+    proteinStepped: 'plain',
+    deficitPaused: false,
+    weightDirectionStated: true,
+  });
+  const block = w.blocks.find((b) => b.kind === 'working');
+  assert.ok(block, 'the panel has no working block for a fat-loss approach');
+  const stated = /roughly ([0-9.]+) kg/.exec(block.text);
+  assert.ok(stated, `no figure in "${block.text}"`);
+  // The guide is 1,240 against 1,550 used: 310 a day, 2,170 a week, 0.28 kg.
+  const expected = (((1550 - w.targetKcal) * 7) / 7700).toFixed(2);
+  assert.strictEqual(stated[1], expected, `it says ${stated[1]} kg, not ${expected}`);
+  return `${stated[1]} kg a week, from the deficit that survived the floor`;
 });
 
 check('and this check can fail', () => {

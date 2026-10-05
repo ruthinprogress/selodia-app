@@ -183,6 +183,12 @@ const WEEKLY_GAIN_FRACTION = 0.0025;
 // scaled to bodyweight instead, because gaining weight is about the body being
 // added to.
 export const BUILD_SURPLUS_FRACTION = 0.05;
+
+// THE SAME 7,700 IN BOTH DIRECTIONS, which is a rule with its own entry in the
+// matrix: tissue gained is not identical to tissue lost, and using one number
+// keeps the two rates comparable rather than inventing a difference the
+// evidence does not support.
+const KCAL_PER_KG = 7700;
 // The ceiling, stated rather than implied. It binds above about 109 kg, so for
 // almost everybody the scaled figure is what applies; it exists so that scaling
 // can never become a reason the number keeps growing.
@@ -217,7 +223,7 @@ export function calorieFloor(bmrKcal: number | null | undefined): number {
  * than a list of strings.
  */
 export type WorkingBlock = {
-  kind: 'intro' | 'bullet' | 'para' | 'italic' | 'figure' | 'closing';
+  kind: 'intro' | 'bullet' | 'para' | 'italic' | 'figure' | 'closing' | 'working';
   text: string;
   /** Set on the bullet that names her activity level, for the link. */
   activityWord?: string;
@@ -561,6 +567,20 @@ export function explainTarget(input: {
   }
 
   blocks.push({ kind: 'closing', text: GUIDE_FRAME.closing });
+
+  // THE WORKING, BEHIND A TAP, AND ONLY WHERE SHE PUT ONE (5 October 2026).
+  //
+  // COMPUTED FROM THE DEFICIT THAT SURVIVED THE FLOOR, not from the rate that was
+  // asked for. When the floor bites the real deficit is smaller and so is the
+  // loss; quoting the intended rate there would be the app promising a result its
+  // own arithmetic has already refused.
+  if (state.working) {
+    const dailyDeficit = tdee - rounded;
+    if (dailyDeficit > 0) {
+      const weeklyKg = ((dailyDeficit * 7) / KCAL_PER_KG).toFixed(2);
+      blocks.push({ kind: 'working', text: fill(state.working, { 'weekly kg': weeklyKg }) });
+    }
+  }
 
   const lines = blocks.map((b) => b.text);
   const activityLineIndex = blocks.findIndex((b) => b.activityWord != null);

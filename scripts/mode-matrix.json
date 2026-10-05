@@ -359,6 +359,7 @@
   "startingGuide": {
     "frame": {
       "title": "Your starting guide",
+      "workingLabel": "The working",
       "intro": "Based on what you've told Selodía:",
       "restBullet": "Your body uses about {resting} kcal a day at rest.",
       "activityBullet": "With {activity phrase}, that becomes about {activity kcal} kcal a day.",
@@ -382,6 +383,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": "At this pace the sum comes to roughly {weekly kg} kg of fat a week. Real life is less tidy, and your weight on the scale moves around more than that.",
         "paragraph": "You've chosen to lose fat, so Selodía sets a gentle calorie deficit. It never goes below what your body uses at rest, and protein stays high to help protect your muscle.",
         "italic": null,
         "smallLine": null,
@@ -402,6 +404,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "You've chosen to lose fat and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide close to what your body uses, instead of pushing it as low as possible.",
         "italic": "Any change comes from protein and training, not simply from eating less.",
         "smallLine": null,
@@ -421,6 +424,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "You've chosen to maintain your weight, so Selodía keeps your guide around what your body uses. The aim is for your weight to stay broadly where it is.",
         "italic": null,
         "smallLine": null,
@@ -441,6 +445,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "You've chosen to maintain your weight and build muscle. Building muscle needs enough protein and a reason for the muscle to grow, usually strength training. So Selodía keeps your guide around what your body uses and raises protein to support recovery and growth.",
         "italic": "Any change comes from protein and training, not simply from eating more.",
         "smallLine": null,
@@ -461,6 +466,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "You've chosen to build muscle. Building muscle needs enough energy, enough protein and a reason for the muscle to grow, usually strength training. So Selodía adds a small surplus, about 5% above what your body uses, and keeps protein at the top of its range.",
         "italic": "Extra energy helps, but protein and training are what build muscle.",
         "smallLine": null,
@@ -481,6 +487,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "You've chosen to gain weight, so Selodía adds a small, steady surplus: about a quarter of a percent of your weight a week, around {surplus} kcal a day. Gentle is deliberate, because slow gain is easier to keep.",
         "italic": null,
         "smallLine": "If you have been losing weight without meaning to, it is worth telling your doctor.",
@@ -501,6 +508,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "You've chosen to gain weight and build muscle. Selodía adds a small, steady surplus, about a quarter of a percent of your weight a week, around {surplus} kcal a day, and keeps protein at the top of its range. That helps more of what you gain to be muscle.",
         "italic": null,
         "smallLine": "If you have been losing weight without meaning to, it is worth telling your doctor.",
@@ -518,6 +526,7 @@
           "You haven't chosen an approach yet, so there is no guide yet. Choose one and your guide appears, built around the number above.",
           "Nothing here is fixed."
         ],
+        "shownInWorking": null,
         "paragraph": "You haven't chosen an approach yet, so there is no guide yet. Choose one and your guide appears, built around the number above.",
         "italic": null,
         "smallLine": null,
@@ -535,6 +544,7 @@
           "Selodía needs your weight to work out your guide. A guess is fine, and you can add it any time.",
           "Nothing here is fixed."
         ],
+        "shownInWorking": null,
         "paragraph": "Selodía needs your weight to work out your guide. A guess is fine, and you can add it any time.",
         "italic": null,
         "smallLine": null,
@@ -554,6 +564,7 @@
           "{protein low}–{protein high} g protein a day",
           "These are starting estimates, and nothing here is fixed. If your activity, body or approach changes, your guide changes with it."
         ],
+        "shownInWorking": null,
         "paragraph": "Your approach is paused, so Selodía shows what your body uses. Resume when you like and your approach comes back as you set it.",
         "italic": null,
         "smallLine": null,
