@@ -65,6 +65,16 @@ export function OnboardingHeader() {
   // segments wait to be sure of themselves. A screen this file has never heard
   // of now costs a progress number, which is cosmetic. It used to cost the way
   // out, which is not.
+  // THE WELCOME WEARS NOTHING (5 October 2026). It is the moment at the end of
+  // setup, not a step of it: a terracotta screen with the seed on it, and the
+  // words "Getting to know you" across the top undo the whole thing. It has no
+  // progress and registers no action, but `redoing` was enough to draw the
+  // header on it - which is exactly what happened the first time it rendered.
+  //
+  // NAMED, NOT INFERRED. Anything that renders no header belongs on this list on
+  // purpose, because the rule above exists to stop a screen silently losing its
+  // way forward.
+  if (pathname.endsWith('/onboarding/welcome')) return null;
   if (!progress && !action && !redoing) return null;
 
   return (
