@@ -92,13 +92,11 @@ const CADENCE_KEYS: Record<string, CadenceKey> = Object.fromEntries(
 // The everyday-activity level the TDEE estimate needs, from what she actually
 // picked. The busiest answer wins: somebody who walks most days and swims now
 // and then is not sedentary.
-function activityLevelFrom(picked: (CadenceKey | undefined)[]): string {
-  const set = new Set(picked.filter(Boolean) as CadenceKey[]);
-  if (set.has('most_days')) return 'active';
-  if (set.has('few_times')) return 'moderate';
-  if (set.has('weekly') || set.has('now_and_then')) return 'light';
-  return 'sedentary';
-}
+// activityLevelFrom IS GONE (5 October 2026). It turned the cadence chips into a
+// whole-day multiplier - the single biggest term in her calorie figure - and was
+// the wrong source twice over: the chips describe a few named activities rather
+// than a week, and the level is now something she states on its own screen with a
+// date on it. See app/settings/activity-level.tsx.
 
 export default function ActivitiesScreen() {
   const theme = useTheme();
@@ -383,12 +381,25 @@ export default function ActivitiesScreen() {
     // the week deleted on 1 October and the goal archived on 2 October - and the
     // worst of them, because the other two were visible the moment she looked.
     //
-    // The level is only written when she actually answered the cadences. Height
-    // is hers whenever she typed one, and is written on its own.
+    // AND IT DOES NOT WRITE THE LEVEL AT ALL ANY MORE (5 October 2026). Guarding
+    // the write was the right fix for the silent overwrite, and not the whole
+    // fix: the activity level became a stated answer that morning, on its own
+    // screen, with a date on it. Leaving this write in place left TWO controls
+    // for one fact, with this one winning because it comes later in the chain -
+    // somebody who set their level carefully and then answered this screen would
+    // have it replaced by a number derived from four chips.
+    //
+    // Ruth asked the question that found it: "is it feeding a weekly estimate for
+    // calorie and activity calculations? if it's the second, why do we ask the
+    // frequency at all?"
+    //
+    // THE FREQUENCY STILL EARNS ITS PLACE for the other reason: cadenceConflict
+    // compares what she said against where the cards actually sit, so the week can
+    // notice when "weekly" is sitting on three days.
+    //
+    // Height is hers whenever she typed one, and is written on its own.
     const cm = Number(height.replace(/[^0-9.]/g, ''));
-    const answeredCadences = Object.values(cadences).filter(Boolean).length > 0;
     const profilePatch: Record<string, unknown> = {};
-    if (answeredCadences) profilePatch.activity_level = activityLevelFrom(Object.values(cadences));
     if (cm >= 100 && cm <= 230) profilePatch.height_cm = Math.round(cm);
     if (Object.keys(profilePatch).length > 0) {
       await supabase.from('user_profile').update(profilePatch).eq('user_id', user.id);

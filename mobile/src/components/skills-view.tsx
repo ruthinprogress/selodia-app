@@ -1,280 +1,420 @@
-import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { ButtonRadius, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  PLACEMENTS,
+  PLACEMENT_LABEL,
+  SKILLS_EMPTY,
+  skillTitle,
+  type PlacementKey,
+} from '@/lib/skills-copy';
 import { supabase } from '@/lib/supabase';
 
-// SKILLS: Now, Next, Goal. Nothing else.
+// SKILLS: A PLACE TO KEEP THE THINGS SHE IS WORKING ON (Ruth, 5 October 2026).
 //
-// NO TIMEFRAMES, against her own prototype and on her own instruction. The
-// prototype has "INTERMEDIATE - MONTHS 3-6" and "GOALS - MONTHS 6-18"; the brief
-// says "Now / Next / Goal only, no timeframes". A month range on a skill is a
-// deadline with better manners, and a woman still on the first rung in month
-// seven has been handed a way to feel behind at something she took up for fun.
+//   "Skills is just a place to keep the things someone is working on. The user
+//   does not know about progression ladders and does not need to."
 //
-// EVERY RUNG CARRIES EITHER A TARGET OR A PREREQUISITE, which is the brief's
-// rule and is also what makes a ladder different from a list: "Needs: 5 strict
-// pull-ups first" tells her why a rung is not hers yet, and that it will be.
+// WHAT THIS REPLACED. Every skill was a ladder: a list of rungs tagged NOW, NEXT
+// and GOAL, each with a "Needs: 5 strict pull-ups first" line, drawn from written
+// ladders the app chose by matching her words. It was a lot of structure in front
+// of somebody who had typed one sentence, and it could only ever cover the five
+// movements the clip library could illustrate.
 //
-// A RUNG WITH NO DEMONSTRATION IS SHOWN AS TEXT, AND SAYS SO.
+// A CARD IS THREE THINGS NOW: her words, where she is with it, and the date it
+// was added. Below that, her own notes, newest first.
 //
-// The 923-clip library has no handstand, no muscle up, no dead hang, no
-// scapular pull and no bar dip - see lib/skill-ladders.ts for the full gap
-// list. Ten of the rungs here are in that position, including every rung of
-// Ruth's own muscle-up ladder.
+// NOTHING IS COUNTED. No streak, no total, no "3 of 7 rungs". Her rule for this
+// tab twice over, and the reason skill_notes has no column anything could sum:
+// the moment a number exists somebody renders it, and then a quiet record of what
+// she did becomes a score she can be behind on.
 //
-// Her instruction, 29 September: name, cue, and the "Needs: X first" line. **No
-// placeholder image and no broken clip frame.** For these rungs the cue IS the
-// demonstration, which is why check-skill-clips.mjs refuses a text-only rung
-// that does not carry one - a name on a card with nothing under it is exactly
-// what reads as broken.
-//
-// THE SHORT NOTE STAYS, on her earlier standing decision that a missing
-// demonstration should say so: "a blank where every other exercise has a clip
-// does not read as 'we cover patterns, not names'; it reads as broken." A quiet
-// line of text is not a placeholder image, so the two decisions agree.
-//
-// WORTH KNOWING: this view renders no clips at all yet, for any rung.
-// `clip_match_key` is stored and unused, so "no broken frames" is currently
-// true of every rung rather than only the text-only ones. When the player
-// arrives here, the null case is already handled.
-
-type Rung = {
-  id: string;
-  name: string;
-  stage: 'now' | 'next' | 'goal';
-  target: string | null;
-  needs: string | null;
-  detail: string | null;
-  /** What it builds. Ruth's "Develops:" line. */
-  develops: string | null;
-  /** How to do it, e.g. a breathing cue. Guidance, never an exclusion. */
-  cue: string | null;
-  clip_match_key: string | null;
-  session_entry_id: string | null;
-};
+// NOTHING LOGS ITSELF. A note is typed by her, here or in chat. There is no tap
+// button, no session picker, and no session link - see her point 5: the data to
+// reference a Session later is kept, and nothing uses it yet.
 
 type Skill = {
   id: string;
   name: string;
-  /** One note for the whole ladder, e.g. her breathing note. Guidance. */
-  ladder_note: string | null;
-  rungs: Rung[];
+  placement: PlacementKey | null;
+  created_at: string;
 };
 
-export const SKILLS_EMPTY = 'No skills yet';
-export const SKILLS_EMPTY_BODY =
-  'Tell Selodía what you would like to be able to do, and it will work out what to practise now, what comes next, and what it builds towards.';
-
-const STAGE_LABEL: Record<Rung['stage'], string> = {
-  now: 'NOW',
-  next: 'NEXT',
-  goal: 'GOAL',
+type Note = {
+  id: string;
+  skill_id: string;
+  note: string;
+  created_at: string;
+  updated_at: string | null;
 };
 
-export function SkillsView({ onOpenSession }: { onOpenSession?: (entryId: string) => void }) {
+const ADD_SKILL_LABEL = 'Add something you are working on';
+const ADD_SKILL_PLACEHOLDER = 'In your own words';
+const ADD_NOTE_PLACEHOLDER = 'A note about how it is going';
+const PLACEMENT_PROMPT = 'Where are you with it?';
+
+/** "Added 5 October", which is the only date on a card. */
+function added(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `Added ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}`;
+}
+
+function noteDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+}
+
+export function SkillsView() {
+  const theme = useTheme();
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const [newSkill, setNewSkill] = useState('');
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setFailed(true);
+      setLoaded(true);
+      return;
+    }
+    const [skillsRes, notesRes] = await Promise.all([
+      supabase
+        .from('user_skills')
+        .select('id, name, placement, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('skill_notes')
+        .select('id, skill_id, note, created_at, updated_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+    ]);
+    setFailed(Boolean(skillsRes.error || notesRes.error));
+    setSkills((skillsRes.data ?? []) as Skill[]);
+    setNotes((notesRes.data ?? []) as Note[]);
+    setLoaded(true);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        const [skillsRes, rungsRes] = await Promise.all([
-          supabase
-            .from('user_skills')
-            .select('id, name, ladder_note')
-            .order('sort_order', { ascending: true }),
-          supabase
-            .from('user_skill_rungs')
-            .select(
-              'id, skill_id, name, stage, target, needs, detail, develops, cue, clip_match_key, session_entry_id'
-            )
-            .order('sort_order', { ascending: true }),
-        ]);
-        if (cancelled) return;
-
-        const rows = (rungsRes.error ? [] : (rungsRes.data ?? [])) as (Rung & { skill_id: string })[];
-        const bySkill = new Map<string, Rung[]>();
-        for (const row of rows) {
-          const list = bySkill.get(row.skill_id) ?? [];
-          list.push(row);
-          bySkill.set(row.skill_id, list);
-        }
-
-        setSkills(
-          (
-            (skillsRes.error ? [] : (skillsRes.data ?? [])) as Omit<Skill, 'rungs'>[]
-          ).map((s) => ({ ...s, rungs: bySkill.get(s.id) ?? [] }))
-        );
-        setLoaded(true);
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [])
+      void load();
+    }, [load])
   );
+
+  async function addSkill() {
+    const name = skillTitle(newSkill);
+    if (!name) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setNewSkill('');
+    const { error } = await supabase.from('user_skills').insert({ user_id: user.id, name });
+    if (error) setFailed(true);
+    await load();
+  }
+
+  async function setPlacement(skill: Skill, key: PlacementKey) {
+    // A TAP, AND IT IS HERS TO CHANGE. Her point 2: "where she is with it (the
+    // three choices above, changeable by a tap)".
+    const next = skill.placement === key ? null : key;
+    setSkills((list) => list.map((s) => (s.id === skill.id ? { ...s, placement: next } : s)));
+    const { error } = await supabase
+      .from('user_skills')
+      .update({ placement: next })
+      .eq('id', skill.id);
+    if (error) {
+      setFailed(true);
+      await load();
+    }
+  }
+
+  async function addNote(skill: Skill) {
+    const text = (draft[skill.id] ?? '').trim();
+    if (!text) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setDraft((d) => ({ ...d, [skill.id]: '' }));
+    const { error } = await supabase
+      .from('skill_notes')
+      .insert({ user_id: user.id, skill_id: skill.id, note: text });
+    if (error) setFailed(true);
+    await load();
+  }
+
+  async function saveEdit(note: Note) {
+    const text = editText.trim();
+    if (!text) return;
+    setEditing(null);
+    const { error } = await supabase
+      .from('skill_notes')
+      .update({ note: text, updated_at: new Date().toISOString() })
+      .eq('id', note.id);
+    if (error) setFailed(true);
+    await load();
+  }
+
+  async function removeNote(note: Note) {
+    setConfirmRemove(null);
+    const { error } = await supabase.from('skill_notes').delete().eq('id', note.id);
+    if (error) setFailed(true);
+    await load();
+  }
 
   if (!loaded) return null;
 
-  if (skills.length === 0) {
-    return (
-      <Pressable
-        onPress={() => router.push('/')}
-        accessibilityRole="link"
-        accessibilityLabel={`${SKILLS_EMPTY}. ${SKILLS_EMPTY_BODY}`}
-        style={({ pressed }) => pressed && styles.pressed}>
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">{SKILLS_EMPTY}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {SKILLS_EMPTY_BODY}
-          </ThemedText>
-        </ThemedView>
-      </Pressable>
-    );
-  }
-
   return (
-    <ThemedView style={styles.block}>
-      {skills.map((skill) => (
-        <ThemedView key={skill.id} style={styles.skill}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-            {skill.name}
-          </ThemedText>
-          {/* THE WHOLE-LADDER NOTE, above the rungs it applies to. Ruth's
-              muscle-up ladder carries "keep breathing through every rep",
-              which is true of all six rungs rather than any one of them.
-
-              IT IS GUIDANCE AND NOT A RULE, which is why it is here and not
-              in Rules. Her own note on approving it: "It excludes nothing and
-              must NOT be written to user_rules." Rules remove movements; this
-              describes how to do one. */}
-          {skill.ladder_note ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {skill.ladder_note}
+    <View style={styles.wrap}>
+      {/* ADDING ONE IS THE FIRST THING ON THE TAB, not behind a button. There is
+          one kind of thing here and one way to make one. */}
+      <View style={styles.group}>
+        <ThemedText type="small">{ADD_SKILL_LABEL}</ThemedText>
+        <View style={styles.addRow}>
+          <TextInput
+            value={newSkill}
+            onChangeText={setNewSkill}
+            placeholder={ADD_SKILL_PLACEHOLDER}
+            placeholderTextColor={theme.textSecondary}
+            accessibilityLabel={ADD_SKILL_LABEL}
+            onSubmitEditing={() => void addSkill()}
+            returnKeyType="done"
+            style={[
+              styles.entry,
+              styles.grow,
+              { color: theme.text, borderColor: theme.backgroundSelected },
+            ]}
+          />
+          <Pressable
+            onPress={() => void addSkill()}
+            disabled={!newSkill.trim()}
+            accessibilityRole="button"
+            accessibilityLabel="Add"
+            style={({ pressed }) => pressed && styles.pressed}>
+            <ThemedText
+              type="smallBold"
+              themeColor={newSkill.trim() ? 'accentDeep' : 'textSecondary'}>
+              Add
             </ThemedText>
-          ) : null}
-
-          {skill.rungs.map((rung) => (
-            <RungRow key={rung.id} rung={rung} onOpenSession={onOpenSession} />
-          ))}
-        </ThemedView>
-      ))}
-
-      <ThemedText type="small" themeColor="textSecondary">
-        There are no dates on any of this. A rung moves when you are ready for it, and you can say
-        so in chat whenever that is.
-      </ThemedText>
-    </ThemedView>
-  );
-}
-
-function RungRow({
-  rung,
-  onOpenSession,
-}: {
-  rung: Rung;
-  onOpenSession?: (entryId: string) => void;
-}) {
-  const theme = useTheme();
-  const openable = Boolean(rung.session_entry_id && onOpenSession);
-
-  const body = (
-    <ThemedView
-      type={rung.stage === 'goal' ? 'backgroundElement' : 'backgroundSelected'}
-      style={[styles.rung, rung.stage === 'now' && { borderColor: theme.accentDeep }]}>
-      <View style={styles.rungTop}>
-        <ThemedText type="small" style={styles.rungName}>
-          {rung.name}
-        </ThemedText>
-        <ThemedText
-          type="small"
-          themeColor={rung.stage === 'now' ? 'accentDeep' : 'textSecondary'}>
-          {STAGE_LABEL[rung.stage]}
-        </ThemedText>
+          </Pressable>
+        </View>
       </View>
 
-      {/* A TARGET OR A PREREQUISITE, never neither. "Needs: X first" is what
-          makes a ladder a ladder rather than a wish list. */}
-      {rung.target ? (
-        <ThemedText type="small" themeColor="accentDeep">
-          Target: {rung.target}
-        </ThemedText>
-      ) : null}
-      {rung.needs ? (
-        <ThemedText type="small" themeColor="accentDeep">
-          Needs: {rung.needs} first
-        </ThemedText>
-      ) : null}
-      {/* WHY THIS STEP, then WHAT IT BUILDS, then HOW TO DO IT. Three lines
-          Ruth wrote as three lines. They were being folded into one
-          paragraph, which reads as a wall and loses the distinction she made:
-          a reason, an outcome, and a cue are not the same kind of sentence. */}
-      {rung.detail ? (
+      {skills.length === 0 && (
         <ThemedText type="small" themeColor="textSecondary">
-          {rung.detail}
-        </ThemedText>
-      ) : null}
-      {rung.develops ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          Develops: {rung.develops}
-        </ThemedText>
-      ) : null}
-      {rung.cue ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {rung.cue}
-        </ThemedText>
-      ) : null}
-
-      {rung.clip_match_key ? null : (
-        <ThemedText type="small" themeColor="textSecondary">
-          Written, not filmed yet.
+          {SKILLS_EMPTY}
         </ThemedText>
       )}
-    </ThemedView>
-  );
 
-  return openable ? (
-    <Pressable
-      onPress={() => onOpenSession?.(rung.session_entry_id as string)}
-      accessibilityRole="link"
-      accessibilityLabel={`${rung.name}, ${STAGE_LABEL[rung.stage]}, open the session that trains it`}
-      style={({ pressed }) => pressed && styles.pressed}>
-      {body}
-    </Pressable>
-  ) : (
-    body
+      {skills.map((skill) => {
+        const mine = notes.filter((n) => n.skill_id === skill.id);
+        return (
+          <ThemedView key={skill.id} type="backgroundElement" style={styles.card}>
+            {/* HER WORDS, AND THE DATE. Nothing else on the head of a card. */}
+            <ThemedText type="smallBold">{skill.name}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {added(skill.created_at)}
+              {skill.placement ? ` · ${PLACEMENT_LABEL[skill.placement]}` : ''}
+            </ThemedText>
+
+            <ThemedText type="small" themeColor="textSecondary" style={styles.prompt}>
+              {PLACEMENT_PROMPT}
+            </ThemedText>
+            <View style={styles.chips}>
+              {PLACEMENTS.map((p) => {
+                const on = skill.placement === p.key;
+                return (
+                  <Pressable
+                    key={p.key}
+                    onPress={() => void setPlacement(skill, p.key)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={p.label}
+                    style={({ pressed }) => pressed && styles.pressed}>
+                    <View
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: on ? theme.backgroundSelected : theme.background,
+                          borderColor: on ? theme.accentDeep : 'transparent',
+                        },
+                      ]}>
+                      <ThemedText type="small" themeColor={on ? 'accentDeep' : 'text'}>
+                        {p.label}
+                      </ThemedText>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* THE QUICK LOG: text, a date, and nothing else. Newest first. */}
+            <View style={styles.addRow}>
+              <TextInput
+                value={draft[skill.id] ?? ''}
+                onChangeText={(t) => setDraft((d) => ({ ...d, [skill.id]: t }))}
+                placeholder={ADD_NOTE_PLACEHOLDER}
+                placeholderTextColor={theme.textSecondary}
+                accessibilityLabel={`A note about ${skill.name}`}
+                onSubmitEditing={() => void addNote(skill)}
+                returnKeyType="done"
+                style={[
+                  styles.entry,
+                  styles.grow,
+                  { color: theme.text, borderColor: theme.backgroundSelected },
+                ]}
+              />
+              <Pressable
+                onPress={() => void addNote(skill)}
+                disabled={!(draft[skill.id] ?? '').trim()}
+                accessibilityRole="button"
+                accessibilityLabel="Save this note"
+                style={({ pressed }) => pressed && styles.pressed}>
+                <ThemedText
+                  type="smallBold"
+                  themeColor={(draft[skill.id] ?? '').trim() ? 'accentDeep' : 'textSecondary'}>
+                  Save
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            {mine.map((note) => (
+              <View key={note.id} style={styles.note}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {noteDate(note.created_at)}
+                  {note.updated_at ? ' · edited' : ''}
+                </ThemedText>
+                {editing === note.id ? (
+                  <View style={styles.addRow}>
+                    <TextInput
+                      value={editText}
+                      onChangeText={setEditText}
+                      accessibilityLabel="Edit this note"
+                      onSubmitEditing={() => void saveEdit(note)}
+                      returnKeyType="done"
+                      style={[
+                        styles.entry,
+                        styles.grow,
+                        { color: theme.text, borderColor: theme.backgroundSelected },
+                      ]}
+                    />
+                    <Pressable
+                      onPress={() => void saveEdit(note)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Save the change"
+                      style={({ pressed }) => pressed && styles.pressed}>
+                      <ThemedText type="smallBold" themeColor="accentDeep">
+                        Save
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <ThemedText type="small">{note.note}</ThemedText>
+                )}
+
+                {/* REMOVING ASKS FIRST, like every other removal in this app.
+                    A note is something she wrote; a stray tap should not take it. */}
+                {confirmRemove === note.id ? (
+                  <View style={styles.chips}>
+                    <Pressable
+                      onPress={() => void removeNote(note)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Yes, remove this note"
+                      style={({ pressed }) => pressed && styles.pressed}>
+                      <ThemedText type="smallBold" themeColor="danger">
+                        Yes, remove it
+                      </ThemedText>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setConfirmRemove(null)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Keep this note"
+                      style={({ pressed }) => pressed && styles.pressed}>
+                      <ThemedText type="smallBold" themeColor="accentDeep">
+                        Keep it
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ) : (
+                  editing !== note.id && (
+                    <View style={styles.chips}>
+                      <Pressable
+                        onPress={() => {
+                          setEditing(note.id);
+                          setEditText(note.note);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Change this note"
+                        style={({ pressed }) => pressed && styles.pressed}>
+                        <ThemedText type="small" themeColor="accentDeep">
+                          Change this
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setConfirmRemove(note.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove this note"
+                        style={({ pressed }) => pressed && styles.pressed}>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Remove
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  )
+                )}
+              </View>
+            ))}
+          </ThemedView>
+        );
+      })}
+
+      {failed && (
+        <ThemedText type="small" themeColor="danger">
+          That didn&apos;t save. Check your connection and try again.
+        </ThemedText>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  block: { gap: Spacing.three },
-  skill: { gap: Spacing.two },
-  eyebrow: { textTransform: 'uppercase', letterSpacing: 0.8 },
-  rung: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    borderRadius: CardRadius,
+  wrap: { gap: Spacing.three },
+  group: { gap: Spacing.two },
+  card: { borderRadius: CardRadius, padding: Spacing.four, gap: Spacing.two },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  grow: { flex: 1, minWidth: 0 },
+  entry: {
     borderWidth: 1,
-    borderColor: 'transparent',
-    gap: Spacing.one,
+    borderRadius: ButtonRadius,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    fontSize: 15,
   },
-  rungTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+  prompt: { paddingTop: Spacing.one },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chip: {
+    borderWidth: 1,
+    borderRadius: ButtonRadius,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
   },
-  rungName: { flexShrink: 1 },
-  card: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    borderRadius: CardRadius,
-    gap: Spacing.one,
-  },
-  pressed: { opacity: 0.7 },
+  note: { gap: Spacing.one, paddingTop: Spacing.two },
+  pressed: { opacity: 0.6 },
 });

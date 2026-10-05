@@ -271,7 +271,11 @@ export default function PlansScreen() {
               <ReportLink start={['plans']} label="Build a report from these" />
             )}
 
-            {view === 'skills' && <SkillsView onOpenSession={setOpenId} />}
+            {/* NO SESSION LINK FOR NOW (Ruth, 5 October 2026, her point 5):
+                "Keep the data so a skill can reference a Session later; revisit
+                when the app is working and real users have chosen skills." The
+                tab opened a session from a rung, and rungs are parked. */}
+            {view === 'skills' && <SkillsView />}
 
             {view === 'rules' && <RulesView />}
           </SpotlightScroll>
