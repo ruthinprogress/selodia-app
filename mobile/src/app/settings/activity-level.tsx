@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
+import { SettingsPage } from '@/components/settings-page';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { CardRadius, MaxContentWidth, Spacing } from '@/constants/theme';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ACTIVITY_CHOICES, activitySetLine } from '@/lib/body-mode';
 import { supabase } from '@/lib/supabase';
@@ -114,16 +114,22 @@ export default function ActivityLevelScreen() {
     router.back();
   }
 
+  // THE SHARED SHELL, NOT A HAND-ROLLED ONE (5 October 2026). This screen and the
+  // Body Manual's were both written as a ThemedView wrapping a ScrollView, and
+  // both got the same two things wrong: a small title where every other page
+  // carries the serif display one, and no safe-area inset or bottom padding, so
+  // the last card sat under the system bar. Her words about the other one: "It
+  // all sits too low so cant access bottom of the cards/options."
+  //
+  // SettingsPage decides all of that once. Writing a page without it is choosing
+  // to re-decide five things, and the two I did not decide were the two that
+  // broke.
   return (
-    <ThemedView style={styles.page}>
-      <ScrollView contentContainerStyle={styles.wrap}>
-        <ThemedText type="title">Your activity level</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-          Pick the line that sounds most like a usual week, training included. It
-          is the single biggest thing in your daily calorie figure, so it is worth
-          a moment.
-        </ThemedText>
-
+    <SettingsPage
+      title="Your activity level"
+      subtitle="Pick the line that sounds most like a usual week, training included. It is the single biggest thing in your daily calorie figure, so it is worth a moment."
+      footer="Nothing here is worked out from what you log. It is what you have said, and it stays as you left it until you change it.">
+      <View style={styles.choices}>
         {ACTIVITY_CHOICES.map((choice) => {
           const chosen = current === choice.key;
           const kcal = bmr ? Math.round(bmr * choice.factor) : null;
@@ -165,26 +171,13 @@ export default function ActivityLevelScreen() {
             That didn&apos;t save. Check your connection and try again.
           </ThemedText>
         )}
-
-        <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-          Nothing here is worked out from what you log. It is what you have said,
-          and it stays as you left it until you change it.
-        </ThemedText>
-      </ScrollView>
-    </ThemedView>
+      </View>
+    </SettingsPage>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
-  wrap: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-    maxWidth: MaxContentWidth,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  note: { paddingBottom: Spacing.one },
+  choices: { gap: Spacing.three },
   choice: {
     borderRadius: CardRadius,
     borderWidth: 1,
@@ -193,6 +186,5 @@ const styles = StyleSheet.create({
   },
   figure: { fontVariant: ['tabular-nums'] },
   setLine: { paddingTop: Spacing.two },
-  footnote: { paddingTop: Spacing.three },
   pressed: { opacity: 0.6 },
 });

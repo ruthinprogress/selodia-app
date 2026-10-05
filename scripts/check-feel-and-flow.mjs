@@ -18,7 +18,7 @@
 //   maps them to numbers, and nothing counts how many times she has answered.
 
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const cwd = process.cwd().replace(/\\/g, '/');
 const PROGRESS = await import(`file://${cwd}/mobile/src/lib/onboarding-progress.ts`);
@@ -142,14 +142,14 @@ await check('the flow opens on question 1', () => {
   // back through onboarding. Only where it hangs has moved, so this follows it
   // rather than asserting the old address.
   const manualScreen = read('mobile/src/app/settings/body-manual.tsx');
-  assert.ok(/<BodyManual \/>/.test(manualScreen), 'the Body Manual has no screen');
+  assert.ok(/<BodyManual\b/.test(manualScreen), 'the Body Manual has no screen');
   const more = read('mobile/src/app/settings/index.tsx');
   assert.ok(
     /label="Body Manual"/.test(more),
     'nothing in More links to the Body Manual, so it exists and cannot be reached'
   );
   assert.ok(
-    !/<BodyManual \/>/.test(profile),
+    !/<BodyManual\b/.test(profile),
     'the Body Manual is still mounted on the profile as well, so it is in two places'
   );
   return 'and the redo is gone, replaced by the Body Manual';
@@ -345,6 +345,31 @@ await check('an unset pace is never nudged', async () => {
   assert.ok(/14 \* 24 \* 60 \* 60 \* 1000/.test(src), 'the fortnight interval has gone');
   assert.ok(/if \(!lastAt\) return true;/.test(src), 'never having looked back is not treated as due');
   return 'a fortnight, read from source (the component needs a renderer to import)';
+});
+
+await check('every settings page uses the shared page shell', async () => {
+  // TWO PAGES WRITTEN WITHOUT IT, BOTH WRONG THE SAME WAY (5 October 2026).
+  //
+  // The Body Manual's screen and the activity level screen were each hand-rolled
+  // from a ThemedView wrapping a ScrollView. Ruth, on the first: "Needs title
+  // font in the agreed large format and font as Plans etc. It all sits too low so
+  // cant access bottom of the cards/options." On the second, separately: "needs a
+  // back button - only way back is native phone back button rn."
+  //
+  // Same mistake twice. SettingsPage decides five things - the serif display
+  // title, the back chevron, the sprig, the safe-area inset, and the room at the
+  // foot that makes the last card reachable - and a page written without it
+  // re-decides all five. I decided three badly and two not at all.
+  const dir = 'mobile/src/app/settings';
+  const pages = readdirSync(dir).filter((f) => f.endsWith('.tsx') && f !== '_layout.tsx');
+  assert.ok(pages.length > 5, `only ${pages.length} settings pages - has the folder moved?`);
+  const bare = pages.filter((f) => !/SettingsPage/.test(read(`${dir}/${f}`)));
+  assert.ok(
+    bare.length === 0,
+    'these settings pages do not use SettingsPage, so each decides its own title ' +
+      'size, back button, safe area and bottom padding: ' + bare.join(', ')
+  );
+  return `${pages.length} pages, all on the shell`;
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

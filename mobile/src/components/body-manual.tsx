@@ -14,7 +14,14 @@ import {
   type SectionContents,
 } from '@/lib/body-manual';
 import { lookbackLabel } from '@/lib/feel-goals';
-import { modeExplanation, modeFromRecord, modeLabel, type BodyMode } from '@/lib/body-mode';
+import {
+  ACTIVITY_CHOICES,
+  activitySetLine,
+  modeExplanation,
+  modeFromRecord,
+  modeLabel,
+  type BodyMode,
+} from '@/lib/body-mode';
 import { supabase } from '@/lib/supabase';
 
 // EVERY ANSWER SHE HAS GIVEN, ON ONE PAGE, LIVE.
@@ -43,7 +50,16 @@ import { supabase } from '@/lib/supabase';
 
 type Loaded = Record<string, SectionContents>;
 
-export function BodyManual() {
+export function BodyManual({
+  /**
+   * Whether to draw its own section heading and note.
+   *
+   * False on its own page, where SettingsPage draws the display title and the
+   * same note as the subtitle - see app/settings/body-manual.tsx. Two headings
+   * saying the same thing in two sizes is what the move produced before this.
+   */
+  heading = true,
+}: { heading?: boolean } = {}) {
   const theme = useTheme();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [data, setData] = useState<Loaded | null>(null);
@@ -54,6 +70,8 @@ export function BodyManual() {
   const [deficitSetAt, setDeficitSetAt] = useState<string | null>(null);
   const [hasDeficit, setHasDeficit] = useState(false);
   const [mode, setMode] = useState<BodyMode | null>(null);
+  const [activityLevel, setActivityLevel] = useState<string | null>(null);
+  const [activitySetAt, setActivitySetAt] = useState<string | null>(null);
   const [wantsFatLoss, setWantsFatLoss] = useState(false);
   const [savingTraining, setSavingTraining] = useState(false);
 
@@ -86,7 +104,7 @@ export function BodyManual() {
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at').maybeSingle(),
           supabase.from('almanac_entries').select('title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
         ]);
         if (cancelled) return;
@@ -126,12 +144,16 @@ export function BodyManual() {
           training_state_set_at?: string | null;
           deficit_state?: string | null;
           deficit_state_set_at?: string | null;
+          activity_level?: string | null;
+          activity_level_set_at?: string | null;
           fat_focus_state?: string | null;
           muscle_focus_state?: string | null;
         } | null;
         setTraining((p?.training_state as 'training' | 'paused') ?? null);
         setDeficit((p?.deficit_state as 'on' | 'paused') ?? null);
         setMode(modeFromRecord((p as { body_mode?: unknown } | null)?.body_mode));
+        setActivityLevel((p?.activity_level as string) ?? null);
+        setActivitySetAt((p?.activity_level_set_at as string) ?? null);
         // WHETHER THERE IS A DEFICIT TO PAUSE AT ALL. Fat down without muscle up
         // is the only combination that produces one - recomposition eats around
         // maintenance, and the other two are maintenance or a surplus.
@@ -338,9 +360,29 @@ export function BodyManual() {
     ];
   }
 
+  /**
+   * What she has said about her usual week, and when she said it.
+   *
+   * EMPTY WHEN IT HAS NEVER BEEN STATED, which is not the same as sedentary.
+   * Until 4 October the level was derived from the cadence chips on every visit to
+   * the activities screen, and the derivation returns 'sedentary' for no input -
+   * so a row carrying 'sedentary' with no date is not an answer, it is what the
+   * overwrite left behind. Those read as "not set yet", which is the honest one.
+   */
+  function activityLines(): string[] {
+    if (!activityLevel || !activitySetAt) return [];
+    const choice = ACTIVITY_CHOICES.find((c) => c.key === activityLevel);
+    return [choice?.description ?? activityLevel, activitySetLine(activitySetAt)];
+  }
+
   /** Where a row is edited. The setup screen that owns that question. */
   function editRoute(key: string): string | null {
     switch (key) {
+      // NOT AN ONBOARDING SCREEN. Every other row maps to the setup screen that
+      // owns its question; the activity level is asked on its own settings screen,
+      // because it is a stated answer with a date rather than a step of setup.
+      case 'activity':
+        return '/settings/activity-level';
       case 'days':
         return '/onboarding/days';
       // The goal is set on Today now - see the `toToday` flag on the section.
@@ -367,9 +409,11 @@ export function BodyManual() {
   if (failed) {
     return (
       <View style={styles.group}>
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupTitle}>
-          {BODY_MANUAL_HEADING}
-        </ThemedText>
+        {heading && (
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupTitle}>
+            {BODY_MANUAL_HEADING}
+          </ThemedText>
+        )}
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="small" themeColor="danger">
             Your answers could not be loaded just now. Nothing has changed, and they are still
@@ -384,12 +428,24 @@ export function BodyManual() {
 
   return (
     <View style={styles.group}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupTitle}>
-        {BODY_MANUAL_HEADING}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-        {BODY_MANUAL_NOTE}
-      </ThemedText>
+      {/* THE HEADING IS THE PAGE'S NOW, NOT THE SECTION'S (Ruth, 5 October 2026:
+          "Needs title font in the agreed large format and font as Plans etc.").
+
+          This was written as a SECTION at the bottom of the profile screen, so it
+          wore a section's heading - small, bold, uppercase, in the secondary
+          colour. Moving it to its own page left that heading at the top of a
+          screen, where every other page in the app carries the serif display
+          title. It read as a fragment of something rather than a place. */}
+      {heading && (
+        <>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupTitle}>
+            {BODY_MANUAL_HEADING}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
+            {BODY_MANUAL_NOTE}
+          </ThemedText>
+        </>
+      )}
 
       <ThemedView type="backgroundElement" style={styles.card}>
         {BODY_MANUAL_SECTIONS.filter((s) => !s.onlyWhenFatLoss || wantsFatLoss).map((section, i) => {
@@ -398,6 +454,8 @@ export function BodyManual() {
               ? { lines: trainingLines() }
               : section.key === 'goal'
                 ? { lines: mode ? [modeLabel(mode), modeExplanation(mode)] : [] }
+                : section.key === 'activity'
+                  ? { lines: activityLines() }
                 : section.key === 'deficit'
                   ? { lines: deficitLines() }
                 : (data[section.key] ?? { lines: [] });

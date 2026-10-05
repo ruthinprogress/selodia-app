@@ -234,28 +234,35 @@ export function BodyModes() {
           {/* THE BASE SENTENCE, AND IT IS NEVER CALLED A TARGET (her item 2).
               Maintenance is an observation about her body; a number she did not
               choose, called a target, starts reading as a test she can fail. */}
+          {/* ONE TEXT NODE, NOT THREE IN A ROW (Ruth, 5 October 2026: "comma is
+              on the following line, fix").
+
+              It was three <ThemedText>s inside a wrapping flex row - "At ", the
+              link, and ", your body uses around N kcal a day." A flex row wraps
+              between its CHILDREN, so when the link was long the comma began the
+              next line on its own, which is not a thing writing does.
+
+              Nested text wraps as text: React Native lets a <Text> with an
+              onPress sit inside another <Text>, and the whole thing lays out as
+              one paragraph. The link keeps its colour, its underline and its tap
+              target. */}
           {tdee != null && (
-            <View style={styles.usesRow}>
-              <ThemedText type="small" themeColor="textSecondary">
-                At{' '}
-              </ThemedText>
-              <Pressable
+            <ThemedText type="small" themeColor="textSecondary">
+              At{' '}
+              <ThemedText
+                type="small"
+                themeColor="accentDeep"
+                style={styles.link}
                 // CAST AS THE REST OF THIS CODEBASE DOES. Expo Router generates
                 // its route union at build time and has not seen this screen yet;
                 // the file exists at app/settings/activity-level.tsx.
                 onPress={() => router.push('/settings/activity-level' as never)}
                 accessibilityRole="link"
-                accessibilityLabel="Change activity level"
-                hitSlop={Spacing.two}
-                style={({ pressed }) => pressed && styles.pressed}>
-                <ThemedText type="small" themeColor="accentDeep" style={styles.link}>
-                  {activityWord}
-                </ThemedText>
-              </Pressable>
-              <ThemedText type="small" themeColor="textSecondary">
-                , your body uses around {tdee.toLocaleString('en-GB')} kcal a day.
+                accessibilityLabel="Change activity level">
+                {activityWord}
               </ThemedText>
-            </View>
+              , your body uses around {tdee.toLocaleString('en-GB')} kcal a day.
+            </ThemedText>
           )}
 
           {/* THE SAME FOUR SWITCHES AS SETUP, from the same component. They were
@@ -405,7 +412,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   body: { gap: Spacing.three, paddingTop: Spacing.three },
-  usesRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline' },
   link: { textDecorationLine: 'underline' },
   safetyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   safetyText: { flexGrow: 1, flexShrink: 1 },

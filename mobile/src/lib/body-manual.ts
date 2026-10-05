@@ -130,6 +130,25 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     // IT SITS UNDER THE GOAL BECAUSE IT CHANGES THE GOAL'S FIGURES. It is not a
     // fact about her body like the rows below; it is the condition the body
     // goal's protein and calorie targets rest on.
+    key: 'activity',
+    heading: 'How active your weeks are',
+    note: 'The biggest single thing in your daily calorie figure.',
+    empty: 'Not set yet, so your figure assumes very little movement. Worth a moment.',
+  },
+  {
+    // HOW ACTIVE HER WEEKS ARE (Ruth, 5 October 2026): "Tap through from Body
+    // Manual needs to go directly to the Activity Level Screen, not Today for
+    // the user to scramble around figuring out where theyre meant to go. The
+    // back button from this page shows then they were in Today."
+    //
+    // It had no row at all. The only route to it from here was the goal row's
+    // link to Today and then finding the link inside the card - two taps and a
+    // hunt, for the single biggest term in her daily figure, ending somewhere
+    // that looks like a wrong turn.
+    //
+    // It belongs here on its own merits too: it is something she has TOLD the
+    // app about her body, which is the whole of what this page holds, and it is
+    // the one answer that was being silently overwritten until yesterday.
     key: 'training',
     heading: 'Whether you are training',
     note: 'Protein goes to the top of its range while you are training, because that is what the extra is for. Say you are paused and it comes back to the maintenance range until you start again.',

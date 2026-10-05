@@ -236,7 +236,16 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
-    paddingBottom: Spacing.six,
+    // ROOM TO SCROLL PAST THE PHONE'S OWN BAR (Ruth, 5 October 2026: "cant access
+    // bottom of options cards... just increase blank space at the end to scroll
+    // past phone bottom banner").
+    //
+    // SafeAreaView insets the bottom, which keeps content OUT from under the
+    // navigation bar but leaves the last card sitting flush against it with
+    // nowhere further to scroll - so on a long page the final option is pinned in
+    // the one place a thumb is least able to reach. Spacing.six twice over is a
+    // screen-bottom's worth of quiet, and it costs a short page nothing.
+    paddingBottom: Spacing.six * 2,
     gap: Spacing.four,
   },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
