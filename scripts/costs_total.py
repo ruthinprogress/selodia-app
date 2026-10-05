@@ -79,7 +79,8 @@ def main() -> int:
     ws["A1"] = "Spend to date"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A2"] = (
-        "Every payment that has actually left an account for Selod\u00eda, one row each, oldest first. "
+        "Every payment that has actually left an account for Selod\u00eda, one row each, from "
+        "August 2026 onwards - when the full-time work started. "
         "The two sheets beside this one stay the record - they carry the notes and the reasoning. "
         "This exists so a total does. Add a row and the total follows it."
     )
@@ -116,10 +117,12 @@ def main() -> int:
             f"Dollar figures with no sterling amount on a statement are converted at {USD} "
             "(ECB, 24 September 2026, the day a real pair was recorded). Rows marked No are "
             "in the list but not in the total: a refunded charge nets to nothing, and a direct "
-            "debit that has not been taken is not money spent. Claude.ai is billed to Alicante "
-            "Property Guide rather than Selod\u00eda Ltd - it is counted here because it is money "
-            "spent building this, and it will not appear in the company's books under that name "
-            "until the billing name is changed."
+            "debit that has not been taken is not money spent. "
+            "EVERYTHING FROM AUGUST 2026 ONWARDS IS A SELOD\u00cdA COST - that is when the "
+            "full-time work started, which is why the ledger begins there. Where an invoice "
+            "still carries another name (Claude.ai bills Alicante Property Guide; the Anthropic "
+            "API bills \u0027Ruth\u0027s Individual Org\u0027) that is a billing setting to put "
+            "right, not a question about whether the cost belongs here."
         ),
     ).alignment = wrap
 
