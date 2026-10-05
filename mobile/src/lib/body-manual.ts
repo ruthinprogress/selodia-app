@@ -120,45 +120,33 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     toToday: true,
   },
   {
-    // WHETHER THE PROTEIN TARGET'S ASSUMPTION IS TRUE (2026-10-02).
-    //
-    // Ruth: "The protein target (101-123g) assumes you're actively resistance
-    // training to drive the recomp - without that stimulus, it's a
-    // maintenance-range target in disguise. Flag when the user isn't currently
-    // training (injury, pause, etc.)"
-    //
-    // IT SITS UNDER THE GOAL BECAUSE IT CHANGES THE GOAL'S FIGURES. It is not a
-    // fact about her body like the rows below; it is the condition the body
-    // goal's protein and calorie targets rest on.
-    key: 'activity',
-    heading: 'How active your weeks are',
-    // HER WORDING (5 October 2026). Mine ranked it - "the biggest single thing
-    // in your daily calorie figure" - which is true and is the app telling her
-    // how much a question matters rather than what it is for. Hers says what it
-    // does, in the same words as the screen it opens, so the row and the page
-    // are plainly the same thing.
-    note: 'This gives Selodía the best starting point for your daily calorie guide.',
-    empty: 'Not set yet, so your figure assumes very little movement. Worth a moment.',
-  },
-  {
     // HOW ACTIVE HER WEEKS ARE (Ruth, 5 October 2026): "Tap through from Body
     // Manual needs to go directly to the Activity Level Screen, not Today for
-    // the user to scramble around figuring out where theyre meant to go. The
-    // back button from this page shows then they were in Today."
+    // the user to scramble around figuring out where theyre meant to go."
     //
     // It had no row at all. The only route to it from here was the goal row's
     // link to Today and then finding the link inside the card - two taps and a
-    // hunt, for the single biggest term in her daily figure, ending somewhere
-    // that looks like a wrong turn.
+    // hunt, for the single biggest term in her daily figure.
     //
-    // It belongs here on its own merits too: it is something she has TOLD the
-    // app about her body, which is the whole of what this page holds, and it is
-    // the one answer that was being silently overwritten until yesterday.
-    key: 'training',
-    heading: 'Whether you are training',
-    note: 'Protein goes to the top of its range while you are training, because that is what the extra is for. Say you are paused and it comes back to the maintenance range until you start again.',
-    empty: 'Not said, so your targets assume you are training.',
-    inline: true,
+    // IT ABSORBED THE TRAINING ROW ON THE SAME DAY. "Whether you are training"
+    // sat here with two buttons, and all it did was step protein between the
+    // maintenance range and the high one. This question asks the same thing about
+    // a usual week, and its lowest option says it outright - "Mostly sitting, and
+    // no regular training."
+    //
+    // TWO CONTROLS FOR ONE FACT CAN CONTRADICT EACH OTHER, and these could: she
+    // could say she did no regular training and still carry a protein range whose
+    // own explanation read "assumes you are training". Ruth: "yes, remove it.
+    // That's all derived from the Today page now with toggles and a pause
+    // button." See trainingFromActivity in lib/body-mode.ts.
+    key: 'activity',
+    heading: 'How active your weeks are',
+    // HER WORDING. Mine ranked it - "the biggest single thing in your daily
+    // calorie figure" - which is true, and is the app telling her how much a
+    // question matters rather than what it is for. Hers says what it does, in the
+    // same words as the screen it opens.
+    note: 'This gives Selodía the best starting point for your daily calorie guide.',
+    empty: 'Not set yet, so your figure assumes very little movement. Worth a moment.',
   },
   {
     // PAUSING A DEFICIT IS NOT ABANDONING A GOAL (2026-10-02).

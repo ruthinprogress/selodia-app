@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { trainingFromActivity } from '@/lib/body-mode';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -122,7 +123,7 @@ export default function GoalScreen() {
         weightKg: m?.weight_kg ?? null,
         fatFocus: fat as never,
         muscleFocus: muscle as never,
-        training: (p?.training_state as never) ?? null,
+        training: trainingFromActivity(p?.activity_level as string | null),
         deficitState: (p?.deficit_state as never) ?? null,
       });
       // THE GOAL AND THE BODY FAT, BOTH. This screen passed neither the goal nor
@@ -133,7 +134,7 @@ export default function GoalScreen() {
         weightKg: m?.weight_kg ?? null,
         bodyFatPct: m?.body_fat_pct ?? null,
         muscleFocus: muscle as never,
-        training: (p?.training_state as never) ?? null,
+        training: trainingFromActivity(p?.activity_level as string | null),
       });
       const label = proteinTargetLabel(protein);
 

@@ -14,6 +14,7 @@ import { explainTarget, intentFromFocus, type TargetWorking } from '@/lib/body-i
 import { resolveTDEE } from '@/lib/body-metrics';
 import { BodyModeToggles } from '@/components/body-mode-toggles';
 import {
+  trainingFromActivity,
   NO_MODE,
   focusFromMode,
   isEmpty,
@@ -86,8 +87,6 @@ const SUBTITLE = 'Nothing here is required, and you can change any of it later.'
 const BODY_HEADING = 'Your body';
 const BODY_NOTE =
   'These set your daily calorie figure and your protein range. Leave them all off and no figure is worked out.';
-const OTHER_HEADING = 'Anything else going on';
-const OTHER_NOTE = 'These change nothing about your calories. Pick as many as fit.';
 
 // Ruth's own wording, from the brief.
 const MEASURE_PROMPT = 'Got a number or measure in mind? Weight, waist, anything.';
@@ -321,7 +320,7 @@ export default function GoalsScreen() {
       weightKg,
       bodyFatPct: body?.bodyFatPct ?? null,
       muscleFocus: intent.muscle,
-      training: body?.trainingState ?? null,
+      training: trainingFromActivity(body?.activityLevel),
     });
 
     return explainTarget({
@@ -642,36 +641,24 @@ export default function GoalsScreen() {
             ) : null}
           </View>
 
-          <ThemedText type="smallBold">{OTHER_HEADING}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {OTHER_NOTE}
-          </ThemedText>
+          {/* "ANYTHING ELSE GOING ON" IS GONE (Ruth, 5 October 2026): "Remove
+              anything else going on section - makes no sense anymore."
 
-          <View style={styles.options}>
-            {OTHER_GOAL_OPTIONS.map((option) => {
-              const on = chosen.includes(option.key);
-              return (
-                <Pressable
-                  key={option.key}
-                  onPress={() => toggle(option.key)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
-                  accessibilityLabel={option.label}
-                  style={({ pressed }) => [styles.optionWrap, pressed && styles.pressed]}>
-                  <ThemedView
-                    type={on ? 'backgroundSelected' : 'backgroundElement'}
-                    style={[
-                      styles.option,
-                      { borderColor: on ? theme.accentDeep : 'transparent' },
-                    ]}>
-                    <ThemedText type="small" themeColor={on ? 'accentDeep' : 'text'}>
-                      {option.label}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
-              );
-            })}
-          </View>
+              It was three chips - a skill, more energy, perimenopause - kept when
+              the other four became switches, on the reasoning that they are a
+              different kind of answer and deserved their own heading. That
+              reasoning is what makes them wrong here: a question titled "What are
+              you working towards?" that then says "these change nothing about
+              your calories" is a question admitting half of itself does not
+              belong.
+
+              NOTHING IS LOST FROM THE FLOW. Each of the three has a screen of its
+              own later in setup - the skill question, the life-stage question -
+              and those screens ask properly rather than taking a tick. The chips
+              only ever wrote a goal row.
+
+              The keys stay in lib/goals.ts: rows written before today still
+              render by label in Plans and in the Body Manual. */}
 
           {showMeasure && (
             <ThemedView type="backgroundElement" style={styles.measureCard}>

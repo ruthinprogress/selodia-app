@@ -64,8 +64,6 @@ export function BodyManual({
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
-  const [training, setTraining] = useState<'training' | 'paused' | null>(null);
-  const [trainingSetAt, setTrainingSetAt] = useState<string | null>(null);
   const [deficit, setDeficit] = useState<'on' | 'paused' | null>(null);
   const [deficitSetAt, setDeficitSetAt] = useState<string | null>(null);
   const [hasDeficit, setHasDeficit] = useState(false);
@@ -104,7 +102,7 @@ export function BodyManual({
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, training_state, training_state_set_at, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at').maybeSingle(),
           supabase.from('almanac_entries').select('title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
         ]);
         if (cancelled) return;
@@ -140,8 +138,6 @@ export function BodyManual({
           life_stage?: string | null;
           life_stage_detail?: string | null;
           hormone_use?: unknown;
-          training_state?: string | null;
-          training_state_set_at?: string | null;
           deficit_state?: string | null;
           deficit_state_set_at?: string | null;
           activity_level?: string | null;
@@ -149,7 +145,6 @@ export function BodyManual({
           fat_focus_state?: string | null;
           muscle_focus_state?: string | null;
         } | null;
-        setTraining((p?.training_state as 'training' | 'paused') ?? null);
         setDeficit((p?.deficit_state as 'on' | 'paused') ?? null);
         setMode(modeFromRecord((p as { body_mode?: unknown } | null)?.body_mode));
         setActivityLevel((p?.activity_level as string) ?? null);
@@ -166,7 +161,6 @@ export function BodyManual({
         setHasDeficit(
           p?.fat_focus_state === 'reduce' && p?.muscle_focus_state !== 'increase'
         );
-        setTrainingSetAt((p?.training_state_set_at as string) ?? null);
         setDeficitSetAt((p?.deficit_state_set_at as string) ?? null);
 
         setData({
@@ -244,66 +238,7 @@ export function BodyManual({
     }, [])
   );
 
-  /**
-   * SAYING IT IS ONE TAP AND ONE WRITE.
-   *
-   * The optimistic set comes first so the chips answer immediately, and a failed
-   * write puts it back rather than leaving her looking at a state the database
-   * does not hold. No confirm step: the two-press gate on the goals screen is
-   * what lost her 45 kg goal this afternoon, and a wrong tap here is corrected by
-   * the other chip.
-   */
-  async function sayTraining(next: 'training' | 'paused') {
-    if (savingTraining) return;
-    const previous = training;
-    const previousAt = trainingSetAt;
-    // TAPPING THE ONE THAT IS ALREADY SET UNSETS IT, which is how she gets back
-    // to "not said" without a third chip for it.
-    const value = previous === next ? null : next;
-    const stamp = value == null ? null : new Date().toISOString();
-    setTraining(value);
-    setTrainingSetAt(stamp);
-    setSavingTraining(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setTraining(previous);
-      setTrainingSetAt(previousAt);
-      setSavingTraining(false);
-      return;
-    }
-    const { error } = await supabase
-      .from('user_profile')
-      .update({
-        training_state: value,
-        training_state_set_at: stamp,
-      })
-      .eq('user_id', user.id);
-    setSavingTraining(false);
-    if (error) {
-      setTraining(previous);
-      setTrainingSetAt(previousAt);
-      return;
-    }
-  }
 
-  /**
-   * THE DATE IS PART OF THE ANSWER. "Paused" with no date is a state that
-   * outlives the pause, and nothing expires it on her behalf - an app deciding
-   * she must be training again by now would be inventing the very fact this row
-   * exists to stop it inventing. Showing when she said it is what lets her see
-   * it has gone stale.
-   */
-  function trainingLines(): string[] {
-    if (training == null) return [];
-    return [
-      training === 'paused' ? 'Paused at the moment.' : 'Training at the moment.',
-      ...(trainingSetAt
-        ? [`Said on ${new Date(trainingSetAt).toLocaleDateString('en-GB')}.`]
-        : []),
-    ];
-  }
 
   /** The same one-tap write as the training row, for the deficit. */
   async function sayDeficit(next: 'on' | 'paused') {
@@ -450,9 +385,7 @@ export function BodyManual({
       <ThemedView type="backgroundElement" style={styles.card}>
         {BODY_MANUAL_SECTIONS.filter((s) => !s.onlyWhenFatLoss || wantsFatLoss).map((section, i) => {
           const contents =
-            section.key === 'training'
-              ? { lines: trainingLines() }
-              : section.key === 'goal'
+            section.key === 'goal'
                 ? { lines: mode ? [modeLabel(mode), modeExplanation(mode)] : [] }
                 : section.key === 'activity'
                   ? { lines: activityLines() }
@@ -549,44 +482,6 @@ export function BodyManual({
                     </View>
                   )}
 
-                  {section.inline && section.key === 'training' && (
-                    <View style={styles.chips}>
-                      {(
-                        [
-                          ['training', 'I am training'],
-                          ['paused', 'Paused for now'],
-                        ] as const
-                      ).map(([value, label]) => {
-                        const on = training === value;
-                        return (
-                          <Pressable
-                            key={value}
-                            onPress={() => void sayTraining(value)}
-                            disabled={savingTraining}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: on, disabled: savingTraining }}
-                            accessibilityLabel={label}
-                            accessibilityHint={
-                              on ? 'Tap again to go back to not saying' : undefined
-                            }
-                            style={({ pressed }) => [
-                              styles.chip,
-                              {
-                                backgroundColor: on ? theme.accentDeep : theme.background,
-                                borderColor: on ? theme.accentDeep : theme.textSecondary,
-                              },
-                              pressed && styles.pressed,
-                            ]}>
-                            <ThemedText
-                              type="small"
-                              style={{ color: on ? theme.background : theme.text }}>
-                              {label}
-                            </ThemedText>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  )}
 
                   {/* WEIGHT HAS NO EDIT, because it maintains itself: the latest
                       real weigh-in beats any estimate, whatever the dates say. A

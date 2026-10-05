@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { trainingFromActivity } from '@/lib/body-mode';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -305,9 +306,6 @@ export function OverviewPanel({
   //
   // The ref stops the first focus doubling the first read: the effect below has
   // already run by then, on key 0.
-  /** Bumped by the "say what you are working towards" line, to open the card. */
-  const [openModes, setOpenModes] = useState(0);
-
   const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -444,7 +442,10 @@ export function OverviewPanel({
         weightKg: latest?.weight_kg ?? null,
         fatFocus: asFocus(profile?.fat_focus_state ?? null),
         muscleFocus: asFocus(profile?.muscle_focus_state ?? null),
-        training: (profile?.training_state as never) ?? null,
+        // DERIVED FROM THE WEEK SHE DESCRIBED, not from a switch of its own.
+        // See trainingFromActivity: the activity level already asks this, and its
+        // lowest option is "no regular training".
+        training: trainingFromActivity(profile?.activity_level),
         deficitState: (profile?.deficit_state as never) ?? null,
       });
       // Lean mass from body fat percentage, not from the scale's muscle field.
@@ -660,71 +661,28 @@ export function OverviewPanel({
             aiming at is here. No remaining figure, no percentage, no bar,
             nothing that can read as behind. Goals are welcome and shame is not,
             and a number counting down is how shame gets in. */}
-        {/* NO CALORIE TARGET, AND THE REASON SAID OUT LOUD (Ruth, 1 October
-            2026). Her Today showed "81-97g protein" and no calorie figure, with
-            nothing to explain the gap.
+        {/* NOTHING AT ALL WHEN NOTHING IS SET (Ruth, 5 October 2026): "on the
+            Today Screen, I don't think we need a link to that onboarding page.
+            Remove it entirely and say nothing at all if no goal is set. Only show
+            goal there if one is set."
 
-            IT WAS NOT TONIGHT'S REDO. The migration of 28 September dropped the
-            NOT NULL DEFAULT 'maintain' on the focus columns on purpose - "a goal
-            nobody chose stops becoming a target" - and backed the old values up.
-            Everyone's focus became unset that day and nothing has set hers
-            since, so the calorie target has been missing for three days.
-            calculateCalorieTarget returns null without it, by design.
+            THE LINE WAS RIGHT FOR FOUR DAYS AND IS WRONG NOW. On 1 October her
+            Today showed a protein range, no calorie figure, and nothing to
+            explain the gap - the focus columns had just lost their silent
+            default, correctly, and she was left looking at an absence. A sentence
+            saying what was missing, with a tap to the screen that asked for it,
+            was the honest answer then.
 
-            THE DESIGN IS RIGHT AND THE SILENCE IS NOT. Not inventing a target
-            from a default she never chose is the whole point of that migration;
-            showing her nothing at all, with a goal set and no way to tell why, is
-            a different thing. Restoring the backed-up 'maintain' would undo the
-            migration rather than answer her.
+            The switches are three inches below this line now. An explanation of
+            where to go, pointing at something already on screen, is just noise -
+            and the place it pointed to was the setup question, which is a page
+            with a header, a Skip and a Continue, for one answer.
 
-            NO NUMBER IS INVENTED HERE. It says what is missing and offers the
-            screen that asks her. */}
-        {/* ONE TAP, AND IT SAYS WHICH THING IS MISSING. Both routes open the
-            goals screen, which is where the goal AND the weight are asked.
-
-            NO EM DASH. Ruth, finding 3 of 1 October and again in item 5
-            today: screen copy does not use them. The sentence read "No
-            calorie target yet - say what you are working towards" with an em
-            dash, which she asked to have removed twice. It is now two
-            sentences, which is what the dash was standing in for. */}
-        {/* IT OPENS THE CARD BELOW, IT DOES NOT LEAVE THE SCREEN (Ruth, 5 October
-            2026): "The link from Today takes them to an onboarding page that then
-            blanks out. It seems broken now and the onboarding screen looks
-            totally confused."
-
-            The link was written when the only place to say what she was working
-            towards was the setup question, so it pushed her into onboarding with
-            a redo flag - a whole setup screen, header, Skip and Continue, for one
-            answer. That answer is four switches on this very screen now, about
-            three inches below the sentence offering to go and find them.
-
-            A weight she has not given is the one case that still needs another
-            screen, because this card cannot ask for it. */}
-        {data.calorieTargetKcal == null && data.calorieTargetBlockedBy !== null ? (
-          <Pressable
-            onPress={() =>
-              data.calorieTargetBlockedBy === 'weight-unknown'
-                ? router.push({ pathname: '/onboarding/goals', params: { redo: '1' } })
-                : setOpenModes((n) => n + 1)
-            }
-            accessibilityRole="button"
-            accessibilityLabel={
-              data.calorieTargetBlockedBy === 'weight-unknown'
-                ? 'Add your weight, to get a calorie target'
-                : 'Open your goal switches, to get a calorie target'
-            }
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
-              {data.proteinTargetLabel ? `${data.proteinTargetLabel}g protein. ` : ''}
-              <ThemedText type="small" themeColor="accentDeep">
-                {data.calorieTargetBlockedBy === 'weight-unknown'
-                  ? 'Add your weight to see your targets.'
-                  : 'No calorie target yet. Say what you are working towards.'}
-              </ThemedText>
-            </ThemedText>
-          </Pressable>
-        ) : data.calorieTargetKcal != null || data.proteinTargetLabel ? (
+            SO THE ROW SIMPLY SHOWS WHAT IT HAS. A figure if there is one, a
+            protein range if there is one, and silence otherwise. An empty space
+            under Food is not a failure to communicate; the card below says "No
+            goal chosen" in its own words, where the control is. */}
+        {data.calorieTargetKcal != null || data.proteinTargetLabel ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.targetLine}>
             {[
               data.calorieTargetKcal != null ? `Aiming for ${data.calorieTargetKcal} kcal` : null,
@@ -897,7 +855,7 @@ export function OverviewPanel({
           the calorie guide"). The card writes, then says so, and this re-runs the
           same read that focus runs - every figure on this screen is derived from
           that read, so there is nothing else to keep in step. */}
-      <BodyModes onChanged={() => setReloadKey((k) => k + 1)} openSignal={openModes} />
+      <BodyModes onChanged={() => setReloadKey((k) => k + 1)} />
 
       {/* Hydration has no header because it is not a view to go into. It is the
           one thing on this screen you can DO, so it sits inline as an action -

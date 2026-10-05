@@ -403,6 +403,39 @@ export const ACTIVITY_CHOICES: ActivityChoice[] = [
   },
 ];
 
+/**
+ * WHETHER SHE IS TRAINING, FROM THE WEEK SHE DESCRIBED (Ruth, 5 October 2026).
+ *
+ *   "yes, remove it. That's all derived from the Today page now with toggles and
+ *   a pause button"
+ *
+ * There used to be a separate switch in the Body Manual - "Whether you are
+ * training", with "I am training" and "Paused for now" - and all it did was step
+ * protein between the maintenance range and the high one. The activity level now
+ * asks the same thing about a usual week, and its lowest option says it outright:
+ * "Mostly sitting, and no regular training."
+ *
+ * TWO CONTROLS FOR ONE FACT, AND THEY COULD CONTRADICT EACH OTHER. She could say
+ * she does no regular training and still carry a protein range whose own
+ * explanation reads "assumes you are training". That is the shape this codebase
+ * keeps paying for, so there is one answer now and it is the one she states.
+ *
+ * NULL WHEN SHE HAS NOT SAID, which the protein rule reads as training - the
+ * behaviour an unanswered question has always had, left alone on purpose. Saying
+ * nothing should not quietly lower anybody's protein.
+ *
+ * THE INJURY CASE, because it is the one worth thinking about: a usual week of
+ * three to five sessions, and three weeks off with a bad ankle. The honest move is
+ * to change the activity level, because her week HAS changed - and that correctly
+ * moves her calories as well as her protein, which the old switch did not.
+ */
+export function trainingFromActivity(
+  activityLevel: string | null | undefined
+): 'training' | 'paused' | null {
+  if (!activityLevel) return null;
+  return activityLevel === 'sedentary' ? 'paused' : 'training';
+}
+
 /** "Last set on 4 October", or the line that says it has never been set. */
 export function activitySetLine(setAt: string | null | undefined): string {
   if (!setAt) return 'Not set yet.';
