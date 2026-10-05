@@ -70,8 +70,22 @@ export default function SettingsHub() {
 
   return (
     <SettingsPage
+      // IT HAS A NAME NOW (Ruth, 5 October 2026): "Add title so they know the
+      // name of the screen (especially useful for Beta testers): 'More'. It's
+      // not ideal naming but better than nothing and better than settings for
+      // now."
+      //
+      // The title was removed on 24 September, and the reasoning held at the
+      // time: calling it Settings was wrong when it holds the profile, the
+      // report builder and the data export, and the three-seed mark that opens
+      // it means "more" already. What that argument missed is that the mark is
+      // learned and the word is not - somebody opening it for the first time
+      // arrives at a page with no name, which is the one thing every other page
+      // in the app has.
+      title="More"
       subtitle="Personalise your experience and manage your account."
-      back={false}
+      // The chevron, like every other page - see the shell.
+      sprig={false}
       footer="Small settings support big change."
     >
       <SettingsGroup>

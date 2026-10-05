@@ -26,6 +26,7 @@ export function SettingsPage({
   title,
   subtitle,
   back = true,
+  sprig = true,
   children,
   footer,
 }: {
@@ -33,6 +34,15 @@ export function SettingsPage({
   subtitle?: string;
   /** The hub is reached from Chat and closes; its pages go back to the hub. */
   back?: boolean;
+  /**
+   * The drawn sprig beside the heading.
+   *
+   * OFF ON THE HUB (Ruth, 5 October 2026: "remove the odd illustration"). It was
+   * drawn to sit beside a serif heading, and the hub had no heading - so it hung
+   * in the top right corner next to a line of body text, attached to nothing. It
+   * stays on the pages that have a title for it to sit beside.
+   */
+  sprig?: boolean;
   children: ReactNode;
   /** The quiet line at the foot of a page, in her register. */
   footer?: string;
@@ -42,26 +52,16 @@ export function SettingsPage({
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content}>
-          {!back && (
-            // THE HUB IS A MODAL OVER THE TABS, and after the rebuild its only
-            // way out was the Android back button or an iOS swipe (2026-09-20).
-            // The single page it replaced had a Done, and a modal without a
-            // visible way out is a trap on any phone whose gestures differ.
-            <View style={styles.topBar}>
-              <Pressable
-                onPress={() => router.back()}
-                accessibilityRole="button"
-                accessibilityLabel="Close settings"
-                hitSlop={Spacing.three}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <ThemedText type="small" themeColor="link">
-                  Done
-                </ThemedText>
-              </Pressable>
-            </View>
-          )}
+          {/* THE "DONE" BAR IS GONE (Ruth, 5 October 2026: "Remove 'Done' button
+              and replace with the same back button in rest of app").
 
+              It was right when this was the only modal: a modal with no visible
+              way out is a trap on any phone whose gestures differ. But it was
+              one word, top right, in a different place and a different shape
+              from the way back on every other page - so the hub was the one
+              screen where leaving worked differently, and it is the screen
+              somebody new reaches first. The chevron does the same thing,
+              router.back(), in the place they have already learned. */}
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
               {back && (
@@ -89,7 +89,7 @@ export function SettingsPage({
                 </ThemedText>
               )}
             </View>
-            <Sprig />
+            {sprig && <Sprig />}
           </View>
 
           <View style={styles.body}>{children}</View>
@@ -251,8 +251,12 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerText: { flex: 1, gap: Spacing.one },
   back: { alignSelf: 'flex-start', marginBottom: Spacing.one },
-  topBar: { alignItems: 'flex-end' },
-  subtitle: { lineHeight: 20, maxWidth: 260 },
+  // NO maxWidth (5 October 2026). 260 was a measure chosen to keep the
+  // subtitle clear of the sprig; with no sprig it simply made a full sentence
+  // break early and sit short of the cards under it - Ruth: "Bring the text...
+  // down and aligned with the cards much more." It keeps the page's own measure
+  // instead, which is what the cards keep.
+  subtitle: { lineHeight: 20 },
   body: { gap: Spacing.four },
   group: { gap: Spacing.one },
   groupTitle: { marginLeft: Spacing.two },
