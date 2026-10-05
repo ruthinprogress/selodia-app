@@ -537,7 +537,12 @@ export function BodyManual() {
                       one control for one value. */}
                   {section.toToday && (
                     <Pressable
-                      onPress={() => router.replace('/' as never)}
+                      // '/today', NOT '/'. The root route is the CHAT tab -
+                      // goals.tsx says so in its own comment, and I wrote this
+                      // link anyway, so "Set this on Today" would have landed her
+                      // in Chat with no switches in sight and nothing explaining
+                      // why. The tab lives at (tabs)/today.
+                      onPress={() => router.replace('/today' as never)}
                       accessibilityRole="link"
                       accessibilityLabel="Set this on Today"
                       hitSlop={Spacing.two}
