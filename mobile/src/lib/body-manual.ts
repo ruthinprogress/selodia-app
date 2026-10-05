@@ -165,7 +165,25 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     key: 'deficit',
     heading: 'Your deficit',
     note: 'Pausing holds your calories at what you use, for a holiday or any other reason. Your approach stays exactly as it is and nothing is lost.',
-    empty: 'Running, as your approach asks.',
+    /**
+     * UNREACHABLE, AND IT USED TO SAY SOMETHING FALSE (5 October 2026).
+     *
+     * `empty` shows when a row has no lines, and this row always has lines:
+     * deficitLines() answers in all three states, including the one where her
+     * approach produces no deficit at all. So this string has never been drawn.
+     *
+     * It read "Running, as your approach asks." I took that at face value while
+     * answering a question of Ruth's and told her the row would claim to be
+     * running in a state that has no deficit. It would not - deficitLines says
+     * plainly that less fat with more muscle has nothing to pause, and has since
+     * she reported exactly that on 4 October.
+     *
+     * The sentence was still worth removing. Dead copy that contradicts the live
+     * copy is a statement standing in for evidence, which is the shape of three
+     * separate faults in this repository, and I had just read it as one.
+     * check-body-manual-rows.mjs asserts the row can never be empty.
+     */
+    empty: 'Nothing to pause yet.',
     inline: true,
     onlyWhenFatLoss: true,
   },

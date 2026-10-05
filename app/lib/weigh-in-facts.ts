@@ -28,6 +28,23 @@
 // So this computes the change, the gap in days, what was actually logged in the
 // three days before, and what the food log says about salt - and hands all of
 // it over as facts. The model is told to use these and never to calculate.
+//
+// ---------------------------------------------------------------------------
+// AND A THIRD FAULT, 5 October 2026. Ruth: "Bug - scales log from Saturday but
+// talk about 'tomorrow' - makes no sense."
+//
+// Her newest reading was two days old and this block assumed every reading was
+// today's: `const reading = { measured_at: nowIso }`. So the three days of
+// movement it listed were the three days before TODAY rather than the three
+// before the reading, the salt line described a day the reading knows nothing
+// about, and nothing anywhere said the reading was not from today. The model
+// filled that in the only way it could, and talked about where tomorrow would
+// land.
+//
+// THE READING'S OWN DAY IS THE ANCHOR NOW, for every window in here, and the
+// block says out loud when that day is not today. A date the model is not given
+// is a date the model will infer. This is the same shape as the two faults
+// above: not a wrong calculation, a missing fact.
 
 type Measurement = {
   measured_at: string;
@@ -91,12 +108,28 @@ export function weighInFacts(
     .filter((m) => m.weight_kg != null)
     .sort((a, b) => b.measured_at.localeCompare(a.measured_at))[0];
 
+  /**
+   * THE DAY THE NEWEST READING BELONGS TO, which every window below is measured
+   * from. Today, only when there is no reading at all.
+   *
+   * A CATCH-UP IS ORDINARY. Somebody photographing Saturday's scale on Monday is
+   * doing a normal thing, and measured-when.ts deliberately keeps that date
+   * rather than correcting it. What was missing was anybody telling the model.
+   */
+  const anchorIso = last?.measured_at ?? nowIso;
+  const anchorIsToday = dayKey(anchorIso) === dayKey(nowIso);
+
   if (last?.weight_kg != null) {
     const was = round1(last.weight_kg);
     const gap = daysBetween(last.measured_at, nowIso);
     lines.push(
       `HER LAST WEIGH-IN ON RECORD: ${was} kg, on ${dayKey(last.measured_at)}, which was ${saidAsDays(gap)}. That date is a fact - never say "a couple of days ago" or guess an interval, say what this line says.`
     );
+    if (!anchorIsToday) {
+      lines.push(
+        `THAT READING IS NOT FROM TODAY. Today is ${dayKey(nowIso)} and her newest reading is from ${dayKey(last.measured_at)}, ${saidAsDays(gap)}. Everything below describes the day of the reading, not today. So do not say "today", "this morning" or "tomorrow" as though the reading had just been taken: there is no reading for today, and "worth seeing where tomorrow lands" is about a day she has not weighed herself on. If a next reading is worth mentioning at all, say "your next weigh-in" rather than naming a day.`
+      );
+    }
     lines.push(
       `IF SHE HAS JUST GIVEN YOU A NEW WEIGHT, compare it against ${was} kg and against that date. ROUND EACH FIGURE TO ONE DECIMAL PLACE AND THEN SUBTRACT, which is what the screen does - rounding the difference instead gives a number she cannot reproduce by looking at her own readings, and a figure she cannot check is wrong even when the arithmetic is right. Give one figure, not two.`
     );
@@ -106,7 +139,19 @@ export function weighInFacts(
     );
   }
 
-  const reading = { measured_at: nowIso } as Measurement;
+  // THE WINDOWS BELOW ARE THE READING'S, NOT TODAY'S. This was `nowIso`, which
+  // is the whole of the 5 October fault: for a reading two days old it listed
+  // the wrong three days of movement and then called a day she had not weighed
+  // on "today".
+  const reading = { measured_at: anchorIso } as Measurement;
+
+  /** Named once, so the movement block and the salt block cannot disagree. */
+  const window = anchorIsToday
+    ? 'IN THE LAST THREE DAYS'
+    : `IN THE THREE DAYS UP TO ${dayKey(anchorIso)}, THE DAY OF THE READING`;
+  const saltDay = anchorIsToday
+    ? 'SALT TODAY'
+    : `SALT ON ${dayKey(anchorIso)}, THE DAY OF THE READING`;
 
   // WHAT SHE ACTUALLY DID. Stated as a fact either way, because an empty list
   // is only informative if somebody says it is empty.
@@ -117,7 +162,7 @@ export function weighInFacts(
 
   if (recent.length === 0) {
     lines.push(
-      'MOVEMENT IN THE LAST THREE DAYS: NOTHING AT ALL IS LOGGED. So you may not say she trained, exercised, had a hard session, did a heavy workout, or anything of that shape. Not as a statement, not as a reminder, not as "after yesterday\'s session". There was no session in the record.'
+      `MOVEMENT ${window}: NOTHING AT ALL IS LOGGED. So you may not say she trained, exercised, had a hard session, did a heavy workout, or anything of that shape. Not as a statement, not as a reminder, not as "after yesterday's session". There was no session in the record.`
     );
   } else {
     const said = recent
@@ -127,7 +172,7 @@ export function weighInFacts(
           `  ${dayKey(a.happened_at)}: ${a.activity_type ?? 'something'}${a.duration_min != null ? `, ${a.duration_min} min` : ''}${a.intensity ? `, ${a.intensity}` : ''}`
       );
     lines.push(
-      'MOVEMENT IN THE LAST THREE DAYS, in full. This is everything. If it is two minutes of pushups, then two minutes of pushups is what happened, and it does not explain a kilogram:'
+      `MOVEMENT ${window}, in full. This is everything. If it is two minutes of pushups, then two minutes of pushups is what happened, and it does not explain a kilogram:`
     );
     lines.push(...said);
   }
@@ -140,11 +185,11 @@ export function weighInFacts(
   const known = dayFood.some((f) => f.sodium_mg != null);
   if (!known || dayFood.length === 0) {
     lines.push(
-      'SALT TODAY: not known, because nothing was logged with a sodium figure. So do not suggest a salty day as the reason. You may say in general terms that salt and hydration move the scale, as long as it is plainly a general possibility and not something she did.'
+      `${saltDay}: not known, because nothing was logged with a sodium figure. So do not suggest a salty day as the reason. You may say in general terms that salt and hydration move the scale, as long as it is plainly a general possibility and not something she did.`
     );
   } else {
     lines.push(
-      `SALT TODAY: about ${Math.round(sodium)} mg of sodium across what she logged. Mention it only if it is genuinely high for her, and say it as one possibility among several rather than as the cause.`
+      `${saltDay}: about ${Math.round(sodium)} mg of sodium across what she logged. Mention it only if it is genuinely high for her, and say it as one possibility among several rather than as the cause.`
     );
   }
 
