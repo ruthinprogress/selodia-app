@@ -364,13 +364,16 @@ export default function LifeStageScreen() {
           {BODY_NOTES_SCREEN.takesAlreadyLabel} {taking.join('; ')}
         </ThemedText>
       )}
-      {/* HER CLOSING LINE. It replaces "Selodía is not a medical service and does
-          not replace advice from your doctor", which is still on the Body
-          Manual's own row for this and in the privacy policy. See the note at the
-          top of lib/body-notes-copy.ts: this is the removal worth a second look,
-          because this box is the first place anybody types a drug name. */}
+      {/* HER CLOSING LINE, AND THE MEDICAL ONE SHE ASKED BACK FOR (6 October
+          2026). Two lines because they say two different things: hers is about
+          her words being kept as she writes them, and the other is about what
+          Selodía is not. This box is the only input in setup that takes drug
+          names. */}
       <ThemedText type="small" themeColor="textSecondary">
         {BODY_NOTES_SCREEN.closing}
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {BODY_NOTES_SCREEN.medicalLine}
       </ThemedText>
 
       {loadState === 'failed' && (

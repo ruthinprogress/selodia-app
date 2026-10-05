@@ -189,22 +189,33 @@ check('the app still never infers menopause from an absent bleed', () => {
   return 'no periods and no assumption';
 });
 
-check('the medical line survives its removal from the setup box', () => {
-  // HER CLOSING LINE REPLACED IT ON THE SCREEN (5 October 2026), and it is the
-  // one removal worth watching, because that box is the first place anybody types
-  // a drug name. It is asserted where it still stands.
-  // COMMENTS STRIPPED. This file's own comment beside her closing line names the
-  // sentence it replaced, and the first version of this case read that as the
-  // sentence still being rendered.
+check('the medical line is beside the box that takes drug names', () => {
+  // ON, OFF, AND BACK ON. Her deck replaced it with her own closing line, I
+  // flagged the removal, and she said "re-add medication line" (6 October 2026).
+  // It is asserted in all three places it belongs, because this box is the only
+  // input in setup that takes a drug name and the first place anybody types one.
+  const SENTENCE = 'not a medical service and does not replace advice from your doctor';
   assert.ok(
-    !/not a medical service/.test(code(notesSrc)),
-    'the sentence is back on the setup screen, where her closing line now is'
+    NOTES.BODY_NOTES_SCREEN.medicalLine.includes(SENTENCE),
+    'the record no longer carries the sentence'
+  );
+  // COMMENTS STRIPPED. The screen explains in a comment why there are two lines
+  // rather than one, and names the sentence while doing it.
+  assert.ok(
+    /BODY_NOTES_SCREEN\.medicalLine/.test(code(notesSrc)),
+    'the setup box no longer renders it'
   );
   assert.ok(
-    /not a medical service and does not replace advice from your doctor/.test(manualSrc),
-    'nothing in the app says it is not a medical service beside what she takes'
+    new RegExp(SENTENCE).test(manualSrc),
+    'the Body Manual row that keeps the data no longer says it'
   );
-  return 'said on the Body Manual row that keeps it';
+  // AND IT IS ITS OWN LINE. Folded into her closing sentence it would make one
+  // sentence do two jobs, which is how it came off the screen in the first place.
+  assert.ok(
+    !/medical/i.test(NOTES.BODY_NOTES_SCREEN.closing),
+    'the two lines have been run together'
+  );
+  return 'on the box, on the Manual row, and in its own sentence';
 });
 
 check('the food group is still the only one that arms the filter', () => {

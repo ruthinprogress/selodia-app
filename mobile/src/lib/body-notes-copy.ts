@@ -19,14 +19,18 @@
 //    returns null rather than a menopause status - and it belongs where the
 //    choice is made.
 //
-// 3. THE MEDICAL DISCLAIMER CAME OFF THIS SCREEN. The box used to carry
-//    "Selodía is not a medical service and does not replace advice from your
-//    doctor." Her closing line replaces it with "Kept exactly as you write it,
-//    and you can change it at any time." The disclaimer is still on the Body
-//    Manual's "What you take regularly" row, where the data is kept, and in the
-//    privacy policy. THIS IS THE ONE REMOVAL WORTH A SECOND LOOK, because it
-//    sits beside the only input in setup that takes drug names, and it is the
-//    first place anybody types one. It goes back with one word from her.
+// 3. THE MEDICAL DISCLAIMER CAME OFF THIS SCREEN AND WENT STRAIGHT BACK ON.
+//    Her deck replaced "Selodía is not a medical service and does not replace
+//    advice from your doctor" with her own closing line, I flagged it as the one
+//    removal worth a second look, and she said "re-add medication line" (6
+//    October 2026). So the box carries both: her line about her words being kept
+//    as she writes them, and the one sentence about what Selodía is not.
+//
+//    IT IS NOT BOILERPLATE AND THAT IS WHY IT CAME BACK. This box is the only
+//    input in setup that takes drug names and the first place anybody types one.
+//    The same sentence is on the Body Manual's "What you take regularly" row and
+//    in the privacy policy, and the Medications rule in the chat prompt says it
+//    to the model.
 //
 // THE CHIPS ARE NOT IN HER DECK AND ARE NOT CHANGED BY IT. Her Periods line
 // names five ("Regular · Irregular · Perimenopause · Menopause · No periods")
@@ -73,6 +77,13 @@ export const BODY_NOTES_SCREEN = {
   takesAlreadyLabel: 'Already kept:',
 
   closing: 'Kept exactly as you write it, and you can change it at any time.',
+  /**
+   * BACK AT HER ASK (6 October 2026), as its own line rather than folded into
+   * hers: her sentence is about her words and this one is about what Selodía is
+   * not, and running them together would make one sentence do two jobs.
+   */
+  medicalLine:
+    'Selodía is not a medical service and does not replace advice from your doctor.',
 
   /**
    * The second question, which only exists where a woman has no periods for a
