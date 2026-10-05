@@ -255,18 +255,6 @@ export default function ProfileScreen() {
           goals, from the same user_context rows, now render above everything
           else in Plans, beside the tapped ones that set the targets. */}
 
-      {/* THE BODY MANUAL. Her design: every answer she has given, in one place,
-          live, collapsed, below Personal details. See lib/body-manual.ts for the
-          reasoning and components/body-manual.tsx for what it draws.
-
-          IT IS A VIEW OF THE SAME ROWS, NOT A COPY OF THEM. There is no
-          body_manual table and nothing is synced. Adding an allergy in chat shows
-          up here immediately, because here IS the allergies table. Her own rule,
-          from the Skills brief: "this team has already built a second system for
-          something that existed."
-
-          The setup screens are now reached one at a time, from the row that owns
-          the question, instead of being walked through in order. */}
       {/* THE BODY MANUAL MOVED TO MORE (Ruth, 4 October 2026, item 6: "Body
           Manual lives in More, not Profile").
 
