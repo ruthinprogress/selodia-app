@@ -742,3 +742,30 @@ So the first gate had been shut the whole time, not because I had refused, but b
 The list is generated from the code itself now, so what I sign off is what actually runs. The first thing I found when I read it was a phrase that would have told someone with a hangover to call an ambulance. That took about four minutes.
 
 I have approved six of them today. No clinician has seen them yet, and that is written into the app itself so nobody can later claim otherwise.
+
+---
+
+## 6 October 2026 - The app sent me to my GP because it was told to
+
+My screenshot said "that's really one for your GP or practice nurse." It looked like the model being cautious. It was the model obeying a line in its own prompt, almost word for word: where something is genuinely medical, suggest they take it to their GP. That line had been written defensively and nobody had asked what it cost. What it cost was the one place the app mattered most to the person who built it. Swapped for a short section about helping me understand, prepare and push, the same message went from a reply that ends ("I'm not the right source") to one that carries on: it asks what happened, offers to keep it, and names the next small step. Every old reply ended. Every new one continued.
+
+---
+
+## 6 October 2026 - I thought I was avoiding it because it was boring
+
+The healthcare scope sat on the back burner for weeks and I put it down to the job being dull. It was disagreement. The plan was ten more flags, each with a paragraph of approved text, one more fixed body of words for the model to read and get clogged on, which is exactly what had made the replies stiff in the first place. When I said so, it shrank. 999 stays fixed, 111 becomes one line and then the conversation carries on, and everything else is the app explaining what something could be and helping me keep track of how often it comes back. What I had filed as laziness was a design objection I hadn't yet put into words.
+
+---
+
+## 6 October 2026 - What Claude did that nobody else did was make every step small
+
+When I used Claude to get my own care, it did the admin at the exact moment I was doubting myself. I asked for my insurance reference to read out at reception. I uploaded an email and asked what they needed and what happened next. If the step was "call to book", it gave me the number. If it was "reply", it drafted the email and I pasted it in. It put the appointment in my calendar with the address and everything I'd need on the day. What stopped me giving up was never the medical explanation. It was that nothing was too small to ask, so I never had to decide whether my problem was frivolous. It is the same mechanism as women not asking for a raise, or not applying unless they tick every line of the job spec. They drop out at the moment of doubt. Selodia's job is that you don't have to hold anything.
+
+(Hold: whether to name the diagnosis publicly. Ruth's call, and not needed for the point.)
+
+---
+
+## 6 October 2026 - A test message with two symptoms got one confident answer
+
+With the emergency detector still off, I tested the model on its own by typing crushing chest pain and a weak left arm. The reply said it could be a heart attack and told me to chew an aspirin. Arm weakness is also a stroke sign, and aspirin can be harmful in one kind of stroke. Nothing in a single sentence can tell the two apart, which is the whole argument for not letting the model improvise here: call 999, and the person on the line asks the questions the app can't. The fix was three words added to a line that already existed.
+
