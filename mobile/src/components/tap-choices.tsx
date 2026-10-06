@@ -116,12 +116,24 @@ const styles = StyleSheet.create({
     borderRadius: CardRadius,
     borderWidth: 1,
     gap: Spacing.one,
-    // EVERY CHIP IN A ROW THE SAME HEIGHT. A two-line label next to two
-    // one-line ones leaves the short ones short unless they stretch, and three
-    // boxes of different heights on one row is what makes a wrapped grid look
-    // like a mistake rather than a layout.
-    height: '100%',
-    justifyContent: 'center',
+    // EVERY CHIP IN A ROW THE SAME HEIGHT, AND NOT BY A PERCENTAGE.
+    //
+    // THIS WAS height: '100%' FOR ONE RELEASE AND IT BROKE EVERY CHIP SCREEN
+    // (Ruth, 6 October 2026, screenshot of question 1). A percentage height in
+    // React Native resolves against a parent with a DEFINITE height, and the
+    // Pressable around this has none - so on Android it resolved to something
+    // enormous. Three chips became three empty columns running off the bottom of
+    // the screen, with the labels centred somewhere below the fold. The text was
+    // never missing. It was off-screen.
+    //
+    // flex: 1 IS THE CORRECT VERSION. The Pressable is a flex item in a wrapping
+    // row, so it is already stretched to its line's height by the default
+    // alignItems: 'stretch'; this fills that height rather than inventing one.
+    //
+    // AND THE LABEL SITS AT THE TOP. Centring it was what hid it, and with a
+    // two-line label beside one-line ones, top-aligned reads better anyway.
+    flex: 1,
+    justifyContent: 'flex-start',
   },
   pressed: { opacity: 0.7 },
 });

@@ -164,6 +164,28 @@ check('nothing shrinks and nothing clips', () => {
 
 // ----------------------------------------------------------- it can fail
 
+check('a chip is never sized by a percentage', () => {
+  // THE CASE THAT WAS MISSING, AND IT SHIPPED TO HER PHONE (6 October 2026).
+  //
+  // The chip box carried height: '100%'. A percentage height in React Native
+  // resolves against a parent with a DEFINITE height, and the Pressable around
+  // it has none - so on Android it became enormous. Question 1 rendered as three
+  // empty columns running off the bottom of the screen, with the labels centred
+  // somewhere below the fold. Every screen that uses chips was like it.
+  //
+  // WHAT THE SUITE TESTED, AND WHY IT PASSED ANYWAY. Twelve cases on chipSpan and
+  // chipRows, all correct: the rule was right and the rendering was broken. A
+  // pure function is testable and a percentage against an unbounded parent is
+  // not, so this reads the stylesheet instead.
+  const styles = code.slice(code.indexOf('StyleSheet.create'));
+  for (const property of ['height', 'minHeight', 'maxHeight']) {
+    const bad = new RegExp(property + ": '\d+%'");
+    assert.ok(!bad.test(styles), `a chip sets ${property} as a percentage, which has no parent to resolve against`);
+  }
+  assert.ok(/flex: 1/.test(styles), 'the chip no longer fills the row height it is given');
+  return 'flex, not a percentage of nothing';
+});
+
 check('and this check can fail', () => {
   // A rule that gave every chip a third, which is the obvious implementation and
   // the one that truncates her longest answers.
