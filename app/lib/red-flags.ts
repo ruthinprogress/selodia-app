@@ -61,6 +61,35 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  */
 export const RED_FLAGS_LIVE = false;
 
+/**
+ * WHAT RUTH HAS REVIEWED, AND WHEN. The first gate, in writing.
+ *
+ * 6 OCTOBER 2026, THE SIX 999 FLAGS. She read them for the first time - they had
+ * only ever existed as code, which is why the gate had stayed shut for weeks
+ * without anybody noticing it was shut on nothing.
+ *
+ *   Chest pain or pressure            approved as written
+ *   Sudden severe headache            APPROVED WITH A CHANGE, hers: the bare
+ *                                     phrase "worst headache" was removed
+ *                                     because it fires on a hangover or a
+ *                                     migraine, and the urgency was kept because
+ *                                     the flag is about a SUDDEN headache
+ *   Stroke signs                      approved as written
+ *   Severe difficulty breathing       approved as written
+ *   Bleeding that will not stop       approved as written
+ *   Sudden loss of vision             approved as written
+ *
+ * Her words: "all the rest of the 999 are correct."
+ *
+ * STILL UNREVIEWED: the three 111 flags and the nine GP flags.
+ *
+ * AND THE SECOND GATE IS STILL SHUT. Her approval is not a clinician's, and this
+ * switch stays false until that is settled one way or the other - either a
+ * clinician reads them, or she decides in writing to ship without one. Turning it
+ * on is a clinical decision and it is not mine.
+ */
+export const REVIEWED_BY_RUTH = ['999', '111'] as const;
+
 export type Urgency = '999' | '111' | 'gp';
 
 export type RedFlag = {
@@ -79,6 +108,19 @@ export type RedFlag = {
    * reporting chest pain, and a line about calling 999 would be absurd.
    */
   notAbout?: string[];
+  /**
+   * A SECOND CONDITION, BOTH OF WHICH MUST BE PRESENT (Ruth, 6 October 2026).
+   *
+   * Her addition: "bumped my head and feel dizzy". That is not one phrase, it is
+   * two facts - an injury and a symptom - and neither one alone is the thing.
+   * A bump on the head with nothing else is an ordinary day. Feeling dizzy with
+   * no bump is a GP matter, and she asked for that separately.
+   *
+   * WITHOUT THIS THE FLAG WOULD HAVE TO BE WRITTEN AS WHOLE SENTENCES, and
+   * "bumped my head and feel dizzy" would miss "banged my head, feeling really
+   * dizzy now". Matching two groups is what she actually meant.
+   */
+  alsoNeeds?: string[];
 };
 
 export const RED_FLAGS: RedFlag[] = [
@@ -101,8 +143,23 @@ export const RED_FLAGS: RedFlag[] = [
     key: 'thunderclap_headache',
     urgency: '999',
     name: 'Sudden severe headache',
+    // NARROWED BY RUTH, 6 October 2026, reviewing the list for the first time:
+    // "this seems a bit ott for a headache."
+    //
+    // She was half right and the half she was right about mattered. The flag is
+    // not about a headache, it is about a SUDDEN one - the pattern that arrives
+    // in seconds, which is why it carries an ambulance. But the first phrase was
+    // a bare "worst headache", and that fires on a hangover, a migraine, or the
+    // worst headache somebody has had this week. None of those are sudden.
+    //
+    // A 999 LINE IN REPLY TO AN ORDINARY BAD HEADACHE IS THE THING THAT WOULD
+    // DESTROY THIS WHOLE MECHANISM, and this file says so about itself two
+    // hundred lines up, and then shipped the phrase anyway.
+    //
+    // The four that remain all carry the suddenness or the of-my-life, which is
+    // what the urgency is actually for. Her decision: narrow the phrases, keep
+    // the urgency.
     phrases: [
-      'worst headache',
       'worst headache of my life',
       'thunderclap headache',
       'sudden severe headache',
@@ -252,6 +309,53 @@ export const RED_FLAGS: RedFlag[] = [
     phrases: ['mole has changed', 'mole is changing', 'mole has got bigger'],
   },
   {
+    // HERS, 6 October 2026: "I would add more - bumped my head and feel dizzy."
+    //
+    // TWO FACTS, NOT ONE. A bump on the head alone is an ordinary day and this
+    // must not fire on it; dizziness alone is the GP flag she added in the same
+    // breath. It is the combination that wants looking at today, and the matcher
+    // learned `alsoNeeds` for it.
+    //
+    // ORDER DOES THE REST. The matcher works 999, then 111, then GP, so somebody
+    // who says they banged their head and feel dizzy gets this and not the
+    // gentler dizziness flag below.
+    key: 'head_injury_with_symptoms',
+    urgency: '111',
+    name: 'A bump to the head, with dizziness',
+    phrases: [
+      'bumped my head',
+      'banged my head',
+      'hit my head',
+      'knocked my head',
+      'fell and hit my head',
+      'had a bang on the head',
+    ],
+    alsoNeeds: ['dizzy', 'dizziness', 'light headed', 'light-headed', 'lightheaded'],
+  },
+  // ---------------------------------------------------------------- gp
+  {
+    // HERS, in the same message: "add to GP list: dizzyness and vertigo set."
+    //
+    // THE GENTLEST TIER ON PURPOSE. Dizziness has a long list of ordinary causes
+    // and a few that matter, and in this audience low iron and perimenopause are
+    // near the top of the ordinary ones. "Worth getting checked" is the honest
+    // weight for it.
+    key: 'dizziness_vertigo',
+    urgency: 'gp',
+    name: 'Dizziness or vertigo',
+    phrases: [
+      'dizzy',
+      'dizziness',
+      'vertigo',
+      'light headed',
+      'light-headed',
+      'lightheaded',
+      'room is spinning',
+      'everything is spinning',
+      'the room spins',
+    ],
+  },
+  {
     key: 'persistent_cough',
     urgency: 'gp',
     name: 'A cough lasting three weeks or more',
@@ -335,6 +439,9 @@ export function matchRedFlag(message: string): FlagHit | null {
   for (const urgency of order) {
     for (const flag of RED_FLAGS.filter((f) => f.urgency === urgency)) {
       if (flag.notAbout?.some((n) => mentions(text, n))) continue;
+      // BOTH HALVES, where a flag names two. See alsoNeeds: an injury without a
+      // symptom, or a symptom without the injury, is not this flag.
+      if (flag.alsoNeeds && !flag.alsoNeeds.some((a) => mentions(text, a))) continue;
       if (flag.phrases.some((p) => mentions(text, p))) {
         return { flag, line: LINES[urgency](flag.name) };
       }

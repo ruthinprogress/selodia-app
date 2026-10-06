@@ -143,6 +143,73 @@ const STILL_FIRES_CHECKS = STILL_FIRES.map(([said, urgency]) => [
 // exist to prevent. They still earn a place: a crash on an empty message would
 // be a real bug.
 const SANITY = [
+  // RUTH'S FIRST REVIEW DECISION, 6 October 2026, made into a guard.
+  //
+  // She read the list for the first time and said the headache flag "seems a bit
+  // ott". She was right about one phrase: it fired on a bare "worst headache",
+  // which is a hangover, a migraine, or the worst headache somebody has had this
+  // week. The flag is about a SUDDEN headache, which is why it carries an
+  // ambulance, and none of those are sudden.
+  //
+  // Her decision: narrow the phrases, keep the urgency. Both halves are asserted,
+  // because the tempting repair next time somebody reads this file is to soften
+  // the urgency instead - and a bleed on the brain is not a call-us-today thing.
+  [
+    'an ordinary bad headache raises nothing',
+    () =>
+      matchRedFlag('this is the worst headache') === null &&
+      matchRedFlag("I've had the worst headache all week") === null,
+  ],
+  [
+    'a sudden one still calls an ambulance',
+    () => {
+      // EVERY FIXTURE IS SOMETHING A PERSON WOULD TYPE, which means it carries a
+      // first-person marker. The matcher requires one on purpose - a message with
+      // no "I" or "my" in it is as likely to be a question as a report - and my
+      // first fixture here was a bare "sudden severe headache this morning",
+      // which the matcher correctly ignored and which caught me rather than it.
+      for (const said of [
+        'worst headache of my life',
+        'I have a thunderclap headache',
+        "I've got a sudden severe headache",
+      ]) {
+        const hit = matchRedFlag(said);
+        if (!hit || hit.flag.urgency !== '999') return false;
+      }
+      return true;
+    },
+  ],
+  // HER TWO ADDITIONS, 6 October 2026, and the distinction between them is the
+  // whole point: a bump WITH dizziness wants looking at today, dizziness on its
+  // own is a GP matter, and a bump on its own is an ordinary day.
+  [
+    'a bump on the head with dizziness is a 111',
+    () => {
+      const hit = matchRedFlag('I bumped my head yesterday and I feel dizzy');
+      return hit !== null && hit.flag.urgency === '111';
+    },
+  ],
+  [
+    'a bump on the head alone raises nothing',
+    () => matchRedFlag('I bumped my head on the cupboard door') === null,
+  ],
+  [
+    'dizziness alone is the GP flag, not the 111',
+    () => {
+      const hit = matchRedFlag("I've been feeling dizzy for a few days");
+      return hit !== null && hit.flag.urgency === 'gp';
+    },
+  ],
+  [
+    'the two-condition rule needs both halves',
+    () => {
+      // alsoNeeds is new, so this proves it does something: the injury phrase
+      // alone must not be enough, and the symptom alone must not reach it.
+      const injuryOnly = matchRedFlag('I banged my head getting out of the car');
+      const symptomOnly = matchRedFlag('I have vertigo');
+      return injuryOnly === null && symptomOnly !== null && symptomOnly.flag.urgency === 'gp';
+    },
+  ],
   ['an empty message raises nothing', () => matchRedFlag('') === null && matchRedFlag('   ') === null],
   [
     'never two flags at once',
