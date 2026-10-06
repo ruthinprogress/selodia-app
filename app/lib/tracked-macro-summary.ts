@@ -81,14 +81,84 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // of what each macro is called and which column holds it, read by the block and
 // by the log - two lists would be the fault that produced this in the first
 // place, one level up.
-export const MACRO_COLUMN: Record<string, { column: string; label: string; unit: string }> = {
-  fat: { column: 'fat_g', label: 'fat', unit: 'g' },
-  saturated: { column: 'saturated_fat_g', label: 'saturated fat', unit: 'g' },
-  carbs: { column: 'carbs_g', label: 'carbs', unit: 'g' },
-  sugar: { column: 'sugar_g', label: 'sugar', unit: 'g' },
-  fibre: { column: 'fibre_g', label: 'fibre', unit: 'g' },
-  salt: { column: 'sodium_mg', label: 'salt', unit: 'mg sodium' },
+//
+// AND SINCE THAT EVENING, THE PUBLISHED FIGURE TO READ IT AGAINST. Ruth got her
+// saturated fat totals at last, and then this:
+//
+//   "There's no target set for it here, so I can't tell you whether that sits on
+//   the safe side for your check-up result - that's one for your GP to weigh in
+//   on alongside the blood result itself."
+//
+// Her verdict was "interpretation layer flopped", and the reply is worse than it
+// looks, because it is HONEST. The model had six daily figures and nothing on
+// earth to compare them to, so it did the only truthful thing available and
+// handed her back to a GP. health-support.ts already forbids exactly that, in as
+// many words: "I never leave you with only 'ask your GP'". The instruction lost,
+// and it deserved to. AN INSTRUCTION NOT TO DEFLECT, WITH NOTHING TO DEFLECT
+// WITH, IS NOT A RULE - IT IS A WISH. The model needs material, not discipline.
+//
+// So the material lives here, next to the column, in code. These are published
+// population figures, not targets anybody set for her and not a reading of her
+// blood result. The difference is the whole of what makes them safe to state,
+// and GUIDELINE_FRAMING below is what makes the model say it that way.
+//
+// A MACRO WITH NO PUBLISHED FIGURE GETS null AND NOTHING IS INVENTED FOR IT.
+export const MACRO_COLUMN: Record<
+  string,
+  { column: string; label: string; unit: string; guideline: string | null }
+> = {
+  fat: { column: 'fat_g', label: 'fat', unit: 'g', guideline: 'UK reference intake for total fat is 70g a day for an average adult' },
+  saturated: {
+    column: 'saturated_fat_g',
+    label: 'saturated fat',
+    unit: 'g',
+    guideline: 'NHS guidance is no more than 20g a day for women and 30g a day for men',
+  },
+  // NO PUBLISHED DAILY FIGURE, so none is invented. Carbohydrate guidance is
+  // given as a share of energy rather than a number of grams, and a made-up
+  // gram figure here would read exactly like the real ones beside it.
+  carbs: { column: 'carbs_g', label: 'carbs', unit: 'g', guideline: null },
+  sugar: {
+    column: 'sugar_g',
+    label: 'sugar',
+    unit: 'g',
+    // The published figure is for FREE sugars, and the log total is all sugars,
+    // including what is in fruit and milk. Said plainly, because a total of 60g
+    // against a limit of 30g is alarming and often wrong.
+    guideline:
+      'NHS guidance is no more than 30g of free sugars a day for adults, which is added sugar rather than the sugar in whole fruit, vegetables and milk - the log total counts all of it, so it will usually sit above that figure without meaning anything is wrong',
+  },
+  fibre: { column: 'fibre_g', label: 'fibre', unit: 'g', guideline: 'NHS guidance is 30g a day for adults, which most people fall short of' },
+  salt: {
+    column: 'sodium_mg',
+    label: 'salt',
+    unit: 'mg sodium',
+    guideline: 'NHS guidance is no more than 6g of salt a day for adults, which is about 2,400mg of sodium',
+  },
 };
+
+/**
+ * THE SENTENCE THAT KEEPS A GUIDELINE FROM BECOMING A VERDICT.
+ *
+ * Said once, with the figures, every time they are given. Three things it has to
+ * hold apart, because collapsing any of them is how a published number turns
+ * into something it is not:
+ *
+ *   A GUIDELINE IS NOT HER TARGET. The app has real targets, set by her, and
+ *   daily-targets.ts words them. A population figure is not one of those and must
+ *   never be read back as "your target", or she will have acquired a target she
+ *   never agreed to.
+ *
+ *   A GUIDELINE IS NOT A READING OF HER BLOOD. What her saturated fat means
+ *   against a cholesterol result is a clinical question and stays one. What the
+ *   published figure is, and where her week sits relative to it, is arithmetic.
+ *
+ *   OVER IT IS NOT A FAILING. These are averages over time, and a single day
+ *   above one of them is ordinary. NEVER_SCOLD in the reply prompt already covers
+ *   tone; this covers the claim.
+ */
+export const GUIDELINE_FRAMING =
+  'These are published population guidelines, not targets they have set and not a reading of any blood result of theirs. State the figure and where their days sit against it, because that is arithmetic and it is the thing they asked for. Do not call it their target, do not say whether their result is safe or unsafe, and do not treat a day above a guideline as a failing: these are averages over time and single days vary. What a number means for a specific diagnosis is a question for their clinician, and it is the ONLY part of this that is.';
 
 export const MACRO_SUMMARY_DAYS = 14;
 

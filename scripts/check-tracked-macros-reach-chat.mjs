@@ -299,6 +299,56 @@ await check('the route hands them to the writer on BOTH paths', async () => {
   return 'voice and typed';
 });
 
+await check('the figures arrive with something to read them against', async () => {
+  // "INTERPRETATION LAYER FLOPPED" (Ruth, 6 October, 21:32). The totals were
+  // there at last, and then: "There's no target set for it here, so I can't tell
+  // you whether that sits on the safe side for your check-up result - that's one
+  // for your GP to weigh in on."
+  //
+  // health-support.ts forbids that sentence outright: "I never leave you with
+  // only 'ask your GP'". The model broke the rule because obeying it was
+  // impossible. It had six numbers and nothing to compare them to.
+  const { foodFacts } = await import(root + '/app/lib/turn-facts.ts');
+  const { MACRO_COLUMN } = await import(root + '/app/lib/tracked-macro-summary.ts');
+  const food = [
+    { happened_at: '2026-10-05T08:00:00Z', raw_text: 'porridge', kcal: 300, protein_g: 10, saturated_fat_g: 17 },
+  ];
+  const tracked = [
+    { key: 'saturated', column: 'saturated_fat_g', label: 'saturated fat', unit: 'g', guideline: MACRO_COLUMN.saturated.guideline },
+  ];
+  const out = foodFacts(food, 7, tracked);
+  assert.ok(/20g a day for women/.test(out), 'the published figure never reaches the model that answers');
+  assert.ok(
+    /not targets they have set/.test(out),
+    'a population guideline is handed over with nothing holding it apart from her own targets'
+  );
+  assert.ok(
+    /question for their clinician/.test(out),
+    'nothing marks which part of this is still a clinical question'
+  );
+
+  // A MACRO WITH NO PUBLISHED FIGURE INVENTS NONE. Carbohydrate guidance is a
+  // share of energy, not a number of grams, and a made-up gram figure would read
+  // exactly like the real ones beside it.
+  assert.strictEqual(MACRO_COLUMN.carbs.guideline, null, 'a figure has been invented for carbs');
+  const carbsOnly = foodFacts(food, 7, [
+    { key: 'carbs', column: 'carbs_g', label: 'carbs', unit: 'g', guideline: MACRO_COLUMN.carbs.guideline },
+  ]);
+  assert.ok(!/PUBLISHED GUIDELINES/.test(carbsOnly), 'an empty guideline block is still printed');
+  return 'the figure, the framing, and nothing invented';
+});
+
+await check('the route puts the figure on the macros it hands over', async () => {
+  const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  const at = route.indexOf('const writerMacros');
+  assert.ok(at > 0, 'the writer list is not built');
+  assert.ok(
+    /guideline: MACRO_COLUMN\[key\]\.guideline/.test(route.slice(at, at + 900)),
+    'the writer gets the macro without the figure, so the block stays empty in production'
+  );
+  return 'carried on each macro';
+});
+
 await check('and this one can fail', async () => {
   const { foodFacts } = await import(root + '/app/lib/turn-facts.ts');
   const food = [

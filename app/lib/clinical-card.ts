@@ -1,3 +1,4 @@
+import { CARE_SECTION } from './care-admin';
 import type { ClinicalDocument } from './clinical-document';
 
 const NL = String.fromCharCode(10);
@@ -109,15 +110,16 @@ function longish(iso: string): string {
 
 /** Which Me section a document belongs in. */
 export function cardSection(doc: ClinicalDocument): string {
-  switch (doc.kind) {
-    case 'prescription':
-      return 'Medication';
-    case 'appointment letter':
-    case 'referral':
-      return 'Appointments';
-    default:
-      return 'Medical history';
-  }
+  // ONE SECTION, HERS (Ruth, 6 October 2026). This returned three invented ones
+  // - Medication, Appointments, Medical history - and the last is the exact
+  // thing she named when she decided what this is NOT: "very clearly not the
+  // thread of a symptom and diagnosis, it's numbers and emails and letters."
+  //
+  // A prescription still goes to Medication, because that is a real section of
+  // her Me tab that already exists and holds what she takes. Everything else is
+  // the paperwork of being seen, and that is one place.
+  if (doc.kind === 'prescription') return 'Medication';
+  return CARE_SECTION;
 }
 
 /**

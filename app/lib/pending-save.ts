@@ -81,7 +81,39 @@ import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './m
  * commitSave already writes `kind: proposal.type`, so the separation costs one
  * union member rather than a second machine.
  */
-export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'care' | 'rule' | 'week' | 'skill';
+export type SaveType =
+  | 'symptom'
+  | 'insight'
+  | 'note'
+  | 'me'
+  | 'care'
+  | 'rule'
+  | 'week'
+  | 'skill'
+  /**
+   * A TEST RESULT SHE HAS BEEN GIVEN. New on 6 October 2026, and the gap it
+   * closes is the one that started the whole healthcare conversation.
+   *
+   * She told chat: "my high cholesterol was flagged at my 40yr NHS check up."
+   * Nothing stored it. There was no way for chat to store it: health_context is
+   * written by exactly one onboarding screen, and that screen became unreachable
+   * this morning when the first draft was removed.
+   *
+   * AND THERE IS A RULE WAITING FOR IT. health-context.ts has carried this for
+   * weeks: "Elevated LDL: protect oats, lentils, beans and apples as priority
+   * foods; gently flag saturated fat rather than treating it as expendable."
+   * That rule has never fired for anybody, because the row it reads is empty for
+   * everybody.
+   *
+   * So she asked about her saturated fat against a cholesterol flag, and the one
+   * instruction written for exactly that situation could not reach the model.
+   *
+   * IT IS OFFERED, NOT WRITTEN SILENTLY. Same reasoning as the medication box:
+   * a mis-heard marker or a mis-heard status is a wrong fact about her body that
+   * then steers what she is advised to eat. She sees what was understood and
+   * says yes.
+   */
+  | 'marker';
 
 /** The kinds that are a card with a section, a why and items. */
 export const CARD_TYPES: SaveType[] = ['me', 'care'];
@@ -98,6 +130,13 @@ export const SAVE_TYPES: readonly SaveType[] = [
   // and nothing could be: no save type existed for a thing she wants to
   // become able to do. See lib/skill-add.ts.
   'skill',
+  // A RESULT SHE HAS BEEN GIVEN. Added 6 October 2026, and it was nearly added
+  // to only half the places it needed to be: the classify tool was taught to
+  // offer a marker, commitSave was taught to write one, and this list - which
+  // decides whether an offer survives being read back - was not. The offer would
+  // have been made and then dropped in silence, which is the shape of fault that
+  // cost four sittings today. check-model-can-offer.mjs caught it before a push.
+  'marker',
 ];
 
 export function coerceSaveType(v: unknown): SaveType | null {
@@ -351,6 +390,7 @@ function todayISO(): string {
 }
 
 const TYPE_WORD: Record<SaveType, string> = {
+  marker: 'a result they have been given',
   symptom: 'a symptom',
   insight: 'an insight',
   note: 'a note',
@@ -406,6 +446,40 @@ export const SAVE_OFFER_QUESTION = 'Want me to keep that in your Almanac?';
 // complaint started.
 export const ME_OFFER_QUESTION = 'Want me to keep that in your Me tab?';
 
+/**
+ * A MARKER'S OFFER SAYS WHAT IT CHANGES, for the same reason a rule's does.
+ *
+ * Agreeing to "LDL elevated" quietly alters what she is offered to eat from then
+ * on - oats and lentils get protected, saturated fat gets flagged gently rather
+ * than treated as expendable. That is a real change to the app's behaviour, and
+ * "want me to keep that?" is not enough consent for it.
+ *
+ * IT ALSO READS THE VALUE BACK. A mis-heard marker or a mis-heard status is a
+ * wrong fact about her body that then steers her food, and the medication box
+ * learned this first: read it back, then ask.
+ */
+/**
+ * THE SIX COLUMNS AND THE FIVE STATUSES, NAMED HERE SO A WRITE CANNOT INVENT ONE.
+ *
+ * Taken from HealthContext in app/lib/health-context.ts, which is where the
+ * rules that read them live. Two lists of the same thing would be the fault this
+ * repository has had five times in a fortnight, so check-health-marker.mjs
+ * compares them.
+ */
+export const MARKER_COLUMNS = [
+  'ldl_status',
+  'hdl_status',
+  'cholesterol_status',
+  'glucose_status',
+  'ferritin_status',
+  'thyroid_status',
+];
+
+export const MARKER_STATUSES = ['normal', 'elevated', 'low', 'borderline', 'unsure'];
+
+export const MARKER_OFFER_QUESTION =
+  'Want me to note that, so it is taken into account in what I suggest?';
+
 // A RULE'S OFFER SAYS WHAT THE RULE WILL DO, because agreeing to it changes
 // what the app builds for her from then on. "Want me to keep that?" is not
 // enough consent for something that removes movements from her sessions.
@@ -424,6 +498,7 @@ export const SKILL_OFFER_QUESTION = 'Want me to add that to your Skills?';
 
 export function offerQuestionFor(type: SaveType): string {
   if (type === 'me' || type === 'care') return ME_OFFER_QUESTION;
+  if (type === 'marker') return MARKER_OFFER_QUESTION;
   if (type === 'rule') return RULE_OFFER_QUESTION;
   if (type === 'week') return WEEK_OFFER_QUESTION;
   if (type === 'skill') return SKILL_OFFER_QUESTION;
@@ -613,6 +688,42 @@ export async function commitSave(
   // THE LADDER COMES FROM THE CURATED LIBRARY OR NOWHERE. See lib/skill-add.ts:
   // a skill with no curated ladder is saved as a destination with no steps, and
   // she is told so. Nothing is invented.
+  /**
+   * A MARKER GOES TO health_context, NOT THE ALMANAC.
+   *
+   * Same reasoning as a rule going to user_rules: the Almanac is a record of
+   * what happened and what was noticed, and this is a constraint the advice has
+   * to obey. Filed as an almanac card it would be a note ABOUT her cholesterol
+   * rather than the thing that makes the LDL rule fire.
+   *
+   * ONE COLUMN, ONE STATUS, AND NOTHING ELSE TOUCHED. An upsert of the single
+   * named column, so telling the app about her thyroid cannot wipe what it knew
+   * about her iron. The table has one row per person and six marker columns.
+   *
+   * REFUSED RATHER THAN GUESSED. An unrecognised marker or status writes
+   * nothing: the columns drive what she is advised to eat, and a wrong one is
+   * worse than a missing one.
+   */
+  if (proposal.type === 'marker') {
+    const content = proposal.content as Record<string, unknown>;
+    const marker = typeof content.marker === 'string' ? content.marker.trim() : '';
+    const status = typeof content.status === 'string' ? content.status.trim() : '';
+
+    if (!MARKER_COLUMNS.includes(marker) || !MARKER_STATUSES.includes(status)) {
+      console.log('MARKER: refused an unrecognised marker or status -', marker, status);
+      return null;
+    }
+
+    const { error } = await supabase
+      .from('health_context')
+      .upsert({ user_id: userId, [marker]: status }, { onConflict: 'user_id' });
+    if (error) {
+      console.log('MARKER: write failed -', error.message);
+      return null;
+    }
+    return { kind: 'marker', title: proposal.title };
+  }
+
   if (proposal.type === 'skill') {
     const content = proposal.content as Record<string, unknown>;
     // HER SENTENCE, for matching against the curated ladders. "I want to learn
@@ -825,6 +936,10 @@ export function saveAppliedNote(
     const type = coerceSaveType(saved.kind) ?? 'note';
     // Me and Insights are different tabs, and telling somebody their skincare
     // routine went to Insights was the complaint that started this.
+    // IT IS NOT IN THE ALMANAC AND SAYING SO MATTERS. This changes what she is
+    // offered to eat, quietly and from now on, which is a different kind of
+    // thing from a card she can go and read.
+    if (type === 'marker') return `Noted. It will be taken into account from now on.`;
     if (type === 'me') return `Kept in your Almanac, under Me.`;
     // UNDER HEALTH, which is where she asked for it: "a Care section under
     // Health in the Me tab... I don't want it prominent. I like that it sits

@@ -1,3 +1,5 @@
+import { GUIDELINE_FRAMING } from './tracked-macro-summary';
+
 // EVERY NUMBER WORKED OUT IN CODE, ROUNDED AS THE SCREEN ROUNDS, AND LABELLED.
 //
 // Ruth, 27 September 2026, item 10 point 3: "All numbers computed in code,
@@ -58,7 +60,21 @@ type Food = {
 };
 
 /** What she has switched on in "What I track". Empty is the ordinary case. */
-export type TrackedMacro = { key: string; column: string; label: string; unit: string };
+export type TrackedMacro = {
+  key: string;
+  column: string;
+  label: string;
+  unit: string;
+  /**
+   * The published figure for this macro, or null where there isn't one.
+   *
+   * Carried on the macro rather than looked up here, for the same reason the
+   * column is: one map in tracked-macro-summary.ts decides what a macro is
+   * called, where it is stored and what it is read against, and this module
+   * renders what it is handed.
+   */
+  guideline?: string | null;
+};
 type Activity = {
   happened_at: string;
   activity_type: string | null;
@@ -193,11 +209,22 @@ export function foodFacts(rows: Food[], days: number, tracked: TrackedMacro[] = 
     return `${dayName(key)}: ${kcal.toLocaleString('en-GB')} kcal, ${protein} g protein${macroTotals(rs)} — ${items}`;
   });
 
+  // WHAT THE FIGURES ARE READ AGAINST, which is the half that was missing when
+  // the figures themselves finally arrived. Only for the macros she has switched
+  // on, and only where a published figure exists. See GUIDELINE_FRAMING.
+  const guidelines = tracked
+    .map((m) => (m.guideline ? `${m.label}: ${m.guideline}.` : null))
+    .filter((s): s is string => s != null);
+  const guidelineBlock =
+    guidelines.length > 0
+      ? `\n\nPUBLISHED GUIDELINES for the macros they track. ${GUIDELINE_FRAMING}\n${guidelines.map((g) => `- ${g}`).join('\n')}`
+      : '';
+
   const head =
     grouped.length === 0
       ? `FOOD, last ${days} days: nothing logged on any day.`
       : `FOOD, last ${days} days: logged on ${grouped.length} of ${days} days. Daily average ON LOGGED DAYS ${whole(avgKcal ?? 0).toLocaleString('en-GB')} kcal and ${whole(avgProtein ?? 0)} g protein. That average covers only the days with something on them — a day with nothing logged is a day they did not record, never a day they did not eat.`;
-  return block(head, lines, 'nothing logged.');
+  return block(head, lines, 'nothing logged.') + guidelineBlock;
 }
 
 export function movementFacts(activity: Activity[], burn: DailyBurn[], days: number): string {
