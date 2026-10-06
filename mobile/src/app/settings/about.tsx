@@ -1,3 +1,4 @@
+import { APP_NAME, TAGLINE } from '@/lib/brand';
 import * as WebBrowser from 'expo-web-browser';
 
 import { BuildVersion } from '@/components/build-version';
@@ -9,7 +10,10 @@ import { ThemedText } from '@/components/themed-text';
 // join this page when they exist rather than as empty rows.
 export default function AboutScreen() {
   return (
-    <SettingsPage title="About Selodía" subtitle="Understand your body. Live in it.">
+    // THE TAGLINE COMES FROM lib/brand.ts, not from here. This screen carried its
+    // own copy of a line that has been settled since 31 August, and it was the
+    // wrong one.
+    <SettingsPage title={`About ${APP_NAME}`} subtitle={TAGLINE}>
       <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
         Selodía is a body-literacy companion: it holds what you tell it about your body, your food
         and your movement, and helps you notice what your own data is saying. It is not a medical

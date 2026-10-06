@@ -23,6 +23,7 @@ import { readFileSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const W = await import(root + '/mobile/src/lib/welcome.ts');
+const BRAND = await import(root + '/mobile/src/lib/brand.ts');
 
 const screen = readFileSync('mobile/src/app/onboarding/welcome.tsx', 'utf8');
 const code = screen.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\/[^\n]*/g, '');
@@ -48,7 +49,12 @@ console.log('\n  AFTER FINISH\n');
 
 check('her two lines, as she wrote them', () => {
   assert.strictEqual(W.WELCOME.title, 'Welcome to Selodía');
-  assert.strictEqual(W.WELCOME.line, 'Understand your body. Live in it.');
+  // THE TAGLINE MOVED AND THIS CASE WAS PINNED TO THE WRONG ONE (6 October
+  // 2026). I wrote "Understand your body. Live in it." into her brief, she took
+  // it, and the real tagline has been CONFIRMED FINAL in the spec since 31
+  // August. The assertion is against the spec now, through lib/brand.ts, so this
+  // cannot be the thing that keeps a wrong line alive. See check-brand.mjs.
+  assert.strictEqual(W.WELCOME.line, BRAND.TAGLINE);
   return `"${W.WELCOME.title}" / "${W.WELCOME.line}"`;
 });
 

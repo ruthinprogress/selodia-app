@@ -3,7 +3,7 @@
 // Ruth, 5 October 2026:
 //
 //   "After Finish: the screen fades to terracotta; the seed mark fades in and
-//   gently pulses; 'Welcome to Selodía' and 'Understand your body. Live in it.';
+//   gently pulses; 'Welcome to Selodía' and the tagline;
 //   the seed pulses once more; the app opens on the Body Manual."
 //
 // WHY THERE IS NO FIRST DRAFT ANY MORE. It summarised back the seven answers she
@@ -22,9 +22,30 @@
 // a single frame was drawn. An animation that is also the only route out of a
 // screen is a screen that strands somebody the first time a frame drops.
 
+import { APP_NAME, TAGLINE, TAGLINE_LINES, WELCOME_TITLE_LINES } from '@/lib/brand';
+
 export const WELCOME = {
-  title: 'Welcome to Selodía',
-  line: 'Understand your body. Live in it.',
+  /**
+   * TWO LINES, WRITTEN OUT, NOT WRAPPED (Ruth's screenshot, 6 October 2026).
+   *
+   * It rendered as "Welcome to" with the second line blank on her phone: the
+   * name was measured, given its space, and never drawn. Third time Android has
+   * mis-drawn a line in this app - "Loq", the "Wee" tabs, and now this - and all
+   * three were measurement and drawing disagreeing about where a line ends.
+   *
+   * So nothing here wraps. See lib/brand.ts.
+   */
+  titleLines: WELCOME_TITLE_LINES,
+  /** Kept for anything that wants the whole string, never for drawing. */
+  title: `Welcome to ${APP_NAME}`,
+  /**
+   * HER TAGLINE, AND IT WAS ALREADY SETTLED. I wrote "Understand your body. Live
+   * in it." into her brief and she took it; the real one has been CONFIRMED
+   * FINAL in the spec since 31 August and is on the website and the store
+   * listing. Her correction: "It should always be..."
+   */
+  line: TAGLINE,
+  lineParts: TAGLINE_LINES,
   /** Said quietly at the bottom, because a screen with no way past it is a trap. */
   skip: 'Tap to continue',
 } as const;

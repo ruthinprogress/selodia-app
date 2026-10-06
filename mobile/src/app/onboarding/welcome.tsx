@@ -189,13 +189,23 @@ export default function WelcomeScreen() {
             importantForAccessibility="no"
           />
         </Animated.View>
-        <Animated.View style={{ opacity: words }}>
-          <ThemedText type="display" style={styles.title}>
-            {WELCOME.title}
-          </ThemedText>
-          <ThemedText type="small" style={styles.line}>
-            {WELCOME.line}
-          </ThemedText>
+        <Animated.View style={[styles.titleBlock, { opacity: words }]}>
+          {/* ONE Text PER LINE, NEVER A WRAP. Her screenshot showed "Welcome to"
+              with the name missing entirely: it was measured, given its space,
+              and never drawn. Third time Android has done this here, so nothing
+              on this screen asks it to work out where a line ends. */}
+          {WELCOME.titleLines.map((line) => (
+            <ThemedText key={line} type="display" style={styles.title}>
+              {line}
+            </ThemedText>
+          ))}
+          <View style={styles.lineBlock}>
+            {WELCOME.lineParts.map((part) => (
+              <ThemedText key={part} type="small" style={styles.line}>
+                {part}
+              </ThemedText>
+            ))}
+          </View>
         </Animated.View>
       </View>
       <Animated.View style={[styles.footer, { opacity: words }]}>
@@ -213,10 +223,16 @@ const ON_TERRACOTTA = '#F7F3EA';
 const styles = StyleSheet.create({
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   wash: { backgroundColor: TERRACOTTA },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.five },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // THE THREE BLOCKS: the seed, the name, the tagline. Spaced here rather than
+  // by padding on the text, so adding a line to any of them changes nothing.
+  titleBlock: { alignItems: 'center', paddingTop: Spacing.five },
+  lineBlock: { alignItems: 'center', paddingTop: Spacing.four },
   seed: { width: 96, height: 96 },
   title: { color: ON_TERRACOTTA, textAlign: 'center' },
-  line: { color: ON_TERRACOTTA, textAlign: 'center', paddingTop: Spacing.two },
+  // NO TOP PADDING. The tagline is two Texts now, and padding on each would open
+  // a gap in the middle of one sentence.
+  line: { color: ON_TERRACOTTA, textAlign: 'center' },
   footer: { position: 'absolute', left: 0, right: 0, bottom: Spacing.six, alignItems: 'center' },
   skip: { color: ON_TERRACOTTA, opacity: 0.7 },
 });
