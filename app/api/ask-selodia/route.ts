@@ -89,7 +89,7 @@ import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, filtersFood, recordAllergies, type Allergy } from '../../lib/allergies';
 import { planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
 import { contentWords } from '../../lib/food-dedupe';
-import { buildTrackedMacroBlock } from '../../lib/tracked-macro-summary';
+import { MACRO_COLUMN, buildTrackedMacroBlock, trackedMacroKeys } from '../../lib/tracked-macro-summary';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
 import { buildDayState, buildDayStatePrompt } from '../../lib/daily-targets';
@@ -954,8 +954,46 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   const dayState = buildDayState(dayStateRows, profile);
   timing.mark('dayStateBuilt');
 
+  // A MEAL LINE SHOWS WHAT SHE TRACKS (6 October 2026), and this is the third
+  // sitting on one fault.
+  //
+  // The macro block below was built, correct and in the prompt - a probe against
+  // her real account produced 1,610 characters of her own saturated fat, day by
+  // day. She asked about it anyway and was told "that's not part of what's logged
+  // here, just calories and protein."
+  //
+  // THIS LINE IS WHY. Seven days of meals, each rendered with exactly two
+  // numbers, is thirty or forty pieces of evidence that the log holds two macros.
+  // One block underneath saying it holds six does not outweigh them. The model
+  // did not disbelieve the block; it believed the log.
+  //
+  // So the log carries them. Only what she has switched on, so somebody tracking
+  // nothing optional sees exactly what they saw before - and the block and the
+  // lines can no longer disagree, which is the actual repair. Two instructions
+  // contradicting each other is what produced this.
+  const mealMacros = (f: Record<string, unknown>): string => {
+    const shown = trackedMacroKeys(profile?.tracked_macros ?? null)
+      .map((k) => {
+        const column = MACRO_COLUMN[k];
+        const v = f[column.column];
+        return typeof v === 'number' ? `${Math.round(v)}${column.unit === 'mg sodium' ? 'mg' : 'g'} ${column.label}` : null;
+      })
+      .filter(Boolean);
+    return shown.length > 0 ? ', ' + shown.join(', ') : '';
+  };
+
   const foodSummary = recentFood && recentFood.length > 0
-    ? recentFood.map((f) => humanDate(f.happened_at) + ': ' + f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)').join('\n')
+    ? recentFood
+        .map(
+          (f) =>
+            humanDate(f.happened_at) +
+            ': ' +
+            f.raw_text +
+            ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein' +
+            mealMacros(f as unknown as Record<string, unknown>) +
+            ')'
+        )
+        .join('\n')
     : 'No food logged in the last 7 days.';
 
   // THE SIX FIGURES THAT WERE ON THE ROW AND NEVER ON THE PAGE (2026-10-04).

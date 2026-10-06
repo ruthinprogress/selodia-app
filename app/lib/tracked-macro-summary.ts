@@ -77,7 +77,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // costs her one tap and it never pretends.
 
 /** Mirrors mobile/src/lib/tracked-macros.ts. Calories and protein are never toggles. */
-const MACRO_COLUMN: Record<string, { column: string; label: string; unit: string }> = {
+// EXPORTED SINCE 6 OCTOBER, because the meal lines render from it too. One map
+// of what each macro is called and which column holds it, read by the block and
+// by the log - two lists would be the fault that produced this in the first
+// place, one level up.
+export const MACRO_COLUMN: Record<string, { column: string; label: string; unit: string }> = {
   fat: { column: 'fat_g', label: 'fat', unit: 'g' },
   saturated: { column: 'saturated_fat_g', label: 'saturated fat', unit: 'g' },
   carbs: { column: 'carbs_g', label: 'carbs', unit: 'g' },

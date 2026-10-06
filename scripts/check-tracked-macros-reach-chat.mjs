@@ -27,7 +27,7 @@
 // perfect and the bug returns the moment nothing calls it.
 
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const { trackedMacroKeys, buildTrackedMacroBlock } = await import(
@@ -172,6 +172,78 @@ await check('a switched-on macro arrives with its figures and its caveat', async
     'the caveat has no limit on it, so it becomes a reason to dodge the question'
   );
   return 'figures, days, and one honest caveat';
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// AND THE LOG MUST NOT CONTRADICT THE BLOCK (6 October 2026).
+//
+// THE CASE THAT WOULD HAVE CAUGHT WHAT THREE SITTINGS MISSED. Every case above
+// passed throughout, because they all test the block, and the block was right. A
+// probe against her real account produced 1,610 characters of her own saturated
+// fat, day by day. What was wrong was the thirty or forty lines ABOVE it: one per
+// meal, each rendered "(980kcal, 34g protein)", every one of them evidence that
+// the log holds two macros. The model believed the log over the block, which is
+// the correct instinct, and told her twice that her saturated fat is not
+// recorded.
+//
+// So the property is not "is the block good". It is "can the log and the block
+// disagree", and the answer has to be no.
+
+await check('the meal lines carry the macros, so they cannot contradict the block', async () => {
+  const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  const code = route.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  const at = code.indexOf('const foodSummary');
+  assert.ok(at > 0, 'the food summary is gone');
+  const block = code.slice(at, at + 900);
+
+  assert.ok(
+    /mealMacros/.test(block),
+    'a meal line shows kcal and protein only, which is what outvoted the macro block'
+  );
+  assert.ok(
+    /trackedMacroKeys/.test(code),
+    'the meal lines do not read what she has switched on, so they show everything or nothing'
+  );
+  return 'the log says what the block says';
+});
+
+await check('turn_context sends the columns the meal lines need', async () => {
+  // THE OTHER HALF, AND THE HALF THAT IS EASY TO FORGET. Rendering a column the
+  // RPC does not select is "two lists nothing compares" again: nothing throws,
+  // the figure is simply absent, and the line quietly goes back to two macros.
+  // THE NEWEST MIGRATION THAT TOUCHES recentFood, as a whole file.
+  //
+  // The first version of this sliced 500 characters after the LAST occurrence of
+  // 'recentFood' across every migration concatenated. That occurrence is the
+  // $anchor$ string inside this very migration - the text it searches FOR, not
+  // the text it writes - so the case failed on its own search term. Reading the
+  // whole file avoids guessing which occurrence is the definition.
+  const files = readdirSync('supabase/migrations')
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  const touching = files.filter((f) =>
+    readFileSync(`supabase/migrations/${f}`, 'utf8').includes("'recentFood'")
+  );
+  assert.ok(touching.length > 0, 'no migration selects recentFood at all');
+  const newest = readFileSync(`supabase/migrations/${touching[touching.length - 1]}`, 'utf8');
+  for (const column of ['saturated_fat_g', 'fat_g', 'carbs_g', 'sugar_g', 'fibre_g', 'sodium_mg']) {
+    assert.ok(
+      newest.includes(column),
+      `the newest recentFood definition does not select ${column}, so a meal line can never show it`
+    );
+  }
+  return `six columns, in ${touching[touching.length - 1]}`;
+});
+
+await check('and these two can fail', async () => {
+  // The shipped line, which is the one that cost three sittings.
+  const shipped =
+    "const foodSummary = recentFood.map((f) => f.raw_text + ' (' + f.kcal + 'kcal, ' + f.protein_g + 'g protein)')";
+  assert.ok(!/mealMacros/.test(shipped), 'the fixture is not the old line');
+  const narrow = "'recentFood', select happened_at, raw_text, kcal, protein_g from food_logs";
+  assert.ok(!narrow.includes('saturated_fat_g'), 'the fixture still selects the macros');
+  return 'the old meal line and the old select are both detected';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
