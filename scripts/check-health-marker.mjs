@@ -152,6 +152,36 @@ check('her section is one name in one place', () => {
   return `"${CARE.CARE_SECTION}" / "${CARE.CARE_SUBTITLE}"`;
 });
 
+check('the closing rule does not forbid what the instruction just taught', () => {
+  // THE FAULT THIS CAUGHT, AND IT COST HER A LIVE TEST. The marker instruction
+  // went in at line 1875. The closing sentence of the SAME field description, at
+  // line 1883, read: "Never for a plan, a passing remark, A PLAIN RESULT or a
+  // one-off observation."
+  //
+  // A plain result is precisely what a marker is. She typed "my cholesterol was
+  // flagged at my NHS check-up", which is the example sentence written into the
+  // instruction eight lines above, and nothing was offered. The database showed
+  // why it was not anything else: her last offer was 10.8 hours earlier, so the
+  // rate limit was not it, and no pending row existed.
+  //
+  // A LAST LINE THAT FORBIDS BEATS A MIDDLE PARAGRAPH THAT PERMITS. Adding a
+  // capability to a prompt means reading what the prompt already refuses, and
+  // the refusals live at the end where a new paragraph does not go.
+  const at = route.indexOf("'Set ONLY when something in this turn is worth OFFERING");
+  assert.ok(at > 0, 'the proposedSave description has moved');
+  const field = route.slice(at, at + 12000);
+  const closing = field.slice(field.indexOf('The app stores the offer and saves it only if they say yes'));
+  assert.ok(
+    !/Never for[^.]*plain result/i.test(closing),
+    'the closing rule still forbids a plain result, which is what a marker is'
+  );
+  assert.ok(
+    /TEST RESULT THEY HAVE BEEN GIVEN IS THE ONE EXCEPTION/.test(closing),
+    'nothing in the closing rule carves out the thing the instruction above teaches'
+  );
+  return 'the permission and the prohibition agree';
+});
+
 check('and this check can fail', () => {
   const brokenColumns = ['ldl_status', 'made_up_status'];
   assert.ok(brokenColumns.includes('made_up_status'), 'the fixture changed nothing');
