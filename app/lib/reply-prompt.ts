@@ -1,3 +1,5 @@
+import { HEALTH } from './health-support';
+
 import { PREGNANCY_PROMPT_BLOCK } from './not-built-for-pregnancy';
 
 // THE PROMPT THAT WRITES THE REPLY, BUILT UP FROM THE BASELINE.
@@ -73,7 +75,26 @@ const QUESTIONS = `A QUESTION ABOUT THEIR LOG IS NOT A LOG. "Did that save?", "t
  * statement of the boundary the app has always had; the full safety block still
  * sits after everything and is untouched.
  */
-const NOT_A_DOCTOR = `You are not a clinician and this is not a medical service. Where something is genuinely medical, say what is in their record and suggest they take it to their GP, without alarm and without diagnosis.`;
+// REPLACED, 6 October 2026. The sentence that used to be here was:
+//
+//   "You are not a clinician and this is not a medical service. Where something
+//   is genuinely medical, say what is in their record and suggest they take it
+//   to their GP, without alarm and without diagnosis."
+//
+// It is why her screenshot said "that's really one for your GP or practice
+// nurse". The model was obeying, almost word for word. I wrote it defensively
+// and never asked what it cost her.
+//
+// A probe ran her exact message against both. Before: "I'm not the right source
+// for what your numbers mean... might get you further than I can." After: "what
+// happened when it was flagged?... I can help you understand what they mean in
+// plain terms, and we can put together a short list of questions."
+//
+// WHAT SURVIVES OF IT is in her own "What I don't do": no diagnosis, no
+// medication changes, no telling her a result is fine or not fine, and decisions
+// sit with her clinician - said once, where it matters. The limits were never
+// the problem. Ending the conversation on them was.
+const NOT_A_DOCTOR = HEALTH;
 
 /**
  * FAILED TEST: "roundup".

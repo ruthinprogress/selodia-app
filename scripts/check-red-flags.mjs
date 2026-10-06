@@ -210,6 +210,59 @@ const SANITY = [
       return injuryOnly === null && symptomOnly !== null && symptomOnly.flag.urgency === 'gp';
     },
   ],
+  // HER DETECTOR FIXES, 6 October 2026.
+  [
+    'a denial raises nothing',
+    () =>
+      matchRedFlag("I don't have chest pain, I just feel off") === null &&
+      matchRedFlag("I haven't had any chest pain since I started walking") === null,
+  ],
+  [
+    'something finished and in the past raises nothing',
+    () =>
+      matchRedFlag('I had chest pain last year but it cleared up') === null &&
+      matchRedFlag('I used to get chest pain when I was running') === null,
+  ],
+  [
+    'the present perfect is still a report',
+    () => {
+      // THE CASE THAT CAUGHT ME. I put "i've had" on the not-now list and it
+      // killed "I've had some bleeding after my menopause", which is a present
+      // report and one of the five things not to wait on.
+      const hit = matchRedFlag("I've had some bleeding after my menopause");
+      return hit !== null;
+    },
+  ],
+  [
+    'her son is not her',
+    () => {
+      // The list had no children and no men in it, in an app used by mothers.
+      for (const said of [
+        'my son bumped his head and feels dizzy',
+        'Felix has had chest pain',
+        'my dad has chest pain',
+        'my toddler hit his head',
+      ]) {
+        if (matchRedFlag(said) !== null) return false;
+      }
+      return true;
+    },
+  ],
+  [
+    'a blocked nose is not an ambulance',
+    () => {
+      for (const said of [
+        "I can't breathe through my nose",
+        "I can't breathe in this heat",
+        "I can't breathe with this cold",
+      ]) {
+        if (matchRedFlag(said) !== null) return false;
+      }
+      // And the literal one still calls one, which is the half that matters.
+      const real = matchRedFlag("I can't breathe properly");
+      return real !== null && real.flag.urgency === '999';
+    },
+  ],
   ['an empty message raises nothing', () => matchRedFlag('') === null && matchRedFlag('   ') === null],
   [
     'never two flags at once',

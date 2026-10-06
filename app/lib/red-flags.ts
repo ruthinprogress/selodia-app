@@ -191,6 +191,38 @@ export const RED_FLAGS: RedFlag[] = [
       'fighting for breath',
       'gasping for air',
     ],
+    // FIGURATIVE USES, WHICH ARE THE COMMONEST USES (Ruth, 6 October 2026):
+    // "stop figurative phrases firing 999 (can't breathe through my nose, can't
+    // breathe in this heat)."
+    //
+    // "I can't breathe" is one of the most ordinary sentences in English and
+    // almost never means what this flag means. A blocked nose, a hot room, a
+    // tight waistband, a stuffy train. An ambulance line in reply to any of
+    // those is the thing that would make somebody stop believing the whole
+    // mechanism - and unlike the headache, this is not a loose phrase that can
+    // simply be deleted, because the literal use is the one that matters most.
+    //
+    // SO IT IS A LIST OF WHAT FOLLOWS IT. Everything here is a reason somebody
+    // cannot breathe that is not an emergency.
+    notAbout: [
+      'through my nose',
+      'out of my nose',
+      'in this heat',
+      'in the heat',
+      'in here',
+      'with this cold',
+      'with my cold',
+      'with hay fever',
+      'because of my nose',
+      'blocked nose',
+      'stuffy nose',
+      'congested',
+      'in these jeans',
+      'in this dress',
+      'in this top',
+      'laughing',
+      'the smell',
+    ],
   },
   {
     key: 'bleeding_wont_stop',
@@ -369,8 +401,19 @@ export const RED_FLAGS: RedFlag[] = [
 const LINES: Record<Urgency, (name: string) => string> = {
   '999': () =>
     'Please call 999 now. What you have described needs an ambulance, and it is better to call and be told it is nothing.',
+  // HER WORDING, 6 October 2026, and the change is not only the words.
+  //
+  //   "111 (4 flags): stays a detector, but the fixed text is one line: 'This is
+  //   worth checking today, so call 111, especially if it's severe or getting
+  //   worse.' After that, the conversation continues normally."
+  //
+  // THE OLD LINE ENDED THE TURN. "Should be looked at by someone today rather
+  // than left" is a verdict with nowhere to go after it, and the reply stopped
+  // there. Hers names the threshold - severe, or getting worse - which is the
+  // thing somebody actually needs to judge their own situation against, and then
+  // gets out of the way so the conversation carries on.
   '111': () =>
-    'Please call 111 today. What you have described should be looked at by someone today rather than left.',
+    "This is worth checking today, so call 111, especially if it's severe or getting worse.",
   gp: () =>
     'Please book an appointment with your GP about this. It is worth getting checked, even if it turns out to be nothing.',
 };
@@ -392,6 +435,24 @@ const THIRD_PARTY = [
   'my husband',
   'my partner',
   'my daughter',
+  // HERS, 6 October 2026. The original list had no children and no men in it,
+  // which is a strange gap in an app used by mothers: "my son bumped his head
+  // and feels dizzy" would have told HER to call 111.
+  //
+  // FELIX BY NAME, because she types his name rather than "my son", and the list
+  // only works on what somebody actually writes.
+  'my son',
+  'felix',
+  'my baby',
+  'my toddler',
+  'my boy',
+  'my girl',
+  'my child',
+  'my kid',
+  'my dad',
+  'my father',
+  'my brother',
+  'my husband',
   'someone',
   'a friend of mine',
 ];
@@ -413,10 +474,131 @@ const THIRD_PARTY = [
  */
 const FIRST_PERSON = /\b(i|i'm|im|i've|ive|my|me|myself|mine)\b/i;
 
+/**
+ * IS SHE SAYING IT IS HAPPENING NOW? (Ruth, 6 October 2026.)
+ *
+ *   "Handle negation ('I don't have chest pain') and past events ('I had chest
+ *   pain last year'), or tell me honestly that it can't."
+ *
+ * IT CAN FOR THE ORDINARY CASES AND NOT FOR ALL OF THEM, and this is the honest
+ * version of that answer - the dishonest version is a longer word list that
+ * looks complete.
+ *
+ * WHAT IT CATCHES: a negation or a past-tense marker in the sixty characters
+ * before the phrase. "I don't have chest pain", "no chest pain today", "I had
+ * chest pain last year", "my chest pain cleared up in March". That is the shape
+ * nearly every real one takes, because English puts the negation and the tense
+ * in front of the thing.
+ *
+ * WHAT IT WILL MISS, and she should hear it from here rather than find it:
+ *
+ *   "Chest pain, but that was years ago."        the marker comes after
+ *   "I wouldn't say I have chest pain exactly."  hedged rather than negated
+ *   "The chest pain I used to get is back."      past marker, present fact
+ *
+ * The third is the one that matters and it fails SAFE: it stays silent when it
+ * should have spoken. Every miss here is a silence and never a false alarm,
+ * which is the right direction for a rule that interrupts.
+ *
+ * AND IT IS DELIBERATELY NOT A MODEL. The whole value of this file is that it
+ * cannot be talked out of anything, and a model asked "is she reporting this
+ * now?" can be. A dumber rule that fails quietly beats a cleverer one that can
+ * be argued with.
+ */
+const NOT_NOW = [
+  // Negation.
+  "don't have",
+  'do not have',
+  "haven't had",
+  'have not had',
+  "didn't have",
+  "don't get",
+  'never had',
+  'no sign of',
+  'not having',
+  'no chest',
+  'no bleeding',
+  'no headache',
+  // The past.
+  'used to',
+  'last year',
+  'last month',
+  'last week',
+  'years ago',
+  'months ago',
+  'when i was',
+  'back in',
+  'cleared up',
+  'went away',
+  'got better',
+  // "I HAD" AND "I'VE HAD" ARE NOT ON THIS LIST, and the check is why.
+  //
+  // I put them here and it immediately failed on "I've had some bleeding after
+  // my menopause" - which is a present report in the present perfect, and one of
+  // the five things her prompt says not to wait on. "I had chest pain this
+  // morning" is the same shape.
+  //
+  // A BARE TENSE IS NOT A TIME. Only the markers that unambiguously place
+  // something in the finished past belong here, and every one of those above
+  // does. "I had chest pain last year" is caught by "last year", which is the
+  // part that actually carries the meaning.
+];
+
+/**
+ * WHEN IT HAPPENED, SAID AFTER THE THING. "I had chest pain last year."
+ *
+ * English puts a negation in front and a date behind, which the first version of
+ * this missed entirely: it looked only backwards, and the case it failed on was
+ * the one I had written into my own documentation as handled.
+ *
+ * DATES ONLY, AND NOT NEGATIONS. A negation after the phrase ("chest pain, well,
+ * not really") is rare and ambiguous. A date after it is neither.
+ *
+ * AND A SHORT WINDOW, because "I have chest pain. Last year I had a scare" must
+ * still raise. Forty characters reaches the end of the clause and not into the
+ * next sentence.
+ */
+const DATED_TO_THE_PAST = [
+  'last year',
+  'last month',
+  'last week',
+  'years ago',
+  'months ago',
+  'weeks ago',
+  'when i was',
+  'back in',
+  'cleared up',
+  'went away',
+  'got better',
+  'as a teenager',
+  'as a child',
+];
+
+/** The run of text before the phrase, where a negation or a tense marker sits. */
+const LOOKBACK = 60;
+/** And the run after it, where a date sits. Short, to stay inside the clause. */
+const LOOKAHEAD = 40;
+
+function saidAsHappeningNow(text: string, at: number): boolean {
+  const before = text.slice(Math.max(0, at - LOOKBACK), at);
+  if (NOT_NOW.some((marker) => before.includes(marker))) return false;
+
+  // The clause after it, stopping at a full stop so the next sentence cannot
+  // date this one.
+  const rest = text.slice(at, at + LOOKAHEAD).split(/[.!?]/)[0];
+  return !DATED_TO_THE_PAST.some((marker) => rest.includes(marker));
+}
+
 function mentions(text: string, phrase: string): boolean {
+  return mentionedAt(text, phrase) >= 0;
+}
+
+/** Where the phrase appears, or -1. Needed so a negation can be looked for. */
+function mentionedAt(text: string, phrase: string): number {
   const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = escaped.split(/\s+/).join('\\s+');
-  return new RegExp(`\\b${pattern}`, 'i').test(text);
+  const found = new RegExp(`\\b${pattern}`, 'i').exec(text);
+  return found ? found.index : -1;
 }
 
 export type FlagHit = { flag: RedFlag; line: string };
@@ -442,7 +624,12 @@ export function matchRedFlag(message: string): FlagHit | null {
       // BOTH HALVES, where a flag names two. See alsoNeeds: an injury without a
       // symptom, or a symptom without the injury, is not this flag.
       if (flag.alsoNeeds && !flag.alsoNeeds.some((a) => mentions(text, a))) continue;
-      if (flag.phrases.some((p) => mentions(text, p))) {
+      // SAID AS HAPPENING NOW, not denied and not remembered. See NOT_NOW: a
+      // negation or a tense marker in the run of text just before the phrase
+      // means this is not a report. "I don't have chest pain" and "I had chest
+      // pain last year" both used to call an ambulance.
+      const at = flag.phrases.map((p) => mentionedAt(text, p)).find((i) => i >= 0);
+      if (at !== undefined && saidAsHappeningNow(text, at)) {
         return { flag, line: LINES[urgency](flag.name) };
       }
     }
