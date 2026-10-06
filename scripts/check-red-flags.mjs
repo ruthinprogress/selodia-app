@@ -210,6 +210,77 @@ const SANITY = [
       return injuryOnly === null && symptomOnly !== null && symptomOnly.flag.urgency === 'gp';
     },
   ],
+  // ─────────────────────────────────────────────────────────────────────────
+  // THE MUST-FIRE SET FOR 999 (Ruth, 6 October 2026). Permanent, and the reason
+  // for it is a contradiction she found in my own note.
+  //
+  // I wrote that every miss here "fails safe", which is true of the mechanism
+  // and false of the consequence. At this tier a false alarm costs an awkward
+  // phone call and a silence costs what a silence costs. Her rule: "For 999,
+  // suppress only on clear negation or an explicit date. If it's ambiguous,
+  // fire."
+  //
+  // Her four sentences are the first four. Every one of them is a present report
+  // wearing a past-sounding word, and the version before this went quiet on all
+  // of them.
+  [
+    'a present report with past-sounding words still fires at 999',
+    () => {
+      const MUST_FIRE = [
+        "I've had chest pain all morning",
+        "I had chest pain an hour ago and it's still there",
+        'the chest pain I used to get is back',
+        "I've been having chest pain since last night",
+        'my chest pain went away and now it is back',
+        "I've had the worst headache of my life since I woke up",
+        "I've been struggling to breathe since this morning",
+        'I had a bleed earlier and I cannot stop the bleeding',
+        "I've lost my vision in one eye",
+        'my face is drooping and my speech is slurred',
+      ];
+      for (const said of MUST_FIRE) {
+        const hit = matchRedFlag(said);
+        if (!hit || hit.flag.urgency !== '999') {
+          console.log(`        went quiet on: "${said}"`);
+          return false;
+        }
+      }
+      return true;
+    },
+  ],
+  [
+    'a 999 flag is still suppressed by a plain denial or a real date',
+    () => {
+      // The two things that DO stop it, so the rule above is not simply "always
+      // fire", which would be no rule at all.
+      for (const said of [
+        "I don't have chest pain, I just feel off",
+        'I had chest pain last year',
+        'I had chest pain when I was pregnant',
+      ]) {
+        if (matchRedFlag(said) !== null) {
+          console.log(`        fired on: "${said}"`);
+          return false;
+        }
+      }
+      return true;
+    },
+  ],
+
+  [
+    'heavy bleeding needs the faintness with it',
+    () => {
+      // Her compromise: neither half alone, and the combination at 111.
+      const both = matchRedFlag('I am bleeding heavily and I feel faint');
+      if (!both || both.flag.urgency !== '111') return false;
+      // Heavy bleeding alone is not an emergency line. A heavy period is common.
+      if (matchRedFlag('my period is really heavy bleeding this month') !== null) return false;
+      // And feeling faint alone lands on the gentler dizziness flag, not here.
+      const faintOnly = matchRedFlag('I feel a bit faint today');
+      return faintOnly === null || faintOnly.flag.key !== 'heavy_bleeding_with_faintness';
+    },
+  ],
+
   // HER DETECTOR FIXES, 6 October 2026.
   [
     'a denial raises nothing',

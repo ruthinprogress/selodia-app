@@ -188,6 +188,25 @@ export const BODY_MANUAL_SECTIONS: BodyManualSection[] = [
     onlyWhenFatLoss: true,
   },
   {
+    // HEIGHT, MOVED OFF PROFILE (Ruth, 6 October 2026): "Move height out of
+    // Profile and into Body Manual, it should be ordered where it appears in
+    // onboarding."
+    //
+    // IT SITS BEFORE WEIGHT BECAUSE THAT IS WHERE SETUP ASKS IT. On 5 October it
+    // moved to step 2, beside weight, on the screen whose panel shows what the
+    // two of them come to. Her reason then: "it's used for the calculations
+    // there."
+    //
+    // AND IT WAS NEVER A PERSONAL DETAIL. Profile holds the few facts the app
+    // needs ABOUT her, her name and her date of birth. Height is one half of the
+    // estimate her entire calorie figure is built on, which is this page's
+    // business and not that one's.
+    key: 'height',
+    heading: 'Your height',
+    note: 'Used for the metabolic estimate, with your weight, and nothing else.',
+    empty: 'Not given. Selodía works without it, with a rougher estimate.',
+  },
+  {
     key: 'weight',
     heading: 'Your weight',
     note: 'Updates itself from your latest reading. A real weigh-in always beats a guess.',

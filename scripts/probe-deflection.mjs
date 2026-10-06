@@ -23,8 +23,10 @@ import { readFileSync } from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
-const { replyPrompt, REPLY_PROMPT_PARTS } = await import(root + '/app/lib/reply-prompt.ts');
-const { HEALTH } = await import(root + '/app/lib/health-support.ts').catch(() => ({ HEALTH: null }));
+const { replyPrompt } = await import(root + '/app/lib/reply-prompt.ts');
+const { HEALTH, DEFLECTION_RULE_UNTIL_6_OCTOBER_2026: DEFLECTION } = await import(
+  root + '/app/lib/health-support.ts'
+);
 
 const env = Object.fromEntries(
   readFileSync('.env.local', 'utf8')
@@ -39,6 +41,42 @@ const env = Object.fromEntries(
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-5';
+
+/**
+ * SIX MORE, 6 October 2026: "Run the before/after on five or six more messages
+ * (a result with numbers, a letter, 'it's probably nothing', a frustrated
+ * message), not just the screenshot one."
+ *
+ * Her four kinds, plus the two that worry me most: somebody apologising for
+ * asking, and somebody who has already been dismissed once. Those are the ones
+ * her whole brief is about - "they drop out at the moment of doubt."
+ */
+const CASES = [
+  {
+    name: 'A result with numbers',
+    said: 'My cholesterol came back at 5.8 and the HDL was 1.3. The letter just says "satisfactory, no action needed" but I do not know what that means.',
+  },
+  {
+    name: 'A letter she does not understand',
+    said: 'I got a letter saying I am being referred to gynaecology under the 2 week pathway. What does that actually mean and what do I need to do?',
+  },
+  {
+    name: 'Playing it down',
+    said: 'It is probably nothing, I do not want to waste anyone time. I have just had this ache in my side for about three weeks.',
+  },
+  {
+    name: 'Frustrated, already dismissed',
+    said: 'I went to the GP about the tiredness and she just said it is my age. I am 41. I do not know what to do now.',
+  },
+  {
+    name: 'Apologising for asking',
+    said: 'Sorry, this is a silly question and I know you are not a doctor. The hospital asked for my NHS number and I do not know where to find it.',
+  },
+  {
+    name: 'A small practical step',
+    said: 'I need to reply to the clinic email to confirm the appointment but I never know what to write.',
+  },
+];
 
 /** Her screenshot, 5 October, 20:39. The turn before it, then the turn itself. */
 const HISTORY = [
@@ -55,12 +93,12 @@ const HISTORY = [
   { role: 'user', content: "They don't actually know anything." },
 ];
 
-async function ask(system, label) {
+async function ask(system, label, messages = HISTORY) {
   const reply = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 700,
     system,
-    messages: HISTORY,
+    messages,
   });
   const text = reply.content
     .filter((b) => b.type === 'text')
@@ -72,22 +110,27 @@ async function ask(system, label) {
   return text;
 }
 
-const before = replyPrompt({ voice: false });
+// THE DIRECTION REVERSED ONCE THE FIX SHIPPED. The composed prompt now carries
+// her Health section, so AFTER is what the app runs and BEFORE is reconstructed
+// by putting the old sentence back. Keeping the probe runnable afterwards is
+// what makes it evidence rather than a thing that was true for an afternoon.
+const after = replyPrompt({ voice: false });
+const before = after.replace(HEALTH, DEFLECTION);
 
-if (!HEALTH) {
-  console.log('\n  app/lib/health-support.ts does not exist yet, so only BEFORE can run.\n');
-  await ask(before, 'BEFORE - the deflection rule as it ships today');
-  process.exit(0);
-}
-
-// ONE BLOCK SWAPPED, NOTHING ELSE. String replacement on the composed prompt, so
-// the two runs are identical apart from the rule under test.
-const after = before.replace(REPLY_PROMPT_PARTS.NOT_A_DOCTOR, HEALTH);
-if (after === before) {
-  console.error('  The deflection block was not found in the composed prompt.');
+if (before === after) {
+  console.error('  The health block was not found in the composed prompt.');
   process.exit(1);
 }
 
 await ask(before, 'BEFORE - the deflection rule as it ships today');
 await ask(after, 'AFTER - her Health section in its place');
+
+// THE OTHER SIX, EACH ON ITS OWN, WITH NO HISTORY. A fresh conversation, so the
+// reply is to the message rather than to a thread that has already set a tone.
+for (const c of CASES) {
+  const messages = [{ role: 'user', content: c.said }];
+  console.log(`\n\n${'#'.repeat(72)}\n  ${c.name.toUpperCase()}\n  "${c.said}"\n${'#'.repeat(72)}`);
+  await ask(before, 'BEFORE', messages);
+  await ask(after, 'AFTER', messages);
+}
 console.log('');

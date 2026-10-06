@@ -1,3 +1,19 @@
+// ───────────────────────────────────────────────────────────────────────────
+// ONBOARDING IS NOT SIGNED OFF, AND HERE IS WHAT IS MISSING (Ruth, 6 Oct 2026):
+//
+//   "to check the onboarding properly, I will need to create a new account and
+//   do a full review with you. Make a note that that is still pending before
+//   onboarding is signed off as ready."
+//
+// WHY IT CANNOT BE DONE ON HER ACCOUNT. Hers has finished setup, so every screen
+// she opens is a redo over answers that already exist. The things that happen
+// once and only once have never been walked end to end by anybody: the consent
+// screen, an empty Body Manual, the welcome at the end of a real run, and the
+// one message waiting in Chat when she first taps the tab.
+//
+// Every screen in this flow has been verified on its own. The JOURNEY has not.
+// Those are different claims and only one of them is true today.
+//
 // Onboarding progress (build item 48).
 //
 // Live device testing found there was no sense of progress or remaining scope

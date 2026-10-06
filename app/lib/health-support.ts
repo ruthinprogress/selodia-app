@@ -178,3 +178,18 @@ I check current guidance for numbers, referral routes and what you're entitled t
 
 /** What the prompt actually carries today. */
 export const HEALTH = healthSupportPrompt();
+
+/**
+ * THE RULE THIS REPLACED, KEPT ONLY AS AN EXHIBIT.
+ *
+ * Nothing imports it into a prompt and nothing should. It exists so
+ * probe-deflection.mjs can still run the comparison, and so the sentence that
+ * caused this is readable next to what replaced it rather than only in a commit
+ * message.
+ *
+ * It was in reply-prompt.ts from the start and it is why her screenshot said
+ * "that's really one for your GP or practice nurse". The model was obeying,
+ * almost word for word.
+ */
+export const DEFLECTION_RULE_UNTIL_6_OCTOBER_2026 =
+  'You are not a clinician and this is not a medical service. Where something is genuinely medical, say what is in their record and suggest they take it to their GP, without alarm and without diagnosis.';

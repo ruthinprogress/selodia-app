@@ -164,7 +164,7 @@ export function BodyManual({
           supabase.from('user_week').select('id, activity, cadence, days, time_of_day').order('sort_order'),
           supabase.from('allergies').select('id, name, kind').order('disclosed_at'),
           supabase.from('user_rules').select('id, phrase, kind').eq('kind', 'never'),
-          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at, welcome_seen_at, chat_first_opened_at').maybeSingle(),
+          supabase.from('user_profile').select('life_stage, life_stage_detail, hormone_use, deficit_state, deficit_state_set_at, fat_focus_state, muscle_focus_state, body_mode, activity_level, activity_level_set_at, welcome_seen_at, chat_first_opened_at, height_cm').maybeSingle(),
           // `id` NOW, for the same reason: removing one item out of a card
           // means reading that card by id and writing it back.
           supabase.from('almanac_entries').select('id, title, content').eq('kind', 'me').in('title', ['Avoid', 'Medications']),
@@ -292,6 +292,15 @@ export function BodyManual({
             lines: (goals.data ?? []).map((g) => ({
               text: [String(g.label), g.detail ? String(g.detail) : null].filter(Boolean).join(' · '),
             })),
+          },
+          height: {
+            // ONE LINE, AND NO REMOVAL. The way to change a height is to answer
+            // it again on the screen that asks it, which is what "Change this"
+            // opens.
+            lines:
+              typeof (p as { height_cm?: unknown } | null)?.height_cm === 'number'
+                ? [{ text: `${(p as { height_cm: number }).height_cm} cm` }]
+                : [],
           },
           weight: {
             // IT MAINTAINS ITSELF. The latest real weigh-in beats any estimate,
@@ -534,6 +543,10 @@ export function BodyManual({
         return '/settings/activity-level';
       case 'days':
         return '/onboarding/days';
+      // ASKED ON STEP 2, beside weight, because the panel there uses both and
+      // shows what they come to.
+      case 'height':
+        return '/onboarding/goals';
       // The goal is set on Today now - see the `toToday` flag on the section.
       case 'goal':
         return null;

@@ -79,8 +79,22 @@ export const WELCOME_TIMING = {
   wordsIn: 600,
   /** The second breath, after the words. */
   secondPulse: 1200,
-  /** A beat on the finished picture before it goes. */
-  rest: 500,
+  /**
+   * A BEAT ON THE FINISHED PICTURE, AND IT WAS NOWHERE NEAR LONG ENOUGH.
+   *
+   * Ruth, 6 October 2026: "the welcome message needs to persist a little longer,
+   * it doesn't feel like it has enough time to be read fully and feel like a
+   * moment."
+   *
+   * At 500ms the words arrived at 3.3 seconds and the screen left at 5, so there
+   * were 1.7 seconds to read four lines - the name, and a two-line tagline that
+   * was one line when these numbers were chosen. I picked them against a cap I
+   * had also chosen, which is not a measurement of anything.
+   *
+   * 2500 gives a little under four seconds on the finished picture. That is a
+   * beat rather than a pause, and it is still tappable from the first frame.
+   */
+  rest: 2500,
 } as const;
 
 /** What the whole thing costs in time, which is the number worth watching. */
@@ -98,8 +112,12 @@ export const WELCOME_TOTAL_MS =
  * Not nothing: the welcome is the meaning and the breathing is only how it
  * arrives, which is the same reasoning the Health Flower's seed already uses.
  * Holding still forever would be worse than animating at somebody.
+ *
+ * LONGER SINCE 6 OCTOBER, for the same reason the animated one is: there are
+ * four lines to read now and 2.2 seconds was not enough for them. Everything
+ * arrives at once here, so it needs the reading time without the arriving time.
  */
-export const WELCOME_REDUCED_MS = 2200;
+export const WELCOME_REDUCED_MS = 3600;
 
 /** Where it goes when it is done. Her words: "the app opens on the Body Manual." */
 export const AFTER_WELCOME_ROUTE = '/settings/body-manual';

@@ -62,7 +62,29 @@ import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './m
 // "Something else - tell chat", and not chat, which had no route. Her week was
 // fixed at setup for good. Adding a remove on 1 October without this made it a
 // one-way door, which is how she lost Gym.
-export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'rule' | 'week' | 'skill';
+/**
+ * 'care' IS NEW ON 6 OCTOBER 2026, and it is a kind rather than a new mechanism.
+ *
+ * Ruth: "In the data it must still be separate: its own kind, its own context
+ * block and its own description to the model (the facts I need to get care)."
+ *
+ * WHAT WAS WRONG. A consultant letter saved as a Me card, and the prompt
+ * describes Me as "their personal protocol - the standing decisions about how
+ * they are trying to live: supplements, skincare, a dietary decision, a
+ * routine". So a hospital number was filed next to her evening skincare on a
+ * shelf the model had been told holds lifestyle choices - and "remind me how to
+ * get seen" had nothing framed as a health record to answer from.
+ *
+ * IT CARRIES THE SAME SHAPE AS 'me' ON PURPOSE. Same offer, same yes, same
+ * content, same merge-by-title. The one thing that differs is the kind written
+ * on the row, which is what every reader downstream switches on - and
+ * commitSave already writes `kind: proposal.type`, so the separation costs one
+ * union member rather than a second machine.
+ */
+export type SaveType = 'symptom' | 'insight' | 'note' | 'me' | 'care' | 'rule' | 'week' | 'skill';
+
+/** The kinds that are a card with a section, a why and items. */
+export const CARD_TYPES: SaveType[] = ['me', 'care'];
 export const SAVE_TYPES: readonly SaveType[] = [
   'symptom',
   'insight',
@@ -172,7 +194,7 @@ export function coerceProposal(v: unknown): ProposedSave | null {
     };
   }
 
-  if (type === 'me') {
+  if (CARD_TYPES.includes(type)) {
     // A SECTION IS NOT REQUIRED, AND REQUIRING IT LOST HER SKINCARE CARD.
     //
     // On 30 September at 12:11 she pasted her routine, the app proposed it, she
@@ -333,6 +355,10 @@ const TYPE_WORD: Record<SaveType, string> = {
   insight: 'an insight',
   note: 'a note',
   me: 'part of their own protocol',
+  // THE FACTS NEEDED TO GET CARE, which is her phrase for it. Not "a medical
+  // record": this is the hospital number, the secretary's line and what was
+  // agreed, kept so the letter is not needed at a reception desk.
+  care: 'something they need in order to get care',
   rule: 'a movement rule',
   week: 'something in their week',
   skill: 'something they want to be able to do',
@@ -397,7 +423,7 @@ export const WEEK_OFFER_QUESTION = 'Want me to put that in your week?';
 export const SKILL_OFFER_QUESTION = 'Want me to add that to your Skills?';
 
 export function offerQuestionFor(type: SaveType): string {
-  if (type === 'me') return ME_OFFER_QUESTION;
+  if (type === 'me' || type === 'care') return ME_OFFER_QUESTION;
   if (type === 'rule') return RULE_OFFER_QUESTION;
   if (type === 'week') return WEEK_OFFER_QUESTION;
   if (type === 'skill') return SKILL_OFFER_QUESTION;
@@ -539,7 +565,7 @@ export function applyRedirect(
   // all, so the section she named becomes the section, and what she originally
   // said stays as the detail.
   const content: Record<string, unknown> = { ...proposal.content };
-  if (type === 'me') {
+  if (CARD_TYPES.includes(type)) {
     if (section) content.section = section;
     if (typeof content.section !== 'string' || !content.section) content.section = 'Sensitivities';
     if (content.detail === undefined && typeof content.summary === 'string') {
@@ -678,7 +704,7 @@ export async function commitSave(
   // how a new section comes into existence: by the first card arriving in it.
   // Nobody ever creates one.
   const section =
-    proposal.type === 'me' && typeof proposal.content.section === 'string'
+    CARD_TYPES.includes(proposal.type) && typeof proposal.content.section === 'string'
       ? proposal.content.section
       : null;
 
@@ -693,7 +719,7 @@ export async function commitSave(
   // items merge, a restated field replaces, a field she did not mention is left
   // alone, and the old wording goes to history rather than being overwritten in
   // silence. See me-items.ts.
-  if (proposal.type === 'me') {
+  if (CARD_TYPES.includes(proposal.type)) {
     const merged = await mergeIntoExistingMeCard(supabase, userId, proposal);
     if (merged) return merged;
   }
@@ -800,6 +826,11 @@ export function saveAppliedNote(
     // Me and Insights are different tabs, and telling somebody their skincare
     // routine went to Insights was the complaint that started this.
     if (type === 'me') return `Kept in your Almanac, under Me.`;
+    // UNDER HEALTH, which is where she asked for it: "a Care section under
+    // Health in the Me tab... I don't want it prominent. I like that it sits
+    // with the rest of my life, so the app doesn't say my life is about health
+    // issues."
+    if (type === 'care') return `Kept in your Almanac, under Me, in Health.`;
     // A rule earns a longer sentence than the others, because agreeing to it
     // changes what gets built from now on and she should be able to see where
     // it went.

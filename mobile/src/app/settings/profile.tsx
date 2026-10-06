@@ -189,27 +189,20 @@ export default function ProfileScreen() {
           />
         )}
 
-        <SettingsRow
-          icon="resize-outline"
-          label="Height"
-          value={profile?.height_cm ? `${profile.height_cm} cm` : 'Not given'}
-          onPress={() => {
-            setDraft(profile?.height_cm ? String(profile.height_cm) : '');
-            setEditing(editing === 'height' ? null : 'height');
-          }}
-        />
-        {editing === 'height' && (
-          <Editor
-            value={draft}
-            onChange={setDraft}
-            placeholder="Height in cm"
-            numeric
-            onSave={() => {
-              const cm = Number(draft.replace(/[^0-9.]/g, ''));
-              if (cm >= 100 && cm <= 230) void save({ height_cm: Math.round(cm) });
-            }}
-          />
-        )}
+        {/* HEIGHT IS GONE FROM HERE TOO (Ruth, 6 October 2026): "Move height
+            out of Profile and into Body Manual, it should be ordered where it
+            appears in onboarding."
+
+            IT IS NOT A PERSONAL DETAIL, IT IS A METABOLIC INPUT. Profile holds
+            the few facts the app needs ABOUT her - her name, her date of birth.
+            Height is one half of the estimate her whole calorie figure is built
+            on, and on 5 October it moved in setup to sit beside weight on the
+            screen whose panel shows what the two of them come to.
+
+            So the Manual has it, next to Your weight, which is where setup asks
+            it. Same reasoning as Everyday Activity leaving this screen the day
+            before: a question belongs with the thing it changes, and this screen
+            is not that thing. */}
 
         {/* "EVERYDAY ACTIVITY" IS GONE FROM HERE (Ruth, 5 October 2026): "The
             Everyday Activity is in Profile when it should be in Body Manual."

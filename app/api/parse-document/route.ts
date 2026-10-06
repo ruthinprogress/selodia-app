@@ -176,7 +176,17 @@ export async function POST(request: NextRequest) {
   // yes does nothing, for ever, with no error anywhere. Checking now turns a
   // silent permanent failure into one honest sentence.
   const proposal = coerceProposal({
-    type: 'me',
+    // 'care', NOT 'me' (Ruth, 6 October 2026). A consultant letter used to be
+    // saved as a Me card, on the shelf the prompt describes as "supplements,
+    // skincare, a dietary decision, a routine" - so a hospital number was filed
+    // as a lifestyle choice, and "remind me how to get seen" had nothing framed
+    // as a health record to answer from.
+    //
+    // It still renders inside the Me tab, under Health, because she asked for
+    // that: "I like that it sits with the rest of my life, so the app doesn't
+    // say my life is about health issues." Separate in the data, not separate on
+    // the screen.
+    type: 'care',
     title: doc.title,
     content: { section: cardSection(doc), why, detail: body_ },
   });

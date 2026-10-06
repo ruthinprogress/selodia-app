@@ -70,9 +70,22 @@ check('the waiting message is hers, word for word', () => {
 
 // --------------------------------------------- nobody can be stuck on it
 
-check('the whole thing is under six seconds', () => {
+check('there is time to read it, and it still ends', () => {
+  // THE CAP WAS MINE AND SHE MOVED IT (6 October 2026). Six seconds was my
+  // judgement about how long is too long, made before the tagline became two
+  // lines, and she watched it: "it doesn't feel like it has enough time to be
+  // read fully and feel like a moment."
+  //
+  // WHAT THE NUMBER IS NOW FOR. Not "is it short enough" but "is there time to
+  // read it" - so the assertion is on the words being up long enough, with a
+  // ceiling that is now about patience rather than about my guess.
+  const wordsUpFor = W.WELCOME_TIMING.secondPulse + W.WELCOME_TIMING.rest;
   assert.ok(
-    W.WELCOME_TOTAL_MS <= 6000,
+    wordsUpFor >= 3000,
+    `${wordsUpFor}ms to read four lines is not a moment, it is a flash`
+  );
+  assert.ok(
+    W.WELCOME_TOTAL_MS <= 9000,
     `${W.WELCOME_TOTAL_MS}ms is long to hold somebody on a screen with nothing to do`
   );
   assert.ok(W.WELCOME_REDUCED_MS < W.WELCOME_TOTAL_MS, 'reduce motion is not quicker');

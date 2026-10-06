@@ -244,6 +244,10 @@ type TurnContext = {
   planRows: { id: string; title: string; content: unknown }[];
   insightRows: { kind: string; title: string; created_at: string }[];
   meRows: { title: string; category: string | null; content: unknown }[];
+  // THE CARE RECORD (6 October 2026). Its own kind, selected separately, and
+  // described to the model under its own heading - see careBlock below. Selected
+  // by turn_context from the migration chat_reads_the_care_record.
+  careRows: { title: string; category: string | null; content: unknown; created_at: string }[];
   // WHAT SHE WANTS TO BECOME ABLE TO DO, selected by turn_context from
   // 2 October 2026. See the migration chat_can_see_her_skills: chat gained
   // the ability to WRITE a skill in the same commit, and shipping a write
@@ -596,6 +600,7 @@ export async function POST(request: NextRequest) {
     planRows,
     insightRows,
     meRows,
+    careRows,
     weekRows,
     skillRows,
     feelRows,
@@ -685,7 +690,18 @@ export async function POST(request: NextRequest) {
           //
           // A model cannot say what is or is not in somebody's record unless it
           // can see the record. So the why and the items go in too.
-          "Here is what is in their Me tab - their personal protocol - with what each card says. When they tell you one of these has CHANGED, set meUpdate; when they give you new or changed CONTENTS for one, offer it with proposedSave type 'me' using the SAME title, and the app will merge it into this card rather than making a second one:",
+          // "THEIR OWN LIFE" RATHER THAN A LIST OF LIFESTYLE DECISIONS (Ruth,
+          // 6 October 2026): "Also update the description of Me in the prompt,
+          // which currently says it holds lifestyle decisions, so it covers
+          // health too. Otherwise the model will treat a consultant letter like
+          // a skincare routine, which is the original fault."
+          //
+          // The health records are their own kind now and arrive under their own
+          // heading, so this no longer has to carry them. What it has to stop
+          // doing is defining the whole tab as supplements and routines, because
+          // that definition is what filed a hospital number as a lifestyle
+          // choice for three weeks.
+          "Here is what is in their Me tab - the standing facts about how they live and look after themselves, which includes but is not limited to supplements, skincare and routines - with what each card says. When they tell you one of these has CHANGED, set meUpdate; when they give you new or changed CONTENTS for one, offer it with proposedSave type 'me' using the SAME title, and the app will merge it into this card rather than making a second one:",
           ...(meRows ?? []).flatMap((r) => {
             const c = (r.content ?? {}) as Record<string, unknown>;
             const status = typeof c.status === 'string' ? c.status : null;
@@ -704,6 +720,44 @@ export async function POST(request: NextRequest) {
           '',
         ].join('\n')
       : '';
+  /**
+   * THE CARE RECORD, UNDER ITS OWN HEADING (Ruth, 6 October 2026).
+   *
+   * "Its own kind, its own context block and its own description to the model
+   * (the facts I need to get care)."
+   *
+   * WHAT THE DESCRIPTION HAS TO DO. Not label it as medical - the model already
+   * treats medical things carefully. It has to say what the record is FOR, which
+   * is standing at a reception desk or on a telephone with everything needed to
+   * be seen. Her own sentence when she asked for this to be kept at all: "it
+   * needs to keep the information that makes the letter not needed."
+   *
+   * AND THE LAST LINE IS HERS, VERBATIM IN SPIRIT: "Health details only come up
+   * when I raise them or ask for them, never in unrelated chats." A record read
+   * on every turn must not become a subject raised on every turn, and the
+   * failure mode here is an app that keeps bringing up somebody's hospital
+   * appointment while they are talking about lunch.
+   */
+  const careBlock =
+    (careRows ?? []).length > 0
+      ? [
+          '',
+          'HERE IS THEIR CARE RECORD: the details they need in order to get care, kept so the letter is not needed. References they may be asked for at a reception desk or on the telephone, who they are under and how to reach them, and the story so far - what was said, what was decided, and when they are next seen.',
+          'WHEN THEY ASK FOR ONE OF THESE, GIVE IT STRAIGHT AWAY. A number to read out, a date, a name, the route back in. No preamble and no checking whether they are sure.',
+          'DO NOT RAISE ANY OF IT UNPROMPTED. It comes up when they raise it or ask for it, and never in a conversation about something else.',
+          ...(careRows ?? []).flatMap((r) => {
+            const c = (r.content ?? {}) as Record<string, unknown>;
+            const why = typeof c.why === 'string' ? c.why : null;
+            const detail = typeof c.detail === 'string' ? c.detail : null;
+            const lines = [`- ${r.title}${r.category ? ` (${r.category})` : ''}`];
+            if (why) lines.push(`    about: ${why}`);
+            if (detail) lines.push(`    ${detail.replace(/\n/g, '\n    ')}`);
+            return lines;
+          }),
+          '',
+        ].join('\n')
+      : '';
+
   // THE SAME CARDS, WITH NO INSTRUCTIONS IN THEM (2026-09-30).
   //
   // meCardsBlock above tells the CLASSIFY call how to emit a save - "offer it
@@ -1291,7 +1345,7 @@ ${recoverableBlock}
 ${longHistoryBlock ? `
 ${longHistoryBlock}
 ` : ''}
-${plansBlock}${meCardsBlock}${insightsBlock}
+${plansBlock}${meCardsBlock}${careBlock}${insightsBlock}
 ${allergyBlock}${rulesBlock ? `\n${rulesBlock}\n` : ''}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
 
 
@@ -3493,7 +3547,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     const hit = matchRedFlag(message ?? '');
     // ONCE, AND NOT AGAIN. Somebody who has been told and has not gone has made
     // a decision, and the app's job is not to keep asking.
-    if (hit && !(await alreadyRaised(supabase, user.id, hit.flag.key))) {
+    // THE URGENCY DECIDES HOW LONG IT STAYS QUIET (Ruth, 6 October 2026). Once
+    // ever is right for a lump and wrong for chest pain: two episodes three days
+    // apart are two events, and the second deserves to be met.
+    if (hit && !(await alreadyRaised(supabase, user.id, hit.flag.key, hit.flag.urgency))) {
       redFlagNote = hit.line;
       await recordRaised(supabase, user.id, hit.flag.key);
       console.log(`RED FLAG: ${hit.flag.key} (${hit.flag.urgency})`);

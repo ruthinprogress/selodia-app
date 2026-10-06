@@ -90,6 +90,20 @@ export const RED_FLAGS_LIVE = false;
  */
 export const REVIEWED_BY_RUTH = ['999', '111'] as const;
 
+/**
+ * FLAGS THAT NEED A CLINICIAN'S EYE FIRST, named rather than left to be noticed.
+ *
+ * Ruth asked for heavy bleeding with faintness and said in the same breath:
+ * "mark it for clinician review". It is the only flag on the list written out of
+ * a conversation rather than carried in from the original clinical set, and the
+ * judgement in it - that the COMBINATION is 111 while either half alone is not -
+ * is exactly the kind a clinician should check.
+ *
+ * Everything else here is awaiting the same review. This names the one that
+ * should be read first.
+ */
+export const NEEDS_CLINICIAN_REVIEW = ['heavy_bleeding_with_faintness'] as const;
+
 export type Urgency = '999' | '111' | 'gp';
 
 export type RedFlag = {
@@ -351,6 +365,47 @@ export const RED_FLAGS: RedFlag[] = [
     // ORDER DOES THE REST. The matcher works 999, then 111, then GP, so somebody
     // who says they banged their head and feel dizzy gets this and not the
     // gentler dizziness flag below.
+    // HERS, 6 October 2026, and it is the compromise we reached rather than
+    // either of the two positions we started from.
+    //
+    // Her first prompt promised "heavy or unexpected bleeding" at the emergency
+    // tier. The list only had bleeding that will not stop. I argued against
+    // adding heavy bleeding to 999 on its own, because heavy periods are common
+    // and are not an emergency, and an ambulance line at somebody with a heavy
+    // period is the false alarm that costs the whole mechanism. She agreed, and
+    // asked for the combination instead: "Add heavy bleeding plus faint/dizzy at
+    // the 111 tier, and mark it for clinician review."
+    //
+    // THE COMBINATION IS THE SIGNAL. Heavy bleeding on its own is a symptom;
+    // heavy bleeding with the room going is blood loss doing something, and it
+    // is the pairing a clinician would ask about first.
+    //
+    // NEEDS_CLINICIAN_REVIEW: this is the one flag on the list that was written
+    // from a conversation rather than carried over, so it is named separately
+    // below for whoever reviews these.
+    key: 'heavy_bleeding_with_faintness',
+    urgency: '111',
+    name: 'Heavy bleeding, with feeling faint',
+    phrases: [
+      'bleeding heavily',
+      'heavy bleeding',
+      'bleeding a lot',
+      'soaking through',
+      'flooding',
+      'losing a lot of blood',
+    ],
+    alsoNeeds: [
+      'faint',
+      'fainted',
+      'dizzy',
+      'dizziness',
+      'light headed',
+      'light-headed',
+      'lightheaded',
+      'going to pass out',
+    ],
+  },
+  {
     key: 'head_injury_with_symptoms',
     urgency: '111',
     name: 'A bump to the head, with dizziness',
@@ -505,6 +560,44 @@ const FIRST_PERSON = /\b(i|i'm|im|i've|ive|my|me|myself|mine)\b/i;
  * now?" can be. A dumber rule that fails quietly beats a cleverer one that can
  * be argued with.
  */
+/**
+ * FOR 999, SUPPRESS ALMOST NOTHING (Ruth, 6 October 2026).
+ *
+ *   "Your note says every miss is a silence, never a false alarm. Check that
+ *   against 'The chest pain I used to get is back': it's a present report, and
+ *   'used to' suppresses it... For 999, suppress only on clear negation or an
+ *   explicit date. If it's ambiguous, fire."
+ *
+ * SHE IS RIGHT AND MY REASONING WAS BACK TO FRONT. I wrote that every miss fails
+ * safe, which is true of the mechanism and false of the consequence: at this
+ * tier a false alarm costs somebody an awkward phone call, and a silence costs
+ * what a silence costs. "Fails safe" was doing a lot of work in that sentence
+ * and none of it was examined.
+ *
+ * SO THE LIST SPLITS. These are the only things that stop a 999 flag: a plain
+ * denial, or a date that puts it somewhere else. "Used to", "cleared up", "went
+ * away" and "got better" are NOT here, because "the chest pain I used to get is
+ * back" is a report and so is "it went away and now it's back".
+ */
+const NOT_NOW_999 = [
+  "don't have",
+  'do not have',
+  "haven't had",
+  'have not had',
+  "didn't have",
+  "don't get",
+  'never had',
+  'no sign of',
+  'not having',
+  'no chest',
+  'no bleeding',
+  'no headache',
+];
+
+/**
+ * THE WIDER LIST, for 111 and below, where an unnecessary nudge is a real cost
+ * and a day's delay is not the same kind of harm.
+ */
 const NOT_NOW = [
   // Negation.
   "don't have",
@@ -579,13 +672,38 @@ const LOOKBACK = 60;
 /** And the run after it, where a date sits. Short, to stay inside the clause. */
 const LOOKAHEAD = 40;
 
-function saidAsHappeningNow(text: string, at: number): boolean {
-  const before = text.slice(Math.max(0, at - LOOKBACK), at);
-  if (NOT_NOW.some((marker) => before.includes(marker))) return false;
+/**
+ * ONLY A DATE, AND ONLY A SPECIFIC ONE, DATES A 999 REPORT.
+ *
+ * "Cleared up", "went away" and "got better" are not here. They describe an
+ * episode that ended, and the sentence they most often appear in at this tier is
+ * "it went away and now it's back".
+ */
+const DATED_AWAY_FROM_NOW = [
+  'last year',
+  'last month',
+  'years ago',
+  'months ago',
+  'when i was',
+  'back in',
+  'as a teenager',
+  'as a child',
+];
 
+function saidAsHappeningNow(text: string, at: number, urgency: Urgency): boolean {
+  const before = text.slice(Math.max(0, at - LOOKBACK), at);
   // The clause after it, stopping at a full stop so the next sentence cannot
   // date this one.
   const rest = text.slice(at, at + LOOKAHEAD).split(/[.!?]/)[0];
+
+  // AT 999, AMBIGUITY FIRES. Her rule, and the right way round: an awkward phone
+  // call against a silence about chest pain is not a close decision.
+  if (urgency === '999') {
+    if (NOT_NOW_999.some((marker) => before.includes(marker))) return false;
+    return !DATED_AWAY_FROM_NOW.some((marker) => rest.includes(marker) || before.includes(marker));
+  }
+
+  if (NOT_NOW.some((marker) => before.includes(marker))) return false;
   return !DATED_TO_THE_PAST.some((marker) => rest.includes(marker));
 }
 
@@ -629,7 +747,7 @@ export function matchRedFlag(message: string): FlagHit | null {
       // means this is not a report. "I don't have chest pain" and "I had chest
       // pain last year" both used to call an ambulance.
       const at = flag.phrases.map((p) => mentionedAt(text, p)).find((i) => i >= 0);
-      if (at !== undefined && saidAsHappeningNow(text, at)) {
+      if (at !== undefined && saidAsHappeningNow(text, at, urgency)) {
         return { flag, line: LINES[urgency](flag.name) };
       }
     }
@@ -644,14 +762,32 @@ export function matchRedFlag(message: string): FlagHit | null {
  * been told and not gone has made a decision, and the app's job is not to keep
  * asking. Saying it twice makes the app a nag about her own body.
  */
+/**
+ * HOW LONG A 999 FLAG STAYS QUIET AFTER IT HAS SPOKEN (Ruth, 6 October 2026).
+ *
+ *   "Once per flag, ever, is too blunt for 999. Let it repeat after a gap
+ *   (suggest 24 hours) and keep once-per-episode for 111."
+ *
+ * ONCE-EVER WAS THE WRONG SHAPE AT THIS TIER, and the reasoning behind it -
+ * "somebody who has been told and has not gone has made a decision" - is sound
+ * for a lump and wrong for chest pain. Chest pain on Tuesday and chest pain again
+ * on Friday are two events, and the second one deserves to be met rather than
+ * met with silence because of the first.
+ *
+ * 111 AND BELOW KEEP ONCE-EVER. A nudge about a cough that returns every day for
+ * a fortnight is nagging, and nagging is how somebody stops reading them.
+ */
+const REPEAT_AFTER_MS = 24 * 60 * 60 * 1000;
+
 export async function alreadyRaised(
   supabase: SupabaseClient,
   userId: string,
-  key: string
+  key: string,
+  urgency: Urgency = 'gp'
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from('red_flags_raised')
-    .select('flag_key')
+    .select('flag_key, raised_at')
     .eq('user_id', userId)
     .eq('flag_key', key)
     .maybeSingle();
@@ -659,7 +795,18 @@ export async function alreadyRaised(
   // the lookup fails we do not know whether she has been told, and telling
   // somebody twice about a lump is far better than never telling her at all.
   if (error) return false;
-  return data != null;
+  if (data == null) return false;
+
+  // AT 999 IT GOES QUIET FOR A DAY AND THEN SPEAKS AGAIN. Anywhere else, once is
+  // once. A missing or unreadable timestamp is treated as "long ago", which errs
+  // towards speaking - the right direction at this tier.
+  if (urgency === '999') {
+    const raisedAt = Date.parse(String((data as { raised_at?: unknown }).raised_at ?? ''));
+    if (!Number.isFinite(raisedAt)) return false;
+    return Date.now() - raisedAt < REPEAT_AFTER_MS;
+  }
+
+  return true;
 }
 
 export async function recordRaised(
@@ -667,5 +814,14 @@ export async function recordRaised(
   userId: string,
   key: string
 ): Promise<void> {
-  await supabase.from('red_flags_raised').insert({ user_id: userId, flag_key: key });
+  // UPSERT, BECAUSE A 999 FLAG CAN SPEAK AGAIN. The primary key is
+  // (user_id, flag_key), so a second event moves the timestamp rather than
+  // adding a row - and an insert would simply fail on the conflict, leaving the
+  // flag thinking it had never spoken.
+  await supabase
+    .from('red_flags_raised')
+    .upsert(
+      { user_id: userId, flag_key: key, raised_at: new Date().toISOString() },
+      { onConflict: 'user_id,flag_key' }
+    );
 }
