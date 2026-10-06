@@ -413,3 +413,19 @@ So her decks are applied in full as wording, the chip lists stand until she says
 An absent guard is found by looking. A guard described in a comment is not found at all, because the comment answers the question the reader came to ask and they stop looking. This is the same shape as the dev-server memory limit and the suite that could not start: **a statement that stands in for evidence outlives the evidence, and inherits its authority.**
 
 The rule is narrow enough to follow: **a comment may describe a guard only in the commit that adds the guard.** Until then it describes an intention, and says so in those words. (5 October 2026.)
+
+**An instruction not to deflect, with nothing to deflect with, is a wish.** The prompt that writes Selodía's replies forbids one sentence in as many words: *"I never leave you with only 'ask your GP'."* On 6 October Ruth asked how much saturated fat she had eaten, got six real daily totals at last, and was told there was no target set so she should take it to her GP. The rule lost.
+
+It deserved to lose. The model had six numbers and nothing on earth to compare them to, and handing her to a clinician was the only truthful move left on the board. **The reply was not disobedient, it was cornered.** My first instinct was to strengthen the instruction, which would have been the third time of asking and would have failed for the same reason as the first two.
+
+What fixed it was material: published NHS figures in code, beside the column that holds each macro, carried to the model that writes the reply. The model had never needed more discipline. It had needed something to say.
+
+The general form, and it is the twin of "a guard belongs at the write": **before adding force to an instruction, check whether the behaviour it forbids is the only one currently available.** If it is, every rewrite is a wish, and the fix is upstream in what the model is given rather than downstream in what it is told. (6 October 2026.)
+
+**A categorical last line beats a permissive middle paragraph.** The classifier learned to offer a test result as a marker. The instruction was explicit, gave four worked examples, and included the exact sentence Ruth would later type. Eight lines below it, the closing sentence of the same field description read *"Never for a plan, a passing remark, a plain result or a one-off observation."*
+
+A plain result is precisely what a marker is. She said the trigger sentence on her phone and nothing offered to keep it.
+
+The diagnosis is the part worth keeping. Three causes were possible and the database ruled out two before the prompt was opened: her last offer was 10.8 hours old, so not the three-hour limit; no pending row existed, so not an offer stored and never asked; the version endpoint showed the right commit, so not a stale deploy. **Eliminating the cheap causes with evidence is faster than reasoning about the expensive one**, and it is what turned a prompt problem into a three-minute read.
+
+The pattern: **a field description accumulates its prohibitions at the end, and a new capability gets written in the middle.** Adding an ability to a prompt means reading what that prompt already refuses, in full, to the last line, because the last line is categorical and the new paragraph is not. The check now reads the closing sentence specifically rather than the instruction above it. (6 October 2026.)
