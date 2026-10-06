@@ -724,3 +724,21 @@ The setup screen offered seven goals to tick. It looked like a reasonable list. 
 ## 5 October 2026 — The first thing you buy to ship an iPhone app is an iPhone
 
 Apple Developer enrolment was approved, and then every card was declined at "Complete your purchase". Apple's template reply says to re-enrol through their app. The app needs iOS 26. I own no Apple devices, nobody I know does, and my old iPad Air 2 is stuck on iPadOS 15. So I am trying to ship an Apple app for a phone ecosystem I have never touched, and the first thing I am buying is the test device.
+
+---
+
+## 6 October 2026 - The safety feature was switched off until I had read it, and nobody had shown it to me
+
+There are eighteen physical warning signs in my app. Chest pain, stroke signs, a lump, bleeding after the menopause. If someone types one of them, everything stops and the app tells them what to do.
+
+It has never once run. It sits behind a switch, and the switch has a note on it saying it stays off until I have read the list and a clinician has reviewed it. That is the right rule. I asked for the feature and asking for something is not the same as having read eighteen clinical judgements and agreed to them.
+
+Weeks went by. I assumed it was waiting on the clinician, because that is the hard part. Yesterday I asked where the list was so I could read it.
+
+It only existed as code. Nobody had ever put it anywhere I could see it.
+
+So the first gate had been shut the whole time, not because I had refused, but because I had never been given the thing I was supposed to approve. A gate nobody can reach is not a gate. It is a stall with a good reason painted on it.
+
+The list is generated from the code itself now, so what I sign off is what actually runs. The first thing I found when I read it was a phrase that would have told someone with a hangover to call an ambulance. That took about four minutes.
+
+I have approved six of them today. No clinician has seen them yet, and that is written into the app itself so nobody can later claim otherwise.
