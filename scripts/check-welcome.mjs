@@ -178,6 +178,26 @@ check('the first draft is gone, and nobody is sent back to question one', () => 
   return 'first_draft reads as complete';
 });
 
+check('it can be reached on purpose, not only by finishing', () => {
+  // THE ONE THAT WAS MISSING, AND IT IS THE REASON ALL OF THIS SHIPPED
+  // UNREACHABLE. Every case above tested the sequence. None tested that anybody
+  // could get to it. I offered "Redo setup replays it", she chose it, and Redo
+  // setup has not existed since 2 October - she had it deleted after it deleted
+  // her week.
+  const more = readFileSync('mobile/src/app/settings/index.tsx', 'utf8');
+  assert.ok(
+    /onboarding\/welcome/.test(more),
+    'nothing in More reaches the welcome, so it plays once and can never be looked at'
+  );
+  assert.ok(
+    !/Redo my setup|redoSetup/.test(more),
+    'the redo is back, and it is the thing she had removed on 2 October'
+  );
+  const screen = readFileSync('mobile/src/app/onboarding/welcome.tsx', 'utf8');
+  assert.ok(/replay/.test(screen), 'a replay ends in the Body Manual as though she had just finished');
+  return 'a row in More, and a replay goes back where it came from';
+});
+
 check('and this check can fail', () => {
   // The version that navigates from the animation's callback, which is the shape
   // that strands somebody who backgrounds the app.

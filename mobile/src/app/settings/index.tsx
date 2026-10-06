@@ -173,6 +173,26 @@ export default function SettingsHub() {
           detail="Get help or send feedback"
           onPress={() => router.push('/settings/support')}
         />
+        {/* SEEING THE WELCOME AGAIN (Ruth, 6 October 2026).
+            
+            The welcome plays once, after Finish, and she needs to be able to
+            look at it. I offered "Redo setup replays it" last night and she
+            chose it - and Redo setup does not exist. SHE HAD IT DELETED ON
+            2 OCTOBER, after it deleted her week, lost a goal she had just
+            typed, and left five screens with a dead button; the reasoning is
+            written out in settings/profile.tsx, by me. I offered it anyway
+            without checking, which left AFTER FINISH shipped and unreachable.
+
+            THIS IS THE SMALLEST THING THAT WORKS. One screen, played on
+            request, returning where it came from. Nothing is replayed over her
+            answers and no wizard comes back - which is the whole reason the
+            redo went. */}
+        <SettingsRow
+          icon="sparkles-outline"
+          label="See the welcome again"
+          detail="The moment at the end of setup"
+          onPress={() => router.push('/onboarding/welcome?replay=1' as never)}
+        />
         <SettingsRow
           icon="information-circle-outline"
           label="About Selodía"

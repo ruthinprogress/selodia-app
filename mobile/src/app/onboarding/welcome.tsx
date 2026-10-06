@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 
@@ -42,6 +42,21 @@ import {
 // having lost its place.
 
 export default function WelcomeScreen() {
+  /**
+   * A REPLAY GOES BACK WHERE IT CAME FROM (6 October 2026).
+   *
+   * Reached from "See the welcome again" in More rather than from Finish. The
+   * sequence is identical; only the ending differs, because somebody who asked
+   * to look at it has not just finished setup and should not be deposited in the
+   * Body Manual as though she had.
+   *
+   * WHY THE ROW EXISTS AT ALL. I offered "Redo setup replays it" and she chose
+   * it, and Redo setup has not existed since 2 October - she had it deleted
+   * after it deleted her week. So this shipped unreachable.
+   */
+  const params = useLocalSearchParams<{ replay?: string }>();
+  const replaying = (Array.isArray(params.replay) ? params.replay[0] : params.replay) === '1';
+
   const [reduceMotion, setReduceMotion] = useState(false);
   const [ready, setReady] = useState(false);
   const left = useRef(false);
@@ -78,6 +93,12 @@ export default function WelcomeScreen() {
   function leave() {
     if (left.current) return;
     left.current = true;
+    // BACK, NOT ONWARD, FOR A REPLAY. router.back() returns to More; a replace
+    // would strand her in the Body Manual with no sense of how she got there.
+    if (replaying) {
+      router.back();
+      return;
+    }
     router.replace(AFTER_WELCOME_ROUTE as never);
   }
 
