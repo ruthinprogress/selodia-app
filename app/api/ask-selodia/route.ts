@@ -1061,6 +1061,20 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
   //
   // Only what she has actually switched on, so somebody tracking nothing optional
   // pays for no query and is told nothing.
+  /**
+   * THE SAME MACROS, FOR THE WRITER. One list, two readers.
+   *
+   * The block below goes to the classify call and always has. This is what the
+   * model that writes her reply gets, and until today it got nothing - which is
+   * why she was told four times that her log does not hold a figure it holds.
+   */
+  const writerMacros = trackedMacroKeys(profile?.tracked_macros ?? null).map((key) => ({
+    key,
+    column: MACRO_COLUMN[key].column,
+    label: MACRO_COLUMN[key].label,
+    unit: MACRO_COLUMN[key].unit === 'mg sodium' ? 'mg' : 'g',
+  }));
+
   const trackedMacroBlock = await buildTrackedMacroBlock(
     supabase,
     user.id,
@@ -1948,6 +1962,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             measurements: recentMeasurements ?? [],
             lastPeriodStart: lastPeriodRow?.event_date ?? null,
             days: 3,
+            // WHAT SHE TRACKS, FOR THE MODEL THAT ANSWERS (6 October 2026). See
+            // the note on TurnData.trackedMacros: everything built for this went
+            // to the classify call, four times over.
+            trackedMacros: writerMacros,
             // The same two fields the sequential call gets below. See mealExtras.
             today: buildDayStatePrompt(dayState),
             usuallyEats,
@@ -3707,6 +3725,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             // Three days spoken, seven typed - the same window the reads used,
             // so the facts cannot describe a week the query never fetched.
             days: isVoice ? 3 : 7,
+            // AND THE SAME ON THE TYPED PATH, which is the one she uses. Wiring
+            // only one of these two is how a fix reaches half an app.
+            trackedMacros: writerMacros,
             // TODAY'S TARGETS, which this call had never been given. The block
             // was computed for the classify call and the writer - which writes
             // every reply on this path - never saw it, so "what should I eat for

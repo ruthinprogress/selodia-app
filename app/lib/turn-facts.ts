@@ -31,7 +31,34 @@
 //    to be inferred from a short list, because a list somebody has to NOTICE is
 //    empty is what produced "you had a hard session a day or two ago".
 
-type Food = { happened_at: string; raw_text: string; kcal: number | null; protein_g: number | null };
+/**
+ * THE MACRO COLUMNS COME TOO (6 October 2026), and the fourth sitting on one
+ * fault is what put them here.
+ *
+ * Ruth asked four times how much saturated fat she had eaten and was told four
+ * times that her log does not hold it. It holds it. The block that says so was
+ * built, correct, deployed, and handed to the CLASSIFY call - and the model that
+ * writes the words she reads has never had it. It gets foodFacts below, and
+ * foodFacts emitted kcal and protein and nothing else.
+ *
+ * TWO PROMPTS, AND ONLY ONE OF THEM ANSWERS HER. Everything fixed on the 4th,
+ * the 5th and this morning went to the other one.
+ */
+type Food = {
+  happened_at: string;
+  raw_text: string;
+  kcal: number | null;
+  protein_g: number | null;
+  fat_g?: number | null;
+  saturated_fat_g?: number | null;
+  carbs_g?: number | null;
+  sugar_g?: number | null;
+  fibre_g?: number | null;
+  sodium_mg?: number | null;
+};
+
+/** What she has switched on in "What I track". Empty is the ordinary case. */
+export type TrackedMacro = { key: string; column: string; label: string; unit: string };
 type Activity = {
   happened_at: string;
   activity_type: string | null;
@@ -54,6 +81,24 @@ export type TurnData = {
   lastPeriodStart: string | null;
   /** How many days each block covers. Seven typed, three spoken. */
   days: number;
+  /**
+   * THE MACROS SHE HAS SWITCHED ON, so the day lines can carry them.
+   *
+   * ADDED 6 OCTOBER 2026, AND IT IS THE SAME FAULT AS THE ONE BELOW. Read the
+   * note on `targets`: a block built for months and handed to the classify call
+   * only, while the writer - which writes every word she reads - had never seen
+   * it. That was 28 September and it was daily targets.
+   *
+   * This is the second time. She asked four times how much saturated fat she had
+   * eaten. The figures were in the database, the block was built and correct,
+   * the meal lines were widened to carry it this morning, turn_context selects
+   * the columns, and every one of those went to the classifier. foodFacts, which
+   * is what the writer reads, said kcal and protein and nothing else.
+   *
+   * Empty is the ordinary case: somebody tracking nothing optional gets exactly
+   * what they got before.
+   */
+  trackedMacros?: TrackedMacro[];
   /**
    * TODAY'S TARGETS AND WHAT IS LEFT OF THEM, already computed and already
    * worded by app/lib/daily-targets.ts.
@@ -122,16 +167,30 @@ function block(title: string, lines: string[], empty: string): string {
   return `${title}\n${lines.map((l) => `  ${l}`).join('\n')}`;
 }
 
-export function foodFacts(rows: Food[], days: number): string {
+export function foodFacts(rows: Food[], days: number, tracked: TrackedMacro[] = []): string {
   const grouped = byDay(rows, (r) => r.happened_at);
   const avgKcal = meanPerLoggedDay(grouped, (rs: Food[]) => sum(rs.map((r) => r.kcal)));
   const avgProtein = meanPerLoggedDay(grouped, (rs: Food[]) => sum(rs.map((r) => r.protein_g)));
+
+  // WHAT SHE HAS SWITCHED ON, ON THE SAME LINE AS THE CALORIES. Not a separate
+  // block underneath: a block underneath is what the classify call already had,
+  // and the lesson of the meal lines on this very fault is that the model
+  // believes the log over anything written about the log.
+  const macroTotals = (rs: Food[]): string => {
+    const parts = tracked
+      .map((m) => {
+        const total = sum(rs.map((r) => (r as unknown as Record<string, number | null>)[m.column]));
+        return total == null ? null : `${whole(total)}${m.unit} ${m.label}`;
+      })
+      .filter(Boolean);
+    return parts.length > 0 ? `, ${parts.join(', ')}` : '';
+  };
 
   const lines = grouped.map(([key, rs]) => {
     const kcal = whole(sum(rs.map((r) => r.kcal)));
     const protein = whole(sum(rs.map((r) => r.protein_g)));
     const items = rs.map((r) => r.raw_text).filter(Boolean).join('; ');
-    return `${dayName(key)}: ${kcal.toLocaleString('en-GB')} kcal, ${protein} g protein — ${items}`;
+    return `${dayName(key)}: ${kcal.toLocaleString('en-GB')} kcal, ${protein} g protein${macroTotals(rs)} — ${items}`;
   });
 
   const head =
@@ -285,7 +344,7 @@ export function turnFacts(data: TurnData, today: Date = new Date()): string {
   return [
     data.today ?? null,
     eatingHabits(data.usuallyEats),
-    foodFacts(data.food, data.days),
+    foodFacts(data.food, data.days, data.trackedMacros ?? []),
     movementFacts(data.activity, data.dailyBurn, data.days),
     waterFacts(data.drinks, data.days),
     sleepFacts(data.sleep, data.days),

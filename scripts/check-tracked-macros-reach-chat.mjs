@@ -246,5 +246,69 @@ await check('and these two can fail', async () => {
   return 'the old meal line and the old select are both detected';
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// AND THE MODEL THAT ANSWERS HER MUST SEE THEM (6 October 2026).
+//
+// THE FOURTH SITTING, AND THE ONE THAT FOUND IT. Everything above tests the
+// block. The block was right on the 4th, right on the 5th and right this
+// morning. It goes to the CLASSIFY call.
+//
+// The writer - the model that composes the words she reads - is handed
+// turnFacts(), and foodFacts() inside it emitted kcal and protein and nothing
+// else. So she asked four times how much saturated fat she had eaten and was
+// told four times that her log does not hold it.
+//
+// THE SAME FAULT WAS FOUND ON 28 SEPTEMBER for daily targets, and the note on
+// TurnData.targets says so in as many words: built for months and handed to the
+// classify call only. Twice now.
+
+await check('the writer is given the macros, not just the classifier', async () => {
+  const { turnFacts } = await import(root + '/app/lib/turn-facts.ts');
+  const tracked = [
+    { key: 'saturated', column: 'saturated_fat_g', label: 'saturated fat', unit: 'g' },
+  ];
+  const food = [
+    { happened_at: '2026-10-05T08:00:00Z', raw_text: 'porridge', kcal: 300, protein_g: 10, saturated_fat_g: 4 },
+    { happened_at: '2026-10-05T19:00:00Z', raw_text: 'cheese sandwich', kcal: 500, protein_g: 20, saturated_fat_g: 13 },
+  ];
+  const base = {
+    activity: [], dailyBurn: [], drinks: [], sleep: [], measurements: [],
+    lastPeriodStart: null, days: 7,
+  };
+
+  const withMacros = turnFacts({ ...base, food, trackedMacros: tracked });
+  assert.ok(
+    /17g saturated fat/.test(withMacros),
+    'the writer sees no saturated fat on the day line, which is the whole fault'
+  );
+
+  // AND SOMEBODY TRACKING NOTHING SEES EXACTLY WHAT THEY SAW BEFORE.
+  const without = turnFacts({ ...base, food, trackedMacros: [] });
+  assert.ok(!/saturated fat/.test(without), 'a macro appears for somebody who never switched it on');
+  assert.ok(/g protein/.test(without), 'the ordinary line has been broken');
+  return 'on the day line, beside the calories';
+});
+
+await check('the route hands them to the writer on BOTH paths', async () => {
+  // Wiring one of two is how a fix reaches half an app. One is voice, one is
+  // typed, and the typed one is the one she uses.
+  const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  const uses = route.match(/trackedMacros: writerMacros/g) ?? [];
+  assert.strictEqual(uses.length, 2, `trackedMacros reaches ${uses.length} of the 2 writer calls`);
+  assert.ok(/const writerMacros/.test(route), 'the writer list is not built');
+  return 'voice and typed';
+});
+
+await check('and this one can fail', async () => {
+  const { foodFacts } = await import(root + '/app/lib/turn-facts.ts');
+  const food = [
+    { happened_at: '2026-10-05T08:00:00Z', raw_text: 'porridge', kcal: 300, protein_g: 10, saturated_fat_g: 4 },
+  ];
+  // The shipped version: no macros passed, so none rendered.
+  const asShipped = foodFacts(food, 7);
+  assert.ok(!/saturated fat/.test(asShipped), 'the fixture is not the old behaviour');
+  return 'the version she hit four times is detected';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
