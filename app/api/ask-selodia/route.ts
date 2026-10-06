@@ -774,6 +774,41 @@ export async function POST(request: NextRequest) {
   // are built separately rather than one being reused for both. A block that
   // names a field name has no business in front of the model that writes to
   // her.
+  /**
+   * THE CARE RECORD FOR THE WRITER, which is the model that answers her.
+   *
+   * ITS TWIN ABOVE GOES TO THE CLASSIFIER ONLY, and I built it that way this
+   * morning - four hours after finding that exact fault in the macros, and while
+   * writing the commit message about it. The Care record would have been the
+   * third thing in two weeks that was assembled perfectly and handed to the half
+   * of the pipeline that does not speak.
+   *
+   * WHY IT IS A SEPARATE STRING RATHER THAN THE SAME ONE. Same reason meFactsBlock
+   * exists beside meCardsBlock: the classify version carries instructions about
+   * emitting a save, which are correct for a model with a tool and catastrophic
+   * for one that can only write prose. This is the facts and the two rules that
+   * are about speaking.
+   */
+  const careFactsBlock =
+    (careRows ?? []).length > 0
+      ? [
+          '',
+          'YOUR CARE RECORD: the details you need in order to get care, kept so the letter is not needed. References you may be asked for at a reception desk or on the telephone, who you are under and how to reach them, and what was said, decided and arranged.',
+          'WHEN YOU ASK FOR ONE OF THESE, I GIVE IT STRAIGHT AWAY. A number to read out, a date, a name, the route back in. No preamble and no checking whether you are sure.',
+          'I DO NOT RAISE ANY OF IT UNPROMPTED. It comes up when you raise it or ask for it, and never in a conversation about something else.',
+          ...(careRows ?? []).flatMap((r) => {
+            const c = (r.content ?? {}) as Record<string, unknown>;
+            const why = typeof c.why === 'string' ? c.why : null;
+            const detail = typeof c.detail === 'string' ? c.detail : null;
+            const lines = [`- ${r.title}${r.category ? ` (${r.category})` : ''}`];
+            if (why) lines.push(`    about: ${why}`);
+            if (detail) lines.push(`    ${detail.replace(/\n/g, '\n    ')}`);
+            return lines;
+          }),
+          '',
+        ].join('\n')
+      : '';
+
   const meFactsBlock =
     (meRows ?? []).length > 0
       ? [
@@ -1978,7 +2013,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           safetyBlock: SAFETY_PROMPT_BLOCK,
           // The same context the sequential call gets. A spoken turn that
           // cannot see her Me tab gives the same wrong answer as a typed one.
-          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
+          extraBlocks: [meFactsBlock, careFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
         })
       : null;
 
@@ -3753,7 +3788,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // it was given has food, movement, water, sleep, measurements and
           // cycle, and nothing else. It was obeying the baseline instruction
           // to say only what the record shows.
-          extraBlocks: [meFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
+          extraBlocks: [meFactsBlock, careFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's
