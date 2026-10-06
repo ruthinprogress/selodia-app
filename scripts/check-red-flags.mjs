@@ -59,19 +59,12 @@ const MATCHER_CHECKS = [
     (m) => m("I've got chest pain")?.flag.urgency === '999',
   ],
   [
-    'bleeding after the menopause gets the GP line',
-    (m) => {
-      const hit = m("I've had some bleeding after my menopause");
-      return hit?.flag.key === 'postmenopausal_bleeding' && hit.flag.urgency === 'gp';
-    },
-  ],
-  [
     'a swollen calf gets 111',
     (m) => m('my calf is swollen and hot')?.flag.urgency === '111',
   ],
   [
-    'a month of bloating gets the GP line',
-    (m) => m("I've been bloated for about a month")?.flag.key === 'persistent_bloating',
+    'a bump to the head with dizziness gets 111',
+    (m) => m('I bumped my head and I feel dizzy')?.flag.urgency === '111',
   ],
   [
     'SOMEBODY ELSE having it is not her having it',
@@ -107,13 +100,20 @@ const INFORMATIONAL = [
   'is chest pain always serious?',
   'what causes dizziness?',
   'is a headache after exercise normal?',
-  'what does bleeding after the menopause usually mean?',
   'why do some people get swollen calves?',
-  'are breast lumps usually harmless?',
-  'how long does a cough normally last?',
-  'what causes bloating in women over 40?',
-  'does everyone lose weight during menopause?',
   'can exercise cause fainting?',
+  // THE GP ONES ARE GONE WITH THE GP TIER (Ruth, 6 October 2026): "remove the
+  // detector and the approved-text structure entirely. Prompt only."
+  //
+  // Four questions used to live here - about lumps, coughs, bloating, weight
+  // loss and bleeding after the menopause. With nothing at that tier left to
+  // fire, they proved that a detector with no flags fires nothing, which the
+  // suite correctly reported as testing nothing at all.
+  //
+  // THOSE SYMPTOMS ARE NOT UNHANDLED. They moved into the prompt, and five of
+  // them are named there as things not to wait on. A probe on 6 October had the
+  // prompt alone answering a lump with "worth getting checked soon rather than
+  // waiting to see what happens" - which is what the detector was for.
 ];
 
 const INFORMATIONAL_CHECKS = INFORMATIONAL.map((q) => [
@@ -124,13 +124,20 @@ const INFORMATIONAL_CHECKS = INFORMATIONAL.map((q) => [
 // AND THE OTHER HALF, because a matcher that answers null to everything would
 // pass all ten above. These are the same symptoms, reported rather than asked
 // about, and every one must still fire.
+//
+// THE GP REPORTS ARE GONE WITH THE GP TIER (Ruth, 6 October 2026). A lump,
+// bloating, a long cough and bleeding after the menopause used to be here. They
+// are not unhandled: they moved into the prompt, and five of them are named
+// there as things not to wait on. A probe the same day had the prompt alone
+// answering a lump with "worth getting checked soon rather than waiting to see
+// what happens", which is what the detector was for.
 const STILL_FIRES = [
   ["I've got chest pain", '999'],
+  ["I've got crushing chest pain and my left arm feels weak", '999'],
+  ["I've lost my vision in one eye", '999'],
   ['my calf is swollen and hot', '111'],
-  ["I've had some bleeding after my menopause", 'gp'],
-  ["I've found a lump in my breast", 'gp'],
-  ["I've been bloated for about a month", 'gp'],
-  ["I've been coughing for weeks now", 'gp'],
+  ['I bumped my head and I feel dizzy', '111'],
+  ['I am bleeding heavily and I feel faint', '111'],
 ];
 
 const STILL_FIRES_CHECKS = STILL_FIRES.map(([said, urgency]) => [
@@ -194,10 +201,15 @@ const SANITY = [
     () => matchRedFlag('I bumped my head on the cupboard door') === null,
   ],
   [
-    'dizziness alone is the GP flag, not the 111',
+    'dizziness alone raises nothing now',
     () => {
-      const hit = matchRedFlag("I've been feeling dizzy for a few days");
-      return hit !== null && hit.flag.urgency === 'gp';
+      // IT WAS A GP FLAG FOR AN HOUR. She asked for dizziness and vertigo at the
+      // GP tier, then removed that whole tier in the same sitting - and this is
+      // the better outcome, because "dizzy" is a common word and the gentlest
+      // line still interrupts. The prompt handles it, and her body-literacy
+      // answer about standing up too fast lives there rather than in a fixed
+      // string.
+      return matchRedFlag("I've been feeling dizzy for a few days") === null;
     },
   ],
   [
@@ -207,7 +219,8 @@ const SANITY = [
       // alone must not be enough, and the symptom alone must not reach it.
       const injuryOnly = matchRedFlag('I banged my head getting out of the car');
       const symptomOnly = matchRedFlag('I have vertigo');
-      return injuryOnly === null && symptomOnly !== null && symptomOnly.flag.urgency === 'gp';
+      const both = matchRedFlag('I banged my head and I feel dizzy');
+      return injuryOnly === null && symptomOnly === null && both?.flag.urgency === '111';
     },
   ],
   // ─────────────────────────────────────────────────────────────────────────
@@ -298,10 +311,11 @@ const SANITY = [
     'the present perfect is still a report',
     () => {
       // THE CASE THAT CAUGHT ME. I put "i've had" on the not-now list and it
-      // killed "I've had some bleeding after my menopause", which is a present
-      // report and one of the five things not to wait on.
-      const hit = matchRedFlag("I've had some bleeding after my menopause");
-      return hit !== null;
+      // killed "I've had some bleeding after my menopause" - a present report in
+      // the present perfect. That symptom is prompt-only now, so the case moves
+      // to one the detector still owns, and the lesson it taught is unchanged.
+      const hit = matchRedFlag("I've had chest pain all morning");
+      return hit !== null && hit.flag.urgency === '999';
     },
   ],
   [

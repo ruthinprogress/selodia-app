@@ -44,22 +44,59 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // that can be talked out of mentioning chest pain is worse than no rule.
 
 /**
- * OFF UNTIL RUTH HAS READ THE LIST **AND** A CLINICIAN HAS REVIEWED IT.
+ * ON SINCE 6 OCTOBER 2026, ON HER WRITTEN APPROVAL AND NOT A CLINICIAN'S.
  *
- * Two gates, not one, and the first is the one I nearly skipped: she asked for
- * this to be built, which is not the same as having seen eighteen clinical
- * judgements and agreed to them.
+ * Her words, in full, which are the authority for this line being true:
  *
- * A SWITCH RATHER THAN AN UNMERGED BRANCH, so the code travels with everything
- * else, is covered by the checks, and cannot rot - and so turning it on is one
- * line rather than a rebase. Turning it on is a clinical decision, not an
- * engineering one.
+ *   "approved, six 999 flags, no clinician has reviewed them"
  *
- * WHAT IS UNAFFECTED BY THIS FLAG: the five-tier safety machine, which owns
- * distress and self-harm and has always been on. This switch governs the new
- * physical red flags only.
+ * And the decision that sets the terms, from the same day:
+ *
+ *   "Option 2, with a change. I'll approve the six 999 flags myself, in
+ *   writing, once the fixes below are made. No clinician has reviewed them.
+ *   Record that in the repo. A clinician reviews before any beta users."
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * WHAT IS STILL OWED, AND IT IS A CONDITION OF THIS BEING ON:
+ *
+ *   A CLINICIAN REVIEWS BEFORE ANY BETA USER. Not before Ruth uses it - she has
+ *   decided for herself, which is hers to do on her own account - but before
+ *   anybody else is exposed to it. She has put that review alongside the other
+ *   work gated by funding.
+ *
+ *   NEEDS_CLINICIAN_REVIEW names the one flag written out of a conversation
+ *   rather than carried in from the original set, and it should be read first.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * WHAT THIS SWITCH ACTUALLY TURNS ON: eleven flags, not six. Six at 999, which
+ * are what she approved in writing, and five at 111, which she read the same day
+ * and called "very good" before adding two of them herself. The GP tier no
+ * longer exists - she removed it, and those symptoms are handled by the prompt.
+ *
+ * WHAT IS UNAFFECTED: the five-tier safety machine, which owns distress and
+ * self-harm and has always been on. This governs the physical flags only.
+ *
+ * WHY IT WAS OFF FOR WEEKS. Two gates, and the first one - "Ruth has read the
+ * list" - stayed shut on a list nobody had put in front of her. It existed only
+ * as code until she asked where it was. A gate nobody can reach is not a gate,
+ * it is a stall.
  */
-export const RED_FLAGS_LIVE = false;
+export const RED_FLAGS_LIVE = true;
+
+/**
+ * HER APPROVAL, VERBATIM, so the claim above has something behind it.
+ *
+ * A date and a sentence, kept in the code rather than in a commit message,
+ * because this is the record somebody will want if they ever ask on what
+ * authority an app told a woman to call an ambulance.
+ */
+export const RUTH_APPROVAL = {
+  date: '2026-10-06',
+  said: 'approved, six 999 flags, no clinician has reviewed them',
+  tiers: ['999'] as const,
+  clinicianReviewed: false,
+  clinicianRequiredBefore: 'any beta user',
+} as const;
 
 /**
  * WHAT RUTH HAS REVIEWED, AND WHEN. The first gate, in writing.
@@ -283,78 +320,6 @@ export const RED_FLAGS: RedFlag[] = [
 
   // ---------------------------------------------------------------- GP
   {
-    key: 'postmenopausal_bleeding',
-    urgency: 'gp',
-    name: 'Bleeding after the menopause',
-    // THE MOST IMPORTANT ITEM ON THIS LIST FOR THIS AUDIENCE. NHS: see a GP if
-    // you have noticed bleeding after your menopause, "even if it's only a
-    // small amount or it's only happened once". A referral is then seen within
-    // two weeks.
-    phrases: [
-      'bleeding after my menopause',
-      'bleeding since my menopause',
-      'bled after the menopause',
-      'spotting after my menopause',
-      'bleeding and i went through the menopause',
-      'bleeding and my periods stopped',
-    ],
-  },
-  {
-    key: 'breast_change',
-    urgency: 'gp',
-    name: 'A new breast lump or nipple change',
-    phrases: ['lump in my breast', 'breast lump', 'my nipple has changed', 'nipple has inverted'],
-  },
-  {
-    key: 'new_lump',
-    urgency: 'gp',
-    name: 'Any new lump',
-    phrases: ['found a lump', 'new lump', 'theres a lump', "there's a lump"],
-  },
-  {
-    key: 'irregular_bleeding',
-    urgency: 'gp',
-    name: 'Bleeding between periods or after sex',
-    phrases: ['bleeding between periods', 'bleeding after sex', 'spotting between periods'],
-  },
-  {
-    key: 'persistent_bloating',
-    urgency: 'gp',
-    name: 'Bloating for three weeks or more',
-    // The ovarian cancer picture, and routinely dismissed as "just
-    // perimenopause" - which is precisely why an app for this audience should
-    // be the thing that does not dismiss it.
-    phrases: [
-      'bloated for weeks',
-      'bloated for a month',
-      'bloated for about a month',
-      'bloating for weeks',
-      'been bloated for three weeks',
-    ],
-  },
-  {
-    key: 'blood_in_urine_or_stool',
-    urgency: 'gp',
-    name: 'Blood in urine or stool',
-    phrases: ['blood in my urine', 'blood in my wee', 'blood in my stool', 'blood in my poo'],
-  },
-  {
-    key: 'unexplained_weight_loss',
-    urgency: 'gp',
-    name: 'Unexplained weight loss',
-    phrases: [
-      'losing weight without trying',
-      'lost weight without trying',
-      'weight is falling off me',
-    ],
-  },
-  {
-    key: 'changed_mole',
-    urgency: 'gp',
-    name: 'A mole that has changed',
-    phrases: ['mole has changed', 'mole is changing', 'mole has got bigger'],
-  },
-  {
     // HERS, 6 October 2026: "I would add more - bumped my head and feel dizzy."
     //
     // TWO FACTS, NOT ONE. A bump on the head alone is an ordinary day and this
@@ -420,34 +385,31 @@ export const RED_FLAGS: RedFlag[] = [
     alsoNeeds: ['dizzy', 'dizziness', 'light headed', 'light-headed', 'lightheaded'],
   },
   // ---------------------------------------------------------------- gp
-  {
-    // HERS, in the same message: "add to GP list: dizzyness and vertigo set."
-    //
-    // THE GENTLEST TIER ON PURPOSE. Dizziness has a long list of ordinary causes
-    // and a few that matter, and in this audience low iron and perimenopause are
-    // near the top of the ordinary ones. "Worth getting checked" is the honest
-    // weight for it.
-    key: 'dizziness_vertigo',
-    urgency: 'gp',
-    name: 'Dizziness or vertigo',
-    phrases: [
-      'dizzy',
-      'dizziness',
-      'vertigo',
-      'light headed',
-      'light-headed',
-      'lightheaded',
-      'room is spinning',
-      'everything is spinning',
-      'the room spins',
-    ],
-  },
-  {
-    key: 'persistent_cough',
-    urgency: 'gp',
-    name: 'A cough lasting three weeks or more',
-    phrases: ['cough for weeks', 'coughing for weeks', 'cough for over three weeks'],
-  },
+  //
+  // THERE IS NO GP TIER ANY MORE (Ruth, 6 October 2026):
+  //
+  //   "GP tier (10 flags): remove the detector and the approved-text structure
+  //   entirely. Prompt only."
+  //
+  // TEN FLAGS CAME OUT OF HERE. Bleeding after the menopause, a new breast lump,
+  // any new lump, bleeding between periods, bloating for three weeks, blood in
+  // urine or stool, unexplained weight loss, a changing mole, dizziness or
+  // vertigo, and a cough lasting three weeks.
+  //
+  // NOTHING IS LOST. Her "When something sounds physical" section carries them:
+  // five are named there as things not to wait on, and the rest get the ordinary
+  // treatment - explain, record, keep talking, go if it persists. A probe on 6
+  // October showed the prompt alone answering a lump with "worth getting checked
+  // soon rather than waiting to see what happens", which is the behaviour the
+  // detector existed to force.
+  //
+  // WHY SHE WAS RIGHT TO CUT IT. "It's one more fixed body of text for the model
+  // to read and get clogged on, which is the same problem as the deflection
+  // rule." Ten detectors each with their own approved paragraph is answering a
+  // prompt problem with more prompt, which is the mistake that caused all of
+  // this in the first place.
+  //
+  // THE DETECTOR NOW HOLDS ONLY WHAT INTERRUPTS: six at 999, five at 111.
 ];
 
 // THE LINES. Fixed, and the same every time, which is the point of a
