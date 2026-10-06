@@ -196,7 +196,7 @@ export function foodFacts(rows: Food[], days: number, tracked: TrackedMacro[] = 
   const head =
     grouped.length === 0
       ? `FOOD, last ${days} days: nothing logged on any day.`
-      : `FOOD, last ${days} days: logged on ${grouped.length} of ${days} days. Daily average ON LOGGED DAYS ${whole(avgKcal ?? 0).toLocaleString('en-GB')} kcal and ${whole(avgProtein ?? 0)} g protein. That average covers only the days with something on them — a day with nothing logged is a day she did not record, never a day she did not eat.`;
+      : `FOOD, last ${days} days: logged on ${grouped.length} of ${days} days. Daily average ON LOGGED DAYS ${whole(avgKcal ?? 0).toLocaleString('en-GB')} kcal and ${whole(avgProtein ?? 0)} g protein. That average covers only the days with something on them — a day with nothing logged is a day they did not record, never a day they did not eat.`;
   return block(head, lines, 'nothing logged.');
 }
 
@@ -227,7 +227,7 @@ export function movementFacts(activity: Activity[], burn: DailyBurn[], days: num
   const sessionCount = activity.length;
   const head =
     stepValues.length === 0 && sessionCount === 0
-      ? `MOVEMENT, last ${days} days: nothing at all is recorded — no steps and no sessions. You may not say she trained, exercised or had a hard session. There is nothing in the record to say it from.`
+      ? `MOVEMENT, last ${days} days: nothing at all is recorded — no steps and no sessions. You may not say they trained, exercised or had a hard session. There is nothing in the record to say it from.`
       : `MOVEMENT, last ${days} days: ${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'} logged${avgSteps != null ? `, and steps on ${stepValues.length} of ${days} days averaging ${avgSteps.toLocaleString('en-GB')}` : ', and no step counts recorded'}. STEPS ARE MOVEMENT: a day with steps and no session is not a day without movement, and must never be described as one.`;
   return block(head, lines, 'nothing recorded.');
 }
@@ -239,7 +239,7 @@ export function waterFacts(rows: Drink[], days: number): string {
   const head =
     grouped.length === 0
       ? `WATER, last ${days} days: nothing logged.`
-      : `WATER, last ${days} days: logged on ${grouped.length} of ${days} days, averaging ${whole(avg ?? 0).toLocaleString('en-GB')} ml on those days. A day with nothing logged means nothing was tapped, NOT that she drank nothing — never describe an unlogged day as a dry one, and do not call an average low or high, just say what it is.`;
+      : `WATER, last ${days} days: logged on ${grouped.length} of ${days} days, averaging ${whole(avg ?? 0).toLocaleString('en-GB')} ml on those days. A day with nothing logged means nothing was tapped, NOT that they drank nothing — never describe an unlogged day as a dry one, and do not call an average low or high, just say what it is.`;
   return block(head, lines, 'nothing logged.');
 }
 
@@ -256,8 +256,8 @@ export function sleepFacts(rows: Sleep[], days: number): string {
     });
   const head =
     rows.length === 0
-      ? `SLEEP, last ${days} days: nothing logged. A night that is not here was not recorded, which says nothing about how she slept — never read a gap as a bad night or a good one.`
-      : `SLEEP, last ${days} days: ${rows.length} ${rows.length === 1 ? 'night' : 'nights'} recorded. A night that is not here was not recorded, which says nothing about how she slept.`;
+      ? `SLEEP, last ${days} days: nothing logged. A night that is not here was not recorded, which says nothing about how they slept — never read a gap as a bad night or a good one.`
+      : `SLEEP, last ${days} days: ${rows.length} ${rows.length === 1 ? 'night' : 'nights'} recorded. A night that is not here was not recorded, which says nothing about how they slept.`;
   return block(head, lines, 'nothing logged.');
 }
 

@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
   try {
     data = await loadReport(db, user.id, selection);
   } catch (err) {
-    console.log('REPORT: could not read her data -', err instanceof Error ? err.message : err);
+    console.log('REPORT: could not read their data -', err instanceof Error ? err.message : err);
     return NextResponse.json(
       { error: 'Could not read your data just now. Check your connection and try again.' },
       { status: 503 }

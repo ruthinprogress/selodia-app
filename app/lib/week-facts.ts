@@ -68,12 +68,12 @@ export function weekFacts(rows: unknown): string {
 
   return [
     '',
-    'WHAT IS IN HER WEEK, on the Plans tab. This is her own week, not a plan you made:',
+    'WHAT IS IN THEIR WEEK, on the Plans tab. This is their own week, not a plan you made:',
     ...lines,
     // NOT EVERYTHING HERE IS EXERCISE, and reading it as if it were produces
     // nonsense. Ruth's own example: a French class is in her week precisely
     // because it takes an evening that movement could otherwise have had.
-    'Some of these are not exercise. Something can be in her week because it OCCUPIES time rather than because it is training - a class, a commitment, a standing arrangement - and that is worth knowing when you talk about where something else could fit.',
+    'Some of these are not exercise. Something can be in their week because it OCCUPIES time rather than because it is training - a class, a commitment, a standing arrangement - and that is worth knowing when you talk about where something else could fit.',
     '',
   ].join('\n');
 }

@@ -37,7 +37,19 @@
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+const routeRaw = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+/**
+ * COMMENTS STRIPPED BEFORE ANYTHING IS PARSED.
+ *
+ * The first version read the writer's list by splitting on commas, and a comment
+ * sitting directly above an entry ended up glued to it - so `healthContextBlock`
+ * parsed as a sentence about healthContextBlock and the check reported it
+ * stranded while it was wired correctly. That is the fourth time this week a
+ * check has read its own documentation.
+ */
+const route = routeRaw
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
 const chatPath = readFileSync('app/lib/chat-path.ts', 'utf8');
 
 let pass = 0;
@@ -73,36 +85,31 @@ const CLASSIFY_ONLY = {
 };
 
 /**
- * FOUND BY THIS CHECK ON ITS FIRST RUN, AND NOT YET RESOLVED.
+ * EMPTY, AND IT WAS FIVE ITEMS LONG FOR ABOUT AN HOUR.
  *
- * Each of these reaches the classifier and not the writer. I have not
- * established, one way or the other, whether the writer needs it - and writing
- * a reason I have not checked into the list above would be the exact thing this
- * file exists to stop: a statement standing in for evidence.
+ * The check found eight blocks reaching the classifier and not the writer on its
+ * first run. Three had a legitimate route to the writer already and are named in
+ * CLASSIFY_ONLY above. The other five were read, one at a time, and every one of
+ * them turned out to be writer-facing:
  *
- * So they are named, counted and printed on every run until somebody settles
- * them. A new block cannot join this list by accident; it has to be put here.
+ *   allergyBlock        "Never suggest, recommend or include any of them." A
+ *                       constraint on what the model SUGGESTS, given only to the
+ *                       model that suggests nothing. The four-layer allergy gate
+ *                       behind it is code and caught every bad suggestion, so
+ *                       nothing unsafe reached her - layer one was simply absent
+ *                       and the other three were carrying it.
+ *   rulesBlock          the same shape, for movements.
+ *   healthContextBlock  "Gently flag saturated fat rather than treating it as
+ *                       expendable." Instructions about how to talk.
+ *   yesterdayBlock      "Say it once, warmly, as context rather than as
+ *                       reassurance they asked for."
+ *   longHistoryBlock    six months of monthly averages. "How was my weight in
+ *                       August?" could not be answered.
  *
- * MY CURRENT READING, to be checked rather than believed:
- *
- *   allergyBlock         the writer suggests food. The allergy gate is code and
- *                        catches a bad suggestion after the fact, so this fails
- *                        safe - but it produces a worse reply than knowing would.
- *                        Most likely a real hole.
- *   rulesBlock           same shape, for movements, with the rules gate behind it.
- *   longHistoryBlock     six months summarised. "How was I in August?" is a
- *                        question the writer cannot answer today.
- *   healthContextBlock   unknown. Needs reading.
- *   yesterdayBlock       probably covered by the seven-day blocks in turnFacts,
- *                        not confirmed.
+ * A NEW ENTRY HERE IS A DECISION SOMEBODY WROTE DOWN, not a hole that drifted
+ * open. Anything not here and not in CLASSIFY_ONLY fails this check outright.
  */
-const UNRESOLVED = [
-  'allergyBlock',
-  'rulesBlock',
-  'longHistoryBlock',
-  'healthContextBlock',
-  'yesterdayBlock',
-];
+const UNRESOLVED = [];
 
 check('every record block the classifier gets has a way to the writer', () => {
   // The blocks interpolated into personContext.

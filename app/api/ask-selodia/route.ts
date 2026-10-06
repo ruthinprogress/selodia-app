@@ -2013,7 +2013,46 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           safetyBlock: SAFETY_PROMPT_BLOCK,
           // The same context the sequential call gets. A spoken turn that
           // cannot see her Me tab gives the same wrong answer as a typed one.
-          extraBlocks: [meFactsBlock, careFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
+          // ALLERGIES AND MOVEMENT RULES REACH THE WRITER TOO (6 October 2026).
+          //
+          // Both are pure constraints on what the model may SUGGEST, with no tool
+          // instructions in them, and the writer is the model that suggests
+          // things. They had gone to the classifier alone since they were built.
+          //
+          // THE GATES BEHIND THEM ARE CODE AND DID THEIR JOB. A reply naming an
+          // allergen is caught and a movement on the never list is removed, so
+          // nothing unsafe reached her. What reached her was a worse reply:
+          // suggestions composed by something that had never been told what she
+          // cannot eat, then corrected after the fact. Layer one of four was
+          // simply absent, and the other three were carrying it.
+          extraBlocks: [
+            meFactsBlock,
+            careFactsBlock,
+            allergyBlock,
+            rulesBlock,
+            // THE OTHER THREE THE GUARD FOUND, each read before being wired
+            // rather than bulk-added:
+            //
+            //   healthContextBlock  entirely writer-facing. "Protect oats,
+            //                       lentils and apples", "gently flag saturated
+            //                       fat rather than treating it as expendable",
+            //                       "never frame this as a food being bad".
+            //                       Instructions about how to talk, given only
+            //                       to the model that does not talk.
+            //   yesterdayBlock      "Say it once, warmly, as context rather than
+            //                       as reassurance they asked for." There is no
+            //                       reading of that sentence where it belongs to
+            //                       the classifier.
+            //   longHistoryBlock    six months of monthly averages. "How was my
+            //                       weight in August?" was unanswerable.
+            healthContextBlock,
+            yesterdayBlock,
+            longHistoryBlock,
+            lifeStageBlock,
+            weekBlock,
+            skillBlock,
+            feelBlock,
+          ],
         })
       : null;
 
@@ -3788,7 +3827,46 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // it was given has food, movement, water, sleep, measurements and
           // cycle, and nothing else. It was obeying the baseline instruction
           // to say only what the record shows.
-          extraBlocks: [meFactsBlock, careFactsBlock, lifeStageBlock, weekBlock, skillBlock, feelBlock],
+          // ALLERGIES AND MOVEMENT RULES REACH THE WRITER TOO (6 October 2026).
+          //
+          // Both are pure constraints on what the model may SUGGEST, with no tool
+          // instructions in them, and the writer is the model that suggests
+          // things. They had gone to the classifier alone since they were built.
+          //
+          // THE GATES BEHIND THEM ARE CODE AND DID THEIR JOB. A reply naming an
+          // allergen is caught and a movement on the never list is removed, so
+          // nothing unsafe reached her. What reached her was a worse reply:
+          // suggestions composed by something that had never been told what she
+          // cannot eat, then corrected after the fact. Layer one of four was
+          // simply absent, and the other three were carrying it.
+          extraBlocks: [
+            meFactsBlock,
+            careFactsBlock,
+            allergyBlock,
+            rulesBlock,
+            // THE OTHER THREE THE GUARD FOUND, each read before being wired
+            // rather than bulk-added:
+            //
+            //   healthContextBlock  entirely writer-facing. "Protect oats,
+            //                       lentils and apples", "gently flag saturated
+            //                       fat rather than treating it as expendable",
+            //                       "never frame this as a food being bad".
+            //                       Instructions about how to talk, given only
+            //                       to the model that does not talk.
+            //   yesterdayBlock      "Say it once, warmly, as context rather than
+            //                       as reassurance they asked for." There is no
+            //                       reading of that sentence where it belongs to
+            //                       the classifier.
+            //   longHistoryBlock    six months of monthly averages. "How was my
+            //                       weight in August?" was unanswerable.
+            healthContextBlock,
+            yesterdayBlock,
+            longHistoryBlock,
+            lifeStageBlock,
+            weekBlock,
+            skillBlock,
+            feelBlock,
+          ],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most
     // expensive turn on this route - this call's tokens, and then the old path's

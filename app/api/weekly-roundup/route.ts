@@ -366,7 +366,7 @@ export async function POST(req: NextRequest) {
   const drinkTotals = [...drinkDays.values()];
   const water =
     drinkTotals.length === 0
-      ? 'DRINKS THIS WEEK: nothing was logged. That is a gap in the record and says nothing about what she drank.'
+      ? 'DRINKS THIS WEEK: nothing was logged. That is a gap in the record and says nothing about what they drank.'
       : `DRINKS THIS WEEK: logged on ${drinkTotals.length} of ${WEEK_DAYS} days, averaging ${Math.round(
           drinkTotals.reduce((a, b) => a + b, 0) / drinkTotals.length
         )} ml on the days with a drink logged. Day by day: ${[...drinkDays.entries()]
@@ -441,13 +441,13 @@ export async function POST(req: NextRequest) {
         ).toLocaleString('en-GB')} to ${Math.max(...stepDays).toLocaleString('en-GB')}, averaging ${Math.round(
           stepDays.reduce((a, b) => a + b, 0) / stepDays.length
         ).toLocaleString('en-GB')} a day. A DAY WITH STEPS AND NO SESSION IS NOT A DAY WITHOUT MOVEMENT, and must never be described as one.`
-      : 'STEPS THIS WEEK: none were recorded. That is a gap in the record and says nothing about how much she moved.',
+      : 'STEPS THIS WEEK: none were recorded. That is a gap in the record and says nothing about how much they moved.',
     '',
     water,
     '',
-    `WHAT SHE AGREED TO KEEP THIS WEEK (already in her Almanac):\n${kept}`,
+    `WHAT THEY AGREED TO KEEP THIS WEEK (already in their Almanac):\n${kept}`,
     '',
-    `WHAT SHE SAID THIS WEEK, in her own words:\n${said}`,
+    `WHAT THEY SAID THIS WEEK, in their own words:\n${said}`,
     '',
     `STANDING CONTEXT:\n${(context ?? []).map((c) => `${c.category}: ${c.content}`).join('\n') || '(none)'}`,
     '',
@@ -478,7 +478,7 @@ export async function POST(req: NextRequest) {
       tools: [
         {
           name: 'weekly_roundup',
-          description: "The week's roundup, in your voice, and the witness statements for her Almanac.",
+          description: "The week's roundup, in your voice, and the witness statements for their Almanac.",
           input_schema: {
             type: 'object',
             properties: {

@@ -297,7 +297,7 @@ WHAT TO WRITE
 Two or three short paragraphs saying what the records show when read together. What recurs, and in what circumstances. What the written entries describe. What is thin or missing, said plainly, because it tells the reader how much weight to put on the rest.
 
 RULES
-1. No figures. This is checked, and any sentence containing one is deleted before she sees it.
+1. No figures. This is checked, and any sentence containing one is deleted before they sees it.
 2. Do not diagnose, and do not suggest a cause. "Swelling was noted after long periods seated" is the record. "Swelling was likely venous insufficiency" is not, however plausible.
 3. Do not advise. Somebody else in the room does that.
 4. Say what is absent as readily as what is present. A gap is information.

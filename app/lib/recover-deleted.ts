@@ -67,9 +67,9 @@ export function recoverablePrompt(rows: RecoverableRow[]): string | null {
     return `  ${r.id}  ${r.label}  (deleted ${when})`;
   });
   return [
-    `THINGS SHE DELETED AND CAN STILL GET BACK. Kept for ${RECOVERY_DAYS} days from deletion, then gone for good. If she asks for any of these back - "bring back Thursday's weight", "undo what I deleted", "I didn't mean to remove that" - set restoreId to the id on the matching line and say nothing about whether it worked: the app does the restoring and tells her itself, as it does with every other write.`,
-    'Match on what she means, not on exact words, and if two lines could be what she means ASK which rather than guessing - restoring the wrong one puts a number back on a day she did not ask about. If nothing here matches, say plainly that you cannot see it rather than offering to try.',
-    'These are ALREADY DELETED. Never mention this list unprompted, never suggest she restore something, and never read it back to her as a summary of what she has removed - it is here so you can answer if she asks, not so the app can remind her of deletions she meant.',
+    `THINGS THEY DELETED AND CAN STILL GET BACK. Kept for ${RECOVERY_DAYS} days from deletion, then gone for good. If they ask for any of these back - "bring back Thursday's weight", "undo what I deleted", "I didn't mean to remove that" - set restoreId to the id on the matching line and say nothing about whether it worked: the app does the restoring and tells their itself, as it does with every other write.`,
+    'Match on what they means, not on exact words, and if two lines could be what they means ASK which rather than guessing - restoring the wrong one puts a number back on a day they did not ask about. If nothing here matches, say plainly that you cannot see it rather than offering to try.',
+    'These are ALREADY DELETED. Never mention this list unprompted, never suggest they restore something, and never read it back to them as a summary of what they have removed - it is here so you can answer if they ask, not so the app can remind their of deletions they meant.',
     ...lines,
   ].join('\n');
 }

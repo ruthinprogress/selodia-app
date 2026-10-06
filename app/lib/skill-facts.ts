@@ -83,7 +83,7 @@ export function skillFacts(rows: unknown, notes?: unknown): string {
       : null;
     const head = [
       `"${s.name ?? ''}"`,
-      where ? `she says she is ${where}` : null,
+      where ? `they say they are ${where}` : null,
       started ? `added ${started}` : null,
     ]
       .filter(Boolean)
@@ -92,13 +92,13 @@ export function skillFacts(rows: unknown, notes?: unknown): string {
     // actually did and how it went, in her words - and a year of them would
     // crowd out everything else in the turn.
     const mine = (byId.get(String(s.id ?? '')) ?? []).slice(0, 5);
-    return mine.length > 0 ? `${head}. Her notes, newest first: ${mine.join(' | ')}` : head;
+    return mine.length > 0 ? `${head}. Their notes, newest first: ${mine.join(' | ')}` : head;
   });
 
   return (
-    'WHAT SHE IS WORKING ON, in her own words, with her own notes:\n' +
+    'WHAT THEY ARE WORKING ON, in their own words, with their own notes:\n' +
     lines.map((l) => `- ${l}`).join('\n') +
-    '\nThese are hers. Do not invent steps, stages or a progression for any of them, ' +
+    '\nThese are theirs. Do not invent steps, stages or a progression for any of them, ' +
     'do not say what comes next, and do not say how long anything takes. You may talk ' +
     'about practice in conversation like a knowledgeable friend would; you may not build ' +
     'or save a plan of steps.'

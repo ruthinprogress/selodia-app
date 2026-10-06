@@ -31,18 +31,25 @@
 // explanation says "she" forty times and the prompt text is what matters.
 
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 
-/** Every file that puts words in front of the model. */
-const PROMPT_SOURCES = [
-  'app/api/ask-selodia/route.ts',
-  'app/lib/tracked-macro-summary.ts',
-  'app/lib/weigh-in-facts.ts',
-  'app/lib/life-stage-facts.ts',
-  'app/lib/reply-prompt.ts',
-  'app/lib/rules-gate.ts',
-  'app/lib/food-parse-prompt.ts',
-];
+/**
+ * EVERY FILE UNDER app/, NOT A LIST SOMEBODY MAINTAINS (6 October 2026).
+ *
+ * This was seven hand-written paths, and Ruth asked the question that found the
+ * hole in it: "You've switched to her and she, is that in the prompts?"
+ *
+ * It was not - but app/lib/health-support.ts, the entire healthcare section
+ * written today, was not on the list and had never been scanned. Nor were the
+ * five blocks wired to the writer an hour ago. A hand-maintained list of the
+ * files that matter is the same shape as every other fault this week: it is
+ * correct on the day it is written and silently incomplete afterwards.
+ *
+ * SCANNING EVERYTHING COSTS NOTHING. A file with no model-visible "she" passes
+ * without a word, so 120 files of ordinary code are free, and a new prompt is
+ * covered the moment it exists rather than when somebody remembers.
+ */
+const PROMPT_SOURCES = globSync('app/**/*.ts').sort();
 
 const THIRD_PERSON = /\b(she|her|hers|herself)\b/i;
 
@@ -58,7 +65,13 @@ const THIRD_PERSON = /\b(she|her|hers|herself)\b/i;
 function modelVisibleStrings(src) {
   const code = src
     .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+    // `[ \t]` AND NOT `\s`, because \s matches a newline. With /m the old
+    // version could consume the blank lines before a comment and misalign the
+    // string matcher after it, so a template literal lost its opening backtick
+    // and ordinary prose downstream parsed as a string. It reported five files
+    // that were clean, on the run where Ruth asked whether the prompts still
+    // said "she" - which is the worst moment for a guard to cry wolf.
+    .replace(/^[ \t]*\/\/.*$/gm, '');
   const out = [];
   const pattern = /`(?:[^`\\]|\\.)*`|'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"/g;
   let m;
@@ -86,6 +99,25 @@ const ALLOWED = [
   // what it forbids cannot be fed to a tool that rewrites what it forbids, and
   // this is the one string in the app where the third person is the point.
   /speaking TO the person[\s\S]*never in the third person/i,
+  // THE SAME EXEMPTION, FOR THE SAME REASON, IN THE HEALTH SECTION. The rule
+  // about not characterising her clinician names the phrasings it forbids - "no
+  // that's a shrug, no she fobbed you off" - because the version that only said
+  // what to AIM at held in one run out of two. A rule that quotes what it bans
+  // cannot be written without the words it bans in it.
+  /take aim at the explanation and never at the person who gave it/i,
+  // A STORED VALUE, NOT PROMPT TEXT, AND THE DIFFERENCE IS LOAD-BEARING.
+  //
+  // feel_goals.source is 'chip' or 'her words'. The second is a column value
+  // written by onboarding and read in three places, and the bulk rewrite
+  // de-gendered it to 'their words' - which typechecks, ships, and silently
+  // stops matching every row already in the database. check-feel-and-flow caught
+  // it within the minute.
+  //
+  // THIS IS THE SAME LINE AS THE ALLERGY NAMES on 5 October: a label is wording
+  // and a stored value is data, and only one of them is safe to rewrite. The
+  // exemption is this exact string and nothing broader, so a NEW third-person
+  // value cannot hide behind it.
+  /^'her words'$/,
 ];
 
 let pass = 0;

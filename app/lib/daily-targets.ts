@@ -566,8 +566,8 @@ export function buildDayStatePrompt(day: DayState): string {
   if (day.working && day.working.lines.length > 0) {
     lines.push('');
     lines.push(
-      'HOW THAT GUIDE WAS WORKED OUT - these are the exact lines her approach screen shows her, ' +
-        'so you may quote or paraphrase them freely when she asks where a number comes from, ' +
+      'HOW THAT GUIDE WAS WORKED OUT - these are the exact lines their approach screen shows them, ' +
+        'so you may quote or paraphrase them freely when they ask where a number comes from, ' +
         'what it assumes, or why it changed. Do NOT redo any of this arithmetic yourself:'
     );
     for (const line of day.working.lines) lines.push(`  - ${line}`);
@@ -579,17 +579,17 @@ export function buildDayStatePrompt(day: DayState): string {
   // her the target cannot be changed without changing her goal, which is wrong.
   if (day.calorieTarget?.heldBecause === 'training_paused') {
     lines.push(
-      'NOTE: the calorie figure is held at maintenance because the week she described has no ' +
-        'regular training in it, not because her approach changed. Her approach is unchanged ' +
-        'and the figure returns on its own when she says her weeks have training in them again, ' +
+      'NOTE: the calorie figure is held at maintenance because the week they described has no ' +
+        'regular training in it, not because their approach changed. Their approach is unchanged ' +
+        'and the figure returns on its own when they say their weeks have training in them again, ' +
         'on the "How active are you?" screen.'
     );
   } else if (day.calorieTarget?.heldBecause === 'deficit_paused') {
     lines.push(
-      'NOTE: she has paused her deficit - a holiday, a hard stretch, her reason is hers. The ' +
-        'figure is maintenance for now. Her fat-loss approach is NOT cancelled and nothing was ' +
-        'archived; it resumes when she switches it back on in her Body Manual. Never treat a ' +
-        'paused deficit as her having given up on it.'
+      'NOTE: they have paused their deficit - a holiday, a hard stretch, their reason is theirs. The ' +
+        'figure is maintenance for now. Their fat-loss approach is NOT cancelled and nothing was ' +
+        'archived; it resumes when they switches it back on in their Body Manual. Never treat a ' +
+        'paused deficit as their having given up on it.'
     );
   }
 

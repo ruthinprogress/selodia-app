@@ -228,7 +228,7 @@ export function buildFoodRows(
     const entry = check.rescaled ? scaleMacros(raw, check.factor) : raw;
     if (check.rescaled) {
       console.log(
-        `FOOD: "${rawText}" stated ${check.statedGrams}g but its parts weighed ${Math.round(check.itemGrams)}g - scaled to what she said`
+        `FOOD: "${rawText}" stated ${check.statedGrams}g but its parts weighed ${Math.round(check.itemGrams)}g - scaled to what they said`
       );
     }
 

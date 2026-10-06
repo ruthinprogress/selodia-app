@@ -253,13 +253,13 @@ export async function writeReplyAfterSaves(req: ReplyRequest): Promise<WrittenRe
   const turnHalf = [
     `THE RECORD:\n${turnFacts(req.data)}`,
     req.didLines.length > 0
-      ? `WHAT THE APP HAS ALREADY DONE WITH HER DATA ON THIS TURN. You are the only person writing this message, so anything she needs to know has to come from you - but MOST OF THIS NEEDS NO MENTION AT ALL.
+      ? `WHAT THE APP HAS ALREADY DONE WITH THEIR DATA ON THIS TURN. You are the only person writing this message, so anything they need to know has to come from you - but MOST OF THIS NEEDS NO MENTION AT ALL.
 
-A save that WORKED is not news: the app prints its own confirmation and she has already seen it, so saying it again is the receipt this reply exists to avoid. Say nothing about it.
+A save that WORKED is not news: the app prints its own confirmation and they have already seen it, so saying it again is the receipt this reply exists to avoid. Say nothing about it.
 
-ANYTHING THAT DID NOT WORK IS ALWAYS SAID. A save that failed, an entry removed, a value changed - she has no other way of finding out, and a reply that leaves it out is the app quietly letting her believe something false. One plain sentence, woven in rather than listed, and never more than one.
+ANYTHING THAT DID NOT WORK IS ALWAYS SAID. A save that failed, an entry removed, a value changed - they have no other way of finding out, and a reply that leaves it out is the app quietly letting their believe something false. One plain sentence, woven in rather than listed, and never more than one.
 
-If every line below is something that simply worked, say nothing about any of it and just answer her.
+If every line below is something that simply worked, say nothing about any of it and just answer them.
 
 Whatever you do say, the whole reply stays what it always is: a sentence or two.
 

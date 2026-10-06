@@ -36,7 +36,7 @@ type Lookback = {
 };
 
 const ANSWER_WORDS: Record<string, string> = {
-  further: 'further from how she wanted them',
+  further: 'further from how they wanted them',
   same: 'about the same',
   a_bit_closer: 'a bit closer',
   closer: 'closer',
@@ -71,24 +71,24 @@ export function feelFacts(rows: unknown, lookback: unknown): string {
 
   if (chips.length > 0) {
     lines.push(
-      `What she wants from her days: ${chips.join(', ')}${started ? `, said on ${started}` : ''}.`
+      `What they want from their days: ${chips.join(', ')}${started ? `, said on ${started}` : ''}.`
     );
   }
   // HER OWN SENTENCE, UNCHANGED. It is the most useful thing in this block and
   // the easiest to paraphrase away.
-  for (const words of hers) lines.push(`In her own words: "${words}"`);
+  for (const words of hers) lines.push(`In their own words: "${words}"`);
 
   const last = lookback && typeof lookback === 'object' ? (lookback as Lookback) : null;
   if (last?.answer) {
     const word = ANSWER_WORDS[String(last.answer)] ?? String(last.answer);
     const when = monthYear(last.created_at);
     lines.push(
-      `Last time she looked back${when ? `, on ${when}` : ''}, she said her days feel ${word}.`
+      `Last time they looked back${when ? `, on ${when}` : ''}, they said their days feel ${word}.`
     );
-    if (last.note) lines.push(`Her note with it: "${String(last.note)}"`);
+    if (last.note) lines.push(`Their note with it: "${String(last.note)}"`);
   }
 
-  return `\n\nHOW SHE WANTS HER DAYS TO FEEL. This is the guiding source for tone and what to lead with. It is NOT something to read back to her, and nothing here is a promise.\n${lines
+  return `\n\nHOW THEY WANTS THEIR DAYS TO FEEL. This is the guiding source for tone and what to lead with. It is NOT something to read back to them, and nothing here is a promise.\n${lines
     .map((l) => `- ${l}`)
     .join('\n')}`;
 }

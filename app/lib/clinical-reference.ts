@@ -147,7 +147,7 @@ export function assertSafeEntry(entry: ReferenceEntry): void {
     if (re.test(entry.fact)) {
       throw new Error(
         `Reference entry "${entry.id}" is worded as advice (${re}). This layer states what is ` +
-          'known; it never tells her what to do about her own treatment.'
+          'known; it never tells their what to do about their own treatment.'
       );
     }
   }
@@ -185,9 +185,9 @@ export function referenceBlock(entries: ReferenceEntry[]): string {
   if (entries.length === 0) return '';
   return [
     '',
-    'REFERENCE, for accuracy only. These are published statements, not things she told you:',
+    'REFERENCE, for accuracy only. These are published statements, not things they told you:',
     ...entries.map((e) => `- ${e.fact} [${e.source.name}, ${e.source.document}]`),
-    'Use these to avoid saying something untrue. Name the source if you state one of them. Never turn one into advice about her own treatment, and never suggest starting, stopping or changing any medication.',
+    'Use these to avoid saying something untrue. Name the source if you state one of them. Never turn one into advice about their own treatment, and never suggest starting, stopping or changing any medication.',
     '',
   ].join('\n');
 }
