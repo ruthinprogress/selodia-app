@@ -58,10 +58,11 @@ export function FoldSection({
           size={16}
           color={theme.textSecondary}
         />
-        <ThemedText type="sectionTitle" style={styles.title}>
+        <ThemedText type="sectionTitle" style={styles.title} numberOfLines={1}>
           {title}
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <View style={styles.spacer} />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.summary}>
           {summary}
         </ThemedText>
       </Pressable>
@@ -76,7 +77,14 @@ const styles = StyleSheet.create({
   // The chevron, the title and the summary are one target, as they are in the
   // Body Manual and on the Me tab.
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  title: { flex: 1, minWidth: 0 },
+  // THE TITLE SHRINKS, NOT THE SUMMARY. This was flex: 1 on the title, which
+  // squeezed the summary until "across the six dimensions" rendered as "across
+  // the six" with nothing to say it had been cut. A summary is a handful of
+  // words by contract; a title can be long. So the title ellipsises and the
+  // summary keeps whatever it needs.
+  title: { flexShrink: 1 },
+  spacer: { flex: 1 },
+  summary: { flexShrink: 0 },
   body: { gap: Spacing.two },
   pressed: { opacity: 0.6 },
 });

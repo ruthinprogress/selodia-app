@@ -55,7 +55,7 @@ export function ReportLink({
         style={({ pressed }) => [styles.link, pressed && styles.pressed]}
       >
         <Ionicons name="document-text-outline" size={15} color={theme.textSecondary} />
-        <ThemedText type="small" themeColor="textSecondary" textBreakStrategy="simple">
+        <ThemedText type="small" themeColor="textSecondary" textBreakStrategy="simple" style={styles.label} numberOfLines={1}>
           {label}
         </ThemedText>
       </Pressable>
@@ -64,7 +64,13 @@ export function ReportLink({
 }
 
 const styles = StyleSheet.create({
-  row: { alignItems: 'flex-start', paddingTop: Spacing.four, paddingBottom: Spacing.two },
+  // NO alignItems: 'flex-start'. That sized this row to Android's measurement
+  // of the label, which came back short, and "Build a report" was clipped to
+  // "Build a" with no ellipsis to show for it (Ruth's screenshot, 7 October).
+  // segmented-tabs.tsx has the same fault written up: "that is what Wee was".
+  row: { paddingTop: Spacing.four, paddingBottom: Spacing.two },
   link: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  // Shrinks to an ellipsis rather than overflowing and being cut.
+  label: { flexShrink: 1 },
   pressed: { opacity: 0.6 },
 });

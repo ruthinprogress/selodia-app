@@ -34,6 +34,34 @@ import { roundupFigures } from '../../lib/roundup-figures';
 import { roundupPrompt } from '../../lib/roundup-prompt';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+/**
+ * A DATE THE MODEL CAN COPY WITHOUT EMBARRASSING ITSELF.
+ *
+ * Ruth, 7 October 2026, on a witness statement reading "back on 2026-09-28":
+ * dates are "always in full word format not strings of numbers".
+ *
+ * THE FIX IS AT THE SOURCE, NOT IN THE PROMPT. Every date reaching this model
+ * arrived as an ISO slice, so the only date-shaped thing it had seen was
+ * numeric, and it copied what it was given. Telling it to reformat would be an
+ * instruction competing with the evidence in front of it - the same shape as the
+ * saturated fat deflection, where a rule lost to having nothing true to say.
+ *
+ * So nothing numeric is handed over at all, and there is nothing to reformat.
+ */
+function inWords(iso: string | null | undefined): string {
+  const day = String(iso ?? '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return '';
+  const d = new Date(day + 'T00:00:00Z');
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+}
+
 const MODEL = 'claude-sonnet-5';
 
 // The Weekly Roundup (Part Nine, rebuilt for Insights slice 3 on 2026-09-16).
@@ -307,7 +335,7 @@ export async function POST(req: NextRequest) {
   const rawReadings = (measurements ?? [])
     .map((m) => ({
       at: new Date(String(m.measured_at ?? '')).getTime(),
-      date: String(m.measured_at ?? '').slice(0, 10),
+      date: inWords(m.measured_at),
       value: Number(m.weight_kg),
     }))
     .filter((r) => r.date && Number.isFinite(r.value) && Number.isFinite(r.at))
@@ -348,7 +376,7 @@ export async function POST(req: NextRequest) {
     (activity ?? [])
       .map(
         (a) =>
-          `${String(a.happened_at ?? '').slice(0, 10)}: ${a.activity_type ?? 'movement'}${
+          `${inWords(a.happened_at)}: ${a.activity_type ?? 'movement'}${
             a.duration_min ? `, ${a.duration_min} min` : ''
           }${a.intensity ? `, ${a.intensity}` : ''}`
       )
@@ -393,7 +421,7 @@ export async function POST(req: NextRequest) {
 
   const kept =
     (noticed ?? [])
-      .map((n) => `${String(n.created_at ?? '').slice(0, 10)} [${n.kind}] ${n.title}`)
+      .map((n) => `${inWords(n.created_at)} [${n.kind}] ${n.title}`)
       .join('\n') || '(nothing kept this week)';
 
   const said =

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HealthFlower } from '@/components/health-flower';
@@ -47,10 +47,18 @@ import { canGoBack, canGoForward, flowerRange, type FlowerMode } from '@/lib/flo
 // something she can see rather than something the app decided for her: the week
 // view will look sparse on a quiet week, and the month view beside it will not.
 
-export function BalanceFlowerSection() {
+export function BalanceFlowerSection({
+  mode,
+  back,
+  onMode,
+  onBack,
+}: {
+  mode: FlowerMode;
+  back: number;
+  onMode: (m: FlowerMode) => void;
+  onBack: (b: number) => void;
+}) {
   const theme = useTheme();
-  const [mode, setMode] = useState<FlowerMode>('week');
-  const [back, setBack] = useState(0);
   // Rebuilt only when the choice changes, because the hook keys its read on the
   // two timestamps and a fresh Date every render would re-query forever.
   const range = useMemo(() => flowerRange(mode, back), [mode, back]);
@@ -58,15 +66,17 @@ export function BalanceFlowerSection() {
   const note = coverage ? weekObservation(coverage, range.label) : null;
 
   const pick = (next: FlowerMode) => {
-    setMode(next);
+    onMode(next);
     // BACK TO NOW ON A SWITCH. Three weeks back and then tapping Month would
     // otherwise land on three months back, which is not what the tap asked for.
-    setBack(0);
+    onBack(0);
   };
 
+  // NO HEADING OF ITS OWN. It had one, and the fold it now sits inside has one
+  // too, so the screen read "Balance" twice in a row (Ruth's screenshot,
+  // 7 October). The section that contains a thing names it.
   return (
     <View style={styles.wrap}>
-      <ThemedText type="sectionTitle">Balance</ThemedText>
 
       <View style={styles.modes}>
         {(['week', 'month'] as FlowerMode[]).map((m) => (
@@ -79,7 +89,12 @@ export function BalanceFlowerSection() {
             hitSlop={Spacing.two}
             style={({ pressed }) => [styles.mode, pressed && styles.pressed]}
           >
-            <ThemedText type="small" themeColor={mode === m ? 'accentDeep' : 'textSecondary'}>
+            <ThemedText
+              type="small"
+              themeColor={mode === m ? 'accentDeep' : 'textSecondary'}
+              style={styles.modeLabel}
+              numberOfLines={1}
+            >
               {m === 'week' ? 'Week' : 'Month'}
             </ThemedText>
           </Pressable>
@@ -91,7 +106,7 @@ export function BalanceFlowerSection() {
           looks like it is changing for no reason. */}
       <View style={styles.pager}>
         <Pressable
-          onPress={() => setBack((b) => b + 1)}
+          onPress={() => onBack(back + 1)}
           disabled={!canGoBack(back)}
           accessibilityRole="button"
           accessibilityLabel={mode === 'week' ? 'The week before' : 'The month before'}
@@ -110,7 +125,7 @@ export function BalanceFlowerSection() {
         </ThemedText>
 
         <Pressable
-          onPress={() => setBack((b) => Math.max(0, b - 1))}
+          onPress={() => onBack(Math.max(0, back - 1))}
           disabled={!canGoForward(back)}
           accessibilityRole="button"
           accessibilityLabel={mode === 'week' ? 'The week after' : 'The month after'}
@@ -172,7 +187,13 @@ const styles = StyleSheet.create({
   // tab's own switch is the only segmented thing on this screen and a second
   // one would read as a second level of navigation.
   modes: { flexDirection: 'row', gap: Spacing.three },
-  mode: { paddingVertical: 2 },
+  // NEVER SQUEEZED. These came back as "Wee" and "Mont" on her phone, which is
+  // the fault segmented-tabs.tsx writes up at length: the word needs more than
+  // its box has, overflows, and is clipped by the parent with no ellipsis. A
+  // content-sized word in a row must not shrink, and includeFontPadding off
+  // stops Android reserving room it then measures as used.
+  mode: { paddingVertical: 2, flexShrink: 0 },
+  modeLabel: { flexShrink: 0, includeFontPadding: false },
   // The arrows hug the label rather than the screen edges, so the three read as
   // one object: back, where you are, forward.
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three },

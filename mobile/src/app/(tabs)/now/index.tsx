@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BalanceFlowerSection } from '@/components/balance-flower-section';
+import { flowerRange, type FlowerMode } from '@/lib/flower-range';
 import { FoldSection } from '@/components/fold-section';
 import { HydrationToast, type WaterAction } from '@/components/hydration-card';
 import { OverviewPanel } from '@/components/overview-panel';
@@ -89,6 +90,14 @@ export default function BodyOverviewScreen() {
   const [open, setOpen] = useState({ week: true, flower: true });
   const toggle = (k: 'week' | 'flower') => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
+  // THE FOLD NAMES THE WINDOW, so the state lives here rather than inside the
+  // flower. A shut section saying "across the six dimensions" told her nothing
+  // she could not already guess, and she struck it out; "September" is what a
+  // folded section should say about what is behind it.
+  const [flowerMode, setFlowerMode] = useState<FlowerMode>('week');
+  const [flowerBack, setFlowerBack] = useState(0);
+  const flowerLabel = flowerRange(flowerMode, flowerBack).label;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -106,7 +115,11 @@ export default function BodyOverviewScreen() {
             {roundup.statements.length > 0 ? (
               <FoldSection
                 title="Last week"
-                summary={roundup.range ?? 'the week just gone'}
+                // NOT THE STATEMENTS' OWN RANGE. That read "Last week  the last
+                // 6 weeks", which is two different stretches of time in one row.
+                // The roundup runs on a Sunday; what it looks back over is its
+                // business and is said inside it.
+                summary="from Sunday's roundup"
                 open={open.week}
                 onToggle={() => toggle('week')}
               >
@@ -120,11 +133,16 @@ export default function BodyOverviewScreen() {
 
             <FoldSection
               title="Balance"
-              summary="across the six dimensions"
+              summary={flowerLabel}
               open={open.flower}
               onToggle={() => toggle('flower')}
             >
-              <BalanceFlowerSection />
+              <BalanceFlowerSection
+                mode={flowerMode}
+                back={flowerBack}
+                onMode={setFlowerMode}
+                onBack={setFlowerBack}
+              />
             </FoldSection>
 
             {/* HER BUTTON, ON THIS SCREEN (7 October): "A button on Now opens
