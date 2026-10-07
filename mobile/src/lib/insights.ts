@@ -72,7 +72,7 @@ const norm = (s: string | null | undefined): string =>
  * two, because a kind the server files as a card and the client files as an
  * observation is a row she can never find.
  */
-const ME_KINDS: readonly string[] = ['me', 'care'];
+const ME_KINDS: readonly string[] = ['me', 'care', 'condition'];
 
 // Me entries are written by the conversational save, carrying kind "me"
 // (2026-09-19). Until that existed nothing could write one, which is why a

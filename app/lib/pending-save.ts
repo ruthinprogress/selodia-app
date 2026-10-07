@@ -113,10 +113,80 @@ export type SaveType =
    * then steers what she is advised to eat. She sees what was understood and
    * says yes.
    */
-  | 'marker';
+  | 'marker'
+  /**
+   * SOMETHING SHE IS MANAGING. New 7 October 2026, and it is the way in that
+   * nothing had.
+   *
+   * The four condition columns in health_context already shape food guidance:
+   * PCOS prioritises lower-GI carbohydrates and warns against assuming carbs are
+   * the lever; IBS flags high-FODMAP foods rather than recommending them as
+   * protein sources. Those rules have never fired for anybody, because the only
+   * screen that ever set them was the onboarding draft removed on 6 October.
+   *
+   * ONE YES, TWO WRITES, AND SHE IS TOLD BOTH. A card in her Me tab under
+   * Managed Conditions, which is the part she can see, and the health_context
+   * column, which is the part that changes what she is advised to eat. Offered
+   * rather than assumed for exactly that reason.
+   */
+  | 'condition';
 
 /** The kinds that are a card with a section, a why and items. */
-export const CARD_TYPES: SaveType[] = ['me', 'care'];
+export const CARD_TYPES: SaveType[] = ['me', 'care', 'condition'];
+
+/**
+ * HER SECTION FOR THE THINGS SHE IS MANAGING. Her words, 7 October 2026: "Do
+ * they get moved to a Managed Conditions section, like the Allergies and Pelvic
+ * congestion, with active/paused/accessing healthcare or something like that?"
+ *
+ * WHY THIS IS NOT "HEALTH CONDITIONS", which is the name she tried first and
+ * then talked herself out of in the same message. Naming How I Access Care the
+ * day before was about keeping the Me tab from becoming "the thread of a symptom
+ * and diagnosis". A conditions list is a record of what is wrong with her. A
+ * thing she is MANAGING, with a state, is something she is doing.
+ *
+ * The status carries that distinction on its own, which is why it is her best
+ * idea in this feature: "Getting seen about it" is an activity, not a diagnosis.
+ */
+export const CONDITION_SECTION = 'Managed Conditions';
+
+/**
+ * The four conditions health_context holds a column for, by the words somebody
+ * would actually say.
+ *
+ * ANYTHING ELSE IS STILL KEPT. A condition with no column - pelvic congestion,
+ * endometriosis, a knee - goes to `conditions_other`, where health-context.ts
+ * surfaces it to the model as context and explicitly refuses to invent a
+ * dietary rule from it. That refusal is the point: four conditions have rules
+ * because the spec gave them rules, and the fifth must not get one by accident.
+ */
+export const CONDITION_COLUMNS: Record<string, string> = {
+  pcos: 'condition_pcos',
+  ibs: 'condition_ibs',
+  hypothyroid: 'condition_hypothyroid',
+  t2d: 'condition_t2d',
+};
+
+/**
+ * What she is doing about it, which is deliberately not how bad it is.
+ *
+ * A condition does not pause. What pauses is her engagement with it, and that
+ * is the only thing this records. The food rule in health_context keys off
+ * HAVING the condition and ignores this entirely, so putting a condition on
+ * "Paused" never silently changes what she is advised to eat.
+ */
+export const CONDITION_STATUSES: string[] = ['Active', 'Paused', 'Getting seen about it'];
+
+/**
+ * Said when a condition is offered, and it says what agreeing to it does.
+ *
+ * TWO THINGS HAPPEN AND SHE IS TOLD BOTH. A card she can see, and a change to
+ * what she is advised to eat that she cannot. Ruth, 7 October 2026, on whether
+ * a condition card should quietly write health_context: "YES, but offered, same
+ * as the markers, because a wrong one changes what you're told to eat."
+ */
+export const CONDITION_OFFER_QUESTION =
+  'Want me to keep that in your Me tab and take it into account in what I suggest?';
 export const SAVE_TYPES: readonly SaveType[] = [
   'symptom',
   'insight',
@@ -150,6 +220,7 @@ export const SAVE_TYPES: readonly SaveType[] = [
   // sounded administrative. check-model-can-offer.mjs carries that as a named
   // exception rather than a hole, the same way `note` is named.
   'care',
+  'condition',
   // A RESULT SHE HAS BEEN GIVEN. Added 6 October 2026, and it was nearly added
   // to only half the places it needed to be: the classify tool was taught to
   // offer a marker, commitSave was taught to write one, and this list - which
@@ -411,6 +482,7 @@ function todayISO(): string {
 
 const TYPE_WORD: Record<SaveType, string> = {
   marker: 'a result they have been given',
+  condition: 'something they are managing',
   symptom: 'a symptom',
   insight: 'an insight',
   note: 'a note',
@@ -519,6 +591,7 @@ export const SKILL_OFFER_QUESTION = 'Want me to add that to your Skills?';
 export function offerQuestionFor(type: SaveType): string {
   if (type === 'me' || type === 'care') return ME_OFFER_QUESTION;
   if (type === 'marker') return MARKER_OFFER_QUESTION;
+  if (type === 'condition') return CONDITION_OFFER_QUESTION;
   if (type === 'rule') return RULE_OFFER_QUESTION;
   if (type === 'week') return WEEK_OFFER_QUESTION;
   if (type === 'skill') return SKILL_OFFER_QUESTION;
@@ -662,7 +735,11 @@ export function applyRedirect(
   const content: Record<string, unknown> = { ...proposal.content };
   if (CARD_TYPES.includes(type)) {
     if (section) content.section = section;
-    if (typeof content.section !== 'string' || !content.section) content.section = 'Sensitivities';
+    if (typeof content.section !== 'string' || !content.section) {
+      // A condition redirected without a section belongs with the other things
+      // she is managing, never in Sensitivities.
+      content.section = type === 'condition' ? CONDITION_SECTION : 'Sensitivities';
+    }
     if (content.detail === undefined && typeof content.summary === 'string') {
       content.detail = content.summary;
     }
@@ -742,6 +819,48 @@ export async function commitSave(
       return null;
     }
     return { kind: 'marker', title: proposal.title };
+  }
+
+  /**
+   * A CONDITION WRITES TWICE AND DOES NOT RETURN HERE.
+   *
+   * Every other branch in this function returns. This one deliberately falls
+   * through to the card write at the bottom, because one yes has to produce both
+   * halves: the lens that changes her food guidance, and the card she can open.
+   * A condition recorded only in health_context would be the invisible curation
+   * all over again; a condition recorded only as a card would look like it was
+   * doing something and do nothing.
+   *
+   * THE LENS FIRST, AND A FAILURE THERE STOPS THE CARD. If the column cannot be
+   * written, the card must not appear either, or she would be looking at a
+   * record of a thing the advice has never heard of.
+   */
+  if (proposal.type === 'condition') {
+    const content = proposal.content as Record<string, unknown>;
+    const which = typeof content.condition === 'string' ? content.condition.trim().toLowerCase() : '';
+    const column = CONDITION_COLUMNS[which];
+
+    // NAMED COLUMN OR FREE TEXT, NEVER A GUESS AT WHICH. The four with columns
+    // carry spec-written food rules; anything else is kept as context that
+    // health-context.ts explicitly refuses to invent a rule from.
+    const patch: Record<string, unknown> = column
+      ? { [column]: true }
+      : { conditions_other: proposal.title.slice(0, MAX_TITLE) };
+
+    const { error } = await supabase
+      .from('health_context')
+      .upsert({ user_id: userId, ...patch }, { onConflict: 'user_id' });
+    if (error) {
+      console.log('CONDITION: health_context write failed, so no card either -', error.message);
+      return null;
+    }
+
+    // The section and the status, settled here rather than left to the model.
+    // A status it invented would be a state she never chose.
+    const status = typeof content.status === 'string' ? content.status.trim() : '';
+    content.section = CONDITION_SECTION;
+    content.status = CONDITION_STATUSES.includes(status) ? status : 'Active';
+    // Falls through on purpose. See above.
   }
 
   if (proposal.type === 'skill') {

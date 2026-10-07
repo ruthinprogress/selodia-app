@@ -175,11 +175,21 @@ check('the closing rule does not forbid what the instruction just taught', () =>
     !/Never for[^.]*plain result/i.test(closing),
     'the closing rule still forbids a plain result, which is what a marker is'
   );
-  assert.ok(
-    /TEST RESULT THEY HAVE BEEN GIVEN IS THE ONE EXCEPTION/.test(closing),
-    'nothing in the closing rule carves out the thing the instruction above teaches'
+  // PINNED TO THE PROPERTY, NOT TO MY SENTENCE. The first version of this
+  // asserted an exact phrase and failed the moment a second exception was added
+  // on 7 October, which is the "a check pinned to my own wording" fault this
+  // repository keeps producing. What has to be true is that every type the
+  // closing rule would otherwise sweep up is named in it as an exception.
+  const mustBeExcepted = ['marker', 'condition'];
+  const unexcepted = mustBeExcepted.filter((t) => !new RegExp(t, 'i').test(closing));
+  assert.deepStrictEqual(
+    unexcepted,
+    [],
+    `${unexcepted.join(', ')} can be offered but the closing rule does not except ` +
+      'it, so the categorical last line wins and the offer never happens'
   );
-  return 'the permission and the prohibition agree';
+  assert.ok(/EXCEPTION/i.test(closing), 'nothing in the closing rule is marked as an exception at all');
+  return `excepted: ${mustBeExcepted.join(', ')}`;
 });
 
 check('and this check can fail', () => {
