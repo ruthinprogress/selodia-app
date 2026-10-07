@@ -200,19 +200,42 @@ export function MeProtocol({
       <ThemedText type="small" themeColor="textSecondary" style={styles.deck}>
         A living record of your health and the ways you choose to look after yourself.
       </ThemedText>
-      <Pressable
-        onPress={() => void exportProtocol()}
-        disabled={exporting}
-        accessibilityRole="button"
-        accessibilityLabel="Export your Me tab as a page you can print or share"
-        hitSlop={Spacing.two}
-        style={({ pressed }) => [styles.export, pressed && styles.pressed]}
-      >
-        <Ionicons name="share-outline" size={16} color={theme.accentDeep} />
-        <ThemedText type="small" themeColor="accentDeep">
-          {exporting ? 'Preparing\u2026' : 'Export to print or share'}
-        </ThemedText>
-      </Pressable>
+      {/* THE TWO WAYS THIS RECORD LEAVES THE APP, SIDE BY SIDE (Ruth, 7 October
+          2026: "Me is missing 'build a report link', put it next to Export or
+          share link").
+
+          They are not the same errand, and the pair makes that readable. Export
+          is the whole tab as it stands, for her. A report is a chosen subset,
+          shaped for somebody else to read. Together she can tell which one she
+          wants without opening either. */}
+      <View style={styles.leaving}>
+        <Pressable
+          onPress={() => void exportProtocol()}
+          disabled={exporting}
+          accessibilityRole="button"
+          accessibilityLabel="Export your Me tab as a page you can print or share"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.export, pressed && styles.pressed]}
+        >
+          <Ionicons name="share-outline" size={16} color={theme.accentDeep} />
+          <ThemedText type="small" themeColor="accentDeep" numberOfLines={1} style={styles.linkLabel}>
+            {exporting ? 'Preparing\u2026' : 'Export to print or share'}
+          </ThemedText>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push({ pathname: '/settings/report', params: { start: 'cards' } })}
+          accessibilityRole="button"
+          accessibilityLabel="Build a report from your Me tab"
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.export, pressed && styles.pressed]}
+        >
+          <Ionicons name="document-text-outline" size={16} color={theme.accentDeep} />
+          <ThemedText type="small" themeColor="accentDeep" numberOfLines={1} style={styles.linkLabel}>
+            Build a report
+          </ThemedText>
+        </Pressable>
+      </View>
       {exportFailed && (
         <ThemedText type="detail" themeColor="textSecondary">
           That didn&apos;t open. Try again in a moment.
@@ -811,6 +834,11 @@ const styles = StyleSheet.create({
   // The heading, its chevron and its count travel together and are one target.
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   deck: { marginBottom: Spacing.two },
+  // SIDE BY SIDE, WRAPPING RATHER THAN CLIPPING. Two links in one row is exactly
+  // the shape that produced "Build a" and "Wee" on her phone this morning, so
+  // they wrap to a second line before either one loses a letter.
+  leaving: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, alignItems: 'center' },
+  linkLabel: { flexShrink: 1 },
   // NO FILL AND NO RADIUS. An entry is a row on a page now, not a tile.
   card: { paddingVertical: Spacing.two, gap: Spacing.two },
   rule: { height: 1, marginBottom: Spacing.three },
