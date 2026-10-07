@@ -20,10 +20,19 @@ import type { AlmanacEntryRow } from '@/lib/almanac-list';
 // existed still has somewhere to live.
 
 export type AlmanacTab = 'insights' | 'movement' | 'me';
-export type InsightType = 'roundup' | 'symptom' | 'insight' | 'note';
+export type InsightType = 'roundup' | 'symptom' | 'insight' | 'note' | 'goal' | 'bodyManual';
 
 // Pill order, from the brief: All · Roundups · Symptoms · Insights · Notes.
-export const INSIGHT_TYPES: readonly InsightType[] = ['roundup', 'symptom', 'insight', 'note'];
+// GOAL HISTORY ADDED 7 OCTOBER 2026, at the end, because it is the newest and
+// the brief's four keep their order.
+export const INSIGHT_TYPES: readonly InsightType[] = [
+  'roundup',
+  'symptom',
+  'insight',
+  'note',
+  'goal',
+  'bodyManual',
+];
 
 // The tag on a card, singular.
 export const INSIGHT_TYPE_LABEL: Record<InsightType, string> = {
@@ -31,6 +40,13 @@ export const INSIGHT_TYPE_LABEL: Record<InsightType, string> = {
   symptom: 'Symptom',
   insight: 'Insight',
   note: 'Note',
+  // HER WORDS, 7 October 2026: "They're Goal History, not insights." Singular
+  // and plural are the same phrase because a goal history is already a
+  // collection, so "Goal histories" would be wrong in the pill.
+  goal: 'Goal history',
+  // The title already says "Your Body Manual when you started", so the tag only
+  // has to name which record it is.
+  bodyManual: 'Body Manual',
 };
 
 // The pill, plural, as the brief writes them.
@@ -39,6 +55,8 @@ export const INSIGHT_PILL_LABEL: Record<InsightType, string> = {
   symptom: 'Symptoms',
   insight: 'Insights',
   note: 'Notes',
+  goal: 'Goal history',
+  bodyManual: 'Body Manual',
 };
 
 export type AlmanacRow = AlmanacEntryRow & { content: unknown; created_at: string };
@@ -46,13 +64,33 @@ export type AlmanacRow = AlmanacEntryRow & { content: unknown; created_at: strin
 const norm = (s: string | null | undefined): string =>
   typeof s === 'string' ? s.trim().toLowerCase() : '';
 
+/**
+ * The kinds that belong on the Me tab rather than in Insights.
+ *
+ * MIRRORS CARD_TYPES in app/lib/pending-save.ts, which is the server's list of
+ * the kinds that are a card with a section. check-care-section.mjs compares the
+ * two, because a kind the server files as a card and the client files as an
+ * observation is a row she can never find.
+ */
+const ME_KINDS: readonly string[] = ['me', 'care'];
+
 // Me entries are written by the conversational save, carrying kind "me"
 // (2026-09-19). Until that existed nothing could write one, which is why a
 // skincare routine offered to Me landed in Insights twice: the pathway was
 // missing, not misrouted.
 export function tabFor(row: Pick<AlmanacRow, 'kind' | 'content'>): AlmanacTab {
   if (readContent(row.content).shape === 'plan') return 'movement';
-  if (norm(row.kind) === 'me') return 'me';
+  // A CARE RECORD IS A ME ROW AND WAS GOING TO LAND IN INSIGHTS (7 October 2026).
+  //
+  // Found the same morning the How I Access Care group shipped, by asking what
+  // else falls through to Insights. A parsed letter is written with kind 'care',
+  // and this read `=== 'me'`, so every care record would have appeared in the
+  // Insights tab tagged "Insight" and the group built for it would have stayed
+  // empty - for the second reason in two days, after SAVE_TYPES.
+  //
+  // CARD_TYPES in app/lib/pending-save.ts is the server's own list of the kinds
+  // that are a card with a section, and it is exactly these two.
+  if (ME_KINDS.includes(norm(row.kind))) return 'me';
   return 'insights';
 }
 
@@ -61,6 +99,32 @@ export function insightTypeFor(row: Pick<AlmanacRow, 'kind'>): InsightType {
   if (k === 'roundup' || k === 'weekly roundup') return 'roundup';
   if (k === 'symptom') return 'symptom';
   if (k === 'note') return 'note';
+  // AN ARCHIVED GOAL IS NOT SOMETHING SHE NOTICED (Ruth, 7 October 2026:
+  // "Archived goals are showing in the Almanac's Insights tab, tagged Insights.
+  // They're Goal History, not insights.")
+  //
+  // Four rows were written with kind 'goal' between 2 and 5 October, and the
+  // fall-through below put every one of them under "Insight". That is the
+  // fall-through working as designed and being wrong anyway: it exists so an
+  // entry saved before the types existed still has somewhere to live, which
+  // makes it a safety net, not a classifier. A kind the app WRITES ITSELF
+  // should never be arriving through it.
+  if (k === 'goal') return 'goal';
+  // THE SAME FALL-THROUGH, ONE TRIGGER ALONG. `onboarding_complete_snapshot`
+  // writes a body_manual_snapshot row the moment somebody finishes setup, and it
+  // would have been tagged "Insight" too. Nobody has one yet, because nobody has
+  // completed onboarding since the trigger was added - the fresh account Ruth is
+  // about to walk for sign-off would have been the first to see it.
+  // BOTH BODY MANUAL RECORDS SHARE ONE LABEL. The snapshot is "when you
+  // started", the change is "what you removed and when". They are the same kind
+  // of thing - a look-back at her Body Manual, both filed under category "Body
+  // Manual" by their triggers - and two near-identical pills would be a filing
+  // system rather than a record. The card titles already tell them apart.
+  //
+  // `body_manual_change` was found by check-almanac-kinds.mjs rather than by me:
+  // I had gone looking for what else fell through, found two, and the check
+  // reading the migrations found the third.
+  if (k === 'body_manual_snapshot' || k === 'body_manual_change') return 'bodyManual';
   return 'insight';
 }
 
