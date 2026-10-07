@@ -123,8 +123,8 @@ if (offending.length) {
 // cannot be added without writing one.
 const SIX = { strength: 40, cardio: 38, flexibility: 42, balance: 39, bone: 41, recovery: 40 };
 
-const sixEven = weekObservation(SIX, 'six weeks');
-if (sixEven === 'These six weeks have been fairly evenly spread.') {
+const sixEven = weekObservation(SIX, 'September');
+if (sixEven === 'September has been fairly evenly spread.') {
   console.log('  pass  the six-week even sentence agrees with its subject');
 } else {
   failed++;
@@ -132,7 +132,7 @@ if (sixEven === 'These six weeks have been fairly evenly spread.') {
   console.log(`          got ${JSON.stringify(sixEven)}`);
 }
 
-const sixLed = weekObservation({ ...SIX, strength: 95 }, 'six weeks');
+const sixLed = weekObservation({ ...SIX, strength: 95 }, 'September');
 if (sixLed === 'Strength has had most of your attention.') {
   console.log('  pass  a six-week leader reads the same as a week of one');
 } else {

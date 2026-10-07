@@ -419,7 +419,7 @@ export function BodyManual({
     } = await supabase.auth.getUser();
     if (user) await markChatOpened(user.id);
     // '/' IS THE CHAT TAB. Written out because this project has got it wrong in
-    // the other direction twice: '/' is Chat, '/today' is Today.
+    // the other direction twice: '/' is Chat, '/now' is Today.
     router.replace('/' as never);
   }
 
@@ -800,12 +800,12 @@ export function BodyManual({
                       one control for one value. */}
                   {section.toToday && (
                     <Pressable
-                      // '/today', NOT '/'. The root route is the CHAT tab -
+                      // '/now', NOT '/'. The root route is the CHAT tab -
                       // goals.tsx says so in its own comment, and I wrote this
                       // link anyway, so "Set this on Today" would have landed her
                       // in Chat with no switches in sight and nothing explaining
                       // why. The tab lives at (tabs)/today.
-                      onPress={() => router.replace('/today' as never)}
+                      onPress={() => router.replace('/now' as never)}
                       accessibilityRole="link"
                       accessibilityLabel="Set this on Today"
                       hitSlop={Spacing.two}

@@ -37,8 +37,21 @@ on margin, it fails on arithmetic.
 
 ## Launch sequence
 
-1. **Free invited capped beta.** 10 to 15 women, each with a hard turn limit.
-2. **Founding members at £20.** 10 to 25 seats, rate locked for life.
+1. **The hand-picked few, free for life.** Carol, Nikki, Anabelle, Fiona, and
+   possibly Dunia and Lynda. Ruth, 7 October 2026: "the 5 founding members would
+   be free for life as they would always be there as betas, it's a development
+   cost."
+
+   **That is a different thing from a founding member**, and the two were one
+   sentence in the first draft of this document. These are named people who will
+   be testing this for as long as it exists, so what they cost to serve is
+   development spend, not forgone revenue. At the measured 5.41c a turn that is
+   roughly £15 to £46 a month for the group, depending how hard they use it.
+
+2. **Founding members at £20.** 10 to 25 seats, rate locked for life. Paying
+   customers who arrived early, which is not the same as the people who broke it
+   for her.
+
 3. **Plus at £30**, once the movement library is good enough to demo.
 
 ## Tiers, and there are only ever two
@@ -69,6 +82,13 @@ Current lean is **hybrid: the rules decide what to say, the model phrases it.**
 That is already how the food lens works today - `app/lib/health-context.ts`
 holds the protective rules as fixed strings and the model only words them - so
 this is a description of the existing architecture rather than a new one.
+
+## Needs cleaning up
+
+**Her live goal is test data.** It reads "Gain weight (45kg)" and was meant to
+say 45kg of muscle, written during an onboarding test on 5 October. Left alone
+on purpose, 7 October: "leave it for now. I'll do a clean up once it's all
+updated." Anything reading her current goal is reading that until she does.
 
 ## Still open
 

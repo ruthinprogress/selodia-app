@@ -49,8 +49,8 @@ export default function AppTabs() {
           body: it greets, dates itself, and carries today's figures, water, the
           week's flower and what she burns. The history views it used to hold
           have moved to Log. */}
-      <NativeTabs.Trigger name="today">
-        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="now">
+        <NativeTabs.Trigger.Label>Now</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="today-outline" />}
         />
@@ -66,10 +66,10 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="almanac">
-        <NativeTabs.Trigger.Label>Almanac</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="me">
+        <NativeTabs.Trigger.Label>Me</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="book-outline" />}
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="person-outline" />}
         />
       </NativeTabs.Trigger>
     </NativeTabs>

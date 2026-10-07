@@ -29,9 +29,9 @@ import { useTheme } from '@/hooks/use-theme';
 const TABS = [
   { name: 'chat', href: '/', label: 'Chat', icon: 'chatbubble-ellipses-outline' },
   { name: 'log', href: '/log', label: 'Log', icon: 'create-outline' },
-  { name: 'today', href: '/today', label: 'Today', icon: 'today-outline' },
+  { name: 'now', href: '/now', label: 'Now', icon: 'today-outline' },
   { name: 'plans', href: '/plans', label: 'Plans', icon: 'compass-outline' },
-  { name: 'almanac', href: '/almanac', label: 'Almanac', icon: 'book-outline' },
+  { name: 'me', href: '/me', label: 'Me', icon: 'person-outline' },
 ] as const;
 
 export default function AppTabs() {

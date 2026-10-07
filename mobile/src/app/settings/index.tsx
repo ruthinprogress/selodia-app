@@ -107,6 +107,17 @@ export default function SettingsHub() {
           detail="Everything you have told Selodía about your body"
           onPress={() => router.push('/settings/body-manual' as never)}
         />
+        {/* THE ALMANAC, MOVED HERE (Ruth, 7 October 2026): "The Almanac stays,
+            moved to More under Body Manual." Directly under it, as she said,
+            and the pairing is the reasoning: the Body Manual is what she has
+            told Selodia about her body, and the Almanac is what has been
+            noticed since. The open book came with it. */}
+        <SettingsRow
+          icon="book-outline"
+          label="Almanac"
+          detail="Symptoms, patterns and notes worth keeping"
+          onPress={() => router.push('/settings/almanac')}
+        />
         {/* BUILD A REPORT, ON ITS OWN (Ruth, 7 October 2026: "Build a Report
             moves out of Data & export into its own place in the More Menu").
             It used to be the first thing on the Data page, put there because it

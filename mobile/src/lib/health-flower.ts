@@ -229,25 +229,34 @@ export function allDimensionsFull(c: FlowerCoverage): boolean {
 // app being confident about something it cannot really see.
 const CLEAR_LEAD = 10;
 
-// The window's name AND its sentence, because English does not let one word
-// stand in for the other: "Your six weeks has been fairly evenly spread" is
-// what a substituted noun gets you. Each window writes its own clause, and a
-// new window cannot be added without writing one.
-const EVENLY_SPREAD: Record<FlowerPeriod, string> = {
-  week: 'Your week has been fairly evenly spread.',
-  'six weeks': 'These six weeks have been fairly evenly spread.',
-};
+// THE WINDOW NAMES ITSELF NOW, and the rule that used to live here still holds.
+//
+// This was a lookup of one sentence per window, written that way because English
+// does not let one noun stand in for another: substituting into a fixed sentence
+// gave "Your six weeks has been fairly evenly spread", a plural noun against a
+// singular verb.
+//
+// Since 7 October the windows are a week or a calendar month, chosen with a back
+// and a forward button, so the names are unbounded - "this week", "last week",
+// "September", "week of 8 September". A lookup cannot hold them.
+//
+// WHAT MAKES ONE CLAUSE SAFE IS THAT EVERY ONE OF THOSE NAMES IS SINGULAR, so
+// "has been" is right for all of them. That is a property of flower-range.ts
+// rather than a hope, and check-flower-range.mjs fails if a label it can produce
+// ever stops being singular.
+export function evenlySpread(period: string): string {
+  const named = period.trim() || 'your week';
+  return `${named.charAt(0).toUpperCase()}${named.slice(1)} has been fairly evenly spread.`;
+}
 
-export type FlowerPeriod = 'week' | 'six weeks';
-
-export function weekObservation(c: FlowerCoverage, period: FlowerPeriod = 'week'): string | null {
+export function weekObservation(c: FlowerCoverage, period: string = 'your week'): string | null {
   const ranked = [...DIMENSIONS].sort((a, b) => c[b] - c[a]);
   const top = ranked[0];
   const lowest = ranked[ranked.length - 1];
 
   if (c[top] <= 0) return null;
   if (allDimensionsFull(c)) return 'All six have had your attention.';
-  if (c[top] - c[lowest] < CLEAR_LEAD) return EVENLY_SPREAD[period];
+  if (c[top] - c[lowest] < CLEAR_LEAD) return evenlySpread(period);
 
   // Everyone within a rounding error of the leader shares the sentence.
   //

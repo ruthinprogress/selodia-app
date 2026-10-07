@@ -274,7 +274,7 @@ export default function LifeStageScreen() {
     }
 
     if (fromManual) {
-      leave('/today');
+      leave('/now');
       return;
     }
 

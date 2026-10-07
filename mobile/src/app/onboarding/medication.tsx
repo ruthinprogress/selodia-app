@@ -75,7 +75,7 @@ const OPTIONS: { key: OptionKey; label: string; hint?: string }[] = [
 
 // TODAY, NOT THE DRAFT. This screen is off the seven-question chain and the
 // draft it used to end on no longer exists (5 October 2026).
-const NEXT = '/today' as const;
+const NEXT = '/now' as const;
 
 export default function MedicationScreen() {
   const [choice, setChoice] = useState<OptionKey | null>(null);

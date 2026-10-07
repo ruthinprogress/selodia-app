@@ -148,7 +148,7 @@ export default function ActivityScreen() {
     if (user) await advanceOnboardingStep(supabase, user.id, 'complete');
     // TODAY, NOT CHAT. The other end of setup, same reasoning - see
     // first-draft.tsx. This screen's own label is "Finish".
-    router.replace('/today');
+    router.replace('/now');
   }
 
   // The last step, so the label is Finish rather than Continue - the context

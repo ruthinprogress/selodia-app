@@ -8,14 +8,13 @@ import {
   type FlowerCoverage,
 } from '@/lib/health-flower';
 import {
-  daysOfWeek,
   type LoadedSession,
   recoveryFromRestDays,
   recoveryFromSleep,
   type SleepNight,
 } from '@/lib/recovery';
 import { supabase } from '@/lib/supabase';
-import { currentWeekStart, toLocalDateKey } from '@/lib/week';
+import { toLocalDateKey } from '@/lib/week';
 
 // This week's Health Flower coverage.
 //
@@ -48,15 +47,19 @@ export type HealthFlowerState = {
   reload: () => void;
 };
 
-// HOW MANY WEEKS THE FLOWER COVERS (2026-09-25). One until today, when the
-// drawing moved off Today and onto the Almanac as a six-week rolling view
-// (Ruth, item 8: "Today shows today only. Move the balance flower to Almanac >
-// Insights as a 6-week rolling view").
+// A RANGE, NOT A COUNT OF WEEKS (7 October 2026).
 //
-// The window is the rows AND the target together - see coverageFromRows. Six
-// weeks of sessions against one week's target would fill every petal and the
-// drawing would say nothing.
-export function useHealthFlower(weeks = 1): HealthFlowerState {
+// This took `weeks` and counted backwards from now, which was right while the
+// flower only ever showed the last six weeks. It cannot express "September", and
+// Ruth's revised nav gives the flower a back and a forward button over weekly
+// and monthly snapshots.
+//
+// So the caller says which stretch, in lib/flower-range.ts, and this draws it.
+// The window is still the rows AND the target together - see coverageFromRows -
+// and the target scales on the window's real length in weeks, fractional for a
+// calendar month, because rounding a 31-day month down to four weeks would set
+// the target 10% light and fill every petal that bit too easily.
+export function useHealthFlower(range: { from: Date; to: Date }): HealthFlowerState {
   const [coverage, setCoverage] = useState<FlowerCoverage | null>(null);
   const [loading, setLoading] = useState(true);
   const [unclassifiedCount, setUnclassified] = useState(0);
@@ -77,14 +80,11 @@ export function useHealthFlower(weeks = 1): HealthFlowerState {
     (async () => {
       try {
         setError(null);
-        const span = Math.max(1, weeks);
-        // Ends at the end of THIS week and reaches back `span` weeks, so a
-        // six-week view always includes the week somebody is in rather than
-        // stopping at last Sunday.
-        const weekEnd = new Date(currentWeekStart());
-        weekEnd.setDate(weekEnd.getDate() + 7);
-        const weekStart = new Date(weekEnd);
-        weekStart.setDate(weekStart.getDate() - span * 7);
+        // Half-open and local, decided by the caller. See lib/flower-range.ts.
+        const weekStart = new Date(range.from);
+        const weekEnd = new Date(range.to);
+        // In weeks, fractional, which is all coverageFromRows wants it for.
+        const span = Math.max(1 / 7, (weekEnd.getTime() - weekStart.getTime()) / (7 * 86_400_000));
 
         const { data, error: readError } = await supabase
           .from('activity_logs')
@@ -125,15 +125,15 @@ export function useHealthFlower(weeks = 1): HealthFlowerState {
 
         if (cancelled) return;
 
-        // EVERY DAY IN THE WINDOW, not the first week's seven. daysOfWeek
-        // returns exactly seven, which was the whole window until today; on a
-        // six-week flower it would have counted rest days in the oldest week
-        // and none of the other five.
-        const allDays = Array.from({ length: span }, (_, w) => {
-          const start = new Date(weekStart);
-          start.setDate(start.getDate() + w * 7);
-          return daysOfWeek(start);
-        }).flat();
+        // EVERY DAY IN THE WINDOW, walked day by day rather than week by week.
+        // The old version built seven days per whole week, which silently
+        // dropped the remainder - and a calendar month is never a whole number
+        // of weeks, so three days of rest in every 31-day month would have
+        // counted for nothing.
+        const allDays: string[] = [];
+        for (const d = new Date(weekStart); d < weekEnd; d.setDate(d.getDate() + 1)) {
+          allDays.push(toLocalDateKey(d));
+        }
 
         const earned =
           recoveryFromSleep((sleepRows ?? []) as SleepNight[]) +
@@ -156,7 +156,7 @@ export function useHealthFlower(weeks = 1): HealthFlowerState {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey, todayKey, weeks]);
+  }, [reloadKey, todayKey, range.from.getTime(), range.to.getTime()]);
 
   return { coverage, loading, error, unclassifiedCount, reload };
 }
