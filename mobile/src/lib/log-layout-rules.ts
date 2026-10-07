@@ -5,17 +5,35 @@
 // list of rows can disagree in either direction, and both failures silently
 // cost her a row. Tested by scripts/probe-log-layout.mjs.
 
-export type LogLayout = { order: string[]; hidden: string[] };
+export type LogLayout = {
+  order: string[];
+  hidden: string[];
+  /**
+   * The sections she has SHUT, which is only read by the Me tab today.
+   *
+   * CLOSED RATHER THAN OPEN, and the polarity is the whole of why this is safe
+   * to add. It records an action she took. A stored value with no `closed` - which
+   * is every row that exists today - means nothing has been shut, so everything
+   * stays open and nobody's tab changes under them. An `open` list would have had
+   * to mean "everything is shut" for the same rows, which would have folded every
+   * section of every existing account on the next deploy.
+   */
+  closed: string[];
+};
 
-export const EMPTY: LogLayout = { order: [], hidden: [] };
+export const EMPTY: LogLayout = { order: [], hidden: [], closed: [] };
 
 /** What a stored value is allowed to be. Anything else is no arrangement. */
 export function readLayout(value: unknown): LogLayout {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return EMPTY;
-  const v = value as { order?: unknown; hidden?: unknown };
+  const v = value as { order?: unknown; hidden?: unknown; closed?: unknown };
   const strings = (x: unknown) =>
     Array.isArray(x) ? [...new Set(x.filter((s): s is string => typeof s === 'string' && s.length > 0))] : [];
-  return { order: strings(v.order).slice(0, 50), hidden: strings(v.hidden).slice(0, 50) };
+  return {
+    order: strings(v.order).slice(0, 50),
+    hidden: strings(v.hidden).slice(0, 50),
+    closed: strings(v.closed).slice(0, 50),
+  };
 }
 
 /**
@@ -50,6 +68,10 @@ export function arrange<T extends { id: string }>(
 }
 
 /** The layout implied by a visible order plus a set of hidden ids. */
-export function layoutOf(shownIds: string[], hiddenIds: string[]): LogLayout {
-  return { order: [...shownIds, ...hiddenIds], hidden: [...new Set(hiddenIds)] };
+export function layoutOf(shownIds: string[], hiddenIds: string[], closedIds: string[] = []): LogLayout {
+  return {
+    order: [...shownIds, ...hiddenIds],
+    hidden: [...new Set(hiddenIds)],
+    closed: [...new Set(closedIds)],
+  };
 }

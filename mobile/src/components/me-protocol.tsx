@@ -132,7 +132,7 @@ export function MeProtocol({
   // lists - a fourth way of arranging a list would be a fourth place for the
   // next arranging bug to live. The ids here are section NAMES, which the
   // store's rules already cover: see log-layout.ts.
-  const [layout, setLayout] = useState<LogLayout>({ order: [], hidden: [] });
+  const [layout, setLayout] = useState<LogLayout>({ order: [], hidden: [], closed: [] });
   useEffect(() => {
     let cancelled = false;
     void loadLayout('me_layout').then((l) => {
@@ -148,10 +148,40 @@ export function MeProtocol({
     [sections, layout]
   );
 
-  const keep = useCallback((next: { id: string }[]) => {
-    const order = next.map((n) => n.id);
-    setLayout({ order, hidden: [] });
-    void saveLayout('me_layout', layoutOf(order, []));
+  const keep = useCallback(
+    (next: { id: string }[]) => {
+      const order = next.map((n) => n.id);
+      // HER FOLDS SURVIVE THE REORDER. Dropping `closed` here would quietly
+      // reopen every section she had shut, the moment she dragged one.
+      setLayout((prev) => ({ ...prev, order, hidden: [] }));
+      void saveLayout('me_layout', layoutOf(order, [], layout.closed));
+    },
+    [layout.closed]
+  );
+
+  /**
+   * SHUT IS WHAT SHE DID, OPEN IS THE DEFAULT (Ruth, 7 October 2026: "yes,
+   * remember if sections were open").
+   *
+   * A section nobody has touched is open, which is how this tab has always
+   * looked, so nothing folds under anybody on the deploy. Only a section she
+   * actually shut is remembered as shut. See log-layout-rules.ts for why the
+   * stored list is the closed ones rather than the open ones.
+   */
+  const isShut = useCallback((name: string) => layout.closed.includes(name), [layout.closed]);
+
+  const toggleSection = useCallback((name: string) => {
+    setLayout((prev) => {
+      const closed = prev.closed.includes(name)
+        ? prev.closed.filter((n) => n !== name)
+        : [...prev.closed, name];
+      const next = { ...prev, closed };
+      // Saved on the tap rather than on leaving the screen: a fold she loses
+      // because she closed the app is worse than no memory at all, because it
+      // looks like the app forgot rather than like it never offered.
+      void saveLayout('me_layout', layoutOf(next.order, next.hidden, closed));
+      return next;
+    });
   }, []);
 
   return (
@@ -165,6 +195,11 @@ export function MeProtocol({
       {/* Quiet, and above the sections rather than after them: it is how the
           whole document leaves the app, so it belongs to the document, not to
           whichever section happens to be last. */}
+      {/* THE PAGE HAD NO DECK OF ITS OWN. Her line, 7 October 2026, and it says
+          what this tab is for better than the module's own header does. */}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.deck}>
+        A living record of your health and the ways you choose to look after yourself.
+      </ThemedText>
       <Pressable
         onPress={() => void exportProtocol()}
         disabled={exporting}
@@ -197,9 +232,42 @@ export function MeProtocol({
           {i > 0 ? (
             <View style={[styles.rule, { backgroundColor: theme.backgroundSelected }]} />
           ) : null}
-          <ThemedText type="display" style={styles.heading}>
-            {section.name}
-          </ThemedText>
+          {/* THE HEADING IS THE CONTROL, AND THE COUNT IS WHAT MAKES THAT SAFE.
+              Ruth, 7 October 2026: "I do like the idea of just a number to mark
+              quietly how many items in each section, like you did in Body
+              Manual."
+
+              It is not decoration. The Body Manual learned it the hard way: a
+              folded section showing a heading and nothing was
+              "indistinguishable from an empty list", which cost an afternoon
+              when her Plans goals section was shut and read as empty. The
+              moment a section here can fold, it inherits that exactly.
+
+              THE CHEVRON IS ITS OWN TARGET, because this row is also the drag
+              handle for reordering and the two gestures would otherwise fight.
+              See the note on `closed` in log-layout-rules.ts for why a section
+              nobody has touched stays open. */}
+          <Pressable
+            onPress={() => toggleSection(section.name)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: !isShut(section.name) }}
+            accessibilityLabel={section.name}
+            accessibilityHint={isShut(section.name) ? 'Shows this section' : 'Folds this section away'}
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [styles.headingRow, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={isShut(section.name) ? 'chevron-forward' : 'chevron-down'}
+              size={16}
+              color={theme.textSecondary}
+            />
+            <ThemedText type="display" style={styles.heading}>
+              {section.name}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {section.rows.length + section.care.length}
+            </ThemedText>
+          </Pressable>
           {/* SWIPE TO DELETE, AS EVERYWHERE ELSE (Ruth, 25 September 2026,
               item 6). A protocol card is a decision somebody made about how
               they live, and decisions get reversed: a supplement stopped for
@@ -209,6 +277,8 @@ export function MeProtocol({
               entries that should not be in the record at all.
               It reveals a Delete rather than firing on the swipe; see
               swipe-to-delete.tsx. */}
+          {!isShut(section.name) && (
+            <>
           {section.rows.map((row) => (
             <SwipeToDelete
               key={row.id}
@@ -252,6 +322,8 @@ export function MeProtocol({
               )}
             </View>
           ) : null}
+            </>
+          )}
         </View>
         )}
       />
@@ -472,6 +544,11 @@ function MeCardRow({
                   params: {
                     prefill: `I would like to talk through "${row.title}".`,
                     discussId: row.id,
+                    // NAMED, NOT "this entry". Since 7 October chat draws the
+                    // anchor card the moment it arrives, and without a title it
+                    // read "Talking about this entry" over a card that has one.
+                    discussType: 'me',
+                    seedTitle: row.title,
                   },
                 })
               }
@@ -730,7 +807,10 @@ const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
   export: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
   section: { gap: 6, paddingTop: Spacing.three },
-  heading: { paddingBottom: 2 },
+  heading: { paddingBottom: 2, flex: 1, minWidth: 0 },
+  // The heading, its chevron and its count travel together and are one target.
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  deck: { marginBottom: Spacing.two },
   // NO FILL AND NO RADIUS. An entry is a row on a page now, not a tile.
   card: { paddingVertical: Spacing.two, gap: Spacing.two },
   rule: { height: 1, marginBottom: Spacing.three },
