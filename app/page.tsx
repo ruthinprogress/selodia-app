@@ -2,6 +2,7 @@ import { Comfortaa } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { supabase } from './lib/supabase';
+import { sourceTag } from './lib/source-tag';
 
 // The selodia.app landing page.
 //
@@ -73,6 +74,7 @@ async function join(formData: FormData) {
 
   const email = String(formData.get('email') ?? '').trim();
   const name = String(formData.get('name') ?? '').trim();
+  const src = sourceTag(formData.get('src'));
 
   // The browser already enforces type="email" and required; this is the version
   // that survives a request that did not come from the browser.
@@ -82,7 +84,7 @@ async function join(formData: FormData) {
 
   const { error } = await supabase
     .from('waitlist')
-    .insert({ email, name: name.length > 0 ? name : null });
+    .insert({ email, name: name.length > 0 ? name : null, src });
 
   // 23505 is a unique violation — they are already on the list. That is a
   // success from where they are standing, and telling somebody already signed up
@@ -98,9 +100,12 @@ async function join(formData: FormData) {
 export default async function LandingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ joined?: string }>;
+  searchParams: Promise<{ joined?: string; src?: string }>;
 }) {
-  const { joined } = await searchParams;
+  const { joined, src } = await searchParams;
+  // Read here and carried into the form as a hidden field, because a server
+  // action sees the submitted form and never the address bar.
+  const tag = sourceTag(src);
 
   return (
     <>
@@ -360,11 +365,15 @@ export default async function LandingPage({
         ) : (
           <>
             <p className="selodia__soon">
-              Selod&iacute;a is coming in 2027. Leave your email and we&rsquo;ll let you know when
-              it&rsquo;s ready.
+              Selod&iacute;a is coming in 2027. Leave your email and we&rsquo;ll email you when
+              it&rsquo;s ready. Nothing else, and you can ask us to remove you at any time.
             </p>
 
             <form className="selodia__form" action={join}>
+              {/* Only when there is one. An empty hidden field would be a tag
+                  of "" arriving at the sanitiser, which is the same null by a
+                  longer route. */}
+              {tag ? <input type="hidden" name="src" value={tag} /> : null}
               <input
                 className="selodia__field"
                 type="text"
