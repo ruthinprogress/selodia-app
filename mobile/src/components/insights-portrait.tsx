@@ -1,35 +1,37 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { HealthFlower } from '@/components/health-flower';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { useHealthFlower } from '@/hooks/use-health-flower';
 
 // Layer 1 of Insights: the living portrait (build spec, Part Ten, the Insights
 // brief).
 //
-// THE FLOWER, LARGE AND GIVEN ROOM. The brief asks for more space than the Body
-// tab gives it, because this is a reflective place rather than a dashboard. It
-// is this week's flower, the same coverage the Body tab shows, from the same
-// hook.
+// THE FLOWER WAS REMOVED FROM HERE ON 7 OCTOBER 2026, at Ruth's word: "Remove
+// the health flower that's at the top of the almanac insights tab."
 //
-// BELOW IT, WITNESS STATEMENTS, OR A GENTLE PROMPT. The statements are written by
-// the Sunday roundup, which is Insights slice 3 and not built yet. Until someone
-// has roundups there is nothing honest to say about their last six weeks, so the
-// portrait says that it is early, in Ruth's own words, and never shows a made-up
-// picture (Ruth, 2026-09-12: "no fake data"). The "last 6 weeks" date range
-// arrives with the statements it describes.
+// WHY IT WAS ALWAYS GOING TO GO. For twelve days this tab drew two flowers. This
+// one was THIS WEEK's coverage at 230px, the same picture the Body tab already
+// shows; below it sat the balance flower, which she moved here herself on
+// 25 September as a SIX-WEEK rolling view, and which she chose six weeks for
+// because "a week is short enough that an ordinary busy week looks like a bare
+// drawing". So the tab opened on the harshest reading of her last seven days and
+// then, a scroll later, showed the kinder one it was meant to show.
 //
-// STATIC, NOT ANIMATED (confirmed 2026-09-12): motion reads as reward, which is
-// the register the Witness Principle rules out. The flower keeps its own gentle
-// breathing at full bloom and nothing else moves.
+// Two drawings of the same thing on one screen also means the one at the top
+// wins, whatever the one underneath is for. The Almanac is the tab for patterns.
+// A week is not a pattern.
+//
+// WHAT THIS LEAVES, which is what the layer was named for: the witness
+// statements, written by the Sunday roundup, and the period they describe. The
+// portrait is the picture written in WORDS. It was the thing underneath the
+// flower, and it is the thing now.
+//
+// The flower itself is untouched and still lives on the Body tab and in
+// balance-flower-section.tsx below this. Nothing was deleted, it was removed
+// from one screen.
 
 export const PORTRAIT_EMPTY =
   "We're just getting started. Log a few weeks and we'll start to see your picture emerge.";
-
-const PORTRAIT_FLOWER_SIZE = 230;
 
 export type InsightsPortraitProps = {
   /** Written by the Sunday roundup, read from the newest roundup entry. */
@@ -39,45 +41,8 @@ export type InsightsPortraitProps = {
 };
 
 export function InsightsPortrait({ statements = [], range = null }: InsightsPortraitProps) {
-  const flower = useHealthFlower();
-  const { reload } = flower;
-
-  // The Almanac is a tab and stays mounted for the life of the app, so the week
-  // is re-read whenever it comes back into view: a session logged in Chat has to
-  // grow its petal here too. Not on the first focus, because the hook has only
-  // just loaded it.
-  const firstFocus = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      if (firstFocus.current) {
-        firstFocus.current = false;
-        return;
-      }
-      reload();
-    }, [reload])
-  );
-
   return (
     <View style={styles.wrap}>
-      {/* Height reserved whether or not the week has loaded, so the prompt
-          beneath never jumps when the flower arrives. */}
-      <View style={styles.flower}>
-        {flower.coverage && (
-          <HealthFlower
-            coverage={flower.coverage}
-            size={PORTRAIT_FLOWER_SIZE}
-            // THE SAME PETALS AS TODAY'S, SO THEY DO THE SAME THING (Ruth's bug
-            // list, item 5: "Tapping Strength or Cardio should show what fed that
-            // petal; it does nothing"). This copy was drawn without the handler
-            // the Today flower has always had. It opens the same detail screen,
-            // which lives under Today - so the tap crosses to that tab, and back
-            // returns there. One screen for what fed a petal, not two that drift.
-            onSelectDimension={(d) =>
-              router.push({ pathname: '/today/[dimension]', params: { dimension: d } })
-            }
-          />
-        )}
-      </View>
       {/* THE WIDTH LIMIT SITS ON A WRAPPER, NOT ON THE TEXT. Found on device
           2026-09-12: with maxWidth and centring on the Text itself, Android
           measured Comfortaa short by a line and dropped "picture emerge." off
@@ -115,11 +80,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
-  },
-  flower: {
-    height: PORTRAIT_FLOWER_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   statementWrap: {
     width: '100%',
