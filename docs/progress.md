@@ -444,6 +444,11 @@ Selodía is in all three categories at once and costs more to run than any of th
 trackers, because every turn is a conversation with a model rather than a
 database lookup.
 
+> **SUPERSEDED, 7 October 2026.** The £9 thinking below is kept for its reasoning, not its
+> number. Pricing decisions now live in `docs/pricing-and-tiers.md` (DRAFT): £20 to £30,
+> nothing below £20, because a measured 5.41c a turn makes an engaged user cost about
+> £11.50 a month and £8 loses £4.70 on each one.
+
 **Why £9 and not £10.** They are the same decision to a customer and different
 decisions to you. £9 reads as "under a tenner". The extra 85p is not worth that
 threshold on a first product with no reviews.

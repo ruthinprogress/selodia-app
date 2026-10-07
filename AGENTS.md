@@ -16,6 +16,13 @@ Drive` is a decoy. Say where you put it, with the path or the link, every time.
 Ruth cannot comfortably read Markdown. Anything written for her gets converted
 with `scripts/md2docx.py` first.
 
+# Before you touch pricing, tiers or turn limits
+
+Read `docs/pricing-and-tiers.md`. It is a DRAFT and nothing in it is built, so
+it is a record of decisions rather than a description of the app. It exists
+because these numbers were being re-decided from scratch every time the subject
+came up. Nothing in it gets implemented without asking Ruth first.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
