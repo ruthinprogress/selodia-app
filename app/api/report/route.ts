@@ -221,14 +221,14 @@ function notice(title: string, body: string, reference = ''): string {
 const EXPIRED = (id: string) =>
   notice(
     'This link has run out',
-    'A report link works for two hours, and this one is past that. Nothing has been lost: open Selodía, go to Settings, then Data and export, and build it again with the same choices.',
+    'A report link works for two hours, and this one is past that. Nothing has been lost: open Selodía, go to More, then Build a report, and build it again with the same choices.',
     id
   );
 
 const UNKNOWN = (id: string) =>
   notice(
     'This link does not lead anywhere',
-    'No report was found for it. It may have been copied incompletely, or it may belong to a report that was replaced. Open Selodía, go to Settings, then Data and export, and build it again for a fresh link.',
+    'No report was found for it. It may have been copied incompletely, or it may belong to a report that was replaced. Open Selodía, go to More, then Build a report, and build it again for a fresh link.',
     id
   );
 

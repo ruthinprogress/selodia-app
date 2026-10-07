@@ -107,6 +107,23 @@ export default function SettingsHub() {
           detail="Everything you have told Selodía about your body"
           onPress={() => router.push('/settings/body-manual' as never)}
         />
+        {/* BUILD A REPORT, ON ITS OWN (Ruth, 7 October 2026: "Build a Report
+            moves out of Data & export into its own place in the More Menu").
+            It used to be the first thing on the Data page, put there because it
+            was the one people were usually looking for - which is the argument
+            against keeping it there. A document to take to a clinician is not an
+            exercise of a data right, and the thing people are usually looking
+            for should not be two taps inside the page about deleting everything.
+
+            DIRECTLY UNDER BODY MANUAL, because that is what it is made of. The
+            Body Manual is everything she has told Selodía; a report is that same
+            record, shaped for somebody else to read. */}
+        <SettingsRow
+          icon="document-text-outline"
+          label="Build a report"
+          detail="Choose what to include, then save it as a PDF"
+          onPress={() => router.push('/settings/report')}
+        />
         <SettingsRow
           icon="nutrition-outline"
           label="What I track"
@@ -142,8 +159,8 @@ export default function SettingsHub() {
           <SpotlightTarget id="settings.delete" onActivate={() => router.push('/settings/data')}>
           <SettingsRow
             icon="cloud-download-outline"
-            label="Data and export"
-            detail="Take a copy, or delete everything"
+            label="Your data"
+            detail="Take a copy, say how it may be used, or delete everything"
             onPress={() => router.push('/settings/data')}
           />
           </SpotlightTarget>
