@@ -151,5 +151,43 @@ check('an entry still tags its conversation', () => {
   return 'carried with the text, in one call';
 });
 
+// ---- 5. a correction remembers which entry it is correcting ---------------
+check('tapping "change or ask about this" keeps the entry, and shows it', () => {
+  // 7 OCTOBER 2026, 09:11. The one mode that exists only to talk about a
+  // particular entry was the one mode that forgot which entry it was. Ruth
+  // tapped through from TUESDAY's chicken sandwich, got no card, typed the
+  // sandwich out fresh, and it logged to WEDNESDAY as a brand new meal.
+  //
+  // The tag was dropped on arrival whenever the tap did not auto-send, which is
+  // every correction, because a correction is a half-sentence SHE has to finish
+  // and must never be sent for her.
+  ok(
+    /setPendingTag\(tag\);/.test(chat),
+    'a correction still throws its tag away, so the turn cannot know which entry she meant'
+  );
+  ok(
+    !/setPendingTag\(askNow === .1. \? tag : null\)/.test(chat),
+    'the old auto-send-only condition is still there'
+  );
+  // VISIBLE, OR IT IS THE 7 SEPTEMBER TRAP AGAIN. What made a kept tag dangerous
+  // was never that it was unsent. It was that she could not see it or detach it.
+  ok(
+    /setAnchor\(\{ id: tag\.entryId, name: tag\.seed\?\.title \?\? null \}\)/.test(chat),
+    'the card is not drawn on arrival, so the kept tag is invisible - which is the trap, not the fix'
+  );
+  return 'kept, and named above the box before she types';
+});
+
+check('closing the card drops the tag as well as the card', () => {
+  // Otherwise she detaches the thing she can see and her next message is still
+  // filed against the entry underneath it.
+  const closeAt = chat.indexOf('setCloseNext(true);');
+  ok(closeAt > 0, 'the Close handler has moved');
+  const handler = chat.slice(closeAt, closeAt + 600);
+  ok(/setAnchor\(null\)/.test(handler), 'Close no longer clears the card');
+  ok(/setPendingTag\(null\)/.test(handler), 'Close clears the card but leaves the tag attached');
+  return 'closed means closed';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);

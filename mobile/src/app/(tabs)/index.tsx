@@ -286,7 +286,33 @@ export default function ChatScreen() {
     // pizza, saw nothing happen, then typed a two-day food catch-up, and the
     // pizza's card attached itself to that. A tag with no message behind it is
     // not a pending question, it is a trap for the next one.
-    setPendingTag(askNow === '1' ? tag : null);
+    // A CORRECTION KEEPS ITS TAG NOW, AND SHOWS IT (7 October 2026, 09:11).
+    //
+    // This read `askNow === '1' ? tag : null`, so the one mode that exists ONLY
+    // to talk about a particular entry - "change or ask about this" - was the one
+    // mode that forgot which entry it was. Ruth tapped through from TUESDAY's
+    // chicken sandwich, got a half-sentence in the composer and no card, typed
+    // the sandwich out fresh, and it logged to WEDNESDAY. Nothing was wrong with
+    // the parse: the turn genuinely had no idea it was about an existing Tuesday
+    // row, because the tag had been thrown away on arrival.
+    //
+    // THE OLD REASONING WAS RIGHT ABOUT THE WRONG THING. It was guarding against
+    // the 7 September pizza: a tag set, ignored, and still sitting there when a
+    // two-day food catch-up got typed, which the pizza then attached itself to.
+    // But what made that a trap was not that the tag was unsent. It was that the
+    // tag was INVISIBLE. She had no way to see what her next message would be
+    // attached to, and no way to detach it.
+    //
+    // So the tag is kept and the anchor is drawn immediately from the seed, which
+    // is what the seed fields were added for: "handed across so the chat card
+    // draws immediately instead of after two reads". She sees "Talking about
+    // Chicken and mushroom sandwich" above the box, with Close beside it, before
+    // she types a word. A visible tag with a Close is a topic. An invisible one
+    // is the trap.
+    setPendingTag(tag);
+    if (askNow !== '1' && tag) {
+      setAnchor({ id: tag.entryId, name: tag.seed?.title ?? null });
+    }
     // "ASK ABOUT THIS" SENDS; the Almanac's "Update this" still fills the box.
     //
     // It filled the box until 2026-09-16 and Ruth reported three times that
@@ -1128,6 +1154,11 @@ ${result.message}`;
               onPress={() => {
                 setCloseNext(true);
                 setAnchor(null);
+                // AND THE TAG GOES WITH IT. Since a correction keeps its tag on
+                // arrival, Close has to drop that too, or she would detach the
+                // card she can see and still have her next message filed against
+                // the entry underneath it. Closing means closed.
+                setPendingTag(null);
                 setSaveToast((prev) => ({
                   summary: 'Closed. Your next message starts a new topic.',
                   nonce: (prev?.nonce ?? 0) + 1,
