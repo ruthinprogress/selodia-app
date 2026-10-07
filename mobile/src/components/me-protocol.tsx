@@ -14,6 +14,7 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
+import { CARE_EMPTY, CARE_PARENT_SECTION, CARE_SECTION, CARE_SUBTITLE } from '@/lib/care-admin';
 import { arrange, layoutOf, loadLayout, saveLayout, type LogLayout } from '@/lib/log-layout';
 import { ME_STATUSES, readMeCard, sectionOf, type MeCard, type MeStatus } from '@/lib/me-card';
 import { updateMeCard } from '@/lib/me-card-write';
@@ -90,13 +91,32 @@ export function MeProtocol({
 
   const sections = useMemo(() => {
     const map = new Map<string, AlmanacRow[]>();
+    // HOW I ACCESS CARE IS A GROUP INSIDE HEALTH, NOT A SECTION BESIDE IT.
+    //
+    // Ruth, 6 October 2026: "Bit there's health already in Me, so how would this
+    // go, just Care underneath it?" It goes underneath it. Care rows are held
+    // back here and rendered below the Health rows, under their own quiet
+    // heading, so her list gains a group rather than a heading.
+    //
+    // AND THE SECTION EXISTS AS SOON AS A CARE ROW DOES, even with no Health
+    // card of its own, or the records would be filed somewhere she cannot open.
+    const care: AlmanacRow[] = [];
     for (const entry of entries) {
       const name = sectionOf(entry.category);
+      if (name === CARE_SECTION) {
+        care.push(entry);
+        if (!map.has(CARE_PARENT_SECTION)) map.set(CARE_PARENT_SECTION, []);
+        continue;
+      }
       const list = map.get(name) ?? [];
       list.push(entry);
       map.set(name, list);
     }
-    return orderSections([...map.keys()]).map((name) => ({ name, rows: map.get(name) ?? [] }));
+    return orderSections([...map.keys()]).map((name) => ({
+      name,
+      rows: map.get(name) ?? [],
+      care: name === CARE_PARENT_SECTION ? care : [],
+    }));
   }, [entries]);
 
   // The sections that exist, offered when moving a card. Sections are open
@@ -200,6 +220,38 @@ export function MeProtocol({
               <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
             </SwipeToDelete>
           ))}
+          {/* THE PAPERWORK, UNDER THE SAME SECTION AND BELOW A QUIET RULE.
+              A smaller heading than the section's, because this is a group
+              inside it rather than a rival to it, and the line underneath
+              carries the boundary the heading stopped carrying when "Care
+              Admin" became "How I Access Care": letters, numbers, references,
+              emails. See lib/care-admin.ts for why both names were needed. */}
+          {section.care.length > 0 || section.name === CARE_PARENT_SECTION ? (
+            <View style={styles.careGroup}>
+              <View style={[styles.careRule, { backgroundColor: theme.backgroundSelected }]} />
+              <ThemedText type="subtitle">{CARE_SECTION}</ThemedText>
+              <ThemedText type="detail" themeColor="textSecondary" style={styles.careSubtitle}>
+                {CARE_SUBTITLE}
+              </ThemedText>
+              {section.care.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {CARE_EMPTY}
+                </ThemedText>
+              ) : (
+                section.care.map((row) => (
+                  <SwipeToDelete
+                    key={row.id}
+                    table="almanac_entries"
+                    id={row.id}
+                    what={row.title}
+                    onDeleted={onDeleted}
+                  >
+                    <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
+                  </SwipeToDelete>
+                ))
+              )}
+            </View>
+          ) : null}
         </View>
         )}
       />
@@ -682,6 +734,11 @@ const styles = StyleSheet.create({
   // NO FILL AND NO RADIUS. An entry is a row on a page now, not a tile.
   card: { paddingVertical: Spacing.two, gap: Spacing.two },
   rule: { height: 1, marginBottom: Spacing.three },
+  // Inside a section, so it is indented from the cards above it and the
+  // rule is shorter and quieter than the one between sections.
+  careGroup: { gap: 6, paddingTop: Spacing.two },
+  careRule: { height: 1, width: 48, marginBottom: Spacing.two },
+  careSubtitle: { marginTop: -4, marginBottom: Spacing.one },
   surface: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
   // The title, its preview and its date travel together and take the width;
   // status and chevron sit against the right edge whatever the title does.

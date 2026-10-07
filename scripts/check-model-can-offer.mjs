@@ -72,12 +72,33 @@ function schemaTypes() {
  */
 const BY_OWN_FIELD = { note: 'noteText' };
 
+/**
+ * Types created by a DIFFERENT ROUTE, which the chat tool is right never to offer.
+ *
+ * `care` is the paperwork of being seen, and it comes from a document somebody
+ * uploaded rather than from the model deciding a conversation sounded
+ * administrative. It is named here because on 7 October 2026 it was in neither
+ * list: not in the schema, correctly, and not in SAVE_TYPES either, which meant
+ * coerceSaveType returned null and every parsed letter died on the last line of
+ * its own route with a 500. The feature had never produced a single row.
+ *
+ * The exception only counts if the route really builds it, so that is asserted
+ * rather than asserted-in-a-comment.
+ */
+const BY_OWN_ROUTE = { care: 'app/api/parse-document/route.ts' };
+
 check('every save type the app accepts is reachable by the model', () => {
   const offered = schemaTypes();
   const missing = SAVE_TYPES.filter((t) => {
     if (offered.includes(t)) return false;
     const field = BY_OWN_FIELD[t];
-    return !(field && route.includes(`${field}: {`));
+    if (field && route.includes(`${field}: {`)) return false;
+    const owner = BY_OWN_ROUTE[t];
+    if (owner) {
+      const src = readFileSync(owner, 'utf8');
+      return !new RegExp(`type: '${t}'`).test(src);
+    }
+    return true;
   });
   ok(
     missing.length === 0,
@@ -111,7 +132,11 @@ check('every type has its content shape described', () => {
   const block = route.slice(at, at + 6000);
   // "for an insight", not "for a insight". The article was my bug, not the route's,
   // and loosening this to ignore it would have hidden a real gap.
-  const described = SAVE_TYPES.filter((t) => !BY_OWN_FIELD[t]);
+  // A type the chat tool never offers needs no shape in the chat tool. `note`
+  // arrives through its own field and `care` through its own route, and
+  // describing either here would be instructions for an offer that cannot
+  // happen. Both exceptions are asserted above rather than assumed.
+  const described = SAVE_TYPES.filter((t) => !BY_OWN_FIELD[t] && !BY_OWN_ROUTE[t]);
   const missing = described.filter((t) => !new RegExp(`for an? ${t}\\b`, 'i').test(block));
   ok(
     missing.length === 0,

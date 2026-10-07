@@ -130,6 +130,26 @@ export const SAVE_TYPES: readonly SaveType[] = [
   // and nothing could be: no save type existed for a thing she wants to
   // become able to do. See lib/skill-add.ts.
   'skill',
+  // THE PAPERWORK OF BEING SEEN, and it had never once been accepted.
+  //
+  // FOUND 7 OCTOBER 2026 while building the screen that renders it. The whole
+  // Care record existed: a parser, a card body written to be read aloud at a
+  // reception desk, a section name she chose herself, and `type: 'care'` passed
+  // to coerceProposal by app/api/parse-document/route.ts. This list did not have
+  // it, so coerceSaveType returned null, coerceProposal returned null, and the
+  // route returned its 500: "I read the document, but could not make a record of
+  // it that would keep."
+  //
+  // The error was honest and nobody ever saw it, because sharing a letter is a
+  // thing she has not done since the feature was built. Zero care rows exist in
+  // the database. The section I was about to ship would have been empty forever
+  // and looked like a design decision.
+  //
+  // IT IS NOT MODEL-OFFERABLE AND THAT IS DELIBERATE. A care record comes from a
+  // document somebody uploaded, never from the model deciding a conversation
+  // sounded administrative. check-model-can-offer.mjs carries that as a named
+  // exception rather than a hole, the same way `note` is named.
+  'care',
   // A RESULT SHE HAS BEEN GIVEN. Added 6 October 2026, and it was nearly added
   // to only half the places it needed to be: the classify tool was taught to
   // offer a marker, commitSave was taught to write one, and this list - which
