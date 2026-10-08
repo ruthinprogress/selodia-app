@@ -8,9 +8,19 @@
 
 ## 1. What Selodía is
 
-Selodía is a body literacy app for women 40+. It helps a woman understand her own body: the patterns in it, the context around them, and the connections between things she was never taught to link. It is not a diet app, not a fitness tracker, and not a symptom checker. Those all tell you what to do. Selodía helps you work out what is actually happening, so that eventually you do not need to be told.
+Selodía is a body literacy app for women 40+. It helps a woman understand her own body: the patterns in it, the context around them, and the connections between things she was never taught to link. It is not a diet app, not a fitness tracker, and not a symptom checker. Those all tell you what to do. Selodía helps you work out what is actually happening, so that eventually she does not need to be told.
 
-The goal is not engagement. It is literacy, and literacy has an end point: the app is built to make itself unnecessary. Success is someone living confidently without it.
+**What she outgrows is being told what to do. What she keeps is her record.**
+
+**REVISED 8 OCTOBER 2026, and the reason is the healthcare work.** This section used to end "the app is built to make itself unnecessary. Success is someone living confidently without it." Ruth spotted that the Care record contradicts it, and she is right.
+
+The two halves pull in opposite directions only if they are the same thing, and they are not. The instruction has an end point: the prompting, the suggesting, the explaining of what her own numbers mean. That is what literacy retires, and retiring it is still the goal.
+
+**A record has no end point, and its value runs the other way.** Six years of symptoms, what was tried, who she saw, what was agreed and what the letter actually said is worth more at year six than at year one, and worth most of all in the appointment where she is being dismissed. Nobody outgrows their own history, and telling her she should is telling her to throw away the thing that took longest to build.
+
+So: the app stops telling her what to do. It does not stop being where her life with her body is written down.
+
+**This also settles something commercial that was never going to hold.** "Built to be outgrown" cannot be said to somebody paying twenty to thirty pounds a month. It is not that it is hard to sell, it is that it is not true of the thing being sold. The record compounds, which is both honest and the reason to stay.
 
 ---
 
@@ -35,7 +45,9 @@ She already owns a smart scale. She already tracks. She is not new to any of thi
 
 **Body literacy, not body fixing.** Most health apps teach people to control their bodies. Selodía teaches people to understand them. Every feature is scaffolding for one arc: confusion, then curiosity, then understanding, then confidence, then autonomy.
 
-**No gamification, at all.** No streaks, no scores, no badges. Not softened, not tastefully redesigned. Absent. An app that hands out points for logging is optimising for its own engagement, and this one is built to be outgrown.
+**No gamification, at all.** No streaks, no scores, no badges. Not softened, not tastefully redesigned. Absent. An app that hands out points for logging is scoring her, and this one never scores her: the question is never "did she do well", it is "what did we notice".
+
+*The reason given here used to be "this one is built to be outgrown", which stopped being true on 8 October. The rule did not change and did not need to: the better justification was always the voice rule in section 4, and it is the one that survives contact with a product she keeps for years.*
 
 **Conversational, not a form.** You tell it things the way you would tell a person. It asks, notices, remembers, and reflects back. Nothing is a dropdown when it could be a sentence.
 
