@@ -1,6 +1,6 @@
 # If something leaks — what to do, in order
 
-**Selodía Ltd**, 19 Campbell Road, London, E17 6RR, company number 12246794.
+**Selodia Ltd**, 19 Campbell Road, London, E17 6RR, company number 17435894.
 **Version 1.0 · 28 September 2026.** Review yearly, and after any incident.
 
 **Why this exists.** The DPIA names a breach of the database as the worst case on

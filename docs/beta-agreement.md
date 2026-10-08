@@ -2,7 +2,7 @@
 
 **Version 1.1 · [date]**
 
-This agreement is between Selodía Ltd ("we") and you, as a member of the Selodía beta. While you're in the beta, it applies instead of our Terms of Service. Our Privacy Policy still applies in full.
+This agreement is between Selodia Ltd ("we") and you, as a member of the Selodía beta. While you're in the beta, it applies instead of our Terms of Service. Our Privacy Policy still applies in full.
 
 ## 1. Who can join
 
@@ -30,7 +30,7 @@ Nothing is compulsory. There's a Beta feedback section in the app where you can 
 
 ## 7. Your data
 
-It's yours. You can export it or delete your account at any time, in the app or at selodia.app/delete-account. We handle it as the Privacy Policy describes, including health information, which we treat with extra care. Being in the beta gives us no extra rights over your data. We don't sell it. When we look at anything you've written, it's only to understand a specific problem, and it never leaves Selodía Ltd.
+It's yours. You can export it or delete your account at any time, in the app or at selodia.app/delete-account. We handle it as the Privacy Policy describes, including health information, which we treat with extra care. Being in the beta gives us no extra rights over your data. We don't sell it. When we look at anything you've written, it's only to understand a specific problem, and it never leaves Selodia Ltd.
 
 ## 8. How long the beta lasts
 
@@ -62,8 +62,8 @@ England and Wales.
 
 ## 15. Contact
 
-hello@selodia.app · Selodía Ltd, 19 Campbell Road, London, E17 6RR, company
-number 12246794.
+hello@selodia.app · Selodia Ltd, 19 Campbell Road, London, E17 6RR, company
+number 17435894.
 
 ---
 
@@ -73,7 +73,7 @@ number 12246794.
 
 ## Notes, not part of the agreement
 
-**The address and the company number are filled in** (Ruth, 28 September 2026): Selodía Ltd, 19 Campbell Road, London, E17 6RR, company number 12246794.
+**The address and the company number are filled in** (Ruth, 28 September 2026): Selodia Ltd, 19 Campbell Road, London, E17 6RR, company number 17435894.
 
 **One placeholder is left, and it is meant to be.** The version date is *the day the agreement is first shown to a tester*, which has not happened. `node scripts/beta-agreement-date.mjs` fills it from the earliest grant in `beta_members` **that is not the founder's own account** — so the date is the day wave zero was actually granted to somebody being tested on, derived rather than remembered. It refuses while no such grant exists, and refuses to re-date a version already stamped. **Do not type the date in by hand.** The founder exclusion is there because the first run of the script dated the agreement from Ruth's own beta grant, which was made that morning so she could see the feedback screen.
 

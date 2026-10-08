@@ -20,12 +20,12 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 //   - ElevenLabs' retention settings for this specific account. The claim below
 //     is deliberately cautious rather than confident.
 //   - SETTLED 2026-09-27. SELODÍA LTD is the data controller, not Ruth
-//     personally: "Always Selodía Ltd, not me personally." This now matches
+//     personally: "Always Selodia Ltd, not me personally." This now matches
 //     app/terms/page.tsx, which was changed the same day and had been
 //     disagreeing with this page since it was written.
 //
 //     SETTLED 2026-09-30. IT EXISTS AND IT IS IN THE COMPANY'S NAME. Tier 1,
-//     direct debit set up, application C2047751, Selodía Ltd. The question this
+//     direct debit set up, application C2047751, Selodia Ltd. The question this
 //     comment asked - naming a controller in a policy is not the same as being
 //     registered as one - is answered.
 //
@@ -148,8 +148,8 @@ const SECTIONS: PlainSection[] = [
   {
     heading: 'Who is responsible',
     body: [
-      'Selodía is operated by Selodía Ltd, which is the data controller for everything described here. If you have a question about your data, or want to exercise any of the rights below, email hello@selodia.app.',
-      'Selodía Ltd is registered in England and Wales, company number 12246794, registered office 19 Campbell Road, London, E17 6RR. It is registered with the Information Commissioner’s Office as a data controller, reference ZC263754.',
+      'Selodía is operated by Selodia Ltd, which is the data controller for everything described here. If you have a question about your data, or want to exercise any of the rights below, email hello@selodia.app.',
+      'Selodia Ltd is registered in England and Wales, company number 17435894, registered office 19 Campbell Road, London, E17 6RR. It is registered with the Information Commissioner’s Office as a data controller, reference ZC263754.',
       'If you are not satisfied with how a request is handled, you can complain to the Information Commissioner’s Office (ICO) at ico.org.uk.',
     ],
   },

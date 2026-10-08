@@ -246,7 +246,7 @@ check('and the founder is not named', () => {
   // person. `check-founder-not-named.py` covers the app; this covers the site.
   assert.ok(!/\bRuth\b/i.test(joined), 'the founder is named on the homepage');
   assert.ok(!/\bChristianson\b/i.test(joined), 'the founder is named on the homepage');
-  return 'Selodía Ltd, not a person';
+  return 'Selodia Ltd, not a person';
 });
 
 check('every internal link goes somewhere real', () => {

@@ -155,7 +155,7 @@ The controller paragraph gains the ICO registration reference once it exists.
 reference a policy cites is the ZA/ZB number on the certificate. Nothing in the
 current text claims a registration, so nothing is wrong today. When it arrives:
 
-> Selodía Ltd is registered with the Information Commissioner's Office, registration
+> Selodia Ltd is registered with the Information Commissioner's Office, registration
 > reference [ZA……].
 
 ---

@@ -1,7 +1,7 @@
 # Data Protection Impact Assessment — Selodía
 
-**Controller:** Selodía Ltd, 19 Campbell Road, London, E17 6RR
-**Company number:** 12246794 · **Contact:** hello@selodia.app
+**Controller:** Selodia Ltd, 19 Campbell Road, London, E17 6RR
+**Company number:** 17435894 · **Contact:** hello@selodia.app
 **Version 1.2 · 1 October 2026 · first draft, not yet reviewed**
 **Review:** yearly, and whenever anything new is collected.
 
@@ -234,7 +234,7 @@ a change of processor terms that happens quietly.
 
 | | Priority |
 | --- | --- |
-| **ICO registration — DONE 30 September 2026.** Tier 1, £52, direct debit, Selodía Ltd, application **C2047751**. Planned for *after* the controller's own week of daily use and before Nikki and Carol are invited (Ruth, 28 September); done in front of that week instead. The **registration reference is ZC263754** (confirmed 3 October 2026) and is what the privacy policy cites — it is live there now. The application number is not the reference and is never cited as one. | **Done, ahead of the first invitation** |
+| **ICO registration — DONE 30 September 2026.** Tier 1, £52, direct debit, Selodia Ltd, application **C2047751**. Planned for *after* the controller's own week of daily use and before Nikki and Carol are invited (Ruth, 28 September); done in front of that week instead. The **registration reference is ZC263754** (confirmed 3 October 2026) and is what the privacy policy cites — it is live there now. The application number is not the reference and is never cited as one. | **Done, ahead of the first invitation** |
 | **Leaked-password protection** — confirmed 28 September to need the **Supabase Pro plan at $25/month**, so it is a cost decision rather than a toggle. **No longer treated as a wave-one blocker** (Ruth, 28 September, agreeing it was too strong): it is a real improvement and not the line between lawful and unlawful processing, and a dozen beta testers is a defensible time not to have it. Revisited if Pro is taken for other reasons. | When Pro is taken |
 | **Password reset proved end to end on a phone.** | **Before wave one** |
 | ~~International transfer mechanism for Anthropic and ElevenLabs~~ — **done, 28 September.** SCCs plus the UK Addendum in both DPAs, both automatic. Section 3. | Closed |
