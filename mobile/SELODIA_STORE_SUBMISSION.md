@@ -127,7 +127,9 @@ both travel with the tier.
 >
 > **It never tells you off.** No streaks to protect, no badges, no before-and-after photos, no food called good or bad. Nothing here is designed to make you open the app more often than is useful to you.
 >
-> **It's meant to become unnecessary.** Selodía has a designed ending: once the habits are yours, it steps back. That is the point of it, not a failure of it.
+> **It keeps what matters.** The longer you use it, the more it holds: your patterns, what you tried, what helped, and the details you need when you are trying to be taken seriously. That is worth more in year three than in year one.
+>
+> *(This paragraph replaced "It's meant to become unnecessary. Selodia has a designed ending" on 8 October 2026. The healthcare work made the record something she keeps, so the old line described a different product. The copy above was NOT re-approved by Ruth and needs her eye before it is entered anywhere.)*
 >
 > Your data is yours. Export all of it or delete all of it, from inside the app, whenever you like. It is never sold and never used for advertising.
 >
