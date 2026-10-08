@@ -1,7 +1,15 @@
 import { Comfortaa, Cormorant_Infant, Manrope } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
-import { HeroArtwork, ThreadDivider } from './lib/hero-artwork';
+import {
+  ChangesDiagram,
+  ConnectionsDiagram,
+  HowItWorksDiagram,
+  RealLifeDiagram,
+  RecordDiagram,
+  SectionThread,
+  TalkDiagram,
+} from './lib/diagrams';
 import {
   CONTACT_EMAIL,
   FOOTER,
@@ -18,40 +26,52 @@ import {
   WRITING,
   WRITING_URL,
 } from './lib/homepage-copy';
+import { Reveal } from './lib/reveal';
 import { sourceTag } from './lib/source-tag';
 import { supabase } from './lib/supabase';
 
-// The selodia.app homepage, rebuilt 8 October 2026 to Ruth's design and copy
-// master. The page that stood here until today was a logo, a tagline and an
-// email field; this one has to read like the homepage of a real company.
+// The selodia.app homepage, rebuilt to Ruth's brief of 8 October 2026.
 //
 // NOT ONE WORD OF COPY LIVES IN THIS FILE. Every string comes from
-// `app/lib/homepage-copy.ts`, which is the file Ruth reads and edits. That is
-// her instruction and it is also the only way the copy checks can be run at
-// all: a rule about vocabulary that has to grep a .tsx is a rule that cannot
-// see a sentence split across three JSX nodes.
+// `app/lib/homepage-copy.ts`, which is the file she reads and edits. It is also
+// the only way the vocabulary checks can work at all: a rule about the word
+// "tracker" that has to grep a .tsx cannot see a sentence split across three
+// JSX nodes.
 //
-// STILL NO CLIENT JAVASCRIPT. The form posts to a Server Action and the action
-// redirects back with a query flag. No 'use client', no bundle, no hydration.
-// The brief asks for "minimal JavaScript, only what the form needs", and what
-// the form needs turns out to be none.
+// WHAT CHANGED FROM THE FIRST BUILD, and each was an instruction:
 //
-// IT PINS ITS OWN COLOURS, for the same reason it always did: globals.css has a
-// `prefers-color-scheme: dark` override that would take this cream page to
-// near-black on a phone at night. Part Fifteen is explicit that light and dark
-// are a deliberate in-app choice and never follow the system.
+//   THE HERO IS HER ARTWORK NOW. The first build drew its own watercolour in
+//   SVG because the files had not reached the repository. They have, so the
+//   drawn version is deleted. "Delete any CSS blur or blob background. No blur
+//   filters or gradients anywhere."
+//
+//   EVERYTHING IS CENTRED IN 1100px. "Nothing hugging the left edge."
+//
+//   BODY COPY IS CHARCOAL AT 17px, never pale grey. The first build used a
+//   muted grey for supporting paragraphs. That is gone.
+//
+//   SIX DIAGRAMS instead of description. "Show, don't tell."
+//
+// THE JAVASCRIPT IS TWENTY LINES, in `reveal.tsx`, and the page is complete
+// without it. The form still posts to a Server Action and the action redirects
+// back with a query flag, so there is no bundle for the form at all.
+//
+// IT PINS ITS OWN COLOURS, because globals.css has a `prefers-color-scheme:
+// dark` override that would take this cream page to near-black on a phone at
+// night. Part Fifteen is explicit that light and dark are a deliberate in-app
+// choice and never follow the system.
 
 // ---------------------------------------------------------------------------
-// Typography. Three families, each with one job, per the copy master.
+// Typography. Three families, each with one job.
 // ---------------------------------------------------------------------------
 
 /** Tagline (300) and category line (400). NOTHING ELSE on the page uses it. */
 const comfortaa = Comfortaa({ subsets: ['latin'], weight: ['300', '400'], display: 'swap' });
 
-/** Every heading. Regular weight and never bold, which is stated twice in the brief. */
+/** Every heading, and the quoted sentence in the Talk diagram. Regular, never bold. */
 const cormorant = Cormorant_Infant({ subsets: ['latin'], weight: ['400'], display: 'swap' });
 
-/** All body copy, navigation, forms and footer. */
+/** All body copy, navigation, forms, diagram labels and footer. */
 const manrope = Manrope({ subsets: ['latin'], weight: ['400', '500'], display: 'swap' });
 
 // ---------------------------------------------------------------------------
@@ -65,25 +85,22 @@ const TERRACOTTA = '#C97458';
 const FOREST = '#37584A';
 
 /**
- * Deep terracotta: links, and any terracotta carrying text.
+ * Deep terracotta: links, the thread, the button, and any terracotta carrying text.
  *
  * `#874C3A`, which is `accentDeep` in `mobile/src/constants/theme.ts` and the
  * value the copy master names. Part Fifteen's prose says "around `#834B39`",
  * but `#834B39` is the DARK MODE GROUND in that same file, not the light-mode
- * text colour, and the implemented token has been `#874C3A` since June. The
- * copy master and the code agree, so this follows them.
+ * text colour, and the implemented token has been `#874C3A` since June.
  *
- * It measures 6.07:1 on cream. Brand terracotta itself is 3.10:1 and fails AA
- * for anything at body size, which is why it never carries text here.
+ * It measures 6.07:1 on cream, and cream on it measures 7.4:1. Brand terracotta
+ * itself is 3.10:1 and fails AA for anything at body size, which is why it
+ * never carries text here.
  */
 const ACCENT_DEEP = '#874C3A';
 
-/** Body copy that is deliberately quieter. 5.4:1 on cream, so it still clears AA. */
-const MUTED = '#6B6258';
-
-/** Small decorative circles below the hero. Sage and sand only: large terracotta is hero-only. */
-const SAGE_TINT = '#B9C5AE';
-const SAND_TINT = '#E9D6C2';
+/** Diagram fills only. Sage is a fill colour and never type: 2.28:1 on cream. */
+const SAGE_SOFT = '#C3CEB9';
+const TERRACOTTA_SOFT = '#EBC3B1';
 
 export const metadata = {
   title: META.title,
@@ -107,11 +124,9 @@ export const metadata = {
 // ---------------------------------------------------------------------------
 // Joining the waiting list.
 //
-// UNCHANGED FROM THE PAGE THIS REPLACES, deliberately. Ruth: "Reuse the
-// existing waitlist and its Supabase table. Do not rebuild it." The `waitlist`
-// table is the only publicly writable one in the schema: RLS allows INSERT to
-// anyone and grants no SELECT at all, so a stranger can add themselves and
-// nobody can read the list back through the API.
+// UNCHANGED, deliberately. Ruth: "Reuse the existing waitlist and its Supabase
+// table. Do not rebuild it." The `waitlist` table is the only publicly writable
+// one in the schema: RLS allows INSERT to anyone and grants no SELECT at all.
 // ---------------------------------------------------------------------------
 
 async function join(formData: FormData) {
@@ -121,8 +136,6 @@ async function join(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   const src = sourceTag(formData.get('src'));
 
-  // The browser already enforces type="email" and required; this is the version
-  // that survives a request that did not come from the browser.
   if (!email || !email.includes('@') || email.length > 320) {
     redirect('/?joined=error#waiting-list');
   }
@@ -132,8 +145,7 @@ async function join(formData: FormData) {
     .insert({ email, name: name.length > 0 ? name : null, src });
 
   // 23505 is a unique violation: they are already on the list. That is a success
-  // from where they are standing, and telling somebody already signed up that
-  // something went wrong would be both untrue and alarming.
+  // from where they are standing.
   if (error && error.code !== '23505') {
     console.log('WAITLIST INSERT FAILED:', error.message);
     redirect('/?joined=error#waiting-list');
@@ -148,8 +160,6 @@ export default async function LandingPage({
   searchParams: Promise<{ joined?: string; src?: string }>;
 }) {
   const { joined, src } = await searchParams;
-  // Read here and carried into the form as a hidden field, because a server
-  // action sees the submitted form and never the address bar.
   const tag = sourceTag(src);
 
   return (
@@ -162,197 +172,229 @@ export default async function LandingPage({
           --sand: ${SAND};
           --charcoal: ${CHARCOAL};
           --terracotta: ${TERRACOTTA};
+          --terracotta-soft: ${TERRACOTTA_SOFT};
+          --sage-soft: ${SAGE_SOFT};
           --deep: ${ACCENT_DEEP};
           --forest: ${FOREST};
-          --muted: ${MUTED};
           background: var(--cream);
           color: var(--charcoal);
           font-family: ${manrope.style.fontFamily}, system-ui, sans-serif;
-          /* 17px floor, which the brief sets and which is also the honest
-             minimum for the reader this page is for. */
           font-size: 17px;
-          line-height: 1.6;
+          line-height: 1.62;
           overflow-x: hidden;
         }
 
-        .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; box-sizing: border-box; }
+        /* EVERYTHING CENTRED IN 1100px. Nothing hugs the left edge. */
+        .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; box-sizing: border-box; }
 
         /* Headings: Cormorant Infant, regular, NEVER bold. */
         .site h1, .site h2, .site h3 {
           font-family: ${cormorant.style.fontFamily}, Georgia, serif;
           font-weight: 400;
-          letter-spacing: 0.005em;
-          line-height: 1.15;
+          line-height: 1.16;
           margin: 0;
           text-wrap: balance;
+          color: var(--charcoal);
         }
-        .site h2 { font-size: clamp(1.9rem, 5.2vw, 2.9rem); }
-        .site h3 { font-size: clamp(1.3rem, 3.6vw, 1.55rem); }
+        .site h2 { font-size: clamp(2rem, 5vw, 2.9rem); }
+        .site h3 { font-size: clamp(1.3rem, 3.4vw, 1.55rem); }
 
-        .site p { margin: 0 0 1.05rem; max-width: 36em; }
+        /* BODY COPY IS CHARCOAL AT 17px, never pale grey. */
+        .site p { margin: 0 0 1.1rem; max-width: 36em; font-size: 17px; color: var(--charcoal); }
         .site a { color: var(--deep); }
-        .site a:focus-visible,
-        .site button:focus-visible,
-        .site input:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; border-radius: 2px; }
+        .site a:focus-visible, .site button:focus-visible, .site input:focus-visible {
+          outline: 2px solid var(--forest); outline-offset: 3px; border-radius: 2px;
+        }
 
         /* ----------------------------------------------------------------- */
-        /* Top navigation                                                     */
+        /* Navigation                                                         */
         /* ----------------------------------------------------------------- */
-        /* ON A PHONE THE MARK TAKES ITS OWN ROW. Four links and a mark do not
-           fit across 375px: they wrapped, and "Contact" dropped onto a second
-           line on its own, next to the lockup. Stacking is the tidy version of
-           what it was going to do anyway. */
         .nav { position: relative; z-index: 3; display: flex; flex-direction: column;
-               align-items: flex-start; gap: 0.9rem; padding: 1.35rem 0 0; }
-        .nav__links { justify-content: flex-start; }
-        @media (min-width: 560px) {
-          .nav { flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; }
-          .nav__links { justify-content: flex-end; }
-        }
-        .nav__mark { width: 34px; height: 34px; display: block; }
-        .nav__links { display: flex; flex-wrap: wrap; gap: clamp(0.85rem, 3vw, 1.75rem);
-                      list-style: none; margin: 0; padding: 0; justify-content: flex-end; }
+               align-items: flex-start; gap: 0.9rem; padding: 1.4rem 0 0; }
+        .nav__mark { width: 36px; height: 36px; display: block; }
+        .nav__links { display: flex; flex-wrap: wrap; gap: clamp(0.9rem, 3vw, 1.8rem);
+                      list-style: none; margin: 0; padding: 0; justify-content: flex-start; }
         .nav__links a { font-size: 15px; color: var(--charcoal); text-decoration: none; }
         .nav__links a:hover { color: var(--deep); text-decoration: underline; }
+        @media (min-width: 620px) {
+          .nav { flex-direction: row; align-items: center; justify-content: space-between; }
+          .nav__links { justify-content: flex-end; }
+        }
 
         /* ----------------------------------------------------------------- */
-        /* Hero                                                               */
+        /* Hero. HER ARTWORK, no blur, no gradient, never scaled up.          */
         /* ----------------------------------------------------------------- */
-        .hero { position: relative; }
-        .hero__art { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-        .hero__svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .hero { position: relative; isolation: isolate; }
 
-        /* THE CONTRAST GUARANTEE. A cream veil over the side the words sit on,
-           so no line of type can land on a wash or on the copper thread. It is
-           a gradient rather than careful placement because placement has to be
-           got right again every time the artwork or the copy changes. */
-        /* THE PHONE VEIL HOLDS LONGER THAN THE DESKTOP ONE. On a narrow screen
-           the tagline sits low in the hero, which is exactly where a top-down
-           fade has given up. Measured rather than guessed: charcoal over the
-           wash at this strength is about 11.5:1 and the second tagline line in
-           deep terracotta about 5.7:1, both clear of AA. The wash is quieter on
-           a phone as a result, which is the right way round. */
-        .hero__veil { position: absolute; inset: 0; z-index: 1; pointer-events: none;
-                      background: linear-gradient(to bottom,
-                        var(--cream) 0%, rgba(247,243,234,0.93) 52%,
-                        rgba(247,243,234,0.78) 80%, rgba(247,243,234,0) 100%); }
+        /* WHERE THE ARTWORK IS EMPTY, MEASURED RATHER THAN EYEBALLED.
+           scripts/hero-clear-zones.mjs divides each file into a 6x6 grid and
+           reports the contrast charcoal would have against the WORST pixel in
+           each cell, not the average, because one copper line through an
+           otherwise empty square is exactly the case that matters.
 
-        .hero__inner { position: relative; z-index: 2; padding: 2.5rem 0 3.5rem; }
-        .hero__lockup { display: block; width: clamp(168px, 44vw, 232px); height: auto; }
+             WIDE  clear from 33% to 66% down, 0% to 67% across (8.1 to 12.4),
+                   and the far-left column stays clear from the very top.
+             TALL  clear through the whole middle third, full width (12.4).
+
+           Both files are dense top-right and bottom-left, so the type runs down
+           the left and stops before the lower corner. The mask below then fades
+           the artwork out underneath the tagline, so the composite is cleaner
+           than the source measurement. */
+        .hero__art {
+          position: absolute; top: 0; left: 0; right: 0; z-index: 0; pointer-events: none;
+          background-repeat: no-repeat;
+          background-position: top center;
+          background-image: url('/brand/hero-tall-720.webp');
+          background-size: 100% auto;
+          /* At its own aspect ratio, never cropped and never scaled up, so the
+             measured percentages above mean the same thing on every screen. */
+          aspect-ratio: 1072 / 1467;
+          /* THE LOWER EDGE FADES INTO THE PAGE CREAM, and nothing else does.
+             A mask rather than a gradient overlay, so the cream underneath is
+             the page's own cream and cannot drift from it. On a phone it starts
+             fading at the point the measurement says the artwork stops being
+             empty, which is what keeps the tagline on clean ground. */
+          -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 86%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 86%);
+        }
+        @media (min-width: 721px) {
+          .hero__art { background-image: url('/brand/hero-tall-1072.webp'); }
+        }
+        /* DESKTOP: the wide artwork. 1774px is its natural width and the cap. */
+        @media (min-width: 900px) {
+          .hero__art {
+            background-image: url('/brand/hero-wide-1774.webp');
+            aspect-ratio: 1774 / 887;
+            /* FADES EARLIER THAN IT LOOKS LIKE IT NEEDS TO, and the reason is
+               measured. The tagline's second line is deep terracotta, which
+               starts at 6.07:1 on cream and has far less to give away than
+               charcoal. With the fade ending at 94% that line sat on a
+               terracotta wash at 2.71:1, under the 3:1 floor for large text,
+               while the charcoal line above it was comfortably fine at 5.7:1.
+               Ending the fade at 74% puts the whole tagline on clean cream.
+               check-hero-text-contrast.mjs is the arithmetic. */
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 74%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 74%);
+          }
+        }
+        @media (min-width: 1774px) {
+          /* Never wider than the file itself. */
+          .hero__art { background-size: 1774px auto; background-position: top center; }
+        }
+
+        .hero__inner { position: relative; z-index: 2; padding: 2.5rem 0 4rem; }
+        .hero__lockup { display: block; width: clamp(168px, 42vw, 230px); height: auto; }
         .hero__category { font-family: ${comfortaa.style.fontFamily}, system-ui, sans-serif;
-                          font-weight: 400; font-size: clamp(1rem, 3.4vw, 1.1rem);
+                          font-weight: 400; font-size: clamp(1rem, 3.2vw, 1.1rem);
                           color: var(--forest); margin: 1.4rem 0 0.5rem; }
         .hero__join { font-size: 17px; color: var(--deep); text-decoration: underline;
-                      text-underline-offset: 3px; display: inline-block; margin-bottom: 2.2rem; }
-        /* MORE SPECIFIC THAN THE GENERIC HEADING RULE ON PURPOSE. The tagline
-           is the one heading on the site that is NOT Cormorant: it is Comfortaa
-           300, which Part Fifteen fixes and the brief repeats. Qualified with
-           the element name so it outranks that rule by specificity rather than
-           by source order, which a later edit can reshuffle without noticing.
-           (And no backticks in here: this whole stylesheet is a template
-           literal, and one backtick ends it mid-rule.) */
+                      text-underline-offset: 3px; display: inline-block; margin-bottom: 2.4rem; }
+
+        /* THE TAGLINE SITS ON EMPTY CREAM, never over a circle. The artwork's
+           dense area is top-right on both files, so the type runs down the left
+           on desktop and below the wash on a phone. */
         .site h1.hero__tagline {
           font-family: ${comfortaa.style.fontFamily}, system-ui, sans-serif;
-          font-weight: 300; font-size: clamp(2.1rem, 8vw, 3.6rem);
-          line-height: 1.16; margin: 0; display: flex; flex-direction: column;
+          font-weight: 300; font-size: clamp(2.05rem, 7.2vw, 3.5rem);
+          line-height: 1.18; margin: 0; display: flex; flex-direction: column;
           max-width: 15em; letter-spacing: 0;
         }
         .hero__tagline .one { color: var(--charcoal); }
-        /* DEEP terracotta, not the light terracotta in the design image. At this
-           size brand terracotta would pass as large text, but the second line
-           drops below the large-text threshold on a phone. */
         .hero__tagline .two { color: var(--deep); }
 
         @media (min-width: 900px) {
-          .hero__inner { padding: 3rem 0 5.5rem; max-width: 58%; }
-          .hero__veil { background: linear-gradient(to right,
-                          var(--cream) 0%, rgba(247,243,234,0.95) 44%,
-                          rgba(247,243,234,0.45) 70%, rgba(247,243,234,0) 100%); }
+          .hero__inner { padding: 3rem 0 6rem; max-width: 56%; }
         }
 
         /* ----------------------------------------------------------------- */
-        /* Generic section rhythm. Typography on cream, no cards, no borders.  */
+        /* Section rhythm                                                     */
         /* ----------------------------------------------------------------- */
-        .section { position: relative; padding: clamp(3.5rem, 9vw, 6rem) 0; }
-        .lede { font-size: clamp(1.25rem, 4vw, 1.6rem); line-height: 1.45;
-                font-family: ${cormorant.style.fontFamily}, Georgia, serif;
-                max-width: 20em; margin: 0 0 1.4rem; }
-        .muted { color: var(--muted); }
+        .section { position: relative; padding: clamp(3rem, 7vw, 5rem) 0; }
+        .section--sand { background: var(--sand); }
+        .section--sand p, .section--sand h2 { color: #3A3129; }
 
-        .two-col { display: grid; gap: clamp(1.5rem, 5vw, 3.5rem); }
-        @media (min-width: 820px) { .two-col { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+        .two-col { display: grid; gap: clamp(1.5rem, 4vw, 3.25rem); align-items: start; }
+        @media (min-width: 860px) { .two-col { grid-template-columns: 1.05fr 1fr; } }
 
-        /* The thread between sections. Small, one side only, never behind text. */
-        .thread { position: absolute; top: 0; right: 0; width: min(240px, 34vw); height: 110px;
-                  z-index: 0; pointer-events: none; }
-        .thread--flip { right: auto; left: 0; transform: scaleX(-1); }
+        .lede { font-size: clamp(1.15rem, 3.2vw, 1.3rem); line-height: 1.5; max-width: 22em; }
 
-        /* A few small circles, drawn in CSS. Large terracotta stays in the hero. */
-        .dot { display: inline-block; border-radius: 50%; vertical-align: middle; }
+        /* The seam between sections. Its own block, so it can never sit behind text. */
+        .seam { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 1.5rem;
+                box-sizing: border-box; line-height: 0; }
+        .seam-svg { width: 100%; height: clamp(60px, 9vw, 110px); display: block; }
+        .seam--flip .seam-svg { transform: scaleX(-1); }
 
         /* ----------------------------------------------------------------- */
-        /* 3. What Selodía does                                               */
+        /* Diagrams                                                           */
         /* ----------------------------------------------------------------- */
-        .does { display: grid; gap: 2.4rem; margin-top: 2.6rem; }
-        @media (min-width: 760px) {
-          .does { grid-template-columns: repeat(4, 1fr); gap: 0; }
-          /* A HAIRLINE BETWEEN COLUMNS, as the design shows. Not a card: no box,
-             no fill, no radius, and it is gone entirely when the four statements
-             stack on a phone, where a vertical rule would mean nothing. */
-          .does__item { padding: 0 1.6rem; }
-          .does__item + .does__item { border-left: 1px solid rgba(201, 116, 88, 0.22); }
-          .does__item:first-child { padding-left: 0; }
-          .does__item:last-child { padding-right: 0; }
+        .dg { margin: 0; position: relative; }
+        .dg-svg { width: 100%; height: auto; display: block; overflow: visible; }
+        /* Labels are real text at 17px, in Manrope, at full contrast. */
+        .dg-label { fill: var(--charcoal); font-family: ${manrope.style.fontFamily}, system-ui, sans-serif; }
+        .dg-centre { fill: var(--deep); font-family: ${cormorant.style.fontFamily}, Georgia, serif; }
+        .dg-quote { fill: var(--charcoal); font-family: ${cormorant.style.fontFamily}, Georgia, serif; }
+        /* The text alternative. Present for screen readers, not shown. */
+        .dg-alt { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+                  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+        /* NARROW BY DEFAULT, WIDE WHEN THERE IS ROOM, and this is a hard floor
+           rather than a preference. An SVG label's size on screen is its
+           font-size times the viewBox scale: a 630-unit viewBox on a 390px
+           phone renders a 17px label at 9.2px. Measured in the browser, because
+           the stylesheet says 17 either way. Each wide diagram therefore has a
+           narrow twin built for about 320 units, where 17 means 17. */
+        .dg--wide { display: none; }
+        .dg--narrow { display: block; }
+        @media (min-width: 820px) {
+          .dg--wide { display: block; }
+          .dg--narrow { display: none; }
+        }
+        .dg--connections.dg--wide { max-width: 520px; margin: 0 auto; }
+        .dg--connections.dg--narrow { max-width: 320px; margin: 0 auto; }
+        .dg--how.dg--narrow { max-width: 320px; }
+        .dg--real.dg--narrow { max-width: 320px; }
+        .dg--talk { max-width: 400px; }
+        /* 320 units wide and capped at 320px, so the scale is exactly 1. */
+        .dg--record { max-width: 320px; }
+        .dg--changes { max-width: 340px; }
+        .dg--real.dg--wide { max-width: 630px; }
+
+        /* ----------------------------------------------------------------- */
+        /* 3. What Selodía does. FOUR HEADINGS ON ONE TOP LINE.               */
+        /* ----------------------------------------------------------------- */
+        .does { display: grid; gap: 2.75rem; margin-top: 2.6rem; }
+        @media (min-width: 860px) {
+          .does { grid-template-columns: repeat(4, 1fr); gap: 2rem;
+                  /* Named rows, so every heading starts on the same line
+                     whatever the column beside it does, and so do the
+                     paragraphs and the pictures. This is the "align the four
+                     statement headings to one top line" instruction, done by
+                     the grid rather than by hoping the text is the same
+                     length. */
+                  grid-template-rows: auto auto; }
+          .does__item { display: grid; grid-row: span 2; grid-template-rows: subgrid; gap: 0.85rem; }
         }
         .does__item { min-width: 0; }
-        .does__dot { width: 26px; height: 26px; margin-bottom: 1rem; }
-        .does__item h3 { margin-bottom: 0.6rem; }
-        .does__item p { font-size: 17px; color: var(--muted); margin: 0; }
-
-        /* ----------------------------------------------------------------- */
-        /* 4. How it works                                                    */
-        /* ----------------------------------------------------------------- */
-        .steps { display: grid; gap: 2rem; margin: 2.6rem 0 2.4rem; }
-        @media (min-width: 680px) { .steps { grid-template-columns: repeat(3, 1fr); gap: 2.5rem; } }
-        .steps__n { font-family: ${cormorant.style.fontFamily}, Georgia, serif;
-                    font-size: 2.6rem; color: var(--terracotta); opacity: 0.45;
-                    line-height: 1; display: block; margin-bottom: 0.5rem; }
-        .steps__t { margin: 0; font-size: 17px; }
-
-        /* ----------------------------------------------------------------- */
-        /* 6. When you do see someone. A band in sand, not terracotta.        */
-        /* ----------------------------------------------------------------- */
-        .band { background: var(--sand); padding: clamp(2.5rem, 6vw, 3.5rem) 0; }
-        .band__inner { display: grid; gap: 1.25rem; align-items: center; }
-        @media (min-width: 820px) { .band__inner { grid-template-columns: 1fr 1.3fr; gap: 3rem; } }
-        .band h2 { font-size: clamp(1.7rem, 4.4vw, 2.3rem); }
-        .band p { margin: 0; color: #4A433A; }
-
-        /* ----------------------------------------------------------------- */
-        /* 7. Your record stays yours                                         */
-        /* ----------------------------------------------------------------- */
-        .record { list-style: none; margin: 1.8rem 0 0; padding: 0; max-width: 34em; }
-        .record li { margin: 0 0 0.7rem; }
+        .does__item h3 { align-self: start; margin-bottom: 0.6rem; }
+        .does__item p { font-size: 17px; margin: 0 0 1rem; }
 
         /* ----------------------------------------------------------------- */
         /* 9. Waiting list                                                    */
         /* ----------------------------------------------------------------- */
-        .join__grid { display: grid; gap: 2.2rem; align-items: start; }
-        @media (min-width: 820px) { .join__grid { grid-template-columns: 1fr 1fr; gap: 3.5rem; } }
+        .join__grid { display: grid; gap: 2.25rem; align-items: start; }
+        @media (min-width: 860px) { .join__grid { grid-template-columns: 1fr 1fr; gap: 3.5rem; } }
         .form { display: flex; flex-direction: column; gap: 1.1rem; max-width: 26rem; }
-        .form label { font-size: 15px; color: var(--muted); display: block; margin-bottom: 0.3rem; }
-        .field { font: inherit; font-size: 17px; color: var(--charcoal);
-                 background: transparent; border: 0; border-bottom: 1px solid #C9BCA9;
-                 padding: 0.55rem 0; width: 100%; box-sizing: border-box; border-radius: 0; }
+        .form label { font-size: 15px; color: #5A5249; display: block; margin-bottom: 0.3rem; }
+        .field { font: inherit; font-size: 17px; color: var(--charcoal); background: transparent;
+                 border: 0; border-bottom: 1px solid #C2B4A1; padding: 0.55rem 0; width: 100%;
+                 box-sizing: border-box; border-radius: 0; }
         .field:focus { border-bottom-color: var(--forest); }
-        /* FLAT DEEP TERRACOTTA, CREAM TEXT, NO GRADIENT. Cream on #874C3A is
-           7.4:1. The design image shows a lighter fill, which would be 2.9:1
-           and unreadable. */
+        /* FLAT DEEP TERRACOTTA, CREAM TEXT, NO GRADIENT. 7.4:1. */
         .submit { font: inherit; font-size: 17px; font-weight: 500; cursor: pointer;
                   background: var(--deep); color: var(--cream); border: 0;
                   padding: 0.95rem 1.5rem; border-radius: 2px; width: 100%; }
         .submit:hover { background: #73402F; }
-        .consent { font-size: 16px; color: var(--muted); margin: 0.2rem 0 0; max-width: 26rem; }
+        .consent { font-size: 16px; color: #5A5249; margin: 0.4rem 0 0; max-width: 26rem; }
         .said { font-size: 17px; max-width: 26rem; }
         .said--error { color: var(--deep); }
 
@@ -361,17 +403,52 @@ export default async function LandingPage({
         /* ----------------------------------------------------------------- */
         .foot { border-top: 1px solid var(--sand); padding: 2.75rem 0 3.5rem; }
         .foot__grid { display: grid; gap: 1.75rem; }
-        @media (min-width: 760px) { .foot__grid { grid-template-columns: auto 1fr auto; gap: 2.5rem; align-items: start; } }
-        /* FOREST, never the terracotta lockup: this renders well under 160px
-           wide and terracotta on cream is 3.10:1. */
+        @media (min-width: 800px) { .foot__grid { grid-template-columns: auto 1fr auto; gap: 2.5rem; align-items: start; } }
+        /* FOREST, never terracotta: 148px is below the colourway's 160px floor. */
         .foot__lockup { width: 148px; height: auto; display: block; }
-        .foot p, .foot address { margin: 0 0 0.3rem; font-size: 15px; color: var(--muted);
-                                 font-style: normal; line-height: 1.55; }
+        .foot p, .foot address { margin: 0 0 0.3rem; font-size: 15px; color: #5A5249;
+                                 font-style: normal; line-height: 1.55; max-width: none; }
         .foot__links { display: flex; flex-wrap: wrap; gap: 1.1rem; list-style: none; margin: 0; padding: 0; }
         .foot__links a { font-size: 15px; }
 
-        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+        /* ----------------------------------------------------------------- */
+        /* Motion. THE FINISHED STATE IS THE DEFAULT.                         */
+        /* ----------------------------------------------------------------- */
+        /* EVERY RULE THAT HIDES ANYTHING IS BEHIND .js-reveal, and that is the
+           whole safety design rather than a detail.
+
+           The first version of this hid un-revealed diagrams in CSS alone, and
+           I wrote a comment next to it claiming the page failed open. It did
+           not. The CSS hid them whenever .is-in was absent, which includes
+           every case where the script is slow, blocked, throws, or never loads,
+           and in those cases six diagrams were simply invisible for ever.
+
+           Now the script's own first act is to add .js-reveal to the document.
+           No script, no class, nothing hidden: the page renders complete and
+           static. Hiding is something only a working animator is allowed to do. */
+        .thread-draw { stroke-dasharray: 1400; stroke-dashoffset: 0; }
+        .fade-up { opacity: 1; }
+
+        @media (prefers-reduced-motion: no-preference) {
+          .js-reveal [data-reveal]:not(.is-in) .thread-draw { stroke-dashoffset: 1400; }
+          .js-reveal [data-reveal]:not(.is-in) .fade-up { opacity: 0; }
+          [data-reveal].is-in .thread-draw {
+            animation: draw 1200ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+          }
+          [data-reveal].is-in .fade-up {
+            animation: rise 620ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+          }
+        }
+        @keyframes draw { from { stroke-dashoffset: 1400; } to { stroke-dashoffset: 0; } }
+        @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .thread-draw, .fade-up { animation: none !important; opacity: 1 !important;
+                                   stroke-dashoffset: 0 !important; transform: none !important; }
+        }
       `}</style>
+
+      <Reveal />
 
       <main className="site">
         <div className="wrap">
@@ -379,7 +456,7 @@ export default async function LandingPage({
             {/* eslint-disable-next-line @next/next/no-img-element -- next/image
                 needs dangerouslyAllowSVG to serve an SVG at all, and there is
                 nothing for the optimiser to do with a vector. */}
-            <img className="nav__mark" src="/brand/mark-terracotta.svg" alt="Selodía" width={34} height={34} />
+            <img className="nav__mark" src="/brand/mark-terracotta.svg" alt="Selodía" width={36} height={36} />
             <ul className="nav__links">
               {MASTHEAD.nav.map((n) => (
                 <li key={n.href}>
@@ -394,15 +471,12 @@ export default async function LandingPage({
         {/* 1. Masthead                                                    */}
         {/* ------------------------------------------------------------- */}
         <header className="hero">
-          <div className="hero__art">
-            <HeroArtwork />
-          </div>
-          <div className="hero__veil" />
+          <div className="hero__art" />
           <div className="wrap">
             <div className="hero__inner">
               {/* eslint-disable-next-line @next/next/no-img-element -- as above.
-                  The all-terracotta stacked lockup, used once, well above its
-                  160px floor at every breakpoint (168px minimum). */}
+                  The all-terracotta stacked lockup, used once, at 168px minimum,
+                  above the 160px floor its 3.10:1 contrast earns it. */}
               <img
                 className="hero__lockup"
                 src="/brand/lockup-stacked-terracotta.svg"
@@ -423,21 +497,38 @@ export default async function LandingPage({
         </header>
 
         {/* ------------------------------------------------------------- */}
-        {/* 2. The problem                                                 */}
+        {/* 2. The problem, with the centre diagram beside it              */}
         {/* ------------------------------------------------------------- */}
-        <section className="section">
-          <ThreadDivider />
+        <section className="section" data-reveal>
           <div className="wrap two-col">
             <div>
-              <p className="lede">{PROBLEM.lead}</p>
-              <p className="muted">{PROBLEM.second}</p>
+              {/* A HEADING NOW, at her instruction of 8 October. The first build
+                  kept it inside the paragraph because the copy master set it as
+                  one sentence; she has since asked for it as a Cormorant
+                  heading, and the rest of her sentence follows it unchanged. */}
+              <h2>{PROBLEM.leadHeading}</h2>
+              <p className="lede" style={{ marginTop: '1.4rem' }}>
+                {PROBLEM.leadRest}
+              </p>
+              <p>{PROBLEM.second}</p>
             </div>
             <div>
+              <ConnectionsDiagram />
+            </div>
+          </div>
+        </section>
+
+        <SectionThread />
+
+        <section className="section" data-reveal>
+          <div className="wrap two-col">
+            <div>
               {PROBLEM.aside.map((p, i) => (
-                <p key={i} className={i === 0 ? undefined : 'muted'}>
-                  {p}
-                </p>
+                <p key={i}>{p}</p>
               ))}
+            </div>
+            <div>
+              <TalkDiagram />
             </div>
           </div>
         </section>
@@ -445,46 +536,38 @@ export default async function LandingPage({
         {/* ------------------------------------------------------------- */}
         {/* 3. What Selodía does                                           */}
         {/* ------------------------------------------------------------- */}
-        <section className="section" id="what-it-does">
+        <section className="section" id="what-it-does" data-reveal>
           <div className="wrap">
             <h2>{WHAT_IT_DOES.heading}</h2>
             <div className="does">
-              {WHAT_IT_DOES.items.map((item, i) => (
+              {WHAT_IT_DOES.items.map((item) => (
                 <div className="does__item" key={item.title}>
-                  <span
-                    className="dot does__dot"
-                    aria-hidden="true"
-                    style={{
-                      background: [SAGE_TINT, SAND_TINT, TERRACOTTA, SAGE_TINT][i],
-                      opacity: i === 2 ? 0.85 : 1,
-                    }}
-                  />
                   <h3>{item.title}</h3>
                   <p>{item.body}</p>
                 </div>
               ))}
             </div>
+            {/* UNLABELLED, so it is the one diagram that can be any size. It
+                sits under the four statements as the transition into How it
+                works, which is also what it means: small changes, tried over
+                weeks, leading somewhere. */}
+            <div style={{ maxWidth: 340, margin: '3rem auto 0' }}>
+              <ChangesDiagram />
+            </div>
           </div>
         </section>
+
+        <SectionThread flip />
 
         {/* ------------------------------------------------------------- */}
         {/* 4. How it works                                                */}
         {/* ------------------------------------------------------------- */}
-        <section className="section" id="how-it-works">
-          <ThreadDivider flip />
+        <section className="section" id="how-it-works" data-reveal>
           <div className="wrap">
             <h2>{HOW_IT_WORKS.heading}</h2>
-            <ol className="steps" style={{ listStyle: 'none', padding: 0 }}>
-              {HOW_IT_WORKS.steps.map((s, i) => (
-                <li key={s}>
-                  {/* Decorative. A screen reader hears three steps, not "zero one". */}
-                  <span className="steps__n" aria-hidden="true">
-                    {`0${i + 1}`}
-                  </span>
-                  <p className="steps__t">{s}</p>
-                </li>
-              ))}
-            </ol>
+            <div style={{ margin: '2.4rem 0 2rem' }}>
+              <HowItWorksDiagram />
+            </div>
             <a href="#waiting-list" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
               {HOW_IT_WORKS.joinLink}
             </a>
@@ -494,16 +577,19 @@ export default async function LandingPage({
         {/* ------------------------------------------------------------- */}
         {/* 5. Built around real life                                      */}
         {/* ------------------------------------------------------------- */}
-        <section className="section" id="real-life">
+        <section className="section" id="real-life" data-reveal>
           <div className="wrap">
             <h2>{REAL_LIFE.heading}</h2>
-            <div className="two-col" style={{ marginTop: '2.2rem' }}>
+            <div style={{ margin: '2.2rem 0 2.4rem' }}>
+              <RealLifeDiagram />
+            </div>
+            <div className="two-col">
               <div>
                 <p>{REAL_LIFE.paragraphs[0]}</p>
                 <p>{REAL_LIFE.paragraphs[1]}</p>
               </div>
               <div>
-                <p className="muted">{REAL_LIFE.paragraphs[2]}</p>
+                <p>{REAL_LIFE.paragraphs[2]}</p>
               </div>
             </div>
           </div>
@@ -512,8 +598,8 @@ export default async function LandingPage({
         {/* ------------------------------------------------------------- */}
         {/* 6. When you do see someone                                     */}
         {/* ------------------------------------------------------------- */}
-        <section className="band" id="seeing-someone">
-          <div className="wrap band__inner">
+        <section className="section section--sand" id="seeing-someone" data-reveal>
+          <div className="wrap two-col">
             <h2>{SEEING_SOMEONE.heading}</h2>
             <p>{SEEING_SOMEONE.body}</p>
           </div>
@@ -522,20 +608,24 @@ export default async function LandingPage({
         {/* ------------------------------------------------------------- */}
         {/* 7 and 8. Your record stays yours, and Writing                  */}
         {/* ------------------------------------------------------------- */}
-        <section className="section">
-          <ThreadDivider />
+        <section className="section" data-reveal>
           <div className="wrap two-col">
             <div>
               <h2>{RECORD_STAYS_YOURS.heading}</h2>
-              <ul className="record">
+              <div style={{ margin: '1.8rem 0 2rem' }}>
+                <RecordDiagram />
+              </div>
+              <div>
                 {RECORD_STAYS_YOURS.sentences.map((s) => (
-                  <li key={s}>{s}</li>
+                  <p key={s} style={{ marginBottom: '0.6rem' }}>
+                    {s}
+                  </p>
                 ))}
-              </ul>
+              </div>
             </div>
             <div id="writing">
               <h2>{WRITING.heading}</h2>
-              <p style={{ marginTop: '1.4rem' }}>{WRITING.body}</p>
+              <p style={{ marginTop: '1.5rem' }}>{WRITING.body}</p>
               <a href={WRITING_URL} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
                 {WRITING.linkText}
               </a>
@@ -543,16 +633,16 @@ export default async function LandingPage({
           </div>
         </section>
 
+        <SectionThread />
+
         {/* ------------------------------------------------------------- */}
         {/* 9. Waiting list                                                */}
         {/* ------------------------------------------------------------- */}
-        <section className="section" id="waiting-list">
+        <section className="section" id="waiting-list" data-reveal>
           <div className="wrap join__grid">
             <div>
               <h2>{WAITING_LIST.heading}</h2>
-              <p className="muted" style={{ marginTop: '1.4rem' }}>
-                {WAITING_LIST.promise}
-              </p>
+              <p style={{ marginTop: '1.4rem' }}>{WAITING_LIST.promise}</p>
             </div>
 
             <div>
@@ -561,9 +651,6 @@ export default async function LandingPage({
               ) : (
                 <>
                   <form className="form" action={join}>
-                    {/* Only when there is one. An empty hidden field would be a
-                        tag of "" arriving at the sanitiser, which is the same
-                        null by a longer route. */}
                     {tag ? <input type="hidden" name="src" value={tag} /> : null}
                     <div>
                       <label htmlFor="wl-name">{WAITING_LIST.nameLabel}</label>
@@ -615,9 +702,7 @@ export default async function LandingPage({
         {/* ------------------------------------------------------------- */}
         <footer className="foot" id="contact">
           <div className="wrap foot__grid">
-            {/* eslint-disable-next-line @next/next/no-img-element -- as above.
-                FOREST, not terracotta: this sits at 148px, below the
-                all-terracotta colourway's 160px floor. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- as above. */}
             <img
               className="foot__lockup"
               src="/brand/lockup-horizontal-forest.svg"

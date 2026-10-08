@@ -92,7 +92,18 @@ export const MASTHEAD = {
 // in two.
 
 export const PROBLEM = {
-  lead: 'Nobody looks at the whole picture. So it falls to you to hold it, and that is hardest exactly when you have the least energy for it.',
+  /**
+   * SPLIT INTO A HEADING AND THE REST, 8 October 2026, at her instruction:
+   * "'Nobody looks at the whole picture.' is a heading in Cormorant Infant."
+   *
+   * The first build kept it as one paragraph, because the copy master set it as
+   * one and said to set it exactly as supplied. She has since been explicit, so
+   * it is a heading. Not one word changed: the sentence is the heading and the
+   * sentence after it is the paragraph, in her order.
+   */
+  leadHeading: 'Nobody looks at the whole picture.',
+  leadRest:
+    'So it falls to you to hold it, and that is hardest exactly when you have the least energy for it.',
   second:
     'Women in midlife are routinely dismissed. But the bigger cost is that the pieces never get connected.',
   aside: [
@@ -242,6 +253,66 @@ export const WAITING_LIST = {
   // says nothing about why, because the page does not know why, and a guess
   // ("check your connection") is a claim it cannot stand behind.
   error: 'That did not go through. Worth trying again in a moment.',
+} as const;
+
+// ---------------------------------------------------------------------------
+// The diagrams
+// ---------------------------------------------------------------------------
+//
+// DRAFT. Ruth, 8 October 2026: "These labels are the only new copy and are
+// draft wording."
+//
+// EACH DIAGRAM HAS A TEXT ALTERNATIVE, which is not a nicety here. The shapes
+// are aria-hidden because a screen reader reading out "circle, circle, circle"
+// is worse than silence, so the alternative is the only version a blind reader
+// gets. It has to say what the picture means rather than describe it.
+//
+// ONE THING SUPERSEDED, AND IT IS WORTH SEEING. The copy master's section 4 set
+// How it works as three steps: "You tell it. It notices, and says why. You
+// decide." Her 8 October brief replaces that with six nodes on a thread, which
+// is a different and better shape: it starts with life happening rather than
+// with the woman doing something for the app. The three-step version is gone
+// rather than kept alongside, because two accounts of how it works is one too
+// many.
+
+export const DIAGRAMS = {
+  /** a. The centre diagram. Everything joined to her, not to each other. */
+  connections: {
+    centre: 'You',
+    nodes: ['Food', 'Movement', 'Cycle', 'Symptoms', 'Sleep', 'Mood'] as const,
+    alt: 'Food, movement, cycle, symptoms, sleep and mood, each joined by a single thread to you in the middle.',
+  },
+  /** b. The record, as one continuous thread rather than six separate lists. */
+  record: {
+    nodes: ['Meals', 'Movement', 'Measurements', 'Cycle', 'Symptoms', 'Notes'] as const,
+    alt: 'One thread running down the page through meals, movement, measurements, cycle, symptoms and notes, all held in a single record.',
+  },
+  /** c. A real question, set as type. Never an app screen. */
+  talk: {
+    quote: 'Why am I so tired by mid-afternoon?',
+    alt: 'A question set in a soft circle, the way somebody would actually ask it: why am I so tired by mid-afternoon?',
+  },
+  /** d. Three circles, each slightly larger. No labels, because the point is the growth. */
+  changes: {
+    alt: 'Three circles on a thread, each a little larger than the one before it.',
+  },
+  /** e. How it works. Six nodes, and it begins with life rather than with her doing something. */
+  howItWorks: {
+    nodes: [
+      'Life happens',
+      'Selodía remembers',
+      'Patterns appear',
+      'You ask',
+      'You understand',
+      'You choose',
+    ] as const,
+    alt: 'Six points on a thread: life happens, Selodía remembers, patterns appear, you ask, you understand, you choose.',
+  },
+  /** f. The ordinary day, which is the thing the app has to fit around. */
+  realLife: {
+    nodes: ['Work', 'Lunch', 'Walk', 'Family', 'Water', 'Sleep'] as const,
+    alt: 'An ordinary day joined by one thread: work, lunch, a walk, family, water and sleep.',
+  },
 } as const;
 
 // ---------------------------------------------------------------------------
