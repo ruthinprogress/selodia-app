@@ -38,16 +38,16 @@ export function PlainPage({
         .wrap h1 { font-family: var(--font-comfortaa), system-ui, sans-serif;
                    font-size: 2rem; font-weight: 700; color: ${ACCENT_DEEP};
                    margin: 0 0 .25rem; letter-spacing: -0.01em; }
-        .updated { font-size: .8rem; color: ${GREY}; margin: 0 0 2.5rem; }
+        .updated { font-size: 15px; color: ${GREY}; margin: 0 0 2.5rem; }
         .intro { margin-top: 1rem; }
         .wrap h2 { font-family: var(--font-comfortaa), system-ui, sans-serif;
                    font-size: 1.05rem; font-weight: 700; color: ${ACCENT_DEEP};
                    margin: 2.25rem 0 .6rem; }
-        .wrap p, .wrap li { font-size: .95rem; line-height: 1.65; margin: 0 0 .9rem; }
+        .wrap p, .wrap li { font-size: 17px; line-height: 1.65; margin: 0 0 .95rem; }
         .wrap ul, .wrap ol { padding-left: 1.1rem; margin: 0 0 1rem; list-style: disc; }
         .wrap li { margin-bottom: .5rem; }
         .rule { height: 1px; background: ${SAND}; border: 0; margin: 2.5rem 0 1rem; }
-        .foot { font-size: .8rem; color: ${GREY}; }
+        .foot { font-size: 15px; color: ${GREY}; }
         a { color: ${ACCENT_DEEP}; }
       `}</style>
 
@@ -75,8 +75,9 @@ export function PlainPage({
 
         <hr className="rule" />
         <p className="foot">
-          <a href="/privacy">Privacy</a> · <a href="/delete-account">Delete your account</a> ·{' '}
-          <a href="/support">Support</a>
+          <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·{' '}
+          <a href="/sources">Sources</a> · <a href="/support">Support</a> ·{' '}
+          <a href="/delete-account">Delete your account</a>
         </p>
       </div>
     </main>
