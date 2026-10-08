@@ -769,3 +769,36 @@ When I used Claude to get my own care, it did the admin at the exact moment I wa
 
 With the emergency detector still off, I tested the model on its own by typing crushing chest pain and a weak left arm. The reply said it could be a heart attack and told me to chew an aspirin. Arm weakness is also a stroke sign, and aspirin can be harmful in one kind of stroke. Nothing in a single sentence can tell the two apart, which is the whole argument for not letting the model improvise here: call 999, and the person on the line asks the questions the app can't. The fix was three words added to a line that already existed.
 
+---
+
+## 8 October 2026 - The company number on my own website belonged to someone else
+
+My new homepage went live and I read it properly, which I had not really done with the old one. The footer said Company No. 12246794. That is not us. It is a property company in Orpington that was set up in 2019. Mine is 17435894 and the company is four weeks old.
+
+The number had been in the privacy policy, the terms, the beta agreement and the data protection assessment since late September. It had gone out in an email to an NHS body on the 29th. Twenty two places in all, and not one of them looked wrong, because a company number looks like a company number.
+
+What I keep thinking about is that nothing was broken. Every page built, every check passed, the site was live and correct in every way anyone would test for. It was just not my company.
+
+---
+
+## 8 October 2026 - I stood down a clinical review I had been told I needed
+
+Selodia knows eleven things it will not suggest waiting on. Bleeding after the menopause. A new lump. Blood where there should not be any. Six of them send you to 999 and five to 111. I approved all eleven myself, in writing, and no clinician has read them.
+
+The plan was to pay someone six hundred to twelve hundred pounds to go through them before anybody else used the app. It sat on the funding list for weeks as a thing I could not afford yet.
+
+Then the NHS innovation network offered me a free clinic. And sitting down to write the application I realised the question I actually need answered is not whether those eleven lines are worded well. It is whether having them at all makes my app a medical device. A reviewer reading my list could not have told me that. The people who run a programme on exactly that question can.
+
+So the review came off the list, and the page says plainly that no clinician has reviewed them. That sentence stays whatever happens next.
+
+---
+
+## 8 October 2026 - Three things wrong with my website that I could not see
+
+The second line of my tagline is terracotta on a watercolour wash. It looked fine. Measured, it was 2.71 against a floor of 3, while the charcoal line directly above it was comfortably clear. Same screen, same glance, one failed.
+
+The labels on the diagrams are set at 17 pixels, because that is the size I asked for and anything smaller is no use to the women I am building this for. On a phone three of them were rendering at nine. The stylesheet said 17 the whole time. Something in between was shrinking them and nothing on screen admitted it.
+
+And six of the eight diagrams were set to stay invisible if a small script was slow to run, under a comment saying the page would still be complete without it. It would not have been.
+
+All three were found by measuring rather than looking, in about twenty minutes, on a page that had already been approved by me on two devices.
