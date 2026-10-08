@@ -142,8 +142,7 @@ export default function SourcesPage() {
               waiting on, such as bleeding after the menopause, a new lump, or blood where there
               should not be any. There are eleven of these. They were approved by the founder, in
               writing, and <strong>no clinician has reviewed them</strong>. That is recorded in the
-              code and it is recorded here. A clinician reviews them before anybody outside the
-              company uses the app.
+              code and it is recorded here.
             </>,
             'The patterns it shows you never draw a conclusion. It will tell you a thing has happened five times and on which days, and it will say plainly when there are too few days to mean anything. It will not tell you that one thing caused another, because it does not know that and neither does anybody else from a handful of entries.',
             'What it says about your own data is description, not a finding. Nothing in Selodía has been validated as a predictor of anything.',
