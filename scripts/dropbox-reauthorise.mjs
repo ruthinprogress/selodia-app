@@ -29,7 +29,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ENV = path.join(ROOT, '.env.local');
@@ -176,6 +176,60 @@ const server = http.createServer(async (req, res) => {
   console.log('');
   server.close();
 });
+
+// A COPY THAT NEVER FINISHED KEEPS THE PORT (8 October 2026).
+//
+// The first run opened a mangled URL, so Dropbox never called back, so this
+// server sat listening for ever. Closing the black window did not stop the node
+// process behind it. Every run after that died on EADDRINUSE before opening
+// anything, and from the outside it looked exactly like "I clicked it and
+// nothing happened" - three times.
+//
+// IT CLEARS ITS OWN PORT RATHER THAN EXPLAINING THE PROBLEM. An abandoned copy
+// of this tool is never something she should have to know about, and the only
+// thing being stopped is whatever is holding one specific high port that this
+// tool chose for itself.
+function freePort() {
+  try {
+    const out = execSync(`netstat -ano -p TCP | findstr LISTENING | findstr :${PORT}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const pids = [
+      ...new Set(
+        out
+          .split(String.fromCharCode(10))
+          .map((l) => l.trim().split(/[ \t]+/).pop())
+          .filter((x) => /^[0-9]+$/.test(x) && x !== '0')
+      ),
+    ];
+    for (const pid of pids) {
+      if (Number(pid) === process.pid) continue;
+      execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+      console.log(`  Closed an earlier copy of this tool that was still running (${pid}).`);
+    }
+    return pids.length > 0;
+  } catch {
+    // findstr exits non-zero when nothing matches, which is the ordinary case.
+    return false;
+  }
+}
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log('');
+    console.log('  Something else is already using the port this needs, and');
+    console.log('  clearing it did not work. Restarting the computer will fix it.');
+    console.log('');
+  } else {
+    console.log('');
+    console.log(`  Could not start: ${err.message}`);
+    console.log('');
+  }
+  process.exit(1);
+});
+
+freePort();
 
 server.listen(PORT, () => {
   // NOT `cmd /c start`, WHICH EATS THE URL (8 October 2026).
