@@ -429,3 +429,33 @@ A plain result is precisely what a marker is. She said the trigger sentence on h
 The diagnosis is the part worth keeping. Three causes were possible and the database ruled out two before the prompt was opened: her last offer was 10.8 hours old, so not the three-hour limit; no pending row existed, so not an offer stored and never asked; the version endpoint showed the right commit, so not a stale deploy. **Eliminating the cheap causes with evidence is faster than reasoning about the expensive one**, and it is what turned a prompt problem into a three-minute read.
 
 The pattern: **a field description accumulates its prohibitions at the end, and a new capability gets written in the middle.** Adding an ability to a prompt means reading what that prompt already refuses, in full, to the last line, because the last line is categorical and the new paragraph is not. The check now reads the closing sentence specifically rather than the instruction above it. (6 October 2026.)
+
+**The finished state has to be the default, and hiding has to be earned.** The homepage diagrams draw themselves in as they scroll into view. The first version did it the obvious way: CSS hid an un-revealed section, and a small script added a class that revealed it. Beside that CSS I wrote a comment saying the page would still be complete if the script never ran.
+
+It would not. The CSS hid those sections whenever the class was absent, which includes every case where the script is slow, blocked, throws, or has simply not reached that element yet. Testing it is what showed it: six of eight sections sat invisible, on a page whose entire job is to be read.
+
+The fix inverts who is allowed to hide. The script's **first** act is to add a class to the document, and every rule that hides anything is behind that class. No script, no class, nothing hidden. A deadline then reveals anything the observer has not spoken for within eight seconds, which covers the case the first guard cannot: a mechanism that exists, runs, and never fires.
+
+The general form: **when a progressive enhancement can hide content, the hiding must be gated on proof that the thing which un-hides it is working.** Not on its intention to work. The default state of a document is visible, and anything that departs from that has to show its credentials first. (8 October 2026.)
+
+**Correcting a record and correcting a document are different jobs.** The company number published on the site, in the privacy policy, the terms, the beta agreement and the DPIA was the wrong company's. Thirty-three files in Drive carried it. The obvious move is a find-and-replace across all thirty-three.
+
+Thirteen of them should not be touched. Ten are dated backups. Two are the privacy policy and terms saved "as live 2026-09-28". One is an email as sent to an NHS body. Those files are not *about* the company number; they are evidence of what was published, or sent, on a date. Correcting them makes them lie about the past, and the past is the only thing they hold.
+
+So the script carries an explicit do-not-touch list with a reason per entry, prints every decision, and is a dry run unless told otherwise. It also, on its first run, rewrote **itself** — replacing the constants and the comment that record which number was wrong, in the one file whose entire value is quoting the bad values.
+
+The pattern: **before a sweeping correction, sort the targets into things that should be right and things that should be true.** A working document should be right. A record should be true. The same substitution improves one and destroys the other. (8 October 2026.)
+
+**Read the application, not the invoice.** The Apple Developer Program receipt arrived billed to Ruth personally. I read that as evidence of an Individual enrolment rather than an Organization one, which would have meant her legal name on every App Store listing, against the whole position that the company speaks and she is not named. I told her to go and check it urgently.
+
+It was settled weeks earlier. Her reply: *"It was the same application number though."* Enrolment 3N9H5LB49A had been approved for Selodia Ltd on 5 October; the £79 only cleared a payment step that had been failing. The confirmation email she sent next showed **Legal Entity: Selodia Ltd** and no company-number field at all.
+
+A receipt records who paid. It is not evidence about what was bought, who it was bought for, or under what terms — those live in the application. The billing name is the most visible field on the document and the least relevant to the question being asked, which is exactly the combination that makes it misleading.
+
+The general form: **when a document arrives that answers a nearby question, name the artefact that answers the actual one before reasoning from the one in your hand.** (8 October 2026.)
+
+**A size can be correct in the stylesheet and wrong on the glass.** Three separate faults on the homepage were invisible to the eye and obvious to a number, all in one day. An SVG label set at 17px rendered at 9.2px, because a label's size on screen is its font-size times the viewBox scale and the stylesheet says 17 either way. A tagline sat on a watercolour wash at 2.71:1 against a 3:1 floor, while the charcoal line directly above it measured 5.7:1 and looked identical. Small text measured 14.4px rather than 15.3px, because `rem` is relative to the document root and not to the element that had been given a 17px base.
+
+None of these is a rendering bug. In each case the declared value was right, the computed value was right, and the thing a person actually sees was wrong, because a transform sat between them.
+
+The rule that follows is narrow and cheap: **where a value passes through a scale, a viewBox, a mask or an inherited unit, measure the end of the chain rather than the start.** In a browser, on the real element, at the real width. The three measurements above took about twenty minutes between them and found three failures against floors Ruth had set in writing. (8 October 2026.)
