@@ -103,9 +103,29 @@ const authUrl =
     redirect_uri: REDIRECT,
   });
 
-console.log('\n  Opening Dropbox in your browser.');
-console.log('  Approve it there and this will finish on its own.\n');
-console.log('  If nothing opens, copy this WHOLE line into your browser:\n');
+// ON THE CLIPBOARD, BECAUSE THE BROWSER THAT OPENS MAY BE THE WRONG ONE.
+//
+// 8 October 2026: Dropbox answered with "You must be a team administrator to
+// authorize this app." The browser was signed in to Ruth's personal Dropbox, and
+// the app belongs to the one-person team whose admin is unflumpapp@gmail.com.
+//
+// Signing out of her own account to fix that would be a worse cure than the
+// disease, so the address is put on the clipboard: she can paste it straight
+// into a private window signed in as the team account, and her own login is left
+// alone. The local server catches the callback either way, because both windows
+// are on the same machine.
+try {
+  execSync('clip', { input: authUrl });
+  console.log('\n  The address is on your clipboard.');
+} catch {
+  console.log('\n  (Could not reach the clipboard, so copy the line below by hand.)');
+}
+
+console.log('  Opening Dropbox in your browser.\n');
+console.log('  YOU MUST BE SIGNED IN AS unflumpapp@gmail.com, which is the team');
+console.log('  account. If you see "you must be a team administrator", you are signed');
+console.log('  in as somebody else: open a private window, sign in as that account,');
+console.log('  and paste the address (Ctrl+V).\n');
 console.log(`  ${authUrl}\n`);
 
 const server = http.createServer(async (req, res) => {
