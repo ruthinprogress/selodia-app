@@ -159,7 +159,7 @@ const SECTIONS: PlainSection[] = [
       'Only what you give it, or what follows directly from using it. There is no tracking, no advertising identifier, and no third-party analytics.',
       [
         'Account: your email address, and a password held by our authentication provider as a one-way hash that nobody at Selodía can read.',
-        'The waiting list: if you ask to be told when Selodía is ready, we keep your email address, your name if you give one, and a short tag saying which link brought you here, so we know which writing people found useful. That is all of it. We use it once, to email you when the app opens, and for nothing else. Ask at any time and you are removed, by replying to any email from us or writing to hello@selodia.app. The list is deleted once everybody on it has been invited.',
+        'The waiting list. If you join, we keep your name, email address and which link brought you here. We use them to tell you when Selodía opens. To be removed, reply to any email from us or write to hello@selodia.app.',
         'About you: date of birth, biological sex, height, activity level, and the goals you set.',
         'Body measurements: weight, body fat, muscle mass and metabolic rate where you record them, plus any other measurement you choose to track such as waist or resting heart rate.',
         'Food and drink: what you log, in your own words, with the nutritional breakdown worked out from it — calories, protein, carbohydrate, fat, and the nutrients that matter most at this stage of life, including calcium, iron and sodium — and any photographs you send.',
