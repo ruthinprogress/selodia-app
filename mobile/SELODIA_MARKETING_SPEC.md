@@ -32,7 +32,11 @@ She might lift heavy. She might build strength through yoga, climbing, dance, ru
 
 She is time-poor and thinks in systems. She is confused about why her body no longer responds the way it used to. And she is underserved by every product she has tried, because they either treat her like a beginner or assume weight loss is the only thing she could possibly want.
 
-She already owns a smart scale. She already tracks. She is not new to any of this. That is the point: she has the data and none of the meaning.
+She has been paying attention for years. Some of it is written down, some of it is in her head, and some of it is in an app she stopped opening. She knows her own body better than any product has given her credit for.
+
+What she has never had is somewhere it all adds up. The thing she notices in March and the thing she notices in September belong together, and nothing she has used has ever been able to hold both.
+
+*(Revised 8 October 2026. This read "She already owns a smart scale. She already tracks. She is not new to any of this. That is the point: she has the data and none of the meaning." It described a woman by her equipment and by what she had already failed at, which reads sympathetic at four pounds a month and small at twenty-five. It also narrowed the audience to women who own a scale, which was never necessary.)*
 
 **Ruth is the target user.** That is not a convenience, it is the reason the product knows what it knows. It also means her instinct about what feels wrong is evidence, and worth treating as such.
 
