@@ -59,7 +59,7 @@ She already owns a smart scale. She already tracks. She is not new to any of thi
 
 **The chain matters more than the feature.** She wants the comment box *in order to* see a pattern. Free text is not the product; what free text makes possible is the product. Copy that sells the typing and not the seeing has sold the wrong half.
 
-**TDEE as something you grow.** Nearly every tracker calculates your daily energy use once, from static inputs, and treats it as fixed. Selodía tracks it as a trend against muscle mass over months, because basal metabolism rises as muscle does. This is the technical heart of the product and the clearest single answer to "why not just use the other one".
+**TDEE as something you grow.** Nearly every other app works out your daily energy use once, from numbers that never change, and treats it as fixed. Selodía watches it move against your muscle mass over months, because basal metabolism rises as muscle does. This is the technical heart of the product and the clearest single answer to "why not just use the other one".
 
 **Perimenopause and medical context as depth, not reach.** Cycle phase, health markers, medication, diagnosed conditions: these exist because they are part of the 40+ story and change how a reading should be read. They are not there to widen the audience. Resist any framing that turns Selodía into a menopause app, a medical app, or a general wellness app. The specificity is the asset.
 
