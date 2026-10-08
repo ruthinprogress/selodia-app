@@ -358,12 +358,12 @@ page by an order of magnitude.
 
 ### 3. Where the company details went
 
-Selodía Ltd, 19 Campbell Road, London, E17 6RR, company number 12246794,
+Selodia Ltd, 19 Campbell Road, London, E17 6RR, company number 17435894,
 hello@selodia.app.
 
 - **The beta agreement**, clause 15, and the note at the bottom updated.
 - **The DPIA**, in the controller block at the top.
-- **The privacy policy and the terms** — both named Selodía Ltd and stopped
+- **The privacy policy and the terms** — both named Selodia Ltd and stopped
   there. The Companies Act and the E-Commerce Regulations want the number, the
   place of registration and the registered office on a company's website, so
   this was a real gap rather than tidiness. Live on selodia.app now.

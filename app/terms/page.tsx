@@ -50,7 +50,7 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 //
 // WHAT STILL NEEDS DECIDING, and is marked in the text:
 //   - SETTLED 2026-09-27: the contract is with SELODÍA LTD, not with Ruth
-//     personally. "Contract is with Selodía Ltd. Not me." The privacy policy
+//     personally. "Contract is with Selodia Ltd. Not me." The privacy policy
 //     still names her personally and now disagrees with this page - it is
 //     flagged in the close-out and needs the same change once the ICO
 //     registration and controller line are checked, which is not a rename I
@@ -90,8 +90,8 @@ const SECTIONS: PlainSection[] = [
   {
     heading: 'Who you are agreeing with',
     body: [
-      'Selodía is operated by Selodía Ltd. Using the app means accepting these terms, which are an agreement between you and Selodía Ltd. If you do not accept them, do not use it.',
-      'Selodía Ltd is registered in England and Wales, company number 12246794, registered office 19 Campbell Road, London, E17 6RR.',
+      'Selodía is operated by Selodia Ltd. Using the app means accepting these terms, which are an agreement between you and Selodia Ltd. If you do not accept them, do not use it.',
+      'Selodia Ltd is registered in England and Wales, company number 17435894, registered office 19 Campbell Road, London, E17 6RR.',
       'Questions about anything here go to hello@selodia.app.',
     ],
   },

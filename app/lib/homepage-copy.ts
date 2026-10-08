@@ -328,11 +328,19 @@ export const DIAGRAMS = {
 //
 // DRAFT, exactly as supplied. The company details are the thing that stops this
 // reading as a holding page, so they are real and they are checked: company
-// 12246794 is the number already in the privacy policy and the terms.
+// CORRECTED 8 October 2026, and it had been wrong everywhere. The number
+// published here, in the privacy policy, the terms, the beta agreement, the
+// DPIA and the breach-response procedure was 12246794, which is SILODIA
+// LIMITED, an unrelated property company in Orpington incorporated in 2019.
+// Verified on the Companies House register both ways before anything changed.
+//
+// The company is SELODIA LTD, 17435894, incorporated 3 September 2026 at
+// 19 Campbell Road. Registered with NO ACCENT, which is why the company name
+// here is "Selodia Ltd" while the PRODUCT stays "Selodía" everywhere.
 
 export const FOOTER = {
-  company: 'Selodía Ltd',
-  companyNumber: 'Company No. 12246794',
+  company: 'Selodia Ltd',
+  companyNumber: 'Company No. 17435894',
   address: '19 Campbell Road, London, E17 6RR',
   email: CONTACT_EMAIL,
   instagramHandle: '@selodia.app',

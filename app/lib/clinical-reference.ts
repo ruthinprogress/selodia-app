@@ -107,7 +107,7 @@ export const MAX_ENTRIES_PER_TURN = 4;
  * Drafting these is the next piece of work and it is not code: each one needs
  * its wording taken from a named document, its url, the date it was checked,
  * and then a clinician's read. The sources to build from, UK-first because that
- * is Selodía Ltd's clinical and regulatory context:
+ * is Selodia Ltd's clinical and regulatory context:
  *
  *   NICE NG23, Menopause: identification and management
  *   British Menopause Society - consensus statements and tools
