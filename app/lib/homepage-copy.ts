@@ -106,10 +106,17 @@ export const PROBLEM = {
     'So it falls to you to hold it, and that is hardest exactly when you have the least energy for it.',
   second:
     'Women in midlife are routinely dismissed. But the bigger cost is that the pieces never get connected.',
-  aside: [
-    'Selodía is for women over 40 whose lives are full.',
+  /**
+   * A HEADING AND A PARAGRAPH, 8 October 2026, at her instruction: "make
+   * 'Selodía is for women over 40 whose lives are full.' a heading in Cormorant
+   * Infant, with the paragraph beneath it."
+   *
+   * Not one word changed. The first sentence is the heading and the second is
+   * the paragraph, in her order, exactly as the copy master supplied them.
+   */
+  asideHeading: 'Selodía is for women over 40 whose lives are full.',
+  asideBody:
     'Food, movement, cycle, symptoms, measurements: put down as they happen. Selodía keeps the full record, shows the patterns and builds the reports. Later comes the work of making sense of it all, and deciding what is worth keeping up.',
-  ] as const,
 } as const;
 
 // ---------------------------------------------------------------------------
