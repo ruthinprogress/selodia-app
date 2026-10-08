@@ -159,6 +159,7 @@ const SECTIONS: PlainSection[] = [
       'Only what you give it, or what follows directly from using it. There is no tracking, no advertising identifier, and no third-party analytics.',
       [
         'Account: your email address, and a password held by our authentication provider as a one-way hash that nobody at Selodía can read.',
+        'The waiting list: if you ask to be told when Selodía is ready, we keep your email address, your name if you give one, and a short tag saying which link brought you here, so we know which writing people found useful. That is all of it. We use it once, to email you when the app opens, and for nothing else. Ask at any time and you are removed, by replying to any email from us or writing to hello@selodia.app. The list is deleted once everybody on it has been invited.',
         'About you: date of birth, biological sex, height, activity level, and the goals you set.',
         'Body measurements: weight, body fat, muscle mass and metabolic rate where you record them, plus any other measurement you choose to track such as waist or resting heart rate.',
         'Food and drink: what you log, in your own words, with the nutritional breakdown worked out from it — calories, protein, carbohydrate, fat, and the nutrients that matter most at this stage of life, including calcium, iron and sodium — and any photographs you send.',
@@ -194,6 +195,14 @@ const SECTIONS: PlainSection[] = [
     body: [
       'To answer you. Selodía’s whole proposition is noticing patterns in your own data over time, and a pattern needs history. A single day tells nobody anything.',
       'It is not used to build a profile of you for anyone else, and it is not sold. See the next section for who it reaches and why, and the paragraph on special category data above for the one optional permission that is separate from all of this.',
+    ],
+  },
+  {
+    heading: 'Who can see what you write',
+    body: [
+      'Other people using Selodía cannot see any of it. The database refuses to return your records to anyone signed in as somebody else, and that is enforced by the database, not by the app asking nicely.',
+      'Like any online service, Selodía holds an administrator key to the database, which means your records could technically be read by the people who run it. That would only happen when something is broken and there is no other way to find out why. If it were ever needed to look at a specific person’s data, we would tell that person.',
+      'Your password cannot be read by anybody, including us. It is stored as a one-way hash and cannot be turned back.',
     ],
   },
   {
