@@ -75,15 +75,20 @@ export function HeroArtwork() {
             bleeds like pigment, then a blur softens what is left. Two seeds so
             neighbouring blobs do not share an edge shape, which is what makes a
             filtered circle look like a filtered circle. */}
-        <filter id="wash-a" x="-25%" y="-25%" width="150%" height="150%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves={4} seed={9} result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale={46} xChannelSelector="R" yChannelSelector="G" />
-          <feGaussianBlur stdDeviation={9} />
+        {/* TUNED DOWN FROM THE FIRST PASS, after looking at it. A displacement
+            of 46 with a 9px blur turned seven circles into one pink cloud: the
+            overlaps were the thing that made it watercolour and they had all
+            dissolved. These values keep a recognisable circle with a ragged,
+            bleeding edge, which is what the reference actually shows. */}
+        <filter id="wash-a" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.0085" numOctaves={4} seed={9} result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale={30} xChannelSelector="R" yChannelSelector="G" />
+          <feGaussianBlur stdDeviation={3.5} />
         </filter>
-        <filter id="wash-b" x="-25%" y="-25%" width="150%" height="150%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.019" numOctaves={3} seed={23} result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale={22} xChannelSelector="R" yChannelSelector="G" />
-          <feGaussianBlur stdDeviation={4} />
+        <filter id="wash-b" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves={3} seed={23} result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale={12} xChannelSelector="R" yChannelSelector="G" />
+          <feGaussianBlur stdDeviation={1.6} />
         </filter>
       </defs>
 
@@ -98,16 +103,16 @@ export function HeroArtwork() {
         d="M -40 108 C 170 60, 318 196, 487 182 C 676 166, 742 24, 921 46 C 1070 64, 1126 168, 1240 150"
         fill="none"
         stroke={COPPER}
-        strokeWidth={1.6}
-        opacity={0.5}
+        strokeWidth={2}
+        opacity={0.62}
         strokeLinecap="round"
       />
       <path
         d="M -40 612 C 150 648, 262 520, 430 540 C 612 562, 700 694, 880 650 C 1020 616, 1096 500, 1240 520"
         fill="none"
         stroke={COPPER}
-        strokeWidth={1.4}
-        opacity={0.38}
+        strokeWidth={1.7}
+        opacity={0.5}
         strokeLinecap="round"
       />
     </svg>
@@ -135,8 +140,8 @@ export function ThreadDivider({ flip = false }: { flip?: boolean }) {
         d="M 10 4 C 120 40, 60 76, 180 96 C 268 110, 330 92, 392 112"
         fill="none"
         stroke={COPPER}
-        strokeWidth={1.2}
-        opacity={0.4}
+        strokeWidth={1.5}
+        opacity={0.5}
         strokeLinecap="round"
       />
     </svg>

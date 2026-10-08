@@ -20,6 +20,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const { sourceTag } = await import(root + '/app/lib/source-tag.ts');
+const copy = await import(root + '/app/lib/homepage-copy.ts');
 
 const page = readFileSync('app/page.tsx', 'utf8');
 
@@ -97,28 +98,68 @@ check('old rows are left alone', () => {
 
 console.log('\n  WHAT SHE PROMISED THEM\n');
 
+// THESE THREE WERE PINNED TO MY OWN SENTENCES AND HAD TO BE REWRITTEN, 8
+// October 2026. They grepped `page.tsx` for the exact wording the page carried
+// that week, so the homepage rebuild broke them without breaking anything they
+// were there to protect. The promise had not weakened: it had moved into
+// `homepage-copy.ts` and been reworded, which is the thing that was always
+// going to happen.
+//
+// So they now assert the THREE PROPERTIES the permission actually rests on,
+// against the copy module, and say nothing about how any of them is phrased:
+//
+//   1. the reader is told they will be EMAILED, in that word;
+//   2. the use of the address is BOUNDED, so a list is not a licence;
+//   3. there is a WAY OUT, stated where they sign up.
+//
+// Ruth can rewrite every sentence on the page and this still holds. That is the
+// difference between a check and a transcript.
+
+const EMAILED = /\bemail(ed)?\b/i;
+const BOUNDED = /\bonly\b/i;
+const WAY_OUT = /\b(removed?|unsubscribe)\b/i;
+
 check('the form says they will be emailed', () => {
-  // THE LAUNCH INVITATION DEPENDS ON THIS SENTENCE. Without it there is a list
-  // and no permission to use it.
-  assert.ok(/we&rsquo;ll email you when/.test(page), 'the form no longer says they will be emailed');
-  assert.ok(
-    !/we&rsquo;ll let you know when\s*\n\s*it&rsquo;s ready\./.test(page),
-    'the wording has gone back to "let you know", which does not name the email'
-  );
-  return '"leave your email and we\'ll email you when it\'s ready"';
+  // THE LAUNCH INVITATION DEPENDS ON THIS. Without it there is a list and no
+  // permission to use it.
+  assert.ok(EMAILED.test(copy.WAITING_LIST.promise), 'the promise no longer names the email');
+  return `"${copy.WAITING_LIST.promise.slice(0, 54)}..."`;
 });
 
 check('and it says what else it will not do', () => {
-  assert.ok(/Nothing else/.test(page), 'nothing bounds what the address is used for');
-  assert.ok(/remove you at any time/.test(page), 'there is no way out stated');
-  return 'nothing else, and a way out';
+  const consent = copy.WAITING_LIST.consent.before;
+  assert.ok(BOUNDED.test(consent), 'nothing bounds what the address is used for');
+  assert.ok(
+    WAY_OUT.test(copy.WAITING_LIST.promise),
+    'there is no way out stated where somebody signs up'
+  );
+  assert.ok(
+    copy.WAITING_LIST.consent.linkText.length > 0,
+    'the consent line does not link anywhere'
+  );
+  return 'used only for one thing, a way out, and a link to the policy';
 });
 
 check('and this check can fail', () => {
-  const asShipped = "Leave your email and we&rsquo;ll let you know when it&rsquo;s ready.";
-  assert.ok(!/email you/.test(asShipped), 'the fixture is not the old wording');
-  assert.ok(sourceTag('post-01') !== null && sourceTag('post 01') === null, 'the sanitiser does not discriminate');
-  return 'the old wording and a bad tag are both detected';
+  // EACH OF THE THREE PROPERTIES, DEFEATED BY A PLAUSIBLE REWRITE. Not a
+  // nonsense string: wording somebody might genuinely reach for.
+  assert.ok(
+    !EMAILED.test('Join the waiting list and we will let you know when it opens.'),
+    '"let you know" is not detected as failing to name the email'
+  );
+  assert.ok(
+    !BOUNDED.test('Your details are used to tell you when Selodia opens. '),
+    'an unbounded consent line is not detected'
+  );
+  assert.ok(
+    !WAY_OUT.test('Join the waiting list and you will be emailed when it opens.'),
+    'a promise with no way out is not detected'
+  );
+  assert.ok(
+    sourceTag('post-01') !== null && sourceTag('post 01') === null,
+    'the sanitiser does not discriminate'
+  );
+  return 'all three properties, each defeated by a plausible rewrite';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

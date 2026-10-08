@@ -131,7 +131,7 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // NO CLIENT JAVASCRIPT, matching the landing page: one server-rendered document.
 
 export const metadata: Metadata = {
-  title: 'Privacy — Selodía',
+  title: 'Privacy · Selodía',
   description: 'What Selodía collects, why, and what you can do about it.',
 };
 
@@ -162,10 +162,10 @@ const SECTIONS: PlainSection[] = [
         'The waiting list. If you join, we keep your name, email address and which link brought you here. We use them to tell you when Selodía opens. To be removed, reply to any email from us or write to hello@selodia.app.',
         'About you: date of birth, biological sex, height, activity level, and the goals you set.',
         'Body measurements: weight, body fat, muscle mass and metabolic rate where you record them, plus any other measurement you choose to track such as waist or resting heart rate.',
-        'Food and drink: what you log, in your own words, with the nutritional breakdown worked out from it — calories, protein, carbohydrate, fat, and the nutrients that matter most at this stage of life, including calcium, iron and sodium — and any photographs you send.',
-        'Movement: activities, duration and intensity, and — only if you grant the permission — step counts, distance and exercise sessions read from your phone’s own health platform (Health Connect on Android, Apple Health on iPhone).',
+        'Food and drink: what you log, in your own words, with the nutritional breakdown worked out from it (calories, protein, carbohydrate, fat, and the nutrients that matter most at this stage of life, including calcium, iron and sodium), and any photographs you send.',
+        'Movement: activities, duration and intensity, and, only if you grant the permission, step counts, distance and exercise sessions read from your phone’s own health platform (Health Connect on Android, Apple Health on iPhone).',
         'Health context: conditions, markers and allergies you choose to disclose, and menstrual cycle dates if you record them.',
-        'Where you are with periods: whether you describe yourself as having regular periods, perimenopausal, post-menopausal, or not having periods for another reason — and the reason, if you give one.',
+        'Where you are with periods: whether you describe yourself as having regular periods, perimenopausal, post-menopausal, or not having periods for another reason, and the reason, if you give one.',
         'Hormones and medication: whether you use hormonal contraception or HRT, and anything you tell Selodía you take regularly, including prescribed medicine, things bought over the counter, and supplements.',
         'Sleep: when you slept, for how long, how it felt, and how often you woke.',
         'How your days feel: the daily ratings you give for things like mood and energy.',
@@ -173,7 +173,7 @@ const SECTIONS: PlainSection[] = [
         'Your week and your plans: the activities in your week and when you do them, the goals you set, and the skills you are working towards.',
         'Beta membership: whether you are in the beta, and which version of the beta agreement you accepted and when.',
         'Feedback: anything you send through the in-app feedback form, together with which screen you were on and which version of the app you were using, so it can be reproduced.',
-        'Documents you show it: if you photograph or upload a letter or a result — for example from a clinic — the pages are sent to be read, and what Selodía understood from them is shown to you. The pages themselves are not stored. What is kept is only what you then agree to keep.',
+        'Documents you show it: if you photograph or upload a letter or a result, for example from a clinic, the pages are sent to be read, and what Selodía understood from them is shown to you. The pages themselves are not stored. What is kept is only what you then agree to keep.',
         'Operational records: a note of how much of the AI service each conversation used, and timings for the steps inside it, so faults and costs can be traced. These are attached to your account but contain no part of what you said.',
         'Safety records: if Selodía has raised something with you that it thinks is worth taking to a doctor, a note that it has already been raised, so you are not asked the same thing repeatedly.',
         'Conversations: everything said in chat, including transcripts of anything spoken by voice.',
@@ -184,7 +184,7 @@ const SECTIONS: PlainSection[] = [
       ],
       'Special category data. Health information is special category data under UK GDPR, and several of the things above are squarely within it: your menstrual cycle, where you are with the menopause, the hormones and medication you take, any condition you disclose, and anything a clinician has told you to avoid.',
       'They are held on your explicit consent, given on the first screen, for one purpose: so that an app you asked about your own body can answer from your own record.',
-      'On that same screen there is a separate, optional permission: to let de-identified information about how you use Selodía help improve it and understand patterns across people using it. That is a different thing from the consent above, it is recorded separately, and you can change it in Settings at any time. Nothing is done with it today — no such use has been built. If that ever changes, you will be told before it does.',
+      'On that same screen there is a separate, optional permission: to let de-identified information about how you use Selodía help improve it and understand patterns across people using it. That is a different thing from the consent above, it is recorded separately, and you can change it in Settings at any time. Nothing is done with it today. No such use has been built. If that ever changes, you will be told before it does.',
       'None of this is shared with any insurer, employer or advertiser. None of it is used to make an automated decision about you that has a legal or similarly significant effect: Selodía describes and suggests, and does not gate anything on what it finds. Anthropic, whose model writes the replies, states in its commercial terms that data sent through its API is not used to train its models.',
       'Medication, and the card it is kept on. Your Medications card is only ever written after you have seen it written down: Selodía reads back what it understood and keeps nothing unless you agree to it. That is about the card. The conversation itself is saved as you type it, like every other message, so anything you mention in chat is in your record from the moment you send it. Selodía is not a prescriber: it will not tell you whether a dose is right or suggest you start, stop or change anything. That belongs with your GP or pharmacist.',
       'Data read from Apple Health or Health Connect is used only to show you your own movement. It is never used for advertising, never sold, and never shared except with the providers below to make the app work.',
@@ -210,12 +210,12 @@ const SECTIONS: PlainSection[] = [
     body: [
       'A small number of providers, each doing one job. No data is shared with anyone else.',
       [
-        'Supabase — stores the database and files, and handles sign-in. Data is held in their London region.',
-        'Anthropic — provides Claude, the model behind the conversation. Messages, and food photographs you send, are processed to produce a reply. Anthropic’s commercial terms state that data submitted through their API is not used to train their models.',
-        'ElevenLabs — provides speech recognition and the spoken voice, and only when you use voice mode. If you use voice, what you say goes to ElevenLabs to be turned into text. Neither ElevenLabs nor Anthropic uses it to train its AI models. ElevenLabs keeps the audio and the transcript for up to 3 years. The training opt-out on this account was switched on on 1 October 2026 and applies from then on; ElevenLabs act as a data processor under their published data processing agreement, which means they may use what they hold only to provide the service to Selod\u00eda.',
-        'Vercel — runs Selodía’s servers, which pass your data between the app, the database and the providers above. Server logs are kept briefly, to fix faults.',
-        'Google — confirms who you are if you choose to sign in with Google. On Android, Google’s Firebase Cloud Messaging delivers reminders, using a device token rather than your data.',
-        'Expo — delivers push notifications and app updates. It sees a device token, not your data.',
+        'Supabase stores the database and files, and handles sign-in. Data is held in their London region.',
+        'Anthropic provides Claude, the model behind the conversation. Messages, and food photographs you send, are processed to produce a reply. Anthropic’s commercial terms state that data submitted through their API is not used to train their models.',
+        'ElevenLabs provides speech recognition and the spoken voice, and only when you use voice mode. If you use voice, what you say goes to ElevenLabs to be turned into text. Neither ElevenLabs nor Anthropic uses it to train its AI models. ElevenLabs keeps the audio and the transcript for up to 3 years. The training opt-out on this account was switched on on 1 October 2026 and applies from then on; ElevenLabs act as a data processor under their published data processing agreement, which means they may use what they hold only to provide the service to Selod\u00eda.',
+        'Vercel runs Selodía’s servers, which pass your data between the app, the database and the providers above. Server logs are kept briefly, to fix faults.',
+        'Google confirms who you are if you choose to sign in with Google. On Android, Google’s Firebase Cloud Messaging delivers reminders, using a device token rather than your data.',
+        'Expo delivers push notifications and app updates. It sees a device token, not your data.',
       ],
       'Selodía does not sell data, does not run advertising, and has no affiliate or data-sharing arrangements of any kind.',
     ],
@@ -223,7 +223,7 @@ const SECTIONS: PlainSection[] = [
   {
     heading: 'How long it is kept',
     body: [
-      'Until you delete it. Health information is only useful over time, so nothing expires on its own — but nothing is kept once you ask for it to go.',
+      'Until you delete it. Health information is only useful over time, so nothing expires on its own, but nothing is kept once you ask for it to go.',
       'Deleting your account removes your data from the live database. Encrypted backups roll off on our providers’ own schedules, within 30 days.',
     ],
   },
@@ -235,7 +235,7 @@ const SECTIONS: PlainSection[] = [
         'Export everything, in a readable format, from Settings.',
         'Delete your account and all of its data, from Settings. It is not recoverable afterwards. If you no longer have the app, you can ask by email instead: see selodia.app/delete-account.',
         'Print or share your Me page. To let your browser open it, a copy is kept for fifteen minutes and then deleted.',
-        'Ask for a copy, a correction, or for processing to stop — email hello@selodia.app.',
+        'Ask for a copy, a correction, or for processing to stop: email hello@selodia.app.',
         'Withdraw consent at any time by deleting your account, which is the same thing in practice for an app that exists to hold this information.',
       ],
       'A request will be answered within one month.',

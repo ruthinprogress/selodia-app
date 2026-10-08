@@ -72,7 +72,7 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // NO CLIENT JAVASCRIPT, matching the privacy policy and the landing page.
 
 export const metadata: Metadata = {
-  title: 'Terms — Selodía',
+  title: 'Terms · Selodía',
   description: 'The agreement between you and Selodía, in plain English.',
 };
 
@@ -108,7 +108,7 @@ const SECTIONS: PlainSection[] = [
     heading: 'Your account',
     body: [
       'You need to be 18 or over to use Selodía.',
-      'Keep your sign-in details to yourself, and use an email address you actually control — it is how you get back in, and how you would be contacted about your data.',
+      'Keep your sign-in details to yourself, and use an email address you actually control: it is how you get back in, and how you would be contacted about your data.',
       'One account is for one person. Selodía reads everything you tell it as being about you, and sharing an account would put two people’s bodies in one record.',
     ],
   },
@@ -148,7 +148,7 @@ const SECTIONS: PlainSection[] = [
     heading: 'What is not promised',
     body: [
       'Selodía is offered as it is. It is built carefully and tested, but it is software, and software has bad days: it may be unavailable, it may be slow, and it may get something wrong.',
-      'The figures it shows are calculated from what you record. Where it estimates something — calories in a meal, energy burned in a day — that is an estimate, and it is described as one. Do not treat an estimate as a measurement.',
+      'The figures it shows are calculated from what you record. Where it estimates something, such as calories in a meal or energy burned in a day, that is an estimate, and it is described as one. Do not treat an estimate as a measurement.',
       'Nothing here limits liability for death or personal injury caused by negligence, for fraud, or for anything else the law does not allow to be limited. Beyond that, Selodía is not liable for indirect or consequential loss arising from using it.',
       'Your statutory rights as a consumer are unaffected by anything on this page.',
     ],

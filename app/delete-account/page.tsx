@@ -15,7 +15,7 @@ import { PlainPage } from '../lib/plain-page';
 // mobile/SELODIA_STORE_SUBMISSION.md.
 
 export const metadata: Metadata = {
-  title: 'Delete your account — Selodía',
+  title: 'Delete your account · Selodía',
   description: 'How to delete your Selodía account and all of its data.',
 };
 

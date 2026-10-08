@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 // They were still the create-next-app boilerplate until 2026-09-01, which would
 // have put "Create Next App" in the browser tab of selodia.app.
 export const metadata: Metadata = {
+  // Absolute URLs for Open Graph and Twitter cards. Without it Next emits
+  // relative image paths, which every scraper ignores.
+  metadataBase: new URL("https://selodia.app"),
   title: "Selodía",
   description: "A body literacy app for women 40+.",
   // GOOGLE SEARCH CONSOLE, for the Play Console listing (Ruth, 2 October 2026).
@@ -46,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="en-GB"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
