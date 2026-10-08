@@ -26,7 +26,7 @@
 import type { MeasurementField } from './measurement-logging';
 
 export type CorrectionKind = 'food' | 'activity' | 'measurement' | 'personal_metric';
-export type CorrectionAction = 'update' | 'delete';
+export type CorrectionAction = 'update' | 'delete' | 'move';
 
 // One entry, or every duplicate of it (added 2026-09-09).
 //
@@ -132,8 +132,77 @@ export function correctionDayRange(
   };
 }
 
+
+// MOVING AN ENTRY TO ANOTHER DAY (8 October 2026), which is one update and was
+// being done as a delete and a re-log.
+//
+// THE EVIDENCE IS IN HER OWN DATA, TWICE. food_logs_removed holds two rows from
+// 28 September whose stated reason is: "A date correction added a copy instead of
+// moving the entry. Removed at Ruth's explicit instruction." It was cleaned up by
+// hand and the cause was left alone.
+//
+// Ten days later, 8 October, 09:32: "Please change the Wednesdays sandwhich to
+// tuesday." The reply offered to delete it from Wednesday and log it for Tuesday,
+// she said yes, and the turn then said "Done - removed from Wednesday and logged
+// for Tuesday instead." Nothing was removed, and what was logged went to Thursday.
+//
+// WHY THE TWO-STEP CANNOT WORK, and this is the part worth writing down. The
+// prompt says to set correctionKind and correctionAction INSTEAD OF logIntent: a
+// correction is not a new log. So one turn can delete or it can log, never both.
+// The model was offering an operation the app has no way to carry out, and the
+// only record of the promise was its own sentence.
+//
+// A MOVE IS THE HONEST SHAPE. The entry is right, its day is wrong, and nothing
+// about it needs re-parsing: the same row keeps its id, its items, its macros and
+// its own history. A delete and a re-log loses all of that and gives two chances
+// to half-fail, which is exactly what happened both times.
+//
+// THE TIME OF DAY TRAVELS WITH IT. Moving Wednesday lunch to Tuesday should land
+// at Tuesday lunchtime, not at the moment she asked. The app already groups by
+// local day, so keeping the clock time keeps the meal in the right part of its
+// new day and keeps the ordering inside that day sensible.
+export function movedTimestamp(
+  original: string,
+  toIsoDate: string,
+  timeZone = 'Europe/London'
+): string | null {
+  const range = correctionDayRange(toIsoDate, timeZone);
+  if (!range) return null;
+  const was = new Date(original);
+  if (Number.isNaN(was.getTime())) return null;
+
+  // Where in its own LOCAL day the entry sat, to the millisecond. Read against
+  // the same zone the new day is built in, so an entry logged at 20:30 under BST
+  // does not arrive at 19:30 after the clocks change.
+  const localNoonOfWas = new Date(was.toLocaleString('en-US', { timeZone }));
+  const utcNoonOfWas = new Date(was.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const offsetMs = localNoonOfWas.getTime() - utcNoonOfWas.getTime();
+  const msIntoLocalDay = ((was.getTime() + offsetMs) % 86_400_000 + 86_400_000) % 86_400_000;
+
+  const moved = new Date(new Date(range.from).getTime() + msIntoLocalDay);
+  // Never outside the day it was asked to land in. A DST shift can push the last
+  // or first hour over a boundary, and an entry that moves to the wrong day is
+  // the whole fault this function exists to stop.
+  if (moved < new Date(range.from) || moved >= new Date(range.to)) {
+    return new Date(new Date(range.from).getTime() + 12 * 3_600_000).toISOString();
+  }
+  return moved.toISOString();
+}
+
+/** What the app says when it has moved something. The app states it, never the model. */
+export function movedMessage(kind: CorrectionKind, toIsoDate: string): string {
+  const day = new Date(toIsoDate + 'T12:00:00Z').toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  const what = kind === 'food' ? 'that entry' : 'that one';
+  return `Moved ${what} to ${day}. Nothing was re-entered, so it keeps everything it had.`;
+}
+
 const KINDS: CorrectionKind[] = ['food', 'activity', 'measurement', 'personal_metric'];
-const ACTIONS: CorrectionAction[] = ['update', 'delete'];
+const ACTIONS: CorrectionAction[] = ['update', 'delete', 'move'];
 const SCOPES: CorrectionScope[] = ['one', 'duplicates'];
 
 // Valid-or-nothing, never valid-or-guess. An unrecognised value must not fall

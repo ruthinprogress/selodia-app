@@ -91,13 +91,24 @@ check('and it says what DOES work, not only what does not', () => {
   // came from: the model deflected to her GP because it had six figures and
   // nothing to compare them to. Forbidding the deflection would have changed
   // nothing. The same applies here.
+  //
+  // WHAT WORKS CHANGED ON 8 OCTOBER, and this assertion changed with it rather
+  // than being loosened. Yesterday the alternative was "delete it and log it
+  // again", which I wrote here as the working answer. It was not working: a
+  // correction and a log cannot both happen in one turn, so that offer left a
+  // copy behind twice, on 28 September and again on 8 October. The entry's day
+  // can now be moved in one update, so that is the alternative the prompt names.
   const p = REPLY_PROMPT_PARTS.INSIDE_THE_APP;
-  assert.ok(/delete it, and log it again/i.test(p), 'the working alternative is not named');
+  assert.ok(/AN ENTRY'S DAY CAN BE MOVED/.test(p), 'the working alternative is not named');
   assert.ok(
-    /Logging for a past day is ordinary/.test(p),
-    'nothing tells it that backdated logging works, so it cannot offer the second step'
+    /NEVER OFFER TO DELETE IT AND LOG IT AGAIN/.test(p),
+    'nothing stops it offering the two-step the app cannot carry out'
   );
-  return 'delete, then log it again for the right day';
+  assert.ok(
+    /Logging FOR a past day is still ordinary/.test(p),
+    'backdated logging has stopped being mentioned, and it is a different thing from a move'
+  );
+  return 'move it, in one step, and never the two-step';
 });
 
 check('the rule reaches the model that actually writes the reply', () => {

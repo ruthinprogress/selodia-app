@@ -75,6 +75,8 @@ import {
   coerceCorrectionScope,
   correctionCutoff,
   correctionDayRange,
+  movedMessage,
+  movedTimestamp,
   deletionMessage,
   duplicatesRemovedMessage,
   DUPLICATE_MATCH_COLUMNS,
@@ -1310,7 +1312,7 @@ AND DO NOT PROMISE A VERDICT. The table shows the days and says how many there w
 
 REMOVING A SAVED PLAN: set removePlanTitled when they ask for one of their own saved plans to be deleted. This is NOT a correction and has nothing to do with correctionKind, which is for something just logged: a plan is named and can be months old. The app matches the title, works out for itself what to do when two plans share a name, removes it and states the outcome - including when it could not. So never say a plan has been deleted, and never say which copy went; acknowledge, and let the app report. If you cannot tell which plan they mean, leave it unset and ask.
 
-CORRECTIONS: Set correctionDate whenever they name a day - "yesterday's food", "Saturday's entries". Without it only the last day or so is reachable, which is how somebody asking on Sunday for Saturday's lunch gets told it cannot be found. When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
+CORRECTIONS: Set correctionDate whenever they name a day - "yesterday's food", "Saturday's entries". Without it only the last day or so is reachable, which is how somebody asking on Sunday for Saturday's lunch gets told it cannot be found. When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. A MOVE IS ITS OWN ACTION and is what they usually want when a day is wrong: set correctionAction 'move' with correctionDate for the day it is on and correctionMoveTo for the day it belongs on. Do not offer to delete it and log it again, because a correction and a log cannot both happen in one turn and that offer has twice left a copy behind. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
 ACTIVITY NEEDS A DURATION BEFORE IT IS LOGGED. An activity with no duration cannot be stored honestly: the length is what every calorie figure is computed from, so logging "a run" means inventing how long it lasted and then showing the person a number built on the invention. When someone mentions activity without saying how long, do not log it. Ask how long, warmly and in one short question, and log it on the turn they answer - setting logIntent to 'activity' then, and passing the full description in logText. Never re-ask something they have already told you, and never treat their answer as a second, separate activity.
 
@@ -1751,9 +1753,18 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     },
     correctionAction: {
       type: 'string',
-      enum: ['update', 'delete'],
+      enum: ['update', 'delete', 'move'],
       description:
-        "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely. If you cannot tell which, leave BOTH fields unset and ask them in your reply instead - never guess, because both outcomes change their real data.",
+        "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely, 'move' when the entry is RIGHT but it is on the WRONG DAY - \"change Wednesday's sandwich to Tuesday\", \"that lunch was actually Monday\", \"it needs to be on Tuesday\". A move needs correctionMoveTo as well as correctionDate: correctionDate is the day it is on NOW, correctionMoveTo is the day it belongs on. NEVER OFFER TO DELETE IT AND LOG IT AGAIN: a correction and a log cannot both happen in one turn, so that is an operation this app cannot carry out, and offering it has twice ended with a copy added and the original left where it was. A move keeps the entry's items, its figures and its history. If you cannot tell which action they mean, leave BOTH fields unset and ask them in your reply instead - never guess, because every one of these changes their real data.",
+    },
+    correctionMoveTo: {
+      type: 'string',
+      description:
+        'Only alongside correctionAction "move": the day the entry should end up '
+        + 'on, as yyyy-mm-dd. correctionDate says where it is now, this says where '
+        + 'it is going, and both are needed - without this the app will not guess a '
+        + 'day and will ask instead. The time of day travels with the entry, so a '
+        + 'lunch stays a lunch.',
     },
     correctionMatch: {
       type: 'string',
@@ -2221,6 +2232,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     removePlanTitled?: string;
     correctionKind?: string;
     correctionDate?: string;
+    correctionMoveTo?: string;
     correctionMatch?: string;
     correctionAction?: string;
     correctionScope?: string;
@@ -2599,6 +2611,37 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           .eq('user_id', user.id);
         correctionNote = error ? null : duplicatesRemovedMessage(correction.kind, ids.length);
         if (error) console.log('ASK-SELODIA DELETE FAILED:', error.message);
+      } else if (correction.action === 'move' && target) {
+        // MOVING A DAY IS ONE UPDATE. See movedTimestamp in log-correction.ts for
+        // why this exists: her own food_logs_removed carries two rows from
+        // 28 September whose reason reads "a date correction added a copy instead
+        // of moving the entry", and on 8 October the same thing happened to a
+        // chicken sandwich. The two-step the model kept offering is an operation
+        // this route cannot perform, because a correction and a log are mutually
+        // exclusive in one turn.
+        //
+        // THE ROW KEEPS ITS ID, so its items, its macros and its own history
+        // travel with it. That is the whole argument against delete-and-relog.
+        const moveTo =
+          typeof result.correctionMoveTo === 'string'
+            ? movedTimestamp(String((target as Record<string, unknown>)[timeCol]), result.correctionMoveTo)
+            : null;
+        if (!moveTo) {
+          // REFUSED RATHER THAN GUESSED. Without a day to land on there is no
+          // sensible default, and moving an entry somewhere nobody named is worse
+          // than leaving it where it is.
+          correctionNote = 'Say which day it should be on and it will move.';
+        } else {
+          const { error } = await supabase
+            .from(table)
+            .update({ [timeCol]: moveTo })
+            .eq('id', target.id)
+            .eq('user_id', user.id);
+          correctionNote = error
+            ? null
+            : movedMessage(correction.kind, String(result.correctionMoveTo));
+          if (error) console.log('ASK-SELODIA MOVE FAILED:', error.message);
+        }
       } else if (correction.kind === 'personal_metric') {
         // Corrected by METRIC NAME, not by "the most recent row". Someone who
         // logged a waist and a thigh a minute apart and says "no, the waist was
