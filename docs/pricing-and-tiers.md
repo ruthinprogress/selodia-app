@@ -54,6 +54,15 @@ on margin, it fails on arithmetic.
 
 3. **Plus at £30**, once the movement library is good enough to demo.
 
+## The homepage says 2027, and that is deliberate
+
+Ruth, 8 October 2026, asked directly whether to change it to match the December
+milestone: "I'd rather be early than late, being late builds mistrust."
+
+So the public date stays behind the plan on purpose. Arriving sooner than
+promised costs nothing; a date that slips is the first thing a waiting list
+remembers. Not an oversight, and not to be raised again as one.
+
 ## Tiers, and there are only ever two
 
 | | Core, £20 | Plus, £30 |
