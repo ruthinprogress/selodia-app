@@ -511,6 +511,34 @@ def render_articles() -> list[Path]:
     return written
 
 
+# ---------------------------------------------------------------------------
+# 3. the article captures
+# ---------------------------------------------------------------------------
+#
+# ADDED 8 OCTOBER 2026, and the reason is the exact failure WORKFLOW warns about
+# twice. `closeout_check.py` has always refused a close-out whose article
+# captures Word file is missing the newest entry, and NOTHING HAS EVER PRODUCED
+# THAT FILE. It was written by hand, by whoever noticed the check complaining.
+#
+# That is the more dangerous of the two shapes the build log describes: a chore
+# that reads as already done. The close-out says the renders are automated, the
+# captures render is not in them, and the gap only surfaces as a blocked
+# close-out at the end of a long day, when the cheapest thing to do is run
+# md2docx once by hand and never fix the cause.
+
+
+def render_captures() -> Path:
+    out = DRIVE / "Selodia Article Captures.docx"
+    md2docx = Path(__file__).resolve().parent / "md2docx.py"
+    src = REPO / "ARTICLE_CAPTURES.md"
+    subprocess.run(
+        [sys.executable, str(md2docx), str(src), str(out)],
+        check=True,
+        capture_output=True,
+    )
+    return out
+
+
 def main() -> int:
     if not DRIVE.is_dir():
         print("render_docs: the Drive folder is not reachable.")
@@ -531,6 +559,7 @@ def main() -> int:
         print(f"    {render_docx(source, out_name, subtitle, blurb, commit).name}")
     for p in render_articles():
         print(f"    {p.name}")
+    print(f"    {render_captures().name}")
     return 0
 
 
