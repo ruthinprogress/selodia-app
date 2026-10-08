@@ -57,15 +57,34 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *   Record that in the repo. A clinician reviews before any beta users."
  *
  * ──────────────────────────────────────────────────────────────────────────
- * WHAT IS STILL OWED, AND IT IS A CONDITION OF THIS BEING ON:
+ * THAT CONDITION CHANGED ON 8 OCTOBER 2026, and this block records the change
+ * rather than overwriting it, because the sentence above was the authority for
+ * weeks and a reader needs to see both.
  *
- *   A CLINICIAN REVIEWS BEFORE ANY BETA USER. Not before Ruth uses it - she has
- *   decided for herself, which is hers to do on her own account - but before
- *   anybody else is exposed to it. She has put that review alongside the other
- *   work gated by funding.
+ * It used to say: a clinician reviews before any beta user, as a condition of
+ * this switch being on. Her words today, in full:
  *
- *   NEEDS_CLINICIAN_REVIEW names the one flag written out of a conversation
- *   rather than carried in from the original set, and it should be read first.
+ *   "And tbh, I dont think it's needed. Its a nice to have and we should go to
+ *   that NHS thing that was offered."
+ *
+ *   SO IT IS NO LONGER A GATE. A paid clinical review is a nice-to-have, and
+ *   the route she wants instead is the free Health Innovation Network South
+ *   London innovation clinic, offered unprompted by Jade Okparanta on 7 October
+ *   2026 and not yet taken up.
+ *
+ *   WHAT THAT MEANS, STATED ONCE AND NOT ARGUED: eleven prompts that route a
+ *   person toward 999 or 111 are live on the founder's written approval and no
+ *   clinician's, and that is now the position at beta rather than a temporary
+ *   one. It is her call and it is recorded here so nobody has to reconstruct it.
+ *
+ *   THE HIN CLINIC IS WORTH MORE THAN THE REVIEW ANYWAY, which is probably why
+ *   she chose it. The question only an outside body can answer is whether any
+ *   of this makes Selodía Software as a Medical Device. HIN South London and
+ *   DigitalHealth.London have run a programme on exactly that route.
+ *
+ *   NEEDS_CLINICIAN_REVIEW still names the one flag written out of a
+ *   conversation rather than carried in from the original set, and it should
+ *   still be read first by whoever does look at these.
  *
  * ──────────────────────────────────────────────────────────────────────────
  * WHAT THIS SWITCH ACTUALLY TURNS ON: eleven flags, not six. Six at 999, which
@@ -95,7 +114,17 @@ export const RUTH_APPROVAL = {
   said: 'approved, six 999 flags, no clinician has reviewed them',
   tiers: ['999'] as const,
   clinicianReviewed: false,
-  clinicianRequiredBefore: 'any beta user',
+  // WAS 'any beta user' UNTIL 8 OCTOBER 2026. Null because it is no longer a
+  // condition of anything: "I dont think it's needed. Its a nice to have and we
+  // should go to that NHS thing that was offered." Nothing in the code ever read
+  // this field, so the change is to the record and not to behaviour.
+  clinicianRequiredBefore: null,
+  clinicianReviewChanged: {
+    date: '2026-10-08',
+    said: "I dont think it's needed. Its a nice to have and we should go to that NHS thing that was offered.",
+    insteadOf: 'a paid clinical review',
+    route: 'Health Innovation Network South London innovation clinic, offered 7 October 2026',
+  },
 } as const;
 
 /**

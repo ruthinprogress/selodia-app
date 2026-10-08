@@ -9,7 +9,7 @@ import { PlainPage } from '../lib/plain-page';
 // features the app does not have is a review note waiting to happen.
 
 export const metadata: Metadata = {
-  title: 'Support — Selodía',
+  title: 'Support · Selodía',
   description: 'How to get help with Selodía.',
 };
 

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -15,7 +15,52 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // their SCHEMA was wrong, not their auth (see log-correction.ts). Anything that
 // acts on a person's own data belongs on getSupabaseForRequest below, so
 // auth.uid() resolves to them.
-export const supabase = createClient(supabaseUrl, supabaseKey);
+//
+// BUILT ON FIRST USE, NOT ON IMPORT, and that one word is a build fix.
+//
+// 8 October 2026: every Vercel PREVIEW deployment of this project had been
+// failing, and had been for at least as long as there were previews to fail.
+// The preview environment has no Supabase variables set, `createClient('')`
+// throws "supabaseUrl is required" the moment this module is evaluated, and
+// Next evaluates it while collecting page data for routes that never touch the
+// anon client at all. So one unset variable failed the build of twenty
+// unrelated routes, and the first error named /api/acknowledge-log, which does
+// not import this.
+//
+// The production deploys were green throughout, because production has the
+// variables, which is exactly why nobody saw it.
+//
+// IT STILL FAILS LOUDLY, just at the point of use. A missing variable now
+// breaks the request that genuinely needed Supabase and says so, instead of
+// breaking a build. What it must never do is construct a client against a
+// placeholder URL: that would make a misconfigured production deploy build
+// clean and fail silently at runtime, which is a worse trade than the one being
+// fixed. `getSupabaseServiceRole` below already worked this way.
+//
+// Methods are bound to the real client, because supabase-js relies on `this`
+// and an unbound `from` or `rpc` handed back through a proxy is a crash
+// waiting for the first query.
+let shared: SupabaseClient | null = null;
+
+function sharedClient(): SupabaseClient {
+  if (!shared) {
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error(
+        'NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are not set in this environment'
+      );
+    }
+    shared = createClient(supabaseUrl, supabaseKey);
+  }
+  return shared;
+}
+
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = sharedClient();
+    const value = client[prop as keyof SupabaseClient];
+    return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(client) : value;
+  },
+});
 
 // RLS is enabled on every table now - each request must forward its own
 // user's session so auth.uid() resolves correctly, rather than sharing one
