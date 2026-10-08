@@ -105,7 +105,8 @@ const authUrl =
 
 console.log('\n  Opening Dropbox in your browser.');
 console.log('  Approve it there and this will finish on its own.\n');
-console.log(`  If nothing opens, paste this in:\n  ${authUrl}\n`);
+console.log('  If nothing opens, copy this WHOLE line into your browser:\n');
+console.log(`  ${authUrl}\n`);
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, REDIRECT);
@@ -177,5 +178,18 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  spawn('cmd', ['/c', 'start', '', authUrl], { detached: true, stdio: 'ignore' }).unref();
+  // NOT `cmd /c start`, WHICH EATS THE URL (8 October 2026).
+  //
+  // An OAuth URL is nothing but ampersands, and `&` is how cmd separates one
+  // command from the next. `start "" https://...?a=1&b=2` opens the address up
+  // to the first one and tries to RUN the rest. Dropbox answered with
+  // "Unexpected response_type request param value", which reads like the script
+  // asked for the wrong thing and actually means it was never asked properly.
+  //
+  // rundll32's FileProtocolHandler takes the whole thing as a single argument
+  // and hands it to the default browser untouched.
+  spawn('rundll32', ['url.dll,FileProtocolHandler', authUrl], {
+    detached: true,
+    stdio: 'ignore',
+  }).unref();
 });
