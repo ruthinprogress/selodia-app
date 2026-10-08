@@ -28,7 +28,7 @@
 // there are none, which is one of the better sentences on the page.
 
 import assert from 'node:assert';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const copy = await import(root + '/app/lib/homepage-copy.ts');
@@ -134,9 +134,14 @@ const ALL = strings({
   FOOTER: copy.FOOTER,
 });
 
+// EVERY PAGE A STRANGER CAN REACH, and it has to stay that way: a page added
+// without being listed here gets none of the rules below. The last check in
+// this file compares this list against the routes that actually exist, so
+// forgetting is a failure rather than a silent gap.
 const PUBLIC_PAGES = [
   'app/privacy/page.tsx',
   'app/terms/page.tsx',
+  'app/sources/page.tsx',
   'app/support/page.tsx',
   'app/delete-account/page.tsx',
 ];
@@ -296,6 +301,24 @@ check('the brand assets the page asks for are actually there', () => {
     `the hero lockup can render at ${min[1]}px, below the 160px floor`
   );
   return `${refs.length} assets present, terracotta in the hero at ${min[1]}px and nowhere smaller`;
+});
+
+check('and no public page escapes these rules', () => {
+  // THE GAP THIS CLOSES. /sources was added on 8 October and the em dash and
+  // vocabulary rules above read a hard-coded list of files, so for one build it
+  // was a public page with no rules on it at all. A list that has to be updated
+  // by hand is a list that will not be.
+  const routes = readdirSync('app', { withFileTypes: true })
+    .filter((d) => d.isDirectory() && !['api', 'lib', 'v1'].includes(d.name))
+    .map((d) => `app/${d.name}/page.tsx`)
+    .filter((f) => existsSync(f));
+  const unchecked = routes.filter((r) => !PUBLIC_PAGES.includes(r));
+  assert.deepStrictEqual(
+    unchecked,
+    [],
+    `public page not in PUBLIC_PAGES, so no rule applies to it: ${unchecked.join(', ')}`
+  );
+  return `${routes.length} routes, all covered`;
 });
 
 check('and this check can fail', () => {

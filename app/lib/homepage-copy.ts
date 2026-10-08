@@ -258,9 +258,14 @@ export const FOOTER = {
   address: '19 Campbell Road, London, E17 6RR',
   email: CONTACT_EMAIL,
   instagramHandle: '@selodia.app',
+  // ONE ADDITION TO THE LIST SHE SPECIFIED. The brief named Privacy, Terms,
+  // Support and Instagram. Sources is here because it was built on 8 October
+  // and a page nothing links to is a page nobody reads. Say the word and it
+  // comes out again, and nothing else changes.
   links: [
     { label: 'Privacy', href: '/privacy' },
     { label: 'Terms', href: '/terms' },
+    { label: 'Sources', href: '/sources' },
     { label: 'Support', href: '/support' },
   ],
 } as const;
