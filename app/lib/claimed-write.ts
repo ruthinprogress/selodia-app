@@ -455,6 +455,102 @@ export type WriteOutcome = {
  * since August for the same reason: a fact about somebody's stored data is the
  * app's to state, never the model's to promise.
  */
+// AN OFFER NOBODY MADE (9 October 2026).
+//
+// Ruth, that morning: "it also didn't add the high cholesterol comment to my Me
+// section." She had said a letter from her doctor reported slightly high
+// cholesterol. It answered:
+//
+//   "...would you like it kept as a note on your Me tab, so it's there if you
+//    want to raise it with your GP again?"
+//
+// She said "Uh, yes, please." Nothing was written, because the turn had set
+// neither proposedSave nor rememberCategory. Her yes answered an offer that did
+// not exist.
+//
+// THE PROMPT ALREADY FORBIDS THIS, IN THESE WORDS: "a turn where you show them
+// a list and ask 'shall I save this?' WITHOUT setting proposedSave produces an
+// offer that does not exist, and their yes then has nothing to answer." It said
+// so and it happened anyway, twice in one day - once in the morning, and again
+// in the afternoon after a different bug in the same area had been fixed. An
+// instruction that is already written and already ignored is not a thing to
+// write more firmly.
+//
+// IT IS THE SAME FAULT AS claimsAWrite, ONE STEP EARLIER. That one catches the
+// app saying it HAS saved when it has not. This catches the app asking whether
+// it SHOULD save when it cannot act on the answer. Both are the reply
+// describing a record that does not exist; the only difference is tense.
+//
+// The verbs are deliberately narrow. "Shall I add more protein to your day?" is
+// a suggestion, not an offer to keep something, and stripping it would take a
+// real question away from her - so `add` and `put` are absent and the list is
+// only the words that mean putting something INTO her record.
+const OFFERS_TO_KEEP =
+  /\b(?:shall i|would you like|want me to|do you want me to|should i)\b[^.?!]*\b(?:keep|kept|keeping|save|saved|saving|note|noted|noting|record|recorded|recording|store|stored|jot)\b[^.?!]*\?/i;
+
+/**
+ * The sentence in which the app offers to keep something, or null.
+ *
+ * Returned rather than a boolean so the caller can quote it into a diagnostic,
+ * which is how we find out whether this is rare or constant.
+ */
+export function offersToKeep(reply: string): string | null {
+  for (const sentence of sentences(reply)) {
+    if (OFFERS_TO_KEEP.test(sentence)) return sentence;
+  }
+  return null;
+}
+
+/**
+ * Take out an offer the app cannot act on.
+ *
+ * SAME CHOICE AS stripSaveClaims, AND FOR THE SAME REASON. Appending "actually
+ * I can't do that" after asking would be two voices disagreeing in front of her
+ * about her own record, which is exactly what Ruth objected to on 30 September.
+ * A question she cannot usefully answer is worse than no question: it costs her
+ * a reply, and the cost of answering it is that she believes it is done.
+ *
+ * What survives is everything the model actually told her. She can still ask
+ * directly - "put that on my Me tab" - and that turn sets the field properly.
+ */
+export function stripDeadOffer(reply: string): string {
+  if (!offersToKeep(reply)) return reply;
+
+  // THE CLAUSE, NOT THE SENTENCE. Her real one was:
+  //
+  //   "That cholesterol mention is worth holding onto - would you like it kept
+  //    as a note on your Me tab, so it's there if you want to raise it with
+  //    your GP again?"
+  //
+  // One sentence, joined by a dash, and the first half is the app actually
+  // hearing her. Dropping the whole thing took that with it, which the check
+  // caught - so only the offer comes out, and what was said before it stays,
+  // closed off properly.
+  const withoutOffer = (sentence: string): string => {
+    const left = sentence
+      .replace(OFFERS_TO_KEEP, '')
+      // A dangling dash, comma or semicolon is what the removed clause was
+      // hanging from.
+      .replace(/[\s,;:–—-]+$/, '')
+      .trim();
+    if (!left) return '';
+    return /[.!?]$/.test(left) ? left : `${left}.`;
+  };
+
+  // Line by line, as stripSaveClaims does, so a list stays a list.
+  const lines = reply.split('\n').map((line) => {
+    if (!line.trim()) return line;
+    return line
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => (OFFERS_TO_KEEP.test(sentence) ? withoutOffer(sentence) : sentence))
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+  });
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function falseClaimNote(outcome: WriteOutcome): string | null {
   if (outcome.wrote.length > 0) return null;
   const claim = claimsAWrite(outcome.reply);

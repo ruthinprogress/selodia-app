@@ -12,6 +12,8 @@ import {
   falseClaimNote,
   stripDisavowal,
   stripMachineOutput,
+  offersToKeep,
+  stripDeadOffer,
   stripSaveClaims,
   unescapeNewlines,
 } from '../../lib/claimed-write';
@@ -3874,7 +3876,41 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     falseClaimedNote,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0);
 
-  let replyBody = safeReplyText;
+  // AN OFFER NOBODY MADE (9 October 2026). See offersToKeep in claimed-write.
+  //
+  // "...would you like it kept as a note on your Me tab?" with no proposedSave
+  // and no rememberCategory behind it. Her yes then answers nothing, which is
+  // how the cholesterol note was lost twice in one day - once before the
+  // user_context gate was fixed and once after, which is what proved the gate
+  // was a different bug sitting next to this one.
+  //
+  // THE QUESTION COMES OUT RATHER THAN BEING ARGUED WITH, the same choice
+  // stripSaveClaims makes and for the same reason: appending "actually I cannot
+  // do that" after asking is two voices disagreeing in front of her. A question
+  // she cannot usefully answer costs her a reply AND leaves her believing it is
+  // done. Everything the model genuinely told her survives, and asking directly
+  // still works, because that turn sets the field.
+  const offerExists =
+    Boolean(result.proposedSave) ||
+    Boolean(result.rememberCategory) ||
+    Boolean(result.almanacKind) ||
+    Boolean(result.meUpdate) ||
+    Boolean(result.noteText);
+  const deadOffer = offerExists ? null : offersToKeep(safeReplyText);
+  if (deadOffer) {
+    // RECORDED AS WELL AS REMOVED. Stripping it fixes her turn; the row is how
+    // we find out whether this is rare or constant, which decides whether the
+    // real answer is a prompt change or carrying the question to the next turn.
+    recordRouteError({
+      userId: user.id,
+      turnId,
+      voice: Boolean(voice),
+      label: 'offer-without-offer',
+      detail: { sentence: deadOffer.slice(0, 300) },
+    });
+  }
+
+  let replyBody = deadOffer ? stripDeadOffer(safeReplyText) : safeReplyText;
   let notesStillToAppend = appendedNotes;
 
   // NEVER OVER A REPLY THE SAFETY ARCHITECTURE CHOSE (2026-09-28).
