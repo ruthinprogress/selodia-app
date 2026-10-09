@@ -21,7 +21,51 @@ import {
   type VoiceSink,
 } from '../../../lib/voice-sink';
 import { getSupabaseForRequest } from '../../../lib/supabase';
+import { recordAdapterTiming } from '../../../lib/turn-diagnostics';
 import { offeredTools, wasHeard, words } from '../../../lib/voice-turns';
+
+// WHERE THE SECONDS GO BEFORE THE PIPELINE STARTS (9 October 2026).
+//
+// ask-selodia keeps its own phase timer, and on 9 October it reported a spoken
+// turn taking 4,097ms while ElevenLabs measured first byte at 14,370ms. The
+// twelve seconds in between happen in THIS file, which had no clock at all:
+// two sequential reads of chat_messages to decide whether the turn has been
+// seen before, and then, on the continuation path, up to ten seconds of
+// deliberate waiting for the earlier turn to finish.
+//
+// Same shape as phaseTimer in ask-selodia, on purpose, so the two rows read
+// side by side.
+function doorTimer() {
+  const start = Date.now();
+  const marks: Record<string, number> = {};
+  return {
+    mark: (name: string) => {
+      marks[name] = Date.now() - start;
+    },
+    taken: () => ({ ...marks, total: Date.now() - start }),
+  };
+}
+
+/**
+ * Whose turn this was, for the diagnostics row only.
+ *
+ * Read from the token's payload WITHOUT verifying it, which is safe here and
+ * nowhere else: the value is used for one thing, grouping timing rows, and the
+ * same token is verified properly by the pipeline moments later. Verifying it
+ * here would mean a second round trip on the exact path being measured, which
+ * would make the instrument part of the problem.
+ */
+function subjectOf(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
+    const sub = (JSON.parse(json) as { sub?: unknown }).sub;
+    return typeof sub === 'string' && sub.length > 0 ? sub : null;
+  } catch {
+    return null;
+  }
+}
 
 // The custom-LLM adapter ElevenLabs talks to.
 //
@@ -440,12 +484,15 @@ async function answerAfter(db: Db, since: string, waitMs: number): Promise<strin
 }
 
 export async function POST(request: NextRequest) {
+  // See doorTimer. Starts on arrival, before anything is read.
+  const door = doorTimer();
   let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
+  door.mark('bodyParsed');
 
   const extra = (body.elevenlabs_extra_body ?? {}) as Record<string, unknown>;
   const resumedRaw = extra.selodia_resumed_after_drop;
@@ -559,6 +606,9 @@ export async function POST(request: NextRequest) {
     // would turn a logging bug into a mute assistant.
     console.log('VOICE ADAPTER: turn check failed, continuing -', err instanceof Error ? err.message : err);
   }
+  // TWO SEQUENTIAL READS OF chat_messages happen above, on the path to every
+  // spoken reply. Unmeasured until now.
+  door.mark('turnChecked');
 
   // One turn through the pipeline. `voice: true` lets it defer the
   // food/activity parse to after(). It changes nothing about the reply or the
@@ -600,7 +650,19 @@ export async function POST(request: NextRequest) {
       signal: request.signal,
     });
     attachVoiceSink(inner, sink);
-    return askSelodia(inner);
+    // EVERYTHING BEFORE THIS LINE IS THE DOOR. The pipeline keeps its own
+    // timer from here, and the gap between the two is what nobody could see.
+    door.mark('pipelineStarted');
+    const run = askSelodia(inner);
+    // Recorded when the pipeline returns rather than when the response is
+    // handed back, because the response is a stream and handing it back says
+    // nothing about when the work finished. Never awaited: recordAdapterTiming
+    // writes inside after(), so it cannot cost the turn it is measuring.
+    void run.then(
+      () => recordAdapterTiming({ userId: subjectOf(token), turnId: null, voice: true, marks: door.taken() }),
+      () => recordAdapterTiming({ userId: subjectOf(token), turnId: null, voice: true, marks: door.taken() })
+    );
+    return run;
   };
 
   const spokenFrom = async (res: Response): Promise<Spoken> => {
@@ -624,6 +686,7 @@ export async function POST(request: NextRequest) {
     const { db, since, sameWords } = prior;
     if (sameWords) {
       console.log('VOICE ADAPTER: the same turn sent again, replaying its answer');
+      door.mark('replayingEarlierAnswer');
       return spokenCompletion(id, created, model, false, async () => ({
         text: (await answerAfter(db, since, REPLAY_WAIT_MS)) ?? SAY_AGAIN,
       }));
@@ -635,7 +698,12 @@ export async function POST(request: NextRequest) {
       model,
       canEnd,
       async () => {
+        // UP TO TEN SECONDS, DELIBERATELY, waiting for the earlier turn
+        // to finish so its saves are in the thread this one reads. Marked
+        // either side: the gap between these two is the wait she feels.
+        door.mark('waitingForEarlierTurn');
         await answerAfter(db, since, SUPERSEDE_WAIT_MS);
+        door.mark('earlierTurnSettled');
         return spokenFrom(await ask(since));
       },
       sink

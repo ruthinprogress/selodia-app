@@ -80,6 +80,40 @@ export function recordTurnTiming(t: Timing): void {
 }
 
 /**
+ * THE SAME NUMBERS, BUT FROM THE FRONT DOOR (9 October 2026).
+ *
+ * recordTurnTiming above measures the pipeline. The pipeline is not the turn.
+ *
+ * On 9 October a spoken turn reported total: 4097 and spokenAloudFrom: 2114,
+ * while ElevenLabs measured first byte at 14,370ms. Twelve seconds were outside
+ * everything this file could see, because the clock starts inside
+ * ask-selodia's POST and the adapter does real work before it: two sequential
+ * reads of chat_messages to decide whether this turn has been seen before, and
+ * then, on the continuation path, a wait of up to SUPERSEDE_WAIT_MS - ten
+ * seconds - for the earlier turn to finish. Ten plus four point one is
+ * fourteen point one, which matched the gap to within three tenths of a second.
+ *
+ * So every diagnostic in the app agreed that voice was fast while she sat
+ * there waiting. The instrument was measuring the fast part.
+ *
+ * This is the same row shape with label 'adapter', so the two can be read
+ * side by side for one turn: what the door took, and what the pipeline took.
+ * It is measurement only and changes no behaviour - deciding what to do about
+ * the ten seconds is Ruth's, and it needs this to judge it by.
+ */
+export function recordAdapterTiming(t: Timing): void {
+  write({
+    user_id: t.userId,
+    turn_id: t.turnId,
+    kind: 'timing',
+    voice: true,
+    label: 'adapter',
+    total_ms: t.marks.total ?? null,
+    detail: t.marks,
+  });
+}
+
+/**
  * Something the route caught.
  *
  * TAKES WHAT IS KNOWN RATHER THAN AN Error. Half the interesting failures on
