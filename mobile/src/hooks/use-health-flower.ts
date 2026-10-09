@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -157,6 +158,31 @@ export function useHealthFlower(range: { from: Date; to: Date }): HealthFlowerSt
       cancelled = true;
     };
   }, [reloadKey, todayKey, range.from.getTime(), range.to.getTime()]);
+
+  // REFETCHES ON FOCUS, NOT ONLY ON MOUNT (9 October 2026).
+  //
+  // Ruth: "The health flower didn't automatically load from the movement
+  // inputs, i has to choose month then back to week."
+  //
+  // Now is a TAB. It mounts once and stays mounted, so the effect above runs
+  // once and never again unless the range changes - which is exactly what
+  // choosing Month and coming back does. Her workaround was not a workaround,
+  // it was the only thing that re-ran the query.
+  //
+  // So a run logged in Chat never reached the flower, and the coverage columns
+  // were on the row the whole time. Nothing was wrong with the data or the
+  // drawing; the screen simply never asked again.
+  //
+  // THIS IS THE SAME FAULT THE ME TAB HAD ON 10 SEPTEMBER, in the same words -
+  // "This is a TAB: it mounts once and stays mounted, so a card saved from Chat
+  // afterwards never appeared until the app was reloaded." That one was fixed
+  // on the screen. This one is fixed in the hook, so a second screen drawing a
+  // flower cannot inherit the bug by forgetting.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
 
   return { coverage, loading, error, unclassifiedCount, reload };
 }
