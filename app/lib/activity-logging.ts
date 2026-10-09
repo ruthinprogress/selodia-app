@@ -39,6 +39,95 @@ export type ActivityEntry = {
   source: string;
 };
 
+// THE SAME ACTIVITY, WRITTEN ONCE (9 October 2026).
+//
+// Ruth, that morning: "run was logged fine, but yoga 60mins was logged 5
+// times." She said it once - "It was about an hour" - and five identical rows
+// landed between 09:41:40 and 09:42:16.
+//
+// WHAT ACTUALLY HAPPENED, from model_usage. That turn took 14.4 seconds to
+// answer, and ElevenLabs stopped waiting and sent it again. Five separate
+// turns ran, each with its own turn id, each classifying the same words the
+// same way, each writing the row. The retries took 1.2 seconds apiece because
+// the first one had warmed the cache - so being slow once cost her five rows.
+//
+// WHY THE GUARD WE HAD COULD NOT CATCH IT, and this is the part worth keeping.
+// Two guards already existed and both were built for a different shape of the
+// same accident:
+//   - voice-supersede's `continues()` requires the new text to be LONGER
+//     ("...and blackcurrant jam"). An identical repeat is excluded on its
+//     second line, by design. It also only ever covered food.
+//   - the adapter's turn check asks whether she HEARD the last answer. She
+//     had. So every retry read as a fresh turn.
+// Both were reasoning about why the words arrived twice. This one does not
+// care why. Identical words, same activity, same length, minutes apart, is one
+// activity - whether it came from a retry, a double tap, or a lost connection.
+//
+// THE WINDOW IS NOT A DAY. Two genuine thirty-minute runs in one day get
+// described separately and both belong in the table; two arriving inside ten
+// minutes with byte-identical wording do not.
+export const ACTIVITY_REPEAT_WINDOW_MS = 10 * 60_000;
+
+/**
+ * What makes two activity rows the same event. Her exact words, the activity
+ * the parse found, and how long it was - nothing time-based, because the
+ * window is applied separately and a key with a clock in it quietly stops
+ * matching across the boundary.
+ *
+ * Pure, so scripts/check-activity-once.mjs can prove it separates things that
+ * differ as well as joining things that do not.
+ */
+export type RepeatShape = {
+  raw_input?: string | null;
+  activity_type?: string | null;
+  duration_min?: number | null;
+};
+
+export function activityRepeatKey(row: RepeatShape): string {
+  const text = String(row.raw_input ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const type = String(row.activity_type ?? '').trim().toLowerCase();
+  const mins = row.duration_min === null || row.duration_min === undefined
+    ? 'none'
+    : String(Number(row.duration_min));
+  return `${text}\u0000${type}\u0000${mins}`;
+}
+
+/**
+ * Split what we are about to write into what is new and what is already there.
+ *
+ * Pure and separate from the insert on purpose: this is the decision, and
+ * scripts/check-activity-once.mjs runs it against the five real yoga rows from
+ * 9 October to prove one survives - a thing that cannot be proved by reading
+ * the insert and seeing a guard above it.
+ *
+ * Row by row, not all or nothing: "an hour of yoga then a 20 minute walk" sent
+ * twice, where only the walk is new, must still log the walk.
+ */
+export function splitAlreadyLogged<T extends RepeatShape>(
+  candidates: T[],
+  recent: ActivityEntry[]
+): { fresh: T[]; alreadyThere: ActivityEntry[] } {
+  const seen = new Map<string, ActivityEntry>();
+  for (const row of recent) seen.set(activityRepeatKey(row as RepeatShape), row);
+
+  const fresh: T[] = [];
+  const alreadyThere: ActivityEntry[] = [];
+  // Claimed as it matches, so one existing row cannot absorb two candidates:
+  // if she really does send the same words twice in one request, the second is
+  // new. The repeats this exists for arrive as separate requests.
+  for (const row of candidates) {
+    const key = activityRepeatKey(row);
+    const match = seen.get(key);
+    if (match) {
+      seen.delete(key);
+      alreadyThere.push(match);
+    } else {
+      fresh.push(row);
+    }
+  }
+  return { fresh, alreadyThere };
+}
+
 // Shared text-only activity logging, mirroring logFoodFromText. Extracts one or
 // more activities via Haiku (splitting multi-activity descriptions, resolving
 // relative dates), inserts into activity_logs, returns the stored rows. Throws
@@ -106,7 +195,7 @@ export async function logActivityFromText(
   );
   if (loggable.length === 0) return [];
 
-  const rowsToInsert = loggable.map((activity: ParsedActivity) => {
+  let rowsToInsert = loggable.map((activity: ParsedActivity) => {
     // Health Flower coverage, resolved once here rather than on every render of
     // the Overview. Null when the activity is not in the weighting table, and
     // the six columns stay null together: a partially classified row would be
@@ -139,7 +228,45 @@ export async function logActivityFromText(
     };
   });
 
+  // ALREADY WRITTEN? See ACTIVITY_REPEAT_WINDOW_MS. Read back what this person
+  // logged in the window and drop anything that matches, row by row - so a
+  // sentence naming two activities where only one is a repeat still logs the
+  // other.
+  //
+  // THE ROW THAT ALREADY EXISTS IS RETURNED IN ITS PLACE, not nothing. The
+  // caller turns this list into what it tells her, and a retry that answered
+  // "I did not log that" would be both false and frightening: the yoga IS
+  // logged. Returning [] is reserved for the duration gate above, where
+  // genuinely nothing landed.
+  //
+  // FAIL OPEN on a failed read, matching the adapter's own guard: a duplicate
+  // row is a smaller harm than refusing to log because a check could not run.
+  let alreadyThere: ActivityEntry[] = [];
+  try {
+    const { data: recent } = await supabase
+      .from('activity_logs')
+      .select('id, activity_type, duration_min, kcal_burned, notes, source, raw_input')
+      .eq('user_id', userId)
+      .gte('created_at', new Date(Date.now() - ACTIVITY_REPEAT_WINDOW_MS).toISOString());
+    const split = splitAlreadyLogged(rowsToInsert, (recent ?? []) as unknown as ActivityEntry[]);
+    alreadyThere = split.alreadyThere;
+    if (alreadyThere.length > 0) {
+      console.log(
+        'ACTIVITY ALREADY LOGGED, not writing again:',
+        JSON.stringify(alreadyThere.map((r) => ({ activity: r.activity_type, minutes: r.duration_min })))
+      );
+    }
+    if (split.fresh.length === 0) return alreadyThere;
+    rowsToInsert = split.fresh;
+  } catch (err) {
+    console.log(
+      'ACTIVITY repeat check failed, writing anyway -',
+      err instanceof Error ? err.message : err
+    );
+    alreadyThere = [];
+  }
+
   const { data, error } = await supabase.from('activity_logs').insert(rowsToInsert).select();
   if (error) throw new Error('activity_logs insert failed: ' + error.message);
-  return data as ActivityEntry[];
+  return [...alreadyThere, ...(data as ActivityEntry[])];
 }
