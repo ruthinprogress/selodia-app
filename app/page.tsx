@@ -309,7 +309,10 @@ export default async function LandingPage({
         /* ----------------------------------------------------------------- */
         /* Section rhythm                                                     */
         /* ----------------------------------------------------------------- */
-        .section { position: relative; padding: clamp(3rem, 7vw, 5rem) 0; }
+        /* TIGHTER THAN THE FIRST BUILD, at her instruction to reduce the large
+           empty gaps while keeping the calm. The clamp still grows with the
+           screen; it just starts and stops lower. */
+        .section { position: relative; padding: clamp(2.25rem, 5vw, 3.75rem) 0; }
         .section--sand { background: var(--sand); }
         .section--sand p, .section--sand h2 { color: #3A3129; }
 
@@ -349,20 +352,24 @@ export default async function LandingPage({
           .dg--wide { display: block; }
           .dg--narrow { display: none; }
         }
-        .dg--connections.dg--wide { max-width: 520px; margin: 0 auto; }
+        /* EVERY CAP MATCHES ITS VIEWBOX WIDTH, so the scale is 1 and a 17px
+           label is 17px on the glass. That is the whole sizing rule. */
+        .dg--connections.dg--wide { max-width: 480px; margin: 0 auto; }
         .dg--connections.dg--narrow { max-width: 320px; margin: 0 auto; }
         .dg--how.dg--narrow { max-width: 320px; }
+        .dg--how.dg--wide { max-width: 1030px; }
         .dg--real.dg--narrow { max-width: 320px; }
-        .dg--talk { max-width: 400px; }
-        /* 320 units wide and capped at 320px, so the scale is exactly 1. */
-        .dg--record { max-width: 320px; }
-        .dg--changes { max-width: 340px; }
-        .dg--real.dg--wide { max-width: 630px; }
+        .dg--real.dg--wide { max-width: 700px; }
+        /* These two sit inside a quarter-width column, which is about 245px on
+           a 1100px page, so they are drawn for 200 and capped at 200. */
+        .dg--talk { max-width: 200px; }
+        .dg--record { max-width: 200px; }
+        .dg--changes { max-width: 200px; }
 
         /* ----------------------------------------------------------------- */
         /* 3. What Selodía does. FOUR HEADINGS ON ONE TOP LINE.               */
         /* ----------------------------------------------------------------- */
-        .does { display: grid; gap: 2.75rem; margin-top: 2.6rem; }
+        .does { display: grid; gap: 2.25rem; margin-top: 2.2rem; }
         @media (min-width: 860px) {
           .does { grid-template-columns: repeat(4, 1fr); gap: 2rem;
                   /* Named rows, so every heading starts on the same line
@@ -371,12 +378,14 @@ export default async function LandingPage({
                      statement headings to one top line" instruction, done by
                      the grid rather than by hoping the text is the same
                      length. */
-                  grid-template-rows: auto auto; }
-          .does__item { display: grid; grid-row: span 2; grid-template-rows: subgrid; gap: 0.85rem; }
+                  grid-template-rows: auto auto auto; }
+          .does__item { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: 0.7rem; }
         }
         .does__item { min-width: 0; }
         .does__item h3 { align-self: start; margin-bottom: 0.6rem; }
-        .does__item p { font-size: 17px; margin: 0 0 1rem; }
+        .does__item p { font-size: 17px; margin: 0 0 0.9rem; }
+        .does__fig { margin-top: 0.2rem; }
+        .does__fig:empty { display: none; }
 
         /* ----------------------------------------------------------------- */
         /* 9. Waiting list                                                    */
@@ -521,14 +530,10 @@ export default async function LandingPage({
         <SectionThread />
 
         <section className="section" data-reveal>
-          <div className="wrap two-col">
+          <div className="wrap">
             <div>
-              {PROBLEM.aside.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
-            <div>
-              <TalkDiagram />
+              <h2>{PROBLEM.asideHeading}</h2>
+              <p style={{ marginTop: '1.4rem' }}>{PROBLEM.asideBody}</p>
             </div>
           </div>
         </section>
@@ -540,10 +545,17 @@ export default async function LandingPage({
           <div className="wrap">
             <h2>{WHAT_IT_DOES.heading}</h2>
             <div className="does">
-              {WHAT_IT_DOES.items.map((item) => (
+              {WHAT_IT_DOES.items.map((item, i) => (
                 <div className="does__item" key={item.title}>
                   <h3>{item.title}</h3>
                   <p>{item.body}</p>
+                  {/* Each picture under the statement it illustrates, at her
+                      instruction of 8 October. Both are built for 200 units so
+                      that inside a quarter-width column the scale is 1 and the
+                      labels are the 17px they claim to be. */}
+                  <div className="does__fig">
+                    {[<TalkDiagram key="t" />, <RecordDiagram key="r" />, null, null][i]}
+                  </div>
                 </div>
               ))}
             </div>
@@ -551,7 +563,7 @@ export default async function LandingPage({
                 sits under the four statements as the transition into How it
                 works, which is also what it means: small changes, tried over
                 weeks, leading somewhere. */}
-            <div style={{ maxWidth: 340, margin: '3rem auto 0' }}>
+            <div style={{ maxWidth: 200, margin: '1.6rem auto 0' }}>
               <ChangesDiagram />
             </div>
           </div>
@@ -612,10 +624,7 @@ export default async function LandingPage({
           <div className="wrap two-col">
             <div>
               <h2>{RECORD_STAYS_YOURS.heading}</h2>
-              <div style={{ margin: '1.8rem 0 2rem' }}>
-                <RecordDiagram />
-              </div>
-              <div>
+              <div style={{ marginTop: '1.6rem' }}>
                 {RECORD_STAYS_YOURS.sentences.map((s) => (
                   <p key={s} style={{ marginBottom: '0.6rem' }}>
                     {s}
