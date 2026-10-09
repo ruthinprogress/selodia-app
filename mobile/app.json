@@ -70,7 +70,9 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "Selodía reads your step count and activity data to give you a more complete picture of your daily movement."
+          "healthSharePermission": "Selodía reads your step count and activity data to give you a more complete picture of your daily movement.",
+          "healthUpdatePermission": "Selodía does not write anything to your Health data. It only reads your step count.",
+          "isClinicalDataEnabled": false
         }
       ],
       "react-native-health-connect",
