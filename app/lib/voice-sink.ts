@@ -265,5 +265,64 @@ export function forSpeech(text: string): string {
       // "35-40 grams" reads better than "35 to 40 grams" on screen and worse
       // aloud, where a hyphen between two numbers is silence.
       .replace(/(\d)\s*-\s*(\d)/g, '$1 to $2')
+      // DATES, SAID RATHER THAN SPELLED (9 October 2026). Ruth, hearing the
+      // saturated fat answer: '"FRI OCT" reading the text like a robot'. The
+      // reply said "Wed 7 Oct at 15g and Fri 9 Oct at 8g", which is right for
+      // the eye and absurd out loud.
+      //
+      // The day and month go first, as one piece, so "7 Oct" becomes "the 7th
+      // of October" rather than two separate substitutions that would leave
+      // "7 October" and no preposition. A bare month with no day still expands,
+      // because "in Oct" is as robotic as the rest.
+      .replace(
+        /\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b\.?/g,
+        (_m, d: string, mon: string) => `the ${ordinal(d)} of ${MONTHS[mon.slice(0, 3)]}`
+      )
+      .replace(
+        /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b\.?/g,
+        (_m, mon: string) => MONTHS[mon.slice(0, 3)]
+      )
+      // The weekday last, and on its own, because by now the date beside it
+      // has already been turned into words.
+      .replace(
+        /\b(Mon|Tue|Tues|Wed|Weds|Thu|Thur|Thurs|Fri|Sat|Sun)\b\.?/g,
+        (_m, day: string) => WEEKDAYS[day.slice(0, 3)]
+      )
   );
+}
+
+const MONTHS: Record<string, string> = {
+  Jan: 'January',
+  Feb: 'February',
+  Mar: 'March',
+  Apr: 'April',
+  May: 'May',
+  Jun: 'June',
+  Jul: 'July',
+  Aug: 'August',
+  Sep: 'September',
+  Oct: 'October',
+  Nov: 'November',
+  Dec: 'December',
+};
+
+const WEEKDAYS: Record<string, string> = {
+  Mon: 'Monday',
+  Tue: 'Tuesday',
+  Wed: 'Wednesday',
+  Thu: 'Thursday',
+  Fri: 'Friday',
+  Sat: 'Saturday',
+  Sun: 'Sunday',
+};
+
+/** 1st, 2nd, 3rd, 4th ... 11th, 12th, 13th ... 21st, 22nd, 23rd. */
+function ordinal(n: string): string {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return n;
+  // The teens are the exception that catches everybody: 11, 12 and 13 take th,
+  // not st, nd and rd.
+  const teen = v % 100 >= 11 && v % 100 <= 13;
+  const suffix = teen ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] ?? 'th';
+  return `${v}${suffix}`;
 }

@@ -82,6 +82,7 @@ import {
   deletionMessage,
   duplicatesRemovedMessage,
   DUPLICATE_MATCH_COLUMNS,
+  matchableText,
   nothingToCorrectMessage,
   resolveCorrection,
   supportsDuplicateRemoval,
@@ -2593,9 +2594,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // Every word she used has to appear in the entry. "fish and chips" must
         // not match a salad because both contain "and" - the function words are
         // already dropped, and what is left has to be present in full.
+        // PER KIND, NOT PER FOOD. This read r.raw_text and r.meal_label for
+        // every kind, and activity_logs has neither - so a named activity
+        // correction searched an empty string and could never match. See
+        // MATCH_COLUMNS_FOR.
         const hits = rows.filter((r) => {
-          const text = [r.raw_text, r.meal_label].filter((v) => typeof v === 'string').join(' ');
-          const have = contentWords(text);
+          const have = contentWords(matchableText(correction.kind, r));
           return wanted.size > 0 && [...wanted].every((w) => have.has(w));
         });
         if (hits.length === 0) {
@@ -2608,13 +2612,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           // Several copies of the same thing is the duplicates case, which the
           // scope below handles; several DIFFERENT things is a question, not a
           // guess. Same rule as the two plans sharing a title.
-          const texts = new Set(hits.map((r) => contentWords(String(r.raw_text ?? '')).size));
+          // ALSO PER KIND. Same fault as the filter above: comparing r.raw_text
+          // across activity rows compared the empty string to itself, so five
+          // identical yoga entries and five different ones looked alike.
+          const words = (r: Record<string, unknown>) =>
+            contentWords(matchableText(correction.kind, r));
+          const first = words(hits[0]);
           const allSame = hits.every(
-            (r) =>
-              contentWords(String(r.raw_text ?? '')).size === [...texts][0] &&
-              [...contentWords(String(r.raw_text ?? ''))].every((w) =>
-                contentWords(String(hits[0].raw_text ?? '')).has(w)
-              )
+            (r) => words(r).size === first.size && [...words(r)].every((w) => first.has(w))
           );
           if (allSame) target = hits[0];
           else {

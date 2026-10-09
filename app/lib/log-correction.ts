@@ -245,6 +245,52 @@ export function supportsDuplicateRemoval(kind: CorrectionKind): boolean {
   return DUPLICATE_MATCH_COLUMNS[kind] !== undefined;
 }
 
+// WHICH COLUMNS HOLD THE WORDS SHE WOULD USE TO NAME AN ENTRY.
+//
+// Ruth, 9 October 2026, testing the duplicate removal she had just asked for:
+// "the yoga went in five times. Can you take the duplicates out?" The answer
+// was "Nothing matching \"yoga\" was found on that day, so nothing was removed",
+// with five yoga rows sitting on that day.
+//
+// THE MATCH READ TWO FOOD COLUMNS FOR EVERY KIND:
+//
+//     const text = [r.raw_text, r.meal_label] ... .join(' ')
+//
+// activity_logs has neither. It has raw_input and activity_type. So the text
+// being searched was always the empty string, every word she said failed to
+// appear in it, and the answer was always "nothing matching". Not sometimes:
+// ALWAYS, for every named activity correction ever made. body_measurements and
+// personal_metrics were in the same position. Only food has ever worked.
+//
+// It is the quietest kind of fault - a column name that is right for one table
+// read against four - and it took a whole feature with it. Naming the columns
+// per kind, here next to the tables they belong to, is what stops the next one.
+export const MATCH_COLUMNS_FOR: Record<CorrectionKind, string[]> = {
+  food: ['raw_text', 'meal_label'],
+  activity: ['raw_input', 'activity_type'],
+  // notes, because a reading is often only identifiable by what she wrote
+  // beside it - "morning weight", "after the gym".
+  measurement: ['raw_input', 'notes'],
+  personal_metric: ['metric_name', 'raw_input'],
+};
+
+/**
+ * The words in a row that she could plausibly have used to name it.
+ *
+ * Numbers are included rather than stripped: "the 60 minute yoga" and "the 45
+ * minute one" are how a person separates two entries of the same kind, and
+ * duration_min is a number column that reads perfectly well as a word.
+ */
+export function matchableText(kind: CorrectionKind, row: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const col of MATCH_COLUMNS_FOR[kind]) {
+    const v = row[col];
+    if (typeof v === 'string' && v.trim()) parts.push(v);
+    else if (typeof v === 'number') parts.push(String(v));
+  }
+  return parts.join(' ');
+}
+
 // A correction only runs when BOTH halves are understood. A kind with no action,
 // or an action with no kind, is an incomplete instruction - and the safe reading
 // of an incomplete instruction about someone's data is to do nothing.
