@@ -155,7 +155,7 @@ export default function CycleScreen() {
       const [layout, ev, past] = await Promise.all([
         loadLayout('cycle_layout'),
         supabase.from('cycle_events').select('event_date, event_type').eq('user_id', userId),
-        supabase.from('cycle_days').select('symptoms').eq('user_id', userId).limit(120),
+        supabase.from('daily_observations').select('symptoms').eq('user_id', userId).limit(120),
       ]);
       if (cancelled) return;
 
@@ -177,13 +177,29 @@ export default function CycleScreen() {
   }, []);
 
   // The day's own record, whenever the day changes.
+  // daily_observations WAS cycle_days UNTIL 9 OCTOBER 2026.
+  //
+  // Renamed because the old name argued against the rule Ruth settled that
+  // evening: a symptom belongs to a DAY and to nothing else, and cycle position
+  // is derived by the app rather than declared by her. A table called
+  // cycle_days with a symptoms column reads as "symptoms belonging to a cycle",
+  // which would eventually have somebody deciding a February shoulder ache was
+  // not cycle data and filtering it out - the app quietly choosing which of her
+  // symptoms count, which is the thing she ruled out.
+  //
+  // A comment saying "ignore the name" was written first and she was right
+  // about it: "it's a bit of a patch job doing it like that."
+  //
+  // The old name still exists as an updatable view for now, so a published
+  // bundle already on a phone keeps working. It gets dropped once nobody is on
+  // a build older than today.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const userId = await currentUserId();
       if (!userId) return;
       const { data } = await supabase
-        .from('cycle_days')
+        .from('daily_observations')
         .select('*')
         .eq('user_id', userId)
         .eq('day', day)
@@ -291,12 +307,12 @@ export default function CycleScreen() {
       // removing everything from a day is deleting that day's record, not
       // saving an empty one.
       if (isEmptyDay(value)) {
-        await supabase.from('cycle_days').delete().eq('user_id', userId).eq('day', day);
+        await supabase.from('daily_observations').delete().eq('user_id', userId).eq('day', day);
         setNote('Nothing recorded for this day.');
         return;
       }
 
-      const { error } = await supabase.from('cycle_days').upsert(
+      const { error } = await supabase.from('daily_observations').upsert(
         {
           user_id: userId,
           day,
