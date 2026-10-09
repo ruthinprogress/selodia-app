@@ -802,3 +802,41 @@ The labels on the diagrams are set at 17 pixels, because that is the size I aske
 And six of the eight diagrams were set to stay invisible if a small script was slow to run, under a comment saying the page would still be complete without it. It would not have been.
 
 All three were found by measuring rather than looking, in about twenty minutes, on a page that had already been approved by me on two devices.
+
+---
+
+## 9 October 2026 - The forms were the useful part
+
+Selodia went onto Google Play today. Internal track, nobody on the tester list, because the app is not ready and I have not properly used it myself yet. The upload took three minutes. The forms took the rest of the day and the forms were the useful part.
+
+To fill in the data safety form honestly you have to go and look. So I went and looked at what happens to voice, and found the setting that decides how long the company turning my speech into text keeps it. Forever. Every recording, every transcript, no expiry. Our own privacy policy said three years, which was their published default and not what this account was set to.
+
+It is thirty days now, applied to everything already recorded.
+
+Then Google noticed a permission that lets an app keep playing audio while you are not looking at it, and asked for a video demonstrating it. I could not make that video, because the app does not do that. You can argue with a form or you can stop shipping the thing it is asking about. We shipped a build without the permission and the question disappeared.
+
+Both of those are the thing this app is supposed to be for. Nobody was looking at my whole picture, so I started looking myself. It turns out an app can have the same problem.
+
+---
+
+## 9 October 2026 - One sentence, five yoga classes
+
+I said "it was about an hour" once. Five identical yoga classes went into my log.
+
+What actually happened is that the turn took fourteen seconds to answer, and the voice service gave up waiting and sent it again. Five times. Each one ran the whole thing and wrote the row. The retries were fast because the first one had warmed everything up, so being slow once cost me five entries.
+
+The part I keep thinking about is that the slowness and the duplicates were never two problems. I had been treating the wait as annoying and the duplicates as a bug. They were one thing seen from two ends.
+
+Two guards already existed to stop exactly this. Both let it through, because both were reasoning about WHY the words had arrived twice rather than noticing that they had.
+
+---
+
+## 9 October 2026 - An app for women over forty with no hot flushes in it
+
+The symptom list had twelve things on it. Cramps, acne, cravings, fatigue, mood. Perfectly sensible, and written for somebody in her twenties.
+
+No hot flushes. No night sweats. No brain fog. No broken sleep, no heavier flow, no joint aches. Not one of the symptoms that would tell a forty-four year old what is actually happening to her, in an app whose entire audience is women over forty.
+
+The first fix put them in a group called "the forty plus ones" and that was worse. It makes the symptoms a consequence of your age. It quietly says this is what you are now, in an app whose first line is that your body is not a problem to solve.
+
+They are in the ordinary groups now, next to everything else, which says more than a section announcing who they are for.

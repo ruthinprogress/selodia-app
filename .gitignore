@@ -70,3 +70,7 @@ audit-out/
 # The overnight run keeps its own counter here. Not worth committing.
 .claude/overnight-state.json
 .claude/overnight-off
+
+# Generated store screenshots. Outputs, not source: shoot-store-screenshots.mjs
+# rewrites them from the seeded account whenever the listing needs retaking.
+scripts/store-shots/
