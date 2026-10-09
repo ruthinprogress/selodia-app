@@ -93,13 +93,24 @@ export default function MeScreen() {
           <SpotlightScroll scrollRef={scrollRef}>
             <ThemedText type="display">Me</ThemedText>
 
-            {/* THE DECK IS NOW SIMPLY TRUE. It used to be shown only on the Me
-                half of a two-view screen, because these words would have been
-                untrue over Insights. There is no Insights here to be untrue
-                over. */}
-            <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: -Spacing.two }}>
-              Your own record. How you have decided to look after yourself, and why.
-            </ThemedText>
+            {/* THE DECK WAS SAID TWICE (Ruth, 9 October 2026: "remove the first
+                line in Me, it's a duplicate").
+
+                Two subtitles sat here one under the other, both small, both
+                secondary, saying the same thing in different words: this one,
+                and me-protocol.tsx's "A living record of your health and the
+                ways you choose to look after yourself." Each arrived
+                separately - this one when Me stopped being half of a two-view
+                screen and its deck could finally be simply true, that one two
+                days earlier when the page was judged to have no deck of its
+                own. Neither author could see the other's.
+
+                Hers is the one that stays, in the module, because it belongs to
+                the document that leaves the app rather than to the screen
+                around it. KNOWN CONSEQUENCE: MeProtocol only renders when there
+                is at least one card, so an empty Me tab now goes straight from
+                the masthead to "Nothing here yet", which reads better than a
+                subtitle promising a record that is not there. */}
 
             {loaded && (
               <SpotlightTarget id="almanac.me">
