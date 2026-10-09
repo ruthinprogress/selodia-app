@@ -114,7 +114,8 @@ export default function ConsentScreen() {
               (1 October 2026). Both are processors and neither may use her words
               for anything else, so the sentence was not wrong - but it reads as
               "and then it is gone", and ElevenLabs hold audio and transcripts
-              for up to 3 years. Their DPA requires the people whose voices these
+              after 30 days, and their own policy caps voice-derived data at 3
+              years. Their DPA requires the people whose voices these
               are to be told, and this is the screen where telling happens.
               The period is named here rather than left to the policy, because
               this is the screen somebody actually reads. */}

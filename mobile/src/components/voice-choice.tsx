@@ -24,7 +24,7 @@ import { hasVoiceConsent, withdrawVoiceConsent } from '@/lib/voice-consent';
 //
 // WITHDRAWING DOES NOT DELETE WHAT WAS SAID, and the copy says so rather than
 // letting her assume. The transcripts are in her chat thread like any other
-// message, and ElevenLabs hold their copy for up to 3 years whatever this
+// message, and ElevenLabs delete their copy after 30 days whatever this
 // toggle says. Turning it off stops new audio being sent; it is not an erasure,
 // and offering it as one would be the same shape of untrue comfort as "the audio
 // isn't kept".
@@ -71,7 +71,7 @@ export function VoiceChoice() {
       <ThemedText type="smallBold">Voice</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {on
-          ? 'Voice logging is on. Turning it off stops any new audio being sent to ElevenLabs. It does not remove what has already been said: those transcripts stay in the chat thread, and ElevenLabs keeps its copy for up to 3 years.'
+          ? 'Voice logging is on. Turning it off stops any new audio being sent to ElevenLabs. It does not remove what has already been said: those transcripts stay in the chat thread, and ElevenLabs delete their copy 30 days after it was said.'
           : 'Voice logging is off. To turn it back on, tap the microphone in the chat box and Selodía will explain what happens to your voice before anything is sent.'}
       </ThemedText>
 

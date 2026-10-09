@@ -19,7 +19,11 @@
 //
 // WHAT COUNTS AS A CLAIM. Any user-facing text saying audio, voice or a recording
 // is not kept, not retained, not stored, deleted, discarded or temporary.
-// ElevenLabs keep audio and transcripts for up to 3 years and Zero Retention Mode
+// ElevenLabs delete audio and transcripts after 30 days, since 9 October 2026,
+// when reading the agent's own privacy block before the first store uploads
+// showed retention_days: -1 - not the published three-year default, but
+// forever. Ruth chose 30 days and it was set and read back the same day.
+// Zero Retention Mode
 // is not on this plan, so every one of those is false.
 //
 // WHAT IS DELIBERATELY ALLOWED. "Selodía does not keep the audio" is true - the
@@ -60,7 +64,7 @@ const CLAIM =
 // "Selodía does not keep the audio" is TRUE and allowed, but only beside the
 // retention sentence. Checked separately below.
 const OURS_ONLY = /selod[ií]a (does not|doesn[o']?t) keep/i;
-const RETENTION_NEARBY = /up to 3 years|three years/i;
+const RETENTION_NEARBY = /after 30 days|30 days after/i;
 
 let pass = 0;
 const failures = [];
@@ -102,14 +106,29 @@ check('no screen claims audio is not kept, retained or stored', () => {
   return `${files.length} files`;
 });
 
-check('the shared paragraph still says how long', () => {
+check('the shared paragraph states BOTH retention facts', () => {
+  // TWO FACTS, AND NEITHER COVERS THE OTHER (9 October 2026).
+  //
+  // retention_days governs the conversation transcript and audio, and is set to
+  // 30 days. Their privacy policy separately caps data they GENERATE ABOUT A
+  // VOICE at 3 years. The sentence published from 1 October stated only the
+  // second and presented it as the first, while the first was actually set to
+  // indefinite; the replacement written this afternoon stated only the first
+  // and dropped the cap. Both were wrong, in opposite directions, and both read
+  // perfectly well.
+  //
+  // So this asserts both numbers. Dropping either is now a failing build rather
+  // than a tidy-up, which is the only thing that has ever stopped this sentence
+  // rotting.
   const src = fs.readFileSync('mobile/src/lib/processor-wording.ts', 'utf8');
-  ok(/up to 3 years/i.test(src), 'processor-wording.ts no longer states the retention period');
+  const said = codeOnly(src);
+  ok(/after 30 days/i.test(said), 'processor-wording.ts no longer states the 30-day deletion');
+  ok(/3 years/i.test(said), "processor-wording.ts no longer states their 3-year cap on voice-derived data");
   ok(
     /ElevenLabs/.test(src) && /Anthropic/.test(src),
     'both processors must be named - their DPA requires the people whose voices these are to be told'
   );
-  return 'names both, states 3 years';
+  return 'names both, states 30 days and the 3-year cap';
 });
 
 check('the screens use the shared paragraph rather than their own copy', () => {
@@ -129,8 +148,27 @@ check('the privacy policy states the retention period too', () => {
   // It cannot import the constant - different workspace - so it is held to the
   // same fact rather than the same string.
   const src = fs.readFileSync('app/privacy/page.tsx', 'utf8');
-  ok(/up to 3 years/i.test(codeOnly(src)), 'the policy no longer states the 3-year retention');
-  return 'states 3 years';
+  const said = codeOnly(src);
+  ok(/after 30 days/i.test(said), 'the policy no longer states the 30-day deletion');
+  ok(/3 years/i.test(said), 'the policy no longer states their 3-year cap on voice-derived data');
+  return 'states 30 days and the 3-year cap';
+});
+
+check('and these checks can fail', () => {
+  // Every assertion above is "this string is present", and presence passes on
+  // any file that happens to contain the words. So prove the opposite case is
+  // detectable: a paragraph with one fact and not the other - which is exactly
+  // what was published on 1 October, and again this afternoon - must not pass.
+  const onlyCap =
+    'ElevenLabs keeps the audio and the transcript for up to 3 years.';
+  const onlyThirty = 'ElevenLabs delete the audio and the transcript after 30 days.';
+  ok(!/after 30 days/i.test(onlyCap), 'the 1 October sentence is not being detected as incomplete');
+  ok(!/3 years/i.test(onlyThirty), "this afternoon's sentence is not being detected as incomplete");
+  // And the live paragraph really does carry both, rather than passing by luck
+  // on a comment.
+  const live = codeOnly(fs.readFileSync('mobile/src/lib/processor-wording.ts', 'utf8'));
+  ok(/after 30 days/i.test(live) && /3 years/i.test(live), 'the live paragraph is missing a fact');
+  return 'each one-sided version is caught, and the live one carries both';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

@@ -69,10 +69,34 @@ See section 6.
 **Training.** The opt-out is on for this workspace, so from that date onward
 nothing said by voice trains their models.
 
-**Retention.** It does **not** stop retention: audio and transcripts are held by
-them for **up to 3 years**. **Zero Retention Mode is not part of this plan** and
-is not enabled, so nothing anywhere may say the audio is not retained. Two
-consequences, both acted on rather than noted:
+**Retention.** It does **not** stop retention: audio and transcripts are still
+held by ElevenLabs, now for **30 days**, after which both are deleted. Separately
+and in addition, their privacy policy caps data they GENERATE ABOUT A VOICE at
+**3 years** from the last interaction. The two are different things and neither
+replaces the other.
+**Zero Retention Mode is not part of this plan** and is not enabled, so nothing
+anywhere may say the audio is not retained - a bounded period is not no period,
+and the distinction is the whole of this section. Two consequences, both acted
+on rather than noted:
+
+> **Changed 9 October 2026, and the previous figure was never this account's.**
+> This said *up to 3 years* and presented it as the retention period for
+> conversation audio and transcripts. It is not. That figure is a separate clause
+> in their privacy policy about data they GENERATE ABOUT A VOICE: *"ElevenLabs
+> will not keep data it generates about your voice longer than 3 years after your
+> last interaction with us, except as required by law."* Their retention
+> documentation says the agent's `retention_days` governs *"conversation
+> transcripts"* and *"audio recordings"* - a different thing, and the thing the
+> sentence claimed to be about. Reading the
+> agent's own privacy block while preparing the first store uploads showed
+> `retention_days: -1` with `delete_audio` and `delete_transcript_and_pii` both
+> false - so the period the sentence claimed to describe was not three years at
+> all, it was indefinite. The published wording was therefore wrong in the
+> REASSURING direction, which is the direction that matters. Shown that, Ruth set
+> 30 days, applied to
+> conversations that already existed, and it was read back and confirmed the
+> same afternoon. The lesson is the one this document keeps relearning: a
+> processor's published policy is not a statement about your configuration.
 
 - Anything spoken BEFORE 1 October 2026 was submitted while the opt-out was off.
   The setting is forward-looking - ElevenLabs' own guidance says "any new data you
@@ -88,7 +112,7 @@ consequences, both acted on rather than noted:
 | **Supabase** | Everything. Database, auth, file storage. | EU region |
 | **Vercel** | Requests in transit; the API runs here. Logs are not retained on the current tier. | `lhr1`, London |
 | **Anthropic** | The conversation turn: her message, recent history, and computed facts about her record. **Not the whole database** — each turn carries a bounded window. Also **the pages of any clinical document she chooses to have read**, and **food photographs she sends** — both processed to produce a reading and neither stored by Selodía. | US |
-| **ElevenLabs** | Spoken audio and transcripts, for voice conversations only. **Retained by them for up to 3 years** under their retention policy. **Training opt-out ON from 1 October 2026 onward** (workspace setting, confirmed 20:06). | US |
+| **ElevenLabs** | Spoken audio and transcripts, for voice conversations only. **Deleted by them after 30 days** (`retention_days`, set 9 October 2026, applied to existing conversations, read back and confirmed; previously indefinite, NOT the three years previously recorded here). **Separately, their privacy policy caps data they generate about a voice at 3 years** from the last interaction. **Training opt-out ON from 1 October 2026 onward** (workspace setting, confirmed 20:06). | US |
 | **Backblaze B2** | The exercise clip library. **No personal data at all.** | US |
 | **Apple / Google** | Subscription and payment data, once billing exists. Selodía never sees a card. | Various |
 
@@ -225,9 +249,10 @@ account moves onto whatever ElevenLabs' commercial terms are at that point, and
 three things in this document depend on terms that could change with it: that the
 **DPA governs** the content (it governs *business* clients' content, so a change
 of plan tier is a change of basis), the **retention period**, and whether
-**Zero Retention Mode** becomes available — which would be worth taking, because
-it is the one change that would let the voice consent sheet say something better
-than "held for up to 3 years".
+**Zero Retention Mode** becomes available — still worth taking, though it is no
+longer the only way to improve the sentence: since 9 October 2026 the consent
+sheet says "deleted after 30 days" alongside their 3-year cap on voice-derived
+data - two facts that were previously collapsed into one wrong one.
 
 **Review it before the year is out, not after.** A renewal that happens quietly is
 a change of processor terms that happens quietly.

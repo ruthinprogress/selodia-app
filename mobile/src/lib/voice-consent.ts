@@ -53,7 +53,7 @@ export async function hasVoiceConsent(): Promise<boolean> {
  * question: what is the tap path to turn it off?
  *
  * IT STOPS NEW AUDIO AND NOTHING ELSE. The transcripts stay in her thread, and
- * ElevenLabs keep their copy for up to 3 years whatever this writes. The screen
+ * ElevenLabs delete their copy after 30 days whatever this writes. The screen
  * says so; offering this as an erasure would be the same shape of untrue comfort
  * as "the audio isn't kept".
  *

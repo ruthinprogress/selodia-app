@@ -109,6 +109,37 @@ import { PlainPage, type PlainSection } from '../lib/plain-page';
 // processor. So "(revised)" is appended and she is asked once more. It is ugly
 // on screen and it is correct; a cleaner date would have been a quieter lie.
 //
+// THREE YEARS BECAME THIRTY DAYS (2026-10-09), and this one is a change TO THE
+// WORLD rather than to the wording.
+//
+// Preparing the first store uploads meant reading the agent's actual privacy
+// block rather than the documents about it, and it said retention_days: -1 with
+// delete_audio and delete_transcript_and_pii both false. Not three years.
+// FOREVER. The "up to 3 years" in the sentence below was ElevenLabs' published
+// default, and this account was not on it.
+//
+// Shown that, Ruth first said "delete the audio and transcripts, don't keep
+// them", and then, once a bounded option was offered instead of a binary, "30
+// days". Set and read back the same afternoon: retention_days 30,
+// delete_audio true, delete_transcript_and_pii true, and applied to the
+// conversations that already existed, because a policy that does not reach what
+// is already held is not a policy.
+//
+// THE VERSION MOVES, EVEN THOUGH THE NEWS IS GOOD. The rule has never been
+// "bump it when the change is bad", it is "bump it when a material statement
+// about a processor changes", and three years to thirty days is as material in
+// this direction as it would have been in the other. She consented to a
+// sentence that is no longer the one on the page.
+//
+// WHAT THIS DOES NOT CHANGE, and the store forms are where it matters: Google
+// asks whether data is transmitted OFF THE DEVICE, not whether Selodia keeps
+// it. Audio still leaves the phone. "Voice or sound recordings" is still Yes on
+// the Play Data Safety form and still declared on the App Store label - both of
+// which, as of today, still say audio "is not retained" and declare neither.
+// That was found on 1 October, marked as needing her re-approval, and is still
+// outstanding. Thirty days improves the answer to the retention question; it
+// does not remove the question.
+//
 // UPDATED IS NOW DISPLAY ONLY (2026-10-01, evening). It used to double as the
 // consent version, and that coupling cost three re-asks in one evening: Ruth had
 // already answered the re-ask for one revision when the next one landed, and
@@ -135,7 +166,7 @@ export const metadata: Metadata = {
   description: 'What Selodía collects, why, and what you can do about it.',
 };
 
-const UPDATED = '1 October 2026 (revised)';
+const UPDATED = '9 October 2026';
 
 const SECTIONS: PlainSection[] = [
   {
@@ -212,7 +243,7 @@ const SECTIONS: PlainSection[] = [
       [
         'Supabase stores the database and files, and handles sign-in. Data is held in their London region.',
         'Anthropic provides Claude, the model behind the conversation. Messages, and food photographs you send, are processed to produce a reply. Anthropic’s commercial terms state that data submitted through their API is not used to train their models.',
-        'ElevenLabs provides speech recognition and the spoken voice, and only when you use voice mode. If you use voice, what you say goes to ElevenLabs to be turned into text. Neither ElevenLabs nor Anthropic uses it to train its AI models. ElevenLabs keeps the audio and the transcript for up to 3 years. The training opt-out on this account was switched on on 1 October 2026 and applies from then on; ElevenLabs act as a data processor under their published data processing agreement, which means they may use what they hold only to provide the service to Selod\u00eda.',
+        'ElevenLabs provides speech recognition and the spoken voice, and only when you use voice mode. If you use voice, what you say goes to ElevenLabs to be turned into text. Neither ElevenLabs nor Anthropic uses it to train its AI models. ElevenLabs delete the audio and the transcript after 30 days; separately, their own privacy policy says they will not keep data they generate about your voice for longer than 3 years after your last interaction with them. The training opt-out on this account was switched on on 1 October 2026 and applies from then on; ElevenLabs act as a data processor under their published data processing agreement, which means they may use what they hold only to provide the service to Selod\u00eda.',
         'Vercel runs Selodía’s servers, which pass your data between the app, the database and the providers above. Server logs are kept briefly, to fix faults.',
         'Google confirms who you are if you choose to sign in with Google. On Android, Google’s Firebase Cloud Messaging delivers reminders, using a device token rather than your data.',
         'Expo delivers push notifications and app updates. It sees a device token, not your data.',

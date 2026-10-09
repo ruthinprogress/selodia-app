@@ -48,7 +48,17 @@ import { supabase } from '@/lib/supabase';
 //
 // r3 = 1 October 2026, Ruth's final wording of the Claude and ElevenLabs
 // paragraph. r2 was the ElevenLabs retention revision she answered at 20:18.
-export const PRIVACY_POLICY_VERSION = '2026-10-01-r3';
+//
+// 2026-10-09 = ElevenLabs now delete audio and transcripts after 30 DAYS. The
+// previous sentence said three years, which was their published default; the
+// account was actually set to keep everything forever, which is what reading
+// the agent's own privacy block before the store uploads turned up. Ruth chose
+// 30 days, and it was set and read back the same afternoon.
+//
+// BUMPED EVEN THOUGH THE CHANGE IS IN THE USER'S FAVOUR. The rule above says
+// substance, not direction. She consented to a sentence that is no longer on
+// the page, and that is the whole test.
+export const PRIVACY_POLICY_VERSION = '2026-10-09';
 
 export type ConsentAnswers = {
   coreConsent: boolean;

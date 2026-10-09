@@ -25,8 +25,40 @@
 // on termination; what it does NOT state anywhere I have read is how long an
 // ordinary request is held. Saying "30 days" here would be the same mistake as
 // "the audio isn't kept" - a number that sounds reassuring and was never checked.
+//
+// TWO FACTS FROM 9 OCTOBER 2026, AND THE OLD SENTENCE CONFLATED THEM.
+//
+// Preparing the first store uploads meant reading the agent's own privacy block
+// rather than the documents about it. It said retention_days: -1 with
+// delete_audio and delete_transcript_and_pii both false. Not three years.
+// Indefinite. Ruth chose 30 days; set, applied to existing conversations, and
+// read back the same afternoon.
+//
+// I THEN REPLACED THE SENTENCE WITH "DELETED AFTER 30 DAYS" AND SHE STOPPED ME:
+// "hold on, it says 3 years because that's what eleven labs said i think" -
+// "check the reasoning and docs around that, as we've been here before." She was
+// right, and checking changed the answer rather than confirming it.
+//
+// The two figures are about different things:
+//   - 3 YEARS is their privacy policy: "ElevenLabs will not keep data it
+//     generates about your voice longer than 3 years after your last
+//     interaction with us, except as required by law." A ceiling on
+//     voice-DERIVED data.
+//   - retention_days is the agent setting, and their retention documentation
+//     says it governs "conversation transcripts" and "audio recordings".
+//
+// So the sentence published since 1 October took a ceiling from one clause and
+// reported it as the retention period for something else, while the thing it
+// claimed to describe was set to indefinite. Wrong in the reassuring direction.
+// And my replacement dropped the ceiling, which is an over-claim in the other
+// direction - the precise mistake the note below this one warns about.
+//
+// Both sentences now, because neither covers the other. check-audio-claims.mjs
+// asserts both numbers so that dropping either is a failing build and not a
+// tidy-up.
 export const PROCESSOR_WORDING =
   'To understand what you write or say, Selodía sends it to Claude, an AI model made by ' +
   'Anthropic. If you use voice, what you say goes to ElevenLabs to be turned into text. ' +
-  'Neither company uses it to train its AI models. ElevenLabs keeps the audio and the ' +
-  'transcript for up to 3 years.';
+  'Neither company uses it to train its AI models. ElevenLabs delete the audio and the ' +
+  'transcript after 30 days, and their own policy says they will not keep data they ' +
+  'generate about your voice for longer than 3 years.';
