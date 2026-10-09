@@ -23,6 +23,7 @@ import {
   SEEING_SOMEONE,
   WAITING_LIST,
   WHAT_IT_DOES,
+  FIRST_ARTICLE_URL,
   WRITING,
   WRITING_URL,
 } from './lib/homepage-copy';
@@ -635,6 +636,16 @@ export default async function LandingPage({
             <div id="writing">
               <h2>{WRITING.heading}</h2>
               <p style={{ marginTop: '1.5rem' }}>{WRITING.body}</p>
+              {/* The article first, then the publication. Somebody who has
+                  come this far wants the piece, not the index of it. */}
+              <p style={{ marginTop: '1.5rem' }}>
+                <a
+                  href={FIRST_ARTICLE_URL}
+                  style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}
+                >
+                  {WRITING.firstArticle}
+                </a>
+              </p>
               <a href={WRITING_URL} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
                 {WRITING.linkText}
               </a>

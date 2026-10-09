@@ -31,8 +31,23 @@
 // Ruth's standing rule on her own voice applies to all of it: short plain
 // sentences, no hype, no exclamation marks, and the reader addressed as "you".
 
-/** The one configurable outbound link. She will give the publication address later. */
-export const WRITING_URL = 'https://substack.com/@ruthinprogress';
+/**
+ * The publication itself. It existed as a profile page when this was written
+ * and the publication address was promised "later"; later was 9 October 2026,
+ * the day the first article went out.
+ */
+export const WRITING_URL = 'https://ruthinprogress.substack.com';
+
+/**
+ * The first article, 9 October 2026.
+ *
+ * A URL and not copy, which is why it lives here rather than in WRITING below:
+ * check-homepage-copy.mjs walks every string in those blocks and holds it to
+ * the rules for prose, and an address is not prose. The TITLE is copy and does
+ * sit in WRITING, where those rules can see it.
+ */
+export const FIRST_ARTICLE_URL =
+  'https://ruthinprogress.substack.com/p/what-my-legs-were-trying-to-tell';
 
 export const INSTAGRAM_URL = 'https://instagram.com/selodia.app';
 
@@ -224,11 +239,17 @@ export const RECORD_STAYS_YOURS = {
 //
 // DRAFT, exactly as supplied. No article titles and no biography, because no
 // posts exist yet and a slot with nothing in it is worse than no slot.
+//
+// THE FIRST POST NOW EXISTS (9 October 2026), so the empty slot is filled and
+// the condition above is met rather than overridden. firstArticle is its title,
+// unchanged from the one she published; the address is FIRST_ARTICLE_URL at the
+// top of this file. Her words everywhere else in this block are untouched.
 
 export const WRITING = {
   heading: 'Writing',
   body: 'The story of building it, written as it happens.',
   linkText: 'Read on Substack',
+  firstArticle: 'What My Legs Were Trying to Tell Me',
 } as const;
 
 // ---------------------------------------------------------------------------
