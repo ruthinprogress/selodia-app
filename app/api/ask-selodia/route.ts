@@ -43,6 +43,8 @@ import {
 } from '../../lib/safety-classification';
 import { buildHealthContextPrompt, hasHealthContext, type HealthContext } from '../../lib/health-context';
 import { buildCycleContextPrompt } from '../../lib/cycle';
+import { cycleRecurrencesFor } from '../../lib/cycle-recurrence-block';
+import { addSymptomsToDay, localDayKey } from '../../lib/day-observations';
 import { logFoodFromText } from '../../lib/food-logging';
 import { lifeStageFacts } from '../../lib/life-stage-facts';
 import { weekFacts } from '../../lib/week-facts';
@@ -552,7 +554,8 @@ export async function POST(request: NextRequest) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [ctxResult, longHistoryBlock, sodiumResult, recoverableRows] = await Promise.all([
+  const [ctxResult, longHistoryBlock, sodiumResult, recoverableRows, cycleRecurrence] =
+    await Promise.all([
     supabase.rpc('turn_context', {
       p_since: contextSince.toISOString(),
       p_day_start: dayStartForState.toISOString(),
@@ -572,6 +575,17 @@ export async function POST(request: NextRequest) {
     // WHAT SHE DELETED AND COULD STILL HAVE BACK. Read every turn rather than
     // only when asked, because the asking is the thing that has to work.
     listRecoverable(supabase, user.id),
+    // HAS THIS HAPPENED AT THIS POINT IN HER CYCLE BEFORE (9 October 2026).
+    //
+    // Two small reads - her period starts and the days she has logged a
+    // symptom on - joined against the comparability rule in cycle-position.ts.
+    // Returns an empty block when there is nothing worth saying, which is most
+    // turns, and never throws: the best this can ever add is one sentence, so
+    // it must never be able to cost a reply.
+    //
+    // Not folded into turn_context because that RPC runs on every turn and
+    // this is only interesting on cycle-aware ones.
+    cycleRecurrencesFor(supabase, user.id),
   ]);
 
   const { data: ctx, error: ctxError } = ctxResult;
@@ -896,6 +910,15 @@ export async function POST(request: NextRequest) {
   // conversation loads the current cycle phase so weight/measurement talk is read
   // in context. Empty when cycle tracking isn't enabled. RLS scopes the read.
   const cycleContextBlock = buildCycleContextPrompt(lastPeriodRow?.event_date ?? null);
+
+  // AND WHAT HAS BEEN THERE BEFORE, at the same point. Empty on most turns.
+  // Appended to the cycle block rather than given its own slot, because the
+  // two are one subject and a prompt with forty labelled sections is a prompt
+  // the model skims.
+  const cycleBlock = cycleRecurrence.block
+    ? `${cycleContextBlock}
+${cycleRecurrence.block}`
+    : cycleContextBlock;
 
   // Allergies (Part Twelve, item 42 part (d)). AWARENESS ONLY - see
   // app/lib/allergies.ts. This makes the model know about them within a session;
@@ -1963,6 +1986,29 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         'ONLY when the app has told you an offer to keep something is outstanding, and only when THIS message actually answers it. '
         + 'Anything else - a new topic, a log, a different question - is not an answer, so leave it unset. Never treat them moving on as a yes.',
     },
+    daySymptoms: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        'Physical things they say they are FEELING OR HAVE FELT, each in their own words, two or three words each: "cramps", '
+        + '"bloated", "sore breasts", "that dragging feeling low down". Set it whenever they mention one, including in passing '
+        + 'and including alongside something else - "cramps and a change in discharge for two days" is two. '
+        + 'A SYMPTOM IS JUST A SYMPTOM and is never classified as cycle-related or not: it is recorded against the DAY, and the '
+        + 'app works out where that day sits in their cycle. Never ask whether something is cycle-related, and never ask them to '
+        + 'pick from a list. '
+        + 'NOT a mood on its own ("flat", "anxious") unless they describe it as physical - feelings go to feelingMood. NOT an '
+        + 'injury they are telling you about from the past, NOT a condition they have, and NOT something they are asking about '
+        + 'in general ("what causes bloating?"). Only what they are reporting about themselves now or in the last few days. '
+        + 'This is independent of everything else: a message can log a meal AND a symptom. Do not say it is saved - the app '
+        + 'records it and shows its own confirmation.',
+    },
+    symptomDays: {
+      type: 'number',
+      description:
+        'Alongside daySymptoms, when they say how long it has been going on - "for two days", "since Tuesday", "all week". '
+        + 'The number of days INCLUDING today, so "for two days" is 2 and "since yesterday" is 2. The app records the symptom '
+        + 'on each of those days. Leave unset when they do not say, and never guess: one day is the honest default.',
+    },
     noteText: {
       type: 'string',
       description:
@@ -2294,6 +2340,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     weekEntry?: { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown };
     saveAnswer?: string;
     saveRedirect?: { type?: unknown; section?: unknown };
+    daySymptoms?: unknown[];
+    symptomDays?: number;
     noteText?: string;
     workoutPlan?: string;
     workoutSkipped?: string[];
@@ -2974,6 +3022,44 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       }
     } catch (err) {
       console.log('ASK-SELODIA CYCLE LOG FAILED:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // A SYMPTOM LANDS ON A DAY (9 October 2026). Ruth: "A symptom is just a
+  // symptom... it is attached to a day, so all days need to be reviewed for
+  // patterns when a symptom is reported. otherwise the user is magically
+  // having to figure out which symptoms to log as cycle symptoms and which are
+  // noncycle symptoms."
+  //
+  // So nothing here asks whether it is cycle-related, and the model is told
+  // not to either. It records what was said against the day; where that day
+  // sits in a cycle is worked out from her period history when something asks.
+  //
+  // SPANNING BACKWARDS when she says how long. "I've had cramps for two days"
+  // writes today and yesterday, because a symptom recorded only on the day she
+  // mentioned it puts the pattern on the wrong date - and the whole point of
+  // this record is comparing dates across cycles.
+  if (Array.isArray(result.daySymptoms) && result.daySymptoms.length > 0) {
+    try {
+      const span = Math.min(
+        Math.max(Math.round(Number(result.symptomDays ?? 1)) || 1, 1),
+        // Seven is generous for "all week" and stops a misread "for 90 days"
+        // writing three months of rows.
+        7
+      );
+      const landed: string[] = [];
+      for (let back = 0; back < span; back++) {
+        const on = new Date();
+        on.setDate(on.getDate() - back);
+        const wrote = await addSymptomsToDay(supabase, user.id, result.daySymptoms, localDayKey(on));
+        if (wrote && wrote.added.length > 0 && back === 0) landed.push(...wrote.added);
+      }
+      // attempt.landed, not the write log: that is declared further down the
+      // turn, and this sits beside the cycle write which records the same way.
+      // Both feed wroteThisTurn, which is what the honesty guard reads.
+      if (landed.length > 0) attempt.landed.push('symptom');
+    } catch (err) {
+      console.log('ASK-SELODIA SYMPTOM LOG FAILED:', err instanceof Error ? err.message : err);
     }
   }
 
