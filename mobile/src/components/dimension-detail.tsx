@@ -43,6 +43,11 @@ export function DimensionDetail({
   const background = DIMENSION_COLOUR[dimension];
   const deep = DIMENSION_DEEP[dimension];
   const rows = activities ?? [];
+  // The biggest contribution in this list, which every other row is shown
+  // against. Relative rather than absolute because the weighting numbers are
+  // ours and mean nothing to her; "this one did most of it" is what a petal is
+  // being asked.
+  const strongest = rows.reduce((top, a) => Math.max(top, a.contribution), 0);
 
   return (
     <View style={[styles.screen, { backgroundColor: background }]}>
@@ -64,6 +69,18 @@ export function DimensionDetail({
                         nothing rather than guessing, the same rule the log
                         itself now holds to. */}
                     {a.duration_min != null ? `  ·  ${Math.round(a.duration_min)} min` : ''}
+                    {/* HOW MUCH THIS ONE BUILT THIS PETAL (9 October 2026).
+                        Ruth: the petals "just list everything for each petal
+                        which makes it pointless". The number was being computed
+                        and thrown away, so a 5 and an 85 looked identical and
+                        the list said nothing about the dimension it was headed
+                        by. Shown as a share of the strongest contribution this
+                        dimension has, because the raw weight is an internal
+                        figure and "mostly this one" is the thing she is
+                        actually asking the petal. */}
+                    {a.contribution > 0 && strongest > 0
+                      ? `  ·  ${Math.round((a.contribution / strongest) * 100)}%`
+                      : ''}
                   </Text>
                 </View>
               ))

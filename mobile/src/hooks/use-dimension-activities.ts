@@ -68,6 +68,26 @@ export function useDimensionActivities(dimension: Dimension | null): DimensionAc
           .gte('happened_at', weekStart.toISOString())
           .lt('happened_at', weekEnd.toISOString())
           .gt(column, 0)
+          // ORDERED BY WHAT BUILT THE PETAL, NOT BY WHEN (9 October 2026).
+          //
+          // Ruth: "the click though on the petals need some work as right now
+          // it just lists everything for each petal which makes it pointless."
+          //
+          // She is right, and `.gt(column, 0)` above is why it looks like
+          // everything: nearly every activity scores non-zero in nearly every
+          // dimension. Yoga is strength 25, cardio 15, flexibility 85, balance
+          // 75, bone 5, recovery 60 - so it appears under ALL SIX petals, and
+          // so does walking. The filter was excluding almost nothing.
+          //
+          // Chronological on top of that is what made it unreadable: an
+          // activity contributing 85 and one contributing 5 sat in the same
+          // list in the same shape, and the number deciding the petal was
+          // computed and then never shown.
+          //
+          // Biggest first, and the date second so a tie reads sensibly. Nothing
+          // is hidden - whether a trace should be dropped entirely is a
+          // judgement about her flower and hers to make.
+          .order(column, { ascending: false })
           .order('happened_at', { ascending: false });
 
         if (cancelled) return;
