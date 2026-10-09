@@ -209,3 +209,61 @@ export function splitSpeakable(
   }
   return { cuts, rest };
 }
+
+// UNITS, SAID THE WAY A PERSON SAYS THEM.
+//
+// Ruth, 9 October 2026: "it hilariously says 'Kay-CALS' and 'GEEs' for kcal and
+// grams. Can we make her say calories and grams, it's way more conversational,
+// bit odd like that, jarring almost."
+//
+// She is right, and the reason it happens is that "kcal" and "25g" are written
+// for the eye. On a screen they are compact and obvious. Read aloud by a voice
+// that has never seen them before, "kcal" becomes a word and "g" becomes a
+// letter, and the sentence stops being something anybody would say.
+//
+// A TRANSFORM, NOT AN INSTRUCTION IN THE PROMPT. Telling the writer to spell
+// units out would work most of the time, and most of the time is the wrong
+// standard for something that happens in every reply about food. This runs on
+// the text on its way to the voice and cannot be forgotten. It is the same
+// reasoning as a guard at the write.
+//
+// SPOKEN ONLY. The reply that is STORED and shown on screen keeps "350 kcal and
+// 25g", because that is the right form for the eye and it is what the Log, the
+// reports and the rest of the app already use. Only what goes to the speaker
+// changes.
+//
+// SAFE TO RUN ON A CHUNK. The adapter cuts the stream at sentence and clause
+// boundaries before anything is spoken, so a unit is never split across two
+// pieces of text. A transform applied per delta would have had to worry about
+// "25" arriving before "g"; this one does not.
+
+/** Singular when there is exactly one of something, which is how people talk. */
+function pluralise(value: string, one: string, many: string): string {
+  return value === '1' ? one : many;
+}
+
+/**
+ * The same sentence, written to be heard rather than read.
+ *
+ * Longer units are replaced before shorter ones, so "kg" and "mg" are consumed
+ * before the bare "g" rule can see their last letter.
+ */
+export function forSpeech(text: string): string {
+  return (
+    text
+      // "350 kcal" and "350kcal" both become "350 calories". The unit carries
+      // no number of its own, so there is no singular to worry about.
+      .replace(/\bkcals?\b/gi, 'calories')
+      .replace(/(\d+(?:\.\d+)?)\s*kg\b/g, (_m, n: string) => `${n} ${pluralise(n, 'kilo', 'kilos')}`)
+      .replace(/(\d+(?:\.\d+)?)\s*mg\b/g, (_m, n: string) => `${n} ${pluralise(n, 'milligram', 'milligrams')}`)
+      .replace(/(\d+(?:\.\d+)?)\s*ml\b/gi, (_m, n: string) => `${n} ${pluralise(n, 'millilitre', 'millilitres')}`)
+      // Only after a number, so an ordinary word ending in g is untouched.
+      .replace(/(\d+(?:\.\d+)?)\s*g\b/g, (_m, n: string) => `${n} ${pluralise(n, 'gram', 'grams')}`)
+      // Capital L only: a lower-case "l" after a number is far more often a
+      // typo or a list marker than a litre.
+      .replace(/(\d+(?:\.\d+)?)\s*L\b/g, (_m, n: string) => `${n} ${pluralise(n, 'litre', 'litres')}`)
+      // "35-40 grams" reads better than "35 to 40 grams" on screen and worse
+      // aloud, where a hyphen between two numbers is silence.
+      .replace(/(\d)\s*-\s*(\d)/g, '$1 to $2')
+  );
+}

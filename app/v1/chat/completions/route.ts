@@ -16,6 +16,7 @@ import { POST as askSelodia } from '../../../api/ask-selodia/route';
 import {
   attachVoiceSink,
   createVoiceSink,
+  forSpeech,
   splitSpeakable,
   type VoiceSink,
 } from '../../../lib/voice-sink';
@@ -329,7 +330,10 @@ function spokenCompletion(
                   }
                 }
                 saidEarly += cut.length;
-                controller.enqueue(sseChunk(id, created, model, { content: cut }, null));
+                // SAID, NOT READ. "350 kcal and 25g" becomes "350 calories
+                // and 25 grams" on the way to the voice only; the stored
+                // reply keeps the written form. See forSpeech.
+                controller.enqueue(sseChunk(id, created, model, { content: forSpeech(cut) }, null));
               }
             }
             // Whatever was left when the reply ended, which is anything without
@@ -342,7 +346,7 @@ function spokenCompletion(
                 }
               }
               saidEarly += pending.length;
-              controller.enqueue(sseChunk(id, created, model, { content: pending }, null));
+              controller.enqueue(sseChunk(id, created, model, { content: forSpeech(pending) }, null));
             }
           })()
         : null;
@@ -388,7 +392,7 @@ function spokenCompletion(
       }
 
       for (const piece of saidEarly > 0 ? [] : speakableChunks(reply)) {
-        controller.enqueue(sseChunk(id, created, model, { content: piece }, null));
+        controller.enqueue(sseChunk(id, created, model, { content: forSpeech(piece) }, null));
       }
       if (spoken.endCall && canEnd) {
         controller.enqueue(toolCallChunk(id, created, model, 'end_call'));
