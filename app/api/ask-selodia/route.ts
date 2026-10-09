@@ -1532,8 +1532,21 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // instruction that must not be talked out of, so that is where it goes now.
   // This is the one behavioural change in the reorder and it moves in the
   // direction of more weight, not less.
-  const turnSystemPrompt =
-    personContext +
+  // SPLIT SO THE BIG HALF CAN BE CACHED, 9 October 2026, and it is a boundary
+  // rather than a reshuffle: `personContext` was already first, so a cache
+  // breakpoint goes after it without moving a single character.
+  //
+  // WHY. Measured from her 07:12 voice call: every classify call read 28,592
+  // cached tokens and then 10,624 FRESH ones, and the fresh ones are what the
+  // model must chew through before it can answer. Her whole complaint starts
+  // there: four to six seconds of silence, replies cut off mid-sentence
+  // because she had reasonably given up waiting, and then the app reading her
+  // confusion as distress.
+  //
+  // `personContext` is her seven-day logs and the prose around them. It does
+  // not change between turns unless she logs something, so it is the right
+  // thing to cache and the wrong thing to re-read eight times in one call.
+  const turnRestPrompt =
     buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
     todayBlock +
     goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
@@ -1548,6 +1561,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
 
   // The whole thing as one string, for the goal-safety rewrite, which appends
   // its own instruction and is rare enough not to want a breakpoint.
+  // IDENTICAL TEXT, THREE BLOCKS INSTEAD OF TWO. Anthropic concatenates system
+  // blocks, so what the model reads is unchanged; only where the cache may
+  // break has moved.
+  const turnSystemPrompt = personContext + turnRestPrompt;
+
   const contextualSystemPrompt = staticSystemPrompt + turnSystemPrompt;
 
   const tool = buildClassifyTool(NON_DISTRESS_CLASSIFICATIONS, previousEscalationStep === 'direct_asked', {
@@ -2107,9 +2125,15 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // system, then messages. So the tool schema caches on its own, and the
       // static prompt caches on top of it. Everything that varies sits after
       // both and is read fresh, which is what it has to be.
+      // THREE BREAKPOINTS. The API reads them tools, then system, then
+      // messages, so the tool schema caches on its own, the static prompt
+      // caches on top of it, and her own context caches on top of that. Only
+      // what genuinely changes per turn - the time, a pending save, the
+      // escalation state - is read fresh. Four is the limit; three is enough.
       system: [
         { type: 'text', text: staticSystemPrompt, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: turnSystemPrompt },
+        { type: 'text', text: personContext, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: turnRestPrompt },
       ],
       messages,
       tools: [{ ...tool, cache_control: { type: 'ephemeral' } }],
