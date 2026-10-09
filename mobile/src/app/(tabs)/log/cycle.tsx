@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { BodyScreen } from '@/components/body-screen';
 import { AddAnother, Card, Chips } from '@/components/cycle-cards';
 import { ReorderableRows } from '@/components/reorderable-rows';
+import { CycleHistoryBars } from '@/components/cycle-history-bars';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -245,7 +246,6 @@ export default function CycleScreen() {
 
   // What is already recorded on the day showing, and the recent log behind it.
   const onThisDay = events.filter((e) => e.event_date === day);
-  const recent = [...events].sort((a, b) => b.event_date.localeCompare(a.event_date)).slice(0, 12);
 
   const knowledge = knowledgeFrom(events);
   const todayLine = describeToday(knowledge, day);
@@ -418,37 +418,24 @@ export default function CycleScreen() {
         );
 
       case 'history':
-        // NEWEST FIRST, because the question somebody brings to this card is
-        // almost always "when did it last start", not "when did it ever start".
-        return recent.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-            Nothing recorded yet. Move to the day it started, then tap Started.
-          </ThemedText>
-        ) : (
-          <View style={styles.history}>
-            {recent.map((e) => (
-              <Pressable
-                key={`${e.event_date}-${e.event_type}`}
-                onPress={() => setDay(e.event_date)}
-                accessibilityRole="button"
-                accessibilityLabel={`Go to ${human(e.event_date)}`}
-                style={({ pressed }) => [styles.historyRow, pressed && styles.pressed]}
-              >
-                <MaterialCommunityIcons
-                  name={e.event_type === 'period_end' ? 'ray-end' : e.event_type === 'spotting' ? 'circle-small' : 'ray-start'}
-                  size={18}
-                  color={theme.accent}
-                />
-                <ThemedText type="small" style={styles.markText}>
-                  {EVENT_WORDS[e.event_type] ?? e.event_type}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {human(e.event_date)}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
+        // BARS, NOT A LIST (9 October 2026). Ruth: "the way period Alex logged
+        // vusually needs a rework, it's just a long list atm."
+        //
+        // It was a run of dated events - "Period started, 28 September",
+        // "Period ended, 2 October" - every line accurate and the whole thing
+        // telling her nothing she could not already remember. One bar per
+        // cycle, length proportional, shows that 24 days followed 35, which is
+        // what she is actually looking at this screen to find out.
+        //
+        // See components/cycle-history-bars.tsx and lib/cycle-bars.ts.
+        return (
+          <CycleHistoryBars
+            events={events}
+            today={today()}
+            onOpenDay={(d) => setDay(d)}
+          />
         );
+
       case 'flow':
         return (
           <Chips
@@ -768,8 +755,6 @@ const styles = StyleSheet.create({
   marks: { gap: Spacing.one },
   mark: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   markText: { flex: 1 },
-  history: { gap: Spacing.two },
-  historyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   arrangeBar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: Spacing.two },
   hint: { lineHeight: 18 },
   pressed: { opacity: 0.6 },
