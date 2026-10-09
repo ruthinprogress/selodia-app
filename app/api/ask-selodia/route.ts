@@ -52,6 +52,7 @@ import {
   settleVoiceSentence,
 } from '../../lib/voice-supersede';
 import { logActivityFromText } from '../../lib/activity-logging';
+import { rememberDecision, worthRemembering } from '../../lib/remember-context';
 import {
   choosePlan,
   resolvePlans,
@@ -3314,21 +3315,57 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   }
 
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
-  if (result.rememberCategory && result.rememberContent) {
-    const category = result.rememberCategory;
-    const content = result.rememberContent;
+  if (worthRemembering(result.rememberCategory, result.rememberContent)) {
+    const category = (result.rememberCategory as string).trim();
+    const content = (result.rememberContent as string).trim();
 
-    const { data: existingCategory } = await supabase
+    // IT IS WRITTEN WHETHER OR NOT THE CATEGORY EXISTS (9 October 2026).
+    //
+    // Ruth: "it also didn't add the high cholesterol comment to my Me section."
+    // She had told it a letter from her doctor said her cholesterol was
+    // slightly high, been asked "would you like it kept as a note on your Me
+    // tab", said yes, and been told "I'll add the figure to the same note when
+    // you do" - a sentence implying a note that had never existed.
+    //
+    // THIS READ: insert only if a row with that category was already there,
+    // otherwise set autoSaved: false and write nothing. Her only category was
+    // 'goal', so the first fact in any NEW category was always dropped -
+    // health, sleep, watching, all of them - and every later one in that
+    // category saved fine. The branch came in inside a mechanical rename on 10
+    // September rather than on its own, and nothing anywhere reads autoSaved,
+    // so the confirmation step it was presumably waiting for was never built.
+    // It was not a decision to withhold a save; it was a half-finished one that
+    // lost data in silence.
+    //
+    // NOT TWICE, THOUGH. The same slow turn that logged her yoga five times
+    // would have written this note five times too, so an identical
+    // category-and-content pair already stored is this same fact arriving
+    // again. Compared on content, not on a window: a durable fact restated
+    // weeks later is still the same durable fact, and a second copy of it says
+    // nothing the first did not.
+    const { data: already } = await supabase
       .from('user_context')
-      .select('*')
+      .select('id, content')
+      .eq('user_id', user.id)
       .eq('category', category)
+      .eq('content', content)
       .limit(1);
 
-    if (existingCategory && existingCategory.length > 0) {
-      await supabase.from('user_context').insert({ user_id: user.id, category, content });
+    if (rememberDecision(already) === 'already-there') {
       savedContext = { category, content, autoSaved: true };
     } else {
-      savedContext = { category, content, autoSaved: false };
+      const { error: contextError } = await supabase
+        .from('user_context')
+        .insert({ user_id: user.id, category, content });
+      // ONLY WHEN IT LANDED. savedContext feeds wroteThisTurn as 'remembered
+      // detail', which is what falseClaimNote checks a reply's claims against -
+      // so the old code telling it a detail was remembered when nothing was
+      // written is the reason she got no warning that the note had not saved.
+      // The one guard built to catch exactly this was being handed the lie.
+      savedContext = contextError ? null : { category, content, autoSaved: true };
+      if (contextError) {
+        console.log('USER CONTEXT write failed:', contextError.message);
+      }
     }
   }
 
