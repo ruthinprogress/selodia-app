@@ -130,8 +130,36 @@ async function tap(needle) {
 const clean = () =>
   page.evaluate(() => document.getElementById('error-toast')?.remove()).catch(() => {});
 
+/**
+ * A SHOT OF A 404 IS NOT A SHOT (9 October 2026).
+ *
+ * This reported `2-today at /today` and `6-almanac at /almanac` and wrote two
+ * perfectly good PNGs of Expo Router's "Unmatched Route" screen - black
+ * background, white text, the localhost URL printed on it. Both routes had been
+ * renamed: /today is /now, and the Almanac moved under /settings. The check was
+ * location.pathname, which is whatever you asked for whether or not anything
+ * rendered, so it agreed with itself every time.
+ *
+ * Two of six frames were an error page and the script said success. That is the
+ * shape of fault worth refusing loudly, because the next person to look at
+ * these is a Play reviewer.
+ */
 async function shot(name) {
   await clean();
+  const bad = await page.evaluate(() => {
+    const t = document.body.innerText || '';
+    if (/Unmatched Route|Page could not be found/i.test(t)) return 'unmatched route';
+    if (/\/onboarding\//.test(location.pathname)) return 'bounced to onboarding';
+    // An empty frame is the other way this fails quietly.
+    if (t.trim().length < 40) return 'the screen rendered almost no text';
+    return null;
+  });
+  if (bad) {
+    console.error(`\n  REFUSING ${name}: ${bad} (at ${await page.evaluate(() => location.pathname)})`);
+    console.error('  Nothing was written for it. Fix the route or the account, then run again.\n');
+    process.exitCode = 1;
+    return;
+  }
   await page.screenshot({ path: path.join(OUT, `${name}.png`) });
   const where = await page.evaluate(() => location.pathname);
   console.log(`  ${name.padEnd(22)} at ${where}`);
@@ -146,8 +174,9 @@ await sleep(9000);
 // 1. Chat. The mic lives beside the composer; nothing to press, only to show.
 await shot('1-chat');
 
-// 2. Today, with the run and the water on it.
-await page.goto(`${BASE}/today`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+// 2. Now (it was Today until the tab was renamed; /today is a 404 and was
+// photographed as one).
+await page.goto(`${BASE}/now`, { waitUntil: 'domcontentloaded' }).catch(() => {});
 await sleep(8000);
 await shot('2-today');
 
@@ -157,8 +186,19 @@ await sleep(8000);
 await shot('3-food-log');
 
 // 4. Plans.
+//
+// THE SESSIONS TAB, NOT THE LANDING ONE (9 October 2026). Plans gained tabs
+// since this was written - Week, Sessions, Skills, Rules - and it opens on
+// Week, which for the seeded account reads "No week yet. Tap to add something
+// you do". So the first run today photographed an empty state as the shop
+// window, and then could not find the plan underneath it to open shot 5.
+//
+// Shot after the tap rather than before, because the point of the frame is a
+// plan somebody has actually got, not the tab bar.
 await page.goto(`${BASE}/plans`, { waitUntil: 'domcontentloaded' }).catch(() => {});
 await sleep(8000);
+if (!(await tap('Sessions'))) console.log('  4-plans               NO SESSIONS TAB FOUND');
+await sleep(5000);
 await shot('4-plans');
 
 // 5. The deadlift, which opens from inside Plans rather than having a route.
@@ -188,8 +228,9 @@ if (await tap('Open Lower body strength')) {
   console.log('   ', labels.join(' | '));
 }
 
-// 6. Almanac.
-await page.goto(`${BASE}/almanac`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+// 6. Almanac, which lives under settings now. /almanac is a 404 and was
+// photographed as one.
+await page.goto(`${BASE}/settings/almanac`, { waitUntil: 'domcontentloaded' }).catch(() => {});
 await sleep(8000);
 await shot('6-almanac');
 

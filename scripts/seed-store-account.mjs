@@ -22,6 +22,29 @@ import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
 const STORE_EMAIL = 'unflumpapp+store@gmail.com';
+
+/**
+ * The consent version the app is currently asking for, read out of the file
+ * that defines it rather than copied.
+ *
+ * Read as text instead of imported, so this script keeps working with a plain
+ * `node scripts/seed-store-account.mjs` and does not need the TypeScript
+ * resolver hook. If the constant is ever renamed this throws loudly, which is
+ * the whole point: the previous arrangement failed by carrying on.
+ */
+const POLICY_VERSION = (() => {
+  const src = fs.readFileSync(
+    path.join('C:\\Users\\ruthi\\unflump-app', 'mobile', 'src', 'lib', 'consent.ts'),
+    'utf8'
+  );
+  const m = /export const PRIVACY_POLICY_VERSION = '([^']+)'/.exec(src);
+  if (!m) {
+    console.error('Cannot find PRIVACY_POLICY_VERSION in mobile/src/lib/consent.ts.');
+    console.error('Seeding with a stale version photographs the consent screen, so stopping.');
+    process.exit(1);
+  }
+  return m[1];
+})();
 const FORBIDDEN = ['unflumpapp@gmail.com', 'unflumpapp+test@gmail.com'];
 
 if (FORBIDDEN.includes(STORE_EMAIL) || !STORE_EMAIL.includes('+store')) {
@@ -125,7 +148,19 @@ const { error: consentError } = await admin.from('consent_records').insert({
   core_consent: true,
   marketing_opt_in: false,
   research_opt_in: false,
-  policy_version: '19 September 2026',
+  // READ, NOT COPIED (9 October 2026).
+  //
+  // This said '19 September 2026'. The app compares the stored value against
+  // PRIVACY_POLICY_VERSION and sends anybody who does not match back to the
+  // consent screen - so from 1 October, when the version moved to the
+  // '2026-10-01-r3' scheme, every shoot redirected to /onboarding/consent and
+  // photographed that instead of the app. Three of today's six shots landed
+  // there before this was found.
+  //
+  // A hardcoded copy of a constant that exists to change was always going to
+  // rot, and it rots silently: the script reports success, the screenshots look
+  // plausible in a folder listing, and only opening one shows a consent form.
+  policy_version: POLICY_VERSION,
   source: 'onboarding',
 });
 if (consentError) {
