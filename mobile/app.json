@@ -37,7 +37,10 @@
       ],
       "runtimeVersion": {
         "policy": "appVersion"
-      }
+      },
+      "blockedPermissions": [
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "output": "static",
