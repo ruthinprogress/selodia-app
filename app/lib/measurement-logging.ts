@@ -5,6 +5,7 @@ import { personalRowsFrom } from './personal-metric-rows';
 import { recordModelUsage } from './usage-record';
 
 import { normalizeWeight } from './body-metrics';
+import { repeatWindowStart, sameNumber, sameWords, splitAlreadyWritten } from './written-once';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -349,6 +350,53 @@ export async function logMeasurementFromText(
       .select();
     if (error) throw new Error('body_measurements update failed: ' + error.message);
     return { reading: (data?.[0] as MeasurementEntry) ?? null, personal, missedPersonal };
+  }
+
+  // THE SAME READING, STORED ONCE (9 October 2026). See written-once.ts.
+  //
+  // A slow turn is re-sent by ElevenLabs and each re-send writes again, which
+  // is how one yoga class became five rows that morning. THIS TABLE IS THE
+  // WORST PLACE FOR IT: five identical weights on one morning do not just
+  // clutter a list, they flatten a trend, and the trend is the thing she is
+  // reading the app for. Her own words on the chat about it, that week:
+  // "one reading won't tell you if it's real movement or just noise" - five
+  // copies of one reading is the app manufacturing noise and calling it data.
+  //
+  // Ten minutes, the ordinary window: nobody weighs twice in ten minutes and
+  // gets the same three numbers to a decimal place. A genuine second weighing
+  // later in the day differs, or is far enough apart, either way.
+  const recentStart = repeatWindowStart();
+  const { data: recentRows } = await supabase
+    .from('body_measurements')
+    .select('id, measured_at, weight_kg, body_fat_pct, muscle_kg, raw_input')
+    .eq('user_id', userId)
+    .gte('measured_at', recentStart);
+
+  const key = (row: {
+    weight_kg?: unknown;
+    body_fat_pct?: unknown;
+    muscle_kg?: unknown;
+    raw_input?: unknown;
+  }) =>
+    [
+      sameNumber(row.weight_kg),
+      sameNumber(row.body_fat_pct),
+      sameNumber(row.muscle_kg),
+      sameWords(row.raw_input),
+    ].join('\u0000');
+
+  const candidate = {
+    weight_kg: weightKg,
+    body_fat_pct: bodyFatPct,
+    muscle_kg: muscleKg,
+    raw_input: measurementText,
+  };
+  const split = splitAlreadyWritten([candidate], (recentRows ?? []) as MeasurementEntry[], key);
+  if (split.fresh.length === 0) {
+    // The existing row, not null: the caller turns this into what she is told,
+    // and "that did not save" would be false - the reading is in.
+    console.log('MEASUREMENT ALREADY STORED, not writing again');
+    return { reading: split.alreadyThere[0] ?? null, personal, missedPersonal };
   }
 
   const { data, error } = await supabase

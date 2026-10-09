@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { DRINK_NOUNS } from './caloric-drink';
+import { sameNumber, sameWords, splitAlreadyWritten } from './written-once';
 
 // Water logging (Part Twelve, build item 31), on the same silent-log pattern as
 // food and activity: the person says it, the app stores it, and a brief toast
@@ -108,6 +109,41 @@ export async function logHydrationFromText(
   // No volume found means no log, rather than a fabricated default - the same
   // refusal to write an empty row the measurement path makes.
   if (ml == null) return null;
+
+  // THE SAME DRINK, LOGGED ONCE (9 October 2026). See written-once.ts.
+  //
+  // A slow turn gets re-sent by ElevenLabs and each re-send writes again: that
+  // is how one yoga class became five rows the same morning. Two litres said
+  // once would become ten here, and hydration is the figure she sees on Now.
+  //
+  // A SHORTER WINDOW THAN ANYTHING ELSE, AND THIS IS THE REASON. Nobody does
+  // two identical hour-long yoga classes ten minutes apart, so activity can
+  // afford ten minutes. People genuinely do drink two glasses of water in ten
+  // minutes and describe both as "a glass of water" - so a ten-minute window
+  // here would quietly swallow the second one and leave her short on a number
+  // she is trying to hit. The retries that caused this arrived inside
+  // thirty-seven seconds; two minutes covers a much worse one and still lets
+  // her drink.
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from('hydration_logs')
+    .select('id, ml, happened_at, raw_input')
+    .eq('user_id', userId)
+    .gte('happened_at', twoMinutesAgo);
+
+  const key = (row: { ml?: unknown; raw_input?: unknown }) =>
+    `${sameNumber(row.ml)}\u0000${sameWords(row.raw_input)}`;
+  const { fresh, alreadyThere } = splitAlreadyWritten(
+    [{ ml, raw_input: text }],
+    (recent ?? []) as { id: string; ml: number; happened_at: string; raw_input: string }[],
+    key
+  );
+  if (fresh.length === 0) {
+    // Returned rather than null: the caller turns this into what she is told,
+    // and "that did not save" would be false - the water is in.
+    console.log('HYDRATION ALREADY LOGGED, not writing again:', ml, 'ml');
+    return (alreadyThere[0] as unknown as HydrationEntry) ?? null;
+  }
 
   const { data, error } = await supabase
     .from('hydration_logs')

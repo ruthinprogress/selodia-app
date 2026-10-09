@@ -3,6 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordModelUsage } from './usage-record';
 
 import { coverageFor } from './activity-weights';
+import {
+  REPEAT_WINDOW_MS,
+  sameNumber,
+  sameWords,
+  splitAlreadyWritten,
+} from './written-once';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -66,7 +72,7 @@ export type ActivityEntry = {
 // THE WINDOW IS NOT A DAY. Two genuine thirty-minute runs in one day get
 // described separately and both belong in the table; two arriving inside ten
 // minutes with byte-identical wording do not.
-export const ACTIVITY_REPEAT_WINDOW_MS = 10 * 60_000;
+export const ACTIVITY_REPEAT_WINDOW_MS = REPEAT_WINDOW_MS;
 
 /**
  * What makes two activity rows the same event. Her exact words, the activity
@@ -84,12 +90,11 @@ export type RepeatShape = {
 };
 
 export function activityRepeatKey(row: RepeatShape): string {
-  const text = String(row.raw_input ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const type = String(row.activity_type ?? '').trim().toLowerCase();
-  const mins = row.duration_min === null || row.duration_min === undefined
-    ? 'none'
-    : String(Number(row.duration_min));
-  return `${text}\u0000${type}\u0000${mins}`;
+  return [
+    sameWords(row.raw_input),
+    sameWords(row.activity_type),
+    sameNumber(row.duration_min),
+  ].join('\u0000');
 }
 
 /**
@@ -107,25 +112,9 @@ export function splitAlreadyLogged<T extends RepeatShape>(
   candidates: T[],
   recent: ActivityEntry[]
 ): { fresh: T[]; alreadyThere: ActivityEntry[] } {
-  const seen = new Map<string, ActivityEntry>();
-  for (const row of recent) seen.set(activityRepeatKey(row as RepeatShape), row);
-
-  const fresh: T[] = [];
-  const alreadyThere: ActivityEntry[] = [];
-  // Claimed as it matches, so one existing row cannot absorb two candidates:
-  // if she really does send the same words twice in one request, the second is
-  // new. The repeats this exists for arrive as separate requests.
-  for (const row of candidates) {
-    const key = activityRepeatKey(row);
-    const match = seen.get(key);
-    if (match) {
-      seen.delete(key);
-      alreadyThere.push(match);
-    } else {
-      fresh.push(row);
-    }
-  }
-  return { fresh, alreadyThere };
+  return splitAlreadyWritten(candidates, recent, (row) =>
+    activityRepeatKey(row as RepeatShape)
+  );
 }
 
 // Shared text-only activity logging, mirroring logFoodFromText. Extracts one or
