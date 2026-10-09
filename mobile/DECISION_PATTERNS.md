@@ -459,3 +459,23 @@ The general form: **when a document arrives that answers a nearby question, name
 None of these is a rendering bug. In each case the declared value was right, the computed value was right, and the thing a person actually sees was wrong, because a transform sat between them.
 
 The rule that follows is narrow and cheap: **where a value passes through a scale, a viewBox, a mask or an inherited unit, measure the end of the chain rather than the start.** In a browser, on the real element, at the real width. The three measurements above took about twenty minutes between them and found three failures against floors Ruth had set in writing. (8 October 2026.)
+
+**The fault is often in how I looked, not in what I looked at.** Four times in one day, a confident wrong answer came from a method rather than from the code.
+
+A grep for a table name and the word `delete` on the same line reported that periods could not be removed anywhere in the app. They can: `.from('cycle_events')` and `.delete()` sit on different lines of a chained call. That false negative became the headline of a document, and it took her reading it to catch.
+
+A plugin list printed with a 600-character cap ended mid-array, and from the visible half I concluded the iOS build had no HealthKit entitlement and would die on launch. The entitlement was there, in the part that scrolled off.
+
+A survey of response codes printed them with the `PSL_` prefix stripped for readability, and the stripped names went into the matcher. It filled 38 of 89 answers and reported "no orphans" — a data safety form that would have listed every category with no purpose behind any of them.
+
+Three check fixtures used 2 August against days 6 elsewhere. 2 August is day 3 of its cycle, so the comparability rule refused it. The rule was right and the test was wrong.
+
+What links them is that each method had a plausible failure mode that produced *silence* rather than an error: a line-based grep cannot see a chained call, a truncated list looks like a complete one, a stripped prefix matches nothing, and a date is only wrong relative to a history you have to compute. Three were caught by checks that ran the thing instead of reading it. One was caught by her.
+
+The rule: **when a search comes back empty, or a list comes back short, confirm the method can see a positive case before believing the negative.** Grep for something you know is there. Print the length before the contents. Assert the fixture reproduces the bug before asserting the fix removes it. An absence is the one result that looks identical whether you asked well or badly. (9 October 2026.)
+
+**Measure the door, not the room.** `turn_diagnostics` reported a spoken turn at 4,097ms with the voice released at 2,114. ElevenLabs measured first byte at 14,370. Twelve seconds happened where no instrument was pointed, because the timer started inside the pipeline and the adapter in front of it had none — two `chat_messages` reads, and up to ten seconds of deliberately waiting for an earlier turn to finish.
+
+So every number in the app agreed that voice was fast while she sat there waiting, and I quoted one of those numbers back to her that morning as evidence a change had not helped. It had not helped, but the measurement I used could not have shown it either way.
+
+The general form: **an instrument that covers only the part you wrote will exonerate the part you wrote.** Before concluding from a timing, check that the clock starts where the user's wait starts. (9 October 2026.)
