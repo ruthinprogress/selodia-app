@@ -30,39 +30,86 @@ export type CycleDay = {
 export const FLOWS: Flow[] = ['light', 'medium', 'heavy'];
 
 /** The starting point. Not a vocabulary - see the note above. */
-export const COMMON_SYMPTOMS = [
-  'Cramps',
-  'Breast tenderness',
-  'Bloating',
-  'Headache',
-  'Acne',
-  'Fatigue',
-  'Nausea',
-  'Food cravings',
-  'Insomnia',
-  // THESE CAME OFF THIS LIST AND WENT BACK ON THE SAME EVENING, and the reason
-  // is worth keeping because my first reasoning was wrong.
-  //
-  // They were removed when mood and energy got their own screen, on the
-  // principle of one fact in one table. But Ruth: "i think bring them back
-  // everywhere. they are quite specific and not covered otherwise. they are the
-  // things i suffer most from and they are also linked to menopause symptoms,
-  // anxiety and irritability especially."
-  //
-  // SHE IS RIGHT, AND THEY ARE NOT THE SAME FACT. A mood rating is where a day
-  // sat between Low and Bright; irritability is a symptom somebody had. A
-  // person can have a perfectly good day and be irritable in it, and "Low"
-  // would not record that. Leaving them out was not tidiness, it was losing the
-  // specific thing in favour of the general one - and for a perimenopausal user
-  // these three are among the most diagnostic symptoms there are.
-  //
-  // The duplication I was guarding against is real but narrower than I thought:
-  // it would matter if mood were RATED twice. A symptom chip and a rating are
-  // different records of different things, and a report can carry both.
-  'Low mood',
-  'Anxiety',
-  'Irritability',
+// GROUPED BY WHAT THEY ARE, NOT BY WHO GETS THEM (9 October 2026).
+//
+// The first version of the redesigned picker had a group headed "the forty-plus
+// ones". Ruth: "'the forty+ ones' is not quite the right language....it feels
+// off."
+//
+// She is right, and it is not a wording problem. Grouping symptoms by the age
+// of the person who gets them makes them a consequence of her age - it quietly
+// says THIS IS WHAT YOU ARE NOW, against a brand line that says her body is not
+// a problem to solve. It strands a 39-year-old having hot flushes, and tells a
+// 50-year-old something she does not need telling.
+//
+// So the groups say what the symptom IS. Hot flushes, night sweats and brain
+// fog are simply present and unremarkable, which is a stronger statement than a
+// section announcing who they are for: she will notice the app has "Brain fog"
+// when she goes looking for it, and most trackers do not.
+//
+// WHAT WAS MISSING UNTIL TODAY, and this is the substance rather than the
+// labelling. The list was twelve symptoms written for a standard tracker:
+// cramps, acne, cravings, mood. No hot flushes, no night sweats, no brain fog,
+// no broken sleep, no heavier flow, no joint aches. Those are the ones that tell
+// a 44-year-old what is actually happening to her, and the app for women over
+// 40 did not have a single one of them.
+export const SYMPTOM_GROUPS: { name: string; items: string[] }[] = [
+  {
+    name: 'Body',
+    items: [
+      'Cramps',
+      'Bloating',
+      'Breast tenderness',
+      'Headache',
+      'Back pain',
+      'Nausea',
+      'Joint aches',
+      'Fatigue',
+      'Acne',
+      'Food cravings',
+    ],
+  },
+  {
+    name: 'Bleeding',
+    items: [
+      'Heavier than usual',
+      'Lighter than usual',
+      'Discharge change',
+      'Spotting',
+      'Clots',
+    ],
+  },
+  {
+    name: 'Sleep and temperature',
+    items: ['Hot flush', 'Night sweats', 'Broken sleep', 'Insomnia', 'Chills'],
+  },
+  {
+    // Mood chips and a mood RATING are different records of different things -
+    // see the note kept below. A person can have a perfectly good day and be
+    // irritable in it, and "Low" on the Feeling screen would not record that.
+    name: 'Head and mood',
+    items: ['Brain fog', 'Low mood', 'Anxiety', 'Irritability', 'Teary', 'Wired'],
+  },
 ];
+
+// KEPT, AND NOW DERIVED. Everything that reads a flat list still works, and
+// there is one place to add a symptom rather than two that can disagree.
+//
+// THE MOOD THREE CAME OFF THIS LIST AND WENT BACK ON THE SAME EVENING, and the
+// reason is worth keeping because my first reasoning was wrong.
+//
+// They were removed when mood and energy got their own screen, on the principle
+// of one fact in one table. But Ruth: "i think bring them back everywhere. they
+// are quite specific and not covered otherwise. they are the things i suffer
+// most from and they are also linked to menopause symptoms, anxiety and
+// irritability especially."
+//
+// SHE IS RIGHT, AND THEY ARE NOT THE SAME FACT. A mood rating is where a day sat
+// between Low and Bright; irritability is a symptom somebody had. Leaving them
+// out was not tidiness, it was losing the specific thing in favour of the
+// general one - and for a perimenopausal user these three are among the most
+// diagnostic symptoms there are.
+export const COMMON_SYMPTOMS: string[] = SYMPTOM_GROUPS.flatMap((g) => g.items);
 
 export const OVULATION_SIGNS = ['Positive LH test', 'Ovulation pain', 'Temperature rise'];
 
