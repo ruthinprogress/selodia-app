@@ -570,8 +570,25 @@ function MeCardRow({
                     // NAMED, NOT "this entry". Since 7 October chat draws the
                     // anchor card the moment it arrives, and without a title it
                     // read "Talking about this entry" over a card that has one.
+                    //
+                    // 'me' IS NOT ONE OF THE FOUR TYPES (9 October 2026). The
+                    // union is food | activity | measurement | plan, in three
+                    // places that must agree - the server's DiscussEntryType,
+                    // this app, and the chat_messages check constraint. 'me'
+                    // matches neither branch in index.tsx, so the tag was
+                    // dropped on arrival and has never reached a turn. It is
+                    // left here, unused, rather than deleted, because the thing
+                    // actually missing is a card that can draw a Me row, and
+                    // that is a new card and not a repair. See the Actionables.
                     discussType: 'me',
                     seedTitle: row.title,
+                    // AND IT NOW SENDS. Without askNow this opened Chat and
+                    // left the sentence in the composer; without the nonce the
+                    // second tap did nothing at all. The prefill is already a
+                    // complete sentence naming the row, so there is nothing for
+                    // her to finish first.
+                    askNow: '1',
+                    askNonce: String(Date.now()),
                   },
                 })
               }

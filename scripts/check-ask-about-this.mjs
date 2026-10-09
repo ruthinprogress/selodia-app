@@ -189,5 +189,109 @@ check('closing the card drops the tag as well as the card', () => {
   return 'closed means closed';
 });
 
+// ---- 7. a button is a sender or a named stem, never silently neither -----
+//
+// WHY THIS EXISTS AND THE SIX ABOVE WERE NOT ENOUGH (9 October 2026). Ruth,
+// five days after the 4 October fix, in the same words: "absolutely nowhere is
+// the 'Ask about this or change this' button working correctly... This was
+// built, but it is not happening, which means noone can use it to fix things,
+// ask or edit." All six checks above passed while she said it.
+//
+// They passed because every one of them starts from `askNow` - they verify that
+// the buttons which SEND do it correctly. day-log.tsx did not send, so it was
+// not a sender, so it was exempt from all of them. It carried `prefill` alone,
+// which meant it opened Chat, left half a sentence in the composer and stopped,
+// and on a second tap did not even do that. It sits behind the Log's food,
+// movement and measurement history - nearly every day card she taps. A check
+// that only examines the things already doing it right cannot find the thing
+// not doing it at all.
+//
+// So this one starts from the other end: EVERY navigation into chat carrying a
+// prefill. Each must be one of two things on purpose. A sender, or a stem named
+// in the list below with a reason. Something that is neither is the bug, and a
+// new button cannot be born into it quietly - it fails here until somebody
+// decides which it is.
+const DELIBERATE_STEMS = {
+  'log/cycle.tsx': 'My period started - she finishes it with when.',
+  'log/index.tsx': "I've noticed  - the whole point is what she noticed.",
+  'settings/almanac.tsx': 'Update an Almanac entry - ends in an ellipsis she completes.',
+  'body-manual.tsx': 'A measurement she is about to type a number into.',
+};
+
+check('every chat navigation either sends or is a named stem', () => {
+  const unclassified = [];
+  for (const file of files) {
+    if (path.resolve(file) === path.resolve(CHAT)) continue;
+    const src = strip(readFileSync(file, 'utf8'));
+    let at = src.indexOf('prefill:');
+    while (at >= 0) {
+      const end = src.indexOf('});', at);
+      const block = src.slice(at, end < 0 ? at + 500 : end);
+      const sends = /askNow:/.test(block);
+      const named = Object.keys(DELIBERATE_STEMS).some((k) => file.replace(/\\/g, '/').endsWith(k));
+      if (!sends && !named) {
+        unclassified.push(`${file}: ${src.slice(at, at + 70).replace(/\s+/g, ' ')}`);
+      }
+      at = src.indexOf('prefill:', at + 1);
+    }
+  }
+  ok(
+    unclassified.length === 0,
+    unclassified.join('\n          ') +
+      '\n          Each of these opens chat with text and no askNow, so it fills the ' +
+      'composer and stops.\n          Either give it askNow + askNonce, or add it to ' +
+      'DELIBERATE_STEMS with the reason it is a half-sentence she finishes.'
+  );
+  return `${Object.keys(DELIBERATE_STEMS).length} named stems, every other prefill sends`;
+});
+
+check('and that check can fail', () => {
+  // The assertion is that a list came back empty, and an empty list is also
+  // what a scan that finds nothing returns. So: prove it sees prefills at all,
+  // and prove an unclassified one would be caught.
+  const withPrefill = files.filter(
+    (f) => path.resolve(f) !== path.resolve(CHAT) && strip(readFileSync(f, 'utf8')).includes('prefill:')
+  );
+  ok(withPrefill.length >= 6, `only ${withPrefill.length} files with a prefill found - the scan is blind`);
+  // The real day-log line as it was until this morning, which all six checks
+  // above passed over.
+  const wasBroken = "router.push({ pathname: '/', params: { prefill: subject(day.date) } });";
+  ok(!/askNow:/.test(wasBroken), 'the regression case is not actually a non-sender');
+  ok(
+    !Object.keys(DELIBERATE_STEMS).some((k) => 'mobile/src/components/day-log.tsx'.endsWith(k)),
+    'day-log is on the stem list, which would exempt the bug this check exists for'
+  );
+  return `${withPrefill.length} files carry a prefill, and the old day-log line would fail`;
+});
+
+// ---- 8. a tag the receiver cannot read is not a tag ----------------------
+check('every discussType passed is one the chat screen can read', () => {
+  // 'me' was passed from the Me tab from 7 October and matched neither branch
+  // in index.tsx, so the tag was dropped on arrival and never reached a turn.
+  // The union lives in three places that have to agree; this checks the two in
+  // the repo. Known and deliberate exceptions are listed, so the gap is a
+  // decision rather than a silence.
+  const KNOWN_UNREADABLE = { 'me-protocol.tsx': "'me' has no card that can draw a Me row yet" };
+  const readable = ['food', 'activity', 'measurement', 'plan'];
+  const offenders = [];
+  for (const file of files) {
+    if (path.resolve(file) === path.resolve(CHAT)) continue;
+    const src = strip(readFileSync(file, 'utf8'));
+    for (const m of src.matchAll(/discussType:\s*'([a-z]+)'/g)) {
+      if (readable.includes(m[1])) continue;
+      if (Object.keys(KNOWN_UNREADABLE).some((k) => file.replace(/\\/g, '/').endsWith(k))) continue;
+      offenders.push(`${file}: discussType '${m[1]}' is not one of ${readable.join(', ')}`);
+    }
+  }
+  ok(offenders.length === 0, offenders.join('\n          '));
+  // And the receiver really does only read those four.
+  ok(/entryType === 'food'/.test(chat), 'the food branch has moved');
+  ok(
+    /entryType === 'activity'/.test(chat) && /entryType === 'plan'/.test(chat),
+    'the non-food branch has moved'
+  );
+  return `4 readable types, ${Object.keys(KNOWN_UNREADABLE).length} known gap`;
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);

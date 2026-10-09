@@ -109,10 +109,15 @@ check('the card names itself when it opens chat', () => {
   // reads "Talking about this entry" over a card that has one.
   const at = me.indexOf('I would like to talk through');
   assert.ok(at > 0, 'the talk-this-through link has gone');
-  // 700, not 400: the first version cut off at "seedTitle: row" and failed on
-  // code that was correct. A fixed window over source is brittle by nature, so
-  // it is set well past what the block needs rather than snugly around it.
-  const link = me.slice(at, at + 700);
+  // THE WINDOW IS THE BLOCK, NOT A NUMBER (9 October 2026). This was 400
+  // characters, then 700, and it failed a third time - on correct code, because
+  // a comment explaining why 'me' is not a readable discussType pushed
+  // seedTitle past the end. A check that fails when a note grows is measuring
+  // the wrong thing, so it now reads to the end of the params object it is
+  // actually asking about.
+  const close = me.indexOf('});', at);
+  assert.ok(close > at, 'the params object around the link does not close');
+  const link = me.slice(at, close);
   assert.ok(/seedTitle: row\.title/.test(link), 'the card sends no title, so the anchor cannot name it');
   return 'the anchor says the card name';
 });

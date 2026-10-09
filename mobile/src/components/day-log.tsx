@@ -400,7 +400,38 @@ function DayRow({
               two doors into one room, and "Edit" would promise a form that does
               not exist. Her wording, 26 September. */}
           <Pressable
-            onPress={() => router.push({ pathname: '/', params: { prefill: subject(day.date) } })}
+            // IT SENDS (9 October 2026). Ruth: "absolutely nowhere is the 'Ask
+            // about this or change this' button working correctly - it is meant
+            // to take a card to the chat, to show what was asked about, and a
+            // welcome comment to refer to it. This was built, but it is not
+            // happening, which means noone can use it to fix things, ask or
+            // edit."
+            //
+            // This passed `prefill` and nothing else, so it opened Chat, left
+            // half a sentence in the composer and stopped - and with no nonce
+            // the SECOND tap in a session did not even do that, because the
+            // guard in index.tsx is keyed on the nonce and falls back to the
+            // text, which is identical every time. The same two faults were
+            // fixed on the food card on 16 September and on plans, goal and the
+            // week on 4 October. This component was missed all three times, and
+            // it is the one behind the Log's food, movement and measurement
+            // history - which is to say nearly every day card she taps.
+            //
+            // NO ENTRY TAG, deliberately: `subject` names a DAY, and a day is
+            // not one of the four things discuss-card can draw. index.tsx
+            // already treats a null tag as a real case, so this opens a
+            // conversation about the day by name without pretending to anchor
+            // to a row.
+            onPress={() =>
+              router.push({
+                pathname: '/',
+                params: {
+                  prefill: subject(day.date),
+                  askNow: '1',
+                  askNonce: String(Date.now()),
+                },
+              })
+            }
             accessibilityRole="button"
             accessibilityLabel={`Ask about or change ${shortDay(day.date)}`}
             hitSlop={Spacing.two}
