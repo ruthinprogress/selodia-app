@@ -87,6 +87,25 @@ export const REPLY_WRITTEN_AFTER_THE_SAVES = { typed: true, voice: true };
  */
 export const REPLY_STREAMS_TO_VOICE = true;
 
+/**
+ * Let the spoken reply out before the saves have finished.
+ *
+ * Ruth, 9 October 2026. The words exist about three seconds before they are
+ * currently allowed out: the writer starts ahead of the classifier and streams
+ * into a sink that is held shut until the saves are done. This opens it as soon
+ * as the turn is known to be ordinary.
+ *
+ * WHAT IT COSTS, stated plainly because it is the only thing it costs. A save
+ * that failed is APPENDED to the reply rather than written into it, so on those
+ * turns the correction sounds bolted on. Everything that could replace a reply
+ * outright - an unsafe goal, a red flag, the allergy gate - is checked BEFORE
+ * the sink opens, so none of them can arrive after she has heard something.
+ *
+ * Set to false and the reply waits for the saves exactly as it did.
+ */
+export const SPEAK_BEFORE_SAVES = true;
+
+
 /** Does the rebuilt path write this turn's reply, before anything else is asked? */
 export function newPathWrites(voice: boolean): boolean {
   return voice ? REPLY_WRITTEN_AFTER_THE_SAVES.voice : REPLY_WRITTEN_AFTER_THE_SAVES.typed;

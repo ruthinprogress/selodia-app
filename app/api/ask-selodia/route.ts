@@ -23,6 +23,7 @@ import { statesATrackedMetric } from '../../lib/stated-measurement';
 import {
   newPathWrites,
   REPLY_STREAMS_TO_VOICE,
+  SPEAK_BEFORE_SAVES,
   turnIsOrdinary,
   writeReplyAfterSaves,
 } from '../../lib/chat-path';
@@ -2352,6 +2353,37 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       previousRevisitCount,
     });
 
+  // RELEASED HERE, BEFORE THE SAVES. See SPEAK_BEFORE_SAVES.
+  //
+  // Everything that could REPLACE the reply is settled above or checked here;
+  // the only thing that can still change it is a save that failed, which is
+  // appended rather than woven in. The writer has been streaming into the sink
+  // since before the classifier answered, so this is where those words stop
+  // being held and start being heard.
+  const redFlagAhead = RED_FLAGS_LIVE && matchRedFlag(message ?? '') !== null;
+  const speakNow =
+    mayStream &&
+    SPEAK_BEFORE_SAVES &&
+    !redFlagAhead &&
+    assessGoalWeight(result.statedGoalWeightKg, profile?.height_cm).verdict !== 'unsafe' &&
+    turnIsOrdinary({
+      // GUARANTEED, not assumed: `mayStream` is false for anybody with a food
+      // exclusion, which is the only way this gate can arm.
+      allergyGateSafe: true,
+      resourceCard,
+      // An unsafe goal is excluded on the line above, and that is the only
+      // thing that produces one.
+      goalResourceCard: null,
+      escalationStep: nextEscalationStep,
+      classification: nextClassification,
+      nonDistress: NON_DISTRESS_CLASSIFICATIONS,
+    });
+
+  if (speakNow) {
+    timing.mark('spokenAloudEarly');
+    sink.open();
+  }
+
   // Silent food/activity logging (Part Twelve). The reply is purely the
   // safety/conversational response; the save is confirmed by an ephemeral
   // visual toast in the client (the `saved` field), never in the reply text.
@@ -3851,7 +3883,14 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // again with the facts, which costs the sequential time on that turn and is
     // the correct trade: a reply missing the one thing she needed to know is the
     // failure this entire rebuild exists to prevent.
-    const speculationHeld = spokenReplyInFlight !== null && appendedNotes.length === 0;
+    // ALREADY SPEAKING MEANS ALREADY COMMITTED. If the sink opened before the
+    // saves ran, those words have been heard and cannot be taken back, so the
+    // speculative reply IS the reply and anything the saves turned up is
+    // appended to it below. Rewriting it here would mean saying a different
+    // thing after she had heard the first one.
+    const alreadySpeaking = mayStream && sink.isOpen();
+    const speculationHeld =
+      spokenReplyInFlight !== null && (appendedNotes.length === 0 || alreadySpeaking);
     if (spokenReplyInFlight !== null && !speculationHeld) {
       console.log(
         `ASK-SELODIA: spoken reply written ahead was discarded - ${appendedNotes.length} thing(s) to report`
