@@ -39,8 +39,16 @@
 // rather than failing.
 
 import { execFileSync } from 'node:child_process';
+import { DELIVERY_BRANCH, WHY } from './update-target.mjs';
 
-const BRANCH = process.argv[2] ?? 'preview';
+// NOT AN ARGV DEFAULT ANY MORE. This line used to read
+//   const BRANCH = process.argv[2] ?? 'preview';
+// which is why this check passed for nine days while every publish went to
+// `production` and nothing reached her. Naming the branch here made the check's
+// subject a hypothesis - "would preview work?" - instead of the thing that
+// happened. The declaration now lives in one file that the publisher reads too,
+// and the last check below asks where the newest update actually went.
+const BRANCH = process.argv[2] ?? DELIVERY_BRANCH;
 const MOBILE = 'mobile';
 
 // NPX IS A .cmd ON WINDOWS, and Node refuses to execFile one without a shell -
@@ -205,6 +213,82 @@ check('the runtime versions match', () => {
       'A phone silently ignores an update built for a runtime it is not.'
   );
   return `runtime ${updateRuntime}`;
+});
+
+/**
+ * The branch holding the most recently published update in the whole project.
+ *
+ * Pure, so the case this check exists for can be tested without waiting for it
+ * to happen again. `branch:list --json` carries each branch with its newest
+ * update group, which is all this needs.
+ */
+export function newestBranch(branches) {
+  let best = null;
+  for (const b of branches ?? []) {
+    for (const u of b?.updates ?? []) {
+      const at = Date.parse(u?.createdAt ?? '');
+      if (!Number.isFinite(at)) continue;
+      if (!best || at > best.at) best = { at, name: b.name, message: u.message };
+    }
+  }
+  return best;
+}
+
+check('and this check can fail', () => {
+  // THE WHOLE POINT. The previous version of this file could not fail for the
+  // real fault, so prove this one does - on the actual 9 October data - before
+  // trusting what it says.
+  const brokenDay = [
+    { name: 'preview', updates: [{ createdAt: '2026-10-07T16:53:00Z', message: 'Build a report' }] },
+    { name: 'production', updates: [{ createdAt: '2026-10-09T22:03:00Z', message: 'Cycle bars' }] },
+  ];
+  ok(newestBranch(brokenDay)?.message === 'Cycle bars', 'the newest update was not found at all');
+  ok(
+    newestBranch(brokenDay.filter((b) => b.name === 'preview'))?.message !== 'Cycle bars',
+    'the 9 October mistake reads as fine'
+  );
+
+  // And a correct publish, where the same work is republished to the other
+  // branch seconds later, must NOT read as a failure.
+  const fixed = [
+    { name: 'preview', updates: [{ createdAt: '2026-10-10T10:31:00Z', message: 'Both branches' }] },
+    { name: 'production', updates: [{ createdAt: '2026-10-10T10:33:00Z', message: 'Both branches' }] },
+  ];
+  ok(
+    newestBranch(fixed)?.message === newestBranch(fixed.filter((b) => b.name === 'preview'))?.message,
+    'a correct publish reads as broken, which is the worse of the two faults'
+  );
+  ok(newestBranch([]) === null && newestBranch(undefined) === null, 'empty input invented a branch');
+  return 'the 9 October mistake fails, a correct publish passes';
+});
+
+check('the newest work in the project is also on the branch she can see', () => {
+  // The question the old check never asked. It verified that publishing to
+  // `preview` WOULD reach her, which was true throughout, while every actual
+  // publish went to `production`.
+  //
+  // COMPARED BY MESSAGE, NOT BY WHICH BRANCH IS NEWEST BY A SECOND. Publishing
+  // to her branch and republishing the same bundle to `production` leaves
+  // production newest by the time the republish takes, and an assertion that
+  // "the newest update is on preview" fails on a correct publish - a false
+  // blocker, which is worse than a missing one. A republish carries the message
+  // across, so the test is that the newest work anywhere and the newest work on
+  // her branch are the same work.
+  const branches = json(['branch:list']) ?? [];
+  const bl = Array.isArray(branches) ? branches : (branches?.currentPage ?? []);
+  ok(bl.length > 0, 'could not read the branch list');
+  const newest = newestBranch(bl);
+  ok(newest, 'no branch in this project has a dated update');
+  const hers = newestBranch(bl.filter((b) => b.name === DELIVERY_BRANCH));
+  ok(hers, `"${DELIVERY_BRANCH}" has no update at all, and it is the only branch she can see`);
+  ok(
+    hers.message === newest.message,
+    `the newest work in this project is "${newest.message}" on "${newest.name}", ` +
+      `while "${DELIVERY_BRANCH}" is still serving "${hers.message}" (${WHY}). ` +
+      'Published is not delivered: an update on a branch her channel does not point at ' +
+      'reaches no phone, and the CLI reports success either way.'
+  );
+  return `"${hers.message}" is on ${DELIVERY_BRANCH}`;
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

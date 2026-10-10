@@ -183,6 +183,10 @@ So the rule above is not wrong, it is incomplete. A pause is a pause when **the 
 
 **Do not wait to be asked.** The four facts at step 6 are still not inferable, so ask for them as part of accepting the overnight work — the same message in which she says goodnight is the right moment, and the cost of asking is one line.
 
+**An evening run is not an overnight run, and the test is midnight** (added 2026-10-10, after Ruth asked "are you counting over-night sessions as their own thing? because we're nor doing closeouts before then so that needs to be defined or we'll lose info"). She was right to ask and the answer had not been written down, so here it is. The rule above exists because of a run that ended in a morning she woke into, with nobody having recorded the day before it. A run that **finishes the same evening and closes out before midnight is one session**, and folding it in is correct rather than sloppy: on 9 October she said goodnight at about 22:00, nine commits went in, and the ceremony ran at 23:03 covering the whole day as Session 68. Nothing was owed twice and nothing was lost.
+
+So: **if the work will cross midnight, close out first and the night is the next session. If it will not, one close-out at the end covers it.** The honest difficulty is that which of those it will be is not knowable at the handover, so when it is in doubt, close out at the handover — that costs one ceremony and cannot lose a day, whereas guessing wrong the other way is exactly what Session 54 was.
+
 **An overnight run works on main like any other, in small commits** (Ruth, 30 September 2026). Earlier overnight briefs said "work on a branch", and that instruction is withdrawn — see *Main, not branches* above for what it cost. The protection a branch was meant to give is now given by the three checks before every push and by each commit being one fix that can be reverted alone. **An overnight run that ends with a red build has not finished**, whatever else is done: nothing on it can reach her phone, so nothing on it can be checked in the morning.
 
 ### Closing a session — the full ceremony
