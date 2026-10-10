@@ -79,6 +79,7 @@
       ],
       "react-native-health-connect",
       "./plugins/with-health-rationale",
+      "./plugins/with-product-name",
       [
         "expo-notifications",
         {
