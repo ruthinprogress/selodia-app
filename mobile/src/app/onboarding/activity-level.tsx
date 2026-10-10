@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { ActivityLevelChoices } from '@/components/activity-level-choices';
 import { OnboardingQuestion } from '@/components/onboarding-question';
 import { useOnboardingAction } from '@/components/onboarding-action';
+import { StepPermissionOffer } from '@/components/step-permission-offer';
 import { ACTIVITY_SCREEN } from '@/lib/body-mode';
 import { advanceOnboardingStep } from '@/lib/onboarding-step';
 import { useOneQuestion } from '@/lib/one-question';
@@ -50,6 +51,14 @@ export default function ActivityLevelStep() {
   return (
     <OnboardingQuestion question={ACTIVITY_SCREEN.question} subtitle={ACTIVITY_SCREEN.subtitle}>
       <ActivityLevelChoices />
+      {/* THE ONLY PLACE SETUP ASKS THE PHONE FOR HER STEPS (10 October 2026).
+          It used to be onboarding/equipment, which came out of the flow on 2
+          October when nine screens became seven - and the operating-system
+          request went with it unnoticed, so no account created since has been
+          asked. See components/step-permission-offer.tsx for the whole of it,
+          including why ticking the consent box is not the same thing and why
+          that made it invisible. */}
+      <StepPermissionOffer />
     </OnboardingQuestion>
   );
 }
