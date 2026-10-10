@@ -19,7 +19,7 @@
 // day: "i think the month the period starts is the month it's assigned to". So
 // a cycle running 20 September to 21 October is September's.
 
-import { periodStarts, type CycleEvent } from '@/lib/cycle-history';
+import { periodStarts, SHORTEST_PLAUSIBLE, type CycleEvent } from '@/lib/cycle-history';
 
 export type CycleBar = {
   /** ISO date the period started. The key for the row. */
@@ -34,7 +34,45 @@ export type CycleBar = {
   soFar: number | null;
   /** The month this cycle is filed under: the month it started. */
   label: string;
+  /**
+   * Starts absorbed into this one because they were too close to be cycles.
+   *
+   * Empty almost always. When it is not, the row says so rather than the app
+   * quietly picking which of two dates she meant.
+   */
+  alsoStarted: string[];
 };
+
+/**
+ * Starts that are too close together are ONE period logged twice, not two cycles.
+ *
+ * Her phone showed a "6 day cycle" in September, from two starts six days
+ * apart, and that one row then produced "Your last three were 6, 28 and 28
+ * days" and "A range of 6 to 28" - a spread that says her cycle is wildly
+ * irregular when it is not. cycle-history has excluded intervals like that from
+ * its averages since it was written; this file had no rule at all.
+ *
+ * THE LATER DATE WINS, for two reasons. It is the more recent thing she said,
+ * and it is the one cycle-history already treats as the current cycle's start -
+ * so keeping the earlier one would have the bars saying day 20 while the line
+ * above them said day 14.
+ *
+ * NOTHING IS DELETED. The absorbed date is carried on the row so the screen can
+ * tell her two starts are logged close together and let her fix whichever is
+ * wrong. Deciding for her which one she meant is not the app's to do.
+ */
+function mergeCloseStarts(starts: string[]): { start: string; alsoStarted: string[] }[] {
+  const out: { start: string; alsoStarted: string[] }[] = [];
+  for (const start of starts) {
+    const prev = out[out.length - 1];
+    if (prev && daysBetween(prev.start, start) < SHORTEST_PLAUSIBLE) {
+      out[out.length - 1] = { start, alsoStarted: [...prev.alsoStarted, prev.start] };
+      continue;
+    }
+    out.push({ start, alsoStarted: [] });
+  }
+  return out;
+}
 
 const MS = 86_400_000;
 
@@ -65,7 +103,8 @@ function periodEnds(events: CycleEvent[]): string[] {
  * a fixed date against fixed events.
  */
 export function cycleBars(events: CycleEvent[], today: string): CycleBar[] {
-  const starts = periodStarts(events);
+  const merged = mergeCloseStarts(periodStarts(events));
+  const starts = merged.map((m) => m.start);
   const ends = periodEnds(events);
   if (starts.length === 0) return [];
 
@@ -84,6 +123,7 @@ export function cycleBars(events: CycleEvent[], today: string): CycleBar[] {
       bleed,
       soFar: next ? null : Math.max(1, daysBetween(start, today) + 1),
       label: monthLabel(start),
+      alsoStarted: merged[i].alsoStarted,
     };
   });
 
@@ -127,6 +167,7 @@ function withGaps(bars: CycleBar[]): CycleBar[] {
         bleed: null,
         soFar: null,
         label: monthLabel(m),
+        alsoStarted: [],
       });
     }
   }

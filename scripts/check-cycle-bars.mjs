@@ -140,5 +140,81 @@ check('no period ever logged says nothing at all', () => {
   return 'null, not a zero';
 });
 
+// HER REAL SEPTEMBER, 10 October 2026. Two period starts six days apart became
+// a "6 day cycle" on her phone, and that one row then produced "Your last three
+// were 6, 28 and 28 days" and "A range of 6 to 28" - a spread saying her cycle
+// is wildly irregular when it is not.
+//
+// EVERY ASSERTION ABOVE PASSED THROUGHOUT. They were built on her five real
+// lengths, all plausible, so none of them could see a rule that did not exist.
+// cycle-history had excluded intervals like this from its averages since it was
+// written; this file's module had no lower bound at all, and it was the one she
+// could see.
+const SEPT = [
+  { event_date: '2026-06-01', event_type: 'period_start' },
+  { event_date: '2026-06-29', event_type: 'period_start' },
+  { event_date: '2026-07-27', event_type: 'period_start' },
+  { event_date: '2026-08-24', event_type: 'period_start' },
+  // The pair. Six days apart: one period, logged twice.
+  { event_date: '2026-09-21', event_type: 'period_start' },
+  { event_date: '2026-09-27', event_type: 'period_start' },
+];
+
+check('two starts too close together are one period, not a six-day cycle', () => {
+  const bars = cycleBars(SEPT, '2026-10-10');
+  const lengths = bars.filter((b) => !isGap(b)).map((b) => b.length).filter((n) => n !== null);
+  assert.ok(!lengths.includes(6), `a six-day cycle is still being drawn: ${lengths.join(', ')}`);
+  // NEWEST FIRST, AND AUGUST IS NOW 34. My first version of this expected
+  // [28, 28, 28] and the code was right: absorbing the 21st into the 27th
+  // means the August cycle genuinely ran 24 August to 27 September. That is
+  // the honest consequence of deciding the later date is the real start, and
+  // a 34-day cycle is a thing her body did rather than a thing the merge
+  // invented. Pretending it was still 28 would be the actual error.
+  assert.deepStrictEqual(lengths, [34, 28, 28, 28], `got ${lengths.join(', ')}`);
+  return 'the pair folded in, August reads 34';
+});
+
+check('the later date wins, so the bars and the day count agree', () => {
+  // cycle-history reads the LATEST start as the current cycle's start and says
+  // "day 14" on 10 October. If the merge kept the earlier date the bars would
+  // say day 20 underneath that sentence.
+  const open = cycleBars(SEPT, '2026-10-10').find((b) => b.soFar !== null);
+  assert.strictEqual(open.start, '2026-09-27', `open cycle starts ${open.start}`);
+  assert.strictEqual(open.soFar, 14, `day ${open.soFar}, not 14`);
+  return 'open cycle starts 27 Sept, day 14';
+});
+
+check('nothing is deleted - the absorbed date is carried so she can fix it', () => {
+  const open = cycleBars(SEPT, '2026-10-10').find((b) => b.soFar !== null);
+  assert.deepStrictEqual(open.alsoStarted, ['2026-09-21']);
+  // And an ordinary row carries none, or every row would be warning about nothing.
+  const ordinary = cycleBars(SEPT, '2026-10-10').filter((b) => b.length === 28);
+  for (const b of ordinary) assert.deepStrictEqual(b.alsoStarted, [], `${b.label} invented a duplicate`);
+  return 'the 21st is kept on the row, and only there';
+});
+
+check('and this check can fail', () => {
+  // Prove the rule is a rule and not an artefact of these dates: a genuinely
+  // short cycle ABOVE the bound must survive, or the fix would be quietly
+  // deleting the short cycles that matter most in perimenopause.
+  const short = [
+    { event_date: '2026-06-01', event_type: 'period_start' },
+    { event_date: '2026-06-18', event_type: 'period_start' }, // 17 days: short, real
+    { event_date: '2026-07-16', event_type: 'period_start' },
+  ];
+  const lengths = cycleBars(short, '2026-07-20')
+    .filter((b) => !isGap(b))
+    .map((b) => b.length)
+    .filter((n) => n !== null);
+  assert.ok(lengths.includes(17), `a real 17-day cycle was swallowed: ${lengths.join(', ')}`);
+  // And the summary stops claiming a range it no longer has evidence for.
+  const lines = summaryLines(cycleSummary(cycleBars(SEPT, '2026-10-10')));
+  assert.ok(
+    !lines.some((l) => l.includes('6 to 28')),
+    `the range is still wrong: ${lines.join(' ')}`
+  );
+  return '17 days kept, "a range of 6 to 28" gone';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);

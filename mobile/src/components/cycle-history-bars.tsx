@@ -174,6 +174,15 @@ function Row({
           )}
         </View>
       )}
+
+      {/* TWO STARTS TOO CLOSE TO BE TWO CYCLES. cycle-bars folds them into one
+          row rather than drawing a "6 day cycle", and says so here rather than
+          deciding on her behalf which of the two dates she meant. */}
+      {bar.alsoStarted.length > 0 && (
+        <ThemedText type="detail" themeColor="textSecondary" style={styles.alsoStarted}>
+          Also logged as starting {bar.alsoStarted.map(human).join(' and ')}. Worth correcting whichever is wrong.
+        </ThemedText>
+      )}
     </Pressable>
   );
 }
@@ -195,4 +204,5 @@ const styles = StyleSheet.create({
   bleed: { height: '100%' },
   rest: { flex: 1, height: '100%' },
   openEnd: { width: 34, height: '100%', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 7 },
+  alsoStarted: { marginTop: Spacing.one, lineHeight: 16 },
 });

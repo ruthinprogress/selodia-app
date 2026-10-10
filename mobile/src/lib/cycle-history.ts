@@ -57,8 +57,14 @@ export const NOMINAL_LENGTH = 28;
  * wide on purpose: real cycles vary more than most charts admit, and the job
  * here is to exclude obvious gaps, not to decide what a normal cycle is.
  */
-const SHORTEST_PLAUSIBLE = 15;
-const LONGEST_PLAUSIBLE = 60;
+// EXPORTED SINCE 10 OCTOBER 2026, because cycle-bars.ts was deciding the same
+// question with no rule at all. Two starts six days apart became a "6 day
+// cycle" on her phone, which then produced "Your last three were 6, 28 and 28"
+// and "A range of 6 to 28" - while THIS file, with the rule below, had already
+// excluded that interval from every average. One screen, two definitions of a
+// cycle, and the one with no rule was the one she could see.
+export const SHORTEST_PLAUSIBLE = 15;
+export const LONGEST_PLAUSIBLE = 60;
 
 function daysBetween(a: string, b: string): number {
   const ms = Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`);

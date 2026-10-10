@@ -34,7 +34,13 @@ const ROOTS = ['mobile/src/app/(tabs)', 'mobile/src/hooks'];
 const KNOWN_STALE = {
   'now/index.tsx':
     "the weekly roundup paragraph. Written once a week, so it goes stale slowly - but a roundup generated on Sunday will not appear until the app is restarted.",
-  'log/cycle.tsx': 'cycle history. A period logged in Chat will not appear here until a restart.',
+  // log/cycle.tsx CAME OFF THIS LIST on 10 October 2026, when the screen split
+  // into the history screen and log/cycle-day.tsx and both were given a focus
+  // refetch. It had been named here rather than fixed, which was the right call
+  // at the time and stopped being one the moment the file was being rewritten
+  // anyway. The exemption was removed by this check refusing to pass with a
+  // stale entry on the list - the half of it that fails when something is
+  // fixed, not only when something breaks.
   'log/feeling.tsx': 'the feelings history, same.',
   'use-burn-figures.ts': 'the day burn figures behind the Now rows.',
   'use-dimension-activities.ts':

@@ -106,6 +106,54 @@ export function Chips({
   );
 }
 
+/**
+ * Chips under headings, for a list too long to read as one wall.
+ *
+ * THE GROUPS ARE THE DESIGN, NOT THE LAYOUT (Ruth, 9 October 2026, on a draft
+ * headed "the forty+ ones": "it's not quite the right language....it feels
+ * off"). Grouping by WHO GETS A SYMPTOM makes it a consequence of her age.
+ * Grouping by WHAT IT IS makes hot flushes and brain fog unremarkable entries in
+ * an ordinary list, which is the stronger statement.
+ *
+ * The groups existed in lib/cycle-day.ts from that evening, with seven passing
+ * assertions on them, and NO SCREEN RENDERED THEM - the Symptoms card drew the
+ * flat list and she got a wall of 25 chips on her phone. Every one of those
+ * assertions tested the data. A check on the thing already doing it right cannot
+ * find the thing not doing it at all, which is the third time that shape has
+ * cost a day. check-symptom-groups-are-rendered.mjs now starts from the screen.
+ */
+export function GroupedChips({
+  groups,
+  extras,
+  selected,
+  onToggle,
+}: {
+  groups: { name: string; items: string[] }[];
+  /** Her own words, and anything she has used before: above the groups, unheaded. */
+  extras?: string[];
+  selected: string[];
+  onToggle: (option: string) => void;
+}) {
+  const known = new Set(groups.flatMap((g) => g.items).map((s) => s.toLowerCase()));
+  // Only the ones that are hers. A chip that is already in a group must not
+  // appear twice, or selecting one leaves the other looking unselected.
+  const mine = (extras ?? []).filter((s) => !known.has(s.toLowerCase()));
+
+  return (
+    <View style={styles.groups}>
+      {mine.length > 0 && <Chips options={mine} selected={selected} onToggle={onToggle} />}
+      {groups.map((g) => (
+        <View key={g.name} style={styles.group}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.groupName}>
+            {g.name}
+          </ThemedText>
+          <Chips options={g.items} selected={selected} onToggle={onToggle} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** The "Add another" that makes the symptom list hers. */
 export function AddAnother({
   value,
@@ -160,6 +208,9 @@ const styles = StyleSheet.create({
   optional: { fontStyle: 'italic' },
   spacer: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  groups: { gap: Spacing.four },
+  group: { gap: Spacing.two },
+  groupName: { textTransform: 'uppercase', letterSpacing: 0.6 },
   chip: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
