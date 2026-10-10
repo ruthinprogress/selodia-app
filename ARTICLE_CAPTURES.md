@@ -840,3 +840,25 @@ No hot flushes. No night sweats. No brain fog. No broken sleep, no heavier flow,
 The first fix put them in a group called "the forty plus ones" and that was worse. It makes the symptoms a consequence of your age. It quietly says this is what you are now, in an app whose first line is that your body is not a problem to solve.
 
 They are in the ordinary groups now, next to everything else, which says more than a section announcing who they are for.
+
+---
+
+## 10 October 2026 - I ticked the box. My phone was never asked.
+
+Selodía went onto Apple today, which was the plan. The thing I will remember is what happened an hour later.
+
+I made a brand new account, on a brand new phone, and walked through setup like a stranger would. Near the start there are three boxes to tick. The first one says you agree to Selodía collecting and using your health data. I ticked it. Of course I did, it is my app.
+
+Then I finished setting up and my step count never appeared.
+
+Here is what I had not understood, and I built the thing. Agreeing is not the same as allowing. That box is a legal consent. It says you are happy for us to handle your data, and it is required, and it grants the app precisely nothing. The only thing that actually lets an app read your steps is a separate dialog that Apple or Google puts on your screen. No app can fake that one, or imply it, or tick it on your behalf. That is the point of it.
+
+Our own setup had stopped asking. The screen that raised that dialog had been taken out weeks earlier when I shortened the flow from nine questions to seven, and nobody noticed the request had gone with it.
+
+What makes this worth writing down is how it hides. Nobody would ever report it. You tick a box that says health data, the app says nothing is wrong, and your movement simply never shows up. You would assume your phone was being difficult, or that the feature was rubbish, and you would stop looking. I only found it because I used an account that had never said yes to anything before. On my own account it had been working for months, which is exactly why I could not see it.
+
+So two things I am taking from it.
+
+If an app asks you to agree to something about your health data, that is paperwork. The permission is the grey box your phone puts up afterwards, with your phone's own wording on it. If you never saw one of those, the app is not reading anything, whatever you ticked.
+
+And if you are building something, the person who finds your worst bugs is the one who has never used it. Not your most careful tester. Someone brand new, on a device that remembers nothing.

@@ -479,3 +479,71 @@ The rule: **when a search comes back empty, or a list comes back short, confirm 
 So every number in the app agreed that voice was fast while she sat there waiting, and I quoted one of those numbers back to her that morning as evidence a change had not helped. It had not helped, but the measurement I used could not have shown it either way.
 
 The general form: **an instrument that covers only the part you wrote will exonerate the part you wrote.** Before concluding from a timing, check that the clock starts where the user's wait starts. (9 October 2026.)
+
+**Open the artifact, not the thing that was supposed to produce it.** Three
+confident wrong answers in one afternoon, all from reading a configuration
+instead of the file it builds.
+
+`expo config --type introspect` resolves without a build profile, which I said
+out loud at the time, and then used anyway to worry that a production build
+shipped the Expo dev client's local-network prompt and a blanket HTTP exception.
+The `.ipa` contains neither, and no dev-client files at all.
+
+A clinical health records entitlement, read off `embedded.mobileprovision` and
+reported as a probable cause of a silent permission failure. That file lists what
+the *identifier is permitted*, not what the app requests. The app's own
+entitlements, in the signed binary a few hundred bytes further on, are clean.
+
+And `has_scales` read `false` in her profile, which became the foundation of a
+diagnosis that the equipment screen had run and the permission request had failed
+quietly. It is the column default. Nothing wrote it.
+
+The shipped file was on disk and unopened in two of those three. Opening it
+settled all three questions in about five minutes, including one Apple had
+already told us the answer to.
+
+The rule: **a default, a placeholder, a permission and an answer are
+indistinguishable once they are a value in a cell, and a config is a prediction
+of a build rather than a description of one.** Where an artifact exists - a
+built binary, a stored row with a known default, a rendered page - read it
+before reasoning about what produced it. (10 October 2026.)
+
+**Consent is not permission, and software that blurs them lies without meaning
+to.** Ruth made a new account, finished setup, and had no step count. Told the
+screen that requests Health access had been removed from the flow, she said: *"The
+health permissions are the three ticks at the start, that was there and I ticked
+them."*
+
+The first of those ticks reads "I understand and agree to Selodía collecting and
+using my health data as described". Any reasonable person reads that as the health
+data on their phone. It is a GDPR consent to *process*, and it grants the
+application nothing whatsoever. Only the platform's own dialog does, and no app
+can fake one, imply one, or tick it on somebody's behalf.
+
+What makes it dangerous is that it cannot be reported. There is no error. You
+agree to something called health data, the app says nothing is wrong, and your
+movement never appears - so you conclude the feature is poor, or your phone is
+being difficult, and you stop looking. It had been live for eight days and was
+invisible from every existing account, because every existing account had granted
+HealthKit months earlier.
+
+The rule, which is about wording as much as code: **where the app asks for
+agreement in its own words, name what the agreement does NOT do, and put a check
+on the platform request itself rather than on the sentence.** A check that the
+consent copy exists would have passed throughout. (10 October 2026.)
+
+**The person who finds the worst bugs has never used it.** A new account on a
+phone that had granted nothing found, in roughly three minutes, a fault that two
+weeks of careful testing had not: setup never asks for Health access. It also
+produced four other reports in the same sitting.
+
+None of it was visible from her own account, and that is structural rather than
+bad luck. An established account can only ever *redo* a flow it has already
+completed, with permissions already granted, rows already written and defaults
+already overwritten by real answers. The failures that matter to a new user live
+precisely in the states an old account can no longer enter.
+
+The rule: **a walkthrough on a fresh account is not a nicer version of testing,
+it is the only thing that tests the first run.** Schedule it as its own work
+before anyone outside sees the app, and treat anything it finds as representative
+rather than as an edge case. (10 October 2026.)
