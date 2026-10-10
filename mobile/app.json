@@ -74,7 +74,7 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Selodía reads your step count to give you a more complete picture of your daily movement.",
-          "NSHealthUpdateUsageDescription": false
+          "NSHealthUpdateUsageDescription": "Selodía does not add anything to your Health data. It only ever reads your step count."
         }
       ],
       "react-native-health-connect",
