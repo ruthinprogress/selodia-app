@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import AppleHealthKit, { type HealthKitPermissions, type HealthValue } from 'react-native-health';
+import { appleHealthAvailable, readAppleSteps, requestAppleStepAccess } from '@/lib/apple-health';
 
 // LOADED WHERE IT IS USED, NEVER AT IMPORT (23 September 2026). See the long
 // note in lib/steps.ts: react-native-health-connect evaluates its Android
@@ -72,53 +72,38 @@ export async function requestStepPermission(): Promise<StepPermissionResult> {
 // did not walk yesterday looks identical to somebody who declined. That case is
 // 'unknown', and 'unknown' must never be written down as a decline - doing so
 // would suppress a later retry on the strength of a guess.
-function requestIOSStepPermission(): Promise<StepPermissionResult> {
-  return new Promise((resolve) => {
-    AppleHealthKit.isAvailable((_err, available) => {
-      if (!available) {
-        resolve('unsupported');
-        return;
-      }
-      const permissions: HealthKitPermissions = {
-        permissions: { read: [AppleHealthKit.Constants.Permissions.StepCount], write: [] },
-      };
-      AppleHealthKit.initHealthKit(permissions, (error) => {
-        if (error) {
-          console.log('STEP PERMISSION (ios): initHealthKit failed —', error);
-          resolve('declined');
-          return;
-        }
+// The library changed on 10 October 2026 - see lib/apple-health.ts - and none of
+// the reasoning above changed with it. What the request returns is still not an
+// answer about read access: @kingstinct's requestAuthorization resolves true
+// when the REQUEST completed, exactly as the old initHealthKit callback
+// reported only genuine failure. Asking for data remains the only honest
+// signal, so the shape of this function is deliberately the same.
+async function requestIOSStepPermission(): Promise<StepPermissionResult> {
+  if (!appleHealthAvailable()) return 'unsupported';
 
-        // A week, not a day: somebody setting the app up on a quiet morning may
-        // legitimately have almost no steps today, and a single empty day would
-        // read as no access at all.
-        const since = new Date();
-        since.setDate(since.getDate() - 7);
+  const asked = await requestAppleStepAccess();
+  if (!asked) {
+    // The request itself failed, which is not the same as a refusal and must
+    // not be written down as one.
+    console.log('STEP PERMISSION (ios): the authorisation request did not complete');
+    return 'unknown';
+  }
 
-        AppleHealthKit.getDailyStepCountSamples(
-          { startDate: since.toISOString(), endDate: new Date().toISOString() },
-          (readError: string, samples: HealthValue[]) => {
-            if (readError) {
-              // Includes an outright authorisation refusal, which iOS surfaces
-              // here rather than at init. Still not conclusive on its own, so it
-              // is logged and treated as unknown rather than asserted as a no.
-              console.log('STEP PERMISSION (ios): step read failed —', readError);
-              resolve('unknown');
-              return;
-            }
-            const hasData = Array.isArray(samples) && samples.some((s) => (s?.value ?? 0) > 0);
-            if (!hasData) {
-              console.log(
-                'STEP PERMISSION (ios): no step samples in the last 7 days. ' +
-                  'Either access was refused or there genuinely are none. iOS does not say which.'
-              );
-            }
-            resolve(hasData ? 'granted' : 'unknown');
-          }
-        );
-      });
-    });
-  });
+  // A week, not a day: somebody setting the app up on a quiet morning may
+  // legitimately have almost no steps today, and a single empty day would read
+  // as no access at all.
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+
+  const steps = await readAppleSteps(since, new Date());
+  if (steps === null || steps <= 0) {
+    console.log(
+      'STEP PERMISSION (ios): no steps in the last 7 days. ' +
+        'Either access was refused or there genuinely are none. iOS does not say which.'
+    );
+    return 'unknown';
+  }
+  return 'granted';
 }
 
 // ------------------------------------------------------------------ Android

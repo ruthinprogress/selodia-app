@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import AppleHealthKit, { type HealthKitPermissions, type HealthValue } from 'react-native-health';
+import { readAppleSteps } from '@/lib/apple-health';
 import { currentUserId } from '@/lib/current-user';
 import { supabase } from '@/lib/supabase';
 
@@ -128,45 +128,25 @@ async function readAndroidSteps(startISO: string, endISO: string): Promise<numbe
 
 // -------------------------------------------------------------------- iOS
 //
-// initHealthKit runs first and every time. It is how the native side learns
-// which types this app may ask for, and that registration does not survive a
-// process restart - so a reader that assumes onboarding already did it works on
-// the day someone sets the app up and silently returns nothing ever after.
-// Calling it again on a phone that has already granted access shows no prompt.
+// NO initHealthKit CALL ANY MORE, and that whole hazard goes with it. The old
+// library needed its permission set registered before every read, because the
+// registration did not survive a process restart - a reader that assumed
+// onboarding had already done it worked on setup day and silently returned
+// nothing ever after. The replacement asks HealthKit directly and there is
+// nothing to re-register.
 //
-// Apple never reveals whether READ access was granted (see step-permission.ts),
-// so an empty result is genuinely ambiguous: a refusal and a person who has not
-// walked today are indistinguishable. Both come back as null, which is the
-// honest answer, and neither is written down.
-function readIOSSteps(dayStartISO: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    const permissions: HealthKitPermissions = {
-      permissions: { read: [AppleHealthKit.Constants.Permissions.StepCount], write: [] },
-    };
-    AppleHealthKit.initHealthKit(permissions, (initError) => {
-      if (initError) {
-        console.log('STEPS (ios): initHealthKit failed -', initError);
-        resolve(null);
-        return;
-      }
-      AppleHealthKit.getStepCount({ date: dayStartISO }, (err: string, result: HealthValue) => {
-        if (err) {
-          console.log('STEPS (ios): getStepCount failed -', err);
-          resolve(null);
-          return;
-        }
-        const value = result?.value;
-        resolve(typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : null);
-      });
-    });
-  });
-}
+// Apple still never reveals whether READ access was granted (see
+// step-permission.ts), so an empty result is genuinely ambiguous: a refusal and
+// a person who has not walked today are indistinguishable. Both come back as
+// null, which is the honest answer, and neither is written down.
+//
+// See lib/apple-health.ts for why the library changed on 10 October 2026.
 
 /** Today's step count from the phone's own health platform, or null if unknown. */
 export async function readTodaySteps(): Promise<number | null> {
   const { startISO, endISO } = todayWindow();
   if (Platform.OS === 'android') return readAndroidSteps(startISO, endISO);
-  if (Platform.OS === 'ios') return readIOSSteps(startISO);
+  if (Platform.OS === 'ios') return readAppleSteps(new Date(startISO), new Date(endISO));
   return null;
 }
 
