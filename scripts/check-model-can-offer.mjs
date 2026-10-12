@@ -75,17 +75,18 @@ const BY_OWN_FIELD = { note: 'noteText' };
 /**
  * Types created by a DIFFERENT ROUTE, which the chat tool is right never to offer.
  *
- * `care` is the paperwork of being seen, and it comes from a document somebody
- * uploaded rather than from the model deciding a conversation sounded
- * administrative. It is named here because on 7 October 2026 it was in neither
- * list: not in the schema, correctly, and not in SAVE_TYPES either, which meant
- * coerceSaveType returned null and every parsed letter died on the last line of
- * its own route with a 500. The feature had never produced a single row.
- *
- * The exception only counts if the route really builds it, so that is asserted
- * rather than asserted-in-a-comment.
+ * EMPTY SINCE 12 OCTOBER 2026. `care` lived here: the paperwork of being seen,
+ * created only by a parsed letter, on the reasoning that it "comes from a
+ * document somebody uploaded rather than from the model deciding a conversation
+ * sounded administrative". Ruth sent a screenshot of her GP practice's website
+ * and said it should have explained what it saw and "asked if it was the users
+ * practice and if they wanted saves". A screenshot she chose to send is
+ * something she uploaded, so care is now offered by the chat tool too, and is
+ * therefore held to every rule here like any other offered type - including
+ * having its content shape described. Kept as an empty map, with the mechanism
+ * below, for the next type that genuinely has only its own route.
  */
-const BY_OWN_ROUTE = { care: 'app/api/parse-document/route.ts' };
+const BY_OWN_ROUTE = {};
 
 check('every save type the app accepts is reachable by the model', () => {
   const offered = schemaTypes();

@@ -93,6 +93,20 @@ check('and strips everything that can write, including fields that do not exist 
   return 'an invented future field is stripped by default';
 });
 
+check('an offer to keep a care detail survives, and no other offer does', () => {
+  // Ruth, 12 October 2026, on a screenshot of her GP practice's website: it
+  // should have "asked if it was the users practice and if they wanted saves".
+  // An offer saves nothing until her yes, so it is allowed through. The
+  // exception is exactly one type wide.
+  const care = SERVER.photoOnlyVerdict({ classification: 'routine', reply: 'x', proposedSave: { type: 'care', title: 'A practice' } });
+  ok(care.proposedSave && care.proposedSave.type === 'care', 'a care offer was stripped from a photo turn');
+  for (const t of ['me', 'marker', 'condition', 'symptom', 'rule']) {
+    const v = SERVER.photoOnlyVerdict({ classification: 'routine', reply: 'x', proposedSave: { type: t } });
+    ok(!('proposedSave' in v), `a ${t} offer survived a photo turn`);
+  }
+  return 'care offered, everything else still stripped';
+});
+
 check('the route applies it before it first reads the verdict', () => {
   const guard = route.indexOf('if (isPhotoOnly) photoOnlyVerdict(result);');
   ok(guard > 0, 'the route never calls photoOnlyVerdict');

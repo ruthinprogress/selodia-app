@@ -137,12 +137,31 @@ check('a parsed letter actually survives being turned into a card', () => {
     'the section does not survive coercion, so the card lands outside the group'
   );
 
-  // AND IT IS STILL NOT SOMETHING THE MODEL CAN INVENT. A care record comes off
-  // a document, never from a conversation sounding administrative.
+  // THE MODEL MAY OFFER ONE SINCE 12 OCTOBER 2026, AND ONLY OFFER IT. This
+  // assertion used to fail if "care" appeared in the chat's type union, on the
+  // rule that a care record comes off a document, never from a conversation.
+  // Ruth changed the rule, on a screenshot of her GP practice's website: it
+  // should have "asked if it was the users practice and if they wanted saves".
+  // A screenshot she chose to send is something she uploaded. So what this now
+  // holds is the narrower rule that survived:
   const chat = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
   const union = chat.match(/"type": ("[a-z]+"(?: \| "[a-z]+")*)/);
   assert.ok(union, 'the proposedSave type union has moved');
-  assert.ok(!/"care"/.test(union[1]), 'the model can now offer a care record out of thin air');
+  assert.ok(/"care"/.test(union[1]), 'the chat cannot offer a care record, so a practice she shows it cannot be kept');
+  //   - it is an OFFER: it goes through the same offer-and-yes as everything
+  //     else, and the app asks its own question before anything is written;
+  const pending = readFileSync('app/lib/pending-save.ts', 'utf8');
+  assert.ok(/if \(type === 'care'\) return CARE_OFFER_QUESTION;/.test(pending), 'a care offer has no question of its own');
+  //   - never because a conversation merely sounded administrative;
+  assert.ok(
+    /Never offer one because a conversation merely sounded administrative/.test(chat),
+    'the prompt no longer forbids offering a care record from a conversation that only sounded like admin'
+  );
+  //   - and it lands in How I Access Care whatever section the model named.
+  assert.ok(
+    /proposal\.type === 'care'\s*\?\s*CARE_SECTION/.test(pending),
+    'a care record can be filed under a section the model invented, where she will not find it'
+  );
   return 'kept, filed, and still not model-offerable';
 });
 

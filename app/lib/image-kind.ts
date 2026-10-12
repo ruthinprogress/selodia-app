@@ -55,4 +55,6 @@ export const IMAGE_KIND_PROMPT = `You are looking at ONE photo someone has just 
 
 A nutrition label is "food", not "document" - "document" means a document about this person's medical care.
 
+A web page, an app screen, a poster or a leaflet is NOT a "document", even one with an NHS logo or a practice's name on it: it is not about this person. A GP practice's website, a booking screen, a clinic's opening hours - choose "unclear", and the conversation will look at it properly.
+
 Choose "unclear" rather than guessing. A wrong guess files a photo against the wrong kind of data and is worse than asking. Respond with the classification only.`;

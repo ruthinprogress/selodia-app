@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { addSkill, skillAddNote, type SkillAddOutcome } from './skill-add';
 
 import { saveAlmanacEntry } from './almanac';
+import { CARE_SECTION } from './care-admin';
 import { coerceStatus, normaliseSection } from './me-card';
 import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
 
@@ -215,10 +216,17 @@ export const SAVE_TYPES: readonly SaveType[] = [
   // the database. The section I was about to ship would have been empty forever
   // and looked like a design decision.
   //
-  // IT IS NOT MODEL-OFFERABLE AND THAT IS DELIBERATE. A care record comes from a
-  // document somebody uploaded, never from the model deciding a conversation
-  // sounded administrative. check-model-can-offer.mjs carries that as a named
-  // exception rather than a hole, the same way `note` is named.
+  // MODEL-OFFERABLE SINCE 12 OCTOBER 2026, by Ruth's decision. Until then it
+  // came only from a parsed letter, on the reasoning that a care record "comes
+  // from a document somebody uploaded, never from the model deciding a
+  // conversation sounded administrative". She sent a screenshot of her GP
+  // practice's website and said what should have happened: "It should have seen
+  // the practice name and the online access system, explained what it saw and
+  // what those items do. Then asked if it was the users practice and if they
+  // wanted saves." A screenshot she chose to send IS something she uploaded, so
+  // the old reasoning holds; it was the route that was too narrow. The second
+  // half still stands and is in the prompt: never offered because a
+  // conversation merely sounded administrative.
   'care',
   'condition',
   // A RESULT SHE HAS BEEN GIVEN. Added 6 October 2026, and it was nearly added
@@ -539,6 +547,13 @@ export const SAVE_OFFER_QUESTION = 'Want me to keep that in your Almanac?';
 export const ME_OFFER_QUESTION = 'Want me to keep that in your Me tab?';
 
 /**
+ * A care record's own question, because it is not a Me card and should not be
+ * offered as one. It is kept in How I Access Care, under Health, and that is
+ * where she will look for it at a reception desk.
+ */
+export const CARE_OFFER_QUESTION = 'Want me to keep that in How I Access Care?';
+
+/**
  * A MARKER'S OFFER SAYS WHAT IT CHANGES, for the same reason a rule's does.
  *
  * Agreeing to "LDL elevated" quietly alters what she is offered to eat from then
@@ -589,7 +604,8 @@ export const WEEK_OFFER_QUESTION = 'Want me to put that in your week?';
 export const SKILL_OFFER_QUESTION = 'Want me to add that to your Skills?';
 
 export function offerQuestionFor(type: SaveType): string {
-  if (type === 'me' || type === 'care') return ME_OFFER_QUESTION;
+  if (type === 'care') return CARE_OFFER_QUESTION;
+  if (type === 'me') return ME_OFFER_QUESTION;
   if (type === 'marker') return MARKER_OFFER_QUESTION;
   if (type === 'condition') return CONDITION_OFFER_QUESTION;
   if (type === 'rule') return RULE_OFFER_QUESTION;
@@ -953,10 +969,16 @@ export async function commitSave(
   // A Me card's SECTION is its category, which is how the Almanac groups it and
   // how a new section comes into existence: by the first card arriving in it.
   // Nobody ever creates one.
+  // A CARE RECORD ALWAYS LANDS IN HOW I ACCESS CARE, whatever the model named
+  // its section. Since 12 October chat can offer one, and a practice filed
+  // under a section the model invented would be a care record she cannot find
+  // at the desk. Decided here rather than asked for in the prompt.
   const section =
-    CARD_TYPES.includes(proposal.type) && typeof proposal.content.section === 'string'
-      ? proposal.content.section
-      : null;
+    proposal.type === 'care'
+      ? CARE_SECTION
+      : CARD_TYPES.includes(proposal.type) && typeof proposal.content.section === 'string'
+        ? proposal.content.section
+        : null;
 
   // ONE CARD PER THING, NOT ONE PER CONVERSATION (2026-09-30).
   //

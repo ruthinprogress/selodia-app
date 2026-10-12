@@ -60,15 +60,25 @@ const KEEP_ON_A_PHOTO_TURN = new Set([
  */
 export function photoOnlyVerdict<T extends object>(result: T): T {
   const r = result as Record<string, unknown>;
+  // AN OFFER TO KEEP A CARE DETAIL SURVIVES (12 October 2026). An offer saves
+  // nothing - the app asks, and only her yes writes - so it is consistent with
+  // "nothing is saved from a photo until she confirms". Ruth, on a screenshot of
+  // her GP practice's website: it should have "asked if it was the users
+  // practice and if they wanted saves". Every other offer type is still
+  // stripped, and so is everything that writes directly, like a food log.
+  const save = r.proposedSave as { type?: unknown } | undefined;
+  const keepOffer = save && typeof save === 'object' && save.type === 'care';
   for (const key of Object.keys(r)) {
-    if (!KEEP_ON_A_PHOTO_TURN.has(key)) delete r[key];
+    if (KEEP_ON_A_PHOTO_TURN.has(key)) continue;
+    if (key === 'proposedSave' && keepOffer) continue;
+    delete r[key];
   }
   r.logIntent = 'none';
   return result;
 }
 
 /** For the classifier, which is the model with the tools. */
-export const PHOTO_ONLY_CLASSIFIER_NOTE = `THIS TURN IS A PHOTO WITH NO WORDS. Their message reads ${PHOTO_ONLY_MESSAGE} and the photo is attached to it. Do not log, save, correct, remember or set anything from it on this turn: the reply will say what is in it and ask what they want first, and anything they then confirm is saved on the next turn. Judge safety exactly as you would for any message.`;
+export const PHOTO_ONLY_CLASSIFIER_NOTE = `THIS TURN IS A PHOTO WITH NO WORDS. Their message reads ${PHOTO_ONLY_MESSAGE} and the photo is attached to it. Do not log, save, correct, remember or set anything from it on this turn: the reply will say what is in it and ask what they want first, and anything they then confirm is saved on the next turn. ONE EXCEPTION: if it shows something they would need in order to get care - a GP practice, a clinic, a booking or contact system, a phone number, a reference - OFFER it with proposedSave type "care". An offer keeps nothing until they say yes. Judge safety exactly as you would for any message.`;
 
 /**
  * For the writer, which is the model that speaks to her.
@@ -77,4 +87,4 @@ export const PHOTO_ONLY_CLASSIFIER_NOTE = `THIS TURN IS A PHOTO WITH NO WORDS. T
  * "when it is genuinely wanted", and somebody who has handed over a photo of a
  * letter wants to know what it says.
  */
-export const PHOTO_ONLY_WRITER_BLOCK = `THEY HAVE SENT A PHOTO WITH NO WORDS. It is attached to their message. Look at it properly and tell them plainly what you can see, including any words, numbers, names or dates on it that matter. Then ask ONE question about what they would like. If it looks like something that could be logged - a meal, a scale reading, a workout - say what you would log and ask before doing it. If it is a letter, a result, a prescription or a label, offer to go through what it means for them. Nothing has been saved from it. If no photo is actually attached, it did not come through: say so simply and ask them to send it again.`;
+export const PHOTO_ONLY_WRITER_BLOCK = `THEY HAVE SENT A PHOTO WITH NO WORDS. It is attached to their message. Look at it properly and tell them plainly what you can see, including any words, numbers, names or dates on it that matter. Then ask ONE question about what they would like. If it looks like something that could be logged - a meal, a scale reading, a workout - say what you would log and ask before doing it. If it is a letter, a result, a prescription or a label, offer to go through what it means for them. If it shows something they would need in order to get care - a GP practice, a clinic, a booking or contact system, a phone number, a reference - say what each thing is and what it is for in plain terms, then ask whether it is theirs. Do not ask whether to keep it: if it can be kept, the app asks that itself, straight after you. Nothing has been saved from it. If no photo is actually attached, it did not come through: say so simply and ask them to send it again.`;
