@@ -10,7 +10,16 @@
 // under a section name nothing renders.
 //
 // ---------------------------------------------------------------------------
-// WHERE IT SITS, AND WHY IT IS NOT ITS OWN SECTION.
+// WHERE IT SITS: ITS OWN SECTION, LAST ON THE ME TAB (12 October 2026).
+//
+// Ruth: "How I Access Care needs to be its own section at the bottom of the
+// list. It's not working hidden." It had been a group inside Health, for the
+// reasons kept below. Inside Health it could not be found, and a record she
+// cannot find is no record. Last on the page keeps the part of her first answer
+// that still holds: it never leads, so the app still does not open by saying
+// her life is about health issues.
+//
+// WHAT IT WAS, AND WHY, kept so the next person does not move it back.
 //
 // She has a Health section already. It holds her Seasonal Allergy Plan, which is
 // a thing she FOLLOWS. A consultant's secretary's direct line is not that: it is
@@ -39,16 +48,12 @@ export const CARE_SUBTITLE = 'Letters, numbers, references, emails';
 /** The section a care record is filed under. Must equal the server's. */
 export const CARE_SECTION = 'How I Access Care';
 
-/** The section it is rendered inside, rather than beside. */
-export const CARE_PARENT_SECTION = 'Health';
-
 /**
  * What she sees when the group is there but has nothing in it yet.
  *
  * NAMES THE THING SHE WOULD DO, not the state of the database. "No records yet"
  * describes the app to her; this describes what putting one here is for. The
- * group only appears once the Health section exists, so this is never the first
- * thing she meets on an empty tab.
+ * section is always shown, last, so this is what a new account sees there.
  */
 export const CARE_EMPTY =
   'Nothing here yet. Share a letter or an appointment email in chat and the details worth keeping land here.';

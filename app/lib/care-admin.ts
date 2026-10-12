@@ -58,14 +58,10 @@ export const CARE_SUBTITLE = 'Letters, numbers, references, emails';
 /** The section a care record is filed under, on screen and in the prompt. */
 export const CARE_SECTION = 'How I Access Care';
 
-/**
- * Where it sits: inside the existing Health section rather than beside it.
- *
- * Her reasoning for not making it its own top-level section is above. One
- * section in the list, two groups inside it when she opens it: what she follows,
- * then the paperwork underneath.
- */
-export const CARE_PARENT_SECTION = 'Health';
+// WHERE IT SITS: its own section, last on the Me tab (Ruth, 12 October 2026:
+// "How I Access Care needs to be its own section at the bottom of the list.
+// It's not working hidden"). It was a group inside Health until then. The
+// screen decides the place; see mobile/src/lib/care-admin.ts for the history.
 
 /**
  * The one line that tells a model what belongs here.

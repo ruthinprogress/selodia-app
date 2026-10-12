@@ -1,10 +1,9 @@
 import { Image } from 'expo-image';
-import { Image as RNImage, StyleSheet, Text, View } from 'react-native';
+import { Image as RNImage, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { hasBold, runs } from '@/lib/rich-text';
+import { FormattedText } from '@/components/formatted-text';
 import { ThemedView } from '@/components/themed-view';
-import { BodyFont, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // A chat turn. Ordinarily just text; a turn can also carry a discuss-card image
@@ -71,11 +70,11 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
               alt="The entry being discussed"
             />
           )}
-          {hasText && (
-            <ThemedText type="small" selectable>
-              {children}
-            </ThemedText>
-          )}
+          {/* HER SIDE HAD FORMATTING AND SELODÍA'S DID NOT (12 October 2026).
+              Bold was read on her own turns only, so a reply or a record the
+              model wrote with headings arrived with its stars showing. Both
+              sides go through the same component now. */}
+          {hasText && <FormattedText text={children as string} selectable />}
         </ThemedView>
       </View>
     );
@@ -102,34 +101,17 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
           so neither Selodia's replies NOR the person's own messages could be
           copied out. One prop here covers Chat and all seven onboarding steps,
           since they all render through this component. */}
-      {hasText && (
-        <ThemedText type="small" selectable>
-          {/* EMPHASIS, FOR THE MESSAGES THAT NEED IT (Ruth, 21 September 2026,
-              on the first medical document Selodía read: "needs much better
-              formatting in chat, with Bold headings and spacing"). A record
-              with nine sections arrived as one unbroken wall, which is the
-              worst possible moment for it.
-
-              An ordinary sentence still renders exactly as it did - one string,
-              one Text - because splitting every message into runs to find
-              nothing would be work done on every turn for the sake of a few. */}
-          {hasBold(children as string)
-            ? runs(children as string).map((r, i) => (
-                <Text key={i} style={r.bold ? styles.bold : undefined}>
-                  {r.text}
-                </Text>
-              ))
-            : children}
-        </ThemedText>
-      )}
+      {/* EMPHASIS, FOR THE MESSAGES THAT NEED IT (Ruth, 21 September 2026,
+          on the first medical document Selodía read: "needs much better
+          formatting in chat, with Bold headings and spacing"). An ordinary
+          sentence still renders as one string in one Text: see
+          formatted-text.tsx for the cheap path. */}
+      {hasText && <FormattedText text={children as string} selectable />}
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Weight only. A heading inside a bubble is still the same voice at the same
-  // size, which is what keeps a long record from looking like a web page.
-  bold: { fontFamily: BodyFont.semibold },
   // LIGHTER, NOT SMALLER (Ruth, 2026-09-18: "everything is currently a little
   // oversized. It feels more like an accessibility layout than the calm, premium
   // editorial aesthetic"). Padding down about a fifth, radius down two, and the

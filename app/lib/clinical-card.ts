@@ -16,10 +16,18 @@ function paragraphs(text: string): string[] {
 // Ruth's test for this feature, in her words: "You should be able to ask
 // selodia: I've been having weird symptoms in x again, can you remind me how to
 // get seen?" So the card is written to be READ ALOUD and acted on, not admired.
-// The order below is the order of that phone call:
 //
-//   who and where  ->  what to quote  ->  what was found  ->  what it means
-//   ->  what was agreed  ->  how to get back in
+// WHAT HAPPENS NEXT COMES FIRST (12 October 2026). The order used to be the
+// order of a phone call - who, what to quote, what was found, what it means,
+// what was agreed, how to get back in - and on her phone that put the one thing
+// she needed at the bottom of a long scroll, under the letter said three ways.
+// Now:
+//
+//   what was agreed, review, the route back in  ->  what to quote  ->  contact
+//   ->  who wrote it  ->  what the letter says  ->  what it means
+//
+// And "About" is gone from the body: it is the card's `why`, which the screen
+// already shows above the record, so it was the summary said twice.
 //
 // The two halves stay labelled, the way the report's summary does: what the
 // letter SAYS is in the letter's words, and what it MEANS is marked as an
@@ -47,12 +55,9 @@ export function cardBody(doc: ClinicalDocument): string {
     for (const l of lines) out.push(l);
   };
 
-  const who = [doc.clinician.name, doc.clinician.role, doc.clinician.department, doc.clinician.organisation]
-    .filter(Boolean)
-    .join(', ');
-  section('Seen by', [who, doc.dated ? `Letter dated ${longish(doc.dated)}` : ''].filter(Boolean) as string[]);
-
-  if (doc.about) section('About', [doc.about]);
+  section('What was agreed', doc.plan);
+  if (doc.review) section('Review', [doc.review]);
+  if (doc.routeBackIn) section('If it comes back', [doc.routeBackIn]);
 
   // THE NUMBERS FIRST AMONG THE FACTS, because this is the part that replaces
   // the paper. A mark now means the two readings disagreed about the digits,
@@ -72,6 +77,11 @@ export function cardBody(doc: ClinicalDocument): string {
     ].filter(Boolean) as string[]
   );
 
+  const who = [doc.clinician.name, doc.clinician.role, doc.clinician.department, doc.clinician.organisation]
+    .filter(Boolean)
+    .join(', ');
+  section('Seen by', [who, doc.dated ? `Letter dated ${longish(doc.dated)}` : ''].filter(Boolean) as string[]);
+
   section('What the letter says', doc.says);
 
   if (doc.plainWords) {
@@ -87,9 +97,6 @@ export function cardBody(doc: ClinicalDocument): string {
   }
 
   section('Medication named', doc.medications);
-  section('What was agreed', doc.plan);
-  if (doc.review) section('Review', [doc.review]);
-  if (doc.routeBackIn) section('If it comes back', [doc.routeBackIn]);
   section('Could not be read', doc.unreadable);
 
   out.push('');

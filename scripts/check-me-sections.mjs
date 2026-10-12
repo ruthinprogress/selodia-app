@@ -85,13 +85,14 @@ check('the fold is saved on the tap, not on leaving', () => {
 
 check('a shut section carries a count', () => {
   assert.ok(
-    /section\.rows\.length \+ section\.care\.length/.test(me),
+    /\{section\.rows\.length\}/.test(me),
     'the heading shows no count, so a shut section cannot be told from an empty one'
   );
-  // The care records are inside the Health section, so the count has to include
-  // them or Health reads as emptier than it is.
-  assert.ok(/section\.care\.length/.test(me), 'the count ignores the care records');
-  return 'rows plus care records';
+  // HOW I ACCESS CARE COUNTS ITS OWN since 12 October 2026, when it stopped
+  // being a group inside Health and became its own section, drawn by the same
+  // renderSection as every other, so one count covers both.
+  assert.ok(/\{renderSection\(care, ordered\.length\)\}/.test(me), 'the care section is not drawn by the shared renderer, so it has no count');
+  return 'every section, How I Access Care included';
 });
 
 check('the heading is the control and the body is behind it', () => {

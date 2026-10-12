@@ -1102,11 +1102,10 @@ export function saveAppliedNote(
     // thing from a card she can go and read.
     if (type === 'marker') return `Noted. It will be taken into account from now on.`;
     if (type === 'me') return `Kept in your Almanac, under Me.`;
-    // UNDER HEALTH, which is where she asked for it: "a Care section under
-    // Health in the Me tab... I don't want it prominent. I like that it sits
-    // with the rest of my life, so the app doesn't say my life is about health
-    // issues."
-    if (type === 'care') return `Kept in your Almanac, under Me, in Health.`;
+    // ITS OWN SECTION, LAST ON ME, since 12 October 2026 ("It's not working
+    // hidden"). The line names the section, because "under Me, in Health" sent
+    // her to a place the record no longer is.
+    if (type === 'care') return `Kept in How I Access Care, at the bottom of Me.`;
     // A rule earns a longer sentence than the others, because agreeing to it
     // changes what gets built from now on and she should be able to see where
     // it went.

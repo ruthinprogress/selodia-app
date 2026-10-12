@@ -10,9 +10,8 @@
 // WHAT DRIFT WOULD DO HERE, and it is worse than a wrong label. The card is
 // written with `category = cardSection(doc)`. The screen groups by category and
 // pulls out the rows whose category equals ITS copy of the name. One character
-// apart and the rows fall through to a top-level section of their own - which
-// is the one shape she ruled out, because she asked for this to sit inside
-// Health so the app does not say her life is about health issues.
+// apart and the rows fall into a section of their own with the wrong name,
+// while the real How I Access Care sits empty at the bottom of the page.
 //
 // So both ways, every string, and a failing fixture to prove the comparison is
 // real rather than two reads of the same constant.
@@ -47,7 +46,7 @@ check('the two copies agree, both ways', () => {
   // BOTH WAYS. A one-way check passes when the client gains a string the server
   // has never heard of, which is how the client ends up rendering a heading
   // over a group nothing will ever be filed into.
-  const shared = ['CARE_SECTION', 'CARE_SUBTITLE', 'CARE_PARENT_SECTION'];
+  const shared = ['CARE_SECTION', 'CARE_SUBTITLE'];
   for (const key of shared) {
     assert.ok(key in SERVER, `the server has lost ${key}`);
     assert.ok(key in CLIENT, `the client has lost ${key}`);
@@ -76,30 +75,33 @@ check('a care card is filed under it, and a prescription is not', () => {
   return 'one name, read from one place';
 });
 
-check('the screen renders it inside Health, not beside it', () => {
+check('it is its own section, last, and always there', () => {
+  // Ruth, 12 October 2026: "How I Access Care needs to be its own section at
+  // the bottom of the list. It's not working hidden." It was a group inside
+  // Health until then, and nobody could find it.
   assert.ok(/from '@\/lib\/care-admin'/.test(screen), 'the screen does not read the shared names at all');
+  assert.ok(!('CARE_PARENT_SECTION' in CLIENT), 'the client still names a parent section');
+  assert.ok(!('CARE_PARENT_SECTION' in SERVER), 'the server still names a parent section');
   assert.ok(
-    /name === CARE_SECTION/.test(screen),
-    'care rows are not pulled out of the top-level sections, so they would appear as their own'
+    /\.filter\(\(n\) => n !== CARE_SECTION\)/.test(screen),
+    'care rows are not taken out of the reorderable sections, so it could be dragged up or appear twice'
   );
+  const reorder = screen.indexOf('<ReorderableRows');
+  const last = screen.indexOf('{renderSection(care, ordered.length)}');
+  assert.ok(last > reorder && reorder > 0, 'How I Access Care is not drawn after the other sections');
+  // Always there: built from the entries whether or not any match.
   assert.ok(
-    /care: name === CARE_PARENT_SECTION \? care : \[\]/.test(screen),
-    'care rows are not attached to the parent section'
+    /const care = useMemo\(\s*\(\) => \(\{ name: CARE_SECTION, rows: entries\.filter/.test(screen),
+    'the section only exists when it has a row, so a new account never finds it'
   );
-  assert.strictEqual(CLIENT.CARE_PARENT_SECTION, 'Health', 'the parent section is no longer Health');
-  return 'grouped under Health';
+  return 'own section, after the reorderable ones, shown when empty';
 });
 
-check('the section appears as soon as a care row does', () => {
-  // A ROW FILED SOMEWHERE SHE CANNOT OPEN IS A LOST ROW. She has a Health
-  // section today, but somebody who shares a letter before ever saving a Health
-  // card has none, and the card would be written to a section that renders
-  // nowhere.
-  assert.ok(
-    /if \(!map\.has\(CARE_PARENT_SECTION\)\) map\.set\(CARE_PARENT_SECTION, \[\]\)/.test(screen),
-    'a care row does not create its parent section, so it would be filed out of sight'
-  );
-  return 'Health is created by a care row when it does not exist';
+check('the save line sends her to where the record is', () => {
+  const pending = readFileSync('app/lib/pending-save.ts', 'utf8');
+  assert.ok(!/under Me, in Health\.`/.test(pending), 'a care save still says it went under Health');
+  assert.ok(/Kept in How I Access Care/.test(pending), 'a care save does not name its section');
+  return '"Kept in How I Access Care, at the bottom of Me."';
 });
 
 check('a parsed letter actually survives being turned into a card', () => {

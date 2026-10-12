@@ -4,6 +4,7 @@ import { openBrowserAsync } from 'expo-web-browser';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { FormattedText } from '@/components/formatted-text';
 import { ReorderableRows } from '@/components/reorderable-rows';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { expandedLayout } from '@/lib/entry-layout';
@@ -14,7 +15,7 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
-import { CARE_EMPTY, CARE_PARENT_SECTION, CARE_SECTION, CARE_SUBTITLE } from '@/lib/care-admin';
+import { CARE_EMPTY, CARE_SECTION, CARE_SUBTITLE } from '@/lib/care-admin';
 import { arrange, layoutOf, loadLayout, saveLayout, type LogLayout } from '@/lib/log-layout';
 import { ME_STATUSES, readMeCard, sectionOf, type MeCard, type MeStatus } from '@/lib/me-card';
 import { updateMeCard } from '@/lib/me-card-write';
@@ -91,39 +92,40 @@ export function MeProtocol({
 
   const sections = useMemo(() => {
     const map = new Map<string, AlmanacRow[]>();
-    // HOW I ACCESS CARE IS A GROUP INSIDE HEALTH, NOT A SECTION BESIDE IT.
-    //
-    // Ruth, 6 October 2026: "Bit there's health already in Me, so how would this
-    // go, just Care underneath it?" It goes underneath it. Care rows are held
-    // back here and rendered below the Health rows, under their own quiet
-    // heading, so her list gains a group rather than a heading.
-    //
-    // AND THE SECTION EXISTS AS SOON AS A CARE ROW DOES, even with no Health
-    // card of its own, or the records would be filed somewhere she cannot open.
-    const care: AlmanacRow[] = [];
     for (const entry of entries) {
       const name = sectionOf(entry.category);
-      if (name === CARE_SECTION) {
-        care.push(entry);
-        if (!map.has(CARE_PARENT_SECTION)) map.set(CARE_PARENT_SECTION, []);
-        continue;
-      }
       const list = map.get(name) ?? [];
       list.push(entry);
       map.set(name, list);
     }
-    return orderSections([...map.keys()]).map((name) => ({
+    return orderSections([...map.keys()].filter((n) => n !== CARE_SECTION)).map((name) => ({
       name,
       rows: map.get(name) ?? [],
-      care: name === CARE_PARENT_SECTION ? care : [],
     }));
   }, [entries]);
+
+  // HOW I ACCESS CARE IS ITS OWN SECTION, LAST, AND ALWAYS THERE (Ruth, 12
+  // October 2026: "How I Access Care needs to be its own section at the bottom
+  // of the list. It's not working hidden").
+  //
+  // It was a group inside Health, because on 6 October she asked for it there:
+  // "I don't want it prominent. I like that it sits with the rest of my life."
+  // Hidden inside another section it could not be found, which is worse than
+  // prominent. LAST keeps what she wanted from that - it never leads the page -
+  // and it is outside her reordering so it cannot drift up by accident.
+  //
+  // SHOWN EVEN WHEN EMPTY, with a line saying how something gets there, because
+  // a section she cannot see is a feature she does not know she has.
+  const care = useMemo(
+    () => ({ name: CARE_SECTION, rows: entries.filter((e) => sectionOf(e.category) === CARE_SECTION) }),
+    [entries]
+  );
 
   // The sections that exist, offered when moving a card. Sections are open
   // (principle 13), so the editor also lets one be typed - this is what is
   // already there, not what is allowed.
   const sectionNames = useMemo(
-    () => orderSections([...new Set([...SECTION_ORDER, ...sections.map((s) => s.name)])]),
+    () => [...orderSections([...new Set([...SECTION_ORDER, ...sections.map((s) => s.name)])]), CARE_SECTION],
     [sections]
   );
 
@@ -183,6 +185,93 @@ export function MeProtocol({
       return next;
     });
   }, []);
+
+  const renderSection = (section: { name: string; rows: AlmanacRow[] }, i: number) => (
+      <View key={section.name} style={styles.section}>
+        {/* A THIN RULE BETWEEN SECTIONS, NOT AROUND EACH CARD (item 6:
+            "Cormorant headings with thin dividers between sections, no cards
+            or pills"). One line per boundary rather than a border per entry
+            is the whole difference between a record and a list of widgets -
+            and it is the same move Today made when its cards became rows. */}
+        {i > 0 ? (
+          <View style={[styles.rule, { backgroundColor: theme.backgroundSelected }]} />
+        ) : null}
+        {/* THE HEADING IS THE CONTROL, AND THE COUNT IS WHAT MAKES THAT SAFE.
+            Ruth, 7 October 2026: "I do like the idea of just a number to mark
+            quietly how many items in each section, like you did in Body
+            Manual."
+
+            It is not decoration. The Body Manual learned it the hard way: a
+            folded section showing a heading and nothing was
+            "indistinguishable from an empty list", which cost an afternoon
+            when her Plans goals section was shut and read as empty. The
+            moment a section here can fold, it inherits that exactly.
+
+            THE CHEVRON IS ITS OWN TARGET, because this row is also the drag
+            handle for reordering and the two gestures would otherwise fight.
+            See the note on `closed` in log-layout-rules.ts for why a section
+            nobody has touched stays open. */}
+        <Pressable
+          onPress={() => toggleSection(section.name)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: !isShut(section.name) }}
+          accessibilityLabel={section.name}
+          accessibilityHint={isShut(section.name) ? 'Shows this section' : 'Folds this section away'}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.headingRow, pressed && styles.pressed]}
+        >
+          <Ionicons
+            name={isShut(section.name) ? 'chevron-forward' : 'chevron-down'}
+            size={16}
+            color={theme.textSecondary}
+          />
+          {/* THE SIZE THE REST OF THE APP USES FOR A SECTION (Ruth, 12
+              October 2026: "All the headers are way too big"). These were
+              drawn at the page title's own size, so every section on the
+              tab shouted as loudly as the word Me above them. */}
+          <ThemedText type="sectionTitle" style={styles.heading}>
+            {section.name}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {section.rows.length}
+          </ThemedText>
+        </Pressable>
+        {/* SWIPE TO DELETE, AS EVERYWHERE ELSE (Ruth, 25 September 2026,
+            item 6). A protocol card is a decision somebody made about how
+            they live, and decisions get reversed: a supplement stopped for
+            good, a routine that never became one. Pausing is already in the
+            card's own history and says something different - still part of
+            the record, no longer part of the routine - so this is for the
+            entries that should not be in the record at all.
+            It reveals a Delete rather than firing on the swipe; see
+            swipe-to-delete.tsx. */}
+        {section.name === CARE_SECTION ? (
+          <ThemedText type="detail" themeColor="textSecondary" style={styles.careSubtitle}>
+            {CARE_SUBTITLE}
+          </ThemedText>
+        ) : null}
+        {!isShut(section.name) && (
+          <>
+        {section.name === CARE_SECTION && section.rows.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {CARE_EMPTY}
+          </ThemedText>
+        ) : null}
+        {section.rows.map((row) => (
+          <SwipeToDelete
+            key={row.id}
+            table="almanac_entries"
+            id={row.id}
+            what={row.title}
+            onDeleted={onDeleted}
+          >
+            <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
+          </SwipeToDelete>
+        ))}
+          </>
+        )}
+      </View>
+  );
 
   return (
     <View style={styles.wrap}>
@@ -245,111 +334,9 @@ export function MeProtocol({
       <ReorderableRows
         items={ordered}
         onReorder={keep}
-        renderRow={(section, i) => (
-        <View key={section.name} style={styles.section}>
-          {/* A THIN RULE BETWEEN SECTIONS, NOT AROUND EACH CARD (item 6:
-              "Cormorant headings with thin dividers between sections, no cards
-              or pills"). One line per boundary rather than a border per entry
-              is the whole difference between a record and a list of widgets -
-              and it is the same move Today made when its cards became rows. */}
-          {i > 0 ? (
-            <View style={[styles.rule, { backgroundColor: theme.backgroundSelected }]} />
-          ) : null}
-          {/* THE HEADING IS THE CONTROL, AND THE COUNT IS WHAT MAKES THAT SAFE.
-              Ruth, 7 October 2026: "I do like the idea of just a number to mark
-              quietly how many items in each section, like you did in Body
-              Manual."
-
-              It is not decoration. The Body Manual learned it the hard way: a
-              folded section showing a heading and nothing was
-              "indistinguishable from an empty list", which cost an afternoon
-              when her Plans goals section was shut and read as empty. The
-              moment a section here can fold, it inherits that exactly.
-
-              THE CHEVRON IS ITS OWN TARGET, because this row is also the drag
-              handle for reordering and the two gestures would otherwise fight.
-              See the note on `closed` in log-layout-rules.ts for why a section
-              nobody has touched stays open. */}
-          <Pressable
-            onPress={() => toggleSection(section.name)}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: !isShut(section.name) }}
-            accessibilityLabel={section.name}
-            accessibilityHint={isShut(section.name) ? 'Shows this section' : 'Folds this section away'}
-            hitSlop={Spacing.two}
-            style={({ pressed }) => [styles.headingRow, pressed && styles.pressed]}
-          >
-            <Ionicons
-              name={isShut(section.name) ? 'chevron-forward' : 'chevron-down'}
-              size={16}
-              color={theme.textSecondary}
-            />
-            <ThemedText type="display" style={styles.heading}>
-              {section.name}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {section.rows.length + section.care.length}
-            </ThemedText>
-          </Pressable>
-          {/* SWIPE TO DELETE, AS EVERYWHERE ELSE (Ruth, 25 September 2026,
-              item 6). A protocol card is a decision somebody made about how
-              they live, and decisions get reversed: a supplement stopped for
-              good, a routine that never became one. Pausing is already in the
-              card's own history and says something different - still part of
-              the record, no longer part of the routine - so this is for the
-              entries that should not be in the record at all.
-              It reveals a Delete rather than firing on the swipe; see
-              swipe-to-delete.tsx. */}
-          {!isShut(section.name) && (
-            <>
-          {section.rows.map((row) => (
-            <SwipeToDelete
-              key={row.id}
-              table="almanac_entries"
-              id={row.id}
-              what={row.title}
-              onDeleted={onDeleted}
-            >
-              <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
-            </SwipeToDelete>
-          ))}
-          {/* THE PAPERWORK, UNDER THE SAME SECTION AND BELOW A QUIET RULE.
-              A smaller heading than the section's, because this is a group
-              inside it rather than a rival to it, and the line underneath
-              carries the boundary the heading stopped carrying when "Care
-              Admin" became "How I Access Care": letters, numbers, references,
-              emails. See lib/care-admin.ts for why both names were needed. */}
-          {section.care.length > 0 || section.name === CARE_PARENT_SECTION ? (
-            <View style={styles.careGroup}>
-              <View style={[styles.careRule, { backgroundColor: theme.backgroundSelected }]} />
-              <ThemedText type="subtitle">{CARE_SECTION}</ThemedText>
-              <ThemedText type="detail" themeColor="textSecondary" style={styles.careSubtitle}>
-                {CARE_SUBTITLE}
-              </ThemedText>
-              {section.care.length === 0 ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {CARE_EMPTY}
-                </ThemedText>
-              ) : (
-                section.care.map((row) => (
-                  <SwipeToDelete
-                    key={row.id}
-                    table="almanac_entries"
-                    id={row.id}
-                    what={row.title}
-                    onDeleted={onDeleted}
-                  >
-                    <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
-                  </SwipeToDelete>
-                ))
-              )}
-            </View>
-          ) : null}
-            </>
-          )}
-        </View>
-        )}
+        renderRow={(section, i) => renderSection(section, i)}
       />
+      {renderSection(care, ordered.length)}
     </View>
   );
 }
@@ -488,7 +475,11 @@ function MeCardRow({
               whether `detail` is saying anything new is a judgement, so it
               lives in a function that can be tested rather than in this
               render. */}
-          {layout.body ? <ThemedText type="detail">{layout.body}</ThemedText> : null}
+          {/* DRAWN, NOT PRINTED (12 October 2026). The body went out as one
+              plain string, so a care record showed its own stars and
+              underscores. And at the caption size: a letter is reading, not a
+              footnote, so it is at the size the chat reads at. */}
+          {layout.body ? <FormattedText text={layout.body} /> : null}
 
           {/* A COMPACT LIST, NOT A BLOB. A protocol made of parts - three
               skincare products, four supplements - reads as a list with its
@@ -511,14 +502,21 @@ function MeCardRow({
 
           {/* LABELLED, so it reads as an addition rather than as the body
               said again. Absent entirely when it says nothing new. */}
+          {/* A CARE RECORD IS NOT AN UPDATE. Its detail is the record itself,
+              and labelling the whole letter "Latest" read as if it were a note
+              added to the summary line above it. */}
           {layout.latest ? (
             <View style={styles.latest}>
-              <ThemedText type="detail" themeColor="textSecondary" style={styles.latestLabel}>
-                Latest
-              </ThemedText>
-              <ThemedText type="detail" themeColor="textSecondary">
-                {layout.latest}
-              </ThemedText>
+              {row.kind === 'care' ? null : (
+                <ThemedText type="detail" themeColor="textSecondary" style={styles.latestLabel}>
+                  Latest
+                </ThemedText>
+              )}
+              <FormattedText
+                text={layout.latest}
+                type={row.kind === 'care' ? 'small' : 'detail'}
+                themeColor={row.kind === 'care' ? undefined : 'textSecondary'}
+              />
             </View>
           ) : null}
           <ThemedText type="detail" themeColor="textSecondary">
@@ -859,10 +857,7 @@ const styles = StyleSheet.create({
   // NO FILL AND NO RADIUS. An entry is a row on a page now, not a tile.
   card: { paddingVertical: Spacing.two, gap: Spacing.two },
   rule: { height: 1, marginBottom: Spacing.three },
-  // Inside a section, so it is indented from the cards above it and the
-  // rule is shorter and quieter than the one between sections.
-  careGroup: { gap: 6, paddingTop: Spacing.two },
-  careRule: { height: 1, width: 48, marginBottom: Spacing.two },
+  // Tucked under the section's own name: it is the fence for what goes in.
   careSubtitle: { marginTop: -4, marginBottom: Spacing.one },
   surface: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
   // The title, its preview and its date travel together and take the width;

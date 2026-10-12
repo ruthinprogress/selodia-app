@@ -182,10 +182,8 @@ export async function POST(request: NextRequest) {
     // as a lifestyle choice, and "remind me how to get seen" had nothing framed
     // as a health record to answer from.
     //
-    // It still renders inside the Me tab, under Health, because she asked for
-    // that: "I like that it sits with the rest of my life, so the app doesn't
-    // say my life is about health issues." Separate in the data, not separate on
-    // the screen.
+    // It renders as its own section, last on the Me tab (12 October 2026: "It's
+    // not working hidden"). It was a group inside Health until then.
     type: 'care',
     title: doc.title,
     content: { section: cardSection(doc), why, detail: body_ },
