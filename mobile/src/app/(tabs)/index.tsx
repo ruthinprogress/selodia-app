@@ -48,6 +48,8 @@ import {
 } from '@/lib/document-pages';
 import { classifyAndLog, messageForResult, pickImage, type PickedImage } from '@/lib/image-logging';
 import { displayedText, fitsAPhotoTurn, PHOTO_ONLY_MESSAGE, photoUri } from '@/lib/photo-turn';
+import { asDraft } from '@/lib/draft';
+import { DraftCard } from '@/components/draft-card';
 import { persistLogTurn } from '@/lib/log-turn';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
@@ -75,6 +77,8 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   resourceCard?: { title: string; description: string; url: string } | null;
+  /** Something written for her to send, under the reply. See components/draft-card. */
+  draft?: { title: string; body: string } | null;
   healthGuidanceApplied?: boolean;
   // The food entry this turn logged, when it logged one. The turn carries only
   // the REFERENCE; the table itself is read from food_items at render time, so
@@ -463,6 +467,9 @@ export default function ChatScreen() {
         // the photo, never the placeholder.
         content: displayedText(m.content, Boolean(m.image_path)),
         imagePath: m.image_path ?? null,
+        // A draft written on this turn, kept in meta so it is still here when
+        // she comes back to send it.
+        draft: asDraft((m.meta as { draft?: unknown } | null)?.draft),
         // A food log's own table still wins: that is the turn that LOGGED it,
         // and it is named whether or not anybody asked about it.
         foodLogId:
@@ -946,7 +953,7 @@ ${result.message}`;
       // and bypass the safety classifier the way the old classify-message
       // router allowed. Photo/screenshot logging still uses parse-food /
       // parse-activity directly, outside this text path.
-      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, patternCheck, navigationTarget, reminder, discussEntry } =
+      const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, patternCheck, navigationTarget, reminder, discussEntry, draft } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
           // Present only on the turn that opens a discussion about an entry.
@@ -973,7 +980,7 @@ ${result.message}`;
       );
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId, patternCheck },
+        { role: 'assistant', content: reply, resourceCard, healthGuidanceApplied, foodLogId, patternCheck, draft: asDraft(draft) },
       ]);
       // A REMINDER IS CONFIRMED BY THE PHONE, NOT BY THE SENTENCE (2026-09-18).
       // The server stores it; the notification is scheduled here, on the device,
@@ -1140,6 +1147,7 @@ ${result.message}`;
                   }
                 />
               )}
+              {m.role === 'assistant' && m.draft && <DraftCard title={m.draft.title} body={m.draft.body} />}
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}

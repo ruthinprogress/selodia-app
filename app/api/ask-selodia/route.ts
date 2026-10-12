@@ -165,6 +165,7 @@ import {
   PHOTO_ONLY_WRITER_BLOCK,
   photoOnlyVerdict,
 } from '../../lib/photo-turn';
+import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
 import { drinkHasCalories } from '../../lib/caloric-drink';
@@ -365,6 +366,13 @@ export async function POST(request: NextRequest) {
   // TYPED ONLY. A voice call has no way to carry a photo, so a flag arriving on
   // one is a malformed client rather than a photo, and is ignored.
   const isPhotoOnly = photoOnly === true && !isVoice;
+  // SOMETHING SHE ASKED TO HAVE WRITTEN FOR HER (12 October 2026). Declared up
+  // here because the spoken writer's block list is built before the classifier
+  // has answered, and both writer lists must stay identical - so both carry
+  // `draftBlock`, which is only ever set on a typed, ordinary turn and is empty
+  // everywhere else. See lib/draft.ts.
+  let draft: Draft | null = null;
+  let draftBlock = '';
   // A SUPERSEDED VOICE TURN (2026-09-12). The adapter's word that this message
   // is the whole of what the person said: they paused, the first part was
   // answered, and they carried on talking before hearing it. Carries when that
@@ -1846,6 +1854,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "With reminderRepeat 'weekly'. The day, 0 for Sunday through 6 for Saturday.",
     },
+    draftRequest: {
+      type: 'string',
+      description:
+        "Set ONLY when the person asks you to write, draft or prepare something THEY will send, take or use - a message or letter to a GP, consultant, physio, insurer, employer or school; an email; a list of questions to take to an appointment; a short summary to show someone. What to write, in a few words: \"a message to their GP asking for a physio referral for their left knee\". It is written separately and shown under your reply, so your reply only says it is there - never write it out yourself. Leave unset for a log, a plan, a reminder, a card for their Me tab, or a question about what something means.",
+    },
     removePlanTitled: {
       type: 'string',
       description:
@@ -2202,10 +2215,12 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             weekBlock,
             skillBlock,
             feelBlock,
-            // ALWAYS EMPTY HERE - a voice call cannot be a photo turn - and here
-            // anyway, because check-both-models-see-it holds the two writer
-            // lists identical. They drifting apart is how facts went missing
-            // before; an entry that is blank on one path costs nothing.
+            // ALWAYS EMPTY HERE - a voice call cannot be a photo turn or carry a
+            // draft - and here anyway, because check-both-models-see-it holds
+            // the two writer lists identical. Their drifting apart is how facts
+            // went missing before; an entry that is blank on one path costs
+            // nothing.
+            draftBlock,
             isPhotoOnly ? PHOTO_ONLY_WRITER_BLOCK : '',
           ],
         })
@@ -2365,6 +2380,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     patternMeasure?: 'mood' | 'energy';
     patternOffsets?: number[];
     reminderAction?: 'create' | 'cancel';
+    draftRequest?: string;
     reminderLabel?: string;
     reminderTime?: string;
     reminderRepeat?: 'daily' | 'weekly';
@@ -4134,6 +4150,36 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     }
 
     timing.mark(speculationHeld ? 'speculationHeld' : 'speculationDiscarded');
+
+    // THE DRAFT, WHEN SHE ASKED FOR ONE (12 October 2026). Inside this branch on
+    // purpose: it is an ordinary turn, so no distress, no escalation, no allergy
+    // block - somebody in distress who asks for a letter gets the careful reply,
+    // not a document. Never on a voice call, because nothing must be read aloud.
+    // Written BEFORE the reply, so the reply can say truthfully whether it exists.
+    const draftAsked =
+      !isVoice && typeof result.draftRequest === 'string' && result.draftRequest.trim()
+        ? result.draftRequest.trim().slice(0, 300)
+        : null;
+    if (draftAsked) {
+      draft = await writeDraft({
+        anthropic,
+        model: MODEL,
+        request: draftAsked,
+        messages,
+        contextBlocks: [
+          meFactsBlock,
+          careFactsBlock,
+          healthContextBlock,
+          allergyBlock,
+          rulesBlock,
+          lifeStageBlock,
+          longHistoryBlock,
+        ],
+      });
+      draftBlock = draftWriterBlock(draft, draftAsked);
+      timing.mark('draftWritten');
+    }
+
     const written = speculationHeld
       ? await spokenReplyInFlight
       : await writeReplyAfterSaves({
@@ -4220,8 +4266,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             weekBlock,
             skillBlock,
             feelBlock,
-            // Last, so it sits nearest her message. Empty on every other turn,
+            // Last, so they sit nearest her message. Empty on every other turn,
             // and the writer drops empty blocks.
+            draftBlock,
             isPhotoOnly ? PHOTO_ONLY_WRITER_BLOCK : '',
           ],
         });
@@ -4441,8 +4488,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // ONLY WHEN THERE IS MORE THAN ONE. A single meal already travels in
         // food_log_id and draws the itemised table; writing meta as well would
         // give the client two sources for one answer.
-        ...(breakdownFoodLogIds.length > 1
-          ? { meta: { food_log_ids: breakdownFoodLogIds } }
+        // A DRAFT RIDES IN META TOO, so it is still under the reply when the
+        // thread is reopened tomorrow - which is exactly when she will want to
+        // send the thing.
+        ...(breakdownFoodLogIds.length > 1 || draft
+          ? {
+              meta: {
+                ...(breakdownFoodLogIds.length > 1 ? { food_log_ids: breakdownFoodLogIds } : {}),
+                ...(draft ? { draft } : {}),
+              },
+            }
           : {}),
       }
     );
@@ -4502,6 +4557,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     patternCheck,
     // The phone schedules it and says so. Null unless this turn asked for one.
     reminder: reminderResult,
+    // Something written for her to send, shown under the reply with a Share
+    // button. Null unless she asked for one and it could be made.
+    draft,
     // What the conversation is anchored to AFTER this turn, or null when the
     // discussion has ended. The phone shows it above the message box with a
     // Close, and only while it is set, so it never offers to close a topic that
