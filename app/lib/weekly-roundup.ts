@@ -77,7 +77,13 @@ export function totalOverLoggedDays(
   };
 }
 
-export type Reading = { date: string; value: number };
+/**
+ * `at` is the moment, in milliseconds. `date` is for reading - and since the
+ * roundup started writing it in words ("Friday 9 October"), it cannot be sorted:
+ * alphabetically Friday comes before Tuesday. On 12 October 2026 that turned a
+ * week that went DOWN from 56.4 to 56.05 kg into "+0.4 kg" on her card.
+ */
+export type Reading = { date: string; value: number; at?: number };
 
 export type WeekDelta = {
   first: Reading;
@@ -95,7 +101,10 @@ export function weekDelta(readings: Reading[]): WeekDelta | null {
   const sorted = readings
     .filter((r) => Number.isFinite(r.value))
     .slice()
-    .sort((a, b) => a.date.localeCompare(b.date));
+    // BY THE MOMENT WHEN THERE IS ONE. Only an ISO date sorts as text.
+    .sort((a, b) =>
+      a.at != null && b.at != null ? a.at - b.at : a.date.localeCompare(b.date)
+    );
   if (sorted.length < 2) return null;
   const first = sorted[0];
   const last = sorted[sorted.length - 1];

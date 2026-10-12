@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { roundupPrompt } from '../app/lib/roundup-prompt.ts';
+import { roundupPrompt, shapeRoundup } from '../app/lib/roundup-prompt.ts';
 import { roundupFigures } from '../app/lib/roundup-figures.ts';
 import { EVIDENCE_PRINCIPLE } from '../app/lib/principles.ts';
 
@@ -65,7 +65,7 @@ const WEEK_TEXT = `WEEK OF 21 TO 27 SEPTEMBER 2026.
 THE CARD ABOVE YOUR WORDS ALREADY SHOWS THESE, so do not list them again:
 ${FIGURES.map((f) => `  ${f.label}: ${f.value}${f.note ? ` (${f.note})` : ''}`).join('\n')}
 
-TRAJECTORY: three readings is few. You may say the direction is upward across the week and must say how few readings that rests on.
+TRAJECTORY: you may NOT state a direction, and the card already says so (three readings is too few). Do not mention weight or weigh-ins at all unless they talked about their weight this week in their own words - a change the card already shows is not news. If they did, say how few readings there are, and never hedge into a direction.
 
 MOVEMENT THIS WEEK:
 24 Sept: pushups, 2 min, moderate
@@ -133,7 +133,12 @@ const CHECKS = [
   // The wrong figures from her real roundup.
   ['does not call it no movement', !/almost no movement|no movement|barely moved|little movement/i.test(reply)],
   ['does not overstate the readings', !/\b(8|eight|10|ten) readings/i.test(reply)],
-  ['says how few readings there are', /three readings|3 readings|only three|few readings/i.test(reply)],
+  // SINCE 12 OCTOBER 2026 the card's weigh-in row says "too few to show a
+  // trend" itself, so the words need not mention weight - but if they do, they
+  // still say how few readings there are.
+  // A WEIGH-IN COMMENT, not the word "weight" in her own quoted words ("I'm a
+  // healthy weight" tripped the first version of this).
+  ['if weigh-ins are mentioned, says how few', !/\bkg\b|weigh-?ins?|readings?/i.test(reply) || /three readings|3 readings|only three|few readings/i.test(reply)],
   ['does not call three a real trend', !/real trend|clear trend|definite trend/i.test(reply)],
 
   // Not restating the card.
@@ -146,6 +151,19 @@ const CHECKS = [
   ['ends on a question', /\?\s*$/.test(reply)],
   ['no moralising about food', !/\b(bad|cheat|guilty|junk|clean|treat yourself)\b/i.test(reply)],
   ['written to her, not about her', !/\bshe (logged|said|asked|had)\b/i.test(reply)],
+
+  // THE SHAPE (12 October 2026: "it feels like spam"). Checked on the raw reply,
+  // so the prompt is held to it and not only the trim after it.
+  ['opens on the first heading', /^\*\*What stood out\*\*/.test(reply)],
+  ['every line is a heading, a bullet or the question', reply
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .every((l) => /^\*\*[^*]+\*\*$/.test(l) || l.startsWith('- ') || l.endsWith('?'))],
+  // On what she SEES, after shapeRoundup has cut any tail at its dash.
+  ['no line runs on, as shown', shapeRoundup(reply).split('\n').every((l) => l.length <= 180)],
+  ['weight is never something to watch', !/Worth watching[\s\S]*\bkg\b/i.test(reply)],
+  ['does not open on a count of days', !/^(\*\*[^*]+\*\*\s*)?-?\s*(six|seven|five|\d) (of|out of) (seven|7)/i.test(reply)],
 ];
 
 console.log('');

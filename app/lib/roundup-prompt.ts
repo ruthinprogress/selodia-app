@@ -42,7 +42,7 @@
  */
 const BASELINE = `You are Selodía, closing out someone's week with them. They can see the week's figures on the card above your words: they are worked out from their own record and shown as rows, so your job is not to report them.
 
-Speak plainly and warmly, the way a thoughtful friend would. No exclamation marks, no praise for a number, no cheerleading, no bullet points.
+Speak plainly and warmly, the way a thoughtful friend would. No exclamation marks, no praise for a number, no cheerleading.
 
 Only say things that are in the RECORD below. Name something they did only if it is there, with its date. Anything else is a general possibility and must sound like one.
 
@@ -82,7 +82,33 @@ const DO_NOT_RESTATE = `THE CARD ABOVE ALREADY SHOWS THE FIGURES, so do not list
 
 The figures are given to you so that nothing you say contradicts them, NOT so that you say them. Your first sentence must not be about a number. Never write a sentence whose content is a figure already on the card - "food was logged all seven days, averaging 1,236 kcal and 62 g protein" is the card read aloud, and they have just read it.
 
-You may name a single figure where a point genuinely depends on it, and only inside the point. Your words are for what the card cannot show: what they told you this week in their own words, what they agreed to keep, what one concrete thing stands out. Two or three short observations at most, each one a thing the record shows. Then one open question. Nothing else.`;
+You may name a single figure where a point genuinely depends on it, and only inside the point. Your words are for what the card cannot show: what they told you this week in their own words, what they agreed to keep, what one concrete thing stands out.`;
+
+/**
+ * FAILED ON HER PHONE, 12 October 2026: four paragraphs, the first one opening
+ * on "Six of seven days had food logged". Her words: "Needs much nicer
+ * formatting. This is a very important part of Selodía's usp and right now it
+ * feels like spam."
+ *
+ * The chat draws headings and bullets since that evening, so the roundup can
+ * have a shape at last - and the shape is also the length limit. A rule saying
+ * "two or three observations" was already in the prompt and produced four
+ * paragraphs; a layout with three slots is harder to overfill. The app trims to
+ * this shape as well (shapeRoundup below), so a reply that overflows it is cut
+ * rather than shown.
+ */
+const SHAPE = `THE SHAPE, exactly. They read it on a phone, straight after the card:
+
+**What stood out**
+- One thing the record shows, with its day. One sentence, under twenty words.
+- A second, if there is one. Three at most.
+
+**Worth watching**
+- Only something they flagged, worried about or agreed to keep an eye on this week: a symptom, their sleep, something they said they would check. Never their weight, their size or any figure on the card - the card already shows those, and listing one here turns a number into a worry. Leave the whole section out if there is nothing.
+
+Then one open question on its own line, as plain text: one short sentence, under fifteen words, about them rather than about a figure.
+
+Nothing before the first heading, nothing after the question, and no paragraphs anywhere. The headings are written exactly as above, in double asterisks. Each line starts with "- ". If a point needs two sentences it is two points, or it is too long.`;
 
 /**
  * KEPT FROM THE OLD PROMPT, unchanged in substance. Never rebuilt because none
@@ -111,6 +137,7 @@ export function roundupPrompt(options: RoundupPromptOptions): string {
     NO_THEME,
     FIGURES_ARE_NOT_VERDICTS,
     DO_NOT_RESTATE,
+    SHAPE,
     NEVER_MORALISE,
     statements(options.portraitRange),
     options.evidencePrinciple,
@@ -123,5 +150,69 @@ export const ROUNDUP_PROMPT_PARTS = {
   NO_THEME,
   FIGURES_ARE_NOT_VERDICTS,
   DO_NOT_RESTATE,
+  SHAPE,
   NEVER_MORALISE,
 };
+
+/** The two headings the roundup may use, in order. */
+export const ROUNDUP_HEADINGS = ['What stood out', 'Worth watching'] as const;
+/** How many lines each heading may hold. */
+export const ROUNDUP_LINES_PER_HEADING = 3;
+
+/**
+ * The reply cut to the shape above: at most three lines under each heading,
+ * and the closing question. A GUARD AT THE WRITE, because the old prompt already
+ * said "two or three observations at most" and four paragraphs came back.
+ *
+ * A reply with no headings at all is returned as it is. Cutting prose by guess
+ * would lose the question, and an unformatted roundup is better than half of one.
+ */
+/** Past this a line reads as a paragraph on a phone. */
+export const ROUNDUP_LINE_CHARS = 160;
+
+/**
+ * A long line cut at its dash. Run after run, an overlong line was a fact
+ * followed by " - worth keeping an eye on how that feeling sits with you as the
+ * weeks go on": the fact is the line, the tail is filler. Only a line over the
+ * limit is cut, only at a spaced dash, and only when the fact before it is a
+ * real sentence's worth.
+ */
+function tighten(line: string): string {
+  if (line.length <= ROUNDUP_LINE_CHARS) return line;
+  const at = line.indexOf(' - ');
+  if (at < 40) return line;
+  const fact = line.slice(0, at).trim();
+  return /[.!?]$/.test(fact) ? fact : `${fact}.`;
+}
+
+export function shapeRoundup(reply: string): string {
+  const lines = reply.replace(/\r\n?/g, '\n').split('\n').map((l) => l.trim());
+  const isHeading = (l: string) => /^\*\*[^*]+\*\*:?$/.test(l);
+  if (!lines.some(isHeading)) return reply.trim();
+
+  const out: string[] = [];
+  let inSection = false;
+  let count = 0;
+  let question: string | null = null;
+  for (const l of lines) {
+    if (!l) continue;
+    if (isHeading(l)) {
+      if (out.length > 0) out.push('');
+      out.push(l);
+      inSection = true;
+      count = 0;
+      continue;
+    }
+    if (/^[-*•]\s+/.test(l)) {
+      if (inSection && count < ROUNDUP_LINES_PER_HEADING) {
+        out.push(`- ${tighten(l.replace(/^[-*•]\s+/, ''))}`);
+        count += 1;
+      }
+      continue;
+    }
+    // A plain line after the sections is the question; the last one wins.
+    if (l.endsWith('?')) question = l;
+  }
+  if (question) out.push('', question);
+  return out.join('\n').trim();
+}

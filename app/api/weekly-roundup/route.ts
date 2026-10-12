@@ -31,7 +31,7 @@ import {
 } from '../../lib/weekly-roundup';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { roundupFigures } from '../../lib/roundup-figures';
-import { roundupPrompt } from '../../lib/roundup-prompt';
+import { roundupPrompt, shapeRoundup } from '../../lib/roundup-prompt';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -347,9 +347,9 @@ export async function POST(req: NextRequest) {
     const sameCluster = lastAt != null && r.at - lastAt < CLUSTER_MS;
     if (sameCluster) {
       // Replace rather than append: the settled value is the later one.
-      readings[readings.length - 1] = { date: r.date, value: r.value };
+      readings[readings.length - 1] = { date: r.date, value: r.value, at: r.at };
     } else {
-      readings.push({ date: r.date, value: r.value });
+      readings.push({ date: r.date, value: r.value, at: r.at });
     }
     lastAt = r.at;
   }
@@ -456,10 +456,14 @@ export async function POST(req: NextRequest) {
       : `Weight: ${readings.length === 0 ? 'NO readings were logged at all this week' : 'exactly ONE reading was logged this week, which is a position rather than a change'}. Say that plainly if you mention it, and never state or imply a different number.`,
     '',
     mayStateTrajectory
-      ? 'TRAJECTORY: you may describe a direction this week. Stay tentative - it is one week.'
-      : `TRAJECTORY: you may NOT state a direction. Say so plainly and briefly - ${
+      ? 'TRAJECTORY: you may describe a direction this week, but only if they talked about their weight this week in their own words - otherwise leave it to the card. Stay tentative - it is one week.'
+      : // THE CARD SAYS IT NOW (12 October 2026). The weigh-in row carries "too
+        // few to show a trend" itself, so the words underneath no longer have to
+        // raise weight at all - and the roundup's shape keeps weight out of
+        // "Worth watching". What still holds: never imply a direction.
+        `TRAJECTORY: you may NOT state a direction, and the card already says so (${
           trajectory.kind === 'say_not_enough_data' ? trajectory.reason : 'the data does not support one'
-        }. Do not omit the subject and do not hedge into a direction anyway.`,
+        }). Do not mention weight or weigh-ins at all unless they talked about their weight this week in their own words - a change the card already shows is not news. If they did, say how few readings there are, and never hedge into a direction.`,
     '',
     `MOVEMENT THIS WEEK:\n${movement}`,
     '',
@@ -538,7 +542,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No roundup returned' }, { status: 500 });
   }
   const result = toolUse.input as { reply?: unknown; theme?: unknown; statements?: unknown };
-  const reply = typeof result.reply === 'string' ? result.reply.trim() : '';
+  // CUT TO ITS SHAPE before anything stores or shows it. See shapeRoundup.
+  const reply = typeof result.reply === 'string' ? shapeRoundup(result.reply) : '';
   if (!reply) {
     return NextResponse.json({ error: 'No roundup returned' }, { status: 500 });
   }

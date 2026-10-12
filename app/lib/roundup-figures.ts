@@ -80,7 +80,7 @@ export function roundupFigures(input: FiguresInput): RoundupFigure[] {
       value: `${input.fullDays} of ${WEEK_DAYS} days, averaging ${parts.join(' and ')}`,
       note:
         input.fullDays < WEEK_DAYS
-          ? `the average covers the ${input.fullDays} day${input.fullDays === 1 ? '' : 's'} with a log, not the week`
+          ? `average of the ${input.fullDays} logged day${input.fullDays === 1 ? '' : 's'}`
           : null,
     });
   } else {
@@ -124,8 +124,11 @@ export function roundupFigures(input: FiguresInput): RoundupFigure[] {
       label: 'Drinks',
       value: `${input.drinkDayTotals.length} of ${WEEK_DAYS} days, averaging ${group(avg)} ml`,
       note:
+        // SAID LIKE THE FOOD ROW (Ruth, 12 October 2026: "'A day nobody
+        // recorded' is weird"). The point was never philosophy, only that the
+        // average leaves out the blank days.
         input.drinkDayTotals.length < WEEK_DAYS
-          ? 'a day with nothing logged is a day nobody recorded'
+          ? `average of the ${input.drinkDayTotals.length} logged day${input.drinkDayTotals.length === 1 ? '' : 's'}`
           : null,
     });
   } else {
@@ -136,16 +139,31 @@ export function roundupFigures(input: FiguresInput): RoundupFigure[] {
   // state one. "Your 10 readings show a real trend downward" was written over
   // three readings; a row that leads with the count cannot be read that way.
   if (input.delta) {
-    const sign = input.delta.change >= 0 ? '+' : '';
+    // THE CHANGE FROM THE TWO VALUES SHOWN, to the hundredth, so the row adds
+    // up: 56.4 to 56.05 is -0.35, and a rounded "-0.3" beside them reads as a
+    // sum that does not work.
+    const change = Math.round((input.delta.last.value - input.delta.first.value) * 100) / 100;
+    const sign = change > 0 ? '+' : '';
     rows.push({
       label: 'Weigh-ins',
-      value: `${input.delta.readingCount}, ${input.delta.first.value} kg to ${input.delta.last.value} kg (${sign}${input.delta.change} kg)`,
-      note: input.delta.readingCount < 4 ? 'a small number of readings to draw much from' : null,
+      value: `${input.delta.readingCount} readings, ${input.delta.first.value} to ${input.delta.last.value} kg (${sign}${change} kg)`,
+      // A KILO EITHER WAY IS A NORMAL DAY (Ruth, 12 October 2026, on a week
+      // from 56.4 to 56.05 kg: "the weight is not statistically significant.
+      // And the account is set to maintain"). Water and food alone move a
+      // scale by more than that between mornings, so a smaller change is said
+      // to be within it, whatever the goal - and a count too small to read
+      // is said second.
+      note:
+        Math.abs(change) < 1
+          ? 'within normal day-to-day change'
+          : input.delta.readingCount < 4
+            ? 'too few to show a trend'
+            : null,
     });
   } else if (input.readingCount === 1) {
     rows.push({
       label: 'Weigh-ins',
-      value: '1, which is a position rather than a change',
+      value: '1 reading, so no change to show',
     });
   } else {
     rows.push({ label: 'Weigh-ins', value: 'none logged this week' });
