@@ -78,12 +78,67 @@ function vercelToken() {
   return null;
 }
 
-const TOKEN = vercelToken();
-if (!TOKEN) {
-  console.log('  SKIPPED  no Vercel credentials on this machine.');
-  console.log('           Run `npx vercel login`, or set VERCEL_TOKEN, then try again.');
-  process.exit(0);
+/**
+ * WHEN VERCEL CANNOT BE ASKED, ASK THE SITE (12 October 2026).
+ *
+ * This check used to SKIP whenever the Vercel login on this machine was absent
+ * or expired - and on 12 October it was expired, while three pushes sat on main
+ * and production stayed on Friday's commit for two hours behind a build that had
+ * failed on Vercel. The skip was exactly the case the check exists for, saying
+ * "I cannot tell" when the answer was one request away.
+ *
+ * The app reports its own commit at /api/version, with no credentials. That
+ * answers check 4 - is what is live the tip of origin/main - for api.selodia.app.
+ * It cannot answer 1 to 3 (the project, its git connection, every domain on one
+ * deployment), and says so rather than pretending to.
+ *
+ * Only if the site does not answer either does this skip.
+ */
+async function answerFromTheSite(why) {
+  let live;
+  try {
+    const res = await fetch('https://api.selodia.app/api/version');
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    live = await res.json();
+  } catch (e) {
+    console.log(`  SKIPPED  ${why}, and api.selodia.app/api/version did not answer (${e.message}).`);
+    process.exit(0);
+  }
+  const liveSha = typeof live?.commit === 'string' ? live.commit : null;
+  console.log(`  NOTE     ${why}. Asked the site instead: checks 1 to 3 are not verified.`);
+  if (!liveSha) {
+    console.log('  FAIL     /api/version answered without a commit');
+    process.exit(1);
+  }
+  try {
+    git('fetch', 'origin', BRANCH, '--quiet');
+  } catch {
+    console.log('  note: could not fetch origin - comparing against the local ref');
+  }
+  const head = git('rev-parse', `origin/${BRANCH}`);
+  if (liveSha === head) {
+    console.log(`  PASS     what is live on api.selodia.app is the tip of origin/${BRANCH} (${head.slice(0, 7)})`);
+    console.log('\n  1 passed, 0 failed\n');
+    process.exit(0);
+  }
+  let behind = '?';
+  try {
+    behind = git('rev-list', '--count', `${liveSha}..${head}`);
+  } catch {
+    // live is not a commit this clone knows
+  }
+  console.log(
+    `  FAIL     production is BEHIND origin/${BRANCH} by ${behind} commit(s). ` +
+      `Live is ${liveSha.slice(0, 7)}, ${BRANCH} is ${head.slice(0, 7)}. ` +
+      'If a build is still running this will pass in a few minutes; if not, the last push failed to build - ' +
+      'open the Deployments list on vercel.com and look for a red Error.'
+  );
+  console.log('\n  0 passed, 1 failed\n');
+  process.exit(1);
 }
+
+const TOKEN = vercelToken();
+if (!TOKEN) await answerFromTheSite('no Vercel credentials on this machine');
 
 // A DEAD TOKEN IS "I CANNOT TELL", NOT A FAILURE AND NOT A CRASH.
 //
@@ -114,9 +169,9 @@ async function api(route) {
 // and did nothing at all.
 function skipIfUnauthorised(e) {
   if (!(e instanceof NotAuthorised)) throw e;
-  console.log('  SKIPPED  the Vercel credentials on this machine have expired.');
-  console.log('           Run `npx vercel login` from the project, then try again.');
-  process.exit(0);
+  // Returned, so the awaiting caller waits for the answer rather than carrying
+  // on with an undefined result. answerFromTheSite always exits.
+  return answerFromTheSite('the Vercel credentials on this machine have expired');
 }
 
 function git(...args) {
