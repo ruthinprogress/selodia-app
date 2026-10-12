@@ -46,6 +46,7 @@ import { buildCycleContextPrompt } from '../../lib/cycle';
 import { cycleRecurrencesFor } from '../../lib/cycle-recurrence-block';
 import { addSymptomsToDay, localDayKey } from '../../lib/day-observations';
 import { logFoodFromText } from '../../lib/food-logging';
+import { logDayHappenedAt } from '../../lib/log-day';
 import { lifeStageFacts } from '../../lib/life-stage-facts';
 import { weekFacts } from '../../lib/week-facts';
 import { skillFacts } from '../../lib/skill-facts';
@@ -1752,6 +1753,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Alongside logIntent 'activity' or 'food'. The COMPLETE description to store, assembled from the conversation and stripped of everything that is not the food or the session - e.g. after \"I did a run\" then \"about 40 minutes\", send \"a 40 minute run\"; for \"catch up my log: Mon 7th pizza and chips, Tuesday 8th burger\", send the days and their meals and nothing else. Without this the app stores the raw message, which is how a complaint about logging once became a meal. For activity include the duration always, and anything else belonging to the same session (intensity, terrain, how it felt). Omit it only when the message is already exactly the thing to store.",
     },
+    logDate: {
+      type: 'string',
+      description:
+        "Alongside logIntent 'food' or 'activity'. The day it HAPPENED, as YYYY-MM-DD, when that is NOT today - resolved from today's date in the context. THE DAY MAY HAVE BEEN NAMED EARLIER IN THE CONVERSATION, not in this message: after \"let's catch up Friday\" or \"adding more to Friday\", a following \"I had pizza for dinner\" is Friday's dinner, and so is every meal after it until they move to another day. Keep setting it on each of those turns. Omit it when they mean today. Never a future day. If you are not sure which day they mean, omit it and ask rather than guessing.",
+    },
     cycleEvent: {
       type: 'string',
       enum: ['period_start', 'period_end', 'spotting'],
@@ -2370,6 +2376,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     restoreId?: string;
     logIntent?: 'none' | 'food' | 'activity' | 'measurement' | 'hydration' | 'sleep';
     logText?: string;
+    logDate?: string;
     cycleEvent?: string;
     cycleDate?: string;
     feelingMood?: number;
@@ -3272,7 +3279,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
               supabase,
               user.id,
               result.logText?.trim() || message,
-              undefined,
+              // THE DAY SHE IS CATCHING UP, when she named it a turn or two
+              // ago and logText stripped it. Checked in log-day.ts; a day the
+              // food text itself names still wins, entry by entry.
+              logDayHappenedAt(result.logDate),
               undefined,
               undefined,
               voiceTurnId
@@ -3385,7 +3395,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         // to "how long was that?" logs the run rather than logging the answer.
         const entries =
           (await saving('activity', () =>
-            logActivityFromText(supabase, user.id, result.logText?.trim() || message)
+            logActivityFromText(supabase, user.id, result.logText?.trim() || message, logDayHappenedAt(result.logDate))
           )) ?? [];
         if (entries[0]) {
           saved = { kind: 'activity', summary: activitySaveSummary(entries) };
