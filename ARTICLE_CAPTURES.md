@@ -862,3 +862,27 @@ So two things I am taking from it.
 If an app asks you to agree to something about your health data, that is paperwork. The permission is the grey box your phone puts up afterwards, with your phone's own wording on it. If you never saw one of those, the app is not reading anything, whatever you ticked.
 
 And if you are building something, the person who finds your worst bugs is the one who has never used it. Not your most careful tester. Someone brand new, on a device that remembers nothing.
+
+---
+
+## 12 October 2026 - My own app lost to a chat window
+
+I have been building Selodía for months. Today I admitted something out loud. I still don't use it for the thing it is for.
+
+When something comes up with my health, I open a Claude Project I set up for myself. I paste in a letter, I ask my question, and it answers like it knows me. Because it does.
+
+Here is the strange part. Selodía holds more of my life than that Project does. Every meal, every symptom I've logged, every letter I've saved. So why do I still reach for the other one?
+
+Today I tested it properly. I sent both of them the same message from my GP about a referral. The Project told me what to do next and in what order. It explained why the warning signs mattered for me in particular, not for people in general. Then it put a reminder in my calendar with the phone number and the questions to ask.
+
+Selodía summarised the letter accurately and asked if I wanted to save it.
+
+It had my history. I had logged knee pain three times since September. It never mentioned it once.
+
+So the gap isn't what it knows. It's what it does with what it knows. Selodía was built to sort every message into the right box first and talk second. The Project looks first, thinks about you, and then acts.
+
+I have stopped guessing about this. I pulled 28 real moments where my Project genuinely helped me, and picked the ten best. They are now the test. Any new version of Selodía's chat has to do better than my own Project, on my own examples, or it doesn't ship.
+
+One more thing I learned today. Selodía showed me a saved record with little stars and underscores scattered through it, formatting codes leaking onto the screen. I know exactly what they are. It still made the whole app feel like junk in one glance.
+
+If you are building something people will trust with their health, how it looks is not polish. It is the first thing they judge you on, before they have read a word.

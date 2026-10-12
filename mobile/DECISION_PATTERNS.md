@@ -547,3 +547,22 @@ The rule: **a walkthrough on a fresh account is not a nicer version of testing,
 it is the only thing that tests the first run.** Schedule it as its own work
 before anyone outside sees the app, and treat anything it finds as representative
 rather than as an edge case. (10 October 2026.)
+
+**A fact the model understood needs a field to travel in.** On 12 October Ruth
+said she was catching up Friday, then sent "I had a pizza for dinner with salami".
+The reply said "a good Friday dinner". The row said Monday 12 October. Nothing had
+misunderstood her: the model knew the day perfectly well, and the only thing it
+could hand onward was logText, which its own instructions say to strip of
+"everything that is not the food". The day was stripped with the rest, and the
+food parser, which only ever reads logText, logged today.
+
+The same evening, in the same shape: the weekly roundup sorted weigh-ins by their
+`date`, which had become words ("Friday 9 October") for the sake of the prompt,
+and alphabetically Friday comes before Tuesday. A week that went down from 56.4 to
+56.05 kg was shown to her as "+0.4 kg". A value formatted for reading had quietly
+become the value being computed on.
+
+**The rule: when one step understands something and a later step acts on it,
+check what actually passes between them.** If it is prose, or a string shaped for
+a reader, the fact can be lost or reordered without either step being wrong. Give
+it its own field, in a form made for the code that consumes it, and check it there.
