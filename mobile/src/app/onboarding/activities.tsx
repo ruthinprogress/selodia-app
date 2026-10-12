@@ -217,7 +217,12 @@ export default function ActivitiesScreen() {
     setSaving(true);
     const outcome = await save();
     setSaving(false);
-    if (outcome === 'saved' || outcome === 'nothing-chosen') {
+    // ONLY A WRITE THAT HAPPENED MOVES HER ON. The same fault as skill.tsx and
+    // fixed the same day: 'nothing-chosen' was treated as a successful save, so
+    // an empty answer walked past in silence and user_week held no rows for an
+    // account that had answered every question it was shown. See the longer note
+    // in skill.tsx. Skipping is still a real answer and still has its own button.
+    if (outcome === 'saved') {
       leave('/onboarding/skill');
       return;
     }

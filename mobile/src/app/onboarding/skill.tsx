@@ -156,7 +156,25 @@ export default function SkillScreen() {
     setSaving(true);
     const outcome = await save();
     setSaving(false);
-    if (outcome === 'saved' || outcome === 'nothing-chosen') {
+    // ONLY A WRITE THAT HAPPENED MOVES HER ON (12 October 2026).
+    //
+    // This read `outcome === 'saved' || outcome === 'nothing-chosen'`, so an
+    // empty answer was treated exactly like a successful one: straight past,
+    // nothing written, nothing said. Ruth walked a brand new account on 10
+    // October and reported that she had not skipped a single question - and
+    // user_skills had no rows at all. Both were true. Pressing Continue is not
+    // skipping, and the screen accepted it.
+    //
+    // The type that describes this outcome says what should happen, and said it
+    // the whole time: "She chose nothing. Her answers are untouched, AND SHE
+    // SHOULD BE TOLD." The sentence to tell her with was already written in
+    // save-outcome.ts. Only this line stood between them.
+    //
+    // days.tsx has always done it correctly, under a comment reading "SHE IS
+    // NEVER MOVED ON FROM A WRITE THAT DID NOT HAPPEN" - so two screens handled
+    // one outcome in opposite ways, and the one that was wrong was silent.
+    // Skipping is still a real answer; it has its own button.
+    if (outcome === 'saved') {
       leave('/onboarding/allergies');
       return;
     }
