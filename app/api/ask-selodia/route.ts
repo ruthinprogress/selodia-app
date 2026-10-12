@@ -160,6 +160,11 @@ import {
   uploadDiscussCard,
   type DiscussTag,
 } from '../../lib/discuss-card';
+import {
+  PHOTO_ONLY_CLASSIFIER_NOTE,
+  PHOTO_ONLY_WRITER_BLOCK,
+  photoOnlyVerdict,
+} from '../../lib/photo-turn';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
 import { drinkHasCalories } from '../../lib/caloric-drink';
@@ -349,11 +354,17 @@ export async function POST(request: NextRequest) {
     // She closed the anchored topic herself, from its card (2026-09-19). One of
     // the three ways a discussion ends - see resolveDiscussTag.
     closeDiscussion,
+    // A photo she sent with no words, which the image classifier could not
+    // place (12 October 2026). See lib/photo-turn.ts.
+    photoOnly,
   } = await request.json();
   // A spoken turn, routed in by the custom-LLM adapter. It changes nothing about
   // what is said or what safety runs - only WHEN the parse happens. See the
   // logging branch below.
   const isVoice = voice === true;
+  // TYPED ONLY. A voice call has no way to carry a photo, so a flag arriving on
+  // one is a malformed client rather than a photo, and is ignored.
+  const isPhotoOnly = photoOnly === true && !isVoice;
   // A SUPERSEDED VOICE TURN (2026-09-12). The adapter's word that this message
   // is the whole of what the person said: they paused, the first part was
   // answered, and they carried on talking before hearing it. Carries when that
@@ -867,6 +878,30 @@ export async function POST(request: NextRequest) {
           '',
         ].join('\n')
       : '';
+
+  // A PHOTO THAT COULD NOT BE STORED IS STILL SEEN (12 October 2026). The usual
+  // path stores the image and reads it back as `pendingCard`. If the upload
+  // failed there is nothing to read back - but the bytes arrived with this very
+  // request, so the models are shown them directly rather than being handed
+  // "[photo]" and nothing else. It will not be in the thread on reload; it is
+  // not lost from the conversation she is having now.
+  const inlinePhoto =
+    isPhotoOnly && !pendingCard && !cardImagePath && typeof cardImageBase64 === 'string' && isCardMediaType(cardMediaType)
+      ? { base64: cardImageBase64, mediaType: cardMediaType }
+      : null;
+  if (inlinePhoto) {
+    const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
+    if (lastUserIdx >= 0) {
+      const existing = messages[lastUserIdx].content;
+      messages[lastUserIdx] = {
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: inlinePhoto.mediaType, data: inlinePhoto.base64 } },
+          { type: 'text', text: typeof existing === 'string' && existing ? existing : '[photo]' },
+        ],
+      };
+    }
+  }
 
   if (pendingCard) {
     const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
@@ -1616,7 +1651,8 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // IDENTICAL TEXT, THREE BLOCKS INSTEAD OF TWO. Anthropic concatenates system
   // blocks, so what the model reads is unchanged; only where the cache may
   // break has moved.
-  const turnSystemPrompt = personContext + turnRestPrompt;
+  const turnSystemPrompt =
+    personContext + turnRestPrompt + (isPhotoOnly ? `\n\n${PHOTO_ONLY_CLASSIFIER_NOTE}` : '');
 
   const contextualSystemPrompt = staticSystemPrompt + turnSystemPrompt;
 
@@ -2166,6 +2202,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             weekBlock,
             skillBlock,
             feelBlock,
+            // ALWAYS EMPTY HERE - a voice call cannot be a photo turn - and here
+            // anyway, because check-both-models-see-it holds the two writer
+            // lists identical. They drifting apart is how facts went missing
+            // before; an entry that is blank on one path costs nothing.
+            isPhotoOnly ? PHOTO_ONLY_WRITER_BLOCK : '',
           ],
         })
       : null;
@@ -2364,6 +2405,15 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     almanacCategory?: string;
     almanacContent?: unknown;
   };
+
+  // A PHOTO WITH NO WORDS SAVES NOTHING, AND THAT IS DECIDED HERE (12 October
+  // 2026). The classifier has been told the same thing, and a rule the model is
+  // asked to follow is not a rule. So the verdict is cut to an allowlist -
+  // safety and conversation - before a single line below reads it. Every write
+  // in this route keys off a field of `result`, so a field that is not here
+  // cannot write; and one added next month is stripped by default. See
+  // lib/photo-turn.ts.
+  if (isPhotoOnly) photoOnlyVerdict(result);
 
   // A DRINK WITH CALORIES IN IT IS FOOD, WHATEVER THE MODEL CALLED IT
   // (Bug 17, 21 September 2026). "Tea with milk is currently being logged as
@@ -4170,6 +4220,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             weekBlock,
             skillBlock,
             feelBlock,
+            // Last, so it sits nearest her message. Empty on every other turn,
+            // and the writer drops empty blocks.
+            isPhotoOnly ? PHOTO_ONLY_WRITER_BLOCK : '',
           ],
         });
     // WHAT THE WRITER COST, whether it worked or not. A fallback is the most

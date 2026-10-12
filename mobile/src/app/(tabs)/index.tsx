@@ -46,7 +46,8 @@ import {
   tooBig,
   type DocumentPage,
 } from '@/lib/document-pages';
-import { classifyAndLog, messageForResult, pickImage } from '@/lib/image-logging';
+import { classifyAndLog, messageForResult, pickImage, type PickedImage } from '@/lib/image-logging';
+import { displayedText, fitsAPhotoTurn, PHOTO_ONLY_MESSAGE, photoUri } from '@/lib/photo-turn';
 import { persistLogTurn } from '@/lib/log-turn';
 import { loadLatestInterpretation } from '@/lib/log-acknowledgment-facts';
 import { shouldShowDiscoveryPrompt } from '@/lib/cycle';
@@ -458,7 +459,9 @@ export default function ChatScreen() {
       previousTag = tagId;
       return {
         role: m.role,
-        content: m.content,
+        // A photo sent with no words is stored as "[photo]"; the thread shows
+        // the photo, never the placeholder.
+        content: displayedText(m.content, Boolean(m.image_path)),
         imagePath: m.image_path ?? null,
         // A food log's own table still wins: that is the turn that LOGGED it,
         // and it is named whether or not anybody asked about it.
@@ -727,6 +730,17 @@ export default function ChatScreen() {
         return;
       }
 
+      // A PHOTO IT COULD NOT PLACE BECOMES THE CONVERSATION (12 October 2026).
+      // Ruth: "Even with no question, Selodía should extract the details and
+      // ask if not sure." This ended in "I couldn't quite make that out" - the
+      // model had looked and the app had kept one word. Now the photo goes in
+      // as her message and Selodía says what it sees and asks. Only a photo too
+      // large for a turn keeps the old line.
+      if (result.status === 'unclear' && fitsAPhotoTurn(result.image)) {
+        void handleSend(PHOTO_ONLY_MESSAGE, undefined, result.image);
+        return;
+      }
+
       const msg = messageForResult(result);
       const foodLogId = result.status === 'logged' ? (result.foodLogId ?? null) : null;
       // A photographed meal earns the same itemised table as a typed one - it is
@@ -864,7 +878,7 @@ ${result.message}`;
     void handleSend(text);
   }
 
-  async function handleSend(override?: string, tagOverride?: DiscussTag) {
+  async function handleSend(override?: string, tagOverride?: DiscussTag, photo?: PickedImage) {
     const trimmed = (override ?? input).trim();
     // THE REF, NOT THE STATE (Ruth, 26 September 2026: "each message appears
     // twice in the chat thread... It also happens in text chat").
@@ -904,7 +918,9 @@ ${result.message}`;
       ...prev,
       {
         role: 'user',
-        content: trimmed,
+        // Her photo IS her message: drawn as the bubble, with no placeholder text.
+        content: photo ? '' : trimmed,
+        imageUri: photo ? photoUri(photo) : null,
         foodLogId: tag?.entryType === 'food' ? tag.entryId : null,
         entry:
           tag &&
@@ -937,6 +953,12 @@ ${result.message}`;
           // The server validates the type and ignores anything it does not know.
           ...(tag ? { entryId: tag.entryId, entryType: tag.entryType } : {}),
           ...(closeNext ? { closeDiscussion: true } : {}),
+          // The same fields "Ask about this" uses to carry a card image, so the
+          // photo is stored on her turn and shown to both models. `photoOnly`
+          // is what stops anything being saved from it before she says so.
+          ...(photo
+            ? { cardImageBase64: photo.base64, cardMediaType: photo.mediaType, photoOnly: true }
+            : {}),
         });
       // Cleared whatever the reply was: the question has been asked, and the
       // thread's own tag carries the conversation from here.

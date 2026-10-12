@@ -88,7 +88,10 @@ export type ImageLogResult =
   // to the caller, which puts it in the document tray and waits for the rest.
   // Nothing is read and nothing is saved until she says the letter is complete.
   | { status: 'document'; image: PickedImage }
-  | { status: 'unclear' }
+  // CARRIES THE PHOTO NOW (12 October 2026), so the caller can put it into the
+  // conversation instead of ending with "I couldn't quite make that out". See
+  // lib/photo-turn.ts.
+  | { status: 'unclear'; image: PickedImage }
   | { status: 'cancelled' }
   | { status: 'denied'; source: AddSource }
   | { status: 'too_large' }
@@ -163,7 +166,7 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
     return { status: 'failed' };
   }
 
-  if (kind === 'unclear') return { status: 'unclear' };
+  if (kind === 'unclear') return { status: 'unclear', image };
   if (kind === 'document') return { status: 'document', image };
 
   // What each parse route hands back differs, so the saved row is captured here
