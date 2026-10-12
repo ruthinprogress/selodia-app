@@ -28,10 +28,24 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // with one set of rows whatever order the parses land in, and if the later
 // turn fails outright, the earlier turn's rows are still there.
 
-/** How far apart two versions of one sentence can arrive. Matches the adapter. */
-export const SUPERSEDE_WINDOW_MS = 30_000;
+/**
+ * How far apart two versions of one sentence can arrive.
+ *
+ * 60 SECONDS, NOT 30 (12 October 2026). Catching up her Sunday, one sentence -
+ * "Yeah, instead of the other ice cream... Oh, and I remember now. On Sunday, I
+ * made cinnamon buns with Felix" - grew across five versions and 48 seconds,
+ * because she was remembering as she spoke. The versions past 30 seconds were
+ * treated as new sentences, and their food went in again.
+ */
+export const SUPERSEDE_WINDOW_MS = 60_000;
 /** How many opening words must match for a longer sentence to be the same one. */
 const OPENING_WORDS = 8;
+/**
+ * How many of those opening words the transcriber may revise. The same evening,
+ * "Yeah, so let's fill it. When else today" came back as "...What else today":
+ * one word of eight, and the sentence counted as a different one.
+ */
+const OPENING_REVISIONS = 1;
 
 function words(text: string): string[] {
   return text
@@ -54,7 +68,11 @@ export function continues(earlier: string, later: string): boolean {
   const b = words(later);
   if (a.length === 0 || b.length <= a.length) return false;
   const n = Math.min(OPENING_WORDS, a.length);
-  for (let i = 0; i < n; i++) if (a[i] !== b[i]) return false;
+  // A short opening must match exactly: one revised word in three is a
+  // different sentence, not a revision.
+  const allowed = n >= 6 ? OPENING_REVISIONS : 0;
+  let revised = 0;
+  for (let i = 0; i < n; i++) if (a[i] !== b[i] && ++revised > allowed) return false;
   return true;
 }
 

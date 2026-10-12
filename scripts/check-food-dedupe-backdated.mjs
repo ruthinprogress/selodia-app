@@ -75,7 +75,11 @@ check('the words alone identify the repeat', () => {
   for (let i = 0; i < FIRST.length; i++) {
     const m = sameMeal(FIRST[i], SECOND[i]);
     assert.ok(m, `no match for ${SECOND[i]}`);
-    assert.strictEqual(m.how, 'longer', `${SECOND[i]} matched as ${m.how}`);
+    // 'same' SINCE 12 OCTOBER 2026, 'longer' before. "Yesterday" was the only
+    // extra word, and day words stopped counting as food that evening, so the
+    // repeat is now recognised as the same meal and dropped rather than
+    // rewritten over the first. Either way it is one row.
+    assert.ok(m.how === 'same' || m.how === 'longer', `${SECOND[i]} matched as ${m.how}`);
   }
   return `${FIRST.length} meals, each recognised as the same one again`;
 });

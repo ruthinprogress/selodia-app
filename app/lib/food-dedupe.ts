@@ -52,7 +52,39 @@ const FUNCTION_WORDS = new Set([
   'a', 'an', 'the', 'and', 'with', 'of', 'in', 'on', 'to', 'for', 'plus', 'some',
   'my', 'i', 'it', 'was', 'then', 'also', 'had', 'have', 'ate', 'eaten', 'just',
   'about', 'there', 'that', 'this', 'we', 'me', 'at', 'as', 'is',
+  // TALK ABOUT THE LOG, NOT FOOD (12 October 2026). "Two bowls of ice cream
+  // (replacing the single bowl previously logged)" is the same ice cream.
+  'replacing', 'replace', 'replaced', 'instead', 'previously', 'logged', 'log',
+  'already', 'again', 'other',
 ]);
+
+// DAYS ARE NOT FOOD EITHER (12 October 2026). Catching up her Sunday, one entry
+// arrived as "Sunday 11 Oct: two bowls of ice cream" and the same ice cream as
+// "two bowls of ice cream". Three extra words made them two desserts, and her
+// Sunday read 3,921 kcal.
+export const DAY_WORDS = new Set([
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+  'mon', 'tue', 'tues', 'wed', 'weds', 'thu', 'thur', 'thurs', 'fri', 'sat', 'sun',
+  'january', 'february', 'march', 'april', 'june', 'july', 'august', 'september',
+  'october', 'november', 'december',
+  'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+  'yesterday', 'today', 'tonight', 'last', 'night',
+]);
+
+const isDayToken = (w: string) => DAY_WORDS.has(w) || /^\d{1,4}(st|nd|rd|th)?$/.test(w);
+
+/**
+ * An entry's text without a leading day label: "Sunday 11 Oct: two bowls of ice
+ * cream" is "two bowls of ice cream". Only a label made ENTIRELY of day words and
+ * numbers is removed, so "Breakfast: porridge" and "Note: no sugar" are kept.
+ */
+export function stripDayLabel(text: string): string {
+  const m = text.match(/^([^:\n]{1,40}):\s*([\s\S]+)$/);
+  if (!m) return text;
+  const label = normaliseFoodText(m[1]).split(' ').filter(Boolean);
+  if (label.length === 0 || !label.some((w) => DAY_WORDS.has(w)) || !label.every(isDayToken)) return text;
+  return m[2].trim();
+}
 
 // Words only, lowercased: punctuation, casing and spacing all vary between two
 // transcriptions of the same sentence, and none of them change what was eaten.
@@ -64,11 +96,21 @@ export function normaliseFoodText(text: string): string {
 }
 
 /** What was actually eaten, as a set: no grammar, no order, no repeats. */
+// "Two bowls" and "2 bowl" are the same dessert. A transcriber writes either,
+// and a model naming the foods writes "Bowl of ice cream (2)".
+const NUMBER_WORDS: Record<string, string> = {
+  one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
+};
+
+/** A crude singular, so "buns" and "bun", "bowls" and "bowl" are one word. */
+const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+
 export function contentWords(text: string): Set<string> {
   return new Set(
     normaliseFoodText(text)
       .split(' ')
-      .filter((w) => w.length > 0 && !FUNCTION_WORDS.has(w))
+      .filter((w) => w.length > 0 && !FUNCTION_WORDS.has(w) && !DAY_WORDS.has(w))
+      .map((w) => singular(NUMBER_WORDS[w] ?? w))
   );
 }
 
@@ -142,4 +184,56 @@ export function findSameMeal(
     return { log, how: match.how };
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// A RE-LOG OF SEVERAL MEALS AT ONCE (12 October 2026).
+//
+// Catching up her Sunday by voice, she logged two bowls of ice cream, then
+// cinnamon buns, each on its own. Then she said "Yes, that's right now", and the
+// model put BOTH into one more entry: "Two bowls of ice cream with banana and
+// raisins (replacing the single bowl previously logged), and 4-5 fresh cinnamon
+// buns". Compared as a sentence it matches neither meal - it is longer than each
+// and contains the other - so sameMeal let it through and her buns and ice cream
+// were counted twice.
+//
+// So a several-item entry is also compared FOOD BY FOOD. When every food in it
+// is already recorded in the window, spread across TWO OR MORE entries, it is a
+// summary of what is there and adds nothing.
+//
+// TWO OR MORE, ON PURPOSE. One matching entry is the ordinary sentence-level
+// case and sameMeal decides it, keeping "another bowl of ice cream" possible: a
+// second identical thing said on its own is still logged. Only an entry that
+// re-states several already-logged meals at once is dropped here.
+
+function itemWords(name: string): Set<string> {
+  return new Set([...contentWords(name)].filter((w) => !/^\d/.test(w)));
+}
+
+export type RecentItems = { logId: string; names: string[] };
+
+/**
+ * The recent entries a several-item entry merely restates, or null when it adds
+ * anything. Pure: scripts/check-voice-catch-up.mjs.
+ */
+export function restatesEntries(incomingNames: string[], recent: RecentItems[]): string[] | null {
+  const incoming = incomingNames.map(itemWords).filter((s) => s.size > 0);
+  if (incoming.length < 2) return null;
+  const matched = new Set<string>();
+  for (const words of incoming) {
+    const hit = recent.find((r) =>
+      r.names.some((n) => {
+        const e = itemWords(n);
+        // A ONE-WORD FOOD MATCHES ONLY ITSELF. "Banana" sits inside "banana
+        // bread", and that is a different thing to have eaten.
+        const [small, big] = e.size <= words.size ? [e, words] : [words, e];
+        if (small.size === 0) return false;
+        if (small.size === 1) return big.size === 1 && isSubset(small, big);
+        return isSubset(small, big);
+      })
+    );
+    if (!hit) return null;
+    matched.add(hit.logId);
+  }
+  return matched.size >= 2 ? [...matched] : null;
 }

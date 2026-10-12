@@ -4,6 +4,10 @@ import { recordModelUsage } from './usage-record';
 import {
   FOOD_DEDUPE_WINDOW_MIN,
   findSameMeal,
+  restatesEntries,
+  sameMeal,
+  stripDayLabel,
+  type RecentItems,
   type RecentLog,
 } from './food-dedupe';
 import {
@@ -216,7 +220,10 @@ export function buildFoodRows(
         ? raw.detected_date
         : null;
     const text = typeof raw.entry_text === 'string' ? raw.entry_text.trim() : '';
-    const rawText = text || foodText;
+    // WITHOUT "Sunday 11 Oct:" IN FRONT (12 October 2026). A catch-up hands the
+    // parser its days as labels, and the label became the start of the food's
+    // name on her log page - and three words the duplicate guard had to see past.
+    const rawText = stripDayLabel(text || foodText);
 
     // THE WEIGHT SHE GAVE BEATS THE ONE THE MODEL ASSEMBLED (21 September
     // 2026). "50g cheese omelette" came back as two large eggs plus fifty
@@ -292,6 +299,22 @@ export function reconcileDrinks(fromModel: string[], entryText: string): string[
 // place (replacing its items) instead of inserting - used to resolve a
 // consistent-ratio clarification with an enriched description (build item 11,
 // slice 2a). An update preserves the original happened_at and is always one row.
+/**
+ * A short name built from the foods themselves: "Bowl of ice cream with banana
+ * and raisins (2)". Null when there is nothing to name it from.
+ */
+export function namedFromItems(items: ParsedItem[]): string | null {
+  const counts = new Map<string, number>();
+  for (const i of items) {
+    const name = typeof i.name === 'string' ? i.name.trim() : '';
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+  return [...counts]
+    .map(([name, n]) => (n > 1 ? `${name} (${n})` : name))
+    .join(', ');
+}
+
 export async function logFoodFromText(
   supabase: SupabaseClient,
   userId: string,
@@ -396,12 +419,48 @@ export async function logFoodFromText(
       correctionOf && typeof macros.entry_text === 'string' && macros.entry_text.trim()
         ? macros.entry_text.trim()
         : null;
+    // NEVER HER WHOLE SENTENCE AS THE NAME (12 October 2026). When the model
+    // left entry_text out, the fallback was foodText - which on a correction is
+    // everything she said: "Yeah, instead of the other ice cream. It was just two
+    // bowls of ice cream with banana and raisins." That became the name of the
+    // food on her log page. The foods themselves name it better, and the old
+    // name is better than a sentence.
+    const named = correctionOf ? corrected ?? namedFromItems(items) ?? correctionOf : corrected ?? foodText;
     const { data, error } = await supabase
       .from('food_logs')
-      .update({ raw_text: corrected ?? foodText, ...buildFoodLogFields(macros) })
+      .update({ raw_text: stripDayLabel(named), ...buildFoodLogFields(macros) })
       .eq('id', updateLogId)
       .select();
     if (error) throw new Error('food_logs update failed: ' + error.message);
+
+    // A CORRECTION THAT MAKES A COPY REMOVES ITS OWN ENTRY (12 October 2026).
+    // Catching up her Sunday, "two bowls of ice cream" was logged as a new entry,
+    // and then "instead of the other ice cream" corrected the OLD single bowl
+    // into two bowls as well - two identical desserts where she had asked for
+    // one to replace the other. "Instead of" means the old one goes. So when a
+    // corrected entry now says the same as another logged near it, the
+    // corrected one is removed and the other stands.
+    const updatedRow = (data ?? [])[0] as { happened_at?: string } | undefined;
+    const at = updatedRow?.happened_at ? Date.parse(updatedRow.happened_at) : NaN;
+    if (Number.isFinite(at)) {
+      const span = FOOD_DEDUPE_WINDOW_MIN * 60_000;
+      const { data: near } = await supabase
+        .from('food_logs')
+        .select('*')
+        .neq('id', updateLogId)
+        .gte('happened_at', new Date(at - span).toISOString())
+        .lte('happened_at', new Date(at + span).toISOString());
+      const twin = ((near ?? []) as (FoodEntry & { raw_text: string | null })[]).find(
+        (r) => sameMeal(r.raw_text ?? '', stripDayLabel(named))?.how === 'same'
+      );
+      if (twin) {
+        await supabase.from('food_items').delete().eq('food_log_id', updateLogId);
+        await supabase.from('food_logs').delete().eq('id', updateLogId);
+        console.log('FOOD CORRECTION: the corrected entry matched', twin.id, '- removed the corrected copy');
+        return [twin];
+      }
+    }
+
     await supabase.from('food_items').delete().eq('food_log_id', updateLogId);
     await writeItems(supabase, updateLogId, userId, items);
     return data as FoodEntry[];
@@ -509,6 +568,25 @@ export async function logFoodFromText(
     .limit(25);
   const recent = (recentData ?? []) as RecentLog[];
 
+  // THE FOODS INSIDE THOSE ENTRIES, for an entry that restates several of them
+  // at once. See restatesEntries in food-dedupe.ts.
+  const recentItems: (RecentItems & { happenedAt: string })[] = [];
+  if (recent.length > 0 && rows.some((r) => r.items.length >= 2)) {
+    const { data: itemData } = await supabase
+      .from('food_items')
+      .select('food_log_id, name')
+      .in(
+        'food_log_id',
+        recent.map((r) => r.id)
+      );
+    for (const log of recent) {
+      const names = ((itemData ?? []) as { food_log_id: string; name: string | null }[])
+        .filter((i) => i.food_log_id === log.id && typeof i.name === 'string')
+        .map((i) => i.name as string);
+      recentItems.push({ logId: log.id, names: [...names, log.raw_text ?? ''], happenedAt: log.happened_at });
+    }
+  }
+
   const claimed = new Set<string>();
   const fresh: typeof rows = [];
   // Rows that rewrite an existing log rather than adding one, and rows that add
@@ -519,6 +597,19 @@ export async function logFoodFromText(
   for (const row of rows) {
     const match = findSameMeal(row.rawText, row.happenedAt, recent, claimed);
     if (!match) {
+      const at = Date.parse(row.happenedAt);
+      const near = recentItems.filter(
+        (r) => Math.abs(Date.parse(r.happenedAt) - at) <= FOOD_DEDUPE_WINDOW_MIN * 60_000
+      );
+      const restated = restatesEntries(
+        row.items.map((i) => (typeof i.name === 'string' ? i.name : '')),
+        near
+      );
+      if (restated) {
+        untouched.push(...restated);
+        console.log('FOOD DEDUPE: dropped an entry restating', restated.length, 'meals already recorded');
+        continue;
+      }
       fresh.push(row);
       continue;
     }
