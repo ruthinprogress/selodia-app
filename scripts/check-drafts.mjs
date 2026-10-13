@@ -133,6 +133,31 @@ check('a malformed draft from the network draws nothing', () => {
   return 'only a title and a body make a card';
 });
 
+check('an email carries its subject, and an address only when she gave one', () => {
+  // Ruth, 13 October 2026: drafts written "directly into an email client draft
+  // with header and email address populated". The address is the dangerous
+  // field: a wrong one sends her health details to a stranger.
+  const t = D.tidyDraft({ title: 'Email', body: 'Hello', subject: 'Knee — referral', to: 'clinic@example.org' });
+  assert.strictEqual(t.subject, 'Knee - referral', 'the subject keeps an em dash');
+  assert.strictEqual(t.to, 'clinic@example.org');
+  assert.strictEqual(D.tidyDraft({ title: 'E', body: 'B', to: 'not an address' }).to, undefined, 'a non-address survived');
+  ok(D.addressIsKnown('clinic@example.org', ['Secretary: clinic@example.org']), 'an address in her record was refused');
+  ok(!D.addressIsKnown('guess@example.org', ['Secretary: clinic@example.org']), 'an invented address was accepted');
+  const draftSrc = readFileSync('app/lib/draft.ts', 'utf8');
+  ok(/if \(!addressIsKnown\(draft\.to, \[context, \.\.\.said\]\)\)/.test(draftSrc), 'the address is not checked against her record and the conversation');
+  return 'subject tidied, address only when known';
+});
+
+check('the phone opens a draft in her email app, and sends nothing', () => {
+  const d = PHONE.asDraft({ title: 't', body: 'Line one & two', subject: 'Hi there', to: 'a@b.org' });
+  assert.strictEqual(PHONE.mailtoFor(d), 'mailto:a@b.org?subject=Hi%20there&body=Line%20one%20%26%20two');
+  assert.strictEqual(PHONE.mailtoFor({ title: 't', body: 'x', subject: 's' }), 'mailto:?subject=s&body=x');
+  ok(PHONE.isEmail(d) && !PHONE.isEmail({ title: 't', body: 'b' }), 'a message is treated as an email, or the reverse');
+  ok(/Linking\.openURL\(mailtoFor\(draft\)\)/.test(card), 'Open in email does not open the mail link');
+  ok(!/sendEmail|MailComposer|fetch\(/.test(card), 'the card can send something itself');
+  return 'a mailto draft, and Share for everything else';
+});
+
 check('and this check can fail', () => {
   // The shapes that would have been wrong, detected as wrong.
   ok(/—/.test('raw — text'), 'the em dash fixture is not a fixture');

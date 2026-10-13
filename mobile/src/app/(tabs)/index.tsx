@@ -1147,7 +1147,7 @@ ${result.message}`;
                   }
                 />
               )}
-              {m.role === 'assistant' && m.draft && <DraftCard title={m.draft.title} body={m.draft.body} />}
+              {m.role === 'assistant' && m.draft && <DraftCard draft={m.draft} />}
               {m.resourceCard && (
                 <ResourceCard
                   title={m.resourceCard.title}

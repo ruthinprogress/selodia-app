@@ -169,7 +169,7 @@ import {
 } from '../../lib/photo-turn';
 import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { appGuideBlock } from '../../lib/app-guide';
-import { isBareYes, LEAD_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
+import { isBareYes, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
 import { turnFacts } from '../../lib/turn-facts';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
@@ -4243,7 +4243,9 @@ RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every fiel
     if (draftAsked) {
       draft = await writeDraft({
         anthropic,
-        model: leadMode ? LEAD_MODEL : MODEL,
+        // A FORCED TOOL, which the lead model refuses, so a led turn drafts on
+        // the strongest model that accepts one. See LEAD_TOOL_MODEL.
+        model: leadMode ? LEAD_TOOL_MODEL : MODEL,
         request: draftAsked,
         messages,
         contextBlocks: [

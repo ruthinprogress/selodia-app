@@ -31,6 +31,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 /** The strongest model, her decision: learn the best first, then measure what cheaper loses. */
 export const LEAD_MODEL = 'claude-opus-5-5';
 
+/**
+ * For a step that must call one particular tool, such as writing a draft. The
+ * lead model refuses a forced tool_choice (found 13 October 2026, before it
+ * reached her), so those steps use the strongest model that accepts one.
+ */
+export const LEAD_TOOL_MODEL = 'claude-opus-5';
+
 /** Room for a real answer: call notes run to three hundred words. */
 export const LEAD_REPLY_MAX_TOKENS = 1600;
 

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { isEmail, mailtoFor, type Draft } from '@/lib/draft';
 
 // SOMETHING WRITTEN FOR HER TO SEND, under the reply that offers it.
 //
@@ -22,9 +23,26 @@ import { useTheme } from '@/hooks/use-theme';
 // IT DOES NOT SEND ANYTHING. The sheet is the phone's own; she chooses where it
 // goes, or copies it, or closes it. Nothing leaves the app without her tap.
 
-export function DraftCard({ title, body }: { title: string; body: string }) {
+// AN EMAIL OPENS IN HER EMAIL APP (Ruth, 13 October 2026: "Write the draft
+// email directly into an email client draft with header and email address
+// populated"). A mailto link needs no native module, so it ships as an update.
+// It opens a draft - the address, subject and message filled in - and the send
+// button is still hers. The address is only there when it was found in her
+// record or the conversation; otherwise the To line is empty for her to fill.
+export function DraftCard({ draft }: { draft: Draft }) {
+  const { title, body } = draft;
   const theme = useTheme();
   const [note, setNote] = useState<string | null>(null);
+  const email = isEmail(draft);
+
+  async function openEmail() {
+    setNote(null);
+    try {
+      await Linking.openURL(mailtoFor(draft));
+    } catch {
+      setNote("Your email app didn't open. Use Send or copy instead.");
+    }
+  }
 
   async function share() {
     setNote(null);
@@ -40,10 +58,36 @@ export function DraftCard({ title, body }: { title: string; body: string }) {
   return (
     <ThemedView type="backgroundSelected" style={styles.card}>
       <ThemedText type="smallBold">{title}</ThemedText>
+      {email ? (
+        <View style={styles.header}>
+          <ThemedText type="detail" themeColor="textSecondary" selectable>
+            To: {draft.to ?? 'add the address when it opens'}
+          </ThemedText>
+          {draft.subject ? (
+            <ThemedText type="detail" themeColor="textSecondary" selectable>
+              Subject: {draft.subject}
+            </ThemedText>
+          ) : null}
+        </View>
+      ) : null}
       <ThemedText type="small" selectable style={styles.body}>
         {body}
       </ThemedText>
       <View style={styles.row}>
+        {email ? (
+          <Pressable
+            onPress={() => void openEmail()}
+            accessibilityRole="button"
+            accessibilityLabel={`Open in your email app: ${title}`}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedView style={[styles.button, { backgroundColor: theme.accentDeep }]}>
+              <ThemedText type="smallBold" themeColor="background">
+                Open in email
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => void share()}
           accessibilityRole="button"
@@ -69,7 +113,8 @@ export function DraftCard({ title, body }: { title: string; body: string }) {
 const styles = StyleSheet.create({
   card: { borderRadius: CardRadius, padding: Spacing.three, gap: Spacing.two, marginTop: Spacing.two },
   body: { lineHeight: 20 },
-  row: { flexDirection: 'row', marginTop: Spacing.one },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.one },
+  header: { gap: 2 },
   button: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.four },
   pressed: { opacity: 0.6 },
 });
