@@ -30,6 +30,13 @@ type Rate = { in: number; out: number; cacheWrite: number; cacheRead: number };
 const RATES: Record<string, Rate> = {
   // Sonnet 5: $2/M in, $10/M out. Cache write is 1.25x input, cache read 0.1x.
   'claude-sonnet-5': { in: 2, out: 10, cacheWrite: 2.5, cacheRead: 0.2 },
+  // THE LED TURN'S MODELS (13 October 2026), from the published table read the
+  // same night. Opus 5.5 leads the turn and writes the reply; Opus 5 writes a
+  // draft, because the lead model refuses the forced tool a draft needs.
+  // Without these a led turn's cost is null, and cost per turn is part of the
+  // test she signed off.
+  'claude-opus-5-5': { in: 4, out: 20, cacheWrite: 5, cacheRead: 0.2 },
+  'claude-opus-5': { in: 5, out: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   // Haiku 4.5: $1/M in, $5/M out.
   'claude-haiku-4-5-20251001': { in: 1, out: 5, cacheWrite: 1.25, cacheRead: 0.1 },
 };

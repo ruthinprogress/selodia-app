@@ -30,6 +30,9 @@ const system = [
   {
     type: 'text',
     text: 'You are Selodía, a calm health companion inside an app. Address the person as "you". Decide what this turn needs and call the tool once.',
+    // Cache markers as the route sets them, so the reply step is tested on the
+    // same request shape it meets in production.
+    cache_control: { type: 'ephemeral' },
   },
   {
     type: 'text',
@@ -55,6 +58,7 @@ const tools = [
       },
       required: ['reply'],
     },
+    cache_control: { type: 'ephemeral' },
   },
 ];
 const messages = [
