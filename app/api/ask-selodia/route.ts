@@ -28,6 +28,7 @@ import {
   SPEAK_BEFORE_SAVES,
   turnIsOrdinary,
   writeReplyAfterSaves,
+  type WrittenReply,
 } from '../../lib/chat-path';
 import { voiceSinkFor } from '../../lib/voice-sink';
 import { recordModelUsage } from '../../lib/usage-record';
@@ -167,6 +168,9 @@ import {
   photoOnlyVerdict,
 } from '../../lib/photo-turn';
 import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
+import { appGuideBlock } from '../../lib/app-guide';
+import { isBareYes, LEAD_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
+import { turnFacts } from '../../lib/turn-facts';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
 import { drinkHasCalories } from '../../lib/caloric-drink';
@@ -329,6 +333,12 @@ function phaseTimer() {
     taken: () => ({ ...marks, total: Date.now() - start }),
   };
 }
+
+// SIXTY SECONDS, as the document and report routes already have. A led turn
+// (lib/lead-turn.ts) is two calls on the strongest model, and a platform
+// default shorter than that would end it halfway, after the saves and before
+// the reply.
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const timing = phaseTimer();
@@ -2233,10 +2243,37 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         })
       : null;
 
+  // A CHAT THAT LEADS, for the accounts switched on (Ruth, 13 October 2026).
+  // Typed turns only. This call decides the turn exactly as before, on the
+  // strongest model, and the same model writes the reply once the app has
+  // acted - see lib/lead-turn.ts. The system, messages and tools are held so the
+  // reply step can continue this exact conversation and reuse its cache.
+  let leadMode = !isVoice && (await leadChatOn(supabase, user.id));
+  let firstModel = leadMode ? LEAD_MODEL : MODEL;
+  // ASKED, NOT FORCED. The lead model refuses a forced tool_choice outright, so
+  // on a led turn the decision tool is offered with tool_choice auto and the
+  // model is told plainly that the turn is decided by calling it. A turn where
+  // it answers without deciding is redone on the usual model, forced, below -
+  // so the safety classification and every write still come from the tool.
+  const firstSystem: Anthropic.Messages.TextBlockParam[] = [
+    { type: 'text', text: staticSystemPrompt, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: personContext, cache_control: { type: 'ephemeral' } },
+    {
+      type: 'text',
+      text: leadMode
+        ? `${turnRestPrompt}
+
+RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every field this turn needs. Never answer in plain text: the reply they read is written in the next step, after the app has acted.`
+        : turnRestPrompt,
+    },
+  ];
+  const firstTools: Anthropic.Messages.Tool[] = [{ ...tool, cache_control: { type: 'ephemeral' } }];
+  if (leadMode) console.log('LEAD TURN: this account leads with', LEAD_MODEL);
+
   let response;
   try {
     response = await anthropic.messages.create({
-      model: MODEL,
+      model: firstModel,
       // 500 UNTIL 2026-09-09, AND IT COULD NOT HOLD A WORKOUT PLAN.
       //
       // Found on device: asked to build a splits program and save it to the
@@ -2268,14 +2305,10 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       // caches on top of it, and her own context caches on top of that. Only
       // what genuinely changes per turn - the time, a pending save, the
       // escalation state - is read fresh. Four is the limit; three is enough.
-      system: [
-        { type: 'text', text: staticSystemPrompt, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: personContext, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: turnRestPrompt },
-      ],
+      system: firstSystem,
       messages,
-      tools: [{ ...tool, cache_control: { type: 'ephemeral' } }],
-      tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
+      tools: firstTools,
+      tool_choice: leadMode ? { type: 'auto' } : { type: 'tool', name: CLASSIFY_TOOL_NAME },
     }, {
       // ABANDONED TURNS STOP COSTING (2026-09-25). When somebody keeps talking,
       // the voice adapter's caller walks away from the generation it asked for.
@@ -2317,11 +2350,40 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // AND KEPT, not only printed. The console line above answers "did the cache
   // hit on this turn"; the row answers "what does this person cost a month",
   // which is the question the whole pricing document had to guess at.
+  // A LED TURN THAT DID NOT DECIDE IS DECIDED THE USUAL WAY. Without the tool
+  // there is no safety classification and nothing to act on, so the turn is run
+  // again on the usual model, forced, and finishes on today's path.
+  if (leadMode && !response.content.some((b) => b.type === 'tool_use')) {
+    console.log('LEAD TURN: the lead model answered without deciding - redoing the turn the usual way');
+    recordModelUsage({ userId, turnId, call: 'classify', model: firstModel, usage: response.usage });
+    leadMode = false;
+    firstModel = MODEL;
+    try {
+      response = await anthropic.messages.create(
+        {
+          model: MODEL,
+          max_tokens: 2000,
+          system: firstSystem.map((b, i) => (i === 2 ? { type: 'text' as const, text: turnRestPrompt } : b)),
+          messages,
+          tools: firstTools,
+          tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },
+        },
+        { signal: request.signal }
+      );
+    } catch (err) {
+      if (request.signal?.aborted || (err as { name?: string })?.name === 'AbortError') {
+        return NextResponse.json({ error: 'Abandoned' }, { status: 499 });
+      }
+      console.log('ANTHROPIC API ERROR (lead fallback):', err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+    }
+  }
+
   recordModelUsage({
     userId,
     turnId,
     call: 'classify',
-    model: MODEL,
+    model: firstModel,
     usage: response.usage,
   });
 
@@ -2438,6 +2500,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // cannot write; and one added next month is stripped by default. See
   // lib/photo-turn.ts.
   if (isPhotoOnly) photoOnlyVerdict(result);
+
+  // A PLAIN YES TO A WAITING OFFER IS A YES, whatever the model made of it. See
+  // isBareYes in lib/lead-turn.ts for the evening it was not.
+  if (pendingSave.proposal && !result.saveAnswer && isBareYes(message)) {
+    console.log('PENDING SAVE: a bare yes to a waiting offer, read as yes');
+    result.saveAnswer = 'yes';
+  }
 
   // A DRINK WITH CALORIES IN IT IS FOOD, WHATEVER THE MODEL CALLED IT
   // (Bug 17, 21 September 2026). "Tea with milk is currently being logged as
@@ -4174,7 +4243,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     if (draftAsked) {
       draft = await writeDraft({
         anthropic,
-        model: MODEL,
+        model: leadMode ? LEAD_MODEL : MODEL,
         request: draftAsked,
         messages,
         contextBlocks: [
@@ -4191,9 +4260,70 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       timing.mark('draftWritten');
     }
 
+    // THE REPLY, BY THE MODEL THAT LED THE TURN, on an account switched on. It
+    // gets the same record and the same blocks the writer below gets - check-
+    // lead-turn.mjs holds the two lists together - plus the app guide, and it
+    // continues the first call's own conversation. Anything it cannot write
+    // falls back exactly as the writer does, through the same path below.
+    const leadWritten = async (): Promise<WrittenReply> => {
+      try {
+        const lead = await writeLeadReply({
+          anthropic,
+          first: { system: firstSystem, messages, tools: firstTools },
+          firstContent: response.content,
+          toolUseId: toolUse.id,
+          record: turnFacts({
+            food: recentFood ?? [],
+            activity: recentActivity ?? [],
+            dailyBurn: recentDailyBurn ?? [],
+            drinks: recentDrinks ?? [],
+            sleep: recentSleep ?? [],
+            measurements: recentMeasurements ?? [],
+            lastPeriodStart: lastPeriodRow?.event_date ?? null,
+            days: 7,
+            trackedMacros: writerMacros,
+            today: buildDayStatePrompt(dayState),
+            usuallyEats,
+          }),
+          didLines: appendedNotes,
+          blocks: [
+            meFactsBlock,
+            careFactsBlock,
+            allergyBlock,
+            rulesBlock,
+            healthContextBlock,
+            yesterdayBlock,
+            longHistoryBlock,
+            lifeStageBlock,
+            weekBlock,
+            skillBlock,
+            feelBlock,
+            draftBlock,
+            isPhotoOnly ? PHOTO_ONLY_WRITER_BLOCK : '',
+          ],
+          guide: appGuideBlock(),
+          offerWaiting: offered,
+          signal: request.signal,
+        });
+        if (!lead.text) {
+          return { text: null, fellBack: 'empty', detail: 'the lead reply came back empty', usage: lead.usage };
+        }
+        return { text: lead.text, fellBack: null, usage: lead.usage };
+      } catch (err) {
+        return {
+          text: null,
+          fellBack: 'error',
+          detail: `lead reply: ${err instanceof Error ? err.message : String(err)}`,
+          usage: null,
+        };
+      }
+    };
+
     const written = speculationHeld
       ? await spokenReplyInFlight
-      : await writeReplyAfterSaves({
+      : leadMode
+        ? await leadWritten()
+        : await writeReplyAfterSaves({
           anthropic,
           model: MODEL,
           // Already ends with her current message: turn_context reads the
@@ -4287,7 +4417,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // expensive turn on this route - this call's tokens, and then the old path's
     // reply on top of them - so leaving the failures out of the cost table would
     // hide exactly the turns worth finding.
-    recordModelUsage({ userId, turnId, call: 'reply', model: MODEL, usage: written.usage });
+    recordModelUsage({ userId, turnId, call: 'reply', model: leadMode ? LEAD_MODEL : MODEL, usage: written.usage });
 
     // A failure here is a fallback, not a lost turn: the old path's reply is
     // already sitting in safeReplyText with its notes ready to append.

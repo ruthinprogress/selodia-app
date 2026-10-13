@@ -289,14 +289,19 @@ await check('the writer is given the macros, not just the classifier', async () 
   return 'on the day line, beside the calories';
 });
 
-await check('the route hands them to the writer on BOTH paths', async () => {
+await check('the route hands them to every reply path', async () => {
   // Wiring one of two is how a fix reaches half an app. One is voice, one is
-  // typed, and the typed one is the one she uses.
+  // typed, and the typed one is the one she uses. SINCE 13 OCTOBER 2026 THERE
+  // ARE THREE: the led reply (lib/lead-turn.ts) reads the same record through
+  // turnFacts, and a led turn that lost her tracked nutrients would be the
+  // supportive reply she asked for, missing the figures it is meant to read.
   const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
   const uses = route.match(/trackedMacros: writerMacros/g) ?? [];
-  assert.strictEqual(uses.length, 2, `trackedMacros reaches ${uses.length} of the 2 writer calls`);
+  assert.strictEqual(uses.length, 3, `trackedMacros reaches ${uses.length} of the 3 reply paths`);
   assert.ok(/const writerMacros/.test(route), 'the writer list is not built');
-  return 'voice and typed';
+  const lead = route.slice(route.indexOf('const leadWritten = async ()'));
+  assert.ok(lead.indexOf('trackedMacros: writerMacros') > 0 && lead.indexOf('trackedMacros: writerMacros') < lead.indexOf('didLines'), 'the led reply does not get them');
+  return 'voice, typed and led';
 });
 
 await check('the figures arrive with something to read them against', async () => {
