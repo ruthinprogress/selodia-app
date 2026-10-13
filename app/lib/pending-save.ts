@@ -266,6 +266,19 @@ export function coerceProposal(v: unknown): ProposedSave | null {
   if (!type || !title) return null;
 
   let content: Record<string, unknown>;
+  // THE FIELDS AT THE TOP LEVEL ARE THE SAME OFFER (13 October 2026). Ruth typed
+  // out what her insurer had told her - claim line, route, physio allowance,
+  // authorisation code, excess paid. The model proposed a care record with
+  // "why" and "detail" beside "title" instead of inside "content", this function
+  // returned null, nothing was stored, and the reply asked "Want me to keep this
+  // as a care record?" with no offer behind it. She said yes twice and was told
+  // twice that it did not save. probe-care-offer.mjs reproduces it: the same
+  // model nests the fields for a short message and flattens them for a long one.
+  // A shape the model produces is not a reason to lose what she gave it.
+  const FLAT_KEYS = ['section', 'why', 'detail', 'status', 'items', 'summary'];
+  if (o.content == null && FLAT_KEYS.some((k) => o[k] != null)) {
+    o.content = Object.fromEntries(FLAT_KEYS.filter((k) => o[k] != null).map((k) => [k, o[k]]));
+  }
   if (typeof o.content === 'string') {
     const t = o.content.trim();
     if (!t) return null;

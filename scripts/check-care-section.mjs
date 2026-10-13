@@ -132,6 +132,22 @@ check('a parsed letter actually survives being turned into a card', () => {
     content: { section: SERVER.CARE_SECTION, why: 'Letter dated 2 October.', detail: '**Seen by**' },
   });
   assert.ok(proposal !== null, 'a care record is still refused by coerceProposal, so no letter can be kept');
+
+  // THE SAME OFFER WITH ITS FIELDS AT THE TOP LEVEL (13 October 2026). The model
+  // flattens a long care offer - why and detail beside title, no content - and
+  // that shape was refused, so her insurer's details were offered in words and
+  // never stored. It must survive, with what she gave it intact.
+  const flat = SAVE.coerceProposal({
+    type: 'care',
+    title: 'Example Health',
+    why: 'Insurer route to a consultant by video.',
+    detail: 'Authorisation code AB1234. Excess paid.',
+  });
+  assert.ok(flat !== null, 'a care offer with its fields at the top level is refused, so it is offered and never stored');
+  assert.strictEqual(flat.content.why, 'Insurer route to a consultant by video.');
+  assert.ok(/AB1234/.test(String(flat.content.detail)), 'the detail did not survive the flat shape');
+  // Its section is set when it is saved - "proposal.type === 'care' ? CARE_SECTION",
+  // asserted below - so a flat offer with none still lands in How I Access Care.
   assert.strictEqual(proposal.type, 'care', 'a care record is being coerced into something else');
   assert.strictEqual(
     proposal.content.section,
