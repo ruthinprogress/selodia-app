@@ -566,3 +566,22 @@ become the value being computed on.
 check what actually passes between them.** If it is prose, or a string shaped for
 a reader, the fact can be lost or reordered without either step being wrong. Give
 it its own field, in a form made for the code that consumes it, and check it there.
+
+**A stronger model is a different interface, not the same one faster.** On 13
+October the chat's deciding call was moved to Opus 5.5 for the chat that leads.
+The model name was the only change, the reply step had already passed a live
+test, and everything typechecked. Then the probe made its first call the way the
+route does, and Opus 5.5 refused it: a forced tool_choice is a 400 on that model.
+Every led turn would have failed in front of Ruth with "Something went wrong".
+An hour later a second difference: it thinks before it answers, by default, and
+the thinking counts against max_tokens, so a ceiling sized for the old model
+could cut a turn off before its decision was written.
+
+Neither showed up in the types, the checks, or a test of the part that was new.
+Both showed up the moment the exact request the code sends was sent to the new
+model.
+
+**The rule: before a call moves to another model, send that model the request
+shape the code actually sends - the same tool_choice, the same ceilings, the
+same cache markers - and read what comes back, including what it refuses and
+what it does by default.** The model ID is the smallest part of the change.
