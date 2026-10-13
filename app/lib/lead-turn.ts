@@ -38,8 +38,15 @@ export const LEAD_MODEL = 'claude-opus-5-5';
  */
 export const LEAD_TOOL_MODEL = 'claude-opus-5';
 
-/** Room for a real answer: call notes run to three hundred words. */
-export const LEAD_REPLY_MAX_TOKENS = 1600;
+/**
+ * Room for a real answer AND the thinking before it. The lead model thinks by
+ * default and its thinking counts against this, so the ceiling is set for both:
+ * call notes run to three hundred words, and the thinking can be as long again.
+ */
+export const LEAD_REPLY_MAX_TOKENS = 6000;
+
+/** The first call's ceiling on a led turn: thinking plus every decision field. */
+export const LEAD_FIRST_MAX_TOKENS = 8000;
 
 /**
  * Is this account on the new chat? False on any error, including the column
@@ -119,7 +126,7 @@ export type LeadReplyRequest = {
   signal?: AbortSignal;
 };
 
-export type LeadReply = { text: string; usage: Anthropic.Messages.Usage | null };
+export type LeadReply = { text: string; usage: Anthropic.Messages.Usage | null; stopReason: string | null };
 
 /** The tool result the reply is written from. Pure, so it can be checked. */
 export function leadOutcome(req: Pick<LeadReplyRequest, 'record' | 'didLines' | 'blocks' | 'guide' | 'offerWaiting'>): string {
@@ -173,5 +180,5 @@ export async function writeLeadReply(req: LeadReplyRequest): Promise<LeadReply> 
     .map((b) => b.text)
     .join('\n')
     .trim();
-  return { text, usage: response.usage ?? null };
+  return { text, usage: response.usage ?? null, stopReason: response.stop_reason ?? null };
 }

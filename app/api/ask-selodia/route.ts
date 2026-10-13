@@ -169,7 +169,7 @@ import {
 } from '../../lib/photo-turn';
 import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { appGuideBlock } from '../../lib/app-guide';
-import { isBareYes, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
+import { isBareYes, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
 import { turnFacts } from '../../lib/turn-facts';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
@@ -2295,7 +2295,10 @@ RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every fiel
       // not a reservation: a two-sentence reply still generates two sentences
       // and stops. The latency note above concerns tokens READ, not tokens
       // allowed, and is unaffected.
-      max_tokens: 2000,
+      // ROOM TO THINK ON A LED TURN. The lead model thinks before it decides
+      // (thinking is on by default: 624 tokens on a four-part message, measured
+      // 13 October), and its thinking counts against this ceiling.
+      max_tokens: leadMode ? LEAD_FIRST_MAX_TOKENS : 2000,
       // TWO BREAKPOINTS, and the order the API reads them in is tools, then
       // system, then messages. So the tool schema caches on its own, and the
       // static prompt caches on top of it. Everything that varies sits after
@@ -2353,8 +2356,13 @@ RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every fiel
   // A LED TURN THAT DID NOT DECIDE IS DECIDED THE USUAL WAY. Without the tool
   // there is no safety classification and nothing to act on, so the turn is run
   // again on the usual model, forced, and finishes on today's path.
-  if (leadMode && !response.content.some((b) => b.type === 'tool_use')) {
-    console.log('LEAD TURN: the lead model answered without deciding - redoing the turn the usual way');
+  if (
+    leadMode &&
+    (!response.content.some((b) => b.type === 'tool_use') || response.stop_reason === 'max_tokens')
+  ) {
+    console.log(
+      `LEAD TURN: the lead model ${response.stop_reason === 'max_tokens' ? 'ran out of room' : 'answered without deciding'} - redoing the turn the usual way`
+    );
     recordModelUsage({ userId, turnId, call: 'classify', model: firstModel, usage: response.usage });
     leadMode = false;
     firstModel = MODEL;
@@ -4307,6 +4315,9 @@ RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every fiel
           offerWaiting: offered,
           signal: request.signal,
         });
+        if (lead.stopReason === 'max_tokens') {
+          return { text: null, fellBack: 'max_tokens', detail: 'the lead reply ran out of room', usage: lead.usage };
+        }
         if (!lead.text) {
           return { text: null, fellBack: 'empty', detail: 'the lead reply came back empty', usage: lead.usage };
         }
