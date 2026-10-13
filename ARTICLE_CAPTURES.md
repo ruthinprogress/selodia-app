@@ -886,3 +886,21 @@ I have stopped guessing about this. I pulled 28 real moments where my Project ge
 One more thing I learned today. Selodía showed me a saved record with little stars and underscores scattered through it, formatting codes leaking onto the screen. I know exactly what they are. It still made the whole app feel like junk in one glance.
 
 If you are building something people will trust with their health, how it looks is not polish. It is the first thing they judge you on, before they have read a word.
+
+---
+
+## 13 October 2026 - I wouldn't pay for my own app. Yet.
+
+Today I called my health insurer about my knee. I came off the phone with a page of notes: a claim number, a route to a consultant, an authorisation code, what I'd already paid.
+
+I typed them into Selodía. It offered to keep them. I said yes. It said it had saved them, and underneath, the app said it hadn't. Twice.
+
+Then I opened my own Claude Project and pasted the same notes. It turned them into call notes for next time. It noticed my GP's letter described the injury differently from how I remembered it, and told me which version to give. It checked a date for me. It tidied everything into what happens next.
+
+That was the moment. I said it out loud to Claude Code: without the supportive layer, Selodía is just heavy lifting admin. I wouldn't pay for it.
+
+It's an odd thing to say about something you've spent months building. But it's true, and it's useful. The records were never the point. Anyone can build a place to put things. What I actually wanted, what I still go to my Project for, is something that knows my history and thinks with me. Something that says "you'll need this number" before I've asked.
+
+So tonight we stopped fixing the little things. We went through a plan for a new kind of chat, section by section, on my phone, while Felix was asleep. One part of it reads everything first and decides what would actually help. All the careful rules about what gets saved stay exactly where they are.
+
+The build starts tonight. The test is simple. It has to help me more than my own Project does, on my own real examples. If it can't, I'll say so here.
