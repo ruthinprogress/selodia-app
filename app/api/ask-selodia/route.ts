@@ -19,6 +19,7 @@ import {
 } from '../../lib/claimed-write';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
+import { weekReadBlock } from '../../lib/week-read';
 import { coerceConstants, constantsBlock, readConstants, recordConstants } from '../../lib/care-constants';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
@@ -1037,6 +1038,20 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
     ? `YESTERDAY, FOR CONTEXT: ${mediating}. If they mention this morning's reading or how they feel about their body today, bring this in BEFORE they have a chance to read a higher number as fat gained - it is water and food settling, and it passes. Say it once, warmly, as context rather than as reassurance they asked for. Never suggest eating less today to compensate; the opposite - eating normally when hungry is what stops the swing. If they do not raise it, do not raise it either.`
     : '';
 
+  // THE WEEK, READ ACROSS EVERY DOMAIN (14 October 2026). Computed from rows
+  // already loaded for this turn, so it costs no round trip - see week-read.ts
+  // for why the arithmetic happens here and not in the model's head.
+  const weekReadContextBlock = weekReadBlock({
+    food: recentFood ?? [],
+    activity: recentActivity ?? [],
+    dailyBurn: recentDailyBurn ?? [],
+    drinks: recentDrinks ?? [],
+    sleep: recentSleep ?? [],
+    measurements: recentMeasurements ?? [],
+    lastPeriod: lastPeriodRow?.event_date ?? null,
+    today: todayKey,
+  });
+
   const profile = profileRow as {
     height_cm: number | null;
     unsafe_goal_flagged_at: string | null;
@@ -1503,7 +1518,7 @@ ${recoverableBlock}
 ${longHistoryBlock ? `
 ${longHistoryBlock}
 ` : ''}
-${plansBlock}${meCardsBlock}${careBlock}${constantsContextBlock ? `\n${constantsContextBlock}\n` : ''}${insightsBlock}
+${plansBlock}${meCardsBlock}${careBlock}${constantsContextBlock ? `\n${constantsContextBlock}\n` : ''}${weekReadContextBlock ? `\n${weekReadContextBlock}\n` : ''}${insightsBlock}
 ${allergyBlock}${rulesBlock ? `\n${rulesBlock}\n` : ''}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
 
 
@@ -2276,6 +2291,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             // leaving it out here would have the model know the question and
             // not the answer.
             constantsContextBlock,
+            weekReadContextBlock,
             allergyBlock,
             rulesBlock,
             // THE OTHER THREE THE GUARD FOUND, each read before being wired
@@ -4436,6 +4452,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           // land ready to send: "Write the draft email directly into an email
           // client draft with header and email address populated."
           constantsContextBlock,
+          weekReadContextBlock,
           healthContextBlock,
           allergyBlock,
           rulesBlock,
@@ -4502,6 +4519,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             // leaving it out here would have the model know the question and
             // not the answer.
             constantsContextBlock,
+            weekReadContextBlock,
             allergyBlock,
             rulesBlock,
             healthContextBlock,
@@ -4606,6 +4624,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             // leaving it out here would have the model know the question and
             // not the answer.
             constantsContextBlock,
+            weekReadContextBlock,
             allergyBlock,
             rulesBlock,
             // THE OTHER THREE THE GUARD FOUND, each read before being wired
