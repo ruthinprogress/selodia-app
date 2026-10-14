@@ -17,6 +17,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
 import { CARE_EMPTY, CARE_SECTION, CARE_SUBTITLE } from '@/lib/care-admin';
+import { StandingDetails } from '@/components/standing-details';
+import { DETAILS_SECTION, DETAILS_SUBTITLE, type StandingDetail } from '@/lib/care-constants';
 import { arrange, layoutOf, loadLayout, saveLayout, type LogLayout } from '@/lib/log-layout';
 import { ME_STATUSES, readMeCard, sectionOf, type MeCard, type MeStatus } from '@/lib/me-card';
 import { updateMeCard } from '@/lib/me-card-write';
@@ -58,10 +60,13 @@ function orderSections(names: string[]): string[] {
 
 export function MeProtocol({
   entries,
+  details,
   onDeleted,
   onChanged,
 }: {
   entries: AlmanacRow[];
+  /** Her standing details, for the section above How I Access Care. */
+  details: StandingDetail[];
   /** Fired once a card is gone, so the screen above can re-read itself.
       (Ruth, 25 September 2026, item 6.) */
   onDeleted?: () => void;
@@ -187,7 +192,20 @@ export function MeProtocol({
     });
   }, []);
 
-  const renderSection = (section: { name: string; rows: AlmanacRow[] }, i: number) => (
+  // ONE SECTION RENDERER, AND THAT IS THE POINT (14 October 2026).
+  //
+  // Her standing details are a section of this tab and not a list that happens
+  // to sit near one: same heading size, same chevron sense, same count, same
+  // fold remembered in the same store. `instead` lets a section draw something
+  // other than Me cards without a second copy of the heading - which is how
+  // the card arrow and the section arrow came to disagree in the first place
+  // (see check-one-chevron-rule.mjs), and how every other duplicated string in
+  // this repository has drifted.
+  const renderSection = (
+    section: { name: string; rows: AlmanacRow[] },
+    i: number,
+    instead?: { count: number; subtitle: string; body: React.ReactNode }
+  ) => (
       <View key={section.name} style={styles.section}>
         {/* A THIN RULE BETWEEN SECTIONS, NOT AROUND EACH CARD (item 6:
             "Cormorant headings with thin dividers between sections, no cards
@@ -234,7 +252,7 @@ export function MeProtocol({
             {section.name}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            {section.rows.length}
+            {instead ? instead.count : section.rows.length}
           </ThemedText>
         </Pressable>
         {/* SWIPE TO DELETE, AS EVERYWHERE ELSE (Ruth, 25 September 2026,
@@ -246,14 +264,15 @@ export function MeProtocol({
             entries that should not be in the record at all.
             It reveals a Delete rather than firing on the swipe; see
             swipe-to-delete.tsx. */}
-        {section.name === CARE_SECTION ? (
+        {instead || section.name === CARE_SECTION ? (
           <ThemedText type="detail" themeColor="textSecondary" style={styles.careSubtitle}>
-            {CARE_SUBTITLE}
+            {instead ? instead.subtitle : CARE_SUBTITLE}
           </ThemedText>
         ) : null}
         {!isShut(section.name) && (
           <>
-        {section.name === CARE_SECTION && section.rows.length === 0 ? (
+        {instead ? instead.body : null}
+        {!instead && section.name === CARE_SECTION && section.rows.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
             {CARE_EMPTY}
           </ThemedText>
@@ -337,7 +356,24 @@ export function MeProtocol({
         onReorder={keep}
         renderRow={(section, i) => renderSection(section, i)}
       />
-      {renderSection(care, ordered.length)}
+      {/* THE CONSTANTS, THEN THE THREADS (Ruth, 14 October 2026: "So each
+          thread of accessing care stays in the current format with everything
+          needed for it, and then the constants are in their own section").
+
+          Above the records rather than below them, because of what each one is
+          for. A record is read when she wants the story of something - what was
+          agreed, when she is next seen. A standing detail is read when somebody
+          is waiting on the phone. The thing wanted in a hurry goes where it is
+          reached without scrolling.
+
+          Both outside her reordering, like How I Access Care has been since 12
+          October, so neither can drift up the page by accident. */}
+      {renderSection({ name: DETAILS_SECTION, rows: [] }, ordered.length, {
+        count: details.length,
+        subtitle: DETAILS_SUBTITLE,
+        body: <StandingDetails details={details} />,
+      })}
+      {renderSection(care, ordered.length + 1)}
     </View>
   );
 }

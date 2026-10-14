@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { splitByTab, type AlmanacRow } from '@/lib/insights';
+import type { StandingDetail } from '@/lib/care-constants';
 import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 
@@ -41,6 +42,10 @@ export const ME_EMPTY_BODY =
 export default function MeScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [rows, setRows] = useState<AlmanacRow[]>([]);
+  // HER STANDING DETAILS, read on the same focus as the cards. A second small
+  // query rather than a column on anything: a number she is asked for belongs
+  // to her, not to the one letter it was lifted off. See care_constants.
+  const [details, setDetails] = useState<StandingDetail[]>([]);
   const [loaded, setLoaded] = useState(false);
   // Bumped when a card is deleted or edited below, so the screen re-reads
   // itself. useFocusEffect alone does not cover it: the change happens while
@@ -56,13 +61,22 @@ export default function MeScreen() {
       let cancelled = false;
       (async () => {
         // RLS scopes this to the signed-in user, so no explicit user_id filter.
-        const { data, error } = await supabase
-          .from('almanac_entries')
-          .select('id, kind, title, category, content, created_at, updated_at')
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
+        const [{ data, error }, { data: detailRows }] = await Promise.all([
+          supabase
+            .from('almanac_entries')
+            .select('id, kind, title, category, content, created_at, updated_at')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false }),
+          // NEWEST TOUCHED FIRST, not alphabetical. The number she gave or
+          // corrected most recently is the one she is in the middle of needing.
+          supabase
+            .from('care_constants')
+            .select('id, label, value, note, source, confirmed, updated_at')
+            .order('updated_at', { ascending: false }),
+        ]);
 
         if (!cancelled) {
+          setDetails((detailRows ?? []) as unknown as StandingDetail[]);
           // On error, fall through to the empty view rather than an error
           // screen: a warm "nothing here yet" is a far better wrong answer than
           // a failure message on a tab somebody just tapped.
@@ -114,12 +128,20 @@ export default function MeScreen() {
 
             {loaded && (
               <SpotlightTarget id="almanac.me">
-                {byTab.me.length > 0 ? (
+                {byTab.me.length > 0 || details.length > 0 ? (
                   // A protocol, not a list: sections that came into being by
                   // their first card arriving, and a why behind each one. See
                   // me-protocol.tsx.
+                  //
+                  // OR A STANDING DETAIL ON ITS OWN (14 October 2026). This
+                  // read `byTab.me.length > 0` alone, and her details are not
+                  // almanac entries - so somebody whose first contribution was
+                  // an NHS number would have seen "Nothing here yet" over a
+                  // tab that held it. Exactly the bug this file already carries
+                  // a note about from the other direction.
                   <MeProtocol
                     entries={byTab.me}
+                    details={details}
                     onDeleted={() => setReloadKey((k) => k + 1)}
                     onChanged={() => setReloadKey((k) => k + 1)}
                   />

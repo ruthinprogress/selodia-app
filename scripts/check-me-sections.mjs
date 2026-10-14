@@ -84,15 +84,23 @@ check('the fold is saved on the tap, not on leaving', () => {
 });
 
 check('a shut section carries a count', () => {
+  // SINCE 14 OCTOBER A SECTION MAY DRAW SOMETHING OTHER THAN ME CARDS - her
+  // standing details are not almanac rows - so the count comes from
+  // `instead.count` when one is given and from the rows otherwise. Both arms
+  // are required here: a section that passed `instead` and forgot the count
+  // would show nothing beside a shut heading, which is the exact thing this
+  // check was built to prevent.
   assert.ok(
-    /\{section\.rows\.length\}/.test(me),
+    /\{instead \? instead\.count : section\.rows\.length\}/.test(me),
     'the heading shows no count, so a shut section cannot be told from an empty one'
   );
   // HOW I ACCESS CARE COUNTS ITS OWN since 12 October 2026, when it stopped
   // being a group inside Health and became its own section, drawn by the same
-  // renderSection as every other, so one count covers both.
-  assert.ok(/\{renderSection\(care, ordered\.length\)\}/.test(me), 'the care section is not drawn by the shared renderer, so it has no count');
-  return 'every section, How I Access Care included';
+  // renderSection as every other, so one count covers both. Her standing
+  // details go through the same renderer for the same reason.
+  assert.ok(/\{renderSection\(care, [^)]*\)\}/.test(me), 'the care section is not drawn by the shared renderer, so it has no count');
+  assert.ok(/count: details\.length,/.test(me), 'the standing details section has no count beside its heading');
+  return 'every section, How I Access Care and her standing details included';
 });
 
 check('the heading is the control and the body is behind it', () => {

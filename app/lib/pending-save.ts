@@ -4,6 +4,7 @@ import { addSkill, skillAddNote, type SkillAddOutcome } from './skill-add';
 
 import { saveAlmanacEntry } from './almanac';
 import { CARE_SECTION } from './care-admin';
+import { coerceConstants, recordConstants } from './care-constants';
 import { coerceStatus, normaliseSection } from './me-card';
 import { archiveProse, coerceItems, itemsOf, mergeItems, type MeItem } from './me-items';
 
@@ -1015,7 +1016,47 @@ export async function commitSave(
     category: section,
     content: proposal.content,
   });
+  // AND THE NUMBERS ON IT GO WHERE SHE CAN REACH THEM (14 October 2026).
+  //
+  // Ruth: "stuff that usually stays the same like NHS numbers, axa memebership
+  // numbers etc etc. easy to access for the user." A reference lifted off a
+  // letter stays on the letter - "each thread of accessing care stays in the
+  // current format with everything needed for it" - and a copy goes to her
+  // standing details, where it can be read out without opening anything.
+  //
+  // ON THE SAVE AND NOT ON THE READ, deliberately. By now she has seen the card
+  // body, which lists every reference and marks any digits the two reads of the
+  // photograph disagreed about. A number that landed silently at the moment a
+  // camera guessed at it would be a number she never agreed to.
+  if (entry && proposal.type === 'care') {
+    await recordConstantsFromRecord(supabase, userId, proposal.content);
+  }
   return entry ? { kind: entry.kind, title: entry.title } : null;
+}
+
+/**
+ * The references carried on a care proposal, written to her standing details.
+ *
+ * Fails quietly and alone: the record is already saved by the time this runs,
+ * and a failure here must never read as the record not landing.
+ */
+async function recordConstantsFromRecord(
+  supabase: SupabaseClient,
+  userId: string,
+  content: Record<string, unknown>
+): Promise<void> {
+  const refs = Array.isArray(content.references) ? content.references : [];
+  if (refs.length === 0) return;
+  const unconfirmed = new Set<string>();
+  const constants = coerceConstants(
+    refs.map((r) => {
+      const o = (r ?? {}) as Record<string, unknown>;
+      if (o.confirmed === false && typeof o.label === 'string') unconfirmed.add(o.label.trim());
+      return { label: o.label, value: o.value };
+    })
+  );
+  if (constants.length === 0) return;
+  await recordConstants(supabase, userId, constants, 'document', (label) => !unconfirmed.has(label.trim()));
 }
 
 /**

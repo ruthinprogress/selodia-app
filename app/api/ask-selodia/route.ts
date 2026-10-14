@@ -19,6 +19,7 @@ import {
 } from '../../lib/claimed-write';
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
+import { coerceConstants, constantsBlock, readConstants, recordConstants } from '../../lib/care-constants';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
@@ -668,13 +669,22 @@ export async function POST(request: NextRequest) {
   // WHAT SHE ACTUALLY EATS, for suggesting food she recognises. A fortnight of
   // her own entries, newest first; turn-facts dedupes and caps them. Cheap, and
   // it is the only personalisation that cannot be wrong, because she ate it.
-  const { data: recentMeals } = await supabase
-    .from('food_logs')
-    .select('raw_text')
-    .eq('user_id', userId)
-    .gte('happened_at', new Date(Date.now() - 14 * 86_400_000).toISOString())
-    .order('happened_at', { ascending: false })
-    .limit(60);
+  // ALONGSIDE, NOT AFTER. Her standing details are a second small read, and a
+  // turn already takes long enough that a round trip spent in series for six
+  // short rows would be a real cost - she called 20-30 seconds "broken by any
+  // normal users standards" the same morning. They are not in turn_context
+  // because that function is the seven-day picture; this is a reference list
+  // that does not move.
+  const [{ data: recentMeals }, standingDetails] = await Promise.all([
+    supabase
+      .from('food_logs')
+      .select('raw_text')
+      .eq('user_id', userId)
+      .gte('happened_at', new Date(Date.now() - 14 * 86_400_000).toISOString())
+      .order('happened_at', { ascending: false })
+      .limit(60),
+    readConstants(supabase, userId),
+  ]);
   const usuallyEats = (recentMeals ?? [])
     .map((r) => (typeof r.raw_text === 'string' ? r.raw_text : ''))
     .filter((t) => t.length > 0);
@@ -808,6 +818,17 @@ export async function POST(request: NextRequest) {
           '',
         ].join('\n')
       : '';
+
+  // AND THE DETAILS THAT STAY THE SAME, WHEREVER THEY CAME FROM.
+  //
+  // careBlock above already carries the references that are written on a letter,
+  // because it hands over each record whole. What it cannot carry is a number
+  // she simply said - "my AXA membership is 1234", with no document behind it -
+  // and that is most of them. This block is the list itself, so the answer to
+  // "what's my NHS number" does not depend on which record happens to be in
+  // context, which is Ruth's test for the whole product: "actually being able
+  // to pick up anywhere in chat and it knows what you're talking about."
+  const constantsContextBlock = constantsBlock(standingDetails);
 
   // THE SAME CARDS, WITH NO INSTRUCTIONS IN THEM (2026-09-30).
   //
@@ -1335,7 +1356,7 @@ You are Selodía, a calm, grounded companion inside a food/fitness tracking app.
 ${EVIDENCE_PRINCIPLE}
 
 Here is what you know about this person (their stored context, facts, goals, diagnoses, preferences):
-Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact. If they mention an ALLERGY or a medical dietary restriction - however casually, and including in the middle of logging a meal - set allergiesDisclosed as well; a dislike or a choice is not one, and belongs in rememberCategory instead. Never turn this into a questionnaire: never ask whether they have any allergies, never ask them to confirm a list, and do not remark on capturing it.
+Use this information naturally in your replies, the way a friend who already knows your situation would - don't just recite it back. If in the course of the conversation the person shares something worth remembering long-term (a new goal, a diagnosis, a preference, a frustration), set rememberCategory and rememberContent - only for genuinely durable facts, not passing comments, and only once per new fact. If they mention an ALLERGY or a medical dietary restriction - however casually, and including in the middle of logging a meal - set allergiesDisclosed as well; a dislike or a choice is not one, and belongs in rememberCategory instead. If they give a detail that STAYS THE SAME and that somebody asks for in order to find them - an NHS number, an insurer membership or policy number, a hospital number, a date of birth, their GP practice - set standingDetails, with the value exactly as they wrote it. An appointment time or a result is not one of those. Never turn this into a questionnaire: never ask whether they have any allergies, never ask them to confirm a list, and do not remark on capturing it.
 
 ASKED ABOUT A VITAMIN OR MINERAL (iron, vitamin C, calcium, B12, magnesium, anything like it). Never answer with "I can't track that" and stop - closing the door contradicts the whole idea that anything can be brought here. What is true: the app does not measure micronutrients as numbers, but you can see every meal they log, so you CAN keep an eye on it. Answer what they asked first, from what you know and from the food actually logged above. Then say plainly that you do not measure it in milligrams, and offer to watch for it: "I don't track micronutrients in numbers, but if iron is something you want to keep an eye on, I can start noticing it in what you log. Want me to?" On a yes, set rememberCategory to "watching" and rememberContent to what they want watched and the reason THEY gave, in their words ("Wants iron watched, because ..."). Never supply a reason they did not give. That stored line is what NUTRIENT DEPTH below will then use. NEVER put a number on it: you have no iron figures, so "about 8mg today" or "half your iron" would be invented. Speak in foods and patterns ("not much red meat, lentils or leafy greens this week"), never in amounts.
 NUTRIENT DEPTH (passive, occasional): protein and calories miss things that can matter over time - dietary saturated fat and cholesterol, omega-3s, iron, fibre, refined carbs, overall micronutrient variety. From the food ALREADY LOGGED above, you may occasionally and gently notice a PATTERN worth a light mention - never from a single meal (one lower-density choice is noise, only a trend across the logs is worth raising), never as a running micronutrient tracker or checklist, and never by labelling any food "good" or "bad". Let the HEALTH CONTEXT above decide what is worth watching, and ANYTHING THEY HAVE ASKED YOU TO WATCH - stored in their context as "watching" - is part of that lens too, with the same standing as a health marker: the markers and protective foods it already lists ARE your priority lens - infer the relevant nutrient pattern from that block, don't restate or second-guess it, and don't run a generic scan. If there is NO health context, keep this very light and mostly stay quiet: a depth nudge is prioritised by what they have actually disclosed, not applied one-size-fits-all. Only raise it when it genuinely fits the moment and is worth saying - most replies will not touch it at all. When such a nudge draws on their health context, set healthGuidanceApplied to true (as above) so the disclaimer shows.
@@ -1482,7 +1503,7 @@ ${recoverableBlock}
 ${longHistoryBlock ? `
 ${longHistoryBlock}
 ` : ''}
-${plansBlock}${meCardsBlock}${careBlock}${insightsBlock}
+${plansBlock}${meCardsBlock}${careBlock}${constantsContextBlock ? `\n${constantsContextBlock}\n` : ''}${insightsBlock}
 ${allergyBlock}${rulesBlock ? `\n${rulesBlock}\n` : ''}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
 
 
@@ -1714,6 +1735,46 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       },
       description:
         'Only when the person states an ALLERGY or a medical dietary restriction (coeliac, an intolerance that makes them ill), in any context including in passing. NOT dislikes, NOT preferences, NOT things they are avoiding by choice or for a diet - those go to rememberCategory. When in doubt it is a preference, not an allergy.',
+    },
+    // THE DETAILS THAT STAY THE SAME (Ruth, 14 October 2026: "It might be
+    // useful to populate a section where the pertinent details always live as
+    // they come in from the user, stuff that usually stays the same like NHS
+    // numbers, axa memebership numbers etc etc. easy to access for the user").
+    //
+    // Captured the same way an allergy is: wherever it comes up, with no
+    // ceremony and no confirmation turn. A number she has just read out to
+    // somebody is not a thing to be asked permission about keeping - she said
+    // it in order to be able to find it again.
+    //
+    // KEPT SEPARATE FROM rememberCategory because the shape is the whole point.
+    // "Her NHS number is 485 777 3456" as remembered prose is a sentence the
+    // model has to find and re-read. As a label and a value it is a line she
+    // can tap to copy at a reception desk.
+    standingDetails: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          label: {
+            type: 'string',
+            description:
+              'What the detail is called, in two or three words and in THEIR words where they gave any: "NHS number", "AXA membership number", "Hospital number", "Date of birth". Name the organisation when one is involved, because somebody can hold a membership number with two of them.',
+          },
+          value: {
+            type: 'string',
+            description:
+              'The detail itself, EXACTLY as they wrote it, spacing and punctuation included. "485 777 3456" is how it is printed on the card they are reading from, so it is how it must be stored - never tidied, never regrouped, never turned into digits.',
+          },
+          note: {
+            type: 'string',
+            description:
+              'Only when they said what it is used for and it is not obvious from the label - "quote this when booking physio". One short line. Omit it rather than inventing one.',
+          },
+        },
+        required: ['label', 'value'],
+      },
+      description:
+        'Only for a detail that STAYS THE SAME and that somebody asks for in order to find them: an NHS number, an insurer membership or policy number, a hospital or patient number, a date of birth, a GP practice. True before the call and still true after it. NOT an appointment time, NOT a date they were seen, NOT a test result, NOT a weight or a dose - those change, and a section full of stale ones is worse than an empty one. Set it whenever such a detail appears, including in the middle of something else, and do not remark on having kept it.',
     },
     saveRedirect: {
       type: 'object',
@@ -2208,6 +2269,13 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
           extraBlocks: [
             meFactsBlock,
             careFactsBlock,
+            // HER STANDING DETAILS REACH THE WRITER TOO. The reply is a second
+            // call, and a block the classifier saw does not travel - which is
+            // the fault check-both-models-see-it exists for. "What's my NHS
+            // number" is classified in one call and ANSWERED in this one, so
+            // leaving it out here would have the model know the question and
+            // not the answer.
+            constantsContextBlock,
             allergyBlock,
             rulesBlock,
             // THE OTHER THREE THE GUARD FOUND, each read before being wired
@@ -2486,6 +2554,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     navigationTarget?: string;
     endVoiceSession?: boolean;
     allergiesDisclosed?: ({ name: string; kind?: string } | string)[];
+    standingDetails?: unknown;
     proposedSave?: unknown;
     meUpdate?: { title?: unknown; status?: unknown; reason?: unknown };
     weekEntry?: { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown };
@@ -3584,6 +3653,24 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     if (stored.length > 0) writes.record('allergy');
   }
 
+  // HER STANDING DETAILS, written the same way and for the same reason: she
+  // said the number in order to be able to find it again, so asking permission
+  // to keep it would be a ceremony around something she has already decided.
+  //
+  // One row per label, enforced by a unique index rather than by this code or
+  // by the prompt - so a number restated six weeks later corrects the one on
+  // file instead of sitting beside it. coerceConstants refuses anything whose
+  // label reads like a one-off, because a stale appointment time in among the
+  // real references is what would make her stop trusting the section.
+  let savedConstants: string[] = [];
+  {
+    const constants = coerceConstants(result.standingDetails);
+    if (constants.length > 0) {
+      savedConstants = await recordConstants(supabase, user.id, constants, 'conversation');
+      if (savedConstants.length > 0) writes.record('standing detail');
+    }
+  }
+
   let savedContext: { category: string; content: string; autoSaved: boolean } | null = null;
   if (worthRemembering(result.rememberCategory, result.rememberContent)) {
     const category = (result.rememberCategory as string).trim();
@@ -4270,6 +4357,12 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         contextBlocks: [
           meFactsBlock,
           careFactsBlock,
+          // AND THE DRAFT WRITER MOST OF ALL. A letter to a consultant's
+          // secretary is the one piece of writing in this app that is REJECTED
+          // without a membership number on it, and she asked for drafts that
+          // land ready to send: "Write the draft email directly into an email
+          // client draft with header and email address populated."
+          constantsContextBlock,
           healthContextBlock,
           allergyBlock,
           rulesBlock,
@@ -4317,10 +4410,25 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           didLines: [
             ...appendedNotes,
             ...(saved ? [`${saved.kind} written: ${saved.summary}`] : []),
+            // A STANDING DETAIL IS THE ONE WRITE WITH NO CONFIRMATION OF ITS
+            // OWN. A log draws a card, a save draws a toast, an allergy quietly
+            // changes what gets suggested - but a number kept to her standing
+            // details shows nowhere until she opens the Me tab. So the reply is
+            // told, and may say it in a clause. Said once, not announced.
+            ...(savedConstants.length > 0
+              ? [`kept to their standing details: ${savedConstants.join(', ')}`]
+              : []),
           ],
           blocks: [
             meFactsBlock,
             careFactsBlock,
+            // HER STANDING DETAILS REACH THE WRITER TOO. The reply is a second
+            // call, and a block the classifier saw does not travel - which is
+            // the fault check-both-models-see-it exists for. "What's my NHS
+            // number" is classified in one call and ANSWERED in this one, so
+            // leaving it out here would have the model know the question and
+            // not the answer.
+            constantsContextBlock,
             allergyBlock,
             rulesBlock,
             healthContextBlock,
@@ -4418,6 +4526,13 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           extraBlocks: [
             meFactsBlock,
             careFactsBlock,
+            // HER STANDING DETAILS REACH THE WRITER TOO. The reply is a second
+            // call, and a block the classifier saw does not travel - which is
+            // the fault check-both-models-see-it exists for. "What's my NHS
+            // number" is classified in one call and ANSWERED in this one, so
+            // leaving it out here would have the model know the question and
+            // not the answer.
+            constantsContextBlock,
             allergyBlock,
             rulesBlock,
             // THE OTHER THREE THE GUARD FOUND, each read before being wired

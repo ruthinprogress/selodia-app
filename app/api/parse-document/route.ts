@@ -186,7 +186,13 @@ export async function POST(request: NextRequest) {
     // not working hidden"). It was a group inside Health until then.
     type: 'care',
     title: doc.title,
-    content: { section: cardSection(doc), why, detail: body_ },
+    // REFERENCES CARRIED AS DATA AS WELL AS PROSE (14 October 2026). They are
+    // already in `detail` under "To quote", which is where she reads them as
+    // part of the record. These are the same numbers in a shape that can be
+    // written to her standing details when she agrees to keep the record - see
+    // recordConstantsFromRecord in pending-save.ts. Parsing them back out of
+    // the body text would work until the day cardBody's headings change.
+    content: { section: cardSection(doc), why, detail: body_, references: doc.references },
   });
 
   if (!proposal) {

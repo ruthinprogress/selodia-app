@@ -87,8 +87,16 @@ check('it is its own section, last, and always there', () => {
     'care rows are not taken out of the reorderable sections, so it could be dragged up or appear twice'
   );
   const reorder = screen.indexOf('<ReorderableRows');
-  const last = screen.indexOf('{renderSection(care, ordered.length)}');
+  // SINCE 14 OCTOBER ONE SECTION SITS BETWEEN THEM: her standing details, which
+  // are outside the reordering for the same reason this one is. So the index it
+  // is drawn at is no longer `ordered.length` exactly, and pinning the literal
+  // argument was pinning an implementation detail. What she asked for is that
+  // it comes AFTER everything she can drag, and that is what this now reads.
+  const last = screen.search(/\{renderSection\(care, [^)]*\)\}/);
   assert.ok(last > reorder && reorder > 0, 'How I Access Care is not drawn after the other sections');
+  // And still last of all: nothing is drawn below it.
+  const after = screen.slice(last).match(/renderSection\(/g) ?? [];
+  assert.strictEqual(after.length, 1, `${after.length - 1} section(s) are drawn below How I Access Care`);
   // Always there: built from the entries whether or not any match.
   assert.ok(
     /const care = useMemo\(\s*\(\) => \(\{ name: CARE_SECTION, rows: entries\.filter/.test(screen),
