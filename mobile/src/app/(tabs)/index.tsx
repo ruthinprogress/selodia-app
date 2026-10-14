@@ -46,7 +46,13 @@ import {
   tooBig,
   type DocumentPage,
 } from '@/lib/document-pages';
-import { classifyAndLog, messageForResult, pickImage, type PickedImage } from '@/lib/image-logging';
+import {
+  classifyAndLog,
+  messageForResult,
+  pickImage,
+  type ImageLogResult,
+  type PickedImage,
+} from '@/lib/image-logging';
 import { displayedText, fitsAPhotoTurn, PHOTO_ONLY_MESSAGE, photoUri } from '@/lib/photo-turn';
 import { asDraft } from '@/lib/draft';
 import { DraftCard } from '@/components/draft-card';
@@ -678,7 +684,17 @@ export default function ChatScreen() {
   // "in memory, for seconds".
   useFocusEffect(
     useCallback(() => {
-      if (hasDocumentWaiting()) setDocumentPages((pages) => [...pages, ...collectDocument()]);
+      if (!hasDocumentWaiting()) return;
+      const { pages: handed, readNow } = collectDocument();
+      // CHOSEN FROM THE GALLERY ON TODAY, SO IT IS READ HERE WITHOUT ASKING -
+      // the same rule as choosing it in this screen. A photograph taken on
+      // Today still goes to the tray, because the next side of the letter is
+      // still on the table.
+      if (readNow) {
+        void readPages(handed);
+        return;
+      }
+      setDocumentPages((pages) => [...pages, ...handed]);
     }, [])
   );
 
@@ -695,6 +711,25 @@ export default function ChatScreen() {
     // this goes straight to the tray, where she can add the rest of the pages.
     if (source === 'file') {
       await addDocumentPages('file');
+      return;
+    }
+
+    // FROM HER GALLERY, SEVERAL AT ONCE, AND READ WITHOUT BEING ASKED (Ruth, 14
+    // October 2026, both halves of one complaint: "1. wierd screen comes up
+    // adking if you want the upload read....obviously you do, it's uncessary
+    // extra step. 2. doesn't support multiple image upload like Claude does").
+    //
+    // She is right about the step. Picking a letter out of her gallery is
+    // already the decision; the tray then asked her to make it again. And she
+    // could only pick one, so a three-page letter meant three trips.
+    //
+    // THE CAMERA KEEPS THE TRAY, and that is not an oversight. Photographing a
+    // three-sided letter happens one side at a time, so there is a genuine
+    // moment between pages where the app cannot know whether she has finished -
+    // which is the whole reason the tray was built. Choosing from the gallery
+    // has no such moment: everything she meant to send is in her hand at once.
+    if (source === 'library') {
+      await readFromGallery();
       return;
     }
 
@@ -737,33 +772,46 @@ export default function ChatScreen() {
         return;
       }
 
-      // A PHOTO IT COULD NOT PLACE BECOMES THE CONVERSATION (12 October 2026).
-      // Ruth: "Even with no question, Selodía should extract the details and
-      // ask if not sure." This ended in "I couldn't quite make that out" - the
-      // model had looked and the app had kept one word. Now the photo goes in
-      // as her message and Selodía says what it sees and asks. Only a photo too
-      // large for a turn keeps the old line.
-      if (result.status === 'unclear' && fitsAPhotoTurn(result.image)) {
-        void handleSend(PHOTO_ONLY_MESSAGE, undefined, result.image);
-        return;
-      }
-
-      const msg = messageForResult(result);
-      const foodLogId = result.status === 'logged' ? (result.foodLogId ?? null) : null;
-      // A photographed meal earns the same itemised table as a typed one - it is
-      // the same food_items data either way, and the photo path is the one where
-      // seeing what was counted matters most, since nobody typed the items.
-      if (msg || foodLogId) {
-        setMessages((m) => [...m, { role: 'assistant', content: msg ?? '', foodLogId }]);
-      }
-      if (result.status === 'logged') {
-        // Same brief confirmation the text path shows - never a written-out
-        // receipt in the reply itself.
-        setSaveToast({ summary: 'Saved from your photo', nonce: Date.now() });
-        if (await shouldOfferReminders()) setOfferReminders(true);
-      }
+      await handleClassified(result);
     } finally {
       setPicking(false);
+    }
+  }
+
+  // WHAT HAPPENS TO A PHOTO ONCE THE APP KNOWS WHAT IT IS.
+  //
+  // One copy, because there are two ways in now - the camera and a gallery
+  // pick that may carry several - and two copies of this would be two answers
+  // to "did that save", which is the class of bug this app has spent the week
+  // on. The document case is NOT here: the two callers do different things with
+  // a letter on purpose, one gathering pages and one reading them.
+  async function handleClassified(result: ImageLogResult) {
+    if (result.status === 'document') return;
+
+    // A PHOTO IT COULD NOT PLACE BECOMES THE CONVERSATION (12 October 2026).
+    // Ruth: "Even with no question, Selodía should extract the details and
+    // ask if not sure." This ended in "I couldn't quite make that out" - the
+    // model had looked and the app had kept one word. Now the photo goes in
+    // as her message and Selodía says what it sees and asks. Only a photo too
+    // large for a turn keeps the old line.
+    if (result.status === 'unclear' && fitsAPhotoTurn(result.image)) {
+      void handleSend(PHOTO_ONLY_MESSAGE, undefined, result.image);
+      return;
+    }
+
+    const msg = messageForResult(result);
+    const foodLogId = result.status === 'logged' ? (result.foodLogId ?? null) : null;
+    // A photographed meal earns the same itemised table as a typed one - it is
+    // the same food_items data either way, and the photo path is the one where
+    // seeing what was counted matters most, since nobody typed the items.
+    if (msg || foodLogId) {
+      setMessages((m) => [...m, { role: 'assistant', content: msg ?? '', foodLogId }]);
+    }
+    if (result.status === 'logged') {
+      // Same brief confirmation the text path shows - never a written-out
+      // receipt in the reply itself.
+      setSaveToast({ summary: 'Saved from your photo', nonce: Date.now() });
+      if (await shouldOfferReminders()) setOfferReminders(true);
     }
   }
 
@@ -806,7 +854,62 @@ export default function ChatScreen() {
   // READ THE LOT. The server holds what it reads as an offer rather than
   // writing it, so what comes back here is a question - and the answer goes
   // through the same conversational save every other Almanac entry uses.
+  // EVERYTHING SHE CHOSE FROM HER GALLERY, IN ONE GO.
+  //
+  // The first image decides what the set is, because somebody selecting three
+  // photographs at once has selected three of the same thing: three sides of a
+  // letter, or three meals. Classifying each one separately and then acting on
+  // a mixture would be the app arguing with itself about what she just sent.
+  //
+  // A letter is read immediately, all pages together, which is the fix. Food,
+  // a scale readout or a label goes through the path it always did, once per
+  // photograph, so picking a week of scale screenshots logs a week.
+  async function readFromGallery() {
+    if (picking || readingDocument) return;
+    setPicking(true);
+    try {
+      const picked = await pickPageImages('library');
+      if (!picked.ok) {
+        const msg = pickFailureMessage(picked.reason);
+        if (msg) setMessages((m) => [...m, { role: 'assistant', content: msg }]);
+        return;
+      }
+      const pages = picked.pages.slice(0, MAX_DOCUMENT_PAGES);
+      if (picked.pages.length > MAX_DOCUMENT_PAGES) {
+        setMessages((m) => [
+          ...m,
+          {
+            role: 'assistant',
+            content: `I can take ${MAX_DOCUMENT_PAGES} pages at a time, so I have read the first ${MAX_DOCUMENT_PAGES}. Send the rest and I will read those too.`,
+          },
+        ]);
+      }
+      const first = { base64: pages[0].base64, mediaType: pages[0].mediaType };
+      const result = await classifyAndLog(first);
+
+      if (result.status === 'document') {
+        // STRAIGHT TO READING. No tray, no second question.
+        await readPages(pages);
+        return;
+      }
+
+      await handleClassified(result);
+      // THE REST, ONE AT A TIME. Each is its own log, so a failure on the third
+      // leaves the first two saved rather than losing the lot.
+      for (const page of pages.slice(1)) {
+        const more = await classifyAndLog({ base64: page.base64, mediaType: page.mediaType });
+        await handleClassified(more);
+      }
+    } finally {
+      setPicking(false);
+    }
+  }
+
   async function handleReadDocument() {
+    await readPages(documentPages);
+  }
+
+  async function readPages(documentPages: DocumentPage[]) {
     if (readingDocument || documentPages.length === 0) return;
     // TOLD BEFORE THE UPLOAD, NOT AFTER IT. Too much at once is refused by the
     // platform with a reply the app cannot read a message out of, so she would

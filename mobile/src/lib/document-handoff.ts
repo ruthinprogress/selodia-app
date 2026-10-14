@@ -18,16 +18,27 @@ import type { DocumentPage } from '@/lib/document-pages';
 // the first screen that asks.
 
 let waiting: DocumentPage[] = [];
+// WHETHER CHAT SHOULD READ IT ON ARRIVAL OR WAIT FOR MORE PAGES (14 October
+// 2026). One rule, both screens: something chosen from the gallery is read
+// straight away, because everything she meant to send was in her hand when she
+// chose it. Something photographed waits, because the next side of the letter
+// is still on the table. Ruth on the old behaviour, which asked either way:
+// "wierd screen comes up adking if you want the upload read....obviously you
+// do, it's uncessary extra step."
+let readOnArrival = false;
 
-export function handOverDocument(pages: DocumentPage[]): void {
+export function handOverDocument(pages: DocumentPage[], opts?: { readNow?: boolean }): void {
   waiting = pages;
+  readOnArrival = opts?.readNow === true;
 }
 
 /** Takes the pages and empties the box, so they can never be collected twice. */
-export function collectDocument(): DocumentPage[] {
+export function collectDocument(): { pages: DocumentPage[]; readNow: boolean } {
   const pages = waiting;
+  const readNow = readOnArrival;
   waiting = [];
-  return pages;
+  readOnArrival = false;
+  return { pages, readNow };
 }
 
 export function hasDocumentWaiting(): boolean {
@@ -37,4 +48,5 @@ export function hasDocumentWaiting(): boolean {
 /** Signed out, or anything else that should not leave a letter lying about. */
 export function clearDocumentHandoff(): void {
   waiting = [];
+  readOnArrival = false;
 }

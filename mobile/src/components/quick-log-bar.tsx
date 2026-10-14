@@ -163,9 +163,13 @@ export function QuickLogBar({
       // are gathered and read together - and the photograph she has just taken
       // travels with her rather than being taken again.
       if (result.status === 'document') {
-        handOverDocument([
-          { base64: result.image.base64, mediaType: result.image.mediaType, label: 'Page 1' },
-        ]);
+        handOverDocument(
+          [{ base64: result.image.base64, mediaType: result.image.mediaType, label: 'Page 1' }],
+          // READ IT ON ARRIVAL IF SHE CHOSE IT FROM HER GALLERY. One rule
+          // across both screens: a letter she picked is read, a letter she
+          // photographed waits for its other sides. See document-handoff.ts.
+          { readNow: source === 'library' }
+        );
         setNote(null);
         router.push('/');
         return;
