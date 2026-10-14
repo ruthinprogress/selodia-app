@@ -124,7 +124,15 @@ check('the guard is actually used where the row is written', () => {
 });
 
 check("the reply is told today's total as it stands AFTER the writes", () => {
-  assert.ok(/const replyDayState = writes\.any\(\)/.test(route), 'the reply still reads the pre-write snapshot');
+  // BOTH LISTS. The first version read `writes.any()` alone and did nothing,
+  // because a food write is recorded in attempt.landed and never in writes - so
+  // on a correction, the one turn this exists for, the condition was false.
+  // Caught by running it against the live app rather than by reading it.
+  assert.ok(
+    /const wroteAnything = attempt\.landed\.length > 0 \|\| writes\.any\(\);/.test(route),
+    'the refresh looks at only one of the two lists of what was written'
+  );
+  assert.ok(/const replyDayState = wroteAnything/.test(route), 'the reply still reads the pre-write snapshot');
   assert.ok(
     /loadDayStateRows\(supabase, dayStartForState\.toISOString\(\)\)/.test(route),
     'the refresh does not go through the same loader the context used'
@@ -133,7 +141,12 @@ check("the reply is told today's total as it stands AFTER the writes", () => {
   assert.strictEqual(uses.length, 2, `${uses.length} of the 2 reply writers get the refreshed figures`);
   // ONLY WHEN SOMETHING WAS WRITTEN. An ordinary turn must not pay for a
   // second round trip it has no use for.
-  assert.ok(/writes\.any\(\)\s*\?[\s\S]{0,200}: dayState;/.test(route), 'every turn pays for the refresh');
+  assert.ok(/wroteAnything\s*\?[\s\S]{0,200}: dayState;/.test(route), 'every turn pays for the refresh');
+  // A FOOD CORRECTION IS THE CASE IT EXISTS FOR, so it must be inside the
+  // condition. 'food' is pushed to attempt.landed, which is why both lists are
+  // read: a version that checked only `writes` passed every static test and
+  // did nothing on the only turn that mattered.
+  assert.ok(/attempt\.landed\.push\('food'\)/.test(route), 'a food write no longer lands anywhere this can see');
   return 'refreshed, and only when it had to be';
 });
 

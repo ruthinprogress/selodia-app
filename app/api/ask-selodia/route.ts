@@ -4208,7 +4208,15 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // used, so there is no second implementation of "today" to disagree with the
   // first. Only when something was actually written: an ordinary turn pays
   // nothing for this.
-  const replyDayState = writes.any()
+  // BOTH LISTS, AND THAT IS THE WHOLE POINT. The first version of this read
+  // `writes.any()` alone and changed nothing at all, because a food write is
+  // recorded in `attempt.landed` and never in `writes` - so on the one kind of
+  // turn this was built for, the condition was false and the reply got the
+  // stale snapshot anyway. Proved on the live app before it was believed:
+  // the corrected lunch came back right, and the reply still said "Today's
+  // total still reads 210... the old 200g entry is still in your record."
+  const wroteAnything = attempt.landed.length > 0 || writes.any();
+  const replyDayState = wroteAnything
     ? buildDayState(await loadDayStateRows(supabase, dayStartForState.toISOString()), profile)
     : dayState;
 

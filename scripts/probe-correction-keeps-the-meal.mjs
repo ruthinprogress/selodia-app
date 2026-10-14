@@ -96,8 +96,10 @@ const turns = [
   'That porridge was 100g of dry oats, not 200g.',
 ];
 
+const said = [];
 for (const [i, message] of turns.entries()) {
   const out = await say(message);
+  said.push(out.reply ?? '');
   console.log(`\n  turn ${i + 1} (${out.status}, ${(out.ms / 1000).toFixed(1)}s)`);
   console.log(`  > ${message}`);
   console.log(out.reply ? out.reply.split('\n').map((l) => `    ${l}`).join('\n') : '    (no reply)');
@@ -113,12 +115,28 @@ for (const r of after) console.log(`    ${r.meal_label} · ${r.kcal} kcal · ${r
 if (after.length === 0) console.log('    nothing');
 
 const total = after.reduce((n, r) => n + Number(r.kcal ?? 0), 0);
-const reply = (await rows()) && '';
+const lastReply = said[said.length - 1] ?? '';
 
 const results = [
   ['the correction left one entry, not two', after.length === 1],
   ['it is still labelled lunch', after.length === 1 && /lunch/i.test(after[0].meal_label ?? '')],
-  ['the calories came down', after.length === 1 && Number(after[0].kcal) > 0 && Number(after[0].kcal) < 400],
+  // THE THIRD TEST WAS WRONG ON ITS FIRST RUN and said so: it asserted the
+  // calories came down, because a correction from 200g to 100g sounds smaller.
+  // 200g of COOKED porridge is about 210 kcal and 100g of DRY oats is about
+  // 380, so the honest answer goes up. A test that encodes my arithmetic rather
+  // than the app's behaviour fails the app for being right.
+  //
+  // What matters is that the entry actually changed, and that the reply does
+  // not send her to tidy up after the app. Those are the two faults.
+  ['the entry actually changed', after.length === 1 && Number(after[0].kcal) !== 210],
+  [
+    'the reply does not send her to the Log to check or delete',
+    !/still (reads|shows|in your record)|may still be there|is still in your record|delete the|two porridge/i.test(lastReply),
+  ],
+  [
+    "the reply's figure matches what is stored",
+    after.length === 1 && lastReply.includes(String(Math.round(Number(after[0].kcal)))),
+  ],
 ];
 
 console.log(`\n  day total now: ${total} kcal\n`);
@@ -128,5 +146,4 @@ for (const [what, ok] of results) {
   if (!ok) failed += 1;
 }
 console.log(`\n  ${results.length - failed} passed, ${failed} failed\n`);
-void reply;
 process.exit(failed > 0 ? 1 : 0);
