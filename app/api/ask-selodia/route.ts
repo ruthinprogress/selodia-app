@@ -4306,7 +4306,18 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             today: buildDayStatePrompt(dayState),
             usuallyEats,
           }),
-          didLines: appendedNotes,
+          // WHAT LANDED, NOT ONLY WHAT NEEDED SAYING (14 October 2026). This was
+          // appendedNotes alone, which is the list of things the app has to
+          // SPEAK about - and a write that simply worked is not on it, because
+          // the app shows its own confirmation. So a correction that succeeded
+          // reached the reply as silence, and the reply honestly reported that
+          // the change had not gone through while the entry sat corrected in
+          // front of her. Wrong in the worse direction: she would go and fix
+          // what was already right.
+          didLines: [
+            ...appendedNotes,
+            ...(saved ? [`${saved.kind} written: ${saved.summary}`] : []),
+          ],
           blocks: [
             meFactsBlock,
             careFactsBlock,
