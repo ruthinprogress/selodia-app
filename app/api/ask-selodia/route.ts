@@ -3086,6 +3086,23 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         if (updated.length > 0) {
           saved = { kind: 'food', summary: foodSaveSummary(updated) };
           attempt.landed.push('food');
+          // AND THE TABLE REDRAWS WITH THE CORRECTED FIGURES (14 October 2026).
+          //
+          // Ruth: "it's quite disconserting if it says nothing for a log, it's
+          // history. i like it best when it does a little table confirming what
+          // i told it so i can see the summary of what i logged without leaving
+          // chat."
+          //
+          // The itemised table was wired to the NEW-log path only, so a
+          // correction - the one turn where she most wants to see what it now
+          // says - drew nothing at all. She was left with a sentence about the
+          // change and no way to see it, which is the failure this route keeps
+          // relearning and has a comment about forty lines below.
+          //
+          // One id, because a correction is always one entry: logFoodFromText
+          // returns the row it updated, or the twin it merged into when the
+          // correction turned out to duplicate a neighbour.
+          if (updated.length === 1) breakdownFoodLogId = String(updated[0].id);
         }
       } else if (target) {
         // Activity has no in-place update path: logActivityFromText can split

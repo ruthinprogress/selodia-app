@@ -150,6 +150,33 @@ check("the reply is told today's total as it stands AFTER the writes", () => {
   return 'refreshed, and only when it had to be';
 });
 
+check('a correction draws its table too', () => {
+  // Ruth, 14 October 2026: "it's quite disconserting if it says nothing for a
+  // log, it's history. i like it best when it does a little table confirming
+  // what i told it so i can see the summary of what i logged without leaving
+  // chat."
+  //
+  // The itemised table was wired to the NEW-log path only. A correction wrote
+  // the row and set no table, so the one turn where she most wants to see what
+  // it now says drew nothing - leaving a sentence about the change and no way
+  // to see it.
+  const block = route.slice(
+    route.indexOf("} else if (correction.kind === 'food' && target) {"),
+    route.indexOf('async function handleClassified(') > -1
+      ? route.indexOf("} else if (target) {", route.indexOf("} else if (correction.kind === 'food' && target) {"))
+      : route.length
+  );
+  assert.ok(block.length > 0, 'the food correction branch has moved');
+  assert.ok(
+    /breakdownFoodLogId = String\(updated\[0\]\.id\)/.test(block),
+    'a correction no longer draws the table that shows what it changed'
+  );
+  // ONE ENTRY ONLY. A correction is always one row; guarding on the length
+  // stops a multi-row result putting somebody else's meal under the reply.
+  assert.ok(/updated\.length === 1/.test(block), 'the table is drawn without checking there is exactly one row');
+  return 'the corrected row, under the reply';
+});
+
 check('and this check can fail', () => {
   // THE OLD WRITE: the parse's label, unconditionally. It must fail the first test.
   const oldLabel = buildFoodLogFields({ meal_label: 'Breakfast' }).meal_label;
