@@ -4714,6 +4714,17 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             .map(([k]) => k)
             .sort(),
           led: leadMode,
+          // AND THE CORRECTION'S OWN VALUES, because knowing only that the
+          // fields were set left the next question unanswerable: whether the
+          // day was wrong or the words did not match. Their own data, to their
+          // own authenticated request, behind the same header.
+          correction: {
+            kind: result.correctionKind ?? null,
+            action: result.correctionAction ?? null,
+            date: result.correctionDate ?? null,
+            match: result.correctionMatch ?? null,
+            note: correctionNote,
+          },
         }
       : {}),
     reply: finalReply,
