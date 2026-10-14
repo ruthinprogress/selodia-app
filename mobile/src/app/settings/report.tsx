@@ -207,7 +207,7 @@ function Picker({
             : `${chosen.size} of ${total} included`}
         </ThemedText>
         <Ionicons
-          name={showing ? 'chevron-up' : 'chevron-down'}
+          name={showing ? 'chevron-down' : 'chevron-forward'}
           size={18}
           color={theme.textSecondary}
         />

@@ -462,7 +462,7 @@ function MeCardRow({
           ))}
         {expandable && (
           <Ionicons
-            name={open ? 'chevron-up' : 'chevron-down'}
+            name={open ? 'chevron-down' : 'chevron-forward'}
             size={16}
             color={theme.textSecondary}
           />

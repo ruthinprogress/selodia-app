@@ -269,7 +269,7 @@ export function BodyModes({
           hitSlop={Spacing.two}
           style={({ pressed }) => pressed && styles.pressed}>
           <Ionicons
-            name={open ? 'chevron-up' : 'chevron-down'}
+            name={open ? 'chevron-down' : 'chevron-forward'}
             size={14}
             color={theme.textSecondary}
           />
@@ -411,7 +411,7 @@ function Disclosure({
         <ThemedText type="small" themeColor="accentDeep">
           {label}
         </ThemedText>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={12} color={theme.accentDeep} />
+        <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={12} color={theme.accentDeep} />
       </Pressable>
       {open && (
         <ThemedText type="small" themeColor="textSecondary">
