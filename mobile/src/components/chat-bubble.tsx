@@ -109,6 +109,13 @@ function CopyWhole({ text }: { text: string }) {
 
 export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
   const hasText = typeof children === 'string' && children.length > 0;
+  // A REPLY WITH A SHAPE NEEDS THE WIDTH TO SHOW IT (Ruth, 14 October 2026:
+  // "the chat bubbles maybe are too narrow so everything is such a long body of
+  // text"). A speech bubble at 85% is right for a sentence - it reads as
+  // someone talking. It is wrong for call notes with headings and steps, which
+  // at 85% minus the avatar becomes a narrow column of wrapped lines. So a
+  // structured reply takes the width it needs and an ordinary one does not.
+  const structured = hasText && !isPlain(children as string);
 
   // Assistant turns sit in a row beside the mark; the person's own turns are
   // unchanged and still hug the right edge.
@@ -116,7 +123,10 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
     return (
       <View style={styles.assistantRow}>
         <SeedAvatar />
-        <ThemedView type="backgroundElement" style={[styles.bubble, styles.assistantBubble]}>
+        <ThemedView
+          type="backgroundElement"
+          style={[styles.bubble, styles.assistantBubble, structured && styles.wide]}
+        >
           {imageUri && (
             <Image
               source={{ uri: imageUri }}
@@ -188,6 +198,8 @@ const styles = StyleSheet.create({
   userBubble: {
     alignSelf: 'flex-end',
   },
+  // Takes what is left of the row beside the mark, rather than 85% of it.
+  wide: { maxWidth: '100%', flex: 1 },
   // TOP-ALIGNED (Ruth's call, 2026-09-16, looking at it on the phone). It was
   // bottom-aligned first, on the reasoning that the mark should sit with the last
   // line. On a six-line reply that put it level with the end of a paragraph,

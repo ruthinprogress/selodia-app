@@ -60,8 +60,7 @@ export function FormattedText({ text, type = 'small', themeColor, selectable }: 
           return (
             <ThemedText
               key={i}
-              type="detail"
-              themeColor="textSecondary"
+              type={type}
               selectable={selectable}
               style={[styles.heading, i > 0 && styles.headingAfter]}
             >
@@ -108,15 +107,16 @@ const styles = StyleSheet.create({
   wrap: { gap: Spacing.one + Spacing.half },
   bold: { fontFamily: BodyFont.semibold },
   italic: { fontStyle: 'italic' },
-  // A LABEL, NOT A TITLE. The same treatment as "Latest" on a Me card: small,
-  // spaced capitals in the secondary colour. A record has up to ten of these,
-  // and anything louder turns it into a page of headlines.
+  // A HEADING, NOT A CAPTION (Ruth, 14 October 2026: "there aren't proper bold
+  // headers"). It was small spaced capitals in the secondary colour, borrowed
+  // from the "Latest" label on a Me card, and at 12px in grey it read as a
+  // footnote above the thing it was meant to head. A heading is the body size,
+  // the body colour, and bold - the way it looks in the chat she compares this
+  // with.
   heading: {
     fontFamily: BodyFont.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
   },
-  headingAfter: { marginTop: Spacing.two },
+  headingAfter: { marginTop: Spacing.three },
   noteAfter: { marginTop: Spacing.one },
   bulletRow: { flexDirection: 'row', gap: Spacing.two, paddingLeft: Spacing.half },
   // Wide enough for "10." so a numbered list does not shift at the tenth step.
