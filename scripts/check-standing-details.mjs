@@ -105,6 +105,34 @@ check('a one-off cannot get in', () => {
   return `${refused.length} refused, ${kept.length} kept`;
 });
 
+check('a label is not written in the first person', () => {
+  // Ruth, 14 October 2026, reading a line of a test transcript: "why did it say
+  // 'my' axa memebership?" The line was my own test input, written in her voice
+  // - but nothing stopped the real thing. The model is asked for the label in
+  // their words, so "my NHS number" is a label it will write, and in a section
+  // that is already hers every row reading "my..." is the app talking about her
+  // rather than to her. Same fault check-second-person.mjs exists for.
+  const cases = [
+    ['my NHS number', 'NHS number'],
+    ['My AXA membership number', 'AXA membership number'],
+    ['our policy number', 'policy number'],
+    // Left alone: no possessive to take off.
+    ['NHS number', 'NHS number'],
+    // AND AN ACRONYM KEEPS ITS SHAPE. A capital is only restored when the
+    // original had one, so "eGFR" is never turned into "EGFR".
+    ['my eGFR', 'eGFR'],
+  ];
+  for (const [given, shown] of cases) {
+    const c = S.coerceConstant({ label: given, value: 'X1' });
+    assert.ok(c, `"${given}" was refused outright`);
+    assert.strictEqual(c.label, shown, `"${given}" is shown as "${c.label}"`);
+  }
+  // A label that is ONLY a possessive is not silently emptied.
+  const bare = S.coerceConstant({ label: 'my', value: 'X1' });
+  assert.strictEqual(bare && bare.label, 'my', 'a one-word label was stripped to nothing');
+  return `${cases.length} labels`;
+});
+
 check('the value arrives exactly as written', () => {
   const c = S.coerceConstant({ label: 'NHS number', value: '485 777 3456' });
   assert.strictEqual(c.value, '485 777 3456', 'the spacing was tidied away');

@@ -102,10 +102,36 @@ const clean = (v: unknown, max: number): string | null => {
 const NOT_A_CONSTANT =
   /\b(appointment|appt|booking|arriv\w*|slot|scan time|result|results|reading|weight|dose|today|tomorrow|next week)\b/i;
 
+/**
+ * THE LABEL IS NOT WRITTEN IN THE FIRST PERSON (Ruth, 14 October 2026, reading
+ * a line of a test transcript: "why did it say 'my' axa memebership?").
+ *
+ * The line she caught was my own test input, written in her voice - but she was
+ * right about the shape, because nothing stopped it. The model is asked for the
+ * label in THEIR words, so "my NHS number" is a label it will sometimes write,
+ * and it was stored and shown exactly as given. In a section that is already
+ * hers, every row reading "my..." is the app talking about her instead of to
+ * her, which is the same fault check-second-person.mjs exists for.
+ *
+ * The dedup key already dropped it, so there was never going to be a second
+ * row - only a row that read oddly. Fixed at the write rather than asked for in
+ * the prompt, per the standing rule: never ask the model not to do a thing
+ * twice.
+ */
+function tidyLabel(label: string): string {
+  const without = label.replace(/^(my|our)\s+/i, '').trim();
+  if (!without) return label;
+  // "nhs number" arriving lower-case stays lower-case; only a word that was
+  // capitalised BECAUSE it followed "my" gets its capital back.
+  return /^[a-z]/.test(without) && /^[A-Z]/.test(label)
+    ? without.charAt(0).toUpperCase() + without.slice(1)
+    : without;
+}
+
 export function coerceConstant(v: unknown): CareConstant | null {
   if (v == null || typeof v !== 'object' || Array.isArray(v)) return null;
   const raw = v as Record<string, unknown>;
-  const label = clean(raw.label, MAX_LABEL);
+  const label = clean(raw.label, MAX_LABEL) ? tidyLabel(clean(raw.label, MAX_LABEL) as string) : null;
   const value = clean(raw.value, MAX_VALUE);
   if (!label || !value) return null;
   if (NOT_A_CONSTANT.test(label)) return null;
