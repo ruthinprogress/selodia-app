@@ -77,6 +77,24 @@ check('the reply gets every block the old writer gets, plus the guide', () => {
   return `${names(leadBlocks).length} blocks, the same as the writer's`;
 });
 
+check('both calls of a turn ask for the same effort', () => {
+  // Ruth, 14 October 2026: 20 to 30 seconds "is broken by any normal users
+  // standards". Effort is the measured lever (probe-lead-latency.mjs: 16.9s at
+  // medium, 11.3s at low, same answers). It must be the SAME on both calls: the
+  // resolved effort is rendered into the prompt, so a different level on the
+  // second call throws away the cache that call exists to reuse.
+  const src = readFileSync('app/lib/lead-turn.ts', 'utf8');
+  assert.strictEqual(L.LEAD_EFFORT, 'low');
+  assert.ok(/output_config: \{ effort: LEAD_EFFORT \}/.test(src), 'the reply step does not set the effort');
+  assert.ok(
+    /leadMode \? \{ output_config: \{ effort: LEAD_EFFORT \} \} : \{\}/.test(route),
+    'the first call does not set the same effort, so the second loses its cache'
+  );
+  // And only on a led turn: the old path is untouched.
+  assert.ok(!/output_config/.test(route.slice(route.indexOf("tool_choice: { type: 'tool', name: CLASSIFY_TOOL_NAME },\n    }"))), 'effort leaked onto a path that is not led');
+  return `effort ${L.LEAD_EFFORT} on both`;
+});
+
 check('nothing can be done from the reply step', () => {
   const src = readFileSync('app/lib/lead-turn.ts', 'utf8');
   assert.ok(/tool_choice: \{ type: 'none' \}/.test(src), 'the reply step could call a tool');

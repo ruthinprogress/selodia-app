@@ -1,10 +1,14 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useState } from 'react';
 import { Image } from 'expo-image';
-import { Image as RNImage, StyleSheet, View } from 'react-native';
+import { Image as RNImage, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { FormattedText } from '@/components/formatted-text';
+import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { isPlain } from '@/lib/rich-text';
 
 // A chat turn. Ordinarily just text; a turn can also carry a discuss-card image
 // (build item 30) — the entry's breakdown card posted into the thread as a
@@ -51,6 +55,58 @@ function SeedAvatar() {
   );
 }
 
+// COPYING A WHOLE MESSAGE THAT HAD TO BE DRAWN IN PARTS.
+//
+// Ruth, 14 October 2026, trying to lift her insurer notes out of the thread:
+// "it only let's me copy one paragraph". A selection cannot cross two Texts, and
+// a message with headings or bullets is drawn as one Text per part - there is no
+// way around that while the bullets keep their hanging indent.
+//
+// A message with nothing to draw is drawn whole again (see isPlain), which
+// covers what she was actually copying. This is for the rest: a quiet control
+// that hands the WHOLE message to the phone's own share sheet, where Copy sits
+// alongside everything else. The same sheet the draft card uses, for the same
+// reason - there is no clipboard module in the installed app, and a native
+// module cannot arrive as an update.
+//
+// ONLY WHERE SELECTION IS GENUINELY BROKEN, and only on a message long enough to
+// be worth lifting out: a two-line answer is not worth a control under it.
+const WORTH_COPYING = 120;
+
+function CopyWhole({ text }: { text: string }) {
+  const theme = useTheme();
+  const [note, setNote] = useState<string | null>(null);
+  if (isPlain(text) || text.length < WORTH_COPYING) return null;
+  return (
+    <View style={styles.copyRow}>
+      <Pressable
+        onPress={async () => {
+          setNote(null);
+          try {
+            await Share.share({ message: text });
+          } catch {
+            setNote('That did not open. Press and hold the text to copy part of it.');
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Copy or share this whole message"
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.copy, pressed && styles.pressed]}
+      >
+        <Ionicons name="copy-outline" size={13} color={theme.textSecondary} />
+        <ThemedText type="detail" themeColor="textSecondary">
+          Copy or share
+        </ThemedText>
+      </Pressable>
+      {note ? (
+        <ThemedText type="detail" themeColor="textSecondary">
+          {note}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
+}
+
 export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
   const hasText = typeof children === 'string' && children.length > 0;
 
@@ -75,6 +131,7 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
               model wrote with headings arrived with its stars showing. Both
               sides go through the same component now. */}
           {hasText && <FormattedText text={children as string} selectable />}
+          {hasText && <CopyWhole text={children as string} />}
         </ThemedView>
       </View>
     );
@@ -107,11 +164,15 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
           sentence still renders as one string in one Text: see
           formatted-text.tsx for the cheap path. */}
       {hasText && <FormattedText text={children as string} selectable />}
+      {hasText && <CopyWhole text={children as string} />}
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  copyRow: { marginTop: Spacing.one, gap: 2 },
+  copy: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
+  pressed: { opacity: 0.6 },
   // LIGHTER, NOT SMALLER (Ruth, 2026-09-18: "everything is currently a little
   // oversized. It feels more like an accessibility layout than the calm, premium
   // editorial aesthetic"). Padding down about a fifth, radius down two, and the

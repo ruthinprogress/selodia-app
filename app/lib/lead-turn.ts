@@ -32,6 +32,26 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const LEAD_MODEL = 'claude-opus-5-5';
 
 /**
+ * How readily the model thinks before it answers.
+ *
+ * Ruth, 14 October 2026, on a led turn taking 20 to 30 seconds: "That is broken
+ * by any normal users standards, including my own." She is right, and nothing
+ * had told the model not to deliberate: Opus 5.5 thinks by default at medium.
+ *
+ * MEASURED, NOT ASSUMED (scripts/probe-lead-latency.mjs, three runs a level, on
+ * a turn shaped like her insurer notes): medium 16.9s and 153 thinking tokens,
+ * low 11.3s and 56. Every run at both levels still carried the authorisation
+ * code and tied it to the knee she had logged, so the third off cost nothing
+ * that could be measured.
+ *
+ * THE SAME LEVEL ON BOTH CALLS OF A TURN, deliberately. The resolved effort is
+ * rendered into the prompt, so changing it between the two calls would throw
+ * away the cache the second call is built to reuse - slower and dearer, for a
+ * knob that was meant to be neither.
+ */
+export const LEAD_EFFORT = 'low' as const;
+
+/**
  * For a step that must call one particular tool, such as writing a draft. The
  * lead model refuses a forced tool_choice (found 13 October 2026, before it
  * reached her), so those steps use the strongest model that accepts one.
@@ -164,6 +184,7 @@ export async function writeLeadReply(req: LeadReplyRequest): Promise<LeadReply> 
       system: req.first.system,
       tools: req.first.tools,
       tool_choice: { type: 'none' },
+      output_config: { effort: LEAD_EFFORT },
       messages: [
         ...req.first.messages,
         { role: 'assistant', content: req.firstContent },

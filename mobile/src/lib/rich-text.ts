@@ -159,11 +159,23 @@ export function blocks(text: string): Block[] {
   return out;
 }
 
-/** True when the text is one plain paragraph with no marks: the cheap path. */
+/**
+ * True when the text is ONLY plain paragraphs with no marks: the cheap path,
+ * drawn as one string in one Text.
+ *
+ * SEVERAL PARAGRAPHS COUNT AS PLAIN, AND THAT IS A FIX, NOT A LOOSENING (Ruth,
+ * 14 October 2026): "I can't copy and paste the whole axa notes message from the
+ * chat on the samsung phone, it only let's me copy one paragraph."
+ *
+ * She had pasted what her insurer told her - six paragraphs, no headings, no
+ * bullets, nothing marked. This said only ONE paragraph was plain, so the
+ * message was drawn as six separate Texts, and a selection cannot cross two
+ * Texts. Before 12 October the whole message was one Text and it all selected.
+ * So the rule is about MARKS, not about length: a message with nothing to draw
+ * is drawn whole, exactly as it was, and selects whole again.
+ */
 export function isPlain(text: string): boolean {
-  const b = blocks(text);
-  return (
-    b.length <= 1 &&
-    (b.length === 0 || (b[0].kind === 'para' && b[0].runs.every((r) => !r.bold && !r.italic)))
+  return blocks(text).every(
+    (b) => b.kind === 'para' && b.runs.every((r) => !r.bold && !r.italic)
   );
 }

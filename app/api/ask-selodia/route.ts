@@ -169,7 +169,7 @@ import {
 } from '../../lib/photo-turn';
 import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { appGuideBlock } from '../../lib/app-guide';
-import { isBareYes, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
+import { isBareYes, LEAD_EFFORT, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
 import { turnFacts } from '../../lib/turn-facts';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
@@ -2312,6 +2312,8 @@ RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every fiel
       messages,
       tools: firstTools,
       tool_choice: leadMode ? { type: 'auto' } : { type: 'tool', name: CLASSIFY_TOOL_NAME },
+      // The same effort as the reply step, so the cache it reuses survives.
+      ...(leadMode ? { output_config: { effort: LEAD_EFFORT } } : {}),
     }, {
       // ABANDONED TURNS STOP COSTING (2026-09-25). When somebody keeps talking,
       // the voice adapter's caller walks away from the generation it asked for.
