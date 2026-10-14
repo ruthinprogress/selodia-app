@@ -16,7 +16,7 @@ export const DISCUSS_BUCKET = 'discuss-cards';
 // chat_messages.discuss_entry_type. Miss the constraint and every tagged turn
 // fails its insert - no message, no reply, and an error the person cannot act
 // on.
-export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan';
+export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan' | 'me' | 'care';
 
 // Only 'food' is wired today — the food breakdown card is the only one built
 // (Measurements and Activity are items 38/39). The seam is generic so those
@@ -24,7 +24,19 @@ export type DiscussEntryType = 'food' | 'activity' | 'measurement' | 'plan';
 // 'plan' joined on 2026-09-20: "Update this" on a plan took its words to chat
 // and nothing else, so the conversation had no idea which plan was meant and
 // no way to show her it knew (Ruth: "Tap through takes no card to chat").
-const ENTRY_TYPES: DiscussEntryType[] = ['food', 'activity', 'measurement', 'plan'];
+// 'me' and 'care' joined on 14 October 2026, and they are the point of the
+// whole seam rather than another two kinds. Ruth: "this is what replaces
+// Claude, actually being able to pick up anywhere in chat and it knows what
+// you're talking about and gives you exactly what you need, instead of a
+// project in Claude."
+//
+// Her Me cards and her care records were the ONE part of her life you could not
+// pick up. "Talk this through" on a referral sent a sentence naming it and the
+// tag was dropped on arrival, because this list did not have them - so the
+// thread was never anchored, and a follow-up of "what was that number" had
+// nothing to hold on to. A note in me-protocol.tsx recorded that and waited for
+// a card to draw; the anchor matters without one, so it is no longer waiting.
+const ENTRY_TYPES: DiscussEntryType[] = ['food', 'activity', 'measurement', 'plan', 'me', 'care'];
 
 export function isDiscussEntryType(v: unknown): v is DiscussEntryType {
   return typeof v === 'string' && (ENTRY_TYPES as string[]).includes(v);
@@ -328,6 +340,55 @@ export async function loadDiscussEntryFacts(
     ].join('\n');
   }
 
+  // A ME CARD OR A CARE RECORD. The content is hers in her own words, so it is
+  // handed over whole rather than summarised into a shape this file invented.
+  if (tag.entryType === 'me' || tag.entryType === 'care') {
+    const { data } = await supabase
+      .from('almanac_entries')
+      .select('title, category, content, updated_at')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    const content = (data.content ?? {}) as {
+      why?: unknown;
+      detail?: unknown;
+      status?: unknown;
+      items?: { name?: unknown; when?: unknown; purpose?: unknown }[];
+    };
+    const items = Array.isArray(content.items) ? content.items : [];
+    const where = (data.category as string | null)?.trim();
+    return [
+      lead,
+      `The record: "${String(data.title ?? 'a record').trim()}"${where ? `, kept under ${where}` : ''}${
+        typeof content.status === 'string' && content.status.trim() ? `, marked ${content.status.trim()}` : ''
+      }.`,
+      typeof content.why === 'string' && content.why.trim() ? `Why it is kept: ${content.why.trim()}` : null,
+      items.length > 0
+        ? `What is on it:
+${items
+            .map((i) => {
+              const bits = [i.when, i.purpose]
+                .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+                .join(' - ');
+              return `- ${String(i.name ?? 'something').trim()}${bits ? ` (${bits})` : ''}`;
+            })
+            .join('\n')}`
+        : null,
+      typeof content.detail === 'string' && content.detail.trim()
+        ? `What it says, in full:
+${content.detail.trim()}`
+        : null,
+      // THE NUMBERS ARE THE POINT OF A CARE RECORD. She opened it because she is
+      // about to ring somebody or fill something in, so an answer that makes her
+      // go and read it herself has wasted the tap.
+      tag.entryType === 'care'
+        ? 'This is the paperwork of being seen. If they ask for a reference, a number, an address or who they are under, give it from above exactly as written, rather than saying where to look for it.'
+        : null,
+    ]
+      .filter((l): l is string => typeof l === 'string' && l.length > 0)
+      .join('\n');
+  }
+
   if (tag.entryType === 'activity') {
     const { data } = await supabase
       .from('activity_logs')
@@ -397,6 +458,15 @@ export async function discussEntryName(
       .maybeSingle();
     if (!data) return null;
     return clip((data.title as string | null)?.trim() || 'a plan');
+  }
+  if (tag.entryType === 'me' || tag.entryType === 'care') {
+    const { data } = await supabase
+      .from('almanac_entries')
+      .select('title')
+      .eq('id', tag.entryId)
+      .maybeSingle();
+    if (!data) return null;
+    return clip((data.title as string | null)?.trim() || 'a record');
   }
   if (tag.entryType === 'activity') {
     const { data } = await supabase
