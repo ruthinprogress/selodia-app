@@ -60,6 +60,12 @@ for (const r of old ?? []) {
   await admin.from('food_items').delete().eq('food_log_id', r.id);
   await admin.from('food_logs').delete().eq('id', r.id);
 }
+// AND A CLEAN THREAD. The first run of this left the previous run's messages
+// in place, so turn one was answered in the light of a correction that had not
+// happened yet: "which is right: 200g, or the 100g of dry oats you told me
+// afterwards?" The app was reading its context correctly; the probe had lied
+// to it. run-comparison.mjs clears the thread for exactly this reason.
+await admin.from('chat_messages').delete().eq('user_id', user.id);
 await admin.from('user_profile').update({ lead_chat: true }).eq('user_id', user.id);
 
 const { data: link } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
@@ -133,9 +139,15 @@ const results = [
     'the reply does not send her to the Log to check or delete',
     !/still (reads|shows|in your record)|may still be there|is still in your record|delete the|two porridge/i.test(lastReply),
   ],
+  // IF IT NAMES A FIGURE AT ALL, it must be the stored one. It is not required
+  // to name one: the app prints its own itemised table under the reply, and the
+  // reply is told in so many words never to write a receipt. The first version
+  // of this demanded a number and failed a reply that correctly gave none.
   [
-    "the reply's figure matches what is stored",
-    after.length === 1 && lastReply.includes(String(Math.round(Number(after[0].kcal)))),
+    "any figure in the reply is the one that is stored",
+    after.length !== 1 ||
+      !/[0-9]{2,5}[ ]*(kcal|calories)/i.test(lastReply) ||
+      lastReply.includes(String(Math.round(Number(after[0].kcal)))),
   ],
 ];
 
