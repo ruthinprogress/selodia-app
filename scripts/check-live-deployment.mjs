@@ -59,23 +59,66 @@ const PRODUCTION_DOMAINS = ['selodia.app', 'api.selodia.app', 'www.selodia.app']
 const BRANCH = 'main';
 const JSON_OUT = process.argv.includes('--json');
 
-// The CLI's auth file, in the places it lives on each platform.
-function vercelToken() {
-  if (process.env.VERCEL_TOKEN) return process.env.VERCEL_TOKEN;
-  const candidates = [
-    path.join(os.homedir(), 'AppData', 'Roaming', 'com.vercel.cli', 'Data', 'auth.json'),
-    path.join(os.homedir(), '.local', 'share', 'com.vercel.cli', 'auth.json'),
-    path.join(os.homedir(), 'Library', 'Application Support', 'com.vercel.cli', 'auth.json'),
-  ];
-  for (const p of candidates) {
+const AUTH_FILES = [
+  path.join(os.homedir(), 'AppData', 'Roaming', 'com.vercel.cli', 'Data', 'auth.json'),
+  path.join(os.homedir(), '.local', 'share', 'com.vercel.cli', 'auth.json'),
+  path.join(os.homedir(), 'Library', 'Application Support', 'com.vercel.cli', 'auth.json'),
+];
+
+function storedAuth() {
+  for (const p of AUTH_FILES) {
     try {
-      const token = JSON.parse(fs.readFileSync(p, 'utf8')).token;
-      if (typeof token === 'string' && token.length > 0) return token;
+      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+      if (typeof j.token === 'string' && j.token.length > 0) return j;
     } catch {
       // Next candidate.
     }
   }
   return null;
+}
+
+/**
+ * AN EXPIRED LOGIN IS NOT A LOST LOGIN (14 October 2026).
+ *
+ * Ruth: "lets fix vercel connection-still broken?" It had been reporting "the
+ * Vercel credentials on this machine have expired" since the 13th, and three of
+ * this check's seven tests had been silently skipping that whole time.
+ *
+ * Nothing was broken. The CLI holds a short-lived access token - about eight
+ * hours - beside a refresh token, and refreshes it silently whenever a `vercel`
+ * command runs. Nothing here ever ran one: this read auth.json directly, found
+ * a stale token, and announced a lost login that was one command away from
+ * working. `npx vercel whoami` refreshed it in a second and all seven passed.
+ *
+ * So the check refreshes rather than complains, and only when it has to - the
+ * stored token is used as-is while it works. A real logout still reports a real
+ * logout, because the refresh fails and the token stays unusable.
+ *
+ * expiresAt IS IN SECONDS, which cost me ten minutes: read as milliseconds it
+ * dates to January 1970 and every token looks expired, including a good one.
+ */
+function refreshLogin() {
+  try {
+    execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vercel', 'whoami'], {
+      stdio: 'ignore',
+      timeout: 60_000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function vercelToken() {
+  if (process.env.VERCEL_TOKEN) return process.env.VERCEL_TOKEN;
+  const auth = storedAuth();
+  if (!auth) return null;
+  // Seconds, not milliseconds. A minute of slack, so a token about to lapse
+  // mid-run is refreshed now rather than failing halfway through.
+  const good = typeof auth.expiresAt === 'number' ? Date.now() < auth.expiresAt * 1000 - 60_000 : true;
+  if (good) return auth.token;
+  if (!refreshLogin()) return auth.token;
+  return storedAuth()?.token ?? auth.token;
 }
 
 /**
