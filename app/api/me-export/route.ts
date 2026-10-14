@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { renderMeExport, type ExportRow } from '../../lib/me-export';
+import { renderMeExport, type ExportDetail, type ExportRow } from '../../lib/me-export';
 import { getSupabaseForRequest, supabase as anon } from '../../lib/supabase';
 
 // THE ME EXPORT, in two halves (built 2026-09-19).
@@ -26,14 +26,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const [{ data: rows, error }, { data: profile }] = await Promise.all([
+  // HOW I ACCESS CARE WAS MISSING FROM THE WHOLE TAB (found 14 October 2026).
+  //
+  // This read `kind = 'me'`, and a care record is written with kind 'care' -
+  // the two kinds the server's own CARD_TYPES names. Both appear on the Me tab
+  // (tabFor in mobile/src/lib/insights.ts puts them together, and has a note
+  // about this exact mistake being made in the other direction on 7 October).
+  // So "Export to print or share" has been quietly leaving out her referrals,
+  // her consultant's details and every reference number on them, while
+  // presenting itself as the tab as it stands. The worst version of this bug:
+  // taking the page to an appointment and finding the part you needed absent.
+  const [{ data: rows, error }, { data: profile }, { data: detailRows }] = await Promise.all([
     db
       .from('almanac_entries')
       .select('title, category, content, created_at')
       .eq('user_id', user.id)
-      .eq('kind', 'me')
+      // AND 'condition', WHICH THIS CHECK FOUND AND I HAD NOT. ME_KINDS in
+      // mobile/src/lib/insights.ts names three, and CARD_TYPES in
+      // pending-save.ts names the same three - so a condition card was missing
+      // from the page for the same reason a care record was. Comparing the two
+      // lists found it; reading either one of them would not have.
+      .in('kind', ['me', 'care', 'condition'])
+      .eq('status', 'active')
       .order('created_at', { ascending: true }),
     db.from('user_profile').select('first_name').eq('user_id', user.id).maybeSingle(),
+    // AND THE DETAILS SHE IS ASKED FOR, at the top of the page. On paper the
+    // reader is somebody else, and the first thing any of them needs is which
+    // patient this is.
+    db
+      .from('care_constants')
+      .select('label, value, note, confirmed')
+      .eq('user_id', user.id)
+      .order('label', { ascending: true }),
   ]);
   if (error) {
     console.log('ME EXPORT: could not read cards -', error.message);
@@ -48,6 +72,7 @@ export async function POST(request: NextRequest) {
   const html = renderMeExport((rows ?? []) as ExportRow[], {
     name,
     today: new Date().toISOString(),
+    details: (detailRows ?? []) as ExportDetail[],
   });
 
   // THE ID IS MADE HERE, not returned by the insert. me_exports has no read
