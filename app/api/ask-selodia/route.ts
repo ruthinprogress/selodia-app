@@ -4663,7 +4663,22 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         // already been removed above, so the honest note is only needed when
         // something was genuinely attempted and lost - which is what
         // falseClaimNote still covers for the cases the strip cannot see.
-        const liveClaim = falseClaimNote({ reply: written.text, wrote: wroteThisTurn });
+        // AGAINST WHAT SHE WILL READ, NOT WHAT THE MODEL FIRST WROTE.
+        //
+        // This read `written.text`, the text BEFORE the strip above - so every
+        // time stripSaveClaims did its job, this fired as well, and a reply
+        // with the claim correctly removed still ended "That did not save, so
+        // it is not in your record." A warning about a sentence she never saw,
+        // hanging off the end of a good answer with nothing to attach to.
+        //
+        // Seen twice in the comparison runs of 14 October, on H5, which was a
+        // question about insurance that wrote nothing and was never going to.
+        //
+        // The comment below already says what this is for - "the cases the
+        // strip cannot see" - and that is exactly the stripped text. If a claim
+        // survived the strip, say so. If the strip removed it, there is nothing
+        // left to warn about.
+        const liveClaim = falseClaimNote({ reply: replyBody, wrote: wroteThisTurn });
         notesStillToAppend = [
           ...(saveNote ? [saveNote] : []),
           ...(meNote ? [meNote] : []),

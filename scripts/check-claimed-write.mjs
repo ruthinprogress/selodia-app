@@ -27,6 +27,7 @@
 // NOT be touched.
 
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
 
 import {
   claimsAWrite,
@@ -521,6 +522,53 @@ check('the duplicate turn, end to end', () => {
   const out = stripSaveClaims(modelSaid);
   assert.ok(!/kept in your/i.test(out), `the claim survived: "${out}"`);
   assert.ok(/anything else you take/i.test(out), 'the rest of the reply was lost with it');
+});
+
+check('a stripped claim does not ALSO raise the note', () => {
+  // THE ORPHAN SENTENCE (14 October 2026). A reply whose save claim was
+  // correctly removed still ended "That did not save, so it is not in your
+  // record." - a warning about a sentence she never saw, hanging off the end of
+  // a good answer with nothing to attach to. Seen twice in the comparison runs,
+  // on a question about insurance that wrote nothing and never would.
+  //
+  // The cause: the route stripped the claim out of what she reads, then ran
+  // falseClaimNote against the text from BEFORE the strip. So the guard fired
+  // every time the strip succeeded.
+  for (const said of ['Done.', "I've added it.", 'It is saved.', 'I updated it.']) {
+    const shown = stripSaveClaims(said);
+    assert.ok(!claimsAWrite(shown), `the claim survived the strip: "${shown}"`);
+    assert.strictEqual(
+      falseClaimNote({ reply: shown, wrote: [] }),
+      null,
+      `"${said}" was removed and she was still told it did not save`
+    );
+    // And the function itself still works, or this proves nothing.
+    assert.ok(falseClaimNote({ reply: said, wrote: [] }), `falseClaimNote no longer sees "${said}"`);
+  }
+});
+
+check('AND SO falseClaimNote is now quiet on this path, which is recorded not hidden', () => {
+  // EVERY sentence claimsAWrite catches is also fully removed by
+  // stripSaveClaims - checked here rather than assumed, because it means the
+  // note can no longer fire after the strip. The guard is not the thing
+  // protecting her on this path: the STRIP removes the lie, and saveNote /
+  // unsavedNote tell her the truth, both built from the write result rather
+  // than from the model's words. falseClaimNote remains for the non-led path,
+  // where it runs against the reply as written.
+  //
+  // If a future phrasing ever survives the strip, this check fails and says so,
+  // which is the signal that the note matters again.
+  const survivors = ['Done.', "I've added it.", 'It is saved.', 'I updated it.', 'Added to your week.']
+    .filter((t) => claimsAWrite(stripSaveClaims(t)));
+  assert.deepStrictEqual(survivors, [], `a claim now survives the strip: ${survivors.join(' | ')}`);
+});
+
+const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+check('and the route hands it the stripped text', () => {
+  assert.ok(
+    /falseClaimNote\(\{ reply: replyBody, wrote: wroteThisTurn \}\)/.test(route),
+    'the led reply checks the text from before the strip again'
+  );
 });
 
 for (const f of failures) console.error('  FAIL  ' + f);
