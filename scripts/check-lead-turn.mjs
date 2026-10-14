@@ -100,6 +100,23 @@ check('nothing can be done from the reply step', () => {
   assert.ok(/tool_choice: \{ type: 'none' \}/.test(src), 'the reply step could call a tool');
   assert.ok(/NOTHING NEW HAPPENS FROM THIS REPLY/.test(L.LEAD_REPLY_INSTRUCTIONS));
   assert.ok(/Never write that anything was saved/.test(L.LEAD_REPLY_INSTRUCTIONS), 'the reply may claim a save');
+  // AND THE ONE EXCEPTION, ruled by Ruth on 14 October 2026 after T1 of the
+  // comparison run: "exception for corrections".
+  //
+  // The absolute rule above exists because the app prints its own confirmation
+  // and saying it twice is the waffle she objected to. But a CORRECTION raises
+  // one question the app's line cannot answer - whether there are now two of
+  // the thing - and the morning's version of this failure sent her into the Log
+  // to go and check for duplicates. "Changed the existing entry rather than
+  // adding a second" is what stops her looking.
+  assert.ok(
+    /ONE EXCEPTION, AND ONLY THIS ONE: A CORRECTION/.test(L.LEAD_REPLY_INSTRUCTIONS),
+    'a correction can no longer say it replaced rather than duplicated'
+  );
+  assert.ok(
+    /never for a NEW entry/.test(L.LEAD_REPLY_INSTRUCTIONS),
+    'the exception is not held to corrections, so it licenses announcing every save'
+  );
   return 'tool_choice none, and told so';
 });
 
