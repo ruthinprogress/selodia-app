@@ -199,7 +199,20 @@ export function weekReadBlock(input: WeekInput): string {
   if (input.lastPeriod) {
     const since = Math.floor((Date.parse(`${input.today}T12:00:00Z`) - Date.parse(`${input.lastPeriod}T12:00:00Z`)) / DAY);
     if (isFinite(since) && since >= 0 && since < 90) {
-      lines.push(`Cycle: day ${since + 1}, counting from ${input.lastPeriod}.`);
+      // A DAY NUMBER PAST ABOUT FORTY IS A MISSING LOG, NOT A LONG CYCLE, and
+      // saying so is the block's job rather than the model's. Found on the
+      // first live test, 14 October 2026: the block handed over "day 52" flatly
+      // and the reply worked out for itself that it meant an unlogged period.
+      // It was right, and relying on that is relying on the model to catch a
+      // figure this file presented as fact - which is the one thing a computed
+      // block must never need.
+      const day = since + 1;
+      lines.push(
+        `Cycle: day ${day}, counting from ${input.lastPeriod}.` +
+          (day > 40
+            ? ' THAT IS ALMOST CERTAINLY A PERIOD THEY HAVE NOT LOGGED rather than a cycle that long, so do not use this day number for anything. Say the last one on record is old and that it can be added from the Cycle page on the Log tab.'
+            : '')
+      );
     }
   }
 

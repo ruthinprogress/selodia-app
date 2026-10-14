@@ -125,6 +125,23 @@ check('the cycle day is worked out, because no tab shows it against the rest', (
   return 'day 14';
 });
 
+check('a cycle day past forty is called a missing log, not a long cycle', () => {
+  // Found on the first live test, 14 October 2026. The block handed over
+  // "day 52" flatly and the reply worked out for itself that it meant an
+  // unlogged period. It was right, and relying on that means relying on the
+  // model to catch a figure this file presented as fact.
+  const stale = weekReadBlock({ ...FULL, lastPeriod: '2026-08-24' });
+  assert.ok(/Cycle: day 52/.test(stale), `the day number is gone:
+${stale}`);
+  assert.ok(/ALMOST CERTAINLY A PERIOD THEY HAVE NOT LOGGED/.test(stale), 'day 52 is presented as a real cycle day');
+  assert.ok(/do not use this day number/.test(stale), 'the model may still quote it');
+  // And a normal day carries no such warning, or every cycle line cries wolf.
+  const normal = weekReadBlock(FULL);
+  assert.ok(/Cycle: day 14/.test(normal), 'the ordinary case broke');
+  assert.ok(!/ALMOST CERTAINLY/.test(normal), 'a real cycle day is flagged as stale');
+  return 'day 52 flagged, day 14 not';
+});
+
 check('it is told to read across, and to say when there is nothing to say', () => {
   const b = weekReadBlock(FULL);
   assert.ok(/READ ACROSS THESE, NOT DOWN ONE/.test(b), 'nothing asks for the cross-domain reading');
