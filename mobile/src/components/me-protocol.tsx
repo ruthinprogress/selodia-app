@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { FormattedText } from '@/components/formatted-text';
+import { splitAtHeading } from '@/lib/rich-text';
 import { ReorderableRows } from '@/components/reorderable-rows';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { expandedLayout } from '@/lib/entry-layout';
@@ -363,6 +364,49 @@ function previewOf(text: string): string {
   return (lastSpace > PREVIEW_CHARS * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 }
 
+/**
+ * The record, with the letter behind a tap when there is one.
+ *
+ * "Seen by" is where the useful half ends and the archive begins - see
+ * app/lib/clinical-card.ts, which writes them in that order for this reason.
+ */
+function RecordBody({
+  text,
+  showing,
+  onToggle,
+}: {
+  text: string;
+  showing: boolean;
+  onToggle: () => void;
+}) {
+  const theme = useTheme();
+  const { front, rest } = splitAtHeading(text, 'Seen by');
+  if (!rest) return <FormattedText text={text} />;
+  return (
+    <>
+      <FormattedText text={front} />
+      {showing ? <FormattedText text={rest} /> : null}
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: showing }}
+        accessibilityLabel={showing ? 'Hide the letter' : 'Show the letter in full'}
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.link, pressed && styles.pressed]}
+      >
+        <Ionicons
+          name={showing ? 'chevron-down' : 'chevron-forward'}
+          size={15}
+          color={theme.accentDeep}
+        />
+        <ThemedText type="small" themeColor="accentDeep">
+          {showing ? 'Hide the letter' : 'Show the letter in full'}
+        </ThemedText>
+      </Pressable>
+    </>
+  );
+}
+
 function MeCardRow({
   row,
   sections,
@@ -374,6 +418,7 @@ function MeCardRow({
 }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
+  const [showingLetter, setShowingLetter] = useState(false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const card = readMeCard(row.content);
@@ -478,8 +523,14 @@ function MeCardRow({
           {/* DRAWN, NOT PRINTED (12 October 2026). The body went out as one
               plain string, so a care record showed its own stars and
               underscores. And at the caption size: a letter is reading, not a
-              footnote, so it is at the size the chat reads at. */}
-          {layout.body ? <FormattedText text={layout.body} /> : null}
+              footnote, so it is at the size the chat reads at.
+
+              AND CUT IN TWO (14 October 2026). What she needs - what was
+              agreed, what to quote, who to ring - is drawn. The letter copied
+              out underneath it waits behind a tap. See splitAtHeading: a record
+              without that heading is drawn whole, so nothing written before
+              this loses anything. */}
+          {layout.body ? <RecordBody text={layout.body} showing={showingLetter} onToggle={() => setShowingLetter((v) => !v)} /> : null}
 
           {/* A COMPACT LIST, NOT A BLOB. A protocol made of parts - three
               skincare products, four supplements - reads as a list with its

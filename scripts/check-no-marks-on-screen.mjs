@@ -118,7 +118,14 @@ check('both sides of the chat draw through the formatter', () => {
 });
 
 check('a Me record draws through the formatter', () => {
-  assert.ok(/<FormattedText text=\{layout\.body\} \/>/.test(me), 'the card body is printed raw');
+  // SINCE 14 OCTOBER the body goes through RecordBody, which cuts a care record
+  // at "Seen by" and draws BOTH halves through the formatter. What this holds is
+  // unchanged: no part of a record reaches the screen unformatted.
+  assert.ok(/<RecordBody text=\{layout\.body\}/.test(me), 'the card body no longer goes through RecordBody');
+  const recordBody = me.slice(me.indexOf('function RecordBody('), me.indexOf('function MeCardRow('));
+  assert.ok(/<FormattedText text=\{text\} \/>/.test(recordBody), 'a record with no letter in it is printed raw');
+  assert.ok(/<FormattedText text=\{front\} \/>/.test(recordBody), 'the front of a record is printed raw');
+  assert.ok(/<FormattedText text=\{rest\} \/>/.test(recordBody), 'the letter is printed raw when it is shown');
   assert.ok(/<FormattedText\s+text=\{layout\.latest\}/.test(me), 'the record under the summary is printed raw');
   assert.ok(!/<ThemedText type="detail">\{layout\.body\}<\/ThemedText>/.test(me), 'the old raw body is still there');
   return 'body and record';

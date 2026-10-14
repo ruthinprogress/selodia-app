@@ -174,6 +174,34 @@ export function blocks(text: string): Block[] {
  * So the rule is about MARKS, not about length: a message with nothing to draw
  * is drawn whole, exactly as it was, and selects whole again.
  */
+/**
+ * A record cut in two at one of its headings: what is wanted now, and the rest.
+ *
+ * Ruth, 14 October 2026: "If users start adding these details to the Me tab it's
+ * going to be an unreadable mess very quickly, leading to overwhelm." A care
+ * record runs to 32 lines and seven headings on a phone, and most of that is the
+ * letter copied out - wanted rarely, and in the way every other time.
+ *
+ * Its useful half already comes first (what was agreed, what to quote, who to
+ * ring), so ONE cut puts the archive behind a tap without hiding anything from
+ * her. `rest` is empty when the heading is not there, and the caller then draws
+ * the record whole - which is what happens to every record written before the
+ * order was settled.
+ */
+export function splitAtHeading(text: string, heading: string): { front: string; rest: string } {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  const wanted = heading.trim().toLowerCase();
+  const at = lines.findIndex((l) => {
+    const m = l.trim().match(HEADING_BOLD) ?? l.trim().match(HEADING_HASH);
+    return m ? m[1].replace(/\*\*/g, '').trim().toLowerCase() === wanted : false;
+  });
+  if (at < 0) return { front: text.trim(), rest: '' };
+  return {
+    front: lines.slice(0, at).join('\n').trim(),
+    rest: lines.slice(at).join('\n').trim(),
+  };
+}
+
 export function isPlain(text: string): boolean {
   return blocks(text).every(
     (b) => b.kind === 'para' && b.runs.every((r) => !r.bold && !r.italic)
