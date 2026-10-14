@@ -114,6 +114,29 @@ for (const c of chosen) {
   // what earlier cases saved stays, the way a real record accumulates.
   const { error: clearError } = await admin.from('chat_messages').delete().eq('user_id', user.id);
   if (clearError) console.log(`    could not clear the thread: ${clearError.message}`);
+
+  // AND TODAY'S FOOD, WHICH IS NOT THE SAME AS LETTING A RECORD ACCUMULATE
+  // (14 October 2026). Every tracking case logs a meal TODAY and then corrects
+  // it, so run after run they pile onto one day. By the second run of the
+  // afternoon the account held three porridge lunches, and T4 - a correction
+  // case - quite correctly stopped and asked whether they were copies instead
+  // of correcting one of three identical entries. The app was right and the
+  // test was invalid, which is the worst way round for a test to be.
+  //
+  // Only TODAY and only food: the care records, plans and Me cards that earlier
+  // cases saved still stay, because those genuinely should accumulate.
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const { data: todays } = await admin
+    .from('food_logs')
+    .select('id')
+    .eq('user_id', user.id)
+    .gte('happened_at', dayStart.toISOString());
+  for (const row of todays ?? []) {
+    await admin.from('food_items').delete().eq('food_log_id', row.id);
+    await admin.from('food_logs').delete().eq('id', row.id);
+  }
+  if ((todays ?? []).length > 0) console.log(`    cleared ${todays.length} food row(s) from today`);
   for (const s of c.seed) {
     const r = await say(s);
     console.log(`    background turn: ${r.status}, ${Math.round(r.ms / 1000)}s`);

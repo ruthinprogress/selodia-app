@@ -140,6 +140,32 @@ check('it is wired into the route, and only when no offer was made', () => {
   return '5 offer fields, stripped only when none is set';
 });
 
+check('a care record is never silenced by the quiet period', () => {
+  // THE THREE-HOUR QUIET PERIOD exists so she is not pestered about every
+  // passing remark. It swallowed the AXA call notes in the comparison run of
+  // 14 October 2026: she typed out the authorisation code, the claims line, the
+  // agreed route and the physio allowance, got an excellent set of next steps,
+  // and was never offered the record - because an earlier case minutes before
+  // had offered something else. That is Session 71 repeating.
+  //
+  // A care record is not a passing remark. It is only proposed when a letter, a
+  // reference number or the notes of a call have been handed over, and handing
+  // those over IS the act of recording. Missing one costs the most, too: a chat
+  // message falls out of context within weeks and a care record does not, so
+  // the save is what makes a thread recoverable at all.
+  const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  const at = route.indexOf('const askedFor =');
+  assert.ok(at > -1, 'the quiet-period exemption has moved');
+  const decl = route.slice(at, route.indexOf(';', at));
+  for (const type of ['me', 'week', 'care']) {
+    assert.ok(decl.includes(`'${type}'`), `a ${type} offer can still be swallowed by the quiet period`);
+  }
+  // Still a LIST and not everything, or the limit is gone and she is pestered
+  // about every passing remark again.
+  assert.ok(/proposal &&/.test(decl), 'every offer now skips the quiet period');
+  return 'me, week and care';
+});
+
 check('it does not fight the guard next door', () => {
   // claimsAWrite exempts offer sentences on purpose - "shall I save that?" is
   // not a claim to have saved. The two must not both act on one sentence.

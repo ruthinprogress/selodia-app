@@ -3937,7 +3937,30 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       // telling her it has her data when it has not. Rate-limiting a direct
       // instruction cannot be right - a limit on pestering must not become a
       // limit on doing as she asks.
-      const askedFor = proposal && (proposal.type === 'me' || proposal.type === 'week');
+      // 'care' JOINS THESE ON 14 OCTOBER 2026, and for a stronger reason than
+      // either of them.
+      //
+      // Found in the comparison run: she typed out her AXA call verbatim -
+      // authorisation code, claims line, the route they had agreed, the physio
+      // allowance - and got an excellent set of next steps and no offer to keep
+      // any of it. An earlier case minutes before had offered something, so the
+      // three-hour quiet period swallowed it. That is Session 71 again, where
+      // the insurer notes she typed never reached her record.
+      //
+      // The quiet period exists so she is not pestered about every passing
+      // remark. A care record is not a passing remark: it is only ever proposed
+      // when she has handed over a letter, a reference number or the notes of a
+      // call, and handing those over IS the act of recording. There is nothing
+      // to be protected from.
+      //
+      // And the cost of missing one is the highest in the app. Her words this
+      // afternoon: "with any sort of gap, not even selodia would be able to pick
+      // back the thread where it left off without saving progress." A chat
+      // message falls out of context in a few weeks; a care record does not. So
+      // the save is what makes the thread recoverable at all, which is the whole
+      // thing she is paying for.
+      const askedFor =
+        proposal && (proposal.type === 'me' || proposal.type === 'week' || proposal.type === 'care');
       // AND IF THE REPLY ALREADY ASKED, THE OFFER IS STORED REGARDLESS.
       //
       // The limit exists so she is not pestered. Once the model's own words have
