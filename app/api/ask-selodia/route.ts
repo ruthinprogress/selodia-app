@@ -104,7 +104,7 @@ import { contentWords } from '../../lib/food-dedupe';
 import { MACRO_COLUMN, buildTrackedMacroBlock, trackedMacroKeys } from '../../lib/tracked-macro-summary';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
 import { assessGoalWeight, goalSafetyPrompt, shouldOfferResource } from '../../lib/goal-safety';
-import { buildDayState, buildDayStatePrompt } from '../../lib/daily-targets';
+import { buildDayState, buildDayStatePrompt, loadDayStateRows } from '../../lib/daily-targets';
 import {
   applyPendingFocus,
   clearPendingFocus,
@@ -4187,6 +4187,31 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     ...(saveNote ? ['saved note'] : []),
     ...(savedContext ? ['remembered detail'] : []),
   ];
+  // TODAY'S FIGURES, AS THEY STAND AFTER THIS TURN'S WRITES (14 October 2026).
+  //
+  // Found in the comparison run, on the case called "a meal in her own words,
+  // then corrected". She corrected a meal down from 247 kcal to 83, the
+  // correction landed, and the reply told her: "Your total for today still
+  // shows 527 kcal, though, and that would still include the bigger 247 kcal
+  // version. So the old one may still be there next to the new one. You can
+  // check under Log, then Food & Drink."
+  //
+  // Nothing was wrong with the entry and nothing was wrong with the reasoning.
+  // The day's totals are read at the top of the turn, the writes happen six
+  // hundred lines later, and the reply was handed the snapshot from before its
+  // own correction - so the only conclusion available to it was that the old
+  // row must still be there. It then sent her to go and audit the app's work.
+  // That is the opposite of the thing she is paying for, produced by an app
+  // that had done exactly what she asked.
+  //
+  // Re-read through loadDayStateRows, which is the SAME function the context
+  // used, so there is no second implementation of "today" to disagree with the
+  // first. Only when something was actually written: an ordinary turn pays
+  // nothing for this.
+  const replyDayState = writes.any()
+    ? buildDayState(await loadDayStateRows(supabase, dayStartForState.toISOString()), profile)
+    : dayState;
+
   const alreadySpoke =
     correctionNote !== null || honestyNote !== null || deferredLog === true;
   const falseClaimedNote = alreadySpoke
@@ -4396,7 +4421,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             lastPeriodStart: lastPeriodRow?.event_date ?? null,
             days: 7,
             trackedMacros: writerMacros,
-            today: buildDayStatePrompt(dayState),
+            today: buildDayStatePrompt(replyDayState),
             usuallyEats,
           }),
           // WHAT LANDED, NOT ONLY WHAT NEEDED SAYING (14 October 2026). This was
@@ -4491,7 +4516,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             // every reply on this path - never saw it, so "what should I eat for
             // the rest of today?" was answered by the half of the pipeline that
             // did not know what was left of the day.
-            today: buildDayStatePrompt(dayState),
+            today: buildDayStatePrompt(replyDayState),
             usuallyEats,
           },
           voice: isVoice,

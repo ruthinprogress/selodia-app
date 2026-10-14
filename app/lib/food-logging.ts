@@ -44,6 +44,49 @@ export type FoodEntry = {
 // both parse paths (build item 28). The caller adds raw_text, user_id, and
 // happened_at, which vary by path (a photo log's raw_text, an update preserving
 // the original happened_at, etc.).
+/**
+ * DOES HER CORRECTION ACTUALLY SAY WHICH MEAL THIS WAS?
+ *
+ * The one question that decides whether a correction may move an entry from
+ * lunch to breakfast. Deliberately narrow: the label changes when she says so,
+ * and not otherwise.
+ *
+ * "tea" IS NOT IN HERE, and that is on purpose. It is a meal in half the
+ * country and a drink in the other half, and "I only had one cup of tea" would
+ * otherwise read as her renaming the meal. Leaving it out costs nothing worth
+ * having: the entry keeps the label it already had, which is the safe answer.
+ */
+const NAMES_A_MEAL = /\b(breakfast|brunch|lunch|dinner|supper|snack|pudding|dessert)\b/i;
+
+/**
+ * The label a corrected entry keeps.
+ *
+ * FOUND 14 OCTOBER 2026, in the comparison run, and it is the fault Ruth asked
+ * me to find by name: "find why T4 set it to breakfast". She corrected a lunch,
+ * the calories went in correctly, and the entry came back labelled Breakfast.
+ *
+ * The cause is upstream of the model and no prompt would have fixed it: on a
+ * correction the parse is shown the corrected FOOD and nothing else - not the
+ * entry's existing label, not the time it was eaten - and is asked to infer a
+ * label "using time-of-day clues if mentioned, or the food type if not". There
+ * are no time clues in "100g of porridge", so it infers from the food, and
+ * porridge is breakfast. It was never deciding to move her meal; it was never
+ * told there was a meal to move.
+ *
+ * So the guard sits at the write, per the standing rule - never ask the model
+ * not to do a thing twice, make it impossible instead. A correction keeps the
+ * label the entry already had unless her own words name a meal.
+ */
+export function keptMealLabel(
+  existing: string | null | undefined,
+  parsed: string | null | undefined,
+  correction: string
+): string | null {
+  const had = existing?.trim();
+  if (!had) return parsed?.trim() || null;
+  return NAMES_A_MEAL.test(correction) ? parsed?.trim() || had : had;
+}
+
 export function buildFoodLogFields(macros: ParsedMacros) {
   return {
     meal_label: macros.meal_label,
@@ -445,9 +488,25 @@ export async function logFoodFromText(
     // food on her log page. The foods themselves name it better, and the old
     // name is better than a sentence.
     const named = correctionOf ? corrected ?? namedFromItems(items) ?? correctionOf : corrected ?? foodText;
+    // THE LABEL IT ALREADY HAD, unless her correction names a meal. See
+    // keptMealLabel: the parse never sees the old label, so left to itself a
+    // corrected lunch comes back as breakfast because porridge is breakfast.
+    const { data: before } = await supabase
+      .from('food_logs')
+      .select('meal_label')
+      .eq('id', updateLogId)
+      .maybeSingle();
     const { data, error } = await supabase
       .from('food_logs')
-      .update({ raw_text: stripDayLabel(named), ...buildFoodLogFields(macros) })
+      .update({
+        raw_text: stripDayLabel(named),
+        ...buildFoodLogFields(macros),
+        meal_label: keptMealLabel(
+          (before as { meal_label?: string | null } | null)?.meal_label,
+          macros.meal_label,
+          foodText
+        ),
+      })
       .eq('id', updateLogId)
       .select();
     if (error) throw new Error('food_logs update failed: ' + error.message);
