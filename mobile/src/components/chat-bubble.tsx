@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Image as RNImage, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { FormattedText } from '@/components/formatted-text';
+import { RecordBody } from '@/components/record-body';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -24,6 +25,15 @@ type ChatBubbleProps = {
   // still being signed, or if signing failed — either way the bubble renders
   // its text rather than a broken frame.
   imageUri?: string | null;
+  /**
+   * A care record just read from a document. It folds at "Seen by", the same
+   * way the Me tab folds it once it is saved - see components/record-body.
+   *
+   * The whole card used to arrive in the thread as one wall, which is the one
+   * moment she has not yet decided whether to keep it. Ruth, 14 October 2026:
+   * "I don't feel supported, I feel irritated by it's waffle."
+   */
+  record?: boolean;
 };
 
 // THE SEEDMARK BESIDE HER TURNS (Ruth, 2026-09-16: "instead of the leaf, use our
@@ -107,7 +117,7 @@ function CopyWhole({ text }: { text: string }) {
   );
 }
 
-export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
+export function ChatBubble({ role, children, imageUri, record }: ChatBubbleProps) {
   const hasText = typeof children === 'string' && children.length > 0;
   // A REPLY WITH A SHAPE NEEDS THE WIDTH TO SHOW IT (Ruth, 14 October 2026:
   // "the chat bubbles maybe are too narrow so everything is such a long body of
@@ -140,7 +150,12 @@ export function ChatBubble({ role, children, imageUri }: ChatBubbleProps) {
               Bold was read on her own turns only, so a reply or a record the
               model wrote with headings arrived with its stars showing. Both
               sides go through the same component now. */}
-          {hasText && <FormattedText text={children as string} selectable />}
+          {hasText &&
+            (record ? (
+              <RecordBody text={children as string} />
+            ) : (
+              <FormattedText text={children as string} selectable />
+            ))}
           {hasText && <CopyWhole text={children as string} />}
         </ThemedView>
       </View>

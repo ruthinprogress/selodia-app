@@ -112,7 +112,10 @@ check('a real care record comes out tappable where it should', () => {
     kind: 'referral',
     title: 'GP referral to Physiotherapy',
     dated: '2026-10-12',
-    about: 'Knee symptoms',
+    bottomLine: 'Nothing here needs doing before the appointment.',
+  watchFor: ['Give 24 hours notice to cancel, or the full fee may apply.'],
+  costs: ['First consultation: up to £300'],
+  about: 'Knee symptoms',
     clinician: { name: 'Dr A Example', role: 'GP', department: null, organisation: 'Example Practice' },
     references: [{ label: 'NHS number', value: '485 777 3456', confirmed: true }],
     contact: {

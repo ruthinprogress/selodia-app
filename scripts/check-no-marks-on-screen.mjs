@@ -42,6 +42,9 @@ const LETTER = {
   kind: 'referral',
   title: 'GP referral to Physiotherapy',
   dated: '2026-10-12',
+  bottomLine: 'Nothing here needs doing before the appointment.',
+  watchFor: ['Give 24 hours notice to cancel, or the full fee may apply.'],
+  costs: ['First consultation: up to £300'],
   about: 'Referral to the physiotherapy team for knee symptoms',
   clinician: { name: 'Dr A Example', role: 'GP', department: null, organisation: 'Example Practice' },
   references: [{ label: 'NHS number', value: '000 000 0000', confirmed: true }],
@@ -122,7 +125,11 @@ check('a Me record draws through the formatter', () => {
   // at "Seen by" and draws BOTH halves through the formatter. What this holds is
   // unchanged: no part of a record reaches the screen unformatted.
   assert.ok(/<RecordBody text=\{layout\.body\}/.test(me), 'the card body no longer goes through RecordBody');
-  const recordBody = me.slice(me.indexOf('function RecordBody('), me.indexOf('function MeCardRow('));
+  // SINCE 14 OCTOBER RecordBody LIVES IN ITS OWN FILE, because the chat needed
+  // the same fold and had none - so a care record was folded on the Me tab and
+  // dumped whole into the thread, at the one moment she had not yet decided
+  // whether to keep it. One copy, two callers.
+  const recordBody = read('mobile/src/components/record-body.tsx');
   assert.ok(/<FormattedText text=\{text\} \/>/.test(recordBody), 'a record with no letter in it is printed raw');
   assert.ok(/<FormattedText text=\{front\} \/>/.test(recordBody), 'the front of a record is printed raw');
   assert.ok(/<FormattedText text=\{rest\} \/>/.test(recordBody), 'the letter is printed raw when it is shown');

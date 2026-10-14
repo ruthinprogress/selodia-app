@@ -55,6 +55,29 @@ export function cardBody(doc: ClinicalDocument): string {
     for (const l of lines) out.push(l);
   };
 
+  // THE VERDICT LEADS (Ruth, 14 October 2026, on the record this wrote from a
+  // private consultant's fee letter, beside the one her other assistant wrote
+  // from the same photograph: "Selodia is not working well, I don't feel
+  // supported, I feel irritated by it's waffle").
+  //
+  // The other answer opened "It's the standard fee letter, and nothing in it is
+  // a problem" and ran to about a hundred and fifty words, every line of which
+  // was a judgement or an action. This card opened with "What was agreed" and
+  // ran to eight hundred, of which roughly six hundred were the letter said
+  // back to her in three different voices. She read the whole thing and still
+  // did not know whether anything in it mattered.
+  //
+  // So: what it comes to, then what could cost her, then what it costs, and
+  // only then the record. Everything below "Seen by" is already behind a tap on
+  // the Me tab and in chat - see RecordBody and splitAtHeading. The part above
+  // it has to be worth reading on its own.
+  // `?? []` BECAUSE A RECORD CAN PREDATE THESE FIELDS. They arrived on 14
+  // October; a document read before that has neither, and a card writer that
+  // throws on an older shape would take out the screen drawing it.
+  if (doc.bottomLine) section('What this comes to', [doc.bottomLine]);
+  section('Worth knowing', doc.watchFor ?? []);
+  section('What it costs', doc.costs ?? []);
+
   section('What was agreed', doc.plan);
   if (doc.review) section('Review', [doc.review]);
   if (doc.routeBackIn) section('If it comes back', [doc.routeBackIn]);
@@ -137,7 +160,12 @@ export function offerLine(doc: ClinicalDocument): string {
   const unconfirmed = doc.references.filter((r) => !r.confirmed).length;
   const parts: string[] = [];
 
-  parts.push(`I have read it as ${indefinite(doc.kind)}${doc.dated ? ` dated ${longish(doc.dated)}` : ''}.`);
+  // THE KIND AND THE DATE ARE ALREADY ON THE CARD, under its title and under
+  // "Seen by", so this sentence was the third place the same fact appeared -
+  // and it led, so it was the first thing read. "I have read it as an other
+  // dated 14 October 2026" is what she actually got: a procedural announcement
+  // where the point should have been. The card now opens with what the
+  // document comes to, and this says only what the card cannot.
 
   // NOTHING IS SAID WHEN THERE IS NOTHING TO SAY.
   //

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { FormattedText } from '@/components/formatted-text';
-import { splitAtHeading } from '@/lib/rich-text';
+import { RecordBody } from '@/components/record-body';
 import { ReorderableRows } from '@/components/reorderable-rows';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { expandedLayout } from '@/lib/entry-layout';
@@ -398,49 +398,6 @@ function previewOf(text: string): string {
   const cut = flat.slice(0, PREVIEW_CHARS);
   const lastSpace = cut.lastIndexOf(' ');
   return (lastSpace > PREVIEW_CHARS * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
-}
-
-/**
- * The record, with the letter behind a tap when there is one.
- *
- * "Seen by" is where the useful half ends and the archive begins - see
- * app/lib/clinical-card.ts, which writes them in that order for this reason.
- */
-function RecordBody({
-  text,
-  showing,
-  onToggle,
-}: {
-  text: string;
-  showing: boolean;
-  onToggle: () => void;
-}) {
-  const theme = useTheme();
-  const { front, rest } = splitAtHeading(text, 'Seen by');
-  if (!rest) return <FormattedText text={text} />;
-  return (
-    <>
-      <FormattedText text={front} />
-      {showing ? <FormattedText text={rest} /> : null}
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: showing }}
-        accessibilityLabel={showing ? 'Hide the letter' : 'Show the letter in full'}
-        hitSlop={Spacing.two}
-        style={({ pressed }) => [styles.link, pressed && styles.pressed]}
-      >
-        <Ionicons
-          name={showing ? 'chevron-down' : 'chevron-forward'}
-          size={15}
-          color={theme.accentDeep}
-        />
-        <ThemedText type="small" themeColor="accentDeep">
-          {showing ? 'Hide the letter' : 'Show the letter in full'}
-        </ThemedText>
-      </Pressable>
-    </>
-  );
 }
 
 function MeCardRow({

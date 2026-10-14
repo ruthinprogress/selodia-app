@@ -46,6 +46,13 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // wrong number. The food photo path made the same call for the same reason.
 const MODEL = 'claude-sonnet-5';
 
+// 'fees and terms letter' AND 'insurer letter' ARE NEW ON 14 OCTOBER 2026.
+//
+// Ruth photographed a private consultant's pre-consultation fee letter and the
+// record opened "I have read it as an other dated 14 October 2026" - which is
+// ungrammatical, and wrong, and the first thing she read. A fee letter is one
+// of the commonest documents in private care and it was falling into the bin
+// marked other, where nothing downstream could treat it as what it is.
 export const DOCUMENT_KINDS = [
   'consultant letter',
   'imaging report',
@@ -53,10 +60,23 @@ export const DOCUMENT_KINDS = [
   'discharge summary',
   'referral',
   'appointment letter',
+  'fees and terms letter',
+  'insurer letter',
   'prescription',
   'other',
 ] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+/**
+ * The kinds that carry no clinical findings at all - paperwork about money,
+ * appointments and cover. They are the ones a bottom line may be written for.
+ * See BOTTOM_LINE_RULE in the extraction prompt.
+ */
+export const ADMIN_KINDS: readonly DocumentKind[] = [
+  'appointment letter',
+  'fees and terms letter',
+  'insurer letter',
+];
 
 /**
  * A number, name or address she may need to quote. `confirmed` is true only
@@ -73,6 +93,25 @@ export type ClinicalDocument = {
   dated: string | null;
   /** One line on what the document concerns. */
   about: string | null;
+  /**
+   * WHAT IT COMES TO, IN A SENTENCE OR TWO. Only for paperwork - fees, cover,
+   * an appointment - and never about what a finding means for her body.
+   *
+   * Ruth, 14 October 2026, comparing this record with the one her other
+   * assistant wrote from the same letter: "Selodia is not working well, I don't
+   * feel supported, I feel irritated by it's waffle." The other answer opened
+   * "It's the standard fee letter, and nothing in it is a problem." This record
+   * opened with four hundred words of the letter said back to her and never
+   * reached a verdict at all. A transcription is not support.
+   */
+  bottomLine: string | null;
+  /**
+   * The few things that could cost her money, need correcting, or are worth
+   * knowing before she goes. Specific, and each one actionable.
+   */
+  watchFor: string[];
+  /** What it costs, as lines rather than buried in a paragraph. */
+  costs: string[];
   clinician: { name: string | null; role: string | null; department: string | null; organisation: string | null };
   contact: { phone: string | null; email: string | null; secretary: string | null; address: string | null };
   references: ClinicalReference[];
@@ -102,15 +141,57 @@ They told us why: they want to be able to ring the clinic, or turn up at a desk,
 TRANSCRIBE, DO NOT REMEMBER
 Every number, name and address must be copied character for character from what you can see. Never complete a number that is partly obscured. Never normalise a format. Never supply a number that "looks like" an NHS number. If a digit is genuinely unreadable, leave that reference out and say so in "unreadable" instead. A plausible wrong number is the worst thing you can produce here, because it will be read aloud to a receptionist.
 
+TWO KINDS OF DOCUMENT, AND THEY ARE NOT READ THE SAME WAY
+
+A CLINICAL document carries findings about their body: a consultant letter, an imaging report, test results, a discharge summary, a referral. Everything under "WHAT YOU MUST NOT DO" applies to it in full.
+
+An ADMINISTRATIVE document carries no findings at all. It is paperwork about money, cover or an appointment: a fees and terms letter, an insurer letter, an appointment letter. Nobody needs a letter about fees translated into ordinary English - they already read it. What they need is what it comes to.
+
+EVERY DOCUMENT GETS A BOTTOM LINE, AND IT IS ABOUT WHAT THEY DO NEXT
+Set "bottomLine": one or two plain sentences saying what this document comes to for the person holding it. Not what it says - what it means they should do, or that it means they need do nothing.
+
+  A fees letter: "This is the standard letter a private consultant has to send before a first appointment. Nothing in it is unusual, and the cancellation window is the only part that could cost you."
+  An appointment letter: "Everything needed to attend is here. The only thing to sort before the day is transport and the forms they have asked you to bring."
+  An imaging report: "This is the radiologist's report itself rather than an opinion on what to do about it - that is the conversation with the consultant. The questions below are the ones worth taking in."
+
+THE LINE YOU MUST NOT CROSS, and it is not the same line as "say nothing useful":
+  Forbidden: what a finding MEANS for their body or their future. Whether it is serious, mild, worrying, reassuring, likely to improve, likely to worsen. Whether a treatment will work. Any diagnosis the letter does not state.
+  Required: what happens next, what it costs, what to ask, what to correct, what to bring, what to chase, what commits them to something.
+
+Suggesting a QUESTION to put to a clinician is never a clinical claim and is always allowed. "He has declared he owns the shockwave machine, so if he suggests shockwave it is fair to ask what the evidence is for your injury and what the alternatives are" is navigation, not an opinion on shockwave therapy.
+
+Set "costs": every figure that could be charged, one per line, as plainly as it can be put. "First consultation: up to £300." "Follow-up: up to £190." "Cancelling with less than 24 hours' notice: up to the full fee."
+
+Set "watchFor": the few things that could cost them, need correcting, need asking, or are worth knowing before they go. A cancellation window. A charge an insurer typically does not cover. A test billed separately by the hospital rather than the consultant. A name or title printed wrongly, which will matter when billing has to match a policy. A financial interest the author has declared. Say what to DO about each one. Three or four at most: this is what matters, not everything that is true.
+
+EACH FACT APPEARS IN EXACTLY ONE PLACE
+This is the commonest way this record fails, and it is what makes it exhausting to read. The fields are not four passes over the same letter. Before you write a fact anywhere, decide which single field owns it:
+
+  a figure that could be charged          -> "costs", and nowhere else
+  something to do, correct, ask or avoid  -> "watchFor", and nowhere else
+  something arranged or agreed            -> "plan", and nowhere else
+  a statement that binds them and is in none of the above -> "says"
+
+"bottomLine" is the VERDICT and owns no facts at all. One or two sentences: is this routine or is it not, and what is the shape of what they have to do. It never lists the items - the watch list is immediately underneath it and is where they live. If you find yourself writing "also worth noting" or "also worth flagging" in the bottom line, that belongs in "watchFor" and the bottom line is finished without it.
+
+And "says" is what is left over. If the fees are in "costs" and the cancellation window is in "watchFor", neither one goes in "says" as well. A letter whose every point is already captured above gets an EMPTY "says", and that is a good record rather than a thin one.
+
+DO NOT SAY THE SAME THING THREE TIMES
+"says", "plainWords" and "plan" are different kinds of content, not three passes over the same letter.
+- "says" is the statements that BIND them or that they would need to show somebody. Not the letter retyped. A fee letter has perhaps four: the fees, the cancellation terms, who is liable for a shortfall, and anything declared. A courtesy sentence about looking forward to welcoming them is not one of them.
+- "plainWords" is for CLINICAL VOCABULARY ONLY, and must be null when there is none. A letter about money contains no clinical vocabulary, so it gets null. Writing the letter out again in slightly different words is the exact fault this field keeps producing.
+- "plan" is what was ARRANGED, not instructions the letter gives to patients in general. "Contact your insurer if applicable" is the letter's standard wording addressed to anybody; it is not something this person agreed to do.
+
 THREE KINDS OF CONTENT, KEPT APART
 - "says": what the letter states, in ITS words. Quote or closely paraphrase; do not soften, do not sharpen, do not add.
 - "plainWords": the clinical vocabulary of those statements, in ordinary English. This is translation only. "A disc bulge at C5/C6" becomes "one of the cushions between the bones in the neck is pressing outward". You may explain what a term means, what an abbreviation stands for, and where in the body something is.
 - "plan", "review", "routeBackIn": what was arranged, as arranged.
 
 WHAT YOU MUST NOT DO
+Every one of these is about their BODY. None of them stops you being useful about the letter, the money, the appointment or the questions - see the bottom line above, which is required.
 - Do not diagnose, and do not add a diagnosis the letter does not state.
 - Do not give a prognosis. Not "this usually improves", not "this is not serious", not "this can worsen". The letter says what it says.
-- Do not advise, recommend, reassure or alarm. If the letter reassures, report that the letter reassures.
+- Do not pass judgement on a clinical finding or a treatment, in either direction. "Nothing in this fee letter is unusual" is about a letter and is required; "nothing in these results is worrying" is about a person and is forbidden. The test is whether a clinician would have had to see them to say it.
 - Do not resolve a contradiction in the document. Report both parts.
 - Do not fill a gap with what is usually true of documents like this one.
 
@@ -153,6 +234,22 @@ const TOOL: Anthropic.Tool = {
       title: { type: 'string', description: 'A short name for this record.' },
       dated: { type: ['string', 'null'], description: 'The date on the document, YYYY-MM-DD.' },
       about: { type: ['string', 'null'], description: 'One line on what it concerns.' },
+      bottomLine: {
+        type: ['string', 'null'],
+        description:
+          'REQUIRED unless the document is unreadable. ONE OR TWO SENTENCES, under 45 words. The verdict: is this routine or not, and what is the shape of what they have to do. It lists nothing - the watch list sits directly underneath it. Never what a finding means for their body.',
+      },
+      watchFor: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Three or four at most. Things that could cost them, need correcting, need asking, or are worth knowing before they go - each with what to do about it.',
+      },
+      costs: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Every figure that could be charged, one per line. "First consultation: up to £300."',
+      },
       clinician: {
         type: 'object',
         properties: {
@@ -438,6 +535,13 @@ export async function readClinicalDocument(sources: Source[]): Promise<ReadResul
     title: str(got.title, 120) ?? 'A medical document',
     dated: /^\d{4}-\d{2}-\d{2}$/.test(String(got.dated)) ? (got.dated as string) : null,
     about: stated(str(got.about, 300)),
+    // SHORT BY CONSTRUCTION. A bottom line that runs to a page is a summary
+    // again, and a watch list of ten things is a list of everything that is
+    // true - which is what she called waffle. The prompt asks for three or four;
+    // this is the floor under it.
+    bottomLine: stated(tidy(str(got.bottomLine, 400))),
+    watchFor: strings(got.watchFor, 4),
+    costs: strings(got.costs, 8),
     clinician: {
       name: str(clinician.name, 120),
       role: str(clinician.role, 120),

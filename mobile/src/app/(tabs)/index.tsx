@@ -86,6 +86,11 @@ type Message = {
   /** Something written for her to send, under the reply. See components/draft-card. */
   draft?: { title: string; body: string } | null;
   healthGuidanceApplied?: boolean;
+  // A CARE RECORD JUST READ FROM A DOCUMENT, which folds at "Seen by" the way
+  // the Me tab does. The whole card used to arrive in the thread as one wall -
+  // the same record she sees folded once it is saved, unfolded at the one
+  // moment she has not yet decided whether to keep it. See components/record-body.
+  record?: boolean;
   // The food entry this turn logged, when it logged one. The turn carries only
   // the REFERENCE; the table itself is read from food_items at render time, so
   // it always shows what was stored rather than what the reply said.
@@ -945,7 +950,7 @@ export default function ChatScreen() {
       const shown = `${result.card.body}
 
 ${result.message}`;
-      setMessages((m) => [...m, { role: 'assistant', content: shown }]);
+      setMessages((m) => [...m, { role: 'assistant', content: shown, record: true }]);
 
       // In the thread: the question, and not the contents. Writing the card
       // itself would put her NHS number, hospital number, consultant and
@@ -1201,7 +1206,7 @@ ${result.message}`;
                   acknowledgment came back empty. Rendering the bubble anyway
                   would put an empty coloured box above the table. */}
               {(m.content.length > 0 || m.imageUri) && (
-                <ChatBubble role={m.role} imageUri={m.imageUri}>
+                <ChatBubble role={m.role} imageUri={m.imageUri} record={m.record}>
                   {m.content}
                 </ChatBubble>
               )}
