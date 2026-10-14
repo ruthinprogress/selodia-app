@@ -2263,7 +2263,9 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       text: leadMode
         ? `${turnRestPrompt}
 
-RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE, with every field this turn needs. Never answer in plain text: the reply they read is written in the next step, after the app has acted.`
+RESPOND BY CALLING THE ${CLASSIFY_TOOL_NAME} TOOL, EXACTLY ONCE. Never answer in plain text: the reply they read is written in a later step, after the app has acted.
+
+THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The app does ONLY what the fields of this call tell it to do. The reply you write afterwards cannot log, correct, move, delete, keep or remind - it can only describe what already happened. So before you call the tool, ask what this turn needs DONE and set those fields now: something logged, something corrected or moved or deleted, something offered to keep, a reminder, a draft. A turn that needed a correction and left the correction fields unset is a turn where nothing changed, however well the reply reads - and the app will then have to tell them it did not save.`
         : turnRestPrompt,
     },
   ];
