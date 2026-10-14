@@ -12,6 +12,13 @@ export type MeasurementRow = {
   body_fat_pct: number | null;
   muscle_kg: number | null;
   bmr: number | null;
+  // THE REST OF WHAT THE SCALE WRITES (14 October 2026). Stored since July,
+  // drawn nowhere, which is why she still opened the scale's own app to see her
+  // own numbers. Optional because the queries that only want a weight still
+  // only ask for a weight.
+  bone_mass_kg?: number | null;
+  water_pct?: number | null;
+  visceral_fat?: number | null;
 };
 
 // Given measurement rows (any order) and the latest reading's timestamp, find

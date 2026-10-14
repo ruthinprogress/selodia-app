@@ -32,7 +32,14 @@ import type { MeasurementRow } from '@/lib/overview-metrics';
 export type MetricSource = 'scale' | 'personal';
 
 /** The three the scale writes, and the only three that are columns. */
-export type ScaleField = 'weight_kg' | 'body_fat_pct' | 'muscle_kg';
+export type ScaleField =
+  | 'weight_kg'
+  | 'body_fat_pct'
+  | 'muscle_kg'
+  | 'bone_mass_kg'
+  | 'water_pct'
+  | 'visceral_fat'
+  | 'bmr';
 
 export type TrackedMetric = {
   /** Stable across renames, so reordering and hiding survive a relabel. */
@@ -71,11 +78,35 @@ export type TrackedMetric = {
 // measurements and have no mark in that family. They keep an Ionicon each, and
 // that IS a stand-in: three more drawn to match is the outstanding piece of
 // work, and it is flagged rather than pretended finished.
-/** The scale's three, as they are labelled when nobody has said otherwise. */
+/**
+ * EVERYTHING THE SCALE WRITES, as it is labelled when nobody has said otherwise.
+ *
+ * THREE OF THESE WERE KEPT AND NEVER SHOWN (Ruth, 14 October 2026): "it doesn't
+ * store all the data collected, or if it does, i can't see it... sometimes i
+ * want to see it." Her own record held 34 readings each of bone mass, water and
+ * visceral fat going back to 4 July, every one of them parsed from a photo of
+ * her scale app, stored correctly, and drawn nowhere. So she still opened the
+ * scale's own app to look at her own numbers, which is the whole argument for
+ * Selodia as a record keeper lost in one screen.
+ *
+ * IT WAS MINIMALISM, AND THAT PHASE IS OVER, which is her other instruction the
+ * same morning: "at the start i was trying to see if the app would work and
+ * design something really minimalist, but now it's build, it's better to see how
+ * it handles a full set of data". The rule from here: if it is collected, it is
+ * shown, and the person decides what to hide - not the other way round.
+ *
+ * Anyone with a stored list gets these appended rather than losing their order,
+ * which is what the appended line in resolveTrackedMetrics is for.
+ */
 const SCALE_DEFAULTS: TrackedMetric[] = [
   { key: 'weight', label: 'Weight', unit: 'kg', source: 'scale', field: 'weight_kg' },
   { key: 'body_fat', label: 'Body fat', unit: '%', source: 'scale', field: 'body_fat_pct' },
   { key: 'muscle', label: 'Muscle', unit: 'kg', source: 'scale', field: 'muscle_kg' },
+  { key: 'bone_mass', label: 'Bone mass', unit: 'kg', source: 'scale', field: 'bone_mass_kg' },
+  { key: 'water', label: 'Water', unit: '%', source: 'scale', field: 'water_pct' },
+  // No unit: it is an index the scale invents, not a measurement in anything.
+  { key: 'visceral_fat', label: 'Visceral fat', unit: '', source: 'scale', field: 'visceral_fat' },
+  { key: 'bmr', label: 'BMR', unit: 'kcal', source: 'scale', field: 'bmr' },
 ];
 
 /** Case, spacing and punctuation are not what makes two metric names different. */
@@ -172,8 +203,18 @@ export function readTrackedMetrics(value: unknown): TrackedMetric[] | null {
   return out.length > 0 ? out : null;
 }
 
+const SCALE_FIELDS: readonly ScaleField[] = [
+  'weight_kg',
+  'body_fat_pct',
+  'muscle_kg',
+  'bone_mass_kg',
+  'water_pct',
+  'visceral_fat',
+  'bmr',
+];
+
 function isScaleField(v: unknown): v is ScaleField {
-  return v === 'weight_kg' || v === 'body_fat_pct' || v === 'muscle_kg';
+  return typeof v === 'string' && (SCALE_FIELDS as readonly string[]).includes(v);
 }
 
 /** One reading of one metric, already formatted, with the unit it was in. */

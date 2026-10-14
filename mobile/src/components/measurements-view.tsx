@@ -134,7 +134,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
         supabase.from('user_profile').select('tracked_metrics').maybeSingle(),
         supabase
           .from('body_measurements')
-          .select('id, measured_at, created_at, source_app, weight_kg, body_fat_pct, muscle_kg, bmr')
+          .select('id, measured_at, created_at, source_app, weight_kg, body_fat_pct, muscle_kg, bone_mass_kg, water_pct, visceral_fat, bmr')
           .order('measured_at', { ascending: false })
           .limit(400),
         supabase
@@ -184,7 +184,7 @@ export function MeasurementsView({ initialWeekStart }: { initialWeekStart?: Date
       const [{ data: scale }, { data: personal }] = await Promise.all([
         supabase
           .from('body_measurements')
-          .select('id, measured_at, created_at, source_app, weight_kg, body_fat_pct, muscle_kg, bmr')
+          .select('id, measured_at, created_at, source_app, weight_kg, body_fat_pct, muscle_kg, bone_mass_kg, water_pct, visceral_fat, bmr')
           .gte('measured_at', from)
           .lt('measured_at', endISO),
         supabase

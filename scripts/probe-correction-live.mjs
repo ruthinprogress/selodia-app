@@ -42,7 +42,12 @@ const token = session.session.access_token;
 async function say(message) {
   const res = await fetch('https://api.selodia.app/api/ask-selodia', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      // Names of the fields the model set, so a lost write stops being a guess.
+      'x-selodia-decision': '1',
+    },
     body: JSON.stringify({ message }),
   });
   return res.json();
@@ -64,6 +69,8 @@ console.log(`     rows: ${before.map((r) => `${r.kcal} kcal "${r.raw_text.slice(
 console.log('\n  2. correcting it');
 const second = await say('No, literally a crust, like 10g bread, 5g peanut butter');
 console.log(`     saved: ${JSON.stringify(second.saved ?? null)}`);
+console.log(`     led: ${second.led}, fields set: ${JSON.stringify(second.decision ?? null)}`);
+console.log(`     correction: ${JSON.stringify(second.correction ?? null)}`);
 console.log(`     reply: ${(second.reply ?? '').split('\n')[0].slice(0, 110)}`);
 
 const { data: after } = await admin
