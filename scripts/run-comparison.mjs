@@ -167,8 +167,20 @@ for (const { c, r, yes } of results) {
 const total = (usage ?? []).reduce((s, u) => s + (u.cost_micro_cents ?? 0), 0);
 lines.push('## Cost', '', `${(usage ?? []).length} model calls, ${(total / 1e6).toFixed(2)} US cents in all, across ${results.reduce((n, x) => n + x.c.seed.length + 1 + (x.yes ? 1 : 0), 0)} turns.`);
 
-const stamp = new Date().toISOString().slice(0, 10);
-const md = path.join(DRIVE, `${stamp} Comparison run.md`);
+// THE TIME IS IN THE NAME, AND A PARTIAL RUN SAYS SO (14 October 2026).
+//
+// This was `${date} Comparison run.md`, so two runs on one day wrote the same
+// file and the second won. It cost the nine-case run: a `--only H3` re-run an
+// hour later, done to capture one draft body, silently replaced all nine cases
+// with one. Nothing warned, and the results were only noticed missing when the
+// next case was asked for.
+//
+// Two guards. The minute goes in the name, so no two runs collide. And a run
+// of a SUBSET is named as a subset, so a file holding one case can never be
+// mistaken for the run of record.
+const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '');
+const which = only.length > 0 ? ` (${only.join(', ')} only)` : '';
+const md = path.join(DRIVE, `${stamp} Comparison run${which}.md`);
 fs.writeFileSync(md, lines.join('\n'));
 console.log(`\n  written: ${md}`);
 console.log('  render it for her with scripts/md2docx.py, mark the scores, then delete the .md.\n');

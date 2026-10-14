@@ -106,7 +106,23 @@ check('nothing can be done from the reply step', () => {
 check('the old limits are lifted for this reply, and the new ones stated', () => {
   const t = L.LEAD_REPLY_INSTRUCTIONS;
   assert.ok(/REPLACE every earlier instruction/.test(t) && /a sentence or two/.test(t) && /no bullet points/.test(t), 'the old limits are not explicitly replaced');
-  assert.ok(/THINK ONE STEP AHEAD/.test(t) && /KNOWS THEIR HISTORY/.test(t) && /CHECK WHAT YOU CAN/.test(t), 'a promised behaviour is missing');
+  // "THINK ONE STEP AHEAD" BECAME "GIVE THEM THE FIRST STEP" on 14 October 2026,
+  // and the rename is the point rather than a tidy-up. Thinking a step ahead
+  // produced a list of things to ask and no way to reach anybody. Ruth, on a
+  // reply that did exactly that: "it should alsways offer the next logical step
+  // with any and all scripts, numbers, or link to follow... If i read that, i'd
+  // think, ok, so contact the doctor, but i don't know how, the number says use
+  // the online portal, i get lost inside it and there's noone to help me."
+  assert.ok(
+    /GIVE THEM THE FIRST STEP, NOT THE LIST/.test(t) && /KNOWS THEIR HISTORY/.test(t) && /CHECK WHAT YOU CAN/.test(t),
+    'a promised behaviour is missing'
+  );
+  // AND THE REPLY STAYS WITH THEM AT THE HARD PART. A portal or a phone menu is
+  // where somebody gives up, and nobody reports giving up - which is why care
+  // drops off before it has started, in her words, and why this is checked
+  // rather than left to the prompt's good intentions.
+  assert.ok(/DO NOT ASSUME THE STEP IS EASY/.test(t), 'the reply assumes the next step is easy');
+  assert.ok(/send me a screenshot/.test(t), 'the offer to look at where they got stuck is gone');
   assert.ok(/No exclamation marks/.test(t) && /never moralise/.test(t), 'her voice rules are missing');
   return 'history, next steps, checks, shape';
 });
