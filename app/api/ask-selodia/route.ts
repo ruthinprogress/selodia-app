@@ -4700,6 +4700,22 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   return NextResponse.json({
     // Absent unless a caller asked, so nothing in the app ever sees this field.
     ...(request.headers.get('x-selodia-timing') ? { timings: timing.taken() } : {}),
+    // WHICH OPERATIONAL FIELDS THE MODEL SET, on request, by NAME only.
+    //
+    // 14 October 2026: a correction stopped happening on the led path, and no
+    // instrument could say whether the model had failed to ask for it or the
+    // app had dropped it. Two guesses went by before this existed. Names only,
+    // never values, so it carries nothing about the person, and behind a header,
+    // so an ordinary turn pays nothing for it.
+    ...(request.headers.get('x-selodia-decision')
+      ? {
+          decision: Object.entries(result as Record<string, unknown>)
+            .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== 'none' && v !== false)
+            .map(([k]) => k)
+            .sort(),
+          led: leadMode,
+        }
+      : {}),
     reply: finalReply,
     navigationTarget,
     savedContext,
