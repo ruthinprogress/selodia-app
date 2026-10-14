@@ -395,7 +395,16 @@ export async function logFoodFromText(
   // cap, so a fortnight of catch-up still finishes its sentence.
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: updateLogId ? 500 : 8000,
+    // 500 ON THE CORRECTION PATH UNTIL 14 OCTOBER 2026, AND IT CUT THE ANSWER
+    // IN HALF. Ruth corrected a meal she had just logged and nothing happened,
+    // twice in one comparison run and on both chats. Called directly, four
+    // times, two came back as "Unterminated string in JSON at position 1097":
+    // the answer is a whole corrected entry with its items, it did not fit, and
+    // JSON.parse threw on the truncation. The same mistake is written up eight
+    // lines above for the other branch, which was raised from 500 on 9
+    // September for exactly this reason. One corrected entry is not smaller
+    // than one parsed entry.
+    max_tokens: updateLogId ? 2000 : 8000,
     messages: [{ role: 'user', content: instruction }],
   });
 
@@ -408,6 +417,16 @@ export async function logFoodFromText(
     model: 'claude-haiku-4-5-20251001',
     usage: message.usage,
   });
+
+  // A CUT-OFF ANSWER IS A FAILED CALL, SAID SO. Without this the only sign is
+  // whatever JSON.parse happens to complain about, which is how a correction
+  // came to fail with "Expected double-quoted property name at position 1093"
+  // in a log nobody can read.
+  if (message.stop_reason === 'max_tokens') {
+    throw new Error(
+      `the ${updateLogId ? 'correction' : 'food'} parse ran out of room and came back half-written`
+    );
+  }
 
   const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
   const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

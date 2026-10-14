@@ -3053,7 +3053,14 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       // own. If none matched, nothing was touched and nothing is claimed - the
       // honesty note below is then the only thing that speaks, which is correct.
     } catch (err) {
+      // AND SHE IS TOLD, which until 14 October 2026 she was not. This logged
+      // to a console with no retention and said nothing at all, so a correction
+      // that threw simply never happened and the entry kept its old numbers
+      // with nobody the wiser. A change she asked for and did not get is the
+      // one thing the app must never be quiet about.
       console.log('ASK-SELODIA CORRECTION FAILED:', err instanceof Error ? err.message : err);
+      correctionNote =
+        "That change didn't go through, so the entry is as it was. Ask me again and I'll try once more.";
     }
   }
 
