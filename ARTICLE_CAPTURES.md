@@ -904,3 +904,29 @@ It's an odd thing to say about something you've spent months building. But it's 
 So tonight we stopped fixing the little things. We went through a plan for a new kind of chat, section by section, on my phone, while Felix was asleep. One part of it reads everything first and decides what would actually help. All the careful rules about what gets saved stay exactly where they are.
 
 The build starts tonight. The test is simple. It has to help me more than my own Project does, on my own real examples. If it can't, I'll say so here.
+
+---
+
+## 14 October 2026 - The form was never asking what I thought it was asking
+
+I went private for my knee. I ended up on a video call with a physio who qualified about ten minutes ago. Not because anyone examined me and decided that was the right level of care. Because of how I filled in a form.
+
+It asked how long it had been going on. I said under six weeks. True of this injury. Not true of the knee, which has been complaining for months and has a cyst on the scan to show it.
+
+It asked whether the pain was getting worse. I said no. I was thinking about the pain. The form was asking whether this needs a consultant rather than a physio. My knee gave way going down the stairs. That is the answer, and I said no.
+
+Then there was the call with the insurer. They asked whether my GP's letter referred me to a specialist. I started explaining the circumstances of how I came to ask for the referral, and my partner came running in and whispered at me to just say yes. He was right. The question wanted to know whether a referral existed. It did.
+
+I have been telling myself I was being honest. I was not. I was being literal, and it made my answers less accurate than the truth. Every one of them understated my own case.
+
+Here is the part that still annoys me. My GP never examined me. I asked for a physio referral, so I got a physio referral. One word, chosen without knowing it was a choice, and it decided the whole route. Ask for a consultant referral and the door to a scan opens instead.
+
+These forms are built for speed. For software and for people paid to get through calls. They sort you. They cannot see the shape of what you actually need, and they are not trying to.
+
+The people who do worst at them are the careful ones. The thorough ones. The ones who answer the harder question instead of the one on the screen.
+
+Nobody teaches this. There is no moment where someone explains that the words you choose when you message your GP are the decision being made. You find out afterwards, if you find out at all.
+
+And most people never find out. They give up at the phone menu or the portal that wants a reference number nobody gave them, and nobody records that. It just looks like they did not follow through.
+
+That is what I want Selodía to do. Not store my data. Stand next to me at the form.

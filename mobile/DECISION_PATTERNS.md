@@ -585,3 +585,44 @@ model.
 shape the code actually sends - the same tool_choice, the same ceilings, the
 same cache markers - and read what comes back, including what it refuses and
 what it does by default.** The model ID is the smallest part of the change.
+
+**A test imported from another tool encodes that tool's constraints.** On 14
+October nine cases were run against Selodía, each written from what Ruth's Claude
+Project had answered. One asked "what's the week looking like" and the criterion
+was a day-by-day table of intake and deficit, because that is what the Project
+gave. Selodía answered in prose and looked worse. Ruth stopped it: "my project
+gave a table becausse i was tracking the kals and protein... In selodia, i'd just
+go an look at the weekly table with the average at the bottom." The Project had
+no app around it, so every answer had to arrive as text. Selodía has a Food log
+that already draws that table. The criterion was rewarding a chat-only shape, and
+building to it would have put a worse copy of an existing screen inside the chat.
+
+Two more criteria in the same run were stale for the same reason: "gives £300 and
+£190 as figures" when she had just typed both and the app forbids repeating her
+message back, and "shows the new total" when the corrected entry now draws its
+own table.
+
+**The rule: when a test is written from another product's output, separate what
+it got RIGHT from the SHAPE it arrived in.** The judgement transfers. The format
+is a function of what else that product had, and copying it builds a worse
+version of something you already have.
+
+**Run a guard against what the person will actually see.** The same day, a reply
+answering a question about insurance - which wrote nothing and never would -
+ended "That did not save, so it is not in your record." The route strips a false
+save claim out of the reply, then ran the did-it-really-save check against the
+text from BEFORE the strip. So every time the strip did its job, the warning
+fired too, about the sentence it had just removed. A comment directly above said
+the check was for "the cases the strip cannot see", and the code handed it the
+text the strip had seen.
+
+Fixing it showed the guard had been dead weight all along: every phrasing the
+claim detector catches is also removed completely by the strip, so after the fix
+it can never fire on that path. That is not a hole - the strip removes the lie
+and the write result tells the truth - but it was worth writing down rather than
+quietly banking, and the check now asserts the emptiness so a future phrasing
+that survives says so.
+
+**The rule: a guard that reports on output must read the output as rendered,
+after every transform that runs between the model and the screen.** Checking the
+draft means warning about sentences nobody read.
