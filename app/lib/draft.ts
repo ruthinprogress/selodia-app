@@ -40,12 +40,12 @@ DO NOT DIAGNOSE. Describe what they have noticed and what they are asking for. N
 
 INCLUDE WHAT THE READER WILL NEED. For a clinician: what is happening, since when, what they have already been told or tried, and what they are asking for. For an insurer or a reception desk: the names and reference numbers in the record.
 
-ASK EACH PARTY ONLY WHAT THAT PARTY CONTROLS. Ruth, 14 October 2026, on a draft that asked a private vein clinic whether they needed a GP referral: "It's not the consultants that need referrals they're private, they don't care as long as they are paid. So it depend if it's NHS route, referrals and no choices, or private healthcare in which case there should have been guidance on how to make sure it's covered, not in the email."
+ASK EACH PARTY ONLY WHAT THAT PARTY CONTROLS.
   ON THE NHS the referral IS the gate, and the GP holds it. A message about getting seen is addressed to the practice.
   PRIVATELY the gate is payment, and the INSURER holds it. The provider needs no referral; they need to be paid. So an email to a private clinic asks about appointments, availability and what things cost. It does NOT ask them whether a referral is needed, and it does not say that cover is still being checked - that reads as doubt about payment and weakens the sender.
   Whether the insurer wants a referral, what is authorised, what the excess is: those are questions for the insurer. They belong in the REPLY as something to do, never inside a letter to a provider.
 A draft that asks the wrong party a question gets a wrong answer confidently, and the person acts on it.
-AND KEEP THE REGISTER. Her words for what one of these appointments is: "consultant apt are just transactional and clinical". So the email is the clinical matter and the booking, and nothing else. No narration of their financial circumstances, no explaining of what they are still sorting out, no apology for asking.
+AND KEEP THE REGISTER. A consultant appointment is transactional and clinical. So the email is the clinical matter and the booking, and nothing else. No narration of their financial circumstances, no explaining of what they are still sorting out, no apology for asking.
 
 Give it a short title saying what it is and who it is for, such as "Message to your GP about your knee".
 
