@@ -1,5 +1,6 @@
+import { openBrowserAsync } from 'expo-web-browser';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { BodyFont, Spacing, type ThemeColor } from '@/constants/theme';
@@ -37,16 +38,38 @@ export function FormattedText({ text, type = 'small', themeColor, selectable }: 
     );
   }
 
+  // A LINK OPENS WHAT IT SAYS (Ruth, 14 October 2026: "also anything that can
+  // be a live link to reduce friction, should be, eg, your doctor surgery to
+  // message for referrals or apts at Klinik").
+  //
+  // A web address goes to the app's own browser, so one swipe comes back to
+  // where she was. tel: and mailto: hand off to the phone, which the in-app
+  // browser cannot do. A failure says nothing: the address is still on screen
+  // and still readable, which is what it was before it was tappable.
+  const open = async (url: string) => {
+    try {
+      if (url.startsWith('http')) await openBrowserAsync(url);
+      else await Linking.openURL(url);
+    } catch {
+      // Nothing to say.
+    }
+  };
+
   const inline = (rs: Run[]) =>
     rs.map((r, i) => (
       <Text
         key={i}
+        onPress={r.link ? () => void open(r.link as string) : undefined}
+        // UNDERLINED AS WELL AS COLOURED, because the accent alone is not
+        // enough on its own for anybody who cannot separate the two colours,
+        // and this is a phone number somebody may need to ring.
         style={[
           r.bold && styles.bold,
           // QUIET RATHER THAN SLANTED. Manrope is loaded without an italic face,
           // so on Android fontStyle alone would draw nothing different. The
           // colour step is what makes an aside read as one on every phone.
           r.italic && [styles.italic, { color: theme.textSecondary }],
+          r.link && [styles.link, { color: theme.accentDeep }],
         ]}
       >
         {r.text}
@@ -122,4 +145,5 @@ const styles = StyleSheet.create({
   // Wide enough for "10." so a numbered list does not shift at the tenth step.
   marker: { minWidth: 16 },
   bulletText: { flex: 1, minWidth: 0 },
+  link: { textDecorationLine: 'underline' },
 });

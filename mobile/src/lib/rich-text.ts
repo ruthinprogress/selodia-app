@@ -36,7 +36,7 @@
 // A single asterisk or underscore that is not a pair stays exactly as typed,
 // because people type them.
 
-export type Run = { text: string; bold: boolean; italic?: boolean };
+export type Run = { text: string; bold: boolean; italic?: boolean; link?: string };
 
 export type Block =
   | { kind: 'heading'; text: string }
@@ -65,6 +65,83 @@ function italicRuns(text: string): Run[] {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// AND A LINK IS A LINK (14 October 2026).
+//
+// Ruth: "also anything that can be a live link to reduce friction, should be,
+// eg, your doctor surgery to message for referrals or apts at Klinik."
+//
+// A care record's Contact section already holds the surgery's booking page and
+// the secretary's address, as text. Reading them off the screen and typing them
+// into a browser is friction the app put there - it HAS the address.
+//
+// WHAT IS LINKED, AND THE LINE IS DRAWN NARROWLY:
+//
+//   a web address      https://..., www...        -> opens
+//   an email address   someone@somewhere.org      -> starts an email
+//   a phone number     ONLY after a phone label   -> dials
+//
+// A PHONE NUMBER IS NOT LINKED ON ITS DIGITS ALONE, and this is the same rule
+// as mobile/src/lib/care-constants.ts for the same reason: "485 777 3456" is an
+// NHS number and "020 7946 0958" is a surgery, and nothing in the digits says
+// which. In running prose a bare number is far more likely to be a reference, a
+// date or a set of reps, so it is only a number to ring when the words
+// immediately before it say so - which is exactly how cardBody writes them
+// ("Phone: ...", "Secretary: ...").
+const WEB = /\bhttps?:\/\/[^\s<>()]+[^\s<>().,;:!?]|\bwww\.[^\s<>()]+[^\s<>().,;:!?]/g;
+const EMAIL = /\b[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}\b/gi;
+const PHONE = /\+?\d[\d\s()-]{7,}\d/g;
+const PHONE_LABEL = /\b(phone|telephone|tel|mobile|direct line|switchboard|secretary|number to call|call)\b[^\w]*$/i;
+
+/** The link a matched stretch should open, or null when it should stay text. */
+function linkFor(kind: 'web' | 'email' | 'phone', value: string, before: string): string | null {
+  if (kind === 'web') return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  if (kind === 'email') return `mailto:${value}`;
+  if (!PHONE_LABEL.test(before)) return null;
+  const digits = value.replace(/[\s()-]/g, '');
+  return digits.replace(/\D/g, '').length >= 9 ? `tel:${digits}` : null;
+}
+
+/**
+ * Splits one already-styled run wherever it holds something openable.
+ *
+ * The style carries across, so a bold heading containing an address stays bold
+ * and becomes tappable - a link is not a different kind of text, it is text
+ * that goes somewhere.
+ */
+function linkRuns(run: Run): Run[] {
+  const found: { at: number; end: number; kind: 'web' | 'email' | 'phone' }[] = [];
+  for (const [kind, pattern] of [
+    ['web', WEB],
+    ['email', EMAIL],
+    ['phone', PHONE],
+  ] as const) {
+    pattern.lastIndex = 0;
+    for (let m = pattern.exec(run.text); m !== null; m = pattern.exec(run.text)) {
+      // A later pattern never steals a stretch an earlier one already claimed:
+      // the host part of a URL would otherwise read as an email address.
+      if (found.some((f) => m.index < f.end && m.index + m[0].length > f.at)) continue;
+      found.push({ at: m.index, end: m.index + m[0].length, kind });
+    }
+  }
+  if (found.length === 0) return [run];
+  found.sort((a, b) => a.at - b.at);
+
+  const out: Run[] = [];
+  let at = 0;
+  for (const f of found) {
+    const value = run.text.slice(f.at, f.end);
+    const link = linkFor(f.kind, value, run.text.slice(0, f.at));
+    if (!link) continue;
+    if (f.at > at) out.push({ ...run, text: run.text.slice(at, f.at) });
+    out.push({ ...run, text: value, link });
+    at = f.end;
+  }
+  if (out.length === 0) return [run];
+  if (at < run.text.length) out.push({ ...run, text: run.text.slice(at) });
+  return out;
+}
+
 /**
  * Splits a message into runs of plain, bold and italic text. Always returns at
  * least one run for a non-empty string, so a caller can render the result
@@ -85,7 +162,10 @@ export function runs(text: string): Run[] {
   }
 
   if (at < text.length) out.push(...italicRuns(text.slice(at)));
-  return out.length > 0 ? out : [{ text, bold: false }];
+  // LINKS LAST, over the finished runs, so emphasis is decided first and a
+  // link never has to know whether it sits inside a bold stretch.
+  const styled = out.length > 0 ? out : [{ text, bold: false }];
+  return styled.flatMap(linkRuns);
 }
 
 /** True when a message uses any emphasis, so a caller can take the cheap path. */
