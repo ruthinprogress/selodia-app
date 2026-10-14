@@ -145,7 +145,22 @@ for (const { c, r, yes } of results) {
   lines.push(`**You said:** ${c.message.split('\n').join(' ')}`, '');
   lines.push(`**Your Project:** ${c.project}`, '');
   lines.push(`**Selodía:**`, '', r.reply ? r.reply : `(no reply - status ${r.status}${r.error ? `, ${r.error}` : ''})`, '');
-  if (r.draft) lines.push(`**Draft written:** ${r.draft.title}${r.draft.to ? `, to ${r.draft.to}` : ''}${r.draft.subject ? `, subject "${r.draft.subject}"` : ''}`, '');
+  // THE DRAFT ITSELF, NOT JUST THAT THERE WAS ONE (14 October 2026).
+  //
+  // This recorded the title and the address and threw the body away. The case
+  // called "writes something for her to send" was therefore the one case whose
+  // subject matter never reached the page, and its pass test - framed as a
+  // continuation of treatment, in the letter's own terms, gaps rather than
+  // guesses - could not be judged from the run at all. The draft is returned in
+  // the response and rendered on the phone; it is persisted nowhere, so if this
+  // does not write it down it is gone.
+  if (r.draft) {
+    lines.push(
+      `**Draft written:** ${r.draft.title}${r.draft.to ? `, to ${r.draft.to}` : ''}${r.draft.subject ? `, subject "${r.draft.subject}"` : ''}`,
+      ''
+    );
+    lines.push('> ' + String(r.draft.body ?? '(empty)').split('\n').join('\n> '), '');
+  }
   if (yes) lines.push(`**After "Yes":** ${yes.reply ?? `(status ${yes.status})`}`, '');
   lines.push(`**Passes if:** ${c.pass}`, '', `**Fails if:** ${c.fail}`, '', `**Score:** to be marked`, '', `_Took ${Math.round(r.ms / 1000)} seconds._`, '');
 }
