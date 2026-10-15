@@ -95,6 +95,44 @@ check('both calls of a turn ask for the same effort', () => {
   return `effort ${L.LEAD_EFFORT} on both`;
 });
 
+check('the instructions do not contradict themselves on length', () => {
+  // WHY THIS EXISTS (15 October 2026). The reply instructions had grown to 1754
+  // words across 17 headed blocks, and carried TWO different word limits: "under
+  // about 180 words" in one block and "Under 140 words" in another. Instruction
+  // following degrades as simultaneous constraints grow, and a direct
+  // contradiction is the worst kind - the model picks.
+  //
+  // It showed up as a regression in the fee-letter case, which had been the best
+  // answer of the run and came back as five paragraphs of prose with the
+  // computed cancellation deadline gone.
+  const t = L.LEAD_REPLY_INSTRUCTIONS;
+  const limits = [...t.matchAll(/(?:under|Under)(?: about)? (\d{2,4}) words/g)].map((m) => Number(m[1]));
+  const distinct = [...new Set(limits)].sort((a, b) => a - b);
+  // Two numbers are allowed ONLY as an ordinary limit and a named exception,
+  // which is how it reads now: 150 normally, 250 for something read while doing.
+  assert.ok(distinct.length <= 2, `${distinct.length} different word limits: ${distinct.join(', ')}`);
+  if (distinct.length === 2) {
+    assert.ok(
+      /only one rule|single exception/i.test(t),
+      `two limits (${distinct.join(' and ')}) and nothing says which applies when`
+    );
+  }
+  return distinct.length === 2 ? `${distinct[0]} words, ${distinct[1]} by exception` : `${distinct[0]} words`;
+});
+
+check('it stays consolidated rather than growing a block per rule', () => {
+  // Not a style preference: the fee-letter regression is what 17 competing
+  // blocks did to one good answer. A ceiling here means the next rule has to be
+  // folded into the section it belongs to rather than bolted on as a new
+  // heading, which is how it got to 1754 words in a single day.
+  const t = L.LEAD_REPLY_INSTRUCTIONS;
+  const words = t.split(/\s+/).length;
+  const blocks = t.split(/\n\s*\n/).length;
+  assert.ok(blocks <= 8, `${blocks} blocks - fold the new rule into the section it belongs to`);
+  assert.ok(words <= 1600, `${words} words - it was 1754 on 14 October and a reply got worse for it`);
+  return `${words} words, ${blocks} blocks`;
+});
+
 check('nothing can be done from the reply step', () => {
   const src = readFileSync('app/lib/lead-turn.ts', 'utf8');
   assert.ok(/tool_choice: \{ type: 'none' \}/.test(src), 'the reply step could call a tool');
