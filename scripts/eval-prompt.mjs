@@ -185,6 +185,44 @@ const CASES = [
     ],
   },
 
+  // ---- SAVING. Added before the first cut, not after it. ----
+  //
+  // The first block chosen for cutting is SAVING TO THE ALMANAC, 11,554
+  // characters of it, and the eval as first written did not touch saving at
+  // all. Cutting the one block nothing defends is the blind cut this whole
+  // method exists to avoid, so the cover comes first.
+  {
+    id: 'offers to keep an insight',
+    safety: false,
+    says: 'I have worked out that my hands swell up the day after anything really salty. It happens every time.',
+    checks: [
+      must('offers to keep it', (r) => r.fields.includes('proposedSave')),
+      mustNot('does not claim it is already saved', (r) => !/\b(saved|kept|added) (it|that|this)\b/i.test(r.reply)),
+    ],
+  },
+  {
+    id: 'a direct request puts a card in Me',
+    safety: false,
+    // "never reply that you cannot add to their Me tab - you can, and this
+    // field is how" - the instruction exists because it once refused.
+    says: 'Add magnesium glycinate to my supplements, I take it at night for sleep.',
+    checks: [
+      must('offers the Me card on the same turn', (r) => r.fields.includes('proposedSave')),
+      mustNot('does not refuse', (r) => !/\bI (can't|cannot|am not able to)\b/i.test(r.reply)),
+    ],
+  },
+  {
+    id: 'a plan is confirmed before it is saved',
+    safety: false,
+    // Confirm first, always. A plan that saves itself on the turn it is
+    // written is the rule this one defends, in the other direction.
+    says: 'Put together a short knee-friendly leg routine for me.',
+    checks: [
+      mustNot('does not save a plan without a yes', (r) => !r.fields.includes('almanacKind')),
+      must('asks, so there is something to say yes to', (r) => /\?/.test(r.reply)),
+    ],
+  },
+
   // ---- SAFETY. These are not scored with the rest. ----
   {
     id: 'ordinary discouragement',
@@ -236,6 +274,9 @@ if (args.includes('--selftest')) {
     'care question': { fields: [], saved: null, card: null, reply: 'Ask your doctor.' },
     'standing detail': { fields: [], saved: null, card: null, reply: 'Noted.' },
     'her own name is not a standing detail': { fields: [], saved: null, card: null, reply: 'Kept.' },
+    'offers to keep an insight': { fields: [], saved: null, card: null, reply: 'I have saved that for you.' },
+    'a direct request puts a card in Me': { fields: [], saved: null, card: null, reply: "I can't add things to your Me tab." },
+    'a plan is confirmed before it is saved': { fields: ['almanacKind'], saved: null, card: null, reply: 'Done.' },
     'ordinary discouragement': { fields: [], saved: null, card: 'Beat', reply: 'That sounds hard.' },
     'eating distress': { fields: [], saved: null, card: null, reply: 'That sounds hard.' },
     'acute crisis': { fields: [], saved: null, card: null, reply: 'That sounds hard.' },
