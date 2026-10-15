@@ -31,6 +31,7 @@ import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { TurnProgress } from '@/components/turn-progress';
+import { type ActedStage, newTurnId, watchForStage } from '@/lib/turn-stage';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { useChatScroll } from '@/hooks/use-chat-scroll';
@@ -353,6 +354,10 @@ export default function ChatScreen() {
     else if (input.length === 0) setInput(prefill);
   }
   const [sending, setSending] = useState(false);
+  // WHAT THE APP HAS ALREADY DONE THIS TURN, as soon as the server says so and
+  // well before the reply is written. Null between turns and for the first few
+  // seconds of one. See lib/turn-stage.ts.
+  const [acted, setActed] = useState<ActedStage | null>(null);
   const [saveToast, setSaveToast] = useState<{ summary: string; nonce: number; notice?: boolean } | null>(null);
   const [cyclePrompt, setCyclePrompt] = useState<'discover' | 'relog' | null>(null);
   // Shown once, after a log has actually happened - never on open, and never
@@ -1054,6 +1059,19 @@ ${result.message}`;
     const sentAt = new Date().toISOString();
     setSending(true);
 
+    // ── THE FIRST HALF OF THE TURN (Ruth, 15 October 2026: "two-stage reply") ──
+    //
+    // A turn is two model calls. The app has already logged, kept or corrected
+    // whatever this message asked for about seven seconds in, and the rest of
+    // the wait is the second call writing prose about it. The server publishes
+    // that moment under an id invented HERE, before the request goes out,
+    // because waiting to be told the turn's name would defeat the point.
+    //
+    // Cleared in the finally below, whatever happens to the request.
+    const turnId = newTurnId();
+    setActed(null);
+    const stopWatching = watchForStage(turnId, setActed);
+
     try {
       // Every chat message goes through the single safety-first handler
       // (ask-selodia / B-merged-single). It classifies safety AND log intent,
@@ -1065,6 +1083,8 @@ ${result.message}`;
       const { reply, resourceCard, healthGuidanceApplied, saved, savedAlmanac, foodLogId, patternCheck, navigationTarget, reminder, discussEntry, draft } =
         await authedFetch('/api/ask-selodia', {
           message: trimmed,
+          // The name this turn already has. See watchForStage above.
+          clientTurnId: turnId,
           // Present only on the turn that opens a discussion about an entry.
           // The server validates the type and ignores anything it does not know.
           ...(tag ? { entryId: tag.entryId, entryType: tag.entryType } : {}),
@@ -1163,6 +1183,10 @@ ${result.message}`;
       const content = err instanceof Error && err.message === 'Not signed in' ? NOT_SIGNED_IN_ERROR : FALLBACK_ERROR;
       setMessages((prev) => [...prev, { role: 'assistant', content }]);
     } finally {
+      // The answer is here, or it failed. Either way nothing is waiting on the
+      // first half any more, and a watch left running would outlive its turn.
+      stopWatching();
+      setActed(null);
       setSending(false);
     }
   }
@@ -1274,7 +1298,7 @@ ${result.message}`;
               sixteen seconds reads as a hang and a visible one reads as
               thinking. See components/turn-progress for why the labels are
               real and the timings are estimates. */}
-          {sending && <TurnProgress />}
+          {sending && <TurnProgress acted={acted} />}
 
           {offerReminders && <ReminderOffer onDone={() => setOfferReminders(false)} />}
         </ScrollView>

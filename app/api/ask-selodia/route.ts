@@ -174,6 +174,7 @@ import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { appGuideBlock } from '../../lib/app-guide';
 import { isBareYes, LEAD_EFFORT, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
 import { layOut } from '../../lib/reply-shape';
+import { publishStage } from '../../lib/turn-stage';
 import { turnFacts } from '../../lib/turn-facts';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
@@ -373,6 +374,18 @@ export async function POST(request: NextRequest) {
     // A photo she sent with no words, which the image classifier could not
     // place (12 October 2026). See lib/photo-turn.ts.
     photoOnly,
+    // THE NAME THE PHONE GAVE THIS TURN BEFORE IT SENT IT (15 October 2026).
+    //
+    // The two-stage reply: the app publishes what it DID as soon as that is
+    // true, about seven seconds in, and the phone shows it while the words are
+    // still being written. The phone cannot wait to be told what the turn is
+    // called - learning something before the answer arrives is the entire
+    // point - so it names the turn itself and reads the row back by that name.
+    //
+    // Untrusted, like every other field here: it is only ever matched against
+    // itself, and a missing or silly one costs the early confirmation and
+    // nothing else. See supabase/migrations/..._the_app_says_what_it_did.
+    clientTurnId,
   } = await request.json();
   // A spoken turn, routed in by the custom-LLM adapter. It changes nothing about
   // what is said or what safety runs - only WHEN the parse happens. See the
@@ -4138,6 +4151,38 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     await enterLiteMode(supabase, user.id);
   } else if (result.consolidationAnswer === 'keep_logging') {
     await declineConsolidation(supabase, user.id);
+  }
+
+  // ── THE FIRST HALF OF THE TURN GOES OUT NOW (Ruth, 15 October 2026) ────────
+  //
+  // "two-stage reply", chosen over shortening the turn, because the second
+  // model call "is literally what's building what I want".
+  //
+  // Everything the app DID is decided by this line - logged, corrected, kept,
+  // reminded - and on a led turn there are still six or seven seconds of
+  // writing to come before she is told any of it. This publishes it now and
+  // the phone shows it while the words are still being written, which is the
+  // confirmation she asked for on 14 October: "i like it best when it does a
+  // little table confirming what i told it."
+  //
+  // HERE AND NOT FOUR LINES LOWER. The unsafe-goal rewrite below is a whole
+  // extra model call, and on the rare turn that needs one the confirmation
+  // should not wait behind it - what was logged is already true and is not
+  // what that rewrite is reconsidering.
+  //
+  // NOT ON A SPOKEN TURN: there is no screen to put it on.
+  if (!isVoice) {
+    await publishStage({
+      supabase,
+      userId: user.id,
+      clientTurnId,
+      acted: {
+        summary: saved?.summary ?? null,
+        almanacTitle: savedAlmanac?.title ?? null,
+        foodLogId: breakdownFoodLogId,
+        reminder: reminderResult?.action ?? null,
+      },
+    });
   }
 
   // UNSAFE-GOAL HANDLING (item 43, Part Twelve's Cross-Cutting Safety Principle).

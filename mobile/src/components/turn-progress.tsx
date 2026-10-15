@@ -27,10 +27,16 @@ import { ThemedText } from '@/components/themed-text';
 // do is claim something specific it cannot know - never "logging your porridge",
 // only the phase that is genuinely running.
 //
-// IF THE SERVER EVER STREAMS ITS OWN PROGRESS, this component keeps its shape
-// and the timer is replaced by the real marks. That is the better version and
-// it is a change to the one endpoint everything depends on, which is why it is
-// not this one.
+// AND THE SERVER NOW TELLS IT ONE REAL THING (15 October 2026). Ruth chose the
+// two-stage reply over shortening the turn, so the app publishes what it DID as
+// soon as that is true - about seven seconds in - and `acted` is that, read off
+// turn_stage by lib/turn-stage.ts.
+//
+// When it arrives the guessing stops. The estimated phases are replaced by what
+// actually happened, which is both specific and certain, and the phase line
+// underneath moves to the one part still genuinely running. The note above
+// still holds for the rest: everything NOT in `acted` is an estimate, and this
+// must never claim something specific it cannot know.
 
 /** The phases, with the second each becomes true on a median turn. */
 const PHASES: { at: number; says: string }[] = [
@@ -43,7 +49,25 @@ const PHASES: { at: number; says: string }[] = [
   { at: 30, says: 'Still going, this one is taking a while' },
 ];
 
-export function TurnProgress() {
+export type TurnProgressProps = {
+  /**
+   * What the app has already done this turn, once the server has said so.
+   * Null until then, which is the whole of the first six seconds.
+   */
+  acted?: { summary?: string | null; almanacTitle?: string | null; reminder?: string | null } | null;
+};
+
+/** The one line worth showing, or null when there is nothing certain yet. */
+function confirmed(acted: TurnProgressProps['acted']): string | null {
+  if (!acted) return null;
+  if (acted.summary) return acted.summary;
+  if (acted.almanacTitle) return `Kept: ${acted.almanacTitle}`;
+  if (acted.reminder === 'created') return 'Reminder set';
+  if (acted.reminder === 'cancelled') return 'Reminder stopped';
+  return null;
+}
+
+export function TurnProgress({ acted = null }: TurnProgressProps) {
   const [phase, setPhase] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
 
@@ -67,12 +91,27 @@ export function TurnProgress() {
     return () => clearInterval(timer);
   }, [fade]);
 
+  const said = confirmed(acted);
+
   return (
     <Animated.View style={[styles.row, { opacity: fade }]}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {PHASES[phase].says}
-        {'…'}
-      </ThemedText>
+      {said ? (
+        <>
+          {/* WHAT HAPPENED, which is known rather than estimated. */}
+          <ThemedText type="small">{said}</ThemedText>
+          {/* AND THE ONE THING STILL RUNNING. The stage row cannot exist until
+              the deciding call has returned and the writes have landed, so at
+              this point the reply is the only phase left - no timer needed. */}
+          <ThemedText type="small" themeColor="textSecondary">
+            {'Writing back…'}
+          </ThemedText>
+        </>
+      ) : (
+        <ThemedText type="small" themeColor="textSecondary">
+          {PHASES[phase].says}
+          {'…'}
+        </ThemedText>
+      )}
     </Animated.View>
   );
 }
