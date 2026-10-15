@@ -2365,6 +2365,53 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     },
   ];
   const firstTools: Anthropic.Messages.Tool[] = [{ ...tool, cache_control: { type: 'ephemeral' } }];
+
+  // THE FOURTH BREAKPOINT, AND IT IS FREE (Ruth, 15 October 2026: "latency next").
+  //
+  // WHERE THE TIME GOES, measured from her own turns rather than guessed: over
+  // 185 typed turns in a week, 13.6s average and 28.5s worst. Of a 17.0s turn,
+  // 15.5s is the two model calls and 1.2s is everything else - auth, context,
+  // day state, prompt build and every database write put together. So the only
+  // thing worth touching is what the two calls read and write.
+  //
+  // The obvious knob was already at its stop: effort is 'low', the SDK has no
+  // level below it, and Opus 5.5 refuses thinking.type.disabled outright - the
+  // API answers "not supported for this model, use thinking.type.adaptive and
+  // output_config.effort". The fallback reply is already asked for short. What
+  // was left was what the SECOND call re-reads.
+  //
+  // A led turn sends the same prefix twice: the reply step spreads
+  // first.messages and appends to it. Three breakpoints were in use - the tool
+  // schema, the static prompt, her own context - and the API reads them tools,
+  // then system, then messages, so everything after personContext was arriving
+  // fresh BOTH times: this turn's state, her week, the conversation itself.
+  // Measured on her slow turns, 8,675 input tokens of it.
+  //
+  // A breakpoint on the last message puts the whole prefix behind the cache,
+  // system included, so the reply step reads it instead of re-reading it. Four
+  // is the limit and this is the fourth.
+  //
+  // LED TURNS ONLY. On the one-call path nothing re-reads this, and the last
+  // message is her newest one, so the cache would be written every turn and
+  // never read - a charge for nothing.
+  if (leadMode && messages.length > 0) {
+    const last = messages[messages.length - 1];
+    const blocks: Anthropic.Messages.ContentBlockParam[] =
+      typeof last.content === 'string'
+        ? last.content.length > 0
+          ? [{ type: 'text', text: last.content }]
+          : []
+        : [...last.content];
+    const tail = blocks[blocks.length - 1];
+    // Only on a block that can carry it, and never on an empty one: a text
+    // block with no text is rejected, and a turn that cannot be marked simply
+    // goes without, exactly as it did before.
+    if (tail && (tail.type === 'text' || tail.type === 'image')) {
+      blocks[blocks.length - 1] = { ...tail, cache_control: { type: 'ephemeral' } };
+      messages[messages.length - 1] = { role: last.role, content: blocks };
+    }
+  }
+
   if (leadMode) console.log('LEAD TURN: this account leads with', LEAD_MODEL);
 
   let response;
