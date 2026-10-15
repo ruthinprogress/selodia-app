@@ -33,7 +33,18 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.health.READ_STEPS"
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BODY_FAT",
+        "android.permission.health.READ_BONE_MASS",
+        "android.permission.health.READ_BODY_WATER_MASS",
+        "android.permission.health.READ_BASAL_METABOLIC_RATE",
+        "android.permission.health.READ_MENSTRUATION",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_HYDRATION",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
       ],
       "runtimeVersion": {
         "policy": "appVersion"
@@ -73,8 +84,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Selodía reads your step count to give you a more complete picture of your daily movement.",
-          "NSHealthUpdateUsageDescription": "Selodía does not add anything to your Health data. It only ever reads your step count."
+          "NSHealthShareUsageDescription": "Selodía reads the health data you choose to share - steps, sleep, weight and body composition, workouts, water and cycle dates - so your record is complete without typing it all in twice.",
+          "NSHealthUpdateUsageDescription": "Selodía does not add anything to your Health data. It only ever reads."
         }
       ],
       "react-native-health-connect",
