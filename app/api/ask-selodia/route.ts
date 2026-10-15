@@ -172,7 +172,7 @@ import {
 } from '../../lib/photo-turn';
 import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { appGuideBlock } from '../../lib/app-guide';
-import { isBareYes, LEAD_EFFORT, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
+import { isBareYes, LEAD_EFFORT, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_REPLY_INSTRUCTIONS, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
 import { layOut } from '../../lib/reply-shape';
 import { publishStage } from '../../lib/turn-stage';
 import { turnFacts } from '../../lib/turn-facts';
@@ -1729,18 +1729,32 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
   // `personContext` is her seven-day logs and the prose around them. It does
   // not change between turns unless she logs something, so it is the right
   // thing to cache and the wrong thing to re-read eight times in one call.
-  const turnRestPrompt =
-    buildContextualAdditions(previousEscalationStep, previousRevisitCount) +
-    todayBlock +
-    goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at) +
-    pendingFocusPrompt(pendingFocus) +
-    pendingSavePrompt(pendingSave) +
-    (discussedEntry ? `\n\n${discussedEntry}` : '') +
-    (isVoice ? VOICE_SESSION_BLOCK : '') +
-    (supersededSince ? SUPERSEDED_TURN_BLOCK : '') +
-    (consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : '') +
-    (isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : '') +
-    `\n\n${SAFETY_PROMPT_BLOCK}`;
+  // NAMED BEFORE THEY ARE JOINED, so the prompt can be weighed (15 October
+  // 2026). Ruth, on why a 45,000-token prompt got a weigh-in wrong that 792
+  // tokens got right: "maybe there's too much architechture around it,
+  // limiting it's thinking." Her instruction was to inventory it first - every
+  // block, its size, and which path reads it - and to cut from the measurement
+  // rather than from opinion.
+  //
+  // These were concatenated inline, which made the total measurable and every
+  // part of it invisible. Identical text in an identical order: the only
+  // change is that each piece now has a name before it is joined, so
+  // `x-selodia-prompt` can report what each one costs on a real turn - and can
+  // report it again after every cut.
+  const promptParts: [string, string][] = [
+    ['contextual additions', buildContextualAdditions(previousEscalationStep, previousRevisitCount)],
+    ['today', todayBlock],
+    ['goal safety', goalSafetyPrompt({ verdict: 'unknown', reason: 'no-goal' }, profile?.unsafe_goal_flagged_at)],
+    ['pending focus', pendingFocusPrompt(pendingFocus)],
+    ['pending save', pendingSavePrompt(pendingSave)],
+    ['discussed entry', discussedEntry ? `\n\n${discussedEntry}` : ''],
+    ['voice session', isVoice ? VOICE_SESSION_BLOCK : ''],
+    ['superseded turn', supersededSince ? SUPERSEDED_TURN_BLOCK : ''],
+    ['consolidation offer', consolidation.eligible ? CONSOLIDATION_OFFER_BLOCK : ''],
+    ['lite mode', isInLiteMode(profile) ? LITE_MODE_STANDING_BLOCK : ''],
+    ['safety', `\n\n${SAFETY_PROMPT_BLOCK}`],
+  ];
+  const turnRestPrompt = promptParts.map(([, text]) => text).join('');
 
   // The whole thing as one string, for the goal-safety rewrite, which appends
   // its own instruction and is rare enough not to want a breakpoint.
@@ -5154,6 +5168,49 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     // app had dropped it. Two guesses went by before this existed. Names only,
     // never values, so it carries nothing about the person, and behind a header,
     // so an ordinary turn pays nothing for it.
+    // WHAT THE PROMPT IS MADE OF, ON A REAL TURN (15 October 2026).
+    //
+    // Ruth: "Inventory the prompt - every block, its size, and which path
+    // actually reads it. I suspect several exist only for the old pre-led path
+    // and are dead weight on every turn."
+    //
+    // Measured here rather than read off the source, because most of these are
+    // built per turn from her own record and a static count would be a guess
+    // about the thing the guessing is meant to end. Characters, not tokens:
+    // the ratio is near enough constant across prose and the point is which
+    // blocks are big, not what any one costs to the token.
+    //
+    // Behind a header, so an ordinary turn pays nothing. `who` is which path
+    // reads it, which is the half of her question the sizes cannot answer.
+    ...(request.headers.get('x-selodia-prompt')
+      ? {
+          prompt: {
+            total: (staticSystemPrompt + turnSystemPrompt).length,
+            cached: staticSystemPrompt.length + personContext.length,
+            parts: [
+              { name: 'GENERAL_CONDUCT', chars: GENERAL_CONDUCT.length, who: 'both calls, every turn' },
+              { name: 'CAPABILITIES', chars: CAPABILITIES.length, who: 'both calls, every turn' },
+              { name: 'personContext', chars: personContext.length, who: 'both calls, every turn' },
+              ...promptParts.map(([name, text]) => ({
+                name,
+                chars: text.length,
+                who: name === 'voice session' ? 'spoken turns only' : 'both calls when it fires',
+              })),
+              {
+                name: 'photo-only note',
+                chars: isPhotoOnly ? PHOTO_ONLY_CLASSIFIER_NOTE.length : 0,
+                who: 'photo turns only',
+              },
+              { name: 'classify tool schema', chars: JSON.stringify(tool).length, who: 'first call only' },
+              {
+                name: 'REPLY_CORE + LEAD_REPLY_INSTRUCTIONS',
+                chars: leadMode ? LEAD_REPLY_INSTRUCTIONS.length : 0,
+                who: 'led reply call only',
+              },
+            ].filter((p) => p.chars > 0),
+          },
+        }
+      : {}),
     ...(request.headers.get('x-selodia-decision')
       ? {
           // THE SAME DEFINITION THE RECORDED ROW USES, so an answer read off
