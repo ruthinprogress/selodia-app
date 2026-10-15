@@ -173,6 +173,7 @@ import {
 import { draftWriterBlock, writeDraft, type Draft } from '../../lib/draft';
 import { appGuideBlock } from '../../lib/app-guide';
 import { isBareYes, LEAD_EFFORT, LEAD_FIRST_MAX_TOKENS, LEAD_MODEL, LEAD_TOOL_MODEL, leadChatOn, writeLeadReply } from '../../lib/lead-turn';
+import { layOut } from '../../lib/reply-shape';
 import { turnFacts } from '../../lib/turn-facts';
 import { EVIDENCE_PRINCIPLE } from '../../lib/principles';
 import { writeCycleEvent } from '../../lib/cycle-logging';
@@ -4806,6 +4807,28 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // never asked leaves her yes to something else able to answer it. Whichever
   // path wrote the reply, offerQuestion() returns null if that reply already
   // asks, and the app's own line otherwise.
+  // AND NOTHING LEAVES HERE AS A WALL OF TEXT.
+  //
+  // Ruth, 15 October 2026: "We really need to stop this awful block of text
+  // replies. I almost put the app away and give up to avoid reading such awful
+  // formatting." A correct answer about her knee had arrived as 1,020
+  // characters with no line break in it.
+  //
+  // LAST, DELIBERATELY. Every guard above matches on the words of the reply -
+  // the save claims, the disavowals, the false-claim note - and they were
+  // written against prose. This only moves line breaks, but it runs after all
+  // of them so none of them is reading text that has been reshaped under it.
+  //
+  // NOT ON A SPOKEN TURN. Bullets and labels do not come out of a speaker;
+  // see the note at the top of reply-core.ts about what is shared and what
+  // stays with the medium.
+  //
+  // About one turn in twenty-five reaches the threshold (see WALL_CHARS), and
+  // layOut() hands back exactly what it was given unless it can both improve
+  // it and prove it says the same thing - so the worst case here is the reply
+  // she would have got anyway, computed in well under a millisecond.
+  if (!isVoice) replyBody = layOut(replyBody);
+
   timing.mark('replyWritten');
   const offerLine = offered ? offerQuestion(replyBody, offeredType) : null;
   const trailingLines = [...notesStillToAppend, offerLine].filter(
