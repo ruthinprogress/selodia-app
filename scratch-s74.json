@@ -1,0 +1,39 @@
+{
+  "label": "S74: 15Oct26",
+  "checklist": [
+    ["Task", "Status", "Date", "Notes"],
+    ["Consolidate the reply instructions into one shared core", "Done", "2026-10-15", "REPLY_CORE shared by the led and spoken paths. 1754 words to 1406, and a contradiction between 'under 180 words' and 'under 140' resolved."],
+    ["Progressive status while a turn is working", "Done", "2026-10-15", "components/turn-progress. Labels are the real phases; timings were estimates until the two-stage reply replaced the last one with a fact."],
+    ["Drafts stop leaving blanks for facts already on file", "Done", "2026-10-15", "First name and date of birth reach the writer. turn_context patched in place rather than replayed, which would have deleted four blocks added since 1 Oct."],
+    ["Make the escalation behaviour consistent", "Done", "2026-10-15", "A log resolves a pending C-SSRS question whatever tier it drew. Her call, against my proposal: 'if there was something wrong, a user would respond with a log.'"],
+    ["Test the cheaper deciding model", "Declined", "2026-10-15", "Sonnet 5 dropped the NHS number. Measured and refused rather than shipped for the 2.7s."],
+    ["Stop the wall-of-text replies", "Done", "2026-10-15", "She almost put the app away over it. Guard at the write, done in arithmetic after Haiku and Sonnet both altered words and Opus cost 9s."],
+    ["Fourth cache breakpoint on a led turn", "Done", "2026-10-15", "Reply call cached read 36.5k to 42.4k. Smaller than the harness predicted and the commit says so: the tool result is 7,400 tokens no cache can reach."],
+    ["Two-stage reply", "Done", "2026-10-15", "What the app DID is published ~7s in and shown while the words are still being written. Additive, no new endpoint, no streaming."],
+    ["Instrument which classifier fields are ever used", "Done", "2026-10-15", "Names only, never values. Silently recorded nothing for an afternoon until a CHECK constraint was found by asking the live app."],
+    ["Report: a plan reads as a plan", "Done", "2026-10-15", "Five movements were arriving as one run-on paragraph in the document she takes to her specialist. The structure existed and the last function flattened it."],
+    ["A movement with no video gets written instructions", "Done", "2026-10-15", "13 of 45 movements had a demonstration. 32 described, so all 45 can now be watched or read. Her knee plan went 1 of 5 to 5 of 5."],
+    ["The week is read against her own usual", "Done", "2026-10-15", "Four-week baseline, and the quiet stretch is checked against her care record before it counts as unexplained. The knee referral was dated the same day the training stopped."],
+    ["Standing details can be removed", "Done", "2026-10-15", "Swipe to delete on Me, and from chat. The app had told her it could not."],
+    ["Her own name is not a standing detail", "Done", "2026-10-15", "Blocked at the write and the instruction that offered 'a date of birth' as an example removed."],
+    ["The chat can see which movements have a video", "Done", "2026-10-15", "Plans block marks every movement [video] or [words only]. It had been asking her to go and check."],
+    ["Inventory the prompt", "Built", "2026-10-15", "x-selodia-prompt plus scripts/inventory-prompt.mjs. First call reads 117,910 characters. GENERAL_CONDUCT is 68% and holds 59 instructions."],
+    ["Build an eval the cutting must get past", "Built", "2026-10-15", "13 cases, every one a failure she has actually had, every check proved able to fail. Safety is reported separately, never averaged in."],
+    ["Cut the prompt, pass 1 and 2", "Done", "2026-10-15", "SAVING TO THE ALMANAC 11,554 to 10,412. Duplication of the tool removed, then two worked examples tightened. Eval unmoved both times."],
+    ["Cut the prompt, pass 3", "Fixed", "2026-10-15", "Found a live bug instead of fat: the prompt still said it cannot tell which movements have a demonstration, contradicting the fix made three hours earlier."],
+    ["Animatics delivery off Dropbox", "Sent", "2026-10-15", "Root cause found: a shared Dropbox folder counts against the recipient's quota and 1,650 videos will never fit a free account. No token was ever going to fix it. Email sent to the vendor from Selodia."],
+    ["Funding", "No movement", "2026-10-15", "Nothing raised, applied for or spent beyond running costs. Women in Innovation readiness still tracked by the Monday task; the director's loan account still has no card."]
+  ],
+  "decisions": [
+    ["Decision", "Date", "Reasoning"],
+    ["A guard goes in the code, not a second ask in the prompt", "2026-10-15", "The wall-of-text rule already existed and was obeyed three times out of four. A rule obeyed three times and ignored once is not a rule. Her standing note: enforce it where the row is written."],
+    ["The layout repair is arithmetic, not a model call", "2026-10-15", "Measured: Haiku dropped a word from an exercise, Sonnet returned nothing, Opus kept every word at 9s and Opus prices on a turn whose latency is already the complaint. Breaking a paragraph needs no judgement."],
+    ["Two-stage reply over shortening the turn", "2026-10-15", "Her call, and her reason: the second model call 'is literally what's building what I want'. So the turn is not shortened, it is split."],
+    ["Written instructions before preferring filmed movements", "2026-10-15", "Her call. Choosing an exercise because it was filmed is the tail wagging the dog, and a knee programme being signed off by a consultant must not be bent towards the asset library."],
+    ["The caution moves below the movement on a plan card", "2026-10-15", "Reverses Part Ten. That rule held while the demonstration was a video she could already picture; it stopped holding once the how-to became the thing she opens the card for."],
+    ["Do not add a fifth guard to fix a failure caused by guards", "2026-10-15", "lib/invented-session.ts was written, worked, and was deleted. Her point: 'maybe there's too much architechture around it, limiting it's thinking.' Adding scaffolding to fix scaffolding is how the prompt reached 76,000 characters."],
+    ["Cut the prompt from measurement, not opinion", "2026-10-15", "Her method, in her order: inventory, then an eval from turns whose answers are known, then cut in passes and re-measure. Three passes shipped, all proved harmless."],
+    ["A keyword trigger for the app map is not shippable", "2026-10-15", "Measured against 600 real messages: fires on 4%, but skips 'alternative moves but with videos' - that evening's actual failure - while carrying a referral letter and voice tests."],
+    ["The architectural split waits for daylight", "2026-10-15", "The deciding call does not need the 9,400-character screen map. Real win, but it moves text from cached to uncached and changes how two calls share a prefix. Not a decision to make at midnight."]
+  ]
+}

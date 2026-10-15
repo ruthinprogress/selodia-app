@@ -626,3 +626,51 @@ that survives says so.
 **The rule: a guard that reports on output must read the output as rendered,
 after every transform that runs between the model and the screen.** Checking the
 draft means warning about sentences nobody read.
+
+## A correction in a long prompt argues with what it corrects (15 October 2026)
+
+The chat told Ruth it could not see which movements in her plan had a
+demonstration, and asked her to open the plan, tap into all five, and report
+back. Her answer: *"that surely is it's job."* The reference is stored on every
+exercise and had simply never been put in front of the model, so the plans block
+gained a mark - `[video]` or `[words only]` - on every movement.
+
+Three hours later the same question still got the same deflection. The
+capabilities block, nine thousand characters further down, still said:
+
+> Coverage is partial and you cannot tell which movements have one, so never
+> promise a demonstration for a named exercise
+
+True that morning, false by evening, and far more emphatic than the new line: it
+names a prohibition, repeats it, and gives a reason. The model obeyed the older
+sentence. The fix had not replaced anything - it had opened an argument, and
+lost.
+
+**The rule: in a prompt this size, adding the truth is not the same as removing
+the falsehood. Before shipping a prompt change, search for what already says the
+opposite.** A correction that merely sits elsewhere in the file is a second
+opinion, and the model picks whichever is stated with more force - usually the
+older one, because it has been edited more often.
+
+It is also the argument for measuring the prompt at all. At 76,000 characters
+nobody can hold what is in it, so the contradiction is not findable by reading;
+it is findable by inventory. See `scripts/inventory-prompt.mjs`.
+
+## Measure a trigger against real messages before you build on it
+
+The biggest single instruction in the prompt is a 12,182-character map of the
+app's own screens, read by both calls of every typed turn to answer a question
+that is rarely asked. The obvious saving is to send it only when the turn is
+about the app.
+
+Tested against 600 real user messages, a generous keyword trigger fired on 4% -
+and the 96% it skipped included *"I was hoping there are alternative moves that
+would still strengthen the area but with videos"*, which is a question about what
+the app can do and was that very evening's reported bug. What it did carry was a
+physiotherapy referral letter and four voice-test messages, caught on "delete",
+"can" and "remove".
+
+**The rule: a trigger that decides what the model is allowed to know is a
+correctness mechanism, not an optimisation, and it gets measured against real
+traffic before anything is built on it.** The cheap version was abandoned on the
+evidence, which cost one probe instead of a fortnight of odd answers.
