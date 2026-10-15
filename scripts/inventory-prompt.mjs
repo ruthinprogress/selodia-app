@@ -80,10 +80,16 @@ if (res.status !== 200 || !body.prompt) {
 }
 
 const { total, cached, parts } = body.prompt;
-const sorted = [...parts].sort((a, b) => b.chars - a.chars);
-const widest = Math.max(...sorted.map((p) => p.name.length));
+const sorted = [...system].sort((a, b) => b.chars - a.chars);
+const widest = Math.max(...sorted.map((p) => p.name.length), 20);
 
-console.log(`\n  ONE TYPED TURN, LED. ${total.toLocaleString('en-GB')} characters of system prompt.\n`);
+console.log(
+  `\n  ONE TYPED TURN, LED.\n\n` +
+    `  System prompt      ${total.toLocaleString('en-GB').padStart(8)} chars\n` +
+    `  Classify tool      ${(schema?.chars ?? 0).toLocaleString('en-GB').padStart(8)} chars   (first call only)\n` +
+    `  ${'-'.repeat(17)}  ${'-'.repeat(8)}\n` +
+    `  The first call reads ${firstCall.toLocaleString('en-GB')} characters before her message.\n`
+);
 console.log(`  ${'block'.padEnd(widest)}  ${'chars'.padStart(7)}   ${'share'.padStart(5)}  read by`);
 console.log(`  ${'-'.repeat(widest)}  ${'-'.repeat(7)}   ${'-'.repeat(5)}  ${'-'.repeat(26)}`);
 for (const p of sorted) {

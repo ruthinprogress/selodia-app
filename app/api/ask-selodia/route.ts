@@ -5187,6 +5187,19 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           prompt: {
             total: (staticSystemPrompt + turnSystemPrompt).length,
             cached: staticSystemPrompt.length + personContext.length,
+            // AND INSIDE THE BIGGEST BLOCK, because "GENERAL_CONDUCT, 52,431
+            // characters" is a fact nobody can act on. It is one template
+            // literal holding thirty-odd separate instructions, so it is split
+            // on its own paragraph breaks and each one is named by the words
+            // it opens with - which, by the house style of this file, is
+            // almost always its heading in capitals.
+            conduct: GENERAL_CONDUCT.split(/\n{2,}/)
+              .map((para) => ({
+                name: (para.trim().split(/(?<=[.:])\s|\s-\s/)[0] ?? '').slice(0, 72),
+                chars: para.length,
+              }))
+              .filter((p) => p.chars > 0)
+              .sort((a, b) => b.chars - a.chars),
             parts: [
               { name: 'GENERAL_CONDUCT', chars: GENERAL_CONDUCT.length, who: 'both calls, every turn' },
               { name: 'CAPABILITIES', chars: CAPABILITIES.length, who: 'both calls, every turn' },
