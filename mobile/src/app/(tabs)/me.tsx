@@ -46,6 +46,29 @@ export default function MeScreen() {
   // query rather than a column on anything: a number she is asked for belongs
   // to her, not to the one letter it was lifted off. See care_constants.
   const [details, setDetails] = useState<StandingDetail[]>([]);
+
+  // TAKING A STANDING DETAIL OUT, OPTIMISTICALLY (15 October 2026).
+  //
+  // Ruth: "The delete is saying 'removing' for ages then closing without
+  // deleting." The row HAD gone from the database; the client was still
+  // waiting on the response and then took its error path, so the screen
+  // showed the opposite of what had happened.
+  //
+  // Removing one line from a list of her own reference numbers should not
+  // make her wait on a network. It leaves the list on the tap. If the write
+  // genuinely fails it comes back where it was, which is the only honest
+  // thing to do and the only case that is ever slow.
+  const removeDetail = useCallback(async (detail: StandingDetail) => {
+    setDetails((rows) => rows.filter((r) => r.id !== detail.id));
+    const { error } = await supabase.from('care_constants').delete().eq('id', detail.id);
+    if (!error) return;
+    console.log('STANDING DETAIL not removed:', error.message);
+    // PUT BACK IN ITS OWN PLACE, not on the end: this list is ordered by when
+    // she last touched each row, and a failed delete must not reorder it.
+    setDetails((rows) =>
+      [...rows, detail].sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    );
+  }, []);
   const [loaded, setLoaded] = useState(false);
   // Bumped when a card is deleted or edited below, so the screen re-reads
   // itself. useFocusEffect alone does not cover it: the change happens while
@@ -142,10 +165,7 @@ export default function MeScreen() {
                   <MeProtocol
                     entries={byTab.me}
                     details={details}
-                    // DROPPED FROM STATE RATHER THAN REFETCHED. The row is already
-                    // gone from the database by the time this fires, and a reload
-                    // would redraw the whole tab for one removed line.
-                    onDetailRemoved={(id) => setDetails((rows) => rows.filter((r) => r.id !== id))}
+                    onRemoveDetail={removeDetail}
                     onDeleted={() => setReloadKey((k) => k + 1)}
                     onChanged={() => setReloadKey((k) => k + 1)}
                   />

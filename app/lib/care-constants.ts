@@ -103,6 +103,14 @@ const NOT_A_CONSTANT =
   /\b(appointment|appt|booking|arriv\w*|slot|scan time|result|results|reading|weight|dose|today|tomorrow|next week)\b/i;
 
 /**
+ * The facts about her that her profile already holds. Matched on the WHOLE
+ * label, so "NHS number" survives and "Date of birth" does not, and "Mr
+ * Atkinson's team phone" is untouched because it is somebody else's phone.
+ */
+const ALREADY_IN_HER_PROFILE =
+  /^(my\s+)?(full\s+)?(name|first name|surname|last name|home address|address|postcode|date of birth|dob|birthday|mobile|mobile number|phone|phone number|telephone|email|email address|age|height)$/i;
+
+/**
  * THE LABEL IS NOT WRITTEN IN THE FIRST PERSON (Ruth, 14 October 2026, reading
  * a line of a test transcript: "why did it say 'my' axa memebership?").
  *
@@ -135,6 +143,25 @@ export function coerceConstant(v: unknown): CareConstant | null {
   const value = clean(raw.value, MAX_VALUE);
   if (!label || !value) return null;
   if (NOT_A_CONSTANT.test(label)) return null;
+  // HER OWN DETAILS ARE NOT DETAILS SHE IS ASKED FOR (Ruth, 15 October 2026).
+  //
+  // She asked the app to go through her care records and pull out the numbers
+  // she needs regularly. It gave back her full name, her home address, her
+  // date of birth and her mobile, alongside the four she wanted: "it's silly
+  // to get your own name back."
+  //
+  // Right twice over. The app already holds all four in her profile, so this
+  // section was showing a second copy that nothing keeps in step. And the
+  // section exists for the things she CANNOT recite - an insurer membership,
+  // a hospital number, the practice's phone. Nobody opens an app to find out
+  // their own name, and every row that does it sits between her and the
+  // number she actually reached for.
+  //
+  // ENFORCED HERE RATHER THAN ASKED FOR. The tool's instruction used to offer
+  // "a date of birth" as an example of a standing detail, which is precisely
+  // what it then stored. That wording is fixed too, but the label is a cheap
+  // thing to check and this is where the row gets written.
+  if (ALREADY_IN_HER_PROFILE.test(label.trim())) return null;
   // A label that is only punctuation normalises to nothing, and a row with no
   // identity would take the unique index's one unnamed slot.
   if (!labelKey(label)) return null;

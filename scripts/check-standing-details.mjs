@@ -96,13 +96,48 @@ check('a one-off cannot get in', () => {
   const kept = [
     { label: 'NHS number', value: '485 777 3456' },
     { label: 'AXA membership number', value: 'AX-99120' },
-    { label: 'Date of birth', value: '3 March 1984' },
+    { label: "Mr Atkinson's team phone", value: '020 7496 3597' },
     { label: 'GP practice', value: 'https://example.nhs.uk/appointments' },
   ];
   for (const k of kept) {
     assert.ok(S.coerceConstant(k), `"${k.label}" was refused`);
   }
   return `${refused.length} refused, ${kept.length} kept`;
+});
+
+check('and her own details are refused, because the profile already holds them', () => {
+  // Ruth, 15 October 2026, after asking the app to pull the numbers she needs
+  // regularly out of her care records and getting nine back: "it's silly to
+  // get your own name back."
+  //
+  // The instruction had offered "a date of birth" as an example of a standing
+  // detail, so that is what it stored, along with her name, her address and
+  // her mobile. All four are in her profile already, and this section is for
+  // the things she CANNOT recite - a membership number, a hospital number, a
+  // practice's phone. A row telling her her own name sits between her and the
+  // number she actually reached for.
+  for (const label of [
+    'Full name',
+    'Home address',
+    'Date of birth',
+    'Mobile',
+    'my date of birth',
+    'Email address',
+    'Postcode',
+  ]) {
+    assert.strictEqual(
+      S.coerceConstant({ label, value: 'anything' }),
+      null,
+      `"${label}" was stored as a standing detail`
+    );
+  }
+  // AND SOMEBODY ELSE'S CONTACT DETAILS ARE NOT HERS. The rule matches the
+  // whole label on purpose: a consultant's phone is exactly what this section
+  // is for, and a rule that caught every word 'phone' would delete it.
+  for (const label of ['GP practice phone', "Mr Atkinson's team phone", "Mr Atkinson's team email", 'AXA claim follow-up number']) {
+    assert.ok(S.coerceConstant({ label, value: '020 7496 3597' }), `"${label}" was refused`);
+  }
+  return '7 of her own refused, 4 belonging to others kept';
 });
 
 check('a label is not written in the first person', () => {

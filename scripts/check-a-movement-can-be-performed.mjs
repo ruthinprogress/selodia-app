@@ -172,15 +172,35 @@ check('the phone shows it only when there is no clip', () => {
   return 'words instead of a video, never as well';
 });
 
-check('and below the demonstration, which is below the safety note', () => {
-  // Part Ten fixes that order: the safety note comes first, because it is what
-  // matters before somebody loads a bar.
-  const safety = detail.indexOf('Before you begin');
+check('THE MOVEMENT COMES FIRST AND THE CAUTION LAST', () => {
+  // Ruth, 15 October 2026, looking at the card on her phone: "The body
+  // movement info is under the blank movement area which makes it look like
+  // its broken. Also the area at the top explaining caution should be at the
+  // bottom."
+  //
+  // Part Ten put the safety note first, on the reasoning that it is what
+  // matters before somebody loads a bar. That held while the demonstration was
+  // a video she could already picture. It stopped holding the moment the
+  // how-to became the thing she opens the card FOR, because a caution read
+  // before the movement it describes is a caution about nothing.
   const demo = detail.indexOf('<MovementDemo');
   const words = detail.indexOf('How to do it');
-  assert.ok(safety > 0 && demo > safety, 'the demonstration is above the safety note');
-  assert.ok(words > demo, 'the how-to is above the demonstration');
-  return 'safety, demonstration, words';
+  const safety = detail.indexOf('Before you begin');
+  assert.ok(demo > 0 && words > 0 && safety > 0, 'a part of the card is missing');
+  assert.ok(words > demo, 'the how-to is above the demonstration slot');
+  assert.ok(safety > words, 'the caution is still above the how-to');
+  return 'demonstration, words, caution';
+});
+
+check('AND THE EMPTY BOX IS NOT DRAWN WHEN THERE ARE WORDS INSTEAD', () => {
+  // The thing that made it look broken: an empty framed panel saying there was
+  // no demonstration, with the instructions queued underneath it, reads as a
+  // video that failed to load.
+  assert.ok(
+    /\{exercise\.demoRef \|\| !exercise\.howTo \? \(/.test(detail),
+    'the demonstration panel is drawn even when words have replaced it'
+  );
+  return 'the words take the panel place';
 });
 
 check('and this check can fail', () => {

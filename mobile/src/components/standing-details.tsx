@@ -1,11 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { openBrowserAsync } from 'expo-web-browser';
 import { Linking, Pressable, Share, StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { ThemedText } from '@/components/themed-text';
-import { supabase } from '@/lib/supabase';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -65,11 +64,11 @@ import {
 // own rows, so there is no endpoint to go wrong.
 export function StandingDetails({
   details,
-  onRemoved,
+  onRemove,
 }: {
   details: StandingDetail[];
-  /** Told which row went, so the tab around this can drop it without a refetch. */
-  onRemoved?: (id: string) => void;
+  /** Handed the row to take out. The tab owns the delete, so it can put it back. */
+  onRemove?: (detail: StandingDetail) => void;
 }) {
   const theme = useTheme();
 
@@ -84,7 +83,7 @@ export function StandingDetails({
   return (
     <>
       {details.map((d) => (
-        <DetailRow key={d.id} detail={d} divider={theme.backgroundSelected} onRemoved={onRemoved} />
+        <DetailRow key={d.id} detail={d} divider={theme.backgroundSelected} onRemove={onRemove} />
       ))}
     </>
   );
@@ -93,31 +92,27 @@ export function StandingDetails({
 function DetailRow({
   detail,
   divider,
-  onRemoved,
+  onRemove,
 }: {
   detail: StandingDetail;
   divider: string;
-  onRemoved?: (id: string) => void;
+  onRemove?: (detail: StandingDetail) => void;
 }) {
   const theme = useTheme();
   const swipe = useRef<SwipeableMethods | null>(null);
-  const [removing, setRemoving] = useState(false);
 
-  async function remove() {
-    if (removing) return;
-    setRemoving(true);
-    const { error } = await supabase.from('care_constants').delete().eq('id', detail.id);
-    if (error) {
-      // IT STAYS AND IT SAYS SO BY STAYING. A row that slid away and came back
-      // on the next load would be the app telling her something happened that
-      // did not, which is the failure this codebase keeps returning to.
-      console.log('STANDING DETAIL not removed:', error.message);
-      setRemoving(false);
-      swipe.current?.close();
-      return;
-    }
-    onRemoved?.(detail.id);
-  }
+  // THE ROW GOES AT ONCE, AND THE WRITE CATCHES UP (15 October 2026).
+  //
+  // The first version awaited the delete before touching the screen, and Ruth
+  // got the worst of both: "The delete is saying 'removing' for ages then
+  // closing without deleting." The row HAD been deleted - it was gone from the
+  // database - but the client was still waiting, then took the error path and
+  // closed the swipe, so the screen showed the opposite of what had happened.
+  //
+  // Taking one line out of a list of her own reference numbers is not an
+  // operation that should make her wait on a network at all. It disappears on
+  // the tap; if the write genuinely fails it comes back, and that is the only
+  // case where anything is slow. See removeDetail in app/(tabs)/me.tsx.
   // THE LABEL IS PART OF THE DECISION, not decoration. Ten digits is an NHS
   // number or a landline and nothing in the digits says which; only "Surgery
   // phone" does. See tapActionFor.
@@ -164,7 +159,7 @@ function DetailRow({
       // would trade the thing she called wonderful for the thing she asked for.
       renderRightActions={() => (
         <Pressable
-          onPress={() => void remove()}
+          onPress={() => onRemove?.(detail)}
           accessibilityRole="button"
           accessibilityLabel={`Remove ${detail.label}`}
           accessibilityHint="Takes this detail out of the list"
@@ -172,7 +167,7 @@ function DetailRow({
         >
           <Ionicons name="trash-outline" size={15} color={theme.textSecondary} />
           <ThemedText type="detail" themeColor="textSecondary">
-            {removing ? 'Removing' : 'Remove'}
+            {'Remove'}
           </ThemedText>
         </Pressable>
       )}

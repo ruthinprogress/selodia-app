@@ -190,26 +190,16 @@ function ExerciseDetail({
               </ThemedText>
             )}
 
-            {exercise.safetyNote ? (
-              <ThemedView type="backgroundElement" style={styles.beforeCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-                  Before you begin
-                </ThemedText>
-                <ThemedText type="small">{exercise.safetyNote}</ThemedText>
-              </ThemedView>
-            ) : (
-              // Every exercise card requires a safety note by rule. Saying it is
-              // missing is honest; inventing generic boilerplate would break the
-              // never-generic rule and be worse than silence.
-              <ThemedText type="small" themeColor="textSecondary">
-                No safety note saved for this one yet.
-              </ThemedText>
-            )}
 
-            {/* Part Ten fixes this order: the safety note comes first, because
-                it is what matters before somebody loads a bar. The
-                demonstration follows it, never above it. */}
-            <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
+            {/* THE BOX IS ONLY DRAWN WHEN IT HAS SOMETHING IN IT (Ruth, 15
+                October 2026): "The body movement info is under the blank
+                movement area which makes it look like its broken." An empty
+                framed panel with the words underneath reads as a video that
+                failed to load. Where there are words instead of a clip, the
+                words take the panel's place rather than queue behind it. */}
+            {exercise.demoRef || !exercise.howTo ? (
+              <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
+            ) : null}
 
             {/* AND WHEN THERE IS NO CLIP, WORDS (15 October 2026).
                 Ruth, on the plan she built for her knee: "one one exercise had
@@ -217,11 +207,17 @@ function ExerciseDetail({
                 before shipping or it's no use at all." Thirteen of her
                 forty-five movements have a demonstration.
 
-                Below the demo slot, so the order Part Ten fixes is kept: the
-                safety note, then the demonstration, then this. Shown only when
-                there is no clip - with a video this is noise - and drawn as its
-                own lines, because "Set up / Do / Feel it" run together is the
-                wall of text she spent this morning getting rid of. */}
+                Shown only when there is no clip - beside a video this is noise
+                - and drawn as its own lines, because "Set up / Do / Feel it"
+                run together is the wall of text she spent this morning getting
+                rid of.
+
+                THE CARD'S ORDER CHANGED WITH IT. Part Ten put the safety note
+                first, on the reasoning that it is what matters before somebody
+                loads a bar. That held while the demonstration was a video she
+                could already picture; it stopped holding once the how-to became
+                the thing she opens the card for. A caution read before the
+                movement it describes is a caution about nothing. */}
             {!exercise.demoRef && exercise.howTo ? (
               <ThemedView type="backgroundElement" style={styles.beforeCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
@@ -243,6 +239,28 @@ function ExerciseDetail({
                 })}
               </ThemedView>
             ) : null}
+            {/* AND THE CAUTION LAST (Ruth, 15 October 2026): "the area at the
+                top explaining caution should be at the bottom". It led the card
+                from the beginning, on the Part Ten reasoning that it is what
+                matters before somebody loads a bar. In use it pushed the thing
+                she opened the card FOR - how the movement goes - below the fold,
+                and a warning read before the movement it is about is a warning
+                about nothing. It is still on the same card, one scroll away. */}
+            {exercise.safetyNote ? (
+              <ThemedView type="backgroundElement" style={styles.beforeCard}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                  Before you begin
+                </ThemedText>
+                <ThemedText type="small">{exercise.safetyNote}</ThemedText>
+              </ThemedView>
+            ) : (
+              // Every exercise card requires a safety note by rule. Saying it is
+              // missing is honest; inventing generic boilerplate would break the
+              // never-generic rule and be worse than silence.
+              <ThemedText type="small" themeColor="textSecondary">
+                No safety note saved for this one yet.
+              </ThemedText>
+            )}
 
             {/* BEHIND A TOGGLE UNTIL THERE IS A WEIGHT (Ruth, 2026-09-10).
                 Found on device: a sumo squat and a side-lying leg lift both
