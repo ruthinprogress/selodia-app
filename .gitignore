@@ -74,3 +74,4 @@ audit-out/
 # Generated store screenshots. Outputs, not source: shoot-store-screenshots.mjs
 # rewrites them from the seeded account whenever the listing needs retaking.
 scripts/store-shots/
+scripts/eval-snapshots/
