@@ -1,8 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRef, useState } from 'react';
 import { openBrowserAsync } from 'expo-web-browser';
 import { Linking, Pressable, Share, StyleSheet, View } from 'react-native';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { ThemedText } from '@/components/themed-text';
+import { supabase } from '@/lib/supabase';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -37,7 +40,37 @@ import {
 // tidying them into one run would make this harder to use while looking more
 // consistent.
 
-export function StandingDetails({ details }: { details: StandingDetail[] }) {
+// AND SHE CAN TAKE ONE OUT (Ruth, 15 October 2026).
+//
+// She asked the app to pull the numbers she needs regularly out of her care
+// records. It pulled nine, including her date of birth, her address and an
+// authorisation code tied to one claim. Her correction: "the rest are linked
+// to active enquiries and will expire, or already exist here in the app in my
+// profile." The app's own reply admitted the gap - "I can add to that list
+// from here, but I don't have a way to take the other entries out of it" -
+// and nor did this screen.
+//
+// Her instruction: "The quick copy, call etc icons and fu action is wonderful
+// but it also needs swipe to delete."
+//
+// A LIST SHE CANNOT PRUNE IS WORSE THAN NO LIST. The point of this section is
+// reading a number out to somebody who is waiting. An authorisation code that
+// expired three weeks ago sitting in it is what makes her stop trusting the
+// rows around it.
+//
+// THE SWIPE IS THE CONFIRMATION. No dialog: a deliberate sideways drag and
+// then a tap on the word Remove is already two intentional actions, and a
+// detail removed by mistake can be said again in chat. Deleted straight
+// through the ordinary client, which row-level security already limits to her
+// own rows, so there is no endpoint to go wrong.
+export function StandingDetails({
+  details,
+  onRemoved,
+}: {
+  details: StandingDetail[];
+  /** Told which row went, so the tab around this can drop it without a refetch. */
+  onRemoved?: (id: string) => void;
+}) {
   const theme = useTheme();
 
   if (details.length === 0) {
@@ -51,14 +84,40 @@ export function StandingDetails({ details }: { details: StandingDetail[] }) {
   return (
     <>
       {details.map((d) => (
-        <DetailRow key={d.id} detail={d} divider={theme.backgroundSelected} />
+        <DetailRow key={d.id} detail={d} divider={theme.backgroundSelected} onRemoved={onRemoved} />
       ))}
     </>
   );
 }
 
-function DetailRow({ detail, divider }: { detail: StandingDetail; divider: string }) {
+function DetailRow({
+  detail,
+  divider,
+  onRemoved,
+}: {
+  detail: StandingDetail;
+  divider: string;
+  onRemoved?: (id: string) => void;
+}) {
   const theme = useTheme();
+  const swipe = useRef<SwipeableMethods | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  async function remove() {
+    if (removing) return;
+    setRemoving(true);
+    const { error } = await supabase.from('care_constants').delete().eq('id', detail.id);
+    if (error) {
+      // IT STAYS AND IT SAYS SO BY STAYING. A row that slid away and came back
+      // on the next load would be the app telling her something happened that
+      // did not, which is the failure this codebase keeps returning to.
+      console.log('STANDING DETAIL not removed:', error.message);
+      setRemoving(false);
+      swipe.current?.close();
+      return;
+    }
+    onRemoved?.(detail.id);
+  }
   // THE LABEL IS PART OF THE DECISION, not decoration. Ten digits is an NHS
   // number or a landline and nothing in the digits says which; only "Surgery
   // phone" does. See tapActionFor.
@@ -97,6 +156,27 @@ function DetailRow({ detail, divider }: { detail: StandingDetail; divider: strin
   const hint = action.kind === 'copy' ? 'Copies or shares this' : action.verb;
 
   return (
+    <ReanimatedSwipeable
+      ref={swipe}
+      friction={2}
+      rightThreshold={40}
+      // THE ROW ITSELF STILL DOES WHAT IT DID. A swipe that also stole the tap
+      // would trade the thing she called wonderful for the thing she asked for.
+      renderRightActions={() => (
+        <Pressable
+          onPress={() => void remove()}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${detail.label}`}
+          accessibilityHint="Takes this detail out of the list"
+          style={({ pressed }) => [styles.remove, pressed && styles.pressed]}
+        >
+          <Ionicons name="trash-outline" size={15} color={theme.textSecondary} />
+          <ThemedText type="detail" themeColor="textSecondary">
+            {removing ? 'Removing' : 'Remove'}
+          </ThemedText>
+        </Pressable>
+      )}
+    >
     <Pressable
       onPress={() => void act()}
       accessibilityRole="button"
@@ -144,6 +224,7 @@ function DetailRow({ detail, divider }: { detail: StandingDetail; divider: strin
         color={theme.textSecondary}
       />
     </Pressable>
+    </ReanimatedSwipeable>
   );
 }
 
@@ -162,5 +243,15 @@ const styles = StyleSheet.create({
   // TABULAR, so a column of reference numbers lines up and a digit that
   // changed between two readings is visible rather than lost in the kerning.
   value: { fontVariant: ['tabular-nums'] },
+  // SITS BESIDE THE ROW RATHER THAN FILLING THE SCREEN RED. This is a list
+  // of her own reference numbers, not a mailbox, and a destructive-red panel
+  // sliding out would read as an alarm every time she brushed the screen.
+  remove: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
   pressed: { opacity: 0.6 },
 });

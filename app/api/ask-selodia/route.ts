@@ -21,7 +21,7 @@ import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-h
 import { buildLongHistory } from '../../lib/long-history';
 import { weekReadBlock } from '../../lib/week-read';
 import { whoTheyAreBlock } from '../../lib/who-they-are';
-import { coerceConstants, constantsBlock, readConstants, recordConstants } from '../../lib/care-constants';
+import { coerceConstants, constantsBlock, forgetConstants, readConstants, recordConstants } from '../../lib/care-constants';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
 import { statesATrackedMetric } from '../../lib/stated-measurement';
@@ -1788,6 +1788,19 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     // "Her NHS number is 485 777 3456" as remembered prose is a sentence the
     // model has to find and re-read. As a label and a value it is a line she
     // can tap to copy at a reception desk.
+    // AND TAKING ONE BACK OUT (15 October 2026). She asked the app to pull the
+    // numbers she needs regularly out of her care records; it pulled nine,
+    // including her address, her date of birth and an authorisation code tied
+    // to one claim. Its own reply admitted there was no way back: "I can add
+    // to that list from here, but I don't have a way to take the other entries
+    // out of it." There is now. The Me tab also has swipe to delete; this is
+    // for the times she is already talking to it.
+    standingDetailsToRemove: {
+      type: 'array',
+      description:
+        'Labels of standing details to TAKE OUT of their list, when they say one does not belong there - it has expired, it was tied to one enquiry, or it is already elsewhere in the app. Use the label as it appears in their details, and only ever one they have actually asked you to remove. Never tidy the list on your own initiative.',
+      items: { type: 'string' },
+    },
     standingDetails: {
       type: 'array',
       items: {
@@ -2642,6 +2655,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     endVoiceSession?: boolean;
     allergiesDisclosed?: ({ name: string; kind?: string } | string)[];
     standingDetails?: unknown;
+    standingDetailsToRemove?: unknown;
     proposedSave?: unknown;
     meUpdate?: { title?: unknown; status?: unknown; reason?: unknown };
     weekEntry?: { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown };
@@ -3790,11 +3804,28 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // label reads like a one-off, because a stale appointment time in among the
   // real references is what would make her stop trusting the section.
   let savedConstants: string[] = [];
+  let removedConstants: string[] = [];
   {
     const constants = coerceConstants(result.standingDetails);
     if (constants.length > 0) {
       savedConstants = await recordConstants(supabase, user.id, constants, 'conversation');
       if (savedConstants.length > 0) writes.record('standing detail');
+    }
+
+    // TAKEN OUT WHEN SHE SAYS SO, and the reply is told what actually went
+    // rather than what was asked for - a label she named that was not there
+    // must not come back as "removed".
+    const toRemove = Array.isArray(result.standingDetailsToRemove)
+      ? (result.standingDetailsToRemove as unknown[]).filter(
+          (l): l is string => typeof l === 'string' && l.trim().length > 0
+        )
+      : [];
+    if (toRemove.length > 0) {
+      const gone = await forgetConstants(supabase, user.id, toRemove);
+      if (gone.length > 0) {
+        removedConstants = gone;
+        writes.record('standing detail removed');
+      }
     }
   }
 
@@ -4634,6 +4665,13 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             // told, and may say it in a clause. Said once, not announced.
             ...(savedConstants.length > 0
               ? [`kept to their standing details: ${savedConstants.join(', ')}`]
+              : []),
+            // AND WHAT WENT, NAMED. A removal she asked for and heard nothing
+            // about is a removal she has to go and verify, which is the whole
+            // reason the list stopped being trustworthy in the first place.
+            // These are the labels that WERE there, not the ones she named.
+            ...(removedConstants.length > 0
+              ? [`taken out of their standing details: ${removedConstants.join(', ')}`]
               : []),
           ],
           blocks: [

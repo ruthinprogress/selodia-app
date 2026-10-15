@@ -256,3 +256,68 @@ export function constantsBlock(rows: StoredConstant[]): string {
     'Give one of these straight back when asked, exactly as written above, including the spacing. Never say where to find it, never ask them to check a letter, and never guess at one that is not listed.',
   ].join('\n');
 }
+
+/**
+ * Take standing details back out.
+ *
+ * Ruth, 15 October 2026, having asked the app to pull the numbers she needs
+ * regularly out of her care records. It pulled nine, including her date of
+ * birth, her address, a GP referral number and an authorisation code. Her
+ * correction: "GP practice and its phone number and AXA membership number and
+ * the AXA claim follow-up line are recurring details, the rest are linked to
+ * active enquiries and will expire, or already exist here in the app in my
+ * profile."
+ *
+ * The app's own answer told her what was missing: "I can add to that list from
+ * here, but I don't have a way to take the other entries out of it." It was
+ * right. recordConstants upserts and nothing has ever deleted, so a list that
+ * went in wrong stayed wrong, and she had no screen to fix it from either.
+ *
+ * A LIST SHE CANNOT PRUNE IS WORSE THAN NO LIST. The point of this table is
+ * that she can read a number out to somebody waiting on the phone without
+ * opening a letter. An authorisation code that expired three weeks ago sitting
+ * in that list is the thing that makes her stop trusting the rest of it.
+ *
+ * MATCHED THE SAME WAY THEY WERE STORED, through labelKey, so "my AXA
+ * membership number", "AXA membership" and "axa membership number" all find
+ * the row that any of them created. Returns the labels actually removed, so
+ * the reply can say what went rather than what was asked for - she has been
+ * told something was done that was not, and that is the bug this app keeps
+ * coming back to.
+ */
+export async function forgetConstants(
+  supabase: SupabaseClient,
+  userId: string,
+  labels: string[]
+): Promise<string[]> {
+  const keys = [...new Set(labels.map((l) => labelKey(l)).filter(Boolean))];
+  if (keys.length === 0) return [];
+
+  // SELECTED FIRST, so what comes back is what was really there. A delete
+  // reports a count, and a count cannot tell her WHICH of the three she named
+  // actually existed.
+  const { data: found, error: readError } = await supabase
+    .from('care_constants')
+    .select('label, label_key')
+    .eq('user_id', userId)
+    .in('label_key', keys);
+  if (readError) {
+    console.log('CARE CONSTANTS remove failed to read:', readError.message);
+    return [];
+  }
+  if ((found ?? []).length === 0) return [];
+
+  const { error } = await supabase
+    .from('care_constants')
+    .delete()
+    .eq('user_id', userId)
+    .in(
+      'label_key',
+      (found ?? []).map((r) => r.label_key as string)
+    );
+  if (error) {
+    console.log('CARE CONSTANTS remove failed:', error.message);
+    return [];
+  }
+  return (found ?? []).map((r) => r.label as string);
+}

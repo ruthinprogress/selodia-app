@@ -61,12 +61,15 @@ function orderSections(names: string[]): string[] {
 export function MeProtocol({
   entries,
   details,
+  onDetailRemoved,
   onDeleted,
   onChanged,
 }: {
   entries: AlmanacRow[];
   /** Her standing details, for the section above How I Access Care. */
   details: StandingDetail[];
+  /** One was swiped away, so the tab can drop it without a round trip. */
+  onDetailRemoved?: (id: string) => void;
   /** Fired once a card is gone, so the screen above can re-read itself.
       (Ruth, 25 September 2026, item 6.) */
   onDeleted?: () => void;
@@ -371,7 +374,7 @@ export function MeProtocol({
       {renderSection({ name: DETAILS_SECTION, rows: [] }, ordered.length, {
         count: details.length,
         subtitle: DETAILS_SUBTITLE,
-        body: <StandingDetails details={details} />,
+        body: <StandingDetails details={details} onRemoved={onDetailRemoved} />,
       })}
       {renderSection(care, ordered.length + 1)}
     </View>

@@ -142,6 +142,10 @@ export default function MeScreen() {
                   <MeProtocol
                     entries={byTab.me}
                     details={details}
+                    // DROPPED FROM STATE RATHER THAN REFETCHED. The row is already
+                    // gone from the database by the time this fires, and a reload
+                    // would redraw the whole tab for one removed line.
+                    onDetailRemoved={(id) => setDetails((rows) => rows.filter((r) => r.id !== id))}
                     onDeleted={() => setReloadKey((k) => k + 1)}
                     onChanged={() => setReloadKey((k) => k + 1)}
                   />
