@@ -20,6 +20,7 @@ import {
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weekReadBlock } from '../../lib/week-read';
+import { whoTheyAreBlock } from '../../lib/who-they-are';
 import { coerceConstants, constantsBlock, readConstants, recordConstants } from '../../lib/care-constants';
 import { weighInFacts } from '../../lib/weigh-in-facts';
 import { listRecoverable, recoverDeleted, recoverNote, recoverablePrompt } from '../../lib/recover-deleted';
@@ -1052,6 +1053,14 @@ WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString(
     today: todayKey,
   });
 
+  // THE TWO FACTS A FORM ASKS FOR FIRST (15 October 2026). Both are already in
+  // user_profile and neither reached any prompt, so a drafted letter left a
+  // blank for a date of birth the app had on file. See who-they-are.ts.
+  const whoBlock = whoTheyAreBlock({
+    firstName: (profileRow as { first_name?: unknown } | null)?.first_name as string | null,
+    dateOfBirth: (profileRow as { date_of_birth?: unknown } | null)?.date_of_birth as string | null,
+  });
+
   const profile = profileRow as {
     height_cm: number | null;
     unsafe_goal_flagged_at: string | null;
@@ -1789,7 +1798,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         required: ['label', 'value'],
       },
       description:
-        'Only for a detail that STAYS THE SAME and that somebody asks for in order to find them: an NHS number, an insurer membership or policy number, a hospital or patient number, a date of birth, a GP practice. True before the call and still true after it. NOT an appointment time, NOT a date they were seen, NOT a test result, NOT a weight or a dose - those change, and a section full of stale ones is worse than an empty one. Set it whenever such a detail appears, including in the middle of something else, and do not remark on having kept it.',
+        'Only for a detail that STAYS THE SAME and that somebody asks for in order to find them: an NHS number, an insurer membership or policy number, a hospital or patient number, a date of birth, a GP practice. ALSO the plain details every form and letter asks for first, which are the ones most often missing: their full name as it is written on their records, their home address, their telephone number, the email address they use for appointments. Those turn up on a letter they photograph as often as they are typed, and a drafted letter that leaves a blank for a name already on file is the thing this is here to stop. True before the call and still true after it. NOT an appointment time, NOT a date they were seen, NOT a test result, NOT a weight or a dose - those change, and a section full of stale ones is worse than an empty one. Set it whenever such a detail appears, including in the middle of something else, and do not remark on having kept it.',
     },
     saveRedirect: {
       type: 'object',
@@ -2291,6 +2300,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             // leaving it out here would have the model know the question and
             // not the answer.
             constantsContextBlock,
+            whoBlock,
             weekReadContextBlock,
             allergyBlock,
             rulesBlock,
@@ -4452,6 +4462,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           // land ready to send: "Write the draft email directly into an email
           // client draft with header and email address populated."
           constantsContextBlock,
+          whoBlock,
           weekReadContextBlock,
           healthContextBlock,
           allergyBlock,
@@ -4519,6 +4530,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             // leaving it out here would have the model know the question and
             // not the answer.
             constantsContextBlock,
+            whoBlock,
             weekReadContextBlock,
             allergyBlock,
             rulesBlock,
@@ -4624,6 +4636,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             // leaving it out here would have the model know the question and
             // not the answer.
             constantsContextBlock,
+            whoBlock,
             weekReadContextBlock,
             allergyBlock,
             rulesBlock,
