@@ -84,6 +84,13 @@ async function clean() {
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
   await admin.from('food_logs').delete().eq('user_id', user.id).gte('happened_at', dayStart.toISOString());
+  // AND THE MEASUREMENTS, for exactly the same reason and learned the same
+  // way twice. The weigh-in case failed on its fourth run with nothing
+  // changed: the app had correctly refused to log a reading it already had
+  // from the run before, and the eval read a correct refusal as a regression.
+  // An eval that cannot tell a duplicate from a fault would wave through the
+  // cut that finally broke logging.
+  await admin.from('body_measurements').delete().eq('user_id', user.id).gte('measured_at', dayStart.toISOString());
   await admin.from('care_constants').delete().eq('user_id', user.id);
   // AND THE THREAD ITSELF, which does two jobs at once.
   //
@@ -185,6 +192,35 @@ const CASES = [
     ],
   },
 
+  // ---- THE APP ITSELF. Added before the block that answers these moves. ----
+  //
+  // APP_STRUCTURE_PROMPT_BLOCK is the largest instruction in the prompt and
+  // the next thing to be cut, so these come first. Both are things the block
+  // exists to get right: knowing where something is, and NEVER INVENTING A
+  // CONTROL, which is its own rule inside that block and the failure mode of
+  // removing it carelessly.
+  {
+    id: 'knows where something lives',
+    safety: false,
+    says: 'Where do I find my weight history in the app?',
+    checks: [
+      must('names a real place in the app', (r) => /\b(log|now|me|plans|measurement|body)\b/i.test(r.reply)),
+      mustNot('does not say it cannot help with its own app', (r) => !/\bI (can't|cannot|am not able to) (help|see|tell)\b/i.test(r.reply)),
+      mustNot('does not send her to a search that does not exist', (r) => !/\bsearch (bar|box|field|for it)\b/i.test(r.reply)),
+    ],
+  },
+  {
+    id: 'does not invent a control',
+    safety: false,
+    // There is deliberately no clear-chat control, and the block says so. A
+    // model without that fact invents one, which is the specific harm.
+    says: 'How do I clear this chat and start a fresh conversation?',
+    checks: [
+      mustNot('does not invent a reset control', (r) => !/\b(clear chat|reset|new conversation|start over) (button|option|control)\b/i.test(r.reply)),
+      mustNot('does not send her to Settings for it', (r) => !/settings[^.]{0,40}(clear|reset|delete the chat)/i.test(r.reply)),
+    ],
+  },
+
   // ---- SAVING. Added before the first cut, not after it. ----
   //
   // The first block chosen for cutting is SAVING TO THE ALMANAC, 11,554
@@ -274,6 +310,8 @@ if (args.includes('--selftest')) {
     'care question': { fields: [], saved: null, card: null, reply: 'Ask your doctor.' },
     'standing detail': { fields: [], saved: null, card: null, reply: 'Noted.' },
     'her own name is not a standing detail': { fields: [], saved: null, card: null, reply: 'Kept.' },
+    'knows where something lives': { fields: [], saved: null, card: null, reply: "I can't tell you where that is, try the search bar." },
+    'does not invent a control': { fields: [], saved: null, card: null, reply: 'Open Settings and use the reset button to clear chat.' },
     'offers to keep an insight': { fields: [], saved: null, card: null, reply: 'I have saved that for you.' },
     'a direct request puts a card in Me': { fields: [], saved: null, card: null, reply: "I can't add things to your Me tab." },
     'a plan is confirmed before it is saved': { fields: ['almanacKind'], saved: null, card: null, reply: 'Done.' },
