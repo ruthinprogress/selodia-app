@@ -35,7 +35,7 @@ import {
 } from '../../lib/chat-path';
 import { voiceSinkFor } from '../../lib/voice-sink';
 import { recordModelUsage } from '../../lib/usage-record';
-import { recordRouteError, recordTurnTiming } from '../../lib/turn-diagnostics';
+import { fieldsSet, recordDecisionFields, recordRouteError, recordTurnTiming } from '../../lib/turn-diagnostics';
 import {
   CLASSIFY_TOOL_NAME,
   RESOURCES,
@@ -2667,6 +2667,29 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // in this route keys off a field of `result`, so a field that is not here
   // cannot write; and one added next month is stripped by default. See
   // lib/photo-turn.ts.
+  // WHICH FIELDS THIS TURN ACTUALLY USED. Names only - see recordDecisionFields.
+  //
+  // Ruth, 15 October 2026, on shrinking the tool to cut the deciding call's output:
+  // "yes, add the instrumentation now." Nobody can say which of the tool's
+  // thirty-odd fields are dead weight, because nobody has ever counted, and the
+  // ones that fire rarely are often the ones that exist because something went
+  // wrong once. So this counts before anything is removed.
+  //
+  // RECORDED BEFORE EVERY OVERRIDE, deliberately, starting with the photo-only
+  // verdict on the next line. The question is what the MODEL chose to set, and
+  // the app corrects it in several places below - a bare yes to a waiting
+  // offer, a calorific drink read as food, a photo with no words. Those are the
+  // app's decisions, and counting them would misreport the model's.
+  //
+  // Fire and forget, like every other diagnostic, so a measurement taken to
+  // find latency cannot add any.
+  recordDecisionFields({
+    userId: user.id,
+    turnId,
+    voice: isVoice,
+    led: leadMode,
+    fields: fieldsSet(result as Record<string, unknown>),
+  });
   if (isPhotoOnly) photoOnlyVerdict(result);
 
   // A PLAIN YES TO A WAITING OFFER IS A YES, whatever the model made of it. See
@@ -5077,10 +5100,9 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     // so an ordinary turn pays nothing for it.
     ...(request.headers.get('x-selodia-decision')
       ? {
-          decision: Object.entries(result as Record<string, unknown>)
-            .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== 'none' && v !== false)
-            .map(([k]) => k)
-            .sort(),
+          // THE SAME DEFINITION THE RECORDED ROW USES, so an answer read off
+          // this header can never disagree with turn_diagnostics.
+          decision: fieldsSet(result as Record<string, unknown>),
           led: leadMode,
           // AND THE CORRECTION'S OWN VALUES, because knowing only that the
           // fields were set left the next question unanswerable: whether the

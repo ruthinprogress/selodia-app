@@ -114,6 +114,76 @@ export function recordAdapterTiming(t: Timing): void {
 }
 
 /**
+ * WHICH FIELDS THE DECIDING CALL ACTUALLY SET. Names only, never a value.
+ *
+ * Ruth, 15 October 2026, on whether to shrink the classifier's tool: "yes, add
+ * the instrumentation now."
+ *
+ * WHY THIS EXISTS. The first call of a led turn produces between 327 and 1,401
+ * output tokens, and output tokens are where the seconds of a 13.6s turn are.
+ * The tool it fills has grown to around thirty optional fields, and the obvious
+ * saving is to stop offering the ones nobody uses.
+ *
+ * Nobody can name those fields. They have never been counted, and guessing
+ * which are dead is how a working feature gets removed - half of them exist
+ * because something went wrong once, which is exactly the kind of field that
+ * fires rarely and matters enormously when it does. So this counts them for a
+ * while first, and the cut is made from the count.
+ *
+ * AND IT IS NOT A LICENCE TO CUT ON ITS OWN. Two costs sit on the other side,
+ * written down here so they are weighed when the data arrives rather than
+ * forgotten:
+ *
+ *   THE TOOL SCHEMA HAS ITS OWN CACHE BREAKPOINT. A tool whose shape varies
+ *   per turn breaks that cache on every turn it varies, which can cost more
+ *   than the fields save. Only a small number of STABLE variants are safe.
+ *
+ *   THIS IS THE CALL THAT CARRIES THE DISTRESS CLASSIFICATION. Any change to
+ *   it gets the full safety comparison, the way the decider swap did on 15
+ *   October before being declined.
+ *
+ * NAMES ONLY, AND THAT IS THE WHOLE PROMISE. Not what was logged, not what she
+ * said, not the classification - a tier is a fact about a person on a day, and
+ * it is already recorded where it belongs. This row answers one question: which
+ * of the tool's fields are ever used. `reply` and `classification` are required
+ * by the schema, so they appear on every row and mean nothing; everything else
+ * is a real signal.
+ */
+export function recordDecisionFields(d: {
+  userId: string | null;
+  turnId: string | null;
+  voice: boolean;
+  led: boolean;
+  fields: string[];
+}): void {
+  write({
+    user_id: d.userId,
+    turn_id: d.turnId,
+    kind: 'fields',
+    voice: d.voice,
+    label: d.led ? 'led' : 'plain',
+    detail: { set: d.fields, count: d.fields.length },
+  });
+}
+
+/**
+ * The names of the fields the model set, from the raw tool input.
+ *
+ * ONE DEFINITION, used by the recorded row AND by the x-selodia-decision
+ * header, so an answer read off the header can never disagree with the table.
+ *
+ * "Set" means the model chose to say something. A field left out, or filled
+ * with the empty string, with 'none', or with false, is the model declining -
+ * so those are not set, and counting them would make every field look used.
+ */
+export function fieldsSet(result: Record<string, unknown>): string[] {
+  return Object.entries(result)
+    .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== 'none' && v !== false)
+    .map(([k]) => k)
+    .sort();
+}
+
+/**
  * Something the route caught.
  *
  * TAKES WHAT IS KNOWN RATHER THAN AN Error. Half the interesting failures on
