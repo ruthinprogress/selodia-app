@@ -199,6 +199,13 @@ export function buildContextualAdditions(
 export type ClassifyResult = {
   classification: string;
   reply: string;
+  /**
+   * What this turn logged, where the route has such a field ('food',
+   * 'activity', 'measurement', 'hydration', 'sleep', or 'none'). Optional
+   * because onboarding has no logging. Read only by the escalation rule below,
+   * which treats a log as an answer rather than as an interruption.
+   */
+  logIntent?: string;
   resourceCardTitle?: string;
   resourceCardDescription?: string;
   revisitingPriorDisclosure?: boolean;
@@ -317,18 +324,48 @@ export function applySafetyStateMachine(result: ClassifyResult, state: SafetySta
 
   // PRESERVE - an active C-SSRS escalation must never be silently aborted by an
   // off-topic interruption. A non-distress classification mid-escalation (a
-  // neutral chat turn, a food/activity log that classifies as neutral, or an
-  // onboarding goal turn) is neither an answer to the escalation question nor a
-  // new distress signal, so carry the escalation step forward untouched instead
-  // of letting it fall through to null and reset the ladder. Genuine engagement
-  // still moves the ladder: ambiguous_distress escalates and distress tiers card
-  // (above), and ordinary_discouragement - an engaged "I'm fine, just tired" -
-  // is a DISTRESS tier, so it is NOT preserved here and correctly resolves the
-  // ladder to null. Per the agreed design there is no cap: the escalation stays
-  // pending across any number of off-topic turns until the person engages.
+  // neutral chat turn, or an onboarding goal turn) is neither an answer to the
+  // escalation question nor a new distress signal, so carry the escalation step
+  // forward untouched instead of letting it fall through to null and reset the
+  // ladder. Genuine engagement still moves the ladder: ambiguous_distress
+  // escalates and distress tiers card (above), and ordinary_discouragement - an
+  // engaged "I'm fine, just tired" - is a DISTRESS tier, so it is NOT preserved
+  // here and correctly resolves the ladder to null. Per the agreed design there
+  // is no cap: the escalation stays pending across any number of off-topic
+  // turns until the person engages.
+  //
+  // EXCEPT A LOG, WHICH IS AN ANSWER (15 October 2026).
+  //
+  // The original rule read a food or activity log as an off-topic interruption
+  // and kept the question pending. That produced two faults, and the second is
+  // the one that decided this.
+  //
+  // It was INCONSISTENT. Whether a log preserved or resolved the ladder turned
+  // on which tier the model happened to give it, and a training log lands on
+  // either side: "did a 40 minute run this morning, felt hard" came back as
+  // ordinary_discouragement from Opus 5.5 AND Sonnet 5 on 15 October, where the
+  // comment above assumes an activity log classifies as neutral. So the same
+  // action produced opposite behaviour depending on a reading nobody saw.
+  //
+  // And preserving it is the wrong direction anyway. Ruth, on the proposal to
+  // make a log always preserve the question: "if there was something wrong, a
+  // user would respond with a log. that's the behaviour of someone ignoring a
+  // silly safeguarding app." Somebody asked directly whether they have been
+  // wishing they were not here, who replies by logging their lunch, has said
+  // something. Holding the question open so it can be put again is exactly the
+  // app she is describing - and SAFETY_PROMPT_BLOCK already holds the
+  // principle: "Over-escalating is not the cautious option, it is a different
+  // way of getting it wrong."
+  //
+  // So a turn that logged anything resolves the ladder, whatever tier it drew.
+  // Nothing else about the rule changes: a genuine distress tier still cards
+  // and still escalates, because those branches run above this one.
+  const loggedSomething =
+    typeof result.logIntent === 'string' && result.logIntent.length > 0 && result.logIntent !== 'none';
   if (
     nextEscalationStep === null &&
     previousEscalationStep !== null &&
+    !loggedSomething &&
     !(DISTRESS_TIERS as readonly string[]).includes(result.classification)
   ) {
     nextEscalationStep = previousEscalationStep;
