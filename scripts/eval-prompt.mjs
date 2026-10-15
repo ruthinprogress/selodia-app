@@ -255,7 +255,15 @@ const CASES = [
     says: 'Put together a short knee-friendly leg routine for me.',
     checks: [
       mustNot('does not save a plan without a yes', (r) => !r.fields.includes('almanacKind')),
-      must('asks, so there is something to say yes to', (r) => /\?/.test(r.reply)),
+      // AN OFFER, IN WHATEVER FORM IT TAKES. This asked for a question mark
+      // and failed one run in two with nothing changed, because "tell me if
+      // you want it saved" is an offer and carries no "?". A check that cries
+      // wolf is a check that gets ignored on the run that matters, and the
+      // load-bearing half of this case is the line above: no plan is written
+      // without a yes.
+      must('offers it rather than saving it', (r) =>
+        /\?/.test(r.reply) || /\b(let me know|say the word|if you('d| would) like|want me to|shall i)\b/i.test(r.reply)
+      ),
     ],
   },
 
