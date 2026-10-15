@@ -79,7 +79,16 @@ if (res.status !== 200 || !body.prompt) {
   process.exit(1);
 }
 
-const { total, cached, parts } = body.prompt;
+const { total, cached, parts, conduct } = body.prompt;
+
+// THE TOOL SCHEMA IS NOT PART OF THE SYSTEM PROMPT, and the first version of
+// this report showed it as a share of one - so the percentages summed past a
+// hundred and the biggest finding read as an arithmetic error. It is sent
+// ALONGSIDE the system prompt on the first call, so the honest denominator is
+// everything that call reads, and the schema gets a line of its own.
+const schema = parts.find((p) => p.name === 'classify tool schema');
+const system = parts.filter((p) => p !== schema);
+const firstCall = total + (schema?.chars ?? 0);
 const sorted = [...system].sort((a, b) => b.chars - a.chars);
 const widest = Math.max(...sorted.map((p) => p.name.length), 20);
 
@@ -108,6 +117,17 @@ console.log(
     `\n  ${cached.toLocaleString('en-GB')} of it sits behind a cache breakpoint (${((100 * cached) / total).toFixed(0)}%),` +
     ` which makes it cheap to send and does NOT make it cheap to read.\n`
 );
+
+// AND WHAT IS INSIDE THE BIGGEST ONE, which is the part that can be acted on.
+if (Array.isArray(conduct) && conduct.length > 0) {
+  console.log(`  INSIDE GENERAL_CONDUCT - ${conduct.length} instructions, largest first:\n`);
+  for (const c of conduct.slice(0, 14)) {
+    console.log(`  ${String(c.chars).padStart(6)}  ${c.name}`);
+  }
+  const rest = conduct.slice(14).reduce((n, c) => n + c.chars, 0);
+  if (rest > 0) console.log(`  ${String(rest).padStart(6)}  (${conduct.length - 14} smaller ones together)`);
+  console.log('');
+}
 
 const biggest = sorted[0];
 console.log(
