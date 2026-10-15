@@ -930,3 +930,25 @@ Nobody teaches this. There is no moment where someone explains that the words yo
 And most people never find out. They give up at the phone menu or the portal that wants a reference number nobody gave them, and nobody records that. It just looks like they did not follow through.
 
 That is what I want Selodía to do. Not store my data. Stand next to me at the form.
+
+## 15 October 2026 - Publication status, not a capture
+
+Nothing new was written today. This entry records where the pieces stand,
+because three of them moved and the log is the only place that holds it.
+
+Ruth's own words, from the day:
+
+- "What the form was actually asking" - scheduled, Friday 30 October.
+- "The parts you stop practising" - scheduled, 6 November.
+- "What my legs were trying to tell me" - the updated article one.
+
+All three are on her Substack at ruthinprogress.substack.com, and all three
+are scheduled rather than live. She schedules ahead, so a link she sends is
+usually a draft with a date on it. I described the first one as live on the
+day she sent it and was corrected: "not live, scheduled for 30th oct." Worth
+asking before saying published.
+
+The gatekeeping piece came out of the walkthrough on 14 October, which is in
+this log directly above. The second title is close to what the week-read
+baseline was built to notice the same evening, which is either a coincidence
+or the same observation arriving twice.
