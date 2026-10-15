@@ -30,6 +30,7 @@ import { useSpotlight } from '@/components/spotlight-provider';
 import { SettingsLink } from '@/components/settings-link';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
+import { TurnProgress } from '@/components/turn-progress';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { useChatScroll } from '@/hooks/use-chat-scroll';
@@ -1267,7 +1268,13 @@ ${result.message}`;
             </ThemedView>
           ))}
 
-          {sending && <ChatBubble role="assistant">…</ChatBubble>}
+          {/* WHAT IS HAPPENING, RATHER THAN A SINGLE DOT (15 October 2026). A
+              turn is 9 to 28 seconds and almost all of it is the two model
+              calls, so none of it can be made shorter here - but a blank
+              sixteen seconds reads as a hang and a visible one reads as
+              thinking. See components/turn-progress for why the labels are
+              real and the timings are estimates. */}
+          {sending && <TurnProgress />}
 
           {offerReminders && <ReminderOffer onDone={() => setOfferReminders(false)} />}
         </ScrollView>
