@@ -24,7 +24,7 @@
 // the app's own overrides further down the route rewrite it.
 
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const { fieldsSet } = await import(root + '/app/lib/turn-diagnostics.ts');
@@ -162,6 +162,32 @@ check('the header and the table share one definition', () => {
     'there is more than one place that decides what "set" means'
   );
   return 'one fieldsSet, two readers';
+});
+
+check('EVERY KIND THE CODE WRITES IS ONE THE TABLE ACCEPTS', () => {
+  // THE BUG THIS FILE DID NOT CATCH, ADDED AFTER IT HAPPENED.
+  //
+  // turn_diagnostics has a CHECK constraint listing its kinds, and it allowed
+  // 'timing' and 'error' only. Every 'fields' row was rejected by the
+  // database. Nothing broke, because the recorder swallows its errors on
+  // purpose - so the instrument recorded nothing for an afternoon and every
+  // check here still passed, because they all read the source and the source
+  // was right.
+  //
+  // Found by asking the live app (scripts/probe-todays-work.mjs). Kept here so
+  // the next kind added cannot repeat it.
+  const kinds = [...diagnostics.matchAll(/kind: '([a-z]+)'/g)].map((m) => m[1]);
+  assert.ok(kinds.length >= 3, `only found ${kinds.length} kinds written`);
+
+  const files = readdirSync('supabase/migrations').filter((f) => f.includes('diagnostic_kind'));
+  assert.ok(files.length > 0, 'no migration defines the allowed kinds');
+  const sql = read(`supabase/migrations/${files.sort().at(-1)}`);
+  const allowed = [...sql.matchAll(/'([a-z]+)'::text/g)].map((m) => m[1]);
+
+  for (const kind of new Set(kinds)) {
+    assert.ok(allowed.includes(kind), `the code writes kind '${kind}' and the constraint does not allow it`);
+  }
+  return `${[...new Set(kinds)].sort().join(', ')} all allowed`;
 });
 
 check('and this check can fail', () => {
