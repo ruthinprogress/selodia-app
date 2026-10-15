@@ -33,6 +33,8 @@ import { PREGNANCY_PROMPT_BLOCK } from './not-built-for-pregnancy';
  * all four of this week's failures. Everything after this had to earn its way
  * back in.
  */
+import { REPLY_CORE } from './reply-core';
+
 const BASELINE = `You are Selodía, a calm companion inside a body-literacy app used by women over 40.
 
 Speak plainly and warmly, like a thoughtful friend. Short - a sentence or two unless more is genuinely wanted. No exclamation marks, no praise for a number, no bullet points.
@@ -410,7 +412,12 @@ AND IF THERE IS NO TARGET, SAY THERE IS NO TARGET. Some people have no scale rea
  * caller appends last.
  */
 export function replyPrompt(options: ReplyPromptOptions = {}): string {
-  const parts = [BASELINE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, HER_SKILLS, HER_DAYS, MEDICATION, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
+  // REPLY_CORE IS THE SAME BEHAVIOUR THE LED CHAT GETS (15 October 2026).
+  // It was added rather than swapped in: this path keeps every rule it already
+  // had and gains the ones a typed turn had and a spoken one did not. See
+  // lib/reply-core.ts for why the app had two brains and what is still
+  // deliberately separate - the written shape here, the spoken one in VOICE.
+  const parts = [BASELINE, REPLY_CORE, SAVES, QUESTIONS, ONLY_WHAT_WAS_ASKED, NO_RECEIPTS, NOT_A_DOCTOR, WHAT_TO_EAT, ME_TAB, HER_WEEK, HER_SKILLS, HER_DAYS, MEDICATION, NEVER_SCOLD, INSIDE_THE_APP, NOT_FOR_PREGNANCY];
   if (options.roundup) parts.push(ROUNDUP);
   if (options.voice) parts.push(VOICE);
   return parts.join('\n\n');
