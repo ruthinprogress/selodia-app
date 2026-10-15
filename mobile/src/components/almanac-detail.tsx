@@ -211,6 +211,39 @@ function ExerciseDetail({
                 demonstration follows it, never above it. */}
             <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
 
+            {/* AND WHEN THERE IS NO CLIP, WORDS (15 October 2026).
+                Ruth, on the plan she built for her knee: "one one exercise had
+                a video and I have no idea how to do the rest. Needs a solution
+                before shipping or it's no use at all." Thirteen of her
+                forty-five movements have a demonstration.
+
+                Below the demo slot, so the order Part Ten fixes is kept: the
+                safety note, then the demonstration, then this. Shown only when
+                there is no clip - with a video this is noise - and drawn as its
+                own lines, because "Set up / Do / Feel it" run together is the
+                wall of text she spent this morning getting rid of. */}
+            {!exercise.demoRef && exercise.howTo ? (
+              <ThemedView type="backgroundElement" style={styles.beforeCard}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                  How to do it
+                </ThemedText>
+                {exercise.howTo.split('\n').map((line) => {
+                  const [head, ...rest] = line.split(':');
+                  const body = rest.join(':').trim();
+                  return body ? (
+                    <ThemedText key={line} type="small" style={styles.howToLine}>
+                      <ThemedText type="small" themeColor="textSecondary">{`${head}: `}</ThemedText>
+                      {body}
+                    </ThemedText>
+                  ) : (
+                    <ThemedText key={line} type="small" style={styles.howToLine}>
+                      {line}
+                    </ThemedText>
+                  );
+                })}
+              </ThemedView>
+            ) : null}
+
             {/* BEHIND A TOGGLE UNTIL THERE IS A WEIGHT (Ruth, 2026-09-10).
                 Found on device: a sumo squat and a side-lying leg lift both
                 showed a stepper reading 0 kg, a slider whose fill was zero
@@ -355,6 +388,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   beforeCard: { padding: Spacing.three, borderRadius: CardRadius, gap: Spacing.one },
+  // One line per step, with room under each so the three read as three things
+  // to do rather than a paragraph.
+  howToLine: { lineHeight: 20 },
   addWeights: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,

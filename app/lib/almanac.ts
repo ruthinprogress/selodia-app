@@ -83,9 +83,12 @@ export function prepareAlmanacEntry(input: AlmanacSaveInput): {
 // Item 36. Resolving a plan's exercises to their clips is a save-time step
 // rather than a render-time one, so the pipeline knows at authoring which
 // movements have no demonstration - which is what item 46 needs.
-import { resolveDemoRefs } from './movement-demos';
+import { after } from 'next/server';
 
-export async function saveAlmanacEntry(
+import { resolveDemoRefs } from './movement-demos';
+import { writeHowTos } from './movement-howto';
+
+async function storeAlmanacEntry(
   supabase: SupabaseClient,
   userId: string,
   input: AlmanacSaveInput,
@@ -196,6 +199,79 @@ export async function saveAlmanacEntry(
   return data as AlmanacEntry;
 }
 
+// A MOVEMENT WITH NO CLIP GETS WORDS INSTEAD (15 October 2026).
+//
+// Ruth, on the plan she built to support her knee: "one one exercise had a
+// video and I have no idea how to do the rest. Needs a solution before
+// shipping or it's no use at all." Measured: 13 of 45 movements across her
+// eleven plans resolve to a demonstration. See lib/movement-howto.ts for why
+// the matcher is not the thing to fix.
+//
+// AFTER THE RESPONSE, NOT BEFORE IT. This is a model call, and a plan save
+// happens inside a chat turn whose latency was the day's other subject. `after`
+// keeps the serverless function alive long enough for it to land - the same
+// pattern usage-record.ts and turn-diagnostics.ts use, and for the same reason:
+// a fire-and-forget promise in a serverless function is not forgotten, it is
+// killed. The plan is saved and confirmed at exactly the speed it was; the
+// how-tos arrive a few seconds later, before she has opened the tab.
+//
+// ONLY THE MOVEMENTS WITH NO CLIP, so a plan the library covers costs nothing
+// at all, and only the ones that do not already have words.
+function scheduleHowTos(supabase: SupabaseClient, userId: string, stored: AlmanacEntry): void {
+  const plan = looksLikeWorkoutPlan(stored.content)
+    ? (stored.content as unknown as WorkoutPlanContent)
+    : null;
+  if (!plan) return;
+
+  const needed = plan.exercises.filter((e) => !e.demoRef && !e.howTo).map((e) => e.name);
+  if (needed.length === 0) return;
+
+  const work = async () => {
+    try {
+      const written = await writeHowTos(needed);
+      if (written.size === 0) return;
+      for (const exercise of plan.exercises) {
+        const text = written.get(exercise.name);
+        if (text) exercise.howTo = text;
+      }
+      const { error } = await supabase
+        .from('almanac_entries')
+        .update({ content: plan })
+        .eq('id', stored.id)
+        .eq('user_id', userId);
+      if (error) console.log('MOVEMENT HOWTO: could not store —', error.message);
+      else console.log(`MOVEMENT HOWTO: wrote ${written.size} of ${needed.length} for "${stored.title}"`);
+    } catch (err) {
+      console.log('MOVEMENT HOWTO: threw —', err instanceof Error ? err.message : err);
+    }
+  };
+
+  try {
+    after(work);
+  } catch {
+    void work();
+  }
+}
+
+/**
+ * Persist a proposed Almanac save, and give a plan's undemonstrated movements
+ * their words.
+ *
+ * The save itself is unchanged and still returns exactly what it returned - the
+ * how-tos are filled in afterwards, against the stored row, and a failure there
+ * leaves a plan that is saved and correct and simply has no descriptions yet.
+ */
+export async function saveAlmanacEntry(
+  supabase: SupabaseClient,
+  userId: string,
+  input: AlmanacSaveInput,
+  anchoredPlanId?: string | null
+): Promise<AlmanacEntry | null> {
+  const stored = await storeAlmanacEntry(supabase, userId, input, anchoredPlanId);
+  if (stored) scheduleHowTos(supabase, userId, stored);
+  return stored;
+}
+
 // ONE PLAN SAVED THREE TIMES IS ONE PLAN (2026-09-19).
 //
 // Ruth's Movement library held "Barbell Bent Over Row - Strength" three times,
@@ -279,6 +355,12 @@ export type PlanExercise = {
   // is ordinary rather than a failure. Never guessed: see movement-demos.ts for
   // why a near match is worse than no match.
   demoRef: string | null;
+  // Item: a movement the library cannot demonstrate still has to be
+  // performable. Three lines - set up, do, feel it - written after the plan
+  // is saved, and only for movements with no demoRef. Null while it is being
+  // written, for a movement that HAS a clip, and for one the writer declined
+  // to describe because the name was ambiguous. See lib/movement-howto.ts.
+  howTo: string | null;
 };
 
 export type WorkoutPlanContent = {
@@ -326,6 +408,12 @@ function prepareExercise(v: unknown): PlanExercise | null {
     eccentricLoad: oneOf(o.eccentricLoad, ECCENTRIC_LOADS),
     intensity: oneOf(o.intensity, PLAN_INTENSITIES),
     demoRef: trimStr(o.demoRef),
+    // SURVIVES A RE-SAVE. A plan edited in conversation is prepared again from
+    // its stored content, and anything this function drops is gone - so a
+    // description written an hour ago would be lost and paid for again every
+    // time she changed a rep count. The writer is never asked for this field;
+    // it only ever arrives from the row.
+    howTo: trimStr(o.howTo),
   };
 }
 
