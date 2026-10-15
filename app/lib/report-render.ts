@@ -463,6 +463,16 @@ export function renderReport(data: ReportData): string {
   .panel { border: 0.4pt solid var(--rule); border-radius: 3mm; padding: 5mm 6mm; margin: 0 0 4mm; background: rgba(255,255,255,.5); }
   .panel h3 { margin-top: 0; font-size: 12pt; }
   .panel .when, .panel .kind { font-size: 7.4pt; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 1mm; }
+  /* A PLAN READS AS A PLAN (15 October 2026). Five movements with their sets
+     and reps were arriving as one run-on paragraph, because the panel put the
+     whole body in a single <p>. One line per movement, and the line wraps
+     under itself rather than back under the bullet, so a long movement name
+     still scans as one item. See panelBody. */
+  .panel ul { margin: 1.5mm 0 0; padding: 0; list-style: none; }
+  .panel li { padding-left: 4mm; text-indent: -4mm; margin: 0 0 1.2mm; }
+  .panel li::before { content: '\\2014\\00a0'; color: var(--faint); }
+  .panel li:last-child { margin-bottom: 0; }
+  .panel p + ul { margin-top: 2mm; }
   .callout {
     display: flex; gap: 3.5mm; align-items: flex-start;
     background: rgba(228,215,197,.35); border-radius: 3mm; padding: 4mm 5mm; margin-top: 8mm; max-width: 130mm;
@@ -872,12 +882,64 @@ function tableBlocks(headers: string[], rows: string[][]): Block[] {
   return out;
 }
 
+/**
+ * A panel's body, as paragraphs and lists rather than one block of text.
+ *
+ * Ruth, 15 October 2026, on the report built from the exercise plan she made
+ * in chat to take to her specialist: "the layout and formatting on the Report
+ * for the exercise plan needs fixing, unreadable."
+ *
+ * WHAT WAS WRONG, AND IT WAS HERE RATHER THAN IN THE DATA. readableContent
+ * already builds the structure: a line per movement, each marked with a
+ * bullet, paragraphs separated by blank lines. This then wrapped the whole
+ * string in ONE <p>, and HTML collapses every newline into a space. So five
+ * movements with their sets and reps arrived as a single run-on sentence with
+ * bullet characters sitting inside it - which is unreadable on paper, and this
+ * is a document whose entire purpose is to be handed to a consultant.
+ *
+ * The same panel draws the insights and the records kept, so they all gain it.
+ */
+function panelBody(content: string): string {
+  const out: string[] = [];
+  for (const para of content.split(/\n{2,}/)) {
+    const lines = para.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+
+    // A run of bullets becomes a real list. Mixed content keeps its order, so
+    // a lead-in line above a list stays above it.
+    let items: string[] = [];
+    const flush = () => {
+      if (items.length > 0) out.push(`<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>`);
+      items = [];
+    };
+    let prose: string[] = [];
+    const flushProse = () => {
+      if (prose.length > 0) out.push(`<p>${esc(prose.join(' '))}</p>`);
+      prose = [];
+    };
+
+    for (const line of lines) {
+      const bullet = /^[-*•]\s+(.+)$/.exec(line);
+      if (bullet) {
+        flushProse();
+        items.push(bullet[1]);
+      } else {
+        flush();
+        prose.push(line);
+      }
+    }
+    flush();
+    flushProse();
+  }
+  return out.join('');
+}
+
 function panel(title: string, when: string | null, content: string, kind?: string): string {
   return `<div class="panel">
     ${kind ? `<div class="kind">${esc(kind)}</div>` : ''}
     ${when ? `<div class="when">${esc(when)}</div>` : ''}
     <h4>${esc(title)}</h4>
-    <p>${esc(content)}</p>
+    ${panelBody(content)}
   </div>`;
 }
 

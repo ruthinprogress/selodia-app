@@ -778,9 +778,17 @@ export function readableContent(content: unknown): string {
         const m = (e ?? {}) as Record<string, unknown>;
         const name = say(m.name);
         if (!name) return '';
+        // "reps" IS ADDED ONLY WHEN IT IS MISSING (15 October 2026). A reps
+        // field is often already a phrase - "10 per side", "12-15, 3 seconds
+        // down" - and appending the word to those produced "10 per side reps"
+        // and "12-15, 3 seconds down reps" in the report she took to her
+        // specialist. A bare number or range gets the word; anything that is
+        // already describing itself is printed as written.
+        const reps = say(m.reps);
+        const bareCount = /^\d+(\s*[-–]\s*\d+)?$/.test(reps);
         const bits = [
           say(m.sets) ? `${say(m.sets)} sets` : '',
-          say(m.reps) ? `${say(m.reps)} reps` : '',
+          reps ? (bareCount ? `${reps} reps` : reps) : '',
           say(m.note),
         ].filter(Boolean);
         return bits.length > 0 ? `${name} - ${bits.join(', ')}` : name;
