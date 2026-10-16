@@ -674,3 +674,48 @@ physiotherapy referral letter and four voice-test messages, caught on "delete",
 correctness mechanism, not an optimisation, and it gets measured against real
 traffic before anything is built on it.** The cheap version was abandoned on the
 evidence, which cost one probe instead of a fortnight of odd answers.
+
+## A prohibition does not produce a neutral; it produces a different particular
+
+The movement illustrations had to show a body nobody could identify. The brief
+said what not to be: no idealised physique, no skin colour, no age cues, modest
+clothing. It came back as an overweight white woman with a realistic bun — three
+objections from one cause, because the drawing still has to be *something* and
+the model picks. Tightening the prohibitions only moved the choice: banned beige
+on the body, it appeared on the leggings; asked for "no facial features", it
+eventually dropped the hair and returned a bald head.
+
+Neutrality by omission does not exist either. An unfilled figure on a cream page
+reads as white, because cream is a pale-skin tone. Ruth, on her own reference
+sheet: *"they are white people sort of, even tho it's just the background."* And
+later, on the fix: *"sand is still white people."*
+
+What worked was to stop rendering the thing being specified. A flat-filled line
+drawing has no modelled fat to read and no painted flesh to colour, and the one
+colour that remains is a deliberate choice applied identically to every file — so
+it reads as a house style rather than a default nobody made.
+
+**The rule: when a requirement is "none of the above", naming more things to
+avoid will not get there. Either say positively what it IS, or remove the
+dimension from the artefact entirely. A list of prohibitions is a list of
+decisions handed to whoever renders it last.**
+
+## To specify a style, give the example, not the description
+
+Eight rounds of written art direction each fixed the fault that was named and
+broke something next to it — the figure became a painting, the washes became
+stock vector, the background drifted through four different creams. Every
+generation re-decides whatever it was not pinned on, and prose cannot pin
+everything at once.
+
+What settled it was uploading Ruth's own reference sheet as an image and cutting
+the prompt down to the movement and its two positions. Style from the picture,
+anatomy from the text. Her verdict on the first attempt: *"they are way better
+than anything else we've done."*
+
+The anchor had been sitting in the conversation for hours while the prose was
+rewritten around it.
+
+**The rule: where an artefact has to match an existing look, feed the look
+itself and reserve the words for what the example cannot carry. Reach for the
+example before the adjective — and when an example already exists, notice it.**
