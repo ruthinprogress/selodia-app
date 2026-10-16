@@ -39,20 +39,26 @@ export const SPOTLIGHT_TARGETS = {
   // became Today, its histories moved to Log, and Movement left the Almanac for
   // Plans. Renaming an id would break the app's own registry for no gain; the
   // descriptions are what the model reads, so those are what had to be true.
-  'body.food': 'the "Food" heading on Today, which opens the food log',
-  'body.measurements': 'the "Body" heading on Today, which opens the measurements log',
-  'body.activity': 'the "Activity" heading on Today, which opens the movement log',
-  'overview.stats': 'the weight and muscle figures under the "Body" heading on Today',
-  'overview.calories': "today's calorie figure under the \"Food\" heading on Today",
-  'overview.protein': "today's protein figure under the \"Food\" heading on Today",
-  'overview.water': 'the drink total and the quick-tap beside it, at the foot of Today',
-  'food.entries': "today's food entries, where tapping one opens its breakdown",
-  'measurements.week': 'the week stepper on the measurements log, for moving between weeks',
+  //
+  // AND THEY DRIFTED AGAIN (16 October 2026). Today is labelled Now on the tab
+  // bar, and Me left the Almanac to become a tab of its own, so nine of these
+  // still sent somebody to a screen with no such name - in a block whose own
+  // next paragraph forbids exactly that. The lesson of the note above is that
+  // this file is not self-maintaining: it has now drifted twice, both times
+  // silently, and both times it was found by checking rather than by reading.
+  // check-spotlight-targets-are-real.mjs now fails when an id is declared here
+  // and rendered nowhere.
+  'body.food': 'the "Food" heading on Now, which opens the food log',
+  'body.measurements': 'the "Body" heading on Now, which opens the measurements log',
+  'body.activity': 'the "Activity" heading on Now, which opens the movement log',
+  'overview.stats': 'the weight and muscle figures under the "Body" heading on Now',
+  'overview.calories': "today's calorie figure under the \"Food\" heading on Now",
+  'overview.protein': "today's protein figure under the \"Food\" heading on Now",
+  'overview.water': 'the drink total and the quick-tap beside it, at the foot of Now',
   'measurements.export': 'the link to your data at the foot of the measurements log',
-  'almanac.tabs': 'the Insights and Me switch at the top of the Almanac',
   'almanac.insights': "the saved insights, symptoms and notes on the Almanac's Insights view, with their filter pills",
   'almanac.movement': 'the saved workout plans on the Plans tab',
-  'almanac.me': "the Almanac's Me view, which holds the self-care decisions and medical records they have asked to keep",
+  'almanac.me': "the Me tab, which holds the self-care decisions and medical records they have asked to keep",
   'settings.export': 'the data and export page in Settings, which holds both a copy of everything and "Build a report"',
   'settings.delete': 'the delete-my-account control in Settings',
 } as const;

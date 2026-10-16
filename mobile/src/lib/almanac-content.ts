@@ -25,8 +25,9 @@ export type PlanExerciseView = {
   // library does not cover - the player treats both the same way, by showing
   // nothing at all.
   demoRef: string | null;
-  /** Three lines - set up, do, feel it - for a movement with no clip. */
-  howTo: string | null;
+  /** The card for a movement with no clip: what she needs, the steps, where
+   *  to feel it, and the one or two things to avoid. */
+  howTo: { needs: string[]; steps: string[]; feel: string; avoid: string[] } | null;
 };
 
 export type PlanView = {
@@ -60,6 +61,18 @@ const posInt = (v: unknown): number | null => {
 
 // Turn a camelCase or snake_case key into something readable, so the fallback
 // reads as English rather than as a database dump.
+/** The movement card, or null when the row predates it or was declined. */
+function howTo(v: unknown): { needs: string[]; steps: string[]; feel: string; avoid: string[] } | null {
+  if (v == null || typeof v !== 'object' || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const list = (x: unknown) =>
+    Array.isArray(x) ? x.map((i) => (typeof i === 'string' ? i.trim() : '')).filter(Boolean) : [];
+  const steps = list(o.steps);
+  const feel = typeof o.feel === 'string' ? o.feel.trim() : '';
+  if (steps.length === 0 || !feel) return null;
+  return { needs: list(o.needs), steps, feel, avoid: list(o.avoid) };
+}
+
 export function humanizeKey(key: string): string {
   const words = key
     .replace(/[_-]+/g, ' ')
@@ -118,7 +131,7 @@ export function readContent(content: unknown): ContentView {
           reps: str(x.reps),
           safetyNote: str(x.safetyNote),
           demoRef: str(x.demoRef),
-          howTo: str(x.howTo),
+          howTo: howTo(x.howTo),
         };
       })
       .filter((x): x is PlanExerciseView => x !== null);

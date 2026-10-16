@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+import type { HowTo } from './almanac';
 import { recordModelUsage } from './usage-record';
 
 // A MOVEMENT WITH NO CLIP STILL HAS TO BE PERFORMABLE.
@@ -45,28 +46,36 @@ const HOWTO_MODEL = 'claude-opus-5';
 /** How many movements one call will describe. A plan is capped at 60. */
 const MAX_PER_CALL = 12;
 
-const INSTRUCTION = `You are writing the "how to do it" for movements in a strength or rehabilitation plan, for somebody exercising at home with no coach present and no video of this movement available.
+const INSTRUCTION = `You are writing the card somebody reads on their phone when they have opened a movement in their workout plan and are about to do it. There is no video of this movement, so these words are all they have.
 
-For EACH movement name given, write three short lines:
-  SET UP - where the body starts. Position, what is under it, where the weight is held.
-  DO - the movement itself, and the tempo if it matters.
-  FEEL IT - which muscle should be working, in plain words. This is how somebody checks they have it right, and it is the line that matters most without a video.
+WHO IS READING IT, because it decides everything else. Somebody fitting this in between work, the school run and dinner, standing in the front room with a dumbbell. They tapped the movement to get ON with it. They have a small amount of motivation and reading uses it up. If they have to study, the moment passes and they do not train.
+
+So this is a recipe card, not an instruction manual. Around forty-five words in total, and it has to fit on one screen.
+
+For EACH movement name given, return:
+  NEEDS - what they have to have to hand, two or three words each, no sentences. "One dumbbell". "A wall or chair". Leave it empty for bodyweight with nothing else.
+  STEPS - the movement as three to five numbered actions, each ONE short sentence in the imperative, the way somebody standing beside them would say it. "Stand tall." "Rise onto your toes." "Pause." "Lower for three seconds." Not a paragraph broken up: each step is one thing to do.
+  FEEL - where it should be felt, as a place on the body and nothing else. "The back of your lower leg." "The side of your hip." Under ten words.
+  AVOID - the one or two things that actually go wrong, each starting with "Don't" and under ten words. "Don't bounce at the bottom." "Don't let the knee roll inwards." This is the short version; the longer safety note is kept elsewhere and can be opened from the card.
 
 RULES, and they are what makes this safe to send:
-  - Describe the movement AS NAMED and nothing else. If the name says single-leg, describe single-leg. If it says side-lying, the person is on their side. If it names a dumbbell, there is a dumbbell. Never substitute a variation you know better, and never quietly make it two-legged or standing because that is more common.
-  - If a name is ambiguous enough that you would be guessing which movement is meant, return an empty string for it rather than describing the one you assume. A wrong description is worse than none, for the same reason a wrong video would be.
-  - Plain words. "Lie on your back with your knees bent and your feet flat", not "assume a supine position".
-  - No weights, no rep counts, no sets, no frequency - those are already in the plan and may differ from whatever you would suggest.
-  - No encouragement, no preamble, no restating the name.
-  - Nothing about who the person is, what condition they have, or what they are recovering from. You have not been told and must not imply it.
+  - Describe the movement AS NAMED and nothing else. If the name says single-leg, it is single-leg. If it says side-lying, they are on their side. If it names a dumbbell, there is a dumbbell. Never substitute a variation you know better.
+  - If the name is ambiguous enough that you would be guessing which movement is meant, return empty arrays and an empty feel rather than describing the one you assume. A wrong description is worse than none.
+  - No weights, no rep counts, no sets, no tempo numbers beyond what a step needs - those are on the card already and may differ from anything you would pick.
+  - Plain words. "Lie on your back with your knees bent", never "assume a supine position".
+  - No encouragement, no preamble, no restating the name, and nothing about who they are or what they are recovering from.`;
 
-Write each line as one sentence. Keep each movement under 70 words in total.`;
-
-type Described = { name: string; setUp: string; doIt: string; feelIt: string };
+type Described = {
+  name: string;
+  needs: string[];
+  steps: string[];
+  feel: string;
+  avoid: string[];
+};
 
 const TOOL: Anthropic.Messages.Tool = {
   name: 'describe_movements',
-  description: 'Return the three lines for every movement you were given, in the order given.',
+  description: 'Return the card for every movement you were given, in the order given.',
   input_schema: {
     type: 'object',
     properties: {
@@ -76,11 +85,25 @@ const TOOL: Anthropic.Messages.Tool = {
           type: 'object',
           properties: {
             name: { type: 'string', description: 'The movement name exactly as given to you.' },
-            setUp: { type: 'string', description: 'Where the body starts. Empty string if the name is too ambiguous to describe safely.' },
-            doIt: { type: 'string', description: 'The movement itself. Empty string if ambiguous.' },
-            feelIt: { type: 'string', description: 'Which muscle should be working. Empty string if ambiguous.' },
+            needs: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'What they need to hand, two or three words each. Empty for bodyweight with nothing else.',
+            },
+            steps: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Three to five numbered actions, one short imperative sentence each. Empty if the name is too ambiguous to describe safely.',
+            },
+            feel: { type: 'string', description: 'Where it should be felt. A place on the body, under ten words.' },
+            avoid: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                'One or two things that go wrong, each beginning with the word Don’t and under ten words.',
+            },
           },
-          required: ['name', 'setUp', 'doIt', 'feelIt'],
+          required: ['name', 'needs', 'steps', 'feel', 'avoid'],
         },
       },
     },
@@ -88,29 +111,26 @@ const TOOL: Anthropic.Messages.Tool = {
   },
 };
 
-/** The three lines as one short block, or null when the model declined. */
-export function howToText(d: Described): string | null {
-  const setUp = d.setUp?.trim() ?? '';
-  const doIt = d.doIt?.trim() ?? '';
-  const feelIt = d.feelIt?.trim() ?? '';
-  // ALL THREE OR NONE. Two thirds of a description is how somebody sets up
-  // correctly and then does the wrong thing with it.
-  if (!setUp || !doIt || !feelIt) return null;
-  return `Set up: ${setUp}\nDo: ${doIt}\nFeel it: ${feelIt}`;
+/** The card, or null when the writer declined to describe the movement. */
+export function howToCard(d: Described): HowTo | null {
+  const line = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const list = (v: unknown) =>
+    Array.isArray(v) ? v.map(line).filter(Boolean).slice(0, 5) : [];
+
+  const steps = list(d.steps);
+  const feel = line(d.feel);
+  // THE TWO THAT MUST BOTH BE THERE. Steps without a feel is a sequence she
+  // cannot check herself against, and a feel without steps is a destination
+  // with no route. Needs and avoid can legitimately be empty - a bodyweight
+  // movement needs nothing, and some movements have no common failure worth
+  // a line.
+  if (steps.length === 0 || !feel) return null;
+
+  return { needs: list(d.needs), steps, feel, avoid: list(d.avoid) };
 }
 
-/**
- * Write how-to text for movements that have no demonstration clip.
- *
- * Returns a Map keyed by the name as given. A name the model declined to
- * describe is absent rather than mapped to an empty string, so a caller can
- * treat absence as "still no description" - which is an ordinary outcome and
- * far better than a confident description of the wrong movement.
- *
- * NEVER THROWS. A plan whose how-tos failed is still a plan.
- */
-export async function writeHowTos(names: string[]): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
+export async function writeHowTos(names: string[]): Promise<Map<string, HowTo>> {
+  const out = new Map<string, HowTo>();
   const wanted = [...new Set(names.map((n) => n?.trim()).filter((n): n is string => Boolean(n)))];
   if (wanted.length === 0) return out;
 
@@ -151,8 +171,8 @@ export async function writeHowTos(names: string[]): Promise<Map<string, string>>
         // is not in the plan.
         const asked = batch.find((n) => n.toLowerCase() === (d.name ?? '').trim().toLowerCase());
         if (!asked) continue;
-        const text = howToText(d);
-        if (text) out.set(asked, text);
+        const card = howToCard(d);
+        if (card) out.set(asked, card);
       }
     } catch (err) {
       console.log('MOVEMENT HOWTO: failed —', err instanceof Error ? err.message : err);

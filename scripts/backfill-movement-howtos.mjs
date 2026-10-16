@@ -41,6 +41,11 @@ for (const line of fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
 process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
 
 const WRITE = process.argv.includes('--write');
+// THE SHAPE CHANGED ON 16 OCTOBER, from three prose lines to a card with
+// steps. prepareHowTo drops the old string rather than guessing where one
+// step ends and the next begins, so the rows written yesterday need writing
+// again. --force treats an existing card as missing.
+const FORCE = process.argv.includes('--force');
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
@@ -61,7 +66,7 @@ for (const plan of plans) {
   for (const ex of plan.content.exercises) {
     movements += 1;
     if (ex.demoRef) withClip += 1;
-    else if (ex.howTo) alreadyWritten += 1;
+    else if (ex.howTo && !FORCE) alreadyWritten += 1;
     else needing.push({ plan, name: String(ex.name ?? '').trim() });
   }
 }
@@ -93,7 +98,7 @@ if (needing.length === 0) {
   for (const plan of plans) {
     let touched = false;
     for (const ex of plan.content.exercises) {
-      if (ex.demoRef || ex.howTo) continue;
+      if (ex.demoRef || (ex.howTo && !FORCE)) continue;
       const text = written.get(String(ex.name ?? '').trim());
       if (!text) continue;
       ex.howTo = text;

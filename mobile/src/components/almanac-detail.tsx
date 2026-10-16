@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -163,6 +164,10 @@ function ExerciseDetail({
 }) {
   const theme = useTheme();
   const [weightsOpen, setWeightsOpen] = useState(false);
+  // COLLAPSED UNTIL ASKED FOR, by movement name. Shut by default because the
+  // card above is what she opened this for; the note is for the person who
+  // wants it, and only she knows which she is today.
+  const [openNote, setOpenNote] = useState<string | null>(null);
 
   // What the plan says about this movement, stated once under the name: the
   // body area it belongs to, and the sets and reps decided in the conversation
@@ -219,48 +224,88 @@ function ExerciseDetail({
                 the thing she opens the card for. A caution read before the
                 movement it describes is a caution about nothing. */}
             {!exercise.demoRef && exercise.howTo ? (
-              <ThemedView type="backgroundElement" style={styles.beforeCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-                  How to do it
-                </ThemedText>
-                {exercise.howTo.split('\n').map((line) => {
-                  const [head, ...rest] = line.split(':');
-                  const body = rest.join(':').trim();
-                  return body ? (
-                    <ThemedText key={line} type="small" style={styles.howToLine}>
-                      <ThemedText type="small" themeColor="textSecondary">{`${head}: `}</ThemedText>
-                      {body}
+              <View style={styles.howToCard}>
+                {/* WHAT SHE NEEDS TO HAVE TO HAND, first and on one line,
+                    because standing up to fetch a dumbbell halfway through is
+                    where a session stops. Absent for bodyweight. */}
+                {exercise.howTo.needs.length > 0 ? (
+                  <View style={styles.howToNeeds}>
+                    <Ionicons name="barbell-outline" size={14} color={theme.textSecondary} />
+                    <ThemedText type="detail" themeColor="textSecondary">
+                      {exercise.howTo.needs.join(' · ')}
                     </ThemedText>
-                  ) : (
-                    <ThemedText key={line} type="small" style={styles.howToLine}>
-                      {line}
+                  </View>
+                ) : null}
+
+                {/* THE STEPS, NUMBERED. Little chunks read as "I can do that";
+                    a paragraph reads as "I will read that later". */}
+                {exercise.howTo.steps.map((step, i) => (
+                  <View key={step} style={styles.howToStep}>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.howToNumber}>
+                      {`${i + 1}`}
                     </ThemedText>
-                  );
-                })}
-              </ThemedView>
+                    <ThemedText type="small" style={styles.howToStepText}>
+                      {step}
+                    </ThemedText>
+                  </View>
+                ))}
+
+                {/* WHERE IT SHOULD BE FELT, which is how she checks herself
+                    without anybody watching. */}
+                <View style={styles.howToNeeds}>
+                  <Ionicons name="body-outline" size={14} color={theme.textSecondary} />
+                  <ThemedText type="detail" themeColor="textSecondary">
+                    {exercise.howTo.feel}
+                  </ThemedText>
+                </View>
+
+                {/* THE ONE OR TWO THINGS THAT GO WRONG, short. The full note is
+                    behind More below, for whoever wants it. */}
+                {exercise.howTo.avoid.map((a) => (
+                  <View key={a} style={styles.howToNeeds}>
+                    <Ionicons name="alert-circle-outline" size={14} color={theme.textSecondary} />
+                    <ThemedText type="detail" themeColor="textSecondary">
+                      {a}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
             ) : null}
-            {/* AND THE CAUTION LAST (Ruth, 15 October 2026): "the area at the
-                top explaining caution should be at the bottom". It led the card
-                from the beginning, on the Part Ten reasoning that it is what
-                matters before somebody loads a bar. In use it pushed the thing
-                she opened the card FOR - how the movement goes - below the fold,
-                and a warning read before the movement it is about is a warning
-                about nothing. It is still on the same card, one scroll away. */}
+
+            {/* THE LONG NOTE IS BEHIND A TAP (Ruth, 16 October 2026). It led
+                the card, then moved to the bottom, and both were wrong for the
+                same reason: "The page is asking people to study when they came
+                to move... she has a small amount of motivation and reading
+                uses it up. Use it up reading a bunch and the moment passes and
+                you've not moved."
+
+                The one or two things that actually go wrong are already on the
+                card above, in a line each. This is the fuller version for
+                whoever wants it, and the title says what is behind it - "Before
+                you begin" told her when to read it and never what she would
+                get, which is not a name that earns a tap. */}
             {exercise.safetyNote ? (
-              <ThemedView type="backgroundElement" style={styles.beforeCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-                  Before you begin
+              <Pressable
+                onPress={() => setOpenNote((was) => (was === exercise.name ? null : exercise.name))}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: openNote === exercise.name }}
+                style={styles.moreRow}
+              >
+                <ThemedText type="detail" themeColor="textSecondary">
+                  {'What usually goes wrong'}
                 </ThemedText>
-                <ThemedText type="small">{exercise.safetyNote}</ThemedText>
-              </ThemedView>
-            ) : (
-              // Every exercise card requires a safety note by rule. Saying it is
-              // missing is honest; inventing generic boilerplate would break the
-              // never-generic rule and be worse than silence.
-              <ThemedText type="small" themeColor="textSecondary">
-                No safety note saved for this one yet.
+                <Ionicons
+                  name={openNote === exercise.name ? 'chevron-down' : 'chevron-forward'}
+                  size={14}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+            ) : null}
+            {exercise.safetyNote && openNote === exercise.name ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.howToStepText}>
+                {exercise.safetyNote}
               </ThemedText>
-            )}
+            ) : null}
 
             {/* BEHIND A TOGGLE UNTIL THERE IS A WEIGHT (Ruth, 2026-09-10).
                 Found on device: a sumo squat and a side-lying leg lift both
@@ -408,7 +453,20 @@ const styles = StyleSheet.create({
   beforeCard: { padding: Spacing.three, borderRadius: CardRadius, gap: Spacing.one },
   // One line per step, with room under each so the three read as three things
   // to do rather than a paragraph.
-  howToLine: { lineHeight: 20 },
+  // A CARD, NOT A PANEL. No fill behind it: the steps are the content of this
+  // screen rather than an aside, and a tinted box around them says "extra".
+  howToCard: { gap: Spacing.one, paddingVertical: Spacing.one },
+  howToNeeds: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  howToStep: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },
+  // Tabular, so 1 2 3 line up down the left and the sentences start together.
+  howToNumber: { fontVariant: ['tabular-nums'], minWidth: 12 },
+  howToStepText: { flex: 1, lineHeight: 20 },
+  moreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.one,
+  },
   addWeights: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,

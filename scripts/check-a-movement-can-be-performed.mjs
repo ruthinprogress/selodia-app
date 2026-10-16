@@ -1,28 +1,27 @@
-// EVERY MOVEMENT IN A PLAN CAN EITHER BE WATCHED OR BE READ.
+// EVERY MOVEMENT IN A PLAN CAN EITHER BE WATCHED OR BE DONE FROM THE CARD.
 //
 //   node --import ./scripts/ts-resolve-hook.mjs scripts/check-a-movement-can-be-performed.mjs
 //
-// Ruth, 15 October 2026, on the plan she built in chat to support her knee and
-// took to her specialist: "one one exercise had a video and I have no idea how
+// Ruth, 15 October 2026: "one one exercise had a video and I have no idea how
 // to do the rest. Needs a solution before shipping or it's no use at all."
+// Thirteen of her forty-five movements had a demonstration.
 //
-// MEASURED FIRST: 13 of 45 movements across her plans resolve to a
-// demonstration. Twenty-nine per cent. Her one-in-five was the normal rate.
+// AND THE FIRST ANSWER WAS THE WRONG SHAPE. It wrote three prose lines - set
+// up, do, feel it - which with the safety note came to about two hundred
+// words. Her verdict the next morning: "The page is asking people to study
+// when they came to move... she has a small amount of motivation and reading
+// uses it up. Use it up reading a bunch and the moment passes and you've not
+// moved."
 //
-// AND THE MATCHER IS NOT THE THING TO FIX. movement-demos.ts matches on an
-// exact name or an exact word set and nothing weaker, because a subset rule was
-// measured and rejected - it matched "kettlebell romanian deadlifts" to the
-// single-leg variant. A missing demonstration is a small disappointment; a
+// So it is a card now, around forty-five words: what she needs to hand, the
+// movement as three to five numbered actions, where to feel it, and the one or
+// two things that go wrong. The long safety note sits behind a tap.
+//
+// THE MATCHER IS STILL NOT THE THING TO FIX. movement-demos.ts matches on an
+// exact name or an exact word set and nothing weaker, because a subset rule
+// was measured and rejected - it matched "kettlebell romanian deadlifts" to
+// the single-leg variant. A missing demonstration is a small disappointment; a
 // confidently wrong one is a form fault.
-//
-// SO THE GAP IS CLOSED WITH WORDS. Every movement already carried a safetyNote
-// - what can go wrong - and not one carried how to DO it.
-//
-// WHAT RUTH CHOSE, AND WHY IT IS THIS WAY ROUND: "go, do 2 first and 1 as a
-// preference." The other option was to prescribe only movements the library can
-// demonstrate, and that is the tail wagging the dog - a knee programme being
-// signed off by a consultant must not be bent towards whatever happened to be
-// filmed. Words first means the clinically right movement can always be chosen.
 //
 // Every movement named below is invented.
 
@@ -30,7 +29,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
-const { howToText } = await import(root + '/app/lib/movement-howto.ts');
+const { howToCard } = await import(root + '/app/lib/movement-howto.ts');
 const { prepareWorkoutPlan } = await import(root + '/app/lib/almanac.ts');
 
 const read = (path) => readFileSync(path, 'utf8').split(String.fromCharCode(13)).join('');
@@ -51,86 +50,79 @@ function check(name, fn) {
   }
 }
 
+const CARD = {
+  name: 'X',
+  needs: ['One dumbbell'],
+  steps: ['Stand tall.', 'Rise onto your toes.', 'Lower for three seconds.'],
+  feel: 'The back of your lower leg.',
+  avoid: ["Don’t bounce at the bottom."],
+};
+
 console.log('\n  A MOVEMENT CAN BE PERFORMED\n');
 
-check('all three lines, or none at all', () => {
-  // Two thirds of a description is how somebody sets up correctly and then
-  // does the wrong thing with it.
-  const whole = howToText({ name: 'X', setUp: 'Lie on your back.', doIt: 'Lift one leg.', feelIt: 'The side of the hip.' });
-  assert.ok(whole?.includes('Set up:'), 'a complete description was rejected');
-  assert.ok(whole.includes('Do:') && whole.includes('Feel it:'), 'a line is missing from the output');
-
+check('steps and a feel, or nothing at all', () => {
+  // Steps with no feel is a sequence she cannot check herself against. A feel
+  // with no steps is a destination with no route.
+  assert.ok(howToCard(CARD), 'a complete card was rejected');
   for (const partial of [
-    { setUp: 'Lie on your back.', doIt: 'Lift one leg.', feelIt: '' },
-    { setUp: 'Lie on your back.', doIt: '', feelIt: 'The hip.' },
-    { setUp: '', doIt: 'Lift one leg.', feelIt: 'The hip.' },
-    { setUp: '   ', doIt: 'Lift.', feelIt: 'Hip.' },
+    { needs: [], steps: [], feel: 'The calf.', avoid: [] },
+    { needs: [], steps: ['Stand tall.'], feel: '', avoid: [] },
+    { needs: [], steps: [], feel: '', avoid: [] },
   ]) {
-    assert.strictEqual(howToText({ name: 'X', ...partial }), null, 'a partial description was accepted');
+    assert.strictEqual(howToCard({ name: 'X', ...partial }), null, 'a partial card was accepted');
   }
-  return 'four partials refused';
+  return 'three partials refused';
 });
 
-check('the three lines are separate lines', () => {
-  // Run together they are the wall of text she spent the same morning
-  // removing from chat and from the report.
-  const text = howToText({ name: 'X', setUp: 'A.', doIt: 'B.', feelIt: 'C.' });
-  assert.strictEqual(text.split('\n').length, 3, 'the description is not three lines');
-  return 'one line each';
+check('a bodyweight movement needs nothing, and that is allowed', () => {
+  const card = howToCard({ ...CARD, needs: [], avoid: [] });
+  assert.ok(card, 'a bodyweight card was refused');
+  assert.deepStrictEqual(card.needs, []);
+  assert.deepStrictEqual(card.avoid, []);
+  return 'empty needs and empty avoid are both fine';
+});
+
+check('IT IS A CARD, NOT AN ESSAY', () => {
+  // The whole redesign in one assertion: "Nobody reads 200 words before doing
+  // a calf raise."
+  const card = howToCard({ ...CARD, steps: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] });
+  assert.ok(card.steps.length <= 5, `${card.steps.length} steps survived; a card is at most five`);
+  return 'capped at five steps';
 });
 
 console.log('\n  AND IT IS ONLY WRITTEN WHERE IT IS NEEDED\n');
 
 check('ONLY FOR MOVEMENTS WITH NO CLIP', () => {
-  // With a video this is noise, and it is a model call paid for nothing.
   assert.ok(
     /filter\(\(e\) => !e\.demoRef && !e\.howTo\)/.test(almanac),
-    'the how-to is written for movements that already have a demonstration, or already have words'
+    'a card is written for movements that already have a demonstration, or already have one'
   );
-  return 'no clip, and no words yet';
+  return 'no clip, and no card yet';
 });
 
 check('and after the response, not before it', () => {
-  // A plan saves inside a chat turn, and the turn's latency was the day's
-  // other subject. The same `after` pattern as the usage and diagnostics
-  // writes, for the same reason.
   const scheduler = almanac.slice(almanac.indexOf('function scheduleHowTos'));
   assert.ok(/after\(work\);/.test(scheduler.slice(0, 2000)), 'the work is not deferred past the response');
-  assert.ok(!/await writeHowTos/.test(almanac.slice(0, almanac.indexOf('function scheduleHowTos'))), 'it is awaited on the save path');
   return 'the save is as fast as it was';
 });
 
 check('a name the writer invented is ignored', () => {
-  // It is asked to echo the name back. A name it made up would attach a
-  // description to a movement that is not in the plan.
-  assert.ok(
-    /const asked = batch\.find\(\(n\) => n\.toLowerCase\(\) === \(d\.name \?\? ''\)\.trim\(\)\.toLowerCase\(\)\);/.test(howto),
-    'descriptions are not matched back to the names that were asked for'
-  );
   assert.ok(/if \(!asked\) continue;/.test(howto), 'an unmatched name is not dropped');
   return 'only names that were asked about';
 });
 
 check('AND IT MAY DECLINE, WHICH IS THE POINT', () => {
-  // The same rule the clip matcher follows: a wrong description is worse than
-  // none. Proved against the instruction, because this is the behaviour being
-  // bought and it has to survive a reword.
   assert.ok(
-    /return an empty string for it rather than describing the one you assume/.test(howto),
+    /return empty arrays and an empty feel rather than describing the one you assume/.test(howto),
     'the writer is not told it may decline an ambiguous name'
   );
-  assert.ok(
-    /A wrong description is worse than none/.test(howto),
-    'the reason is not written down, so the next edit will remove it'
-  );
+  assert.ok(/A wrong description is worse than none/.test(howto), 'the reason is not written down');
   return 'ambiguous names come back empty';
 });
 
 check('it never writes about the person', () => {
-  // These are generated from a movement name alone and go into a document she
-  // may hand to a clinician. Nothing about her belongs in them.
   assert.ok(
-    /Nothing about who the person is, what condition they have, or what they are recovering from/.test(howto),
+    /nothing about who they are or what they are recovering from/.test(howto),
     'the writer is not told to stay off the person'
   );
   assert.ok(/No weights, no rep counts, no sets/.test(howto), 'it may contradict the plan it sits in');
@@ -139,82 +131,54 @@ check('it never writes about the person', () => {
 
 console.log('\n  AND IT SURVIVES, AND IT IS SHOWN\n');
 
-check('A RE-SAVE DOES NOT THROW THE WORDS AWAY', () => {
-  // A plan edited in conversation is prepared again from its stored content,
-  // and anything prepareExercise drops is gone - so a description written an
-  // hour ago would be lost and paid for again on every rep-count change.
+check('A RE-SAVE KEEPS THE CARD', () => {
+  const card = { needs: ['A mat'], steps: ['Lie on your side.', 'Lift the top leg.'], feel: 'The side of your hip.', avoid: ["Don’t roll back."] };
   const plan = prepareWorkoutPlan({
     programType: 'rehab',
     goal: 'Support the knee',
-    exercises: [
-      { name: 'Side-lying leg lift', sets: 3, reps: '12 per side', safetyNote: 'Stop if the hip pinches.', howTo: 'Set up: A.\nDo: B.\nFeel it: C.' },
-    ],
+    exercises: [{ name: 'Side-lying leg lift', sets: 3, reps: '12 per side', howTo: card }],
   });
   assert.ok(plan, 'the plan did not survive preparation');
-  assert.strictEqual(plan.exercises[0].howTo, 'Set up: A.\nDo: B.\nFeel it: C.', 'the description was dropped on re-save');
+  assert.deepStrictEqual(plan.exercises[0].howTo, card, 'the card was dropped on re-save');
   return 'kept through prepareWorkoutPlan';
 });
 
-check('and a plan with no descriptions still prepares', () => {
+check('AND THE OLD PROSE SHAPE IS DROPPED, NOT GUESSED AT', () => {
+  // Three prose lines cannot be split into steps without inventing where one
+  // ends, and inventing the steps of a movement is the one thing this feature
+  // must not do. Those rows are regenerated instead.
   const plan = prepareWorkoutPlan({
     programType: 'rehab',
     goal: 'x',
-    exercises: [{ name: 'Clamshell', sets: 3, reps: '15' }],
+    exercises: [{ name: 'Clamshell', sets: 3, reps: '15', howTo: 'Set up: A.\nDo: B.\nFeel it: C.' }],
   });
-  assert.ok(plan, 'a plan without the new field was refused');
-  assert.strictEqual(plan.exercises[0].howTo, null, 'a missing description is not null');
-  return 'older plans are unaffected';
+  assert.strictEqual(plan.exercises[0].howTo, null, 'a prose how-to survived as a card');
+  return 'regenerated rather than converted';
 });
 
 check('the phone shows it only when there is no clip', () => {
-  assert.ok(/!exercise\.demoRef && exercise\.howTo/.test(detail), 'the phone shows words next to a video');
-  assert.ok(/How to do it/.test(detail), 'there is no heading on it');
-  return 'words instead of a video, never as well';
+  assert.ok(/!exercise\.demoRef && exercise\.howTo/.test(detail), 'the phone shows a card next to a video');
+  assert.ok(/exercise\.howTo\.steps\.map/.test(detail), 'the steps are not drawn');
+  return 'a card instead of a video, never as well';
 });
 
-check('THE MOVEMENT COMES FIRST AND THE CAUTION LAST', () => {
-  // Ruth, 15 October 2026, looking at the card on her phone: "The body
-  // movement info is under the blank movement area which makes it look like
-  // its broken. Also the area at the top explaining caution should be at the
-  // bottom."
-  //
-  // Part Ten put the safety note first, on the reasoning that it is what
-  // matters before somebody loads a bar. That held while the demonstration was
-  // a video she could already picture. It stopped holding the moment the
-  // how-to became the thing she opens the card FOR, because a caution read
-  // before the movement it describes is a caution about nothing.
-  const demo = detail.indexOf('<MovementDemo');
-  const words = detail.indexOf('How to do it');
-  const safety = detail.indexOf('Before you begin');
-  assert.ok(demo > 0 && words > 0 && safety > 0, 'a part of the card is missing');
-  assert.ok(words > demo, 'the how-to is above the demonstration slot');
-  assert.ok(safety > words, 'the caution is still above the how-to');
-  return 'demonstration, words, caution';
-});
-
-check('AND THE EMPTY BOX IS NOT DRAWN WHEN THERE ARE WORDS INSTEAD', () => {
-  // The thing that made it look broken: an empty framed panel saying there was
-  // no demonstration, with the instructions queued underneath it, reads as a
-  // video that failed to load.
-  assert.ok(
-    /\{exercise\.demoRef \|\| !exercise\.howTo \? \(/.test(detail),
-    'the demonstration panel is drawn even when words have replaced it'
-  );
-  return 'the words take the panel place';
+check('THE STEPS ARE NUMBERED AND THE LONG NOTE IS BEHIND A TAP', () => {
+  assert.ok(/\{`\$\{i \+ 1\}`\}/.test(detail), 'the steps are not numbered');
+  assert.ok(/What usually goes wrong/.test(detail), 'the note has no title that says what is behind it');
+  assert.ok(/openNote === exercise\.name/.test(detail), 'the note is not collapsible');
+  // Shut unless asked for: the card is what she opened the screen for.
+  assert.ok(/useState<string \| null>\(null\)/.test(detail), 'the note is open by default');
+  return 'numbered, and the note starts shut';
 });
 
 check('and this check can fail', () => {
-  // The weaker version: "a howTo field exists". That passes with the field
-  // written for every movement including the ones that have a video, written
-  // on the critical path of her turn, and thrown away on the next edit.
-  assert.ok(/howTo/.test(almanac), 'the field does not exist at all');
-  assert.ok(/filter\(\(e\) => !e\.demoRef/.test(almanac), 'it is written for movements that have a clip');
   assert.strictEqual(
-    howToText({ name: 'X', setUp: 'A.', doIt: 'B.', feelIt: '' }),
+    howToCard({ name: 'X', needs: [], steps: ['A.'], feel: '', avoid: [] }),
     null,
-    'a partial description is accepted, so the all-three rule is not enforced'
+    'a card with no feel is accepted, so the rule is not enforced'
   );
-  return 'existence proves nothing; where, when and whether-complete do';
+  assert.ok(!/howToText/.test(howto), 'the old prose builder is still exported');
+  return 'the old shape is gone and the new rule holds';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
