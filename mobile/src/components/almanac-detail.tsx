@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MovementDemo } from '@/components/movement-demo';
+import { MovementIllustration } from '@/components/movement-illustration';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedView } from '@/components/themed-view';
@@ -204,6 +205,28 @@ function ExerciseDetail({
                 words take the panel's place rather than queue behind it. */}
             {exercise.demoRef || !exercise.howTo ? (
               <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
+            ) : null}
+
+            {/* AND WHERE THERE IS NO CLIP, A DRAWING (16 October 2026).
+                The library covers movement patterns, not every named exercise,
+                so most movements arrive with nothing to watch. Rather than bend
+                the programme to the asset list - "it cant just choose exercises
+                with videos... that surely is its job" - the gap is closed from
+                the other side with illustrations Selodia owns.
+
+                SHOWN EXACTLY WHERE THE RECIPE CARD IS SHOWN, which is to say
+                wherever the save found no clip. That condition is already
+                settled and already correct, so this adds a rung to the ladder
+                without touching how the existing one decides anything:
+
+                    a clip, if the library has one
+                    an illustration, if we have drawn it
+                    the recipe card, always, underneath
+
+                RENDERS NOTHING WHEN WE HAVE NOT DRAWN IT, like MovementDemo.
+                Nine movements are drawn so far; a miss is the ordinary case. */}
+            {!exercise.demoRef && exercise.howTo ? (
+              <MovementIllustration exerciseName={exercise.name} />
             ) : null}
 
             {/* AND WHEN THERE IS NO CLIP, WORDS (15 October 2026).
