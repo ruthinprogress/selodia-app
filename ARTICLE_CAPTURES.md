@@ -952,3 +952,42 @@ The gatekeeping piece came out of the walkthrough on 14 October, which is in
 this log directly above. The second title is close to what the week-read
 baseline was built to notice the same evening, which is either a coincidence
 or the same observation arriving twice.
+
+## 16 October 2026 - You cannot draw a woman who is nobody
+
+A capture, not a draft. The day was spent making illustrations for movements
+the video library does not cover, and the hardest part was not drawing a body.
+It was drawing a body that is not anybody.
+
+The brief said what to avoid. No idealised physique. No skin colour. No age
+cues. Modest, practical clothing. The first picture came back as an overweight
+white woman with a realistic bun. Ruth's words: "the figure is not a neutral
+body weight, it in an overweight bodyshape. The hair is realistic which makes
+it too specific, less universal. Skin colour is there as a caucasian of some
+type."
+
+Three objections, one cause. A drawing still has to be something. Say what it
+must not be and you have not asked for a neutral, you have handed the choice
+to whoever draws it last.
+
+Then the better trap. Leaving the figure unfilled, a plain outline, felt like
+the neutral answer. Ruth saw it first, on her own reference sheet: "they are
+white people sort of, even tho it's just the background." The page is cream.
+Cream is a pale skin tone. An absence is not nothing, it is whatever the paper
+already is. The second attempt filled the figure with sand, which is a nicer
+word for the same problem: "sand is still white people."
+
+What this is actually about, for the article: the default that feels like no
+default. Most fitness imagery is not deliberately excluding anyone. It just
+never decided, and not deciding has a shape, and the shape looks like one kind
+of woman. You do not fix that by removing things. You fix it by choosing, and
+then applying the choice every single time so it reads as a style rather than
+an accident.
+
+The other thread worth keeping. Ruth caught four errors in the handstand set
+that were invisible from the pictures alone. A start position that cannot lead
+to its finish. Two frames quietly swapped between files. A premise that does
+not exist, squat to handstand. A progression padded with a movement named twice.
+None of those are visible to someone who has not had their own body in that
+position. Her line on the ordering, which is the whole piece in one sentence:
+"it depends on your body, background and psychology. There isn't one way."
