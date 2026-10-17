@@ -171,15 +171,29 @@ export const PROGRESSIONS = {
         'Hands walked in toward the wall and the feet walked up it, body near vertical, arms straight, hips over the shoulders. Her nose points RIGHT, toward the wall; her bun is on the LEFT side of her head, away from the wall. The front of her body faces the wall and her spine faces into the room.',
     },
     {
-      // RUTH, 17 OCTOBER 2026: "HS3 should start from a downward facing dog
-      // type position with hips up high." A kneel was the wrong entry - you
-      // cannot reach a chest-to-wall handstand from it, and the hips have to be
-      // travelling upward before the legs leave the floor.
+      // RUTH, 17 OCTOBER 2026, TWICE. First: "HS3 should start from a downward
+      // facing dog type position with hips up high." A kneel was the wrong
+      // entry - the hips have to be travelling upward before the legs leave the
+      // floor.
+      //
+      // Then, when the drawing kept the downward dog but put her CHEST on the
+      // wall: "If they lift theyre legs up the wall, they would end up facing
+      // the left, with bun against wall, face looking left, side-on."
+      //
+      // She is right and it is simple mechanics. In that downward dog she is
+      // face-down looking back at her own feet. Lifting the legs rotates her
+      // about the hands; it does not turn her round. So she arrives with her
+      // BACK to the wall. Asking for a chest-to-wall finish from this start was
+      // asking for a person who turns over in mid-air.
+      //
+      // THE NAME IS LEFT AS IT WAS PENDING RUTH'S ANSWER on whether this rung
+      // and the back-to-wall kick up are now two routes to one destination, or
+      // whether one of them should move. See the note in Handstand above.
       name: 'chest-to-wall handstand',
       start:
-        'In a downward dog with the hands on the floor close to the wall and NO gap between the fingertips and the skirting, hips lifted high toward the ceiling, legs straight and feet flat on the floor well out to the left, body making a sharp inverted V. Her nose points DOWN and slightly RIGHT, toward the wall; her bun is on the LEFT side of her head.',
+        'In a downward dog with the hands on the floor close to the wall and NO gap between the fingertips and the skirting, hips lifted high toward the ceiling, legs straight and feet flat on the floor well out to the left, body making a sharp inverted V. Her head hangs between her arms and she is looking back toward her own feet, so her nose points LEFT and her bun is on the RIGHT side of her head.',
       finish:
-        'Inverted with the chest, hips and toes all touching the wall and no gap at any of the three, body in one straight vertical line, arms straight, shoulders pushed up through the hands. Her nose points RIGHT, toward the wall; her bun is on the LEFT side of her head, away from the wall.',
+        'Inverted and vertical on straight arms, hands still at the foot of the wall, legs together and straight overhead. Her BUN IS AGAINST THE WALL: the back of her head, her spine and the backs of her legs are all on the right, against it. Her nose points LEFT, out into the open room. Seen side-on, so the profile reads.',
     },
     {
       // RUTH, 17 OCTOBER 2026, on the first attempt: "HS4 is total rubbish."

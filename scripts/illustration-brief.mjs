@@ -183,11 +183,29 @@ Ruth caught this on the chest-to-wall handstand, where the start knelt FACING th
 
 Where a stage is reached from the previous stage, say so and start it there. Within a progression that is usually the right answer anyway: stage three begins where stage two ended.
 
+THE FACING IN THE FINISH IS NOT A CHOICE. IT IS A CONSEQUENCE OF THE START. This is the single most expensive mistake in the whole set and it has now been made four times on the same movement, because stating the nose and the bun fixed how the finish was DRAWN without fixing whether the finish was POSSIBLE.
+
+Ruth, 17 October 2026, on a downward dog with the hands at the wall: "If they lift theyre legs up the wall, they would end up facing the left, with bun against wall, face looking left, side-on."
+
+She is right, and the test is mechanical. Work out where the front of the body points in the START, then rotate the body about the hands to reach the finish, and see where the front points now. A figure that is face-down at the start is still face-down after the legs come up - which means whichever way the floor was, the chest still faces. You cannot ask for a start that is face-down away from the wall and a finish with the chest ON the wall; the person would have to turn round in mid-air.
+
+So write the start first, derive the finish from it, and only then write the nose and the bun. If the derived answer is not the movement you wanted, the START is wrong, not the finish.
+
 NAME THE WRONG MOVEMENT AND RULE IT OUT. Where a movement has a commoner cousin, the generator will drift to the cousin however carefully the right one is described. "Middle splits" came back as front splits despite "legs out to BOTH sides in one straight line". Saying "THIS IS NOT THE FRONT SPLITS — do not draw one leg forward and one behind" is what stops it. Describe the destination in terms of the FRAME where possible: "the left leg reaching the left edge of the picture, the right leg the right edge" is harder to misread than an anatomical description.
 
 THE WALL IS ALWAYS AT THE RIGHT EDGE OF THE FRAME, in every stage of every progression that uses one, so that a set reads as one place rather than a room that flips between pictures. Every left and right below is written against that.
 
 CONTACT WITH A PROP IS STATED AS "NO GAP". "Hips close to the wall" produced hips a foot away with the legs sloping, which makes the stretch pointless. Say which body part touches, and that there is no gap at all.
+
+AND THE FACE CREEPS BACK ONE FEATURE AT A TIME. Ruth, 17 October 2026, on a handstand that was otherwise correct: "Face shown and skin is definitely a white person now."
+
+What had appeared was a closed EYE with lashes, an EYEBROW, a MOUTH, a defined chin, and a PINK BLUSHED CHEEK. Every one of those had been asked against; they arrived anyway, on a reference-anchored generation, in a set where the previous five were clean.
+
+THE BLUSH IS THE WORST OF THEM. A flesh-coloured highlight on the cheek of an otherwise unfilled figure is the one mark that makes the face read as a particular person of a particular colour - which is the thing this whole style exists to avoid. It is not a face detail. It is a skin tone.
+
+So every movement restates, by name: no eye, no eyelash, no eyebrow, no mouth, no lips, no chin line, NO CHEEK BLUSH, no shading on the face at all. One nose line in profile, and nothing else inside the head.
+
+HOW TO CHECK IT: crop the head and blow it up before sending anything. A measurement across the whole picture will NOT find this - the fill percentage of the rejected image was LOWER than three of the five she had already approved, because a blush and four thin lines are a tiny number of pixels. The head is small, the fault is small, and it is the whole picture.
 
 "NO FACE" IS NOT "NO HEAD DETAIL". Asked for a plain oval with no features, the generator eventually dropped the hair too and returned a bald figure, which broke the set. Every movement must restate that the hair — a small simple bun — stays.
 
