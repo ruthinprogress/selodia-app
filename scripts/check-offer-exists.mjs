@@ -30,7 +30,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
-const { offersToKeep, stripDeadOffer, claimsAWrite } = await import(
+const { offersToKeep, stripDeadOffer, claimsAWrite, offerNamesAppStore } = await import(
   root + '/app/lib/claimed-write.ts'
 );
 
@@ -129,7 +129,7 @@ check('it is wired into the route, and only when no offer was made', () => {
   assert.ok(/const offerExists =/.test(code), 'the route does not check whether an offer exists');
   // All five of the fields that create one. Missing any would strip a question
   // that was about to work.
-  for (const field of ['proposedSave', 'rememberCategory', 'almanacKind', 'meUpdate', 'noteText']) {
+  for (const field of ['proposedSave', 'rememberCategory', 'almanacKind', 'planOffered', 'meUpdate', 'noteText']) {
     assert.ok(
       new RegExp(`result\\.${field}`).test(code.slice(code.indexOf('const offerExists ='), code.indexOf('const offerExists =') + 400)),
       `offerExists ignores result.${field}`
@@ -137,7 +137,92 @@ check('it is wired into the route, and only when no offer was made', () => {
   }
   assert.ok(/offerExists \? null : offersToKeep/.test(code), 'the guard runs even when an offer exists');
   assert.ok(/label: 'offer-without-offer'/.test(code), 'it is removed without being counted');
-  return '5 offer fields, stripped only when none is set';
+  return '6 offer fields, stripped only when none is set';
+});
+
+check('A PLAN OFFER IS NOT A DEAD OFFER', () => {
+  // 17 October 2026. Ruth asked for a side splits plan on her phone. The model
+  // described one and asked "Would you like me to save it so you can check?" -
+  // exactly what the prompt requires, because a plan is confirmed first and
+  // almanacKind is set only after a yes. The question was stripped as an offer
+  // with nothing behind it and she was told "That did not save."
+  //
+  // Two rules, each correct alone, which together made plans unsaveable. The
+  // guard's premise holds for a Me card, where the APP stores the offer and a
+  // yes with nothing stored is lost. It does not hold for a plan, whose yes is
+  // answered conversationally by the next turn setting almanacKind.
+  const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+
+  // The model must be TOLD to set it, in the prose and not only in the schema -
+  // a field nothing instructs is a field nothing sets.
+  assert.ok(
+    /SET planOffered TRUE ON THAT SAME TURN/.test(route),
+    'the prompt does not tell the model to flag a plan offer'
+  );
+  assert.ok(
+    /planOffered: \{\s*type: 'boolean'/.test(route),
+    'planOffered is not in the classify tool'
+  );
+  // AND IT MUST NOT WRITE ANYTHING. It exists to keep a question in the reply;
+  // a field that saves on its own would be a plan stored without a yes, which
+  // is the rule this whole section protects.
+  const writes = route.match(/result\.planOffered/g) ?? [];
+  assert.strictEqual(writes.length, 1, 'planOffered is read somewhere other than offerExists');
+
+  // The sentence that started it still matches the sweep, so this test is
+  // exercising the real pattern rather than a paraphrase of it.
+  assert.ok(
+    offersToKeep('Would you like me to save it so you can check?'),
+    'the real sentence no longer matches, so this check proves nothing'
+  );
+  return 'the question survives, and still writes nothing on its own';
+});
+
+check('AND THE PLAN QUESTION SURVIVES WITHOUT THE MODEL\'S HELP', () => {
+  // THE SECOND LAYER. planOffered above is the model saying which kind of
+  // question it asked. This is what holds when it does not say - which is the
+  // thing that actually went wrong in October, twice, with the instruction
+  // already written down.
+  //
+  // The sweep now acts only on an offer that NAMES somewhere the app stores and
+  // collects the yes for. Hers named nothing.
+  const PLAN = 'Would you like me to save it so you can check?';
+  assert.ok(offersToKeep(PLAN), 'the sentence no longer matches, so this proves nothing');
+  assert.strictEqual(offerNamesAppStore(PLAN), false, 'a plan offer is read as app-stored');
+  assert.strictEqual(stripDeadOffer(PLAN), PLAN, 'her plan question is still being removed');
+
+  // AND THE ONE THIS GUARD IS ACTUALLY FOR STILL GOES, or the narrowing has
+  // simply turned the guard off.
+  assert.strictEqual(offerNamesAppStore(HERS), true, 'the Me tab offer is no longer recognised');
+  assert.ok(!/would you like it kept/i.test(stripDeadOffer(HERS)), 'the 9 October offer survived');
+
+  // TWO QUESTIONS IN ONE REPLY: one goes, one stays.
+  const both = `${PLAN} Shall I keep that in your Me tab?`;
+  const left = stripDeadOffer(both);
+  assert.ok(left.includes(PLAN), `the plan question was taken with it: ${left}`);
+  assert.ok(!/keep that in your Me tab/i.test(left), `the Me tab question survived: ${left}`);
+
+  // EVERY PLAN OFFER turn_diagnostics RECORDED AS REMOVED, verbatim from the
+  // rows on 17 October. These are not paraphrases: each one is a question a
+  // real person was asked and never saw.
+  for (const s of [
+    'Want me to save it to your Almanac?',
+    'Do you want me to save this to your Almanac?',
+    'Do you want me to write out the sets and reps and save it to Plans?',
+    'Would you like me to save it on Plans, or change anything first?',
+    "Want me to keep this letter's details in your care record alongside the rest of the knee claim?",
+  ]) {
+    assert.ok(offersToKeep(s), `no longer matched, so it proves nothing: ${s}`);
+    assert.strictEqual(stripDeadOffer(s), s, `still removed: ${s}`);
+  }
+
+  // And the route uses the same test rather than its own copy of the idea.
+  const route = readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  assert.ok(
+    /offerNamesAppStore\(offerFound\)/.test(route),
+    'the route still strips every offer it finds'
+  );
+  return 'the plan question stays, the Me tab question goes';
 });
 
 check('a care record is never silenced by the quiet period', () => {

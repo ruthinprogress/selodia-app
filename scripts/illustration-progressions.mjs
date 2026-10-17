@@ -147,22 +147,32 @@ export const PROGRESSIONS = {
     {
       name: 'wall walk',
       start:
-        'In a plank with the feet flat on the wall at hip height, hands on the floor, arms straight.',
+        'In a plank with the feet flat on the wall at hip height, hands on the floor well out to the left of the wall, arms straight, the front of the body facing the floor. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
       finish:
-        'Hands walked in toward the wall and the feet walked up it, body near vertical with the chest facing the wall, arms straight, hips over the shoulders.',
+        'Hands walked in toward the wall and the feet walked up it, body near vertical, arms straight, hips over the shoulders. Her nose points RIGHT, toward the wall; her bun is on the LEFT side of her head, away from the wall. The front of her body faces the wall and her spine faces into the room.',
     },
     {
+      // RUTH, 17 OCTOBER 2026: "HS3 should start from a downward facing dog
+      // type position with hips up high." A kneel was the wrong entry - you
+      // cannot reach a chest-to-wall handstand from it, and the hips have to be
+      // travelling upward before the legs leave the floor.
       name: 'chest-to-wall handstand',
-      start: 'Kneeling facing the wall with the hands on the floor close to it.',
+      start:
+        'In a downward dog with the hands on the floor close to the wall and NO gap between the fingertips and the skirting, hips lifted high toward the ceiling, legs straight and feet flat on the floor well out to the left, body making a sharp inverted V. Her nose points DOWN and slightly RIGHT, toward the wall; her bun is on the LEFT side of her head.',
       finish:
-        'Inverted with the chest, hips and toes all lightly touching the wall, body in one straight vertical line, arms straight, shoulders pushed up through the hands.',
+        'Inverted with the chest, hips and toes all touching the wall and no gap at any of the three, body in one straight vertical line, arms straight, shoulders pushed up through the hands. Her nose points RIGHT, toward the wall; her bun is on the LEFT side of her head, away from the wall.',
     },
     {
+      // RUTH, 17 OCTOBER 2026, on the first attempt: "HS4 is total rubbish."
+      // The squat start had her feet against the skirting AND her hands a long
+      // way out from it, which leaves nowhere for the finish to happen: from
+      // there the heels can never reach the wall. The entry is a lunge facing
+      // AWAY from the wall with the hands going down CLOSE to it.
       name: 'back-to-wall handstand',
       start:
-        'Squatting with the back to the wall, hands on the floor a little way out from it.',
+        'In a lunge facing LEFT, away from the wall, folding forward to place both hands flat on the floor about a hand-span out from the skirting, front knee bent, back leg straight behind and ready to swing. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
       finish:
-        'Inverted with the heels resting on the wall behind, body stacked vertically rather than arched, arms straight, head between the arms looking at the floor.',
+        'Inverted on straight arms with the hands still a hand-span from the skirting, body stacked vertically rather than arched, both heels resting against the wall behind her with no gap. Her spine faces the wall and the front of her body faces LEFT into the room. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
     },
     {
       name: 'handstand kick-up',

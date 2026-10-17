@@ -145,6 +145,48 @@ check('and ordinary English using the word "done" is left alone', () => {
   }
 });
 
+check('A CONDITION IS NOT A CLAIM, and hers is the first one', () => {
+  // 17 October 2026. Ruth asked for a side splits plan on her phone. What she
+  // got, from chat_messages:
+  //
+  //   "Here's a gentler side splits plan that avoids loaded squats and
+  //    quad-heavy positions: ... I can only see which movements have a video
+  //    once a plan is saved.
+  //
+  //    That did not save, so it is not in your record."
+  //
+  // The second paragraph is this guard. The sentence it fired on claims
+  // nothing: it says what becomes true AFTER a save, at the exact moment of
+  // offering one. So a plan was described, the question asking whether to keep
+  // it was removed by the sweep next door, and the app then told her it had
+  // failed to save something nobody had agreed to save.
+  const HERS =
+    'I can only see which movements have a video once a plan is saved.';
+  assert.equal(claimsAWrite(HERS), null, 'her sentence still reads as a claim');
+
+  for (const reply of [
+    'Once it is saved you can tick it off each day.',
+    'That will show up in your week once the plan is saved.',
+    'When it is logged the trend will pick it up.',
+    'If that gets added it will sit under Thursday.',
+    'It will be saved against today once you say yes.',
+    'That can be kept on your Me tab instead, if you prefer.',
+  ]) {
+    assert.equal(claimsAWrite(reply), null, `a condition read as a claim: ${reply}`);
+  }
+
+  // AND THE GUARD IS STILL A GUARD. A real claim with the same words in it must
+  // still be caught, or this exemption has simply switched it off.
+  for (const reply of [
+    'I have saved that to your Almanac.',
+    'Saved to your Me tab.',
+    'I saved it when you asked.',
+    "I've logged that against today.",
+  ]) {
+    assert.ok(claimsAWrite(reply), `the guard stopped catching: ${reply}`);
+  }
+});
+
 check('the claiming sentence can be quoted back', () => {
   assert.equal(claimsAWrite(PEANUT_REPLY), PEANUT_REPLY);
 });

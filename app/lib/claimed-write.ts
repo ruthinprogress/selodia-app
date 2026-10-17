@@ -159,6 +159,28 @@ const NOT_A_CLAIM: RegExp[] = [
   /\bnothing (?:is|was|has been|gets|will be)\s+(?:added|saved|logged|updated|noted|kept)\b/i,
   // "...until you say yes", "...until you agree" - the condition IS the promise.
   /\b(?:added|saved|logged|updated|noted|kept)\s+until\b/i,
+  // A CONDITION IS NOT A CLAIM (17 October 2026).
+  //
+  // Ruth asked for a side splits plan. Underneath it she was told:
+  //
+  //   "That did not save, so it is not in your record."
+  //
+  // The sentence that triggered it was this one, in the same reply:
+  //
+  //   "I can only see which movements have a video once a plan is saved."
+  //
+  // Which claims nothing. It describes what becomes true AFTER a save, at the
+  // moment of offering one - the most natural place in the whole app for that
+  // sentence to appear, and the guard read it as a receipt.
+  //
+  // "until" was already here for the app's own promise ("nothing is kept until
+  // you agree"). It is the same grammar: the save verb is governed by a word
+  // that puts it in the future. "once", "when", "after", "if" and "as soon as"
+  // do that too, and only when they come BEFORE the verb - "I saved it when you
+  // asked" still reads as the claim it is.
+  /\b(?:once|when|whenever|after|if|as soon as|before)\b[^.?!]*\b(?:is|are|has been|have been|gets|get)\s+(?:been\s+)?(?:added|saved|logged|updated|noted|kept)\b/i,
+  // And the plain future, with no marker: "it will be saved", "it can be kept".
+  /\b(?:will|would|can|could|should|'ll)\s+(?:then\s+)?be\s+(?:added|saved|logged|updated|noted|kept)\b/i,
 ];
 
 /**
@@ -501,6 +523,65 @@ export function offersToKeep(reply: string): string | null {
   return null;
 }
 
+// AN OFFER WITH NO DESTINATION IS NOT THE OFFER THIS GUARD IS FOR
+// (17 October 2026).
+//
+// Ruth asked for a side splits plan on her phone. The reply described one and
+// asked:
+//
+//   "Would you like me to save it so you can check?"
+//
+// Which is exactly what the prompt tells it to ask, because a plan is confirmed
+// FIRST and the almanac fields are set only after a yes. The sweep took the
+// question out and she was told "That did not save."
+//
+// THE PREMISE OF THE GUARD IS NARROWER THAN THE GUARD WAS. "Her yes would have
+// nothing to answer" is true only where the APP stores the offer and acts on
+// the yes itself: a note, a Me card, an insight, a symptom. For a plan, the yes
+// is answered by the next TURN setting almanacKind, so the question works
+// perfectly well and removing it is the only thing that breaks it.
+//
+// So the sweep now acts only on an offer that NAMES one of the places the app
+// stores for her. Her 9 October sentence named one - "kept as a note on your Me
+// tab" - and is still stripped. Her 17 October sentence named nothing, and
+// stays.
+//
+// THIS IS THE LAYER THAT DOES NOT NEED THE MODEL. planOffered in the route is
+// the model saying which kind of question it asked, and it is the better signal
+// when it is set; this holds when it is not. Asking a model twice not to do a
+// thing is what failed in October and the reason this file exists.
+// WHAT turn_diagnostics ACTUALLY SHOWED, read on 17 October before writing
+// this list. Eight of the last ten offers the sweep removed were plans:
+//
+//   "Want me to save it to your Almanac?"
+//   "Do you want me to write out the sets and reps and save it to Plans?"
+//   "Would you like me to save it on Plans, or change anything first?"
+//   "...shall I turn it into a saved routine?"
+//   "Want me to keep this letter's details in your care record...?"
+//
+// So this was never a one-off on her phone. Every one of those questions was a
+// real one the next turn would have answered, and every one was taken out
+// before she could.
+//
+// "record" IS DELIBERATELY ABSENT. A care record is an almanacKind, saved by
+// the next turn like any other plan, and the word also turns up as the generic
+// "your record" - so including it would go on eating the care offers. The one
+// this guard was built for, "kept as a NOTE on your ME TAB", names two of the
+// words below and still goes.
+const NAMES_WHERE_THE_APP_KEEPS_IT =
+  /\b(?:me tab|me section|me page|me card|note|notes|noted|noting|insight|insights|symptom|symptoms|log|logs|logged|diary|journal|readings|reading|profile)\b/i;
+
+/**
+ * Whether an offer sentence names somewhere the app itself stores and acts on.
+ *
+ * Only those can go dead: their yes is collected by the app, so a yes with
+ * nothing stored is lost. An offer to save a PLAN is answered by the next turn
+ * instead, and must survive.
+ */
+export function offerNamesAppStore(sentence: string): boolean {
+  return NAMES_WHERE_THE_APP_KEEPS_IT.test(sentence);
+}
+
 /**
  * Take out an offer the app cannot act on.
  *
@@ -542,7 +623,14 @@ export function stripDeadOffer(reply: string): string {
     if (!line.trim()) return line;
     return line
       .split(/(?<=[.!?])\s+/)
-      .map((sentence) => (OFFERS_TO_KEEP.test(sentence) ? withoutOffer(sentence) : sentence))
+      // AND ONLY THE ONES THIS GUARD IS FOR. A reply can carry two questions,
+      // and a plan offer sitting beside a Me-card offer must not be taken out
+      // with it. Same test as the route's. See offerNamesAppStore.
+      .map((sentence) =>
+        OFFERS_TO_KEEP.test(sentence) && offerNamesAppStore(sentence)
+          ? withoutOffer(sentence)
+          : sentence
+      )
       .filter(Boolean)
       .join(' ')
       .trim();

@@ -167,6 +167,16 @@ STATE ORIENTATION IN FRAME TERMS, NOT ANATOMICAL ONES. "Chest to the wall" was w
 
 The same goes for which way a figure travels, where a prop sits, and which side a limb is on. Say it as a position in the frame.
 
+AND FOR AN UPSIDE-DOWN FIGURE, SAY IT WITH THE NOSE AND THE BUN. Frame terms were not enough on their own: the handstands were briefed in left and right and came back wrong anyway, three of four of them, and Ruth had to catch every one. The reason is that an inverted body has almost no readable front. The torso is a tube, the legs are symmetrical, the arms are straight — the ONLY two marks that say which way she faces are the nose and the bun, and they are a few pixels each at the bottom of the picture.
+
+So state both, as positions, in every inverted frame:
+
+  "Her nose points RIGHT, toward the wall. Her bun is on the LEFT side of her head, away from the wall."
+
+Never "chest to the wall" on its own. Never "facing the wall" on its own. Both of those have now been drawn backwards more often than not.
+
+AND THEY ARE WHAT IS CHECKED, TOO. Do not judge an inverted figure's direction from the sweep of the torso or the bend of the arms — I read three of these as correct from exactly that and all three were wrong. Find the nose. Find the bun. If neither is legible at full size, the picture has failed whatever else is right about it.
+
 THE TWO FRAMES MUST BE PHYSICALLY CONNECTED. A stacked picture is a claim that the first position BECOMES the second, so the start has to be somewhere the finish can actually be reached from. Check it as a body, not as a pair of poses.
 
 Ruth caught this on the chest-to-wall handstand, where the start knelt FACING the wall: "The handstand ends with them facing wall but started in a movements that would [go] the other way, no?" Kick up from a kneel facing the wall and the legs travel away from it, landing back-to-wall. The two frames were each correct and the picture as a whole was a lie.
@@ -174,6 +184,8 @@ Ruth caught this on the chest-to-wall handstand, where the start knelt FACING th
 Where a stage is reached from the previous stage, say so and start it there. Within a progression that is usually the right answer anyway: stage three begins where stage two ended.
 
 NAME THE WRONG MOVEMENT AND RULE IT OUT. Where a movement has a commoner cousin, the generator will drift to the cousin however carefully the right one is described. "Middle splits" came back as front splits despite "legs out to BOTH sides in one straight line". Saying "THIS IS NOT THE FRONT SPLITS — do not draw one leg forward and one behind" is what stops it. Describe the destination in terms of the FRAME where possible: "the left leg reaching the left edge of the picture, the right leg the right edge" is harder to misread than an anatomical description.
+
+THE WALL IS ALWAYS AT THE RIGHT EDGE OF THE FRAME, in every stage of every progression that uses one, so that a set reads as one place rather than a room that flips between pictures. Every left and right below is written against that.
 
 CONTACT WITH A PROP IS STATED AS "NO GAP". "Hips close to the wall" produced hips a foot away with the legs sloping, which makes the stretch pointless. Say which body part touches, and that there is no gap at all.
 
