@@ -123,111 +123,100 @@
 // -------------------------------------------------------------------------
 
 /** The standing brief. Identical for every movement. */
-export const STYLE = `A tall portrait illustration for a women's movement app, on a flat pale cream ground, edge to edge.
+// WHAT GOES INTO THE PROMPT, AND WHAT DOES NOT.
+//
+// Everything above this line is a record of what went wrong and why, written
+// for whoever briefs the next movement. It is NOT prompt text. Until 17 October
+// it was all one template literal, which meant the string sent to the image
+// model carried sentences like "I read three of these as correct and all three
+// were wrong" - notes to myself, diluting the actual instructions.
+//
+// AND NOTHING IMPORTED IT. Checked on 17 October: no file in the repository
+// read this one. Every prompt for the first twenty-two illustrations was
+// hand-written at the tool call, which is exactly why the same faults kept
+// coming back - a lesson written down in a file nobody reads is not a lesson
+// the next picture benefits from. STYLE below is now the only place the art
+// direction lives, and movementPrompt is the only way to build a prompt.
+//
+// IT WAS ALSO STALE. The old STYLE described a figure FILLED with flat sage
+// green and asked for a "slim curved terracotta arrow" and a "three-quarter
+// view" - all three of which Ruth has since rejected. It would have produced
+// the wrong picture on the first call.
+export const STYLE = `Draw ONE new illustration in EXACTLY the style of the reference image: the same fine terracotta contour line, the same UNFILLED figure where the cream ground shows straight through the body, the same muted sage leggings, the same soft pale watercolour washes behind the figure, the same cream ground, the same restraint and generous empty space. Copy the reference's colours exactly.
 
-THIS IS A FINE LINE DRAWING, NOT A PAINTING. The figure is drawn with one clean, even, thin contour line in warm terracotta-sienna. No shading on the body, no rendered volume, no brush texture on the figure, no painted flesh, no highlights, no modelling of muscle or fat. A delicate editorial line illustration in a quiet health book.
+LAYOUT: one tall portrait image with two frames STACKED VERTICALLY, start above and finish below, sharing the same cream ground. No dividing line, no frame, no border. Both frames seen FROM THE SIDE, at the same camera height, at the same scale, with the figure the same size in each.
 
-LAYOUT: one single image with two panels stacked vertically, one directly above the other, sharing the same cream ground. No dividing line, no frame, no border. Upper panel is the START position, lower panel is the FINISH position, the same figure in both.
+THE HEAD IS EMPTY, and this is the instruction most often broken. Inside the outline of the head there is NOTHING except ONE short nose line in profile. No eye, no closed eye, no eyelid, no eyelashes. No eyebrow. No mouth, no lips, no smile. No chin line, no jaw line, no cheekbone. NO CHEEK BLUSH: no pink, no warm patch, no colour of any kind inside the head. No shading inside the head at all. A plain smooth oval of bare cream paper, the outline around it, one small SIMPLE bun of hair, and the nose line. That is all.
 
-THE PALETTE IS NARROW AND NOTHING SITS OUTSIDE IT. The cream ground, muted sage green, deeper slate-sage, and terracotta-sienna for the line. NO WHITE anywhere. Nothing is brighter than the cream ground. CRITICALLY: no beige, no tan, no sand, no peach and no brown may appear anywhere on the FIGURE — not on the body and not on the clothing. Those are skin tones and the figure must not read as having skin of any colour.
+A blush is not a face detail. It is a skin tone, and it makes the figure a particular person of a particular colour, which is the one thing this style exists to avoid.
 
-THE FIGURE:
-- The body — head, neck, arms, hands, legs, feet, every part not covered by clothing — is filled with ONE flat muted SAGE GREEN, evenly, no shading, no gradient. This is deliberately not a human skin colour: the figure must read as a drawn graphic, not as a person of any ethnicity. Do not warm it toward beige, tan, peach or brown. Keep it clearly green-grey.
-- The top is a plain loose short-sleeved tee painted in THE SAME CREAM AS THE BACKGROUND, or at most a hair WARMER than the background. It is never a white t-shirt. It is never lighter than the ground behind it. The garment is identified by its terracotta contour line, not by its fill.
-- The leggings are a DEEPER SLATE-SAGE flat fill, full length to the ankle — the same green family as the body but darker, so the garment reads as cloth rather than as skin. Absolutely not tan, not sand, not beige, not clay.
-- Bare feet, same sage fill as the body.
-- The head is a plain oval with NO facial features at all. Hair is a small simple bun in a slightly deeper sage, flat fill, no strands, no texture.
-- Average, unremarkable proportions, identical in both panels. Not heavy, not slim, not athletic. Nobody should be able to judge this person's size.
-- THE FIGURE IS SMALL IN THE FRAME, occupying roughly a third of the panel height, with generous empty cream all around it. Airy, restrained and spacious.
+THE BODY IS UNFILLED: the cream paper shows straight through the torso, arms, hands, legs and feet, exactly the same colour as the background. No skin tone anywhere. NO beige, tan, sand, peach or brown appears anywhere on the figure or on its clothing.
 
-NO CREASE LINES ON THE CLOTHING. The interior line work describes STRUCTURE only: a hem, a neckline, a sleeve edge, the join where one garment meets another. Never draw folds, creases, wrinkles, gathers or drape lines inside a garment. Where a garment genuinely needs depth, use ONE barely-darker flat block of the same colour with no outline around it, very subtle, and nothing more.
+CLOTHING, IDENTICAL IN BOTH FRAMES: a loose short-sleeved CREAM tee, untucked in both, never white and never brighter than the ground; full-length SAGE leggings to the ankle; bare feet. When the figure is inverted the tee stays against the body and does not fall over the head. NO CREASE LINES: interior lines describe structure only, such as a hem, a neckline or a sleeve edge. Never folds, wrinkles, gathers or drape lines.
 
-THE WATERCOLOUR WASH IS PART OF THE COMPOSITION, NOT DECORATION BEHIND IT. This is important and it is where this kind of illustration usually goes wrong.
-- The wash ANSWERS THE MOVEMENT. Put it where the body is travelling or where the effort is: low and spreading beneath a hip that is sinking, rising behind a lift, trailing the limb that moves. It should read as something the movement left behind.
-- ONE wash per panel, or at most two. Never a fixed set of three. Never the same arrangement in both panels.
-- The two panels differ: the start panel might carry one small quiet wash, the finish panel a larger one lying in the direction of travel.
-- Do not use every colour every time. One colour per panel is usually right; two at most. Across the image some colours simply do not appear.
-- Each wash is SMALLER than the figure and sits mostly behind it, quiet and subordinate. It must never look like a shape placed on the page to fill space.
+THE WATERCOLOUR WASHES sit BEHIND the figure in BOTH frames, in the reference's colours, never touching or colouring it. Real watercolour on rough paper: uneven patchy pigment, darker dried rims with washed-out centres, irregular organic edges. NOT circles, NOT ovals, NOT smooth gradients, NOT airbrush softness, which read as cheap vector art. One wash per frame, two at most, each smaller than the figure and placed where the movement travels. The two frames differ.
 
-WHERE A WASH APPEARS IT IS REAL WATERCOLOUR ON ROUGH PAPER, in pale peach, sage or sand:
-- UNEVEN pigment density, patchy and mottled, with pigment granulating and settling into the tooth of the paper.
-- DARKER RIMS where the wash pooled and dried at its edge, with lighter, washed-out centres. This hard dried edge is the single most important tell of real watercolour.
-- Irregular organic shapes with wandering, slightly ragged edges. NOT circles, NOT ovals, NOT rounded cloud shapes.
-- Where two washes overlap, the overlap is visibly darker, like transparent paint layered twice.
-- Absolutely NO smooth gradients, NO airbrush softness, NO even flat opacity, NO blurred vector shapes. Those read as cheap stock vector art and are wrong.
-They sit BEHIND the figure, never touching or colouring it, and stay pale and quiet.
+THE GROUND IS A SOFT SHADOW, NEVER A LINE. Beneath whatever actually touches the floor, lay a soft, pale, slightly blurred shadow following the shape of that contact. Draw NO hard horizontal line anywhere.
 
-THE GROUND IS A SOFT SHADOW, NEVER A LINE. Beneath the places where the body actually touches the floor, lay a soft, pale, slightly blurred shadow following the shape of that contact — under the feet of a standing figure, under the hips and the length of the legs of a seated one. Draw NO hard horizontal line anywhere. The shadow is what places the figure in space.
+A WALL, WHERE ONE IS NEEDED, IS A SINGLE FINE LINE at the RIGHT edge of the frame, drawn in the same place and at the same scale in both frames. One thin quiet vertical contour line in the same pale terracotta as the figure's outline, and nothing more. Do NOT fill it, shade it, colour it in, or give it width, a panel, a block or a shadow of its own. No bricks, no skirting board, no room, no furniture. The wall is the quietest thing in the frame.
 
-Ruth, 16 October 2026, on why: a single line at heel height made a seated figure read as standing on a surface with its hips held above it — "it makes it look like they are elevated on their heels in a wide leg stand". A shadow cannot do that, because it sits under whatever is actually touching the ground.
+NO ARROW ANYWHERE. No arrow, no curved line, no swoosh, no motion mark.
 
-PIN THE VIEWPOINT. State the camera angle for each frame and keep it IDENTICAL across both frames. Never rotate the figure between start and finish: given room to turn it, the generator will, and once it turns to a profile it starts drawing a face.
+NOTHING is brighter than the cream paper, and nothing is darker or more saturated than the figure's own outline.
 
-STATE ORIENTATION IN FRAME TERMS, NOT ANATOMICAL ONES. "Chest to the wall" was written three times and drawn wrong three times. "The face, chest and stomach face RIGHT, toward the wall; the spine and the backs of the legs face LEFT, into the room" is read correctly. Left and right in the picture are unambiguous; a body's front is not, once the body is upside down.
-
-The same goes for which way a figure travels, where a prop sits, and which side a limb is on. Say it as a position in the frame.
-
-AND FOR AN UPSIDE-DOWN FIGURE, SAY IT WITH THE NOSE AND THE BUN. Frame terms were not enough on their own: the handstands were briefed in left and right and came back wrong anyway, three of four of them, and Ruth had to catch every one. The reason is that an inverted body has almost no readable front. The torso is a tube, the legs are symmetrical, the arms are straight — the ONLY two marks that say which way she faces are the nose and the bun, and they are a few pixels each at the bottom of the picture.
-
-So state both, as positions, in every inverted frame:
-
-  "Her nose points RIGHT, toward the wall. Her bun is on the LEFT side of her head, away from the wall."
-
-Never "chest to the wall" on its own. Never "facing the wall" on its own. Both of those have now been drawn backwards more often than not.
-
-AND THEY ARE WHAT IS CHECKED, TOO. Do not judge an inverted figure's direction from the sweep of the torso or the bend of the arms — I read three of these as correct from exactly that and all three were wrong. Find the nose. Find the bun. If neither is legible at full size, the picture has failed whatever else is right about it.
-
-THE TWO FRAMES MUST BE PHYSICALLY CONNECTED. A stacked picture is a claim that the first position BECOMES the second, so the start has to be somewhere the finish can actually be reached from. Check it as a body, not as a pair of poses.
-
-Ruth caught this on the chest-to-wall handstand, where the start knelt FACING the wall: "The handstand ends with them facing wall but started in a movements that would [go] the other way, no?" Kick up from a kneel facing the wall and the legs travel away from it, landing back-to-wall. The two frames were each correct and the picture as a whole was a lie.
-
-Where a stage is reached from the previous stage, say so and start it there. Within a progression that is usually the right answer anyway: stage three begins where stage two ended.
-
-THE FACING IN THE FINISH IS NOT A CHOICE. IT IS A CONSEQUENCE OF THE START. This is the single most expensive mistake in the whole set and it has now been made four times on the same movement, because stating the nose and the bun fixed how the finish was DRAWN without fixing whether the finish was POSSIBLE.
-
-Ruth, 17 October 2026, on a downward dog with the hands at the wall: "If they lift theyre legs up the wall, they would end up facing the left, with bun against wall, face looking left, side-on."
-
-She is right, and the test is mechanical. Work out where the front of the body points in the START, then rotate the body about the hands to reach the finish, and see where the front points now. A figure that is face-down at the start is still face-down after the legs come up - which means whichever way the floor was, the chest still faces. You cannot ask for a start that is face-down away from the wall and a finish with the chest ON the wall; the person would have to turn round in mid-air.
-
-So write the start first, derive the finish from it, and only then write the nose and the bun. If the derived answer is not the movement you wanted, the START is wrong, not the finish.
-
-NAME THE WRONG MOVEMENT AND RULE IT OUT. Where a movement has a commoner cousin, the generator will drift to the cousin however carefully the right one is described. "Middle splits" came back as front splits despite "legs out to BOTH sides in one straight line". Saying "THIS IS NOT THE FRONT SPLITS — do not draw one leg forward and one behind" is what stops it. Describe the destination in terms of the FRAME where possible: "the left leg reaching the left edge of the picture, the right leg the right edge" is harder to misread than an anatomical description.
-
-THE WALL IS ALWAYS AT THE RIGHT EDGE OF THE FRAME, in every stage of every progression that uses one, so that a set reads as one place rather than a room that flips between pictures. Every left and right below is written against that.
-
-CONTACT WITH A PROP IS STATED AS "NO GAP". "Hips close to the wall" produced hips a foot away with the legs sloping, which makes the stretch pointless. Say which body part touches, and that there is no gap at all.
-
-AND THE FACE CREEPS BACK ONE FEATURE AT A TIME. Ruth, 17 October 2026, on a handstand that was otherwise correct: "Face shown and skin is definitely a white person now."
-
-What had appeared was a closed EYE with lashes, an EYEBROW, a MOUTH, a defined chin, and a PINK BLUSHED CHEEK. Every one of those had been asked against; they arrived anyway, on a reference-anchored generation, in a set where the previous five were clean.
-
-THE BLUSH IS THE WORST OF THEM. A flesh-coloured highlight on the cheek of an otherwise unfilled figure is the one mark that makes the face read as a particular person of a particular colour - which is the thing this whole style exists to avoid. It is not a face detail. It is a skin tone.
-
-So every movement restates, by name: no eye, no eyelash, no eyebrow, no mouth, no lips, no chin line, NO CHEEK BLUSH, no shading on the face at all. One nose line in profile, and nothing else inside the head.
-
-HOW TO CHECK IT: crop the head and blow it up before sending anything. A measurement across the whole picture will NOT find this - the fill percentage of the rejected image was LOWER than three of the five she had already approved, because a blush and four thin lines are a tiny number of pixels. The head is small, the fault is small, and it is the whole picture.
-
-"NO FACE" IS NOT "NO HEAD DETAIL". Asked for a plain oval with no features, the generator eventually dropped the hair too and returned a bald figure, which broke the set. Every movement must restate that the hair — a small simple bun — stays.
-
-AND A PROFILE NEEDS A NOSE. Ruth, 16 October 2026, on the front splits batch: "None have a nose...looks odd." A featureless oval reads fine face-on, but seen from the side or three-quarter a head with no nose at all looks wrong rather than neutral. So: one simple nose line wherever the angle would show one, and still no eyes, no mouth, no brows, no ears. The nose is drawn as a single short contour, not a feature.
-
-DIRECTION ARROW: one slim curved terracotta arrow with a small neat arrowhead, showing the direction the body travels. Thin and elegant, in the same line weight as the figure.
-
-CONSTRAINTS: no text, letters, numbers, words, labels or captions anywhere. No panel borders, no drop shadow, no signature, no watermark. No gym equipment, no mat, no room, no furniture. Overall impression: light, quiet, spacious, precise, hand-painted.`;
+ABSOLUTELY NO TEXT ANYWHERE: no title, no movement name, no labels, no captions, no letters, no numbers.`;
 
 /**
- * The per-movement half of the prompt. The brief above decides whether a
- * picture is beautiful; this decides whether it is RIGHT, which matters more -
- * "lizard lunge" on its own comes back as something that is not a lizard
- * lunge, and a confidently wrong demonstration is a form fault.
+ * Added to any movement where the figure is upside down.
+ *
+ * Three of the first four handstands came back facing the wrong way, and I
+ * passed all three. An inverted body has almost no readable front, so the nose
+ * and the bun are not decoration - they are the only evidence in the picture.
  */
-export function movementPrompt({ name, start, finish }) {
-  return `${STYLE}
+export const NOSE_AND_BUN = `WHICH WAY SHE FACES IS DECIDED BY TWO MARKS AND NOTHING ELSE: the NOSE, a single short line in profile, and the BUN, a small simple knot of hair. Without them an upside-down body reads the same either way, because the torso is a tube, the legs are symmetrical and the arms are straight. Draw both exactly where the frames above place them. If the nose and the bun are not where this prompt says, the picture is wrong however good the rest of it is.`;
 
-THE MOVEMENT is a ${name}, drawn from a three-quarter view.
-UPPER PANEL, start: ${start}
-LOWER PANEL, finish: ${finish}`;
+/**
+ * The per-movement half of the prompt. STYLE decides whether a picture is
+ * beautiful; this decides whether it is RIGHT, which matters more - "lizard
+ * lunge" on its own comes back as something that is not a lizard lunge, and a
+ * confidently wrong demonstration is a form fault.
+ *
+ * `inverted` adds NOSE_AND_BUN. `ruleOut` names the commoner cousin the
+ * generator will drift to and forbids it - "THIS IS NOT THE FRONT SPLITS".
+ * `connects` states how the finish is reached from the start, for the stacked
+ * pair to be one movement rather than two poses.
+ */
+export function movementPrompt({ name, start, finish, inverted, ruleOut, connects }) {
+  const parts = [
+    STYLE,
+    '',
+    `THE MOVEMENT IS A ${name.toUpperCase()}.`,
+    '',
+    `START, upper frame: ${start}`,
+    '',
+    `FINISH, lower frame: ${finish}`,
+  ];
+  if (inverted) parts.push('', NOSE_AND_BUN);
+  if (connects) parts.push('', `THE TWO FRAMES MUST CONNECT. ${connects}`);
+  if (ruleOut) parts.push('', `THIS IS NOT ${ruleOut.toUpperCase()}. Do not draw one.`);
+  return parts.join('\n');
 }
+
+/**
+ * What to check on a returned image BEFORE it goes to Ruth. Not prompt text.
+ *
+ * Every line here is something I sent her that was wrong, and in most cases
+ * told her was right. The order matters: the cheapest checks are last.
+ */
+export const REVIEW_BEFORE_SENDING = [
+  'CROP THE HEAD AND BLOW IT UP. A measurement across the whole picture will not find a face: the image Ruth rejected for having one had a LOWER fill percentage than three of the five she had already approved, because a blush and four thin lines are almost no pixels.',
+  'Find the NOSE and the BUN and check them against the brief. Never judge an inverted figure from the sweep of the torso or the bend of the arms - that was wrong three times out of three.',
+  'Walk the body from the start frame to the finish frame. If reaching it needs the person to turn over in mid-air, the picture is a lie even though both poses are fine.',
+  'Check the prop is TOUCHING. A back-to-wall handstand with the heels a foot off the wall is not the movement.',
+  'Check the two frames are the same scale and the prop is in the same place in both.',
+  'Judge anatomy at full resolution, never off a contact sheet. Three errors called off a downscaled sheet were all three wrong.',
+  'Measure colour rather than describing it.',
+];
 
 /** Fixed for every file, so the set is one size and the app can slot them. */
 export const SIZE = {

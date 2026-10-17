@@ -1,0 +1,181 @@
+// THE LESSONS ARE IN THE PROMPT, NOT JUST IN A FILE NOBODY READS.
+//
+//   node scripts/check-illustration-prompt.mjs
+//
+// 17 October 2026. Ruth, after the handstand set had cost five attempts on one
+// picture: "Im hoping this is just start up costs and we are saving the prompt
+// notes to avoid it happening for the rest of the library."
+//
+// It was a fair hope and it was not true yet. illustration-brief.mjs held every
+// lesson from twenty-two illustrations, carefully written up - and NOTHING
+// IMPORTED IT. Every prompt had been hand-written at the tool call. So the same
+// faults kept arriving: the face crept back, the wall became a slab, the figure
+// turned over in mid-air. A lesson written down in a file nobody reads is not a
+// lesson the next picture benefits from.
+//
+// Worse, STYLE was stale. It still asked for a figure FILLED with flat sage
+// green, a "slim curved terracotta arrow" and a "three-quarter view" - three
+// things Ruth had rejected weeks apart. Had anything imported it, it would have
+// produced the wrong picture on the first call.
+//
+// So this file asserts that a prompt built by movementPrompt() actually carries
+// the things that were learned the expensive way. Each one below is a real
+// rejection, and the cost of losing it is another 36p plus her time.
+
+import assert from 'node:assert';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+
+const brief = pathToFileURL(
+  path.join(process.cwd(), 'scripts', 'illustration-brief.mjs')
+).href;
+const { STYLE, NOSE_AND_BUN, movementPrompt, REVIEW_BEFORE_SENDING } = await import(brief);
+
+let pass = 0;
+const failures = [];
+function check(name, fn) {
+  try {
+    const note = fn();
+    console.log(`  PASS  ${name}${note ? `   ${note}` : ''}`);
+    pass += 1;
+  } catch (e) {
+    console.log(`  FAIL  ${name}\n          ${e.message}`);
+    failures.push(name);
+  }
+}
+
+console.log('\n  THE LESSONS REACH THE PROMPT\n');
+
+// A real movement, built the only way a prompt is allowed to be built.
+const PROMPT = movementPrompt({
+  name: 'chest-to-wall handstand',
+  start: 'In a downward dog with the hands at the foot of the wall, hips high.',
+  finish: 'Inverted and vertical, her bun against the wall, her nose pointing left.',
+  inverted: true,
+  connects: 'Her hands stay in the same place on the floor in both frames.',
+  ruleOut: 'a forearm stand',
+});
+
+check('every rejection Ruth made is still forbidden, by name', () => {
+  // THE FACE, FEATURE BY FEATURE. It came back twice on 17 October after five
+  // clean pictures, so a general "no facial features" is demonstrably not
+  // enough - each one has to be named.
+  for (const banned of [
+    'no eye',
+    'eyelashes',
+    'eyebrow',
+    'no mouth',
+    'lips',
+    'chin line',
+    'CHEEK BLUSH',
+  ]) {
+    assert.ok(
+      PROMPT.toLowerCase().includes(banned.toLowerCase()),
+      `the prompt no longer forbids: ${banned}`
+    );
+  }
+  return '7 face features, each named';
+});
+
+check('AND THE BLUSH IS CALLED A SKIN TONE, NOT A FACE DETAIL', () => {
+  // Ruth, 17 October: "Face shown and skin is definitely a white person now."
+  // The blush is what did that. Explaining WHY it is banned is what stops it
+  // being treated as a stylistic nicety the generator can trade away.
+  assert.ok(
+    /blush is not a face detail/i.test(PROMPT),
+    'the prompt no longer says why the blush is banned'
+  );
+  assert.ok(/skin tone/i.test(PROMPT), 'the prompt no longer names it a skin tone');
+  return 'the reason survives, not just the rule';
+});
+
+check('the figure is UNFILLED and no skin colour is allowed', () => {
+  assert.ok(/UNFILLED/i.test(PROMPT), 'the figure may now be filled');
+  assert.ok(
+    /cream paper shows straight through/i.test(PROMPT),
+    'the prompt no longer says the paper shows through the body'
+  );
+  for (const tone of ['beige', 'tan', 'sand', 'peach', 'brown']) {
+    assert.ok(new RegExp(tone, 'i').test(PROMPT), `${tone} is no longer forbidden`);
+  }
+  return 'unfilled, and 5 skin tones named';
+});
+
+check('an upside-down movement gets the nose and the bun', () => {
+  assert.ok(PROMPT.includes(NOSE_AND_BUN), 'an inverted movement no longer states the two marks');
+  assert.ok(/torso is a tube/i.test(PROMPT), 'the reason the two marks are needed was lost');
+
+  // AND IT IS NOT ADDED WHERE IT DOES NOT BELONG - a seated stretch does not
+  // need a paragraph about which way an inverted body faces.
+  const seated = movementPrompt({
+    name: 'butterfly stretch',
+    start: 'Sitting with the soles of the feet together.',
+    finish: 'Folded forward over the legs.',
+  });
+  assert.ok(!seated.includes(NOSE_AND_BUN), 'a seated movement was given the inverted rule');
+  return 'added when inverted, absent when not';
+});
+
+check('THE WALL IS A LINE, NOT A SLAB', () => {
+  // 17 October: the wall came back as a thick saturated terracotta block that
+  // dominated the picture and broke the set.
+  assert.ok(/SINGLE FINE LINE/i.test(PROMPT), 'the wall is no longer specified as a line');
+  assert.ok(/Do NOT fill it/i.test(PROMPT), 'the wall may now be filled');
+  assert.ok(/RIGHT edge/i.test(PROMPT), 'the wall is no longer pinned to one side');
+  return 'one line, unfilled, right edge';
+});
+
+check('the two frames are required to connect, and the cousin is ruled out', () => {
+  assert.ok(/THE TWO FRAMES MUST CONNECT/i.test(PROMPT), 'the frames need not connect');
+  assert.ok(/THIS IS NOT A FORARM STAND|THIS IS NOT A FOREARM STAND/i.test(PROMPT), 'ruleOut was dropped');
+  return 'connection stated, cousin forbidden';
+});
+
+check('and the stale direction, which would have been wrong on the first call', () => {
+  // The old STYLE asked for a "slim curved terracotta arrow" and a
+  // "three-quarter view" and a figure FILLED with flat sage green. All three
+  // were rejected by Ruth, weeks apart, and all three survived in the file
+  // because nothing imported it and so nothing ever exercised it.
+  assert.ok(!/DIRECTION ARROW/i.test(STYLE), 'the arrow instruction is back');
+  assert.ok(/NO ARROW ANYWHERE/i.test(STYLE), 'arrows are no longer forbidden');
+  assert.ok(!/three-quarter view/i.test(STYLE), 'the three-quarter view is back');
+  assert.ok(/FROM THE SIDE/i.test(STYLE), 'the side-on viewpoint was lost');
+  assert.ok(
+    !/body[^.]*is filled with ONE flat muted SAGE GREEN/i.test(STYLE),
+    'the filled-figure direction is back'
+  );
+  return 'no arrow, side-on, unfilled';
+});
+
+check('AND THIS CHECK CAN FAIL', () => {
+  // Every assertion above is "the prompt contains X", which passes on anything
+  // long enough. So: a prompt built WITHOUT the brief must fail them.
+  const naive = 'Draw a chest-to-wall handstand, two frames stacked.';
+  let caught = 0;
+  for (const needle of [/CHEEK BLUSH/i, /UNFILLED/i, /SINGLE FINE LINE/i, /NO ARROW ANYWHERE/i]) {
+    if (!needle.test(naive)) caught += 1;
+  }
+  assert.strictEqual(caught, 4, 'a bare prompt somehow satisfies the rules');
+  // And the real one really does differ from it.
+  assert.ok(PROMPT.length > naive.length * 20, 'the built prompt carries no more than a bare one');
+  return 'a hand-written prompt fails all four';
+});
+
+check('the review checklist leads with the one that costs the most', () => {
+  // The head crop is first because it is the fault a whole-image measurement
+  // cannot find, and the one that reached her twice.
+  assert.ok(Array.isArray(REVIEW_BEFORE_SENDING) && REVIEW_BEFORE_SENDING.length >= 5);
+  assert.ok(
+    /CROP THE HEAD/i.test(REVIEW_BEFORE_SENDING[0]),
+    'the head crop is no longer the first thing checked'
+  );
+  // It is a note to the reviewer, so it must NOT be sent to the image model.
+  assert.ok(
+    !STYLE.includes(REVIEW_BEFORE_SENDING[0]),
+    'the reviewer checklist leaked into the prompt text'
+  );
+  return `${REVIEW_BEFORE_SENDING.length} checks, head first, none in the prompt`;
+});
+
+console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
+if (failures.length > 0) process.exit(1);
