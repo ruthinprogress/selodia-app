@@ -135,7 +135,26 @@ export const PROGRESSIONS = {
   ],
 
   // NOTHING IN THE LIBRARY IS A HANDSTAND. It holds crow pose, headstand and
-  // the pike variants and stops there, so all eight of these are new.
+  // the pike variants and stops there, so every one of these is new.
+  //
+  // RUTH'S LADDER, 16 OCTOBER 2026, IN HER ORDER AND HER WORDS:
+  //
+  //   Wall plank hold
+  //   Wall walk -> chest-to-wall
+  //   Back-to-wall kick up
+  //   Coming down with control
+  //   Shoulder taps
+  //   Tuck handstand hold, pressed from crow
+  //   Freestanding - stable, and down with control
+  //
+  // "That's mostly a ladder after all, with the press as the hard one rather
+  // than an alternative door."
+  //
+  // THREE THINGS THIS FILE HAD WRONG AGAINST IT, found on 17 October only
+  // because she repeated the ladder back to me: coming down with control was
+  // missing entirely; the shoulder taps were below the tuck hold instead of
+  // above it; and the tuck hold did not say it is pressed from crow, which is
+  // the whole reason it sits near the top.
   Handstand: [
     {
       name: 'wall plank hold',
@@ -168,38 +187,53 @@ export const PROGRESSIONS = {
       // way out from it, which leaves nowhere for the finish to happen: from
       // there the heels can never reach the wall. The entry is a lunge facing
       // AWAY from the wall with the hands going down CLOSE to it.
-      name: 'back-to-wall handstand',
+      // THE KICK-UP IS NOT A SEPARATE RUNG. Ruth's ladder, 16 October, has one
+      // rung called "back-to-wall kick up" - the kick IS how you get there, and
+      // a stage for it on its own was the set padded by naming one movement
+      // twice, which she has already caught once on this progression.
+      name: 'back-to-wall kick up',
       start:
         'In a lunge facing LEFT, away from the wall, folding forward to place both hands flat on the floor about a hand-span out from the skirting, front knee bent, back leg straight behind and ready to swing. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
       finish:
         'Inverted on straight arms with the hands still a hand-span from the skirting, body stacked vertically rather than arched, both heels resting against the wall behind her with no gap. Her spine faces the wall and the front of her body faces LEFT into the room. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
     },
     {
-      name: 'handstand kick-up',
+      // GETTING DOWN IS A SKILL, AND IT WAS MISSING ENTIRELY. Ruth named it
+      // twice: in the ladder as its own rung, and on the last rung - "should be
+      // able to hold it stable and come down with full control, or move into
+      // another progression". A handstand you can only fall out of is not one
+      // you have, and leaving the descent undrawn teaches exactly that.
+      name: 'coming down with control',
       start:
-        'In a lunge with both hands on the floor ahead, front knee bent, back leg straight behind and ready.',
+        'Inverted in a handstand a hand-span from the wall, body vertical on straight arms, both legs together and straight overhead, no wobble. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head.',
       finish:
-        'Back leg swung up overhead with the front leg following, both legs together above a vertical body on straight arms.',
-    },
-    {
-      name: 'tuck handstand hold',
-      start:
-        'Crouched with the hands on the floor and the hips lifting up over the shoulders, knees still close to the chest.',
-      finish:
-        'Hips fully stacked over the shoulders with the knees pulled in tight to the chest and the shins tucked, balance held on the hands.',
+        'One leg lowered slowly to place the ball of that foot on the floor to the LEFT of her hands while the other leg stays lifted behind, arms still straight, head still down between them, the whole body under control rather than collapsing. Her nose points LEFT; her bun is on the RIGHT side of her head.',
     },
     {
       name: 'handstand shoulder taps',
       start:
-        'Inverted in a handstand, body vertical, weight even across both hands.',
+        'Inverted in a handstand a hand-span from the wall, body vertical on straight arms, weight even across both hands. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head.',
       finish:
-        'Weight shifted onto one arm with the other hand lifted to tap the opposite shoulder, hips still stacked, body still vertical.',
+        'Weight shifted onto the RIGHT arm with the LEFT hand lifted off the floor to tap the opposite shoulder, hips still stacked over the supporting shoulder, body still vertical and not twisted. Her nose points LEFT; her bun is on the RIGHT side of her head.',
+    },
+    {
+      // RUTH, 16 OCTOBER 2026: "I actually think pressing from crow is advanced
+      // though." I had called it more accessible because nothing goes overhead,
+      // and that was backwards - it needs serious shoulder strength and
+      // compression. So it is not a parallel easy door into the handstand; it
+      // is the hard rung, and it sits here, near the top.
+      name: 'tuck handstand hold, pressed from crow',
+      start:
+        'In crow pose, facing LEFT: hands flat on the floor, knees resting high on the backs of the upper arms, feet lifted off the floor behind, weight already forward over the hands. Her nose points LEFT and slightly down; her bun is on the RIGHT side of her head.',
+      finish:
+        'Pressed up out of crow with the arms now STRAIGHT and the knees lifted off the arms entirely, hips fully stacked over the shoulders, knees pulled in tight to the chest and the shins tucked, balance held on the hands with no wall. Her nose points LEFT; her bun is on the RIGHT side of her head. THIS IS NOT CROW - the arms must be straight and the knees must not be touching them.',
     },
     {
       name: 'freestanding handstand',
-      start: 'Standing in a lunge with the arms overhead, ready to reach for the floor.',
+      start:
+        'Standing in a lunge in an empty room with no wall anywhere in the frame, facing LEFT, arms straight overhead beside the ears, ready to reach for the floor.',
       finish:
-        'Fully inverted with no wall, legs together and straight overhead, body in one line, arms straight, fingers gripping the floor.',
+        'Fully inverted with no wall, legs together and straight overhead, body in one vertical line, arms straight, fingers gripping the floor, perfectly still. Her nose points LEFT; her bun is on the RIGHT side of her head.',
     },
   ],
 
