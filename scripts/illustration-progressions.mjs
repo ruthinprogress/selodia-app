@@ -236,7 +236,16 @@ export const PROGRESSIONS = {
       // and that was backwards - it needs serious shoulder strength and
       // compression. So it is not a parallel easy door into the handstand; it
       // is the hard rung, and it sits here, near the top.
-      name: 'tuck handstand hold, pressed from crow',
+      // THE NAME IS THE MOVEMENT, NOT THE RUNG. Ruth's ladder calls this "tuck
+      // handstand hold, pressed from crow", which says how you get there - but
+      // the name here is the join key, and resolve_illustration_refs matches a
+      // plan's exercise name exactly or by its exact word set. A plan will say
+      // "tuck handstand hold". It will never say "tuck handstand hold, pressed
+      // from crow", so that name would have meant an illustration nobody could
+      // ever reach. How she enters it is coaching, and lives below.
+      name: 'tuck handstand hold',
+      coaching:
+        'This is the hard one, and it is a strength move rather than a balance move. Pressing up out of crow needs real shoulder strength and compression, so it sits near the top of the ladder rather than being an easier way in.',
       start:
         'In crow pose, facing LEFT: hands flat on the floor, knees resting high on the backs of the upper arms, feet lifted off the floor behind, weight already forward over the hands. Her nose points LEFT and slightly down; her bun is on the RIGHT side of her head.',
       finish:
