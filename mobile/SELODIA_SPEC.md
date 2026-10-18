@@ -1515,6 +1515,48 @@ Handwritten letters: not supported for now. NHS letters are typed. Edge case def
 
 One-tap export from My Rules — clean, plain language summary suitable to share directly with a clinician. No app chrome, no data outside the rules section.
 
+### What the Week IS, in Ruth's words (2026-10-18)
+
+Written down because it had never been stated plainly anywhere, and the only
+descriptions of it in this document had gone stale against the built screen.
+
+> "Week is a template of your week, it's not a real week, so anything on there
+> is a regular activity and a way to help you get into a movement routine and
+> see where gaps are and where you may need rest days. It's not a calendar.
+> everything set up is to remind weekly in the pursuit of creating routine
+> movement, helping the user with that goal. It's not for one-off appointments."
+
+Four consequences that decide real questions:
+
+- **A TEMPLATE, NOT A WEEK THAT HAPPENED.** Nothing on it is an instance. A card
+  on Tuesday means "Tuesdays, usually", so a Tuesday passing with nothing logged
+  changes NOTHING about the card. It does not roll forward, clear, grey out or
+  count against anybody. A week view that accumulates misses becomes a list of
+  reproaches, which is the opposite of the product.
+- **EVERYTHING ON IT RECURS.** There is no one-off. Every reminder set from the
+  Week is weekly, for the same reason: it exists to build a routine, and a
+  routine is a thing that repeats.
+- **THE GAPS ARE A FEATURE.** Seeing where the week is empty is part of what it
+  is for - where movement is missing, and where rest actually falls.
+- **ONE-OFFS BELONG SOMEWHERE ELSE.** Asked for a single appointment, the answer
+  is a one-off reminder in their own words. **Note that the phone's calendar is
+  still NOT built** (see WHEN SOMETHING IS NOT POSSIBLE YET in the chat prompt,
+  where the calendar is the worked example of a thing that genuinely does not
+  exist). So the separation is Week-recurring versus reminder-once, not
+  Week-versus-calendar.
+
+**CORRECTING TWO STALE LINES BELOW.** The Movement brief review says "a list,
+not a calendar" and decision 9 says "not a calendar with days and times... this
+settles decision 7: nothing is placed by hand". The first half still holds and
+is the point: it is not a calendar. The second half does not. The built Week has
+seven named days, cards sit on them, and `days_chosen_at` exists precisely
+BECAUSE somebody places them by hand - week-move.ts says "dragging a card onto a
+day is her doing it herself, which is a different thing, so a dragged day is
+honoured". Days arrived without this document following them.
+
+Having days is not the same as being a calendar. A calendar holds dates; this
+holds day NAMES, which is what makes it a template.
+
 ### What Movement is not
 
 - Not a tracker. Sessions are not marked done or missed.
