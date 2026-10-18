@@ -108,6 +108,63 @@ await check('AND THE MATCHER ACTUALLY DISCRIMINATES', async () => {
   return 'one hit and one miss from the same call';
 });
 
+await check('A NAME SHE ACTUALLY USED FINDS THE DRAWING', async () => {
+  // 18 October 2026. Three names had been sitting unresolved in her plans since
+  // the pipeline was built, every one of them a movement we HAVE drawn - the
+  // plan simply called it something slightly different from the file. Strict
+  // matching is right and these are the cost of it, so they are paid for
+  // explicitly, one human decision at a time, in illustration_aliases.
+  const names = [
+    'wall-supported middle split slide',
+    'wall-supported middle splits',
+    'rotating cossack squat (hands-free, full depth)',
+  ];
+  const found = await resolve(names);
+  assert.strictEqual(found.get(names[0]), 'middle splits at the wall', names[0]);
+  assert.strictEqual(found.get(names[1]), 'middle splits at the wall', names[1]);
+  assert.strictEqual(found.get(names[2]), 'deep cossack squat to the floor', names[2]);
+  return '3 real plan names, all resolving';
+});
+
+await check('AN ALIAS RANKS LAST AND CANNOT OVERRIDE A REAL MATCH', async () => {
+  // The arm is third on purpose. An alias is somebody's opinion; an exact name
+  // and an exact word set are facts about the library. If a careless alias
+  // could outrank them it would be a way to quietly point a correct name at the
+  // wrong drawing, which is a form fault rather than a cosmetic one.
+  const found = await resolve(['middle splits at the wall', 'cossack squat', 'frog stretch']);
+  assert.strictEqual(found.get('middle splits at the wall'), 'middle splits at the wall');
+  assert.strictEqual(found.get('cossack squat'), 'cossack squat', 'an exact name drifted');
+  assert.strictEqual(found.get('frog stretch'), 'frog stretch', 'an exact name drifted');
+
+  // And the strictness the aliases sit beside is untouched: a subset still
+  // finds nothing, so adding the arm did not loosen the matcher.
+  const subsets = await resolve(['splits', 'cossack', 'middle splits']);
+  for (const name of ['splits', 'cossack', 'middle splits']) {
+    assert.strictEqual(subsets.get(name), null, `"${name}" matched after the alias arm went in`);
+  }
+  return 'exact names win, subsets still refused';
+});
+
+await check('AND AN ALIAS CANNOT NAME A DRAWING WE DO NOT HAVE', async () => {
+  // THE REASON THIS TABLE EXISTS RATHER THAN REUSING movement_aliases. That one
+  // resolves to CLIP names - "back barbell squat" becomes "barbell full squat",
+  // a row in movement_assets with no illustration behind it. Two namespaces
+  // that describe the same movements are still two namespaces, and an alias
+  // pointing into the wrong one resolves to a picture that does not exist.
+  //
+  // So the database refuses it rather than leaving it to be noticed later.
+  const { error } = await supabase
+    .from('illustration_aliases')
+    .insert({ alias_key: 'check only never committed', join_key: 'barbell full squat' });
+  assert.ok(error, 'an alias naming an undrawn movement was accepted');
+  assert.match(
+    `${error.message} ${error.details ?? ''}`,
+    /foreign key|violates/i,
+    `refused, but not by the foreign key: ${error.message}`
+  );
+  return 'the foreign key refused it';
+});
+
 console.log('\n  A PROGRESSION IS A SET, IN ORDER\n');
 
 await check('every stage of a progression is numbered and none is missing', async () => {
