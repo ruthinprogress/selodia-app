@@ -4,6 +4,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
 import { loadCustomReminders } from '@/lib/custom-reminders';
+import { fireTime, loadWeekReminders, weekdayNumber } from '@/lib/week-reminders';
 import { nextFireTime } from '@/lib/quiet-hours';
 import { loadReminderSettings } from '@/lib/reminder-settings';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,15 @@ import { supabase } from '@/lib/supabase';
 export { DEFAULT_REMINDER_TIMES, loadReminderSettings, shouldOfferReminders } from '@/lib/reminder-settings';
 
 const REMINDER_CHANNEL = 'reminders';
+
+// THE NOTIFICATION CARRIES ITS OWN OFF SWITCH, which is the part of this
+// Ruth cared most about: "there should be a way to permanently switch off
+// reminders about that item permanently FROM the notification alarm without
+// entering the app, so overwhelming ones don't need you to go rummaging".
+//
+// Registered once, named here, and attached to every week reminder.
+export const WEEK_REMINDER_CATEGORY = 'week-reminder';
+export const STOP_WEEK_REMINDER = 'stop-week-reminder';
 
 // When the Sunday roundup invitation fires, local time.
 //
@@ -184,12 +194,43 @@ export async function saveReminderChoice(
 // Cancels everything first rather than diffing: the set is two or three items,
 // and a diff that drifts leaves someone with a reminder they cannot turn off,
 // which is a far worse failure than a redundant reschedule.
+/**
+ * The "Remove this regular reminder" button on a week reminder.
+ *
+ * REGISTERED ONCE, BEFORE ANYTHING IS SCHEDULED. A notification that names a
+ * category the system has never been told about simply arrives without its
+ * buttons, silently - so the off switch would be missing and nothing would
+ * report it.
+ *
+ * opensAppToForeground: false is the entire point. Ruth asked for this to work
+ * "without entering the app, so overwhelming ones don't need you to go
+ * rummaging". Opening the app to turn off a reminder is the rummaging.
+ */
+export async function registerWeekReminderActions(): Promise<void> {
+  try {
+    const Notifications = await loadNotifications();
+    if (!Notifications) return;
+    await Notifications.setNotificationCategoryAsync(WEEK_REMINDER_CATEGORY, [
+      {
+        identifier: STOP_WEEK_REMINDER,
+        buttonTitle: 'Remove this regular reminder',
+        options: { opensAppToForeground: false, isDestructive: true },
+      },
+    ]);
+  } catch (err) {
+    // Silent for the person: a reminder without its button is still a
+    // reminder, and it can still be turned off inside the app.
+    console.log('week reminder actions not registered (non-fatal):', err);
+  }
+}
+
 export async function applyReminderSchedule(times: string[]): Promise<void> {
   try {
     const Notifications = await loadNotifications();
     if (!Notifications) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
     await ensureAndroidChannel();
+    await registerWeekReminderActions();
 
     for (const hhmm of times) {
       const fire = nextFireTime(hhmm);
@@ -245,6 +286,45 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
                 channelId: REMINDER_CHANNEL,
               },
       });
+    }
+
+    // WHAT IS IN HER WEEK, ON THE DAYS IT IS ON (2026-10-18). The same reason
+    // as her own reminders above: this function cancels everything first, so
+    // anything scheduled elsewhere is wiped the next time log reminders are
+    // applied.
+    //
+    // THE BODY IS THE THING ITSELF, with no encouragement wrapped around it and
+    // nothing about how she is doing - the same rule the custom reminders
+    // follow. "Wall walks" is what is on Tuesday, so that is what arrives.
+    //
+    // CATEGORY, SO THE NOTIFICATION CARRIES ITS OWN OFF SWITCH. Ruth: the
+    // moment somebody is irritated by a nudge is exactly the moment to offer
+    // the exit, and making them go rummaging through settings is how a helpful
+    // app becomes one they delete.
+    for (const r of await loadWeekReminders()) {
+      const at = fireTime(r);
+      if (!at) continue;
+      for (const day of r.days) {
+        const weekday = weekdayNumber(day);
+        if (weekday == null) continue;
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Selodía',
+            body: r.activity,
+            categoryIdentifier: WEEK_REMINDER_CATEGORY,
+            // The row id travels with it so the off switch knows what to turn
+            // off without the app having to work it out from the text.
+            data: { destination: 'plans', weekRowId: r.id },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday,
+            hour: at.hour,
+            minute: at.minute,
+            channelId: REMINDER_CHANNEL,
+          },
+        });
+      }
     }
 
     // THE SUNDAY ROUNDUP INVITATION (Insights slice 3, 2026-09-16).

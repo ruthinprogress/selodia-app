@@ -40,7 +40,14 @@
 // what has already appeared in a plan can never do that - it describes where
 // she has been, not where somebody new might go.
 
-/** @typedef {{ name: string, start: string, finish: string, inverted?: boolean, ruleOut?: string, connects?: string }} Movement */
+// COACHING IS WHAT THE PICTURE CANNOT SAY, and it is the half that comes from
+// Ruth doing the movement rather than from anybody describing it. A drawing
+// fixes one height and one angle; the note says what to feel for, and what
+// changes when you alter something. Hers, not invented, and written as what she
+// felt rather than as a claim about which muscle is working - she is reporting
+// her own body, and the card must not turn that into anatomy it cannot prove.
+
+/** @typedef {{ name: string, start: string, finish: string, coaching?: string, inverted?: boolean, ruleOut?: string, connects?: string }} Movement */
 
 /** @type {Movement[]} */
 export const MOVEMENTS = [
@@ -91,11 +98,40 @@ export const MOVEMENTS = [
       'The hips lifted so the body makes one straight line from the shoulders to the lifted knee, the supporting foot still flat, the raised leg still straight and in line with the body.',
   },
   {
+    // TOP OF THE DEMAND LIST on 18 October 2026 - the only movement asked for
+    // twice across her saved plans, so the first of the batch to be drawn.
     name: 'side-lying leg lift',
     start:
-      'Lying on one side with the legs stacked and straight, the head resting on the lower arm, the upper hand on the floor in front of the chest, hips square.',
+      'Lying on one side with the legs stacked and straight, the head resting on the lower arm which is stretched out along the floor above her head, the upper hand placed flat on the floor in front of the chest, hips square and stacked one directly above the other. The whole body makes one long straight line from the head to the feet.',
     finish:
-      'The top leg lifted straight up, the foot level rather than turned out, the hips staying stacked and not rolling backward.',
+      'The TOP leg lifted straight up away from the lower one, knee straight, the foot level rather than turned out, so the gap between the ankles is clearly open. The lower leg stays on the floor. The hips stay stacked and do NOT roll backward, and the waist does not collapse into the floor.',
+    ruleOut: 'a clam shell, where the knees bend and open like a hinge',
+    // RUTH, 18 OCTOBER 2026, having just done it to check the drawing: "if i
+    // keep my hips facing forwards it uses the inner thigh muscle more and if i
+    // rotate the heel toward the sky and rotate the hip open a little it went
+    // higher but i felt it in a muscle more towards the innerback of the leg,
+    // but could lift it higher."
+    //
+    // Two useful things in that. The height is NOT the measure of a good rep -
+    // which way the leg is turned changes both where it is felt and how far it
+    // travels, so somebody comparing their lift to the picture is comparing the
+    // wrong thing. And turning out is not cheating: it is a different version,
+    // worth knowing, not worth correcting.
+    // TRIMMED THE SAME DAY IT WAS WRITTEN, and the reason is the editorial rule
+    // for this field. Ruth: "Is that useful information for a user? I'm not a
+    // coach, but i have a body and have been moving it for many years."
+    //
+    // The first draft also said which muscle each version is felt in. That is
+    // her body reported with the app's authority behind it, and somebody who
+    // does not feel the same thing concludes they are doing it wrong - the
+    // exact harm this field exists to prevent.
+    //
+    // WHAT SURVIVES IS NOT COACHING, IT IS REMOVING A TARGET THE PICTURE MAKES.
+    // The drawing shows one height. Silent, it sets a bar nobody agreed to.
+    // Saying the height is not the measure needs no qualification to be true,
+    // and leaves the person free to find their own.
+    coaching:
+      'How far the leg goes up is not the measure of it. Turning the heel toward the ceiling and letting the hip open a little will take it higher, and keeping the hips square and facing forward will keep it lower. Neither is the right one. They are different, and the drawing can only show you one of them.',
   },
 
   // ---- Trunk, upper body, mobility ----

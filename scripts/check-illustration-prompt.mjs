@@ -179,10 +179,20 @@ check('THE THREE THINGS A REWRITE QUIETLY DROPPED', () => {
     'the figure-size rule has been dropped again'
   );
   assert.ok(/third of the frame/i.test(PROMPT), 'the figure size is no longer quantified');
+  // THE BOUND IS HER TORSO, NOT HER. "Smaller than the figure" was the first
+  // attempt and it failed on the first movement drawn lying down: a figure on
+  // its side is nearly the width of the frame, so the rule permitted a wash the
+  // size of a sofa and the generator took it. A bound that grows with the pose
+  // is not a bound; a torso is roughly constant whatever the body is doing.
   assert.ok(
-    /CLEARLY SMALLER THAN THE FIGURE/i.test(PROMPT),
-    'the wash size is no longer bounded against the figure'
+    /roughly the size of her TORSO/i.test(PROMPT),
+    'the wash size is no longer measured against the torso'
   );
+  assert.ok(
+    !/CLEARLY SMALLER THAN THE FIGURE/i.test(PROMPT),
+    'the pose-dependent wash bound is back'
+  );
+  assert.ok(/NEVER MERGING INTO ONE MASS/i.test(PROMPT), 'two washes may merge again');
 
   // The bun must be stated OUTSIDE the paragraph of things not to draw, which
   // is the whole point - it was already in that paragraph when the generator

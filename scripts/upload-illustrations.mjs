@@ -35,6 +35,7 @@ import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 
 import { PROGRESSIONS } from './illustration-progressions.mjs';
+import { MOVEMENTS } from './illustration-movements.mjs';
 import {
   TARGET_PAPER as TARGET,
   TARGET_HAIR,
@@ -61,6 +62,21 @@ const dryRun = process.argv.includes('--dry-run');
 if (!folder) {
   console.log('\n  usage: node scripts/upload-illustrations.mjs <folder> [--dry-run]\n');
   process.exit(1);
+}
+
+// RUTH'S COACHING, LOOKED UP BY NAME ACROSS BOTH DATA FILES.
+//
+// It existed in those files from 16 October and nothing read it, so her note on
+// the cossack weight shift - the single most useful sentence in the set, and
+// one no model would have written - had never reached anybody. The upload is
+// where it joins the picture, because the picture is what it is about.
+function coachingFor(joinKey) {
+  for (const stages of Object.values(PROGRESSIONS)) {
+    const hit = stages.find((s) => s.name.toLowerCase() === joinKey);
+    if (hit?.coaching) return hit.coaching;
+  }
+  const loose = MOVEMENTS.find((m) => m.name.toLowerCase() === joinKey);
+  return loose?.coaching ?? null;
 }
 
 /** Which progression a movement belongs to, and where in it. Null for a loose movement. */
@@ -164,7 +180,10 @@ for (const file of files) {
   // case - the library is built in small batches and corrected in place.
   const row = await supabase
     .from('movement_illustrations')
-    .upsert({ join_key: joinKey, title, storage_path: storagePath, progression, stage }, { onConflict: 'join_key' });
+    .upsert(
+      { join_key: joinKey, title, storage_path: storagePath, progression, stage, coaching: coachingFor(joinKey) },
+      { onConflict: 'join_key' }
+    );
   if (row.error) {
     console.log(`      ROW FAILED  ${row.error.message}`);
     continue;

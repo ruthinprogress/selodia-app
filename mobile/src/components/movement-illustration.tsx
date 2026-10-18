@@ -41,6 +41,8 @@ type Illustration = {
   animationUrl: string | null;
   progression: string | null;
   stage: number | null;
+  /** Ruth's own note on the movement. Null for most of them. */
+  coaching: string | null;
 };
 
 export function MovementIllustration({
@@ -116,6 +118,28 @@ export function MovementIllustration({
         </View>
       </View>
 
+      {/* WHAT THE PICTURE CANNOT SAY, IN RUTH'S OWN WORDS.
+
+          A drawing fixes one height, one depth, one angle of knee, and bodies
+          differ. The note says what to feel for and what changes when you alter
+          something - her cossack note on pivoting the heel so the hip can
+          travel, her side-lying note that the height of the lift is not the
+          measure of it and moves with how the leg is turned.
+
+          IT HAD NEVER BEEN SHOWN TO ANYBODY. The notes were written into
+          scripts/illustration-progressions.mjs on 16 October and read by
+          nothing at all until 18 October - the same fault as the illustration
+          brief, which was also carefully written and imported by no one.
+
+          NULL FOR MOST MOVEMENTS, and nothing is drawn then. She writes one
+          where she has something to say, which is not every time, and a
+          placeholder would turn a deliberate silence into a missing thing. */}
+      {illustration!.coaching ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.coaching}>
+          {illustration!.coaching}
+        </ThemedText>
+      ) : null}
+
       {/* THE WAY INTO THE LADDER, and the only place it can be offered from.
           A movement card knows what to do today; it cannot say that today is
           the second of seven. This line is drawn ONLY when the movement is
@@ -157,5 +181,6 @@ const styles = StyleSheet.create({
   labelTop: { top: Spacing.two },
   labelBottom: { top: '52%' },
   labelText: { letterSpacing: 1 },
+  coaching: { lineHeight: 20 },
   ladderLink: { paddingVertical: Spacing.one },
 });

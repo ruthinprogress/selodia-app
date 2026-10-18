@@ -19,6 +19,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -28,6 +29,7 @@ import { SpotlightOverlay } from '@/components/spotlight-overlay';
 import { SpotlightProvider } from '@/components/spotlight-provider';
 import { VoiceProvider } from '@/components/voice-provider';
 import { Colors } from '@/constants/theme';
+import { listenForWeekReminderActions } from '@/lib/week-reminder-response';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 import { useReminderRestore } from '@/hooks/use-reminder-restore';
 import { useWeeklyRoundup } from '@/hooks/use-weekly-roundup';
@@ -102,6 +104,31 @@ export default function RootLayout() {
   // reminder invites her back and the roundup is written when she arrives
   // (Ruth, 2026-09-16). Silent on failure; it tries again next launch.
   useWeeklyRoundup();
+
+  // THE OFF SWITCH ON A WEEK REMINDER, listened for while the app runs.
+  // Ruth, 18 October 2026: "there should be a way to permanently switch off
+  // reminders about that item permanently FROM the notification alarm without
+  // entering the app, so overwhelming ones don't need you to go rummaging".
+  //
+  // The button does not open the app, so the response arrives here the next
+  // time it is running. Everything it does is idempotent, so arriving late
+  // costs nothing but a single extra reminder. See week-reminder-response.ts.
+  useEffect(() => {
+    let stop: (() => void) | null = null;
+    let live = true;
+    void (async () => {
+      const unsubscribe = await listenForWeekReminderActions();
+      if (!live) {
+        unsubscribe?.();
+        return;
+      }
+      stop = unsubscribe;
+    })();
+    return () => {
+      live = false;
+      stop?.();
+    };
+  }, []);
 
   // Light unconditionally: the app is light-only from 2026-09-03, and handing
   // react-navigation a dark theme while every screen paints cream would give

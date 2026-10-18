@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
   const { data: row, error: lookupError } = await supabase
     .from('movement_illustrations')
-    .select('join_key, title, storage_path, animation_path, progression, stage')
+    .select('join_key, title, storage_path, animation_path, progression, stage, coaching')
     .eq('join_key', joinKey)
     .maybeSingle();
 
@@ -114,6 +114,10 @@ export async function GET(request: NextRequest) {
       // still stays the poster frame. Null for almost every movement, and that is the
       // expected state rather than a gap to apologise for.
       animationUrl: row.animation_path ? await sign(row.animation_path as string) : null,
+      // Ruth's own note on the movement, shown under the picture. Null for
+      // most of them: she writes one where she has something to say that
+      // the drawing cannot, which is not every movement.
+      coaching: row.coaching ?? null,
       progression: row.progression,
       stage: row.stage,
       expiresIn: SIGNED_URL_TTL_SECONDS,
