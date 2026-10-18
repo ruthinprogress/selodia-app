@@ -1,8 +1,12 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, usePathname } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ReportSheet } from '@/components/report-sheet';
 import { ThreeSeedsMark } from '@/components/seed-marks';
+import { betaStatus } from '@/lib/beta';
 import { rememberScreen } from '@/lib/last-screen';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { PageInset, Spacing } from '@/constants/theme';
@@ -72,6 +76,37 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
   // nobody types. See lib/last-screen.ts.
   const pathname = usePathname();
 
+  // THE REPORT BUTTON, BESIDE THE SEEDS AND ONLY DURING THE BETA.
+  //
+  // Ruth, 18 October 2026: "while its in Beta there should be a quick tap way
+  // for users to report."
+  //
+  // BESIDE THE SEEDS RATHER THAN THE LEFT CORNER, which she had also floated.
+  // The left corner is where back lives on most screens in this app, and a
+  // destructive-feeling mis-tap on a form somebody is halfway through is the
+  // one placement cost not worth paying. This corner is already the "about
+  // this screen" corner, and the two marks read as a pair.
+  //
+  // IT OPENS WHERE SHE IS, which is the entire gain over the Settings form.
+  // That form is three taps away, and by the time anybody arrives they have
+  // navigated off whatever went wrong - so the screen name, often the only
+  // usable clue in a stranger's report, was stale before it was collected.
+  //
+  // FAILS CLOSED, like betaStatus itself: unknown means not shown. A report
+  // button on a stranger's finished app is clutter; its absence during the
+  // beta costs one person one extra tap through Settings.
+  const [inBeta, setInBeta] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void betaStatus().then((s) => {
+      if (live) setInBeta(s.member);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const button = (
     <Pressable
       onPress={() => {
@@ -127,6 +162,26 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
           { height: insets.top + TOP_GAP + MARK_SIZE + 12, backgroundColor: theme.background },
         ]}
       />
+      {inBeta ? (
+        <View
+          style={[
+            styles.report,
+            { top: insets.top + TOP_GAP, backgroundColor: theme.background },
+          ]}
+        >
+          <Pressable
+            onPress={() => setReporting(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Report something wrong"
+            accessibilityHint="Opens a short form, with the screen you are on attached"
+            hitSlop={Spacing.three}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons name="bug-outline" size={MARK_SIZE} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+      ) : null}
+      {reporting ? <ReportSheet onClose={() => setReporting(false)} /> : null}
       <View
         style={[styles.mark, { top: insets.top + TOP_GAP, backgroundColor: theme.background }]}
       >
@@ -173,6 +228,23 @@ const styles = StyleSheet.create({
     // what lines it up with every heading and card edge on every screen.
     right: PageInset.horizontal,
     // Above the content it sits over, including a scroller.
+    zIndex: 10,
+    elevation: 10,
+  },
+  // ONE MARK'S WIDTH TO THE LEFT OF THE SEEDS, plus a gap, measured from the
+  // same screen edge for the same reason the seeds are: so it lines up with
+  // every heading and card edge on every screen, and does not move between
+  // them. See the long note above about four implementations at four offsets.
+  report: {
+    position: 'absolute',
+    width: MARK_SIZE + 12,
+    height: MARK_SIZE + 12,
+    borderRadius: (MARK_SIZE + 12) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -6,
+    marginRight: -6,
+    right: PageInset.horizontal + MARK_SIZE + 16,
     zIndex: 10,
     elevation: 10,
   },

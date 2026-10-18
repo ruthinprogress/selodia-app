@@ -2,14 +2,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { SettingsPage } from '@/components/settings-page';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { supabase } from '@/lib/supabase';
+import { reportBug } from '@/lib/report-bug';
 
 // TELLING US SOMETHING IS WRONG, FROM INSIDE THE APP (2026-09-28).
 //
@@ -39,7 +39,8 @@ export default function FeedbackScreen() {
   const [sent, setSent] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const { updateId, runtimeVersion, channel, isEmbeddedLaunch } = Updates;
+  // Only to NAME the build in the copy below; the send collects its own.
+  const { updateId, isEmbeddedLaunch } = Updates;
   const build = isEmbeddedLaunch || !updateId ? 'the installed build' : `update ${updateId.slice(0, 8)}`;
 
   async function send() {
@@ -48,39 +49,23 @@ export default function FeedbackScreen() {
     setSending(true);
     setFailed(false);
 
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth?.user?.id;
-    if (!userId) {
-      setSending(false);
-      setFailed(true);
-      return;
-    }
-
-    const { error } = await supabase.from('feedback_reports').insert({
-      user_id: userId,
-      message: text,
-      // WHERE SHE CAME FROM, not where she is. By the time this screen is open
-      // she has navigated away from whatever went wrong, so the previous route
-      // is the useful one - and it is often the only clue in the whole report.
-      screen: 'settings/feedback',
-      update_id: isEmbeddedLaunch ? null : (updateId ?? null),
-      runtime_version: runtimeVersion ?? null,
-      channel: channel ?? null,
-      platform: Platform.OS,
-      os_version: String(Platform.Version),
-      // NO NATIVE MODULE FOR THIS. expo-application would give the binary's own
-      // version and is not in the build, and adding a native dependency to
-      // collect a version string would need a whole new binary to ship a feedback
-      // form. runtimeVersion is what identifies the binary that matters here.
-      app_version: runtimeVersion ?? null,
-    });
+    // ONE SEND PATH, SHARED WITH THE BUTTON IN THE CORNER (18 October 2026).
+    //
+    // This screen used to build its own insert, field by field, and the quick
+    // report button added that day would have been a second copy of the same
+    // eight fields. Two inserts into one table is how one of them quietly stops
+    // collecting something - and the fields here exist precisely because a
+    // report without them is unfixable.
+    //
+    // So both doors call reportBug, which also means the screenshot this table
+    // gained that day works from both without being wired twice.
+    const result = await reportBug({ message: text, screen: 'settings/feedback' });
 
     setSending(false);
     // A FAILED SEND IS SAID, NEVER SWALLOWED. Somebody who writes out a problem
     // and is told nothing assumes it arrived, and stops sending them when
     // nothing changes. Her words stay in the box so the retry costs nothing.
-    if (error) {
-      console.log('FEEDBACK SEND FAILED:', error.message);
+    if (!result.ok) {
       setFailed(true);
       return;
     }
