@@ -43,7 +43,7 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 });
 
 const mod = pathToFileURL(path.join(process.cwd(), 'app', 'lib', 'movement-catalogue.ts')).href;
-const { DRAWN_MOVEMENTS, DRAWN_COUNT } = await import(mod);
+const { DRAWN_MOVEMENTS, DRAWN_COUNT, FILMED_MOVEMENTS, FILMED_COUNT } = await import(mod);
 
 let pass = 0;
 const failures = [];
@@ -187,6 +187,76 @@ await check('AND THE PLAN THAT STARTED THIS WOULD STILL HAVE FOUND NOTHING', asy
     assert.strictEqual(row.join_key, null, `"${row.input_name}" now matches - the matcher has been loosened`);
   }
   return '5 near misses, still correctly refused';
+});
+
+await check('THE CHAT CAN SEE THE FILMED LIBRARY TOO', async () => {
+  // Ruth, 18 October 2026: "It's not matching. The chat literally says it cant
+  // see what's available at all. Thats what needs fixing."
+  //
+  // 950 clips, and the chat had never been shown one of them at any point -
+  // writing a plan or reading one back. The [video] marks it did get were only
+  // ever for plans ALREADY SAVED.
+  const { data, error } = await supabase.from('movement_assets').select('join_key');
+  assert.ok(!error, error?.message);
+  assert.strictEqual(FILMED_COUNT, data.length, 'FILMED_COUNT is stale');
+
+  const live = new Set(data.map((r) => r.join_key));
+  const told = [];
+  for (const line of FILMED_MOVEMENTS.split('\n')) {
+    if (!line.includes(':')) continue;
+    for (const n of line.slice(line.indexOf(':') + 1).split(';')) {
+      const name = n.trim();
+      if (name) told.push(name);
+    }
+  }
+  assert.strictEqual(told.length, data.length, `told about ${told.length} of ${data.length} clips`);
+
+  const invented = told.filter((n) => !live.has(n));
+  assert.deepStrictEqual(invented.slice(0, 5), [], 'the chat is told about clips that do not exist');
+  return `${told.length} clips, none missing, none invented`;
+});
+
+await check('AND IT IS TOLD WHAT NOT TO DO WITH THAT LIST', async () => {
+  // A list of 950 names is a new way to be confidently wrong. Three dangers,
+  // each written into the prompt rather than left to judgement:
+  //
+  //   the ugly names - the films came from a vendor, so some carry a machine,
+  //   a version number or a long equipment description. Putting one of those on
+  //   somebody's card is a worse outcome than no picture.
+  //
+  //   the near misses - a bulgarian split squat is not a split squat. The
+  //   matcher refuses these correctly, so the only way they cause harm is the
+  //   model reaching for one anyway.
+  //
+  //   the padding - a plan stuffed with covered movements to avoid an uncovered
+  //   one is the preference hardening into a constraint, which is the fault
+  //   this whole arrangement is supposed to avoid.
+  const route = fs.readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  assert.ok(/COPY THE NAME EXACTLY AS WRITTEN ABOVE/.test(route), 'exact clip naming is not required');
+  assert.ok(
+    /PICK THE ONE SOMEBODY WOULD WANT ON THEIR CARD/.test(route),
+    'nothing steers it away from the machine and version names'
+  );
+  assert.ok(
+    /NEVER USE A NAME THAT IS NOT IN THE LIST ABOVE JUST BECAUSE IT LOOKS SIMILAR/.test(route),
+    'nothing forbids reaching for a near miss'
+  );
+  assert.ok(
+    /do not pad a plan with covered movements/.test(route),
+    'nothing stops the library bending the plan'
+  );
+  assert.ok(
+    /A MOVEMENT ON NEITHER LIST IS STILL ALLOWED/.test(route),
+    'the text-only route is no longer explicitly allowed'
+  );
+
+  // The worked example has to be real, or the prompt teaches a wrong fact.
+  const { data } = await supabase
+    .from('movement_assets')
+    .select('join_key')
+    .eq('join_key', 'band two legs calf raise - (band under both legs) version 2');
+  assert.strictEqual(data?.length, 1, 'the ugly-name example is not a real clip any more');
+  return '4 instructions, and the example verified against the library';
 });
 
 await check('A PLAN IS OFFERED TO PLANS, NOT TO THE ALMANAC', async () => {
