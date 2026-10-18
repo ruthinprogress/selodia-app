@@ -751,3 +751,49 @@ instruction, and this one says the same of the instructions themselves. It also
 sharpens *a step described in the documentation as automatic is a step nobody
 checks* — the failure there was a skipped step, and here it is a whole document
 quietly going out of date while being cited.
+
+## A check anchored on an absence expires the day somebody builds the thing (18 October 2026)
+
+Three checks broke in one afternoon, all of them while passing, and all for the
+same reason.
+
+`check-not-built-means-not-built.mjs` ended with a deliberate fuse:
+`ok(!hasField(route, 'calendarAction'), 'calendarAction exists - update the
+calendar sentences in both prompts')`. Its comment explained the fuse carefully,
+because the fault it guarded had already happened twice: a prompt whose worked
+example of "something not built yet" was a feature that had since shipped. The
+fuse fired within minutes of the calendar being built, with three sentences
+across two prompts still telling people appointments were impossible. Nobody
+would have gone looking for those sentences. It did exactly its job.
+
+`check-health-support.mjs` proved that a capability flag is what releases its
+prompt line, and proved it using `diary` — the capability that happened to be
+off. Building the diary made the proof fail, though the mechanism it was proving
+had never been more alive.
+
+`check-week-drag.mjs` asserted the tap sheet contained the literal string
+`"Move to…"`, to protect the one route into the day picker a screen reader user
+can take. Ruth renamed that button to "Copy to another day", correctly, because
+it had never moved anything — and the check went red defending a label against
+the person who owns it.
+
+The three are not the same mistake but they rhyme. The first two are anchored on
+an absence; the third on a wording. All three assert a current *instance* of the
+property rather than the property, so each one expires the moment the instance
+changes — and expires by going red while nothing is actually wrong, which is the
+worst way for a check to fail, because the cheapest way to make it green again
+is to delete it.
+
+The fixes were not to loosen them. The fuse was spent, so it was replaced with
+what it had been protecting: the denial detector, proved against a synthetic
+source instead of against the absence of a feature. The health check now picks
+an off capability *itself* from whichever are still off, so the next graduation
+costs no edit. The drag check looks for `onPress={onMove}` — the handler that
+opens the picker — which no amount of rewording can satisfy by accident.
+
+**The rule: assert the property, never a current instance of it. Where a check
+must be anchored on something temporary — and a fuse set to fire the day a
+specific thing gets built is a genuinely good device — write it as a one-shot,
+and when it fires, replace it with the property rather than re-arming it.** A
+fuse that has fired has done the whole of its job; leaving it in place is how a
+check starts defending the status quo instead of the reason for it.
