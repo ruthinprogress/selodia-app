@@ -2122,6 +2122,11 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Only alongside correctionKind. 'update' when they are giving a corrected value, 'delete' when they want the entry gone entirely, 'move' when the entry is RIGHT but it is on the WRONG DAY - \"change Wednesday's sandwich to Tuesday\", \"that lunch was actually Monday\", \"it needs to be on Tuesday\". A move needs correctionMoveTo as well as correctionDate: correctionDate is the day it is on NOW, correctionMoveTo is the day it belongs on. NEVER OFFER TO DELETE IT AND LOG IT AGAIN: a correction and a log cannot both happen in one turn, so that is an operation this app cannot carry out, and offering it has twice ended with a copy added and the original left where it was. A move keeps the entry's items, its figures and its history. If you cannot tell which action they mean, leave BOTH fields unset and ask them in your reply instead - never guess, because every one of these changes their real data.",
     },
+    correctionDurationMin: {
+      type: 'number',
+      description:
+        "Only alongside correctionKind 'activity' and correctionAction 'update', and ONLY when the thing being corrected is HOW LONG it lasted: \"that was 90 minutes not three hours\", \"make it an hour\", or simply \"90\" when you have just asked them which figure to use. The corrected length in MINUTES - 90 for an hour and a half, 60 for an hour. Give it whenever you know it, even if their message is only a number, because their message on its own may contain no activity for the app to re-read. Leave unset when they are correcting anything other than the length.",
+    },
     correctionMoveTo: {
       type: 'string',
       description:
@@ -2767,6 +2772,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     calendarRemindMinutesBefore?: number;
     removePlanTitled?: string;
     correctionKind?: string;
+    correctionDurationMin?: number;
     correctionDate?: string;
     correctionMoveTo?: string;
     correctionMatch?: string;
@@ -3439,17 +3445,58 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         // Re-logging first costs a few seconds where both rows are present, and
         // buys the guarantee that the old row is only ever removed once its
         // replacement is genuinely in the table.
-        const entries = await logActivityFromText(supabase, user.id, message);
-        if (entries[0]) {
-          await supabase.from(table).delete().eq('id', String(target.id)).eq('user_id', user.id);
-          saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+        // JUST THE LENGTH, WHICH IS AN IN-PLACE UPDATE AND ALWAYS WAS.
+        //
+        // Ruth, 18 October 2026, after chat offered three times to change a
+        // three-hour climb to ninety minutes and failed every time: "the chat
+        // logged climbing, but said it couldn't change the duration, told me i
+        // coukd do it, but i actually can't."
+        //
+        // The reasoning above is sound for a correction that rewrites what the
+        // activity WAS, because one message can split into several rows and
+        // "replace row X" is then not well defined. It is not sound for a
+        // change of length: the target row is already in hand and exactly one
+        // number moves, so there is nothing to re-read and nothing to split.
+        //
+        // AND RE-READING WAS THE ACTUAL FAULT. The reply had asked her which
+        // figure to use, so her whole message was "90" - and
+        // logActivityFromText finds no activity in "90", returns [], and the
+        // branch below honestly reported that nothing went through. Every
+        // retry sent the same bare number through the same parser, which is
+        // why asking a second and third time could not have worked either.
+        const correctedMinutes =
+          typeof result.correctionDurationMin === 'number' &&
+          Number.isFinite(result.correctionDurationMin) &&
+          result.correctionDurationMin > 0
+            ? Math.round(result.correctionDurationMin)
+            : null;
+        if (correctedMinutes != null) {
+          const { error: durErr } = await supabase
+            .from(table)
+            .update({ duration_min: correctedMinutes })
+            .eq('id', String(target.id))
+            .eq('user_id', user.id);
+          if (durErr) throw new Error(durErr.message);
+          saved = {
+            kind: 'activity',
+            summary: `${String(target.activity_type ?? 'that')}, now ${correctedMinutes} min`,
+          };
           attempt.landed.push('activity');
+          // NOTHING IS DELETED AND NOTHING RE-LOGGED, so the entry keeps its
+          // id, its day and its notes. Only the number she corrected moves.
         } else {
-          // Nothing replaced it, so nothing is removed. The person asked to
-          // change an activity and the app could not, and this is the only line
-          // in the turn that knows it - the model wrote its reply before any of
-          // this ran.
-          correctionNote = needDurationNote();
+          const entries = await logActivityFromText(supabase, user.id, message);
+          if (entries[0]) {
+            await supabase.from(table).delete().eq('id', String(target.id)).eq('user_id', user.id);
+            saved = { kind: 'activity', summary: activitySaveSummary(entries) };
+            attempt.landed.push('activity');
+          } else {
+            // Nothing replaced it, so nothing is removed. The person asked to
+            // change an activity and the app could not, and this is the only
+            // line in the turn that knows it - the model wrote its reply
+            // before any of this ran.
+            correctionNote = needDurationNote();
+          }
         }
       }
       // No final `else`: every branch above either has its target or finds its
