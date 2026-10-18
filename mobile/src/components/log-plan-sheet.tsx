@@ -63,6 +63,23 @@ export type PlanToLog = {
   duration: string | null;
   /** The days it sits on now, so "Move to…" can show what is already true. */
   days: string[];
+  /**
+   * WHICH DAY SHE TAPPED IT ON, or null for an Anytime card.
+   *
+   * Ruth, 18 October 2026: "I duplicated ballet and then selected 'remove from
+   * week' and it deleted both."
+   *
+   * One card on Monday and Thursday is ONE ROW with two days, not two rows -
+   * so "take it out" had no way to mean "off Monday". It cleared the whole
+   * `days` array and both chips vanished at once, which is indistinguishable
+   * from deleting the thing twice.
+   *
+   * The sheet was opened from a specific day and that was the missing fact.
+   * With it, taking it out means taking it off THAT day; the last day dropping
+   * it into Anytime falls out for free, because Anytime is defined as whatever
+   * is not on a day.
+   */
+  fromDay: DayKey | null;
 };
 
 // MOUNTED ONLY WHILE IT IS OPEN, so every field can be initialised from the
@@ -125,6 +142,37 @@ export function LogPlanSheet({
   // Two taps to remove. See the control at the bottom of the sheet.
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  // WHAT THE REMOVE CONTROL HONESTLY DOES, which depends entirely on where she
+  // opened the sheet from. Three different acts wore one label until now, and
+  // the widest of them was a delete.
+  //
+  //   on a day, also on others   takes it off THAT day and leaves the rest
+  //   on a day, its only one     clears the last day, so it falls to Anytime
+  //   in Anytime                 already out of the week; this is the delete
+  //
+  // The third is the deletion route Ruth asked for twice ("If they want to
+  // delete it they can do it from there"). Swiping an Anytime card is still to
+  // come; until it does, this is how a card can be got rid of at all.
+  const onLastDay = plan.fromDay != null && plan.days.length <= 1;
+  const removeLabel =
+    plan.fromDay == null
+      ? `Delete ${plan.activity}`
+      : onLastDay
+        ? 'Take out of my week'
+        : `Take out of ${DAY_LABEL[plan.fromDay]}`;
+  const removeConfirm =
+    plan.fromDay == null
+      ? 'Tap again to delete it'
+      : onLastDay
+        ? 'Tap again to move it to Anytime'
+        : `Tap again to take it off ${DAY_LABEL[plan.fromDay]}`;
+  const removeHint =
+    plan.fromDay == null
+      ? 'Removes it for good, including its reminder'
+      : onLastDay
+        ? 'Moves it to Anytime this week. It is not deleted'
+        : 'Leaves it on the other days it is on';
 
   // THIS WEEK, UP TO AND INCLUDING TODAY. Not the whole week, for the reason in
   // the header: the rest of it has not happened.
@@ -292,10 +340,9 @@ export function LogPlanSheet({
                 onPress={() => (confirmRemove ? onRemove() : setConfirmRemove(true))}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  confirmRemove
-                    ? `Confirm, take ${plan.activity} out of my week`
-                    : `Take ${plan.activity} out of my week`
+                  confirmRemove ? `Confirm, ${removeLabel.toLowerCase()}` : removeLabel
                 }
+                accessibilityHint={removeHint}
                 hitSlop={Spacing.two}
                 style={({ pressed }) => [styles.removeRow, pressed && styles.pressed]}>
                 <ThemedText
@@ -304,7 +351,7 @@ export function LogPlanSheet({
                   numberOfLines={1}
                   style={styles.removeLabel}
                 >
-                  {confirmRemove ? 'Tap again to move it' : 'Take out of my week'}
+                  {confirmRemove ? removeConfirm : removeLabel}
                 </ThemedText>
               </Pressable>
             )}

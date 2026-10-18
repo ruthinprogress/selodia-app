@@ -5,6 +5,7 @@ import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
+import { type PlanToLog } from '@/components/log-plan-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
@@ -93,7 +94,10 @@ export function WeekView({
   reloadKey,
   onChanged,
 }: {
-  onLogPlan?: (plan: { id: string; activity: string; duration: string | null; days: string[] }) => void;
+  // PlanToLog ITSELF, not a copy of its fields. The copy that used to be here
+  // is how `fromDay` could be added to the sheet and silently never passed:
+  // two declarations of the same thing, and only one of them was true.
+  onLogPlan?: (plan: PlanToLog) => void;
   onLogWeek?: () => void;
   reloadKey?: number;
   onChanged?: () => void;
@@ -649,6 +653,10 @@ export function WeekView({
                             activity: row.activity,
                             duration: row.duration,
                             days: row.days ?? [],
+                            // THE DAY SHE TAPPED IT ON. Without this, taking a
+                            // card out had to mean taking it off every day at
+                            // once - see PlanToLog.fromDay.
+                            fromDay: key,
                           })
                         }
                       />
@@ -728,6 +736,10 @@ export function WeekView({
                           activity: row.activity,
                           duration: row.duration,
                           days: row.days ?? [],
+                          // Null because this one is in Anytime: it is already
+                          // out of the week, so there is no day to come off.
+                          // That is what turns the control into the delete.
+                          fromDay: null,
                         })
                       }
                     />

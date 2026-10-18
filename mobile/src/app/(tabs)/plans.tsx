@@ -30,7 +30,7 @@ import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { dayKeyOf, isWalking, logMatchesPlan, placedOnDays } from '@/lib/week-plan';
-import { moveToDays } from '@/lib/week-move';
+import { moveToDays, removeFromWeek } from '@/lib/week-move';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
 // "every tab should answer a different user question, with no overlap ...
@@ -316,7 +316,7 @@ export default function PlansScreen() {
               if (!plan) return;
               void (async () => {
                 try {
-                  // IT TAKES IT OUT OF THE WEEK. IT DOES NOT DESTROY IT.
+                  // IT COMES OFF THE DAY SHE TAPPED IT ON.
                   //
                   // Ruth, 18 October 2026: "'take this out of your week' was
                   // meant to take it out of your week, not delete it. that's
@@ -328,16 +328,35 @@ export default function PlansScreen() {
                   // destroying the card, its reminder and its history. The
                   // label was the honest half.
                   //
-                  // Clearing the days puts it in Anytime, because Anytime is
-                  // defined as whatever is not on a day. Deleting for good
-                  // stays a separate, deliberate act from there.
-                  await moveToDays(plan.id, []);
+                  // THEN, THE SAME DAY: "I duplicated ballet and then selected
+                  // 'remove from week' and it deleted both." Clearing the whole
+                  // `days` array fixed the destroying and kept the over-reach,
+                  // because one card on two days is ONE ROW - so taking it out
+                  // took it off Monday AND Thursday at once.
+                  //
+                  // So the day it was tapped on is the day it comes off, and
+                  // the rest stand. Running out of days drops it into Anytime
+                  // on its own, because Anytime is defined as whatever is not
+                  // on a day - no branch needed for the last one.
+                  if (plan.fromDay) {
+                    await moveToDays(
+                      plan.id,
+                      plan.days.filter((d) => d !== plan.fromDay)
+                    );
+                  } else {
+                    // ALREADY IN ANYTIME, so there is no day to come off and
+                    // nothing milder left to mean. This is the deliberate
+                    // delete, asked for twice and until now not reachable from
+                    // anywhere: "If they want to delete it they can do it from
+                    // there." The sheet says Delete, and asks twice.
+                    await removeFromWeek(plan.id);
+                  }
                 } catch {
                   // SAID OUT LOUD RATHER THAN SWALLOWED. Thrown inside a void
                   // async, an error vanishes completely and the screen simply
                   // does not change - which is indistinguishable from a feature
                   // that does nothing.
-                  setWeekError('That did not move to Anytime. Check your connection and try again.');
+                  setWeekError('That did not change. Check your connection and try again.');
                 } finally {
                   // The week is re-read either way: a failed delete must not
                   // leave the card looking gone when it is still there.
