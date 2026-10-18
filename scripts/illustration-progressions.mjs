@@ -186,30 +186,21 @@ export const PROGRESSIONS = {
       // BACK to the wall. Asking for a chest-to-wall finish from this start was
       // asking for a person who turns over in mid-air.
       //
-      // THE NAME IS LEFT AS IT WAS PENDING RUTH'S ANSWER on whether this rung
-      // and the back-to-wall kick up are now two routes to one destination, or
-      // whether one of them should move. See the note in Handstand above.
-      name: 'chest-to-wall handstand',
+      // AND SO IT IS RENAMED. Ruth, 18 October, looking at the set together:
+      // three stages running finished in the same position, and she cut the
+      // one that added nothing - the back-to-wall kick up. That left this one
+      // holding a name for a movement it no longer shows, which would have
+      // meant a plan asking for a chest-to-wall handstand being handed a
+      // picture of a back-to-wall one. A confidently wrong demonstration is a
+      // form fault, so the name follows the picture.
+      //
+      // The chest-to-wall destination is not lost: the WALL WALK above ends
+      // there, which is what her ladder meant by "Wall walk -> chest-to-wall".
+      name: 'back-to-wall handstand',
       start:
         'In a downward dog with the hands on the floor close to the wall and NO gap between the fingertips and the skirting, hips lifted high toward the ceiling, legs straight and feet flat on the floor well out to the left, body making a sharp inverted V. Her head hangs between her arms and she is looking back toward her own feet, so her nose points LEFT and her bun is on the RIGHT side of her head.',
       finish:
         'Inverted and vertical on straight arms, hands still at the foot of the wall, legs together and straight overhead. Her BUN IS AGAINST THE WALL: the back of her head, her spine and the backs of her legs are all on the right, against it. Her nose points LEFT, out into the open room. Seen side-on, so the profile reads.',
-    },
-    {
-      // RUTH, 17 OCTOBER 2026, on the first attempt: "HS4 is total rubbish."
-      // The squat start had her feet against the skirting AND her hands a long
-      // way out from it, which leaves nowhere for the finish to happen: from
-      // there the heels can never reach the wall. The entry is a lunge facing
-      // AWAY from the wall with the hands going down CLOSE to it.
-      // THE KICK-UP IS NOT A SEPARATE RUNG. Ruth's ladder, 16 October, has one
-      // rung called "back-to-wall kick up" - the kick IS how you get there, and
-      // a stage for it on its own was the set padded by naming one movement
-      // twice, which she has already caught once on this progression.
-      name: 'back-to-wall kick up',
-      start:
-        'In a lunge facing LEFT, away from the wall, folding forward to place both hands flat on the floor about a hand-span out from the skirting, front knee bent, back leg straight behind and ready to swing. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
-      finish:
-        'Inverted on straight arms with the hands still a hand-span from the skirting, body stacked vertically rather than arched, both heels resting against the wall behind her with no gap. Her spine faces the wall and the front of her body faces LEFT into the room. Her nose points LEFT, away from the wall; her bun is on the RIGHT side of her head, nearer the wall.',
     },
     {
       // GETTING DOWN IS A SKILL, AND IT WAS MISSING ENTIRELY. Ruth named it

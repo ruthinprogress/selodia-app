@@ -35,12 +35,15 @@ import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 
 import { PROGRESSIONS } from './illustration-progressions.mjs';
+import {
+  TARGET_PAPER as TARGET,
+  TARGET_HAIR,
+  PAPER_TOLERANCE,
+  normaliseHair,
+  normalisePaper as shiftPaper,
+} from './illustration-colour.mjs';
 
 const BUCKET = 'movement-illustrations';
-const TARGET = { r: 0xf7, g: 0xf3, b: 0xea };
-
-/** How far from the detected paper a pixel may be and still count as paper. */
-const PAPER_TOLERANCE = 14;
 
 const env = {};
 for (const line of fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
@@ -93,23 +96,14 @@ async function normalisePaper(file) {
     b: Math.round(corners.reduce((n, c) => n + c.b, 0) / corners.length),
   };
 
-  const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
-  let moved = 0;
-  for (let i = 0; i < raw.length; i += channels) {
-    const dr = raw[i] - paper.r;
-    const dg = raw[i + 1] - paper.g;
-    const db = raw[i + 2] - paper.b;
-    if (Math.abs(dr) <= PAPER_TOLERANCE && Math.abs(dg) <= PAPER_TOLERANCE && Math.abs(db) <= PAPER_TOLERANCE) {
-      raw[i] = clamp(TARGET.r + dr);
-      raw[i + 1] = clamp(TARGET.g + dg);
-      raw[i + 2] = clamp(TARGET.b + db);
-      moved += 1;
-    }
-  }
+  const { movedShare } = shiftPaper(raw, width, height, channels, paper);
+
+  const hairReport = normaliseHair(raw, width, height, channels);
 
   const png = await sharp(raw, { raw: { width, height, channels } }).png().toBuffer();
-  return { png, paper, movedShare: moved / (width * height) };
+  return { png, paper, movedShare, hair: hairReport };
 }
+
 
 const hex = (c) => `#${[c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, '0').toUpperCase()).join('')}`;
 
@@ -132,7 +126,7 @@ for (const file of files) {
   const { progression, stage } = placeInProgression(joinKey);
   const storagePath = `${joinKey.replace(/[^a-z0-9]+/g, '-')}.png`;
 
-  const { png, paper, movedShare } = await normalisePaper(path.join(folder, file));
+  const { png, paper, movedShare, hair } = await normalisePaper(path.join(folder, file));
   const drift = Math.max(
     Math.abs(paper.r - TARGET.r),
     Math.abs(paper.g - TARGET.g),
@@ -143,6 +137,14 @@ for (const file of files) {
   console.log(
     `      paper ${hex(paper)} -> ${hex(TARGET)}   drift ${drift}   ${(movedShare * 100).toFixed(0)}% of pixels` +
       (progression ? `   ${progression} ${stage}` : '')
+  );
+  console.log(
+    hair.found
+      ? `      hair  ${hex(hair.mean)} -> ${hex(TARGET_HAIR)}   ` +
+          `shift ${hair.shift.r >= 0 ? '+' : ''}${hair.shift.r},` +
+          `${hair.shift.g >= 0 ? '+' : ''}${hair.shift.g},` +
+          `${hair.shift.b >= 0 ? '+' : ''}${hair.shift.b}   ${hair.pixels} px`
+      : `      hair  NO BUN FOUND (${hair.pixels} px) - left alone`
   );
 
   if (dryRun) {
