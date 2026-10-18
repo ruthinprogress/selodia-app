@@ -128,5 +128,30 @@ check('AND fromDay CANNOT BE FORGOTTEN BY A FUTURE CALL SITE', () => {
   return 'required field, single declaration';
 });
 
+check('NO DOOR INTO THE DAY SHEET SAYS "MOVE"', () => {
+  // Ruth, 18 October 2026, after the sheet's own title was fixed that morning:
+  // "It still says 'Move to' which is incorrect. It should say 'Copy to
+  // another day'."
+  //
+  // The sheet ADDS a day and keeps the ones already there - it has never moved
+  // anything. Correcting the title inside the sheet left the button that opens
+  // it still promising the old behaviour, so the feature stayed hidden behind
+  // the same wrong word. A label is not fixed until every door says it.
+  assert.ok(/Copy to another day/.test(sheet), 'the button no longer says what it does');
+  const visible = sheet
+    .split('\n')
+    .filter((l) => !l.trimStart().startsWith('//') && !l.trimStart().startsWith('*'))
+    .join('\n');
+  assert.ok(!/>\s*Move to…/.test(visible), '"Move to…" is back on the button');
+  assert.ok(
+    !/accessibilityLabel=\{`Move \$\{plan\.activity\}/.test(visible),
+    'the screen reader is still told it moves'
+  );
+  // And the sheet it opens must still agree with it.
+  const move = fs.readFileSync('mobile/src/components/move-sheet.tsx', 'utf8');
+  assert.ok(/Which days for \{activity\}\?/.test(move), 'the sheet title drifted back');
+  return 'button and sheet say the same thing';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);

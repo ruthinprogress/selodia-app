@@ -61,7 +61,7 @@ export type PlanToLog = {
   id: string;
   activity: string;
   duration: string | null;
-  /** The days it sits on now, so "Move to…" can show what is already true. */
+  /** The days it sits on now, so "Copy to another day" shows what is already true. */
   days: string[];
   /**
    * WHICH DAY SHE TAPPED IT ON, or null for an Anytime card.
@@ -299,12 +299,23 @@ export function LogPlanSheet({
               <Pressable
                 onPress={onMove}
                 accessibilityRole="button"
-                accessibilityLabel={`Move ${plan.activity} to another day`}
-                accessibilityHint="Opens a list of days, and Anytime this week"
+                accessibilityLabel={`Copy ${plan.activity} to another day`}
+                accessibilityHint="Opens the days it happens on. Adding a day keeps the ones it is already on"
                 hitSlop={Spacing.two}
                 style={({ pressed }) => [styles.moveRow, pressed && styles.pressed]}>
+                {/* IT HAS NEVER MOVED ANYTHING (Ruth, 18 October 2026: "It
+                    still says 'Move to' which is incorrect. It should say
+                    'Copy to another day'").
+
+                    Third time this one label has been wrong, and the same way
+                    each time: it opens a sheet whose day chips ADD a day and
+                    keep the days already there. The sheet's own title was
+                    corrected this morning; the button that opens it still said
+                    the old thing, which is how the feature stayed hidden even
+                    after the fix. A label is not fixed until every door into
+                    the room says the same thing. */}
                 <ThemedText type="small" themeColor="accentDeep">
-                  Move to…
+                  Copy to another day
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {plan.days.length === 0
