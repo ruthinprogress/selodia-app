@@ -1181,6 +1181,11 @@ export function saveAppliedNote(
     }
     return `Kept in your Almanac, under Insights, as ${TYPE_WORD[type]}.`;
   }
-  if (attempted) return "That didn't save to your Almanac just now. Ask me again and I'll try once more.";
+  // IT DOES NOT NAME A TAB, because this one line covers every type above and
+  // cannot know which failed. Ruth, 18 October 2026: "it's not in the Almanac
+  // anymore, it's in Plans." Every success line above says the right place; the
+  // failure line was still saying Almanac for all of them, including the ones
+  // that have never been in the Almanac.
+  if (attempted) return "That didn't save just now. Ask me again and I'll try once more.";
   return null;
 }

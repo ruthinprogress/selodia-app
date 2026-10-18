@@ -86,6 +86,7 @@ export function prepareAlmanacEntry(input: AlmanacSaveInput): {
 import { after } from 'next/server';
 
 import { resolveDemoRefs } from './movement-demos';
+import { recordMovementGaps } from './movement-gaps';
 import { writeHowTos } from './movement-howto';
 
 async function storeAlmanacEntry(
@@ -112,6 +113,26 @@ async function storeAlmanacEntry(
     for (const exercise of plan.exercises) {
       exercise.demoRef = refs.get(exercise.name) ?? null;
     }
+
+    // AND WHAT WE DID NOT HAVE IS WRITTEN DOWN (Ruth, 18 October 2026): "When
+    // an excersise is genuinely required but wasnt there, it needs to be
+    // recorded as 'to be built/illustrated' and this creates the list of what's
+    // needed over time."
+    //
+    // This is the moment it is knowable and nobody has to remember anything.
+    // The movement has just been resolved and come back with nothing; it is
+    // about to be shown to somebody as words alone. A sweep script can answer
+    // the same question, but only when run, and it cannot tell a movement asked
+    // for once from one asked for every week. The count here is the ordering
+    // for what gets drawn next.
+    //
+    // NO MODEL COOPERATION, which is the point. The chat cannot forget to flag
+    // a gap because it is never asked to.
+    await recordMovementGaps(
+      supabase,
+      plan.exercises.filter((e) => !e.demoRef).map((e) => e.name),
+      prepared.title ?? null
+    );
   }
 
   // AN EDIT OF THE PLAN IN FRONT OF HER (2026-09-20). She opened "Inner Thigh

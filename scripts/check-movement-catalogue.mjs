@@ -189,5 +189,44 @@ await check('AND THE PLAN THAT STARTED THIS WOULD STILL HAVE FOUND NOTHING', asy
   return '5 near misses, still correctly refused';
 });
 
+await check('A PLAN IS OFFERED TO PLANS, NOT TO THE ALMANAC', async () => {
+  // Ruth, 18 October 2026: "But it's not in the Almanac anymore, it's in Plans."
+  //
+  // The prompt still told the chat to ask "Want me to save this to your
+  // Almanac?" for a movement plan. Somebody says yes, then goes to the Almanac
+  // and finds Insights and Me. The plans moved tab and this sentence did not
+  // move with them - it is the kind of staleness nothing fails on, because the
+  // save works perfectly and only the direction is wrong.
+  const route = fs.readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+  const planSection = route.slice(route.indexOf('(2) PLANS you have genuinely worked out'));
+  const instruction = planSection.slice(0, 1200);
+
+  assert.ok(
+    /Want me to save this to your Plans\?/.test(instruction),
+    'the plan offer no longer names the Plans tab'
+  );
+  assert.ok(
+    !/save this to your Almanac/.test(instruction),
+    'the plan offer sends people to the Almanac again'
+  );
+  assert.ok(
+    /THEY LIVE ON THE PLANS TAB, NOT IN THE ALMANAC/.test(instruction),
+    'the reason is gone, so the example is the only thing holding the rule'
+  );
+
+  // AND THE FAILURE LINE NAMES NO TAB AT ALL, because one line covers every
+  // save type and cannot know which one failed.
+  const pending = fs.readFileSync('app/lib/pending-save.ts', 'utf8');
+  assert.ok(
+    /That didn't save just now/.test(pending),
+    'the failure line has gone back to naming a tab'
+  );
+  assert.ok(
+    !/didn't save to your Almanac/.test(pending),
+    'the failure line sends people to the Almanac again'
+  );
+  return 'offered to Plans, and the failure line names nowhere';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
