@@ -180,6 +180,28 @@ function phraseOrPart(raw: string, lower: string): PlannedTime {
  * "~09:00 · 60 mins", or just one of them, or nothing. Returning '' rather than
  * null for nothing keeps the caller's test a plain truthiness check.
  */
+/**
+ * THE TIME SHE ACTUALLY STATED, in minutes from midnight, or null.
+ *
+ * Ruth, 18 October 2026, after logging a 19:30 class: "it said 12:00 instead of
+ * 7.30." The app had the time on the face of the card and stored noon anyway.
+ *
+ * ONLY 'clock' COMES BACK, which is the entire point of this function existing
+ * rather than callers reading `.minutes` themselves. That field is documented
+ * above as a SORT KEY: "evening" carries a nominal bucket so the week can be
+ * put in order, and a caller who treats that bucket as a time would log her
+ * ballet at a half past nobody named. This file's own rule, a few lines up:
+ * inventing a clock she never said, and then showing it to her, is the app
+ * putting words in her mouth about her own diary.
+ *
+ * A HEDGE IS STILL HER TIME. "Around 9" gives 09:00: she said nine, and the
+ * tilde is about how firmly she meant it, not about whether it is a time.
+ */
+export function clockMinutes(timeOfDay: string | null | undefined): number | null {
+  const t = plannedTime(timeOfDay);
+  return t.kind === 'clock' ? t.minutes : null;
+}
+
 export function pillDetail(timeOfDay: string | null, duration: string | null): string {
   const t = plannedTime(timeOfDay);
   return [t.label, duration].filter((s): s is string => Boolean(s && s.trim())).join(' · ');

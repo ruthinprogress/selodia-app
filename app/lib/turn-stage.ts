@@ -36,6 +36,14 @@ export type ActedStage = {
   foodLogId?: string | null;
   /** 'created' or 'cancelled', when this turn touched a reminder. */
   reminder?: string | null;
+  /**
+   * 'added', 'cancelled' or 'refused', when this turn touched the diary.
+   *
+   * REFUSED IS WORTH PUBLISHING TOO, which is why this is the action and not a
+   * boolean. The app declining to file a date it could not work out is exactly
+   * the half of a turn somebody should hear about early.
+   */
+  calendar?: string | null;
 };
 
 /**
@@ -51,7 +59,9 @@ export function usableTurnId(value: unknown): value is string {
 
 /** True when there is anything worth telling her early. */
 export function worthPublishing(acted: ActedStage): boolean {
-  return Boolean(acted.summary || acted.almanacTitle || acted.foodLogId || acted.reminder);
+  return Boolean(
+    acted.summary || acted.almanacTitle || acted.foodLogId || acted.reminder || acted.calendar
+  );
 }
 
 export type PublishStage = {

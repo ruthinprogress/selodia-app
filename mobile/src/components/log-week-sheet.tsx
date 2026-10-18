@@ -43,6 +43,8 @@ export type WeekLogItem = {
   date: Date;
   /** Already logged, so it is not offered again. */
   alreadyLogged: boolean;
+  /** The plan's own clock time, so the log lands at it rather than at noon. */
+  plannedMinutes: number | null;
 };
 
 const endOfToday = () => {

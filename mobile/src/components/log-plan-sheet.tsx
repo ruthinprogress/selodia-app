@@ -80,6 +80,24 @@ export type PlanToLog = {
    * is not on a day.
    */
   fromDay: DayKey | null;
+  /**
+   * THE TIME THE PLAN ITSELF SAYS, in minutes from midnight, or null.
+   *
+   * Ruth, 18 October 2026, having logged a 19:30 ballet class: "it said 12:00
+   * instead of 7.30."
+   *
+   * The log was stored at noon, and noon was chosen for a good reason - a log
+   * at midnight lands on the previous day for anyone behind UTC. But it was
+   * being used for every log from this sheet, including ones whose card says
+   * 19:30 on the face of it. The app knew the time and stored a different one.
+   *
+   * ONLY SET FOR A REAL CLOCK TIME. day-time.ts gives "evening" a nominal
+   * sorting bucket, and that bucket must never become a logged time: it is
+   * there so the week can be ordered, not because anybody said half six. That
+   * file puts it plainly - inventing a clock she never said and showing it back
+   * to her is the app putting words in her mouth.
+   */
+  plannedMinutes: number | null;
 };
 
 // MOUNTED ONLY WHILE IT IS OPEN, so every field can be initialised from the
@@ -96,7 +114,14 @@ export function LogPlanSheet({
 }: {
   plan: PlanToLog;
   onClose: () => void;
-  onLog: (input: { activity: string; when: Date; minutes: number | null; note: string }) => Promise<void>;
+  onLog: (input: {
+    activity: string;
+    when: Date;
+    minutes: number | null;
+    note: string;
+    /** The plan's own clock time, so the log is stored at it. See PlanToLog. */
+    plannedMinutes: number | null;
+  }) => Promise<void>;
   /**
    * Clears its days so it drops into Anytime. NOT a delete: Ruth, 18 October
    * 2026, "it should go into Anytime. If they want to delete it they can do it
@@ -195,6 +220,7 @@ export function LogPlanSheet({
         when,
         minutes: n && n > 0 ? n : null,
         note: note.trim(),
+        plannedMinutes: plan.plannedMinutes,
       });
       onClose();
     } catch {

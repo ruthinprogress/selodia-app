@@ -22,6 +22,7 @@ import {
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weekReadBlock } from '../../lib/week-read';
+import { checkCalendarEvent, type CalendarResult } from '../../lib/calendar-event';
 import { whoTheyAreBlock } from '../../lib/who-they-are';
 import { coerceConstants, constantsBlock, forgetConstants, readConstants, recordConstants } from '../../lib/care-constants';
 import { weighInFacts } from '../../lib/weigh-in-facts';
@@ -1625,7 +1626,19 @@ THIS MESSAGE REPLACES THE ONE BEFORE IT. They paused, you answered the first par
   // a reminder in her own words is real and that a water reminder is not built.
   // The example of a missing feature was the feature that had just been added.
   //
-  // The example is now the calendar, which genuinely is not built.
+  // AND A THIRD TIME AVOIDED, 18 October 2026. The example chosen above was
+  // the calendar - and the calendar was built this afternoon, which would have
+  // made this comment the written record of its own next occurrence.
+  //
+  // The example is now the narrower thing that is still true: writing into the
+  // calendar APP on somebody's phone. Selodia keeps its own diary now, so
+  // "I can't do calendars" is the new version of the old lie. The gap is the
+  // bridge to Google and Apple, and that gap is a real one.
+  //
+  // THE LESSON THIS KEEPS TEACHING is that an example of a missing feature goes
+  // stale the moment somebody builds it, and nothing fails when it does. So
+  // check-calendar.mjs now asserts this block does not use the diary as its
+  // example, which is the only version of this note that cannot rot.
   // check-not-built-means-not-built.mjs fails if a capability named here as not
   // built gains a classifier field, which is the moment this example goes stale.
   //
@@ -1709,7 +1722,7 @@ WHAT YOU MAY SAY INSTEAD, once and lightly, where it falls naturally in the sent
 
 AND NEVER PAD A PLAN WITH COVERED MOVEMENTS TO AVOID WRITING ONE. The right movement without a picture beats the wrong movement with one, every time.
 
-WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a workaround instead of answering. Say what the app does do that is nearest, say plainly that the exact thing is not built yet, and offer to note it as something they want. For example, asked to put an appointment in their calendar: a reminder in their own words at a time they name is real and can be set now, but the app cannot write to the calendar on their phone - so say that, set the reminder if they want one, and offer to note the calendar down as something they want. The same holds for anything else somebody asks for: a new measurement, a different kind of report. MICRONUTRIENTS ARE DIFFERENT, because there is something real you can do - see ASKED ABOUT A VITAMIN OR MINERAL.`;
+WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a workaround instead of answering. Say what the app does do that is nearest, say plainly that the exact thing is not built yet, and offer to note it as something they want. For example, asked to put something into the calendar app on their phone: their diary here is real and a one-off appointment can go in it now, with a reminder before it, but the app cannot write into Google Calendar or the calendar app on their phone - so say that, put it in their diary here if they want, and offer to note the phone calendar down as something they want. The same holds for anything else somebody asks for: a new measurement, a different kind of report. MICRONUTRIENTS ARE DIFFERENT, because there is something real you can do - see ASKED ABOUT A VITAMIN OR MINERAL.`;
 
   // WHY THE SYSTEM PROMPT IS NOT CACHED, AND THE TOOL IS (2026-09-24).
   //
@@ -2043,6 +2056,49 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'number',
       description:
         "With reminderRepeat 'weekly'. The day, 0 for Sunday through 6 for Saturday.",
+    },
+    // THE DIARY (Ruth, 18 October 2026: "If it was a one-off appointment, they
+    // would ask in chat to add something to their calendar"). It was not built;
+    // she said "we need to build calendar also then".
+    //
+    // A ONE-OFF, WHICH IS THE WHOLE DISTINCTION. Her week is a template of a
+    // regular week and holds day NAMES, so nothing dated can live there. This
+    // is the other side of that line.
+    calendarAction: {
+      type: 'string',
+      enum: ['add', 'cancel'],
+      description:
+        "Set ONLY when the person is asking you to put a ONE-OFF dated thing in their diary, or take one out - \"my physio is on Tuesday at 3\", \"put my scan on the 24th in the calendar\", \"cancel the dentist\". A one-off happens once, on a date. Something they do EVERY week is not one and belongs in their Week instead, so leave this unset for \"I go to pilates on Mondays\". A reminder in their own words is also not one: leave this unset and use reminderAction for \"remind me to take my magnesium\". This is not a log - leave logIntent 'none'.",
+    },
+    calendarTitle: {
+      type: 'string',
+      description:
+        "With calendarAction. What it is, in their words and as few as possible: \"physio\", \"knee scan\", \"GP call back\", \"Sarah's wedding\". For 'cancel', the words that identify which one to take out.",
+    },
+    calendarDate: {
+      type: 'string',
+      description:
+        "With calendarAction 'add'. The date as YYYY-MM-DD, worked out from today's date in the WHAT DAY IT IS block. A DIARY LOOKS FORWARD, WHICH IS THE OPPOSITE OF A LOG: a weekday they name with nothing else means the NEXT one still to come, never the most recent one that has passed. \"Tuesday\" on a Wednesday is six days away, not yesterday. If what they said does not pin down a date - \"sometime next month\", \"when they call me back\" - ask instead of choosing one.",
+    },
+    calendarTime: {
+      type: 'string',
+      description:
+        "With calendarAction 'add', and ONLY if they actually gave a time. The local time as HH:MM on a 24-hour clock: \"3\" in the afternoon is 15:00, \"half eight in the morning\" is 08:30. OMIT IT ENTIRELY IF THEY DID NOT SAY ONE, and never ask for it either - a letter that gives only a date is a complete thing to be told, and an invented hour on an appointment is worse than no hour because it looks like information.",
+    },
+    calendarPlace: {
+      type: 'string',
+      description:
+        "With calendarAction 'add', only if they said where: \"the Royal Infirmary\", \"blue entrance by the car park\", \"on the phone\". Their words, not tidied into an address. Omit if they did not say.",
+    },
+    calendarBring: {
+      type: 'string',
+      description:
+        "With calendarAction 'add', only if they mentioned something to take or do beforehand: \"the referral letter\", \"a urine sample\", \"nothing to eat after midnight\". Omit if they did not say. Never invent what somebody should bring to a medical appointment.",
+    },
+    calendarRemindMinutesBefore: {
+      type: 'number',
+      description:
+        "With calendarAction 'add', only if they asked to be reminded AND the thing has a time: 60 for \"remind me an hour before\", 1440 for \"the day before\". Omit if they did not ask. Do not offer a number they did not name.",
     },
     draftRequest: {
       type: 'string',
@@ -2702,6 +2758,13 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     reminderTime?: string;
     reminderRepeat?: 'daily' | 'weekly';
     reminderWeekday?: number;
+    calendarAction?: 'add' | 'cancel';
+    calendarTitle?: string;
+    calendarDate?: string;
+    calendarTime?: string;
+    calendarPlace?: string;
+    calendarBring?: string;
+    calendarRemindMinutesBefore?: number;
     removePlanTitled?: string;
     correctionKind?: string;
     correctionDate?: string;
@@ -2979,6 +3042,65 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         .select('id');
       if (error) console.log('CUSTOM REMINDER CANCEL FAILED:', error.message);
       else reminderResult = { action: 'cancelled', label, count: stopped?.length ?? 0 };
+    }
+  }
+
+  // THE DIARY. A one-off dated thing, which her Week deliberately cannot hold.
+  //
+  // THE APP SAYS WHAT HAPPENED, including when it refused - same contract as
+  // the reminder above and the plan removal below. A date is the one field in
+  // this app where a silent guess is only discovered by missing the thing, so
+  // every refusal carries a reason that can be read out.
+  let calendarResult: CalendarResult | null = null;
+
+  if (result.calendarAction === 'add') {
+    const checked = checkCalendarEvent(
+      {
+        title: result.calendarTitle,
+        date: result.calendarDate,
+        time: result.calendarTime,
+        place: result.calendarPlace,
+        bring: result.calendarBring,
+        remindMinutesBefore: result.calendarRemindMinutesBefore,
+      },
+      todayKey
+    );
+    if (!checked.ok) {
+      calendarResult = {
+        action: 'refused',
+        because: checked.because,
+        detail: checked.because === 'in the past' ? checked.eventDate : undefined,
+      };
+      console.log('CALENDAR REFUSED:', checked.because);
+    } else {
+      const { error } = await supabase
+        .from('calendar_events')
+        .insert({ user_id: user.id, ...checked.row });
+      if (error) console.log('CALENDAR INSERT FAILED:', error.message);
+      else
+        calendarResult = {
+          action: 'added',
+          title: checked.row.title,
+          eventDate: checked.row.event_date,
+          eventTime: checked.row.event_time,
+          reminderDropped: checked.reminderDropped,
+        };
+    }
+  } else if (result.calendarAction === 'cancel') {
+    const title = (result.calendarTitle ?? '').trim();
+    if (title) {
+      // Matched on her words rather than an id, the same way a reminder is
+      // cancelled. Only ones still to come: "cancel the dentist" cannot be
+      // asking about the dentist she went to in March.
+      const { data: removed, error } = await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('user_id', user.id)
+        .gte('event_date', todayKey)
+        .ilike('title', `%${title.replace(/[%_]/g, '')}%`)
+        .select('id');
+      if (error) console.log('CALENDAR CANCEL FAILED:', error.message);
+      else calendarResult = { action: 'cancelled', title, count: removed?.length ?? 0 };
     }
   }
 
@@ -4306,6 +4428,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         almanacTitle: savedAlmanac?.title ?? null,
         foodLogId: breakdownFoodLogId,
         reminder: reminderResult?.action ?? null,
+        calendar: calendarResult?.action ?? null,
       },
     });
   }
@@ -5321,6 +5444,12 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     patternCheck,
     // The phone schedules it and says so. Null unless this turn asked for one.
     reminder: reminderResult,
+    // THE DIARY. What the app did with a one-off dated thing, including when it
+    // refused to file one - a date it could not work out, or one that came back
+    // in the past because the logging rule for named weekdays had been applied
+    // to something that looks forward. The app says which; the model never
+    // claims the row exists.
+    calendar: calendarResult,
     // Something written for her to send, shown under the reply with a Share
     // button. Null unless she asked for one and it could be made.
     draft,

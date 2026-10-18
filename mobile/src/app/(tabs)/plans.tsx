@@ -30,6 +30,7 @@ import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { dayKeyOf, isWalking, logMatchesPlan, placedOnDays } from '@/lib/week-plan';
+import { clockMinutes } from '@/lib/day-time';
 import { moveToDays, removeFromWeek } from '@/lib/week-move';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
@@ -143,16 +144,31 @@ export default function PlansScreen() {
     when: Date;
     minutes: number | null;
     note: string;
+    plannedMinutes: number | null;
   }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) throw new Error('not signed in');
-    // NOON ON THE DAY, not midnight. A log stored at 00:00 lands on the
-    // previous day for anyone behind UTC, and this is a date she picked
-    // deliberately rather than a moment that happened.
+    // THE TIME THE PLAN SAYS, AND NOON ONLY WHEN IT SAYS NOTHING.
+    //
+    // Ruth, 18 October 2026, after logging her 19:30 ballet: "it said 12:00
+    // instead of 7.30."
+    //
+    // Noon was not arbitrary and it stays as the fallback: a log stored at
+    // 00:00 lands on the PREVIOUS day for anyone behind UTC, and the day here
+    // is one she picked rather than a moment that happened. What was wrong was
+    // using it even for a card that states its own time on its face. If the
+    // week says 19:30, the log says 19:30.
+    //
+    // Only a real clock time arrives here - clockMinutes refuses the nominal
+    // bucket that "evening" sorts by - so this can never invent an hour.
     const at = new Date(input.when);
-    at.setHours(12, 0, 0, 0);
+    if (input.plannedMinutes != null) {
+      at.setHours(Math.floor(input.plannedMinutes / 60), input.plannedMinutes % 60, 0, 0);
+    } else {
+      at.setHours(12, 0, 0, 0);
+    }
     const { error } = await supabase.from('activity_logs').insert({
       user_id: user.id,
       activity_type: input.activity,
@@ -173,7 +189,7 @@ export default function PlansScreen() {
     const [planRes, logRes, profileRes] = await Promise.all([
       supabase
         .from('user_week')
-        .select('id, activity, duration, days, days_chosen_at')
+        .select('id, activity, duration, days, days_chosen_at, time_of_day')
         .order('sort_order'),
       supabase
         .from('activity_logs')
@@ -195,6 +211,7 @@ export default function PlansScreen() {
       duration: string | null;
       days: string[];
       days_chosen_at: string | null;
+      time_of_day: string | null;
     }[]) {
       if (isWalking(row.activity)) continue; // counted by the phone, not logged here
       const sits = placedOnDays(guidance, row);
@@ -211,6 +228,9 @@ export default function PlansScreen() {
           duration: row.duration,
           date,
           alreadyLogged: already,
+          // Logging the whole week stores each one at its own time, for the
+          // same reason logging a single card does. See writeLog.
+          plannedMinutes: clockMinutes(row.time_of_day),
         });
       }
     }
@@ -415,6 +435,7 @@ export default function PlansScreen() {
                   when: item.date,
                   minutes: minutesFromPlan(item.duration),
                   note: '',
+                  plannedMinutes: item.plannedMinutes,
                 });
               }
             }}

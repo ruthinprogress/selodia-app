@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { byTimeOfDay, pillDetail } from '@/lib/day-time';
+import { byTimeOfDay, clockMinutes, pillDetail } from '@/lib/day-time';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 import { addToWeek, moveToDays, withDay } from '@/lib/week-move';
@@ -657,6 +657,7 @@ export function WeekView({
                             // card out had to mean taking it off every day at
                             // once - see PlanToLog.fromDay.
                             fromDay: key,
+                            plannedMinutes: clockMinutes(row.time_of_day),
                           })
                         }
                       />
@@ -740,6 +741,7 @@ export function WeekView({
                           // out of the week, so there is no day to come off.
                           // That is what turns the control into the delete.
                           fromDay: null,
+                          plannedMinutes: clockMinutes(row.time_of_day),
                         })
                       }
                     />
@@ -958,9 +960,21 @@ function PlanPill({
       accessibilityHint="Opens the log sheet, which has Move to…"
       style={({ pressed }) => [pressed && styles.pressed, carrying && styles.lifted]}>
       <ThemedView type="backgroundElement" style={styles.pill}>
-        {/* A QUIET TICK, AND NOTHING WHEN THERE IS NONE. The absence says
-            nothing at all - not "missed", not "0 of 2". */}
-        {logged && <Ionicons name="checkmark-circle" size={13} color={theme.accentDeep} />}
+        {/* NO TICK. THE WEEK IS A TEMPLATE, NOT A TO-DO LIST.
+            Ruth, 18 October 2026: "I tested the 'log it' button and it placed a
+            tick next to the card in week view. Thats not good. Its a template
+            not a to do list. The movement log shows whats logged."
+
+            The tick was defended here as quiet, and that was the wrong defence:
+            the objection is not how loud it is, it is that a tick means done
+            and nothing on this screen is ever done. Six lines below the pills
+            the screen says so in its own words - "This is the shape of your
+            week, not a score. Nothing here is ever marked done or missed" -
+            which the tick had been contradicting on the same screenful.
+
+            What was logged lives in the movement log, which is a record of what
+            happened. This is a picture of an intended week, and it does not
+            change because a Tuesday went well. */}
         {/* TWO LINES, AND THE SECOND ONE IS THE TIME (Ruth, UI item 5: "Gym /
             ~09:00 • 60 mins instead of multiple rows").
             THE TIME IS NORMALISED TO A 24-HOUR CLOCK and her own words are kept
@@ -1019,7 +1033,7 @@ function PlanCard({
           <ThemedText type="small" style={styles.gridCardName}>
             {row.activity}
           </ThemedText>
-          {logged && <Ionicons name="checkmark-circle" size={14} color={theme.accentDeep} />}
+          {/* No tick here either. See the pill above. */}
         </View>
         {row.cadence || row.duration ? (
           <ThemedText type="small" themeColor="textSecondary">

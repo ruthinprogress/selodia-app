@@ -22,10 +22,17 @@
 //
 // WHY A CHECK AND NOT A NOTE. This is the same fault twice: a feature status
 // written into prose, true on the day, silently false the day the feature
-// changes. The example in CAPABILITIES is now the calendar, which genuinely is
-// not built - and Ruth has said the calendar is needed for the medical access
-// route. The day a calendar field is added to the classifier, that example
-// becomes false in exactly the same way. This check fails on that day.
+// changes. The example chosen was the calendar, which was genuinely not built -
+// and the file ended with a fuse saying "the day a calendar field is added to
+// the classifier, this check fails".
+//
+// IT DID, on 18 October 2026, within minutes of the calendar being built, with
+// both prompts still telling people it was impossible. Three sentences across
+// two files, and nobody would have gone looking for them.
+//
+// What stays true after a calendar exists: the app keeps its OWN diary and
+// still cannot write into Google Calendar or the calendar app on a phone. That
+// narrower sentence is the one the prompts carry now.
 //
 // THE RULE IT ENFORCES. For each capability below: if the classifier has its
 // field, no prompt sentence may call it not built, AND the writer's prompt must
@@ -153,11 +160,25 @@ check('and this check can fail', () => {
     'an instruction against denying reads as a denial'
   );
 
-  // And the calendar sentence becomes a failure the day the calendar is built.
+  // THE TRIPWIRE FIRED, 18 OCTOBER 2026, AND THAT IS THE WHOLE POINT.
+  //
+  // This block used to end by asserting the live route had NO calendarAction -
+  // a deliberate fuse, set so that the day somebody built the calendar the
+  // check would fail and name what to go and fix. The calendar was built this
+  // afternoon and it fired, with both prompts still saying it was impossible.
+  //
+  // So the fuse is spent and is replaced by what it was protecting: the denial
+  // is still detected, now proved against a synthetic source rather than
+  // against the absence of a feature. A test that depends on something NOT
+  // existing stops being a test the moment it succeeds at its job.
   const calendarSentence = 'The app cannot write to the calendar on their phone.';
   ok(denials(calendarSentence, CAPABILITIES[1]).length === 1, 'the calendar denial is not seen');
-  ok(!hasField(route, 'calendarAction'), 'calendarAction exists - update the calendar sentences in both prompts');
-  return 'the shipped line fails, and the calendar line will fail when calendar lands';
+  ok(
+    hasField('calendarAction: { type: "string" }', 'calendarAction'),
+    'a defined calendar field reads as absent'
+  );
+  ok(!hasField('reminderAction: {}', 'calendarAction'), 'an absent field reads as present');
+  return 'the shipped line fails, and a denial of a built capability is detected';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

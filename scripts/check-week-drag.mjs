@@ -135,18 +135,27 @@ const CHECKS = {
     return out;
   },
 
+  // THE ROUTE, NOT THE WORDING. This checked for the literal string "Move to…"
+  // until 18 October 2026, when Ruth renamed it: "It still says 'Move to' which
+  // is incorrect. It should say 'Copy to another day'." The rename was right
+  // and this check failed, which is a check defending a label rather than the
+  // thing the label is on - exactly the trap her standing note warns about.
+  //
+  // What actually matters is that a route into the day picker exists, reachable
+  // without a drag and above the fold. So it looks for the handler that opens
+  // it, which no amount of rewording can satisfy by accident.
   'the accessible route survives'(_week, logSheet) {
     const out = [];
-    if (!logSheet.includes('Move to…')) {
-      out.push('the tap sheet has no "Move to…" - the only route a screen reader can use');
+    const opener = logSheet.indexOf('onPress={onMove}');
+    if (opener === -1) {
+      out.push('the tap sheet has no route into the day picker - the only one a screen reader can use');
     }
     // It has to be OUTSIDE the scroller, or it is below the fold and nobody
     // finds it. The footer is the pinned part of the sheet.
     const footerAt = logSheet.indexOf('styles.footer');
-    const moveAt = logSheet.indexOf('Move to…');
     const scrollEnd = logSheet.indexOf('</ScrollView>');
-    if (moveAt !== -1 && scrollEnd !== -1 && moveAt < scrollEnd) {
-      out.push('"Move to…" is inside the ScrollView, so it sits below the fold');
+    if (opener !== -1 && scrollEnd !== -1 && opener < scrollEnd) {
+      out.push('the day-picker route is inside the ScrollView, so it sits below the fold');
     }
     if (footerAt === -1) out.push('the tap sheet has no pinned footer');
     return out;
@@ -184,7 +193,7 @@ const BREAK = {
   'the accessible route survives': (w) => w,
 };
 const BREAK_SHEET = {
-  'the accessible route survives': (l) => l.replaceAll('Move to…', 'Log it'),
+  'the accessible route survives': (l) => l.replaceAll('onPress={onMove}', 'onPress={onLog}'),
 };
 
 const useless = [];
