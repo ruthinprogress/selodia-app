@@ -31,7 +31,12 @@
 //
 // LEFT OUT UNTIL BUILT, each with what it is waiting for:
 //
-//   Put it in your diary        no appointments table, no calendar integration
+// ONE CAME OFF THIS LIST, 18 October 2026. "Put it in your diary - no
+// appointments table, no calendar integration" sat here from the start, and
+// both halves of that reason were built that afternoon. It is the first line
+// to graduate, and it graduated by somebody reading this comment and going and
+// building the thing it was waiting for.
+//
 //   Check current guidance      no web lookup of any kind
 //   Hold your details           waiting on the Care record (her order, item 2)
 //   Forms, one box at a time    same, and she said to hold it until then
@@ -70,8 +75,19 @@ export const HEALTH_CAPABILITIES = {
   holdYourDetails: false,
   /** One box at a time, or a whole form. Waiting on the Care record. */
   forms: false,
-  /** Date, time, address, what to bring. No appointments, no calendar. */
-  diary: false,
+  /**
+   * Date, time, where and what to bring. LIVE since 18 October 2026.
+   *
+   * This sat false from the beginning with its reason written beside it - "no
+   * appointments table, no calendar integration" - and that is exactly what
+   * was built: calendar_events, the chat fields that fill it, the Coming up
+   * section on Now, and a reminder before it.
+   *
+   * WHAT IS STILL NOT TRUE, and the prompts say so: Selodia keeps its OWN
+   * diary and does not write into Google Calendar or the calendar app on the
+   * phone. Turning this on must never be read as turning that on.
+   */
+  diary: true,
   /** Current numbers, routes and entitlements. No web lookup. */
   currentGuidance: false,
   /** Copying a draft or a number in one tap. Text in a reply today. */
@@ -190,7 +206,7 @@ You don't have to hold anything. If you're facing a form, you can ask me one box
 
   if (capabilities.diary) {
     parts.push(`### Your diary
-I put it in your diary: date, time, address, what to bring and what to expect.`);
+I put it in your diary: the date, the time if you have one, where it is, and what to bring. If you only know the day, that is enough - I will not invent an hour. I can remind you before it, and it is my own diary rather than the calendar app on your phone.`);
   }
 
   if (capabilities.currentGuidance) {

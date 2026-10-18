@@ -66,16 +66,20 @@ check('it says what to do, not only what not to do', () => {
   return '999, 111, A&E';
 });
 
+// WHAT EACH CAPABILITY'S LINE LOOKS LIKE IN THE PROMPT. One list, used twice:
+// once to prove a held-back capability is absent, and once to prove the switch
+// is what releases it. A capability that ships keeps its row here - the row is
+// how its line is recognised, not a claim about whether it is built.
+const NOT_BUILT_PATTERNS = {
+  diary: /put it in your diary|I put it in your diary/i,
+  currentGuidance: /check current guidance|current guidance for numbers/i,
+  holdYourDetails: /Insurance references, contacts, appointment history/i,
+  forms: /one box at a time/i,
+};
+
 check('only the capabilities that exist are promised', () => {
   const c = H.HEALTH_CAPABILITIES;
-  // THE FOUR THAT ARE NOT BUILT. Each must be false AND absent from the prompt.
-  const notBuilt = {
-    diary: /put it in your diary|I put it in your diary/i,
-    currentGuidance: /check current guidance|current guidance for numbers/i,
-    holdYourDetails: /Insurance references, contacts, appointment history/i,
-    forms: /one box at a time/i,
-  };
-  for (const [key, pattern] of Object.entries(notBuilt)) {
+  for (const [key, pattern] of Object.entries(NOT_BUILT_PATTERNS)) {
     if (c[key]) continue; // if it has shipped, its line is allowed
     assert.ok(
       !pattern.test(H.HEALTH),
@@ -90,10 +94,25 @@ check('a capability switched on releases its line', () => {
   // THE MECHANISM, PROVEN. Without this the booleans could be decorative and the
   // prompt a hand-maintained copy of them, which is the fault that produced the
   // two taglines and the two macro lists.
-  const withDiary = H.healthSupportPrompt({ ...H.HEALTH_CAPABILITIES, diary: true });
-  assert.ok(/diary/i.test(withDiary), 'turning diary on changed nothing in the prompt');
-  assert.ok(!/diary/i.test(H.HEALTH), 'the diary line is in the prompt while it is off');
-  return 'the boolean is what releases it';
+  //
+  // IT USED TO PROVE THIS WITH THE DIARY, and the diary shipped on 18 October
+  // 2026 - so the test that guarded the mechanism started failing because the
+  // mechanism had been used. A test written around one capability being OFF
+  // expires the day somebody builds it, which is the same shape as the fuse in
+  // check-not-built-means-not-built and is not a shape worth repeating twice.
+  //
+  // So it picks an off capability itself, out of whichever are still off, and
+  // needs no edit the next time one graduates. If they ever ALL ship, there is
+  // nothing left to prove and saying so is better than a green tick.
+  const off = Object.entries(NOT_BUILT_PATTERNS).find(
+    ([key]) => !H.HEALTH_CAPABILITIES[key]
+  );
+  if (!off) return 'every capability has shipped - nothing held back to prove it with';
+  const [key, pattern] = off;
+  const released = H.healthSupportPrompt({ ...H.HEALTH_CAPABILITIES, [key]: true });
+  assert.ok(pattern.test(released), `turning ${key} on changed nothing in the prompt`);
+  assert.ok(!pattern.test(H.HEALTH), `the ${key} line is in the prompt while it is off`);
+  return `the boolean is what releases it, proved with ${key}`;
 });
 
 check('it aims at the explanation and not the clinician', () => {

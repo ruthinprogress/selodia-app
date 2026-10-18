@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import { loadCustomReminders } from '@/lib/custom-reminders';
 import { fireTime, loadWeekReminders, weekdayNumber } from '@/lib/week-reminders';
+import { loadCalendarReminders, reminderMoment } from '@/lib/calendar';
 import { nextFireTime } from '@/lib/quiet-hours';
 import { loadReminderSettings } from '@/lib/reminder-settings';
 import { supabase } from '@/lib/supabase';
@@ -327,6 +328,43 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
       }
     }
 
+    // AN APPOINTMENT, WHICH RINGS ONCE AND THEN IS OVER.
+    //
+    // Ruth, 18 October 2026: "we need to build calendar also then." A week
+    // reminder recurs because its card holds day NAMES; this one has a date,
+    // so it is a single DATE trigger and the OS forgets it afterwards.
+    //
+    // NO CATEGORY, SO NO "STOP REMINDING ME" BUTTON, and that is deliberate
+    // rather than an omission. The off switch on a week reminder exists because
+    // the thing will come back every week forever and somebody irritated at
+    // 7am should not have to go rummaging. This one is not coming back. Offering
+    // to cancel a reminder that has just finished happening is noise.
+    //
+    // THE BODY CARRIES WHAT TO BRING, because that is the one fact that is
+    // useless after you have left the house. health-support.ts named it as the
+    // reason an appointments table was wanted at all.
+    for (const e of await loadCalendarReminders()) {
+      const at = reminderMoment(e);
+      // Null when it has already passed. Scheduling into the past either fires
+      // at once - a nudge about an appointment that has started - or is dropped
+      // silently. Neither is a reminder.
+      if (!at) continue;
+      const where = e.place ? ` at ${e.place}` : '';
+      const bring = e.what_to_bring ? `. Bring ${e.what_to_bring}` : '';
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Selodía',
+          body: `${e.title}${where}${bring}`,
+          data: { destination: 'now', calendarEventId: e.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: at,
+          channelId: REMINDER_CHANNEL,
+        },
+      });
+    }
+
     // THE SUNDAY ROUNDUP INVITATION (Insights slice 3, 2026-09-16).
     //
     // The weekly roundup was specified as arriving on Sunday evening, and there
@@ -424,7 +462,15 @@ export async function restoreReminders(userId: string): Promise<void> {
     // ANY of them is wanted. The next kind has to be added here too; the check
     // beside it exists so that is noticed rather than remembered.
     const week = await loadWeekReminders();
-    if (!settings?.enabled && custom.length === 0 && week.length === 0) return;
+    const diary = await loadCalendarReminders();
+    if (
+      !settings?.enabled &&
+      custom.length === 0 &&
+      week.length === 0 &&
+      diary.length === 0
+    ) {
+      return;
+    }
     const Notifications = await loadNotifications();
     if (!Notifications) return;
 

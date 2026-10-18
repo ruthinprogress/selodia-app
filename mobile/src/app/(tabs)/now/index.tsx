@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BalanceFlowerSection } from '@/components/balance-flower-section';
+import { DiarySection } from '@/components/diary-section';
+import { loadUpcoming } from '@/lib/calendar';
 import { flowerRange, type FlowerMode } from '@/lib/flower-range';
 import { FoldSection } from '@/components/fold-section';
 import { HydrationToast, type WaterAction } from '@/components/hydration-card';
@@ -87,8 +89,16 @@ export default function BodyOverviewScreen() {
   // OPEN BY DEFAULT, because this screen has always shown everything it has and
   // folding it shut on the deploy would hide the day from somebody who never
   // asked for it to be hidden. The folds are here to be used, not imposed.
-  const [open, setOpen] = useState({ week: true, flower: true });
-  const toggle = (k: 'week' | 'flower') => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  const [open, setOpen] = useState({ week: true, flower: true, diary: true });
+  const toggle = (k: 'week' | 'flower' | 'diary') => setOpen((o) => ({ ...o, [k]: !o[k] }));
+
+  // WHAT A SHUT DIARY SAYS, which FoldSection requires and is right to: a count
+  // is the one thing worth knowing without opening it. Loaded here rather than
+  // inside the section so the summary is true before it is unfolded.
+  const [upcoming, setUpcoming] = useState<number | null>(null);
+  useEffect(() => {
+    void loadUpcoming().then((rows) => setUpcoming(rows.length));
+  }, []);
 
   // THE FOLD NAMES THE WINDOW, so the state lives here rather than inside the
   // flower. A shut section saying "across the six dimensions" told her nothing
@@ -130,6 +140,24 @@ export default function BodyOverviewScreen() {
                 ))}
               </FoldSection>
             ) : null}
+
+            {/* COMING UP, which her Week cannot hold - it stores day names and
+                recurs forever, and an appointment happens once on a date.
+                Ruth, 18 October 2026: "we need to build calendar also then."
+
+                ABOVE BALANCE, BELOW LAST WEEK. A hospital appointment on
+                Thursday is more use at a glance than a six-dimension flower,
+                and less use than nothing at all is what it was yesterday. */}
+            <FoldSection
+              title="Coming up"
+              summary={
+                upcoming == null ? 'loading' : upcoming === 0 ? 'nothing yet' : String(upcoming)
+              }
+              open={open.diary}
+              onToggle={() => toggle('diary')}
+            >
+              <DiarySection />
+            </FoldSection>
 
             <FoldSection
               title="Balance"
