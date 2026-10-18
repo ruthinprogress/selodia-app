@@ -1,0 +1,17 @@
+-- DROP THE OLD TWO-ARGUMENT record_movement_gap.
+--
+-- `create or replace function` with a DIFFERENT SIGNATURE does not replace
+-- anything - it creates a second function beside the first. So adding the
+-- asked_by argument left both versions live, and a caller passing two arguments
+-- would have hit the old one: the gap would still be counted, and the person
+-- who asked for it would silently never be recorded, so they would never be
+-- thanked.
+--
+-- Nothing calls the two-argument form any more - app/lib/movement-gaps.ts
+-- passes all three - and a function nobody calls that silently does half the
+-- job is worse than no function at all.
+--
+-- Found by listing what the database actually holds rather than trusting that
+-- the same SQL had been pasted twice. The migration that introduced the
+-- overload even warned about this in its own comment.
+drop function if exists public.record_movement_gap(text, text);
