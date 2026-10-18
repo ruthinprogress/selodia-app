@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { MovementProgression } from '@/components/movement-progression';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -53,6 +54,7 @@ export function MovementIllustration({
   const theme = useTheme();
   const [illustration, setIllustration] = useState<Illustration | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'absent'>('loading');
+  const [showProgression, setShowProgression] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -113,6 +115,36 @@ export function MovementIllustration({
           </ThemedText>
         </View>
       </View>
+
+      {/* THE WAY INTO THE LADDER, and the only place it can be offered from.
+          A movement card knows what to do today; it cannot say that today is
+          the second of seven. This line is drawn ONLY when the movement is
+          part of a drawn progression, so it never promises a set that does not
+          exist. See movement-progression.tsx. */}
+      {illustration!.progression && (
+        <Pressable
+          onPress={() => setShowProgression(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`See the whole ${illustration!.progression} progression`}
+          style={styles.ladderLink}
+        >
+          {/* accentDeep, not accent: full-strength accent is for fills and
+              large type, and does not clear AA at this size. */}
+          <ThemedText type="small" themeColor="accentDeep">
+            {illustration!.stage
+              ? `Stage ${illustration!.stage} of ${illustration!.progression}  ·  see the whole set`
+              : `See the whole ${illustration!.progression} set`}
+          </ThemedText>
+        </Pressable>
+      )}
+
+      {showProgression && illustration!.progression && (
+        <MovementProgression
+          progression={illustration!.progression}
+          currentRef={illustration!.ref}
+          onClose={() => setShowProgression(false)}
+        />
+      )}
     </View>
   );
 }
@@ -125,4 +157,5 @@ const styles = StyleSheet.create({
   labelTop: { top: Spacing.two },
   labelBottom: { top: '52%' },
   labelText: { letterSpacing: 1 },
+  ladderLink: { paddingVertical: Spacing.one },
 });
