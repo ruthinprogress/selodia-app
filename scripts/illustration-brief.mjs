@@ -150,11 +150,15 @@ THE HEAD IS EMPTY, and this is the instruction most often broken. Inside the out
 
 A blush is not a face detail. It is a skin tone, and it makes the figure a particular person of a particular colour, which is the one thing this style exists to avoid.
 
+BUT THE HAIR STAYS, AND IT IS NOT A FACE DETAIL. Every figure has a small simple bun in warm brown, drawn as a soft shape at the back of the head. NEVER a bald head. This is said separately from the list above because when it was folded into that list the generator read the whole paragraph as "draw nothing on the head" and returned a bald figure, which breaks the set at a glance.
+
+THE FIGURE IS SMALL IN THE FRAME, occupying roughly a third of the frame's height, with generous empty cream all around it. Airy, restrained and spacious. A figure that fills its frame reads as a different book from the rest of the library even when every other rule is kept.
+
 THE BODY IS UNFILLED: the cream paper shows straight through the torso, arms, hands, legs and feet, exactly the same colour as the background. No skin tone anywhere. NO beige, tan, sand, peach or brown appears anywhere on the figure or on its clothing.
 
 CLOTHING, IDENTICAL IN BOTH FRAMES: a loose short-sleeved CREAM tee, untucked in both, never white and never brighter than the ground; full-length SAGE leggings to the ankle; bare feet. When the figure is inverted the tee stays against the body and does not fall over the head. NO CREASE LINES: interior lines describe structure only, such as a hem, a neckline or a sleeve edge. Never folds, wrinkles, gathers or drape lines.
 
-THE WATERCOLOUR WASHES sit BEHIND the figure in BOTH frames, in the reference's colours, never touching or colouring it. Real watercolour on rough paper: uneven patchy pigment, darker dried rims with washed-out centres, irregular organic edges. NOT circles, NOT ovals, NOT smooth gradients, NOT airbrush softness, which read as cheap vector art. One wash per frame, two at most, each smaller than the figure and placed where the movement travels. The two frames differ.
+THE WATERCOLOUR WASHES sit BEHIND the figure in BOTH frames, in the reference's colours, never touching or colouring it. Real watercolour on rough paper: uneven patchy pigment, darker dried rims with washed-out centres, irregular organic edges. NOT circles, NOT ovals, NOT smooth gradients, NOT airbrush softness, which read as cheap vector art. ONE wash per frame, two at most, and EACH ONE CLEARLY SMALLER THAN THE FIGURE - a quiet mark behind her, not a cloud she stands inside. It is placed where the movement travels. The two frames differ. A wash that spreads wider than the body, or two that merge into one big billow, is the commonest way this drifts away from the set.
 
 THE GROUND IS A SOFT SHADOW, NEVER A LINE. Beneath whatever actually touches the floor, lay a soft, pale, slightly blurred shadow following the shape of that contact. Draw NO hard horizontal line anywhere.
 

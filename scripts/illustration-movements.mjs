@@ -19,35 +19,32 @@
 // hold, pressed from crow" was a stage name that nothing could ever have
 // reached. Where the model writes something longer, an alias carries it.
 
+// WEIGHTS ARE THE ANIMATICS' JOB, NOT THE ILLUSTRATIONS' (Ruth, 18 October):
+// "The idea was that the gym and weights images came from animatics, and all
+// the illustrations were to cover yoga-style and floor work and stretches and
+// calisthenics work first to make a broader coverage. Leave anything on the
+// list with weights for now, use the credits on the gap we actually have."
+//
+// The clip library is 950 movements and overwhelmingly a gym library: 194 Legs,
+// 108 Back, 84 Shoulders, 76 Chest, 14 Powerlifting. A barbell deadlift drawn
+// by hand duplicates a clip that already exists and teaches less, because a
+// clip moves.
+//
+// So anything requiring a barbell, dumbbell or plate is PARKED below rather
+// than deleted - the descriptions are written and correct, and if the animatic
+// route ever fails for one of them it can come back in a line.
+//
+// AND THE AIM IS COVERAGE, NOT THE BACKLOG. Her words: "we can then cover most
+// user cases: ie, create a movements plan from our library to support the user
+// with most goals across the full body goal spectrum." A list built only from
+// what has already appeared in a plan can never do that - it describes where
+// she has been, not where somebody new might go.
+
 /** @typedef {{ name: string, start: string, finish: string, inverted?: boolean, ruleOut?: string, connects?: string }} Movement */
 
 /** @type {Movement[]} */
 export const MOVEMENTS = [
   // ---- Lower body ----
-  {
-    name: 'barbell deadlift',
-    start:
-      'Standing over a barbell with the feet hip width, hinged forward at the hips so the shins touch the bar, both hands gripping it just outside the knees, arms straight, back flat and long from the hips to the head, chest lifted.',
-    finish:
-      'Standing tall with the barbell resting against the top of the thighs, hips and knees straight, shoulders down and back, arms still straight, the bar close to the body throughout.',
-    ruleOut: 'a squat',
-  },
-  {
-    name: 'romanian deadlift',
-    start:
-      'Standing tall holding a barbell against the front of the thighs, feet hip width, knees softly bent, shoulders back.',
-    finish:
-      'Hinged back at the hips with the barbell lowered to just below the knees, shins staying vertical, the knees no more bent than at the start, back flat, weight back in the heels. THE HIPS TRAVEL BACKWARD, not down.',
-    ruleOut: 'a barbell deadlift from the floor',
-    connects: 'The bar slides down the thighs and stays touching the legs the whole way.',
-  },
-  {
-    name: 'goblet squat',
-    start:
-      'Standing with the feet a little wider than the hips, toes turned slightly out, holding a single dumbbell upright against the chest with both hands cupped under its top end, elbows pointing down.',
-    finish:
-      'Squatted down with the hips below the knees, the dumbbell still at the chest, elbows tracking down inside the knees, chest tall and the back long rather than rounded.',
-  },
   {
     name: 'sumo squat',
     start:
@@ -99,13 +96,6 @@ export const MOVEMENTS = [
       'Lying on one side with the legs stacked and straight, the head resting on the lower arm, the upper hand on the floor in front of the chest, hips square.',
     finish:
       'The top leg lifted straight up, the foot level rather than turned out, the hips staying stacked and not rolling backward.',
-  },
-  {
-    name: 'lying hamstring curl',
-    start:
-      'Lying face down with the legs straight and together, a single dumbbell held upright between the feet, forearms folded under the forehead.',
-    finish:
-      'Both knees bent to draw the lower legs up toward the buttocks, the dumbbell still held between the feet, the hips staying down on the floor.',
   },
 
   // ---- Trunk, upper body, mobility ----
@@ -170,15 +160,64 @@ export const MOVEMENTS = [
       'The hands walked back toward the box so the hips lift high over the shoulders into a sharp inverted V, the legs staying straight and the feet still on the box, the head between the arms.',
     inverted: true,
   },
-  {
-    name: 'barbell overhead press',
-    start:
-      'Standing tall with a barbell resting across the front of the shoulders at collarbone height, the elbows pointing forward and underneath the bar, feet hip width, ribs down.',
-    finish:
-      'The barbell pressed to straight arms directly above the head, the head having moved through so the bar sits over the middle of the body rather than out in front, legs straight.',
-    ruleOut: 'a push press where the legs bend to drive the bar up',
-  },
 ];
+
+
+/*
+ * PARKED: weights. The animatics cover these. Un-park by moving an object
+ * back into MOVEMENTS above - the descriptions are written and correct.
+ *
+ * barbell deadlift
+ * romanian deadlift
+ * goblet squat
+ * lying hamstring curl
+ * barbell overhead press
+ *
+ *   barbell deadlift:
+ *     {
+ *       name: 'barbell deadlift',
+ *       start:
+ *         'Standing over a barbell with the feet hip width, hinged forward at the hips so the shins touch the bar, both hands gripping it just outside the knees, arms straight, back flat and long from the hips to the head, chest lifted.',
+ *       finish:
+ *         'Standing tall with the barbell resting against the top of the thighs, hips and knees straight, shoulders down and back, arms still straight, the bar close to the body throughout.',
+ *       ruleOut: 'a squat',
+ *     },
+ *   romanian deadlift:
+ *     {
+ *       name: 'romanian deadlift',
+ *       start:
+ *         'Standing tall holding a barbell against the front of the thighs, feet hip width, knees softly bent, shoulders back.',
+ *       finish:
+ *         'Hinged back at the hips with the barbell lowered to just below the knees, shins staying vertical, the knees no more bent than at the start, back flat, weight back in the heels. THE HIPS TRAVEL BACKWARD, not down.',
+ *       ruleOut: 'a barbell deadlift from the floor',
+ *       connects: 'The bar slides down the thighs and stays touching the legs the whole way.',
+ *     },
+ *   goblet squat:
+ *     {
+ *       name: 'goblet squat',
+ *       start:
+ *         'Standing with the feet a little wider than the hips, toes turned slightly out, holding a single dumbbell upright against the chest with both hands cupped under its top end, elbows pointing down.',
+ *       finish:
+ *         'Squatted down with the hips below the knees, the dumbbell still at the chest, elbows tracking down inside the knees, chest tall and the back long rather than rounded.',
+ *     },
+ *   lying hamstring curl:
+ *     {
+ *       name: 'lying hamstring curl',
+ *       start:
+ *         'Lying face down with the legs straight and together, a single dumbbell held upright between the feet, forearms folded under the forehead.',
+ *       finish:
+ *         'Both knees bent to draw the lower legs up toward the buttocks, the dumbbell still held between the feet, the hips staying down on the floor.',
+ *     },
+ *   barbell overhead press:
+ *     {
+ *       name: 'barbell overhead press',
+ *       start:
+ *         'Standing tall with a barbell resting across the front of the shoulders at collarbone height, the elbows pointing forward and underneath the bar, feet hip width, ribs down.',
+ *       finish:
+ *         'The barbell pressed to straight arms directly above the head, the head having moved through so the bar sits over the middle of the body rather than out in front, legs straight.',
+ *       ruleOut: 'a push press where the legs bend to drive the bar up',
+ *     },
+ */
 
 /** Every movement name, for the scripts that need just the list. */
 export const MOVEMENT_NAMES = MOVEMENTS.map((m) => m.name);

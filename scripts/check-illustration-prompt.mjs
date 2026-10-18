@@ -161,6 +161,41 @@ check('AND THIS CHECK CAN FAIL', () => {
   return 'a hand-written prompt fails all four';
 });
 
+check('THE THREE THINGS A REWRITE QUIETLY DROPPED', () => {
+  // 18 October 2026. The first loose movement generated from the rebuilt brief
+  // came back with a BALD figure, washes bigger than the body, and the figure
+  // filling its frame. All three are departures from twenty-one approved
+  // drawings, and two were my own doing: rewriting STYLE the day before, I cut
+  // the figure-size rule along with the stale ones, and folded the bun into a
+  // list of things NOT to draw - where the generator read the paragraph as
+  // "draw nothing on the head" and obliged.
+  //
+  // A rule can be lost by being deleted or by being buried. Both are checked
+  // here because one 36p test found both.
+  assert.ok(/BUT THE HAIR STAYS/i.test(PROMPT), 'the bun is no longer stated positively');
+  assert.ok(/NEVER a bald head/i.test(PROMPT), 'nothing forbids a bald figure');
+  assert.ok(
+    /THE FIGURE IS SMALL IN THE FRAME/i.test(PROMPT),
+    'the figure-size rule has been dropped again'
+  );
+  assert.ok(/third of the frame/i.test(PROMPT), 'the figure size is no longer quantified');
+  assert.ok(
+    /CLEARLY SMALLER THAN THE FIGURE/i.test(PROMPT),
+    'the wash size is no longer bounded against the figure'
+  );
+
+  // The bun must be stated OUTSIDE the paragraph of things not to draw, which
+  // is the whole point - it was already in that paragraph when the generator
+  // returned a bald head.
+  const headPara = PROMPT.slice(PROMPT.indexOf('THE HEAD IS EMPTY'));
+  const banList = headPara.slice(0, headPara.indexOf('\n\n'));
+  assert.ok(
+    !/BUT THE HAIR STAYS/i.test(banList),
+    'the bun is buried in the list of things not to draw again'
+  );
+  return 'bun, figure size and wash size all stated';
+});
+
 check('the review checklist leads with the one that costs the most', () => {
   // The head crop is first because it is the fault a whole-image measurement
   // cannot find, and the one that reached her twice.
