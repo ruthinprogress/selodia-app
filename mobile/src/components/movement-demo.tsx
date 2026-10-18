@@ -41,12 +41,17 @@ type Demo = {
 export function MovementDemo({
   exerciseName,
   demoRef,
+  onResolved,
 }: {
   exerciseName: string;
   // Resolved at save time and preferred when present. The name is kept as a
   // fallback for plans saved before 2026-09-09, when every demoRef was null
   // because there was nothing to point at - those plans still find their clip.
   demoRef?: string | null;
+  // Tells the card whether a clip was found, so it can fall through to a
+  // drawing. Called once the answer is known, with false for both "no clip"
+  // and "could not ask" - a drawing is the right thing to try next either way.
+  onResolved?: (found: boolean) => void;
 }) {
   const theme = useTheme();
   const [demo, setDemo] = useState<Demo | null>(null);
@@ -63,10 +68,12 @@ export function MovementDemo({
         // opens a stretch. This is what a movement the library does not cover
         // looks like, and it is expected to be common.
         setState('absent');
+        onResolved?.(false);
         return;
       }
       setDemo(res.demo);
       setState('ready');
+      onResolved?.(true);
     } catch (err) {
       // STILL SILENT FOR THE PERSON, LOUD IN THE LOG.
       //
@@ -86,8 +93,9 @@ export function MovementDemo({
         console.log(`MOVEMENT DEMO: could not load "${exerciseName}" (${detail})`);
       }
       setState('error');
+      onResolved?.(false);
     }
-  }, [exerciseName, demoRef]);
+  }, [exerciseName, demoRef, onResolved]);
 
   useEffect(() => {
     let live = true;

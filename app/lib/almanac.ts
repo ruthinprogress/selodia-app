@@ -131,7 +131,8 @@ async function storeAlmanacEntry(
     await recordMovementGaps(
       supabase,
       plan.exercises.filter((e) => !e.demoRef).map((e) => e.name),
-      prepared.title ?? null
+      prepared.title ?? null,
+      userId
     );
   }
 

@@ -242,12 +242,8 @@ await check('AND IT IS TOLD WHAT NOT TO DO WITH THAT LIST', async () => {
     'nothing forbids reaching for a near miss'
   );
   assert.ok(
-    /do not pad a plan with covered movements/.test(route),
+    /NEVER PAD A PLAN WITH COVERED MOVEMENTS/.test(route),
     'nothing stops the library bending the plan'
-  );
-  assert.ok(
-    /A MOVEMENT ON NEITHER LIST IS STILL ALLOWED/.test(route),
-    'the text-only route is no longer explicitly allowed'
   );
 
   // The worked example has to be real, or the prompt teaches a wrong fact.
@@ -257,6 +253,54 @@ await check('AND IT IS TOLD WHAT NOT TO DO WITH THAT LIST', async () => {
     .eq('join_key', 'band two legs calf raise - (band under both legs) version 2');
   assert.strictEqual(data?.length, 1, 'the ugly-name example is not a real clip any more');
   return '4 instructions, and the example verified against the library';
+});
+
+await check('A WRITTEN MOVEMENT IS NOT DESCRIBED AS A GAP', async () => {
+  // Ruth, 18 October 2026, correcting what I had written: "It does not tell the
+  // user it doesnt have something, because it does, it's just text only."
+  //
+  // My version said "do not point it out", which is half the answer and the
+  // wrong half. The distinction she is drawing is between an ABSENCE and a
+  // FORMAT. Written instructions are one of the three ways this app teaches a
+  // movement, not the failure of the other two, and a plan containing one is
+  // finished rather than lacking. Describing it as missing makes a complete
+  // plan sound broken - which is the same fault as the app apologising for
+  // itself anywhere else.
+  const route = fs.readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+
+  assert.ok(
+    /A WRITTEN MOVEMENT IS NOT A GAP IN THEIR PLAN/.test(route),
+    'the written route is described as a gap again'
+  );
+  assert.ok(
+    /one of the three ways this app teaches a movement/.test(route),
+    'written instructions are no longer named as a real format alongside film and drawing'
+  );
+  assert.ok(
+    /NEVER tell somebody a movement is missing, unavailable, not covered, not in the library/.test(route),
+    'nothing forbids telling somebody the library lacks their movement'
+  );
+
+  // AND THE POSITIVE THING SHE ASKED FOR, which is the point of the whole
+  // correction: the request is what makes the library grow, and that is worth
+  // the person hearing.
+  assert.ok(/goes to our illustrator as a request to draw/.test(route), 'the illustrator line is gone');
+  assert.ok(
+    /has not come up before/.test(route) && /good thing to want to learn/.test(route),
+    'the framing she asked for is gone'
+  );
+  assert.ok(
+    /Never as an apology and never as a warning/.test(route),
+    'nothing stops it being said as an apology'
+  );
+
+  // The ORDER matters too: look first, choose from what is there, write only
+  // what nothing covers.
+  assert.ok(
+    /Look at both lists above FIRST/.test(route),
+    'the chat is no longer told to look before it chooses'
+  );
+  return 'a format, not an absence - and the request is told where it goes';
 });
 
 await check('A PLAN IS OFFERED TO PLANS, NOT TO THE ALMANAC', async () => {

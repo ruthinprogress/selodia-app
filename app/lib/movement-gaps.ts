@@ -41,7 +41,17 @@ export async function recordMovementGaps(
   supabase: SupabaseClient,
   /** The names with no demoRef - already known to have no clip. */
   namesWithoutClips: string[],
-  planTitle: string | null
+  planTitle: string | null,
+  /**
+   * Who asked, so they can be thanked when it is made.
+   *
+   * movement_gaps itself deliberately has no user column - one row per
+   * movement, counted across every account, so the ordering is real demand
+   * rather than one person's habits. This goes to a separate table that records
+   * one row per person per movement, which is what makes "your request is in
+   * the app" possible without making the count personal.
+   */
+  userId?: string | null
 ): Promise<void> {
   const names = [...new Set(namesWithoutClips.map((n) => n.trim()).filter(Boolean))];
   if (names.length === 0) return;
@@ -54,7 +64,11 @@ export async function recordMovementGaps(
 
     await Promise.all(
       missing.map((name) =>
-        supabase.rpc('record_movement_gap', { movement_name: name, plan_title: planTitle })
+        supabase.rpc('record_movement_gap', {
+          movement_name: name,
+          plan_title: planTitle,
+          asked_by: userId ?? null,
+        })
       )
     );
   } catch {

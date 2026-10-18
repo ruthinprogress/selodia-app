@@ -43,6 +43,33 @@ Under `Selodia App Project Master Folder\`:
 | Milestone images for the build log | `Build Log images\` |
 | Costs, invoices, subscriptions | `Build Specs\Selodia Costs and Subscriptions.xlsx` |
 | Session close-outs | `Build Specs\Selodia-Session-Closeouts.xlsx` |
+| What still needs illustrating | `Build Specs\Selodia - Movements To Illustrate.xlsx` |
+| Finished movement illustrations | `Build Specs\Branding & Assets\Visual Assets\` |
+
+## The movement illustrations, start to finish
+
+Ruth, 18 October 2026, after an afternoon of me re-deriving things that were
+already decided: *"make sure the link and whereabouts of the excel sheet are
+documented somewhere logical in the build spec, so we dont have a repeat of this
+morning's ilustration build confusion."*
+
+So the whole loop, in one place:
+
+| Question | Answer |
+| --- | --- |
+| What should we draw next? | `Build Specs\Selodia - Movements To Illustrate.xlsx`, ordered by how many times it has been asked for |
+| Where does that list come from? | It writes itself. Saving a plan records any movement with no film and no drawing, counted across **every** account. `app/lib/movement-gaps.ts` |
+| How do I rebuild the spreadsheet? | `python scripts/movements_to_illustrate_xlsx.py` |
+| The same list without Excel | `node scripts/what-to-make-next.mjs` |
+| How is a drawing made? | `scripts/illustration-brief.mjs` holds the art direction and every rule learned the expensive way. Prompts are built by `movementPrompt()`, never by hand |
+| What are the movements and their start/finish? | `scripts/illustration-progressions.mjs` (the four ladders) and `scripts/illustration-movements.mjs` (everything else) |
+| How does a finished drawing get into the app? | `node scripts/upload-illustrations.mjs <folder>` - normalises paper and hair, uploads, records the row, and closes the request |
+| Where do the masters live? | `Build Specs\Branding & Assets\Visual Assets\` |
+| How does the person who asked find out? | `node scripts/thank-the-requesters.mjs "<movement>"` sends them a thank you |
+
+**The spreadsheet is a view, not the record.** `movement_gaps` in Supabase is the
+record. The file is rewritten from it each time and can be deleted without
+losing anything, which is why it is overwritten in place rather than dated.
 
 ## Conventions that already exist there
 

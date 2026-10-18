@@ -170,6 +170,12 @@ function ExerciseDetail({
   // wants it, and only she knows which she is today.
   const [openNote, setOpenNote] = useState<string | null>(null);
 
+  // WHAT THE CLIP LOOKUP ANSWERED, PER MOVEMENT. Keyed by name rather than
+  // index so reordering a plan cannot show one movement's answer against
+  // another's. Undefined until the lookup returns, which is why the drawing
+  // waits rather than flashing in beside a clip.
+  const [clipFound, setClipFound] = useState<Record<string, boolean>>({});
+
   // What the plan says about this movement, stated once under the name: the
   // body area it belongs to, and the sets and reps decided in the conversation
   // that built the plan. Never recomputed here - they are stored on the plan.
@@ -203,9 +209,27 @@ function ExerciseDetail({
                 framed panel with the words underneath reads as a video that
                 failed to load. Where there are words instead of a clip, the
                 words take the panel's place rather than queue behind it. */}
-            {exercise.demoRef || !exercise.howTo ? (
-              <MovementDemo exerciseName={exercise.name} demoRef={exercise.demoRef} />
-            ) : null}
+            {/* ASKED EVERY TIME THE CARD OPENS, NOT DECIDED WHEN IT WAS SAVED
+                (Ruth, 18 October 2026): "there should be a function that as
+                soon as that illustration, animation or video exists, it should
+                automatically populate in pre-made plans... So users can see
+                their requests actually land, they're listened to."
+
+                The condition here used to be `demoRef || !howTo`, which turned
+                the clip path OFF for ever on any movement that was saved with
+                words. So a movement aliased onto an existing clip next week,
+                or filmed next month, would never appear in a plan somebody
+                already had - the plan was frozen at the moment it was written.
+
+                The drawing path never had this problem: it has always resolved
+                by NAME at render. Now both do, and a movement somebody asked
+                for simply turns up in their own plan once it exists. That is
+                the whole point: the request landing where they can see it. */}
+            <MovementDemo
+              exerciseName={exercise.name}
+              demoRef={exercise.demoRef}
+              onResolved={(found) => setClipFound((prev) => ({ ...prev, [exercise.name]: found }))}
+            />
 
             {/* AND WHERE THERE IS NO CLIP, A DRAWING (16 October 2026).
                 The library covers movement patterns, not every named exercise,
@@ -214,18 +238,23 @@ function ExerciseDetail({
                 with videos... that surely is its job" - the gap is closed from
                 the other side with illustrations Selodia owns.
 
-                SHOWN EXACTLY WHERE THE RECIPE CARD IS SHOWN, which is to say
-                wherever the save found no clip. That condition is already
-                settled and already correct, so this adds a rung to the ladder
-                without touching how the existing one decides anything:
+                The ladder has not changed:
 
                     a clip, if the library has one
                     an illustration, if we have drawn it
                     the recipe card, always, underneath
 
-                RENDERS NOTHING WHEN WE HAVE NOT DRAWN IT, like MovementDemo.
-                Nine movements are drawn so far; a miss is the ordinary case. */}
-            {!exercise.demoRef && exercise.howTo ? (
+                WHAT CHANGED IS WHEN THE FIRST RUNG IS DECIDED. It used to be
+                "wherever the SAVE found no clip", which froze the answer at the
+                moment the plan was written. It is now what the clip lookup just
+                said, a second ago, on this opening of this card.
+
+                Undefined means the answer has not come back yet, and nothing is
+                drawn until it has: showing both for a moment is worse than
+                showing one a moment late.
+
+                RENDERS NOTHING WHEN WE HAVE NOT DRAWN IT, like MovementDemo. */}
+            {clipFound[exercise.name] === false ? (
               <MovementIllustration exerciseName={exercise.name} />
             ) : null}
 

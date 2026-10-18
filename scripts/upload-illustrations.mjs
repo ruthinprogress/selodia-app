@@ -169,6 +169,28 @@ for (const file of files) {
     console.log(`      ROW FAILED  ${row.error.message}`);
     continue;
   }
+
+  // AND THE REQUEST THAT ASKED FOR IT IS CLOSED (Ruth, 18 October 2026): "as
+  // soon as that illustration, animation or video exists, it should
+  // automatically populate in pre-made plans... So users can see their requests
+  // actually land, they're listened to."
+  //
+  // The picture appearing in their plan is automatic - the card resolves by
+  // name every time it opens. This is the bookkeeping half: the row in
+  // movement_gaps that recorded the ask stops counting as outstanding, so the
+  // to-make list shrinks as things get made rather than growing for ever.
+  //
+  // Matched on the same word set the resolver uses, so "Wrist prep (circles,
+  // palm and fingertip rocks)" is closed by drawing "wrist prep".
+  const { data: closed, error: closeError } = await supabase
+    .rpc('close_movement_gap', { movement_name: joinKey });
+  if (closeError) {
+    console.log(`      note: could not close the request (${closeError.message})`);
+  } else if (closed) {
+    console.log(`      request closed: asked for ${closed} time(s)`);
+    console.log(`      thank whoever asked:  node scripts/thank-the-requesters.mjs "${joinKey}"`);
+  }
+
   done += 1;
 }
 

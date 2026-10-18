@@ -203,15 +203,48 @@ await check('a stage number without a progression is refused by the database', a
 console.log('\n  THE LADDER: A CLIP, THEN A DRAWING, THEN THE WORDS\n');
 
 await check('the card prefers a clip and falls back to a drawing', () => {
+  // THE LADDER IS UNCHANGED - clip, else drawing, words always underneath -
+  // BUT IT IS NO LONGER DECIDED AT SAVE TIME (Ruth, 18 October 2026): "there
+  // should be a function that as soon as that illustration, animation or video
+  // exists, it should automatically populate in pre-made plans... So users can
+  // see their requests actually land, they're listened to."
+  //
+  // This check used to assert `exercise.demoRef || !exercise.howTo`, which was
+  // the old condition and the bug: it turned the clip path OFF for ever on any
+  // movement saved with words, so a movement aliased onto a clip next week
+  // would never appear in a plan somebody already had. The drawing path never
+  // had the problem - it has always resolved by NAME at render.
+  //
+  // So the assertion moves with the behaviour rather than being relaxed: the
+  // clip lookup must run unconditionally, and the drawing must wait for its
+  // answer.
   assert.ok(
-    /exercise\.demoRef \|\| !exercise\.howTo/.test(card),
-    'the clip is no longer preferred'
+    /<MovementDemo\s+exerciseName=\{exercise\.name\}/.test(card),
+    'the clip lookup is no longer run for every movement'
   );
   assert.ok(
-    /!exercise\.demoRef && exercise\.howTo \? \(\s*<MovementIllustration/.test(card),
-    'the illustration is not shown where there is no clip'
+    !/exercise\.demoRef \|\| !exercise\.howTo/.test(card),
+    'the clip path is frozen at save time again'
   );
-  return 'clip, else drawing';
+  assert.ok(
+    /onResolved=\{\(found\)/.test(card),
+    'the card no longer learns whether a clip was found'
+  );
+  assert.ok(
+    /clipFound\[exercise\.name\] === false \? \(\s*<MovementIllustration/.test(card),
+    'the drawing is not gated on the clip lookup coming back empty'
+  );
+  // STRICTLY false, not falsy: undefined means the answer has not arrived, and
+  // drawing then would flash an illustration in beside a clip that is about to
+  // load.
+  assert.ok(
+    !/clipFound\[exercise\.name\] \? /.test(card),
+    'the drawing shows before the clip lookup has answered'
+  );
+  const demoAt = card.indexOf('<MovementDemo');
+  const drawingAt = card.indexOf('<MovementIllustration');
+  assert.ok(demoAt > -1 && drawingAt > demoAt, 'the drawing is no longer below the clip');
+  return 'clip asked every open, drawing only when it comes back empty';
 });
 
 await check('AND THE WORDS STAY UNDERNEATH THE PICTURE', () => {
