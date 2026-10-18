@@ -991,3 +991,75 @@ not exist, squat to handstand. A progression padded with a movement named twice.
 None of those are visible to someone who has not had their own body in that
 position. Her line on the ordering, which is the whole piece in one sentence:
 "it depends on your body, background and psychology. There isn't one way."
+
+---
+
+## 18 October 2026 — The lessons were all written down, and nothing read them
+
+Twenty-two illustrations in, there was a file holding every expensive thing the
+project had learned about drawing a movement. Why "chest to the wall" gets drawn
+backwards. Why an absence of colour is not neutral. Why a start position has to
+be somewhere the finish can be reached from. It was careful, it was specific,
+and it quoted Ruth directly in the places where she had caught something.
+
+Nothing in the repository imported it.
+
+Every prompt had been written by hand at the point of use, which is why the same
+faults kept arriving picture after picture. The face crept back. The wall became
+a solid slab. The figure turned over in mid-air between its own two frames. Each
+one had already been diagnosed and written up, in a document that was never in
+the path of the work.
+
+The second half is worse and more interesting. The file had rotted. It still
+asked for a figure filled with flat sage green, a slim curved direction arrow,
+and a three-quarter view. All three had been rejected, weeks apart, and the
+rejections had been recorded in the same file, a few paragraphs further down.
+Had anything imported it, it would have produced the wrong picture on the first
+call. A document nobody exercises decays silently and looks fine the whole time,
+because looking fine is all it ever has to do.
+
+The fix was not to write it better. It was to make the document the thing that
+runs: one function that builds every prompt, and a test asserting that each
+hard-won rule survives in what that function produces. The test includes a
+hand-written prompt and proves it fails all of them.
+
+This is the same shape as a rule already in the project from October: a guard
+belongs at the write, not in an instruction. Never ask a model not to do a thing
+twice. Enforce it in code where the row is created. The illustration brief was
+that rule's opposite number, found two weeks later in a different room.
+
+## The same day, a measurement mistake made twice in an hour
+
+Ruth, looking at the handstands laid out as a grid rather than one at a time:
+"the whole set needs to be coherent as a set, and the hair colours change all
+over the place." She was right by more than it looked. The bun ran sixty-three
+points of red from the palest to the darkest. Nobody sees that in one picture.
+
+The first correction measured the hair on a sample that included the bun's dark
+outline, then applied the result to a mask holding only the lighter interior. The
+shift came out at minus fifty-five red, enough to turn every head to mud. Caught
+before it shipped.
+
+Then the verification did the same thing. It re-detected the mask on the
+corrected image, which selects a slightly different set of pixels, and reported
+that an exact correction had barely worked. Measured against the pixels the shift
+actually used, every bun was within one point of the target in all three channels.
+
+Two different mistakes, one shape: measuring one population and reasoning about
+another. Worth a paragraph in anything about working with generated images,
+because the failure is not visible and the number looks authoritative.
+
+## And a smaller one, about two correct rules
+
+A plan would not save. The reply described one, asked whether to keep it, and
+underneath said "That did not save, so it is not in your record."
+
+Two guards, each right on its own. One removes an offer the app cannot act on,
+because a question you answer with yes and nothing happens is worse than no
+question. The other corrects a reply that claims a write which did not occur.
+The first took the question away before she could see it. The second read "I can
+only see which movements have a video once a plan is saved" as a receipt, when
+it is a condition, and a condition is not a claim.
+
+Together they made plans unsaveable, and the diagnostics showed it had been
+happening for days rather than once.
