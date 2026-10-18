@@ -83,7 +83,12 @@ export const APP_GUIDE: GuideEntry[] = [
   { route: 'settings/privacy', name: 'Privacy', reach: 'More, then Privacy', use: 'How your data is handled.' },
   { route: 'settings/data', name: 'Your data', reach: 'More, then Your data', use: 'Download a copy of everything, what your data may be used for, and deleting your account.' },
   { route: 'settings/support', name: 'Help and support', reach: 'More, then Help and support', use: 'Getting help with the app.' },
-  { route: 'settings/feedback', name: 'Something not right?', reach: 'More, then Something not right?', use: 'Reporting a problem.' },
+  // DURING THE BETA THERE IS A BEETLE BESIDE THE THREE SEEDS on every screen,
+  // which opens the same form where they already are. Named first because that
+  // is the one somebody can reach without leaving the thing that went wrong -
+  // and because the app spent the evening sending Ruth to More for faults it
+  // should simply have fixed.
+  { route: 'settings/feedback', name: 'Something not right?', reach: 'the small beetle at the top right, beside the three seeds, on any screen while the app is in beta; also More, then Something not right?', use: 'Reporting a problem. It attaches the screen they were on, and they can add a picture.' },
   { route: 'health-data', name: 'Why Selodía asks for your steps', reach: 'from the phone\'s health permission screen', use: 'What step access is for, and turning it on.' },
 ];
 

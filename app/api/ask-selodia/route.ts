@@ -63,7 +63,7 @@ import {
   earlierTwin,
   settleVoiceSentence,
 } from '../../lib/voice-supersede';
-import { logActivityFromText } from '../../lib/activity-logging';
+import { coerceIntensity, logActivityFromText } from '../../lib/activity-logging';
 import { rememberDecision, worthRemembering } from '../../lib/remember-context';
 import {
   choosePlan,
@@ -2127,6 +2127,17 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "Only alongside correctionKind 'activity' and correctionAction 'update', and ONLY when the thing being corrected is HOW LONG it lasted: \"that was 90 minutes not three hours\", \"make it an hour\", or simply \"90\" when you have just asked them which figure to use. The corrected length in MINUTES - 90 for an hour and a half, 60 for an hour. Give it whenever you know it, even if their message is only a number, because their message on its own may contain no activity for the app to re-read. Leave unset when they are correcting anything other than the length.",
     },
+    correctionIntensity: {
+      type: 'string',
+      enum: ['light', 'moderate', 'intense'],
+      description:
+        "Only alongside correctionKind 'activity' and correctionAction 'update', and ONLY when they are correcting HOW HARD it was: \"it wasn't intense, I was taking breaks\", \"set the climbing to moderate\", \"that was an easy one\". Leave unset when they are not correcting the effort.",
+    },
+    correctionKcal: {
+      type: 'number',
+      description:
+        "Only alongside correctionKind 'activity' and correctionAction 'update'. The corrected calories burned. SEND THIS WHENEVER YOU CORRECT THE INTENSITY, because a figure worked out for a hard hour is wrong for an easy one and the app cannot rescale across efforts - without it the entry keeps no calorie figure at all rather than a wrong one. You do NOT need it for a change of length alone: the app scales the existing figure by the new time. Omit it if you genuinely cannot estimate.",
+    },
     correctionMoveTo: {
       type: 'string',
       description:
@@ -2773,6 +2784,8 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     removePlanTitled?: string;
     correctionKind?: string;
     correctionDurationMin?: number;
+    correctionIntensity?: string;
+    correctionKcal?: number;
     correctionDate?: string;
     correctionMoveTo?: string;
     correctionMatch?: string;
@@ -3470,20 +3483,88 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           result.correctionDurationMin > 0
             ? Math.round(result.correctionDurationMin)
             : null;
-        if (correctedMinutes != null) {
+        const correctedIntensity = coerceIntensity(result.correctionIntensity);
+        const correctedKcal =
+          typeof result.correctionKcal === 'number' &&
+          Number.isFinite(result.correctionKcal) &&
+          result.correctionKcal > 0
+            ? Math.round(result.correctionKcal)
+            : null;
+
+        if (correctedMinutes != null || correctedIntensity != null || correctedKcal != null) {
+          // A DERIVED FIGURE CANNOT BE LEFT BEHIND BY THE THING IT WAS DERIVED
+          // FROM (Ruth, 18 October 2026, an hour after the in-place update
+          // shipped): "Climbing still says 720kcal for 60mins...cant be the
+          // sane estimate as for 90mins".
+          //
+          // She was right and this was the new path's own fault. It changed
+          // duration_min and nothing else, so kcal_burned went on describing a
+          // session that no longer existed - a stored number disagreeing with
+          // what produced it, which is the fault this whole day was spent on.
+          //
+          // SCALED, NOT RECOMPUTED, because there is no local formula to
+          // recompute with: every calorie figure in this app is estimated by
+          // the model at the point of logging. Same activity, same effort,
+          // energy roughly linear in time - which is the arithmetic chat was
+          // already doing out loud in her own screenshot, and it lands on
+          // exactly the 480 it quoted her.
+          const patch: Record<string, unknown> = {};
+          if (correctedMinutes != null) patch.duration_min = correctedMinutes;
+          if (correctedIntensity != null) patch.intensity = correctedIntensity;
+
+          const priorMin = Number(target.duration_min);
+          const priorKcal = Number(target.kcal_burned);
+          if (correctedKcal != null) {
+            patch.kcal_burned = correctedKcal;
+          } else if (correctedIntensity != null) {
+            // EFFORT CHANGED AND NO NEW FIGURE CAME WITH IT, so there is
+            // nothing honest to put here. Scaling cannot cross efforts: an
+            // hour of hard climbing and an hour of moderate climbing differ by
+            // the very thing that was just corrected.
+            //
+            // NULL RATHER THAN THE OLD NUMBER, which is this app's own standing
+            // rule, written into the activity parse prompt: "a made-up 30
+            // minutes becomes a made-up calorie burn, and the person is then
+            // shown a number about their day that nobody measured." A wrong
+            // figure presented as fact is worse than a gap.
+            patch.kcal_burned = null;
+          } else if (
+            correctedMinutes != null &&
+            Number.isFinite(priorMin) &&
+            priorMin > 0 &&
+            Number.isFinite(priorKcal) &&
+            priorKcal > 0
+          ) {
+            patch.kcal_burned = Math.round(priorKcal * (correctedMinutes / priorMin));
+          }
+
           const { error: durErr } = await supabase
             .from(table)
-            .update({ duration_min: correctedMinutes })
+            .update(patch)
             .eq('id', String(target.id))
             .eq('user_id', user.id);
           if (durErr) throw new Error(durErr.message);
+
+          // WHAT IT NOW SAYS, in full, because she has just been told twice by
+          // a reply written before any of this ran. The app is the only thing
+          // in the turn that knows what actually landed.
+          const now = [
+            correctedMinutes != null ? `${correctedMinutes} min` : null,
+            correctedIntensity,
+            patch.kcal_burned == null
+              ? correctedIntensity != null
+                ? 'calories cleared, since the effort changed'
+                : null
+              : `${patch.kcal_burned} kcal`,
+          ].filter(Boolean);
           saved = {
             kind: 'activity',
-            summary: `${String(target.activity_type ?? 'that')}, now ${correctedMinutes} min`,
+            summary: `${String(target.activity_type ?? 'that')}, now ${now.join(', ')}`,
           };
           attempt.landed.push('activity');
           // NOTHING IS DELETED AND NOTHING RE-LOGGED, so the entry keeps its
-          // id, its day and its notes. Only the number she corrected moves.
+          // id, its day and its notes. Only what she corrected moves, and
+          // anything derived from it moves with it.
         } else {
           const entries = await logActivityFromText(supabase, user.id, message);
           if (entries[0]) {

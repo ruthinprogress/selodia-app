@@ -70,8 +70,14 @@ check('THE MODEL CAN HAND OVER THE CORRECTED NUMBER', () => {
 check('AND IT IS WRITTEN IN PLACE, NOT DELETED AND RE-LOGGED', () => {
   const at = route.indexOf('const correctedMinutes =');
   assert.ok(at > -1, 'the in-place path is gone');
-  const body = route.slice(at, at + 900);
-  assert.ok(/duration_min: correctedMinutes/.test(body), 'the duration is not updated');
+  // Wide enough to reach past the reasoning between the guard and the write.
+  // Three of these windows were too small the moment the block grew, which is
+  // its own small lesson about slicing source by a character count.
+  const body = route.slice(at, at + 4000);
+  assert.ok(
+    /patch\.duration_min = correctedMinutes/.test(body),
+    'the duration is not updated'
+  );
   assert.ok(/\.update\(/.test(body), 'it no longer updates the row it already has');
   assert.ok(
     !/\.delete\(\)/.test(body),
@@ -87,7 +93,7 @@ check('AND IT IS WRITTEN IN PLACE, NOT DELETED AND RE-LOGGED', () => {
   // reaches it - a check that cannot fail on the regression it was written
   // for. Found by mutating the branch to `if (false)` and watching it pass.
   assert.ok(
-    /if \(correctedMinutes != null\) \{/.test(route),
+    /if \(correctedMinutes != null \|\|/.test(route),
     'the in-place update is no longer reached when a corrected length arrives'
   );
   return 'one row, one column, guarded, and actually entered';
@@ -102,11 +108,55 @@ check('the re-log path survives for everything that is NOT a length', () => {
     'the general activity correction was removed along with the bug'
   );
   const at = route.indexOf('const correctedMinutes =');
-  const after = route.slice(at, at + 2600);
+  const after = route.slice(at, at + 6000);
   const relogAt = after.indexOf('logActivityFromText');
   const elseAt = after.indexOf('} else {');
   assert.ok(elseAt > -1 && relogAt > elseAt, 'the re-log no longer sits behind the else');
   return 'in place for a length, re-log for the rest';
+});
+
+check('A CHANGED LENGTH TAKES THE CALORIES WITH IT', () => {
+  // Ruth, an hour after the in-place update shipped: "Climbing still says
+  // 720kcal for 60mins...cant be the sane estimate as for 90mins".
+  //
+  // The new path changed duration_min and nothing else, so kcal_burned went on
+  // describing a session that no longer existed. A stored figure left behind by
+  // the thing it was derived from - the fault the whole day was spent on,
+  // introduced by the fix for the previous one.
+  assert.ok(
+    /priorKcal \* \(correctedMinutes \/ priorMin\)/.test(route),
+    'a change of length no longer rescales the calories'
+  );
+  // Guarded, or a zero prior duration divides by zero and writes NaN over a
+  // real figure.
+  assert.ok(/priorMin > 0/.test(route), 'the scale can divide by zero');
+  assert.ok(/priorKcal > 0/.test(route), 'it scales a figure that was never there');
+  return 'scaled by the new time, guarded both ways';
+});
+
+check('AND A CHANGED EFFORT CLEARS THEM RATHER THAN KEEPING A WRONG ONE', () => {
+  // Scaling cannot cross efforts: an hour of hard climbing and an hour of
+  // moderate climbing differ by exactly the thing being corrected. The app's
+  // own standing rule, in the activity parse prompt: "a made-up 30 minutes
+  // becomes a made-up calorie burn, and the person is then shown a number about
+  // their day that nobody measured."
+  assert.ok(/correctionIntensity: \{/.test(route), 'the effort cannot be corrected at all');
+  assert.ok(/correctionKcal: \{/.test(route), 'the model cannot hand over a corrected figure');
+  const at = route.indexOf('const correctedIntensity =');
+  // Wide enough for the reasoning that sits between the two, which is most of
+  // the length here. Measured rather than guessed.
+  const body = route.slice(at, at + 4000);
+  assert.ok(
+    /patch\.kcal_burned = null;/.test(body),
+    'a corrected effort keeps the old calorie figure, which is now about a session that did not happen'
+  );
+  // And the model is told to send a figure, so the null is the fallback rather
+  // than the usual outcome.
+  assert.ok(
+    /SEND THIS WHENEVER YOU CORRECT THE INTENSITY/.test(route),
+    'nothing asks the model for a figure when it changes the effort'
+  );
+  return 'null, not a wrong number';
 });
 
 check('AND NOBODY IS SENT TO AN EDIT SCREEN THAT DOES NOT EXIST', () => {
