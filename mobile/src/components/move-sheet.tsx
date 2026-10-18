@@ -54,9 +54,22 @@ export function MoveSheet({
       <ThemedView style={[styles.sheet, { paddingBottom: insets.bottom + clearance }]}>
         <View style={[styles.grabber, { backgroundColor: theme.backgroundSelected }]} />
         <View style={styles.body}>
-          <ThemedText type="sectionTitle">Move {activity}</ThemedText>
+          {/* "MOVE" WAS THE WRONG WORD AND IT HID A FEATURE (Ruth, 18 October
+              2026): "duplicating is not resolved by your answer. there is no
+              way to do it from inside week, that's not good."
+
+              She was right, and the cause was the label rather than the code.
+              Tapping a day calls toggleDay, which ADDS it and keeps the days
+              already there - so one card has always been able to sit on Monday
+              and Thursday. Nobody would ever find that behind a button that
+              says Move, and the sheet closed after one tap, which made it look
+              like moving even when you did find it.
+
+              Now it says what it does: these are the days this happens on. */}
+          <ThemedText type="sectionTitle">Which days for {activity}?</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Tap a day to put it there, or tap it again to take it off.
+            Tap a day to add it, or tap it again to take it off. It can be on as many days as
+            you like. No days at all puts it in Anytime.
           </ThemedText>
 
           <View style={styles.grid}>

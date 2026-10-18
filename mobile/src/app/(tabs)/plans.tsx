@@ -30,7 +30,7 @@ import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { dayKeyOf, isWalking, logMatchesPlan, placedOnDays } from '@/lib/week-plan';
-import { moveToDays, removeFromWeek } from '@/lib/week-move';
+import { moveToDays } from '@/lib/week-move';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
 // "every tab should answer a different user question, with no overlap ...
@@ -316,13 +316,28 @@ export default function PlansScreen() {
               if (!plan) return;
               void (async () => {
                 try {
-                  await removeFromWeek(plan.id);
+                  // IT TAKES IT OUT OF THE WEEK. IT DOES NOT DESTROY IT.
+                  //
+                  // Ruth, 18 October 2026: "'take this out of your week' was
+                  // meant to take it out of your week, not delete it. that's
+                  // why it's wrong, it should go into Anytime. If they want to
+                  // delete it they can do it from there."
+                  //
+                  // This called removeFromWeek, which is a hard delete - so a
+                  // button labelled as though it clears the days was quietly
+                  // destroying the card, its reminder and its history. The
+                  // label was the honest half.
+                  //
+                  // Clearing the days puts it in Anytime, because Anytime is
+                  // defined as whatever is not on a day. Deleting for good
+                  // stays a separate, deliberate act from there.
+                  await moveToDays(plan.id, []);
                 } catch {
                   // SAID OUT LOUD RATHER THAN SWALLOWED. Thrown inside a void
                   // async, an error vanishes completely and the screen simply
                   // does not change - which is indistinguishable from a feature
                   // that does nothing.
-                  setWeekError('That did not come out. Check your connection and try again.');
+                  setWeekError('That did not move to Anytime. Check your connection and try again.');
                 } finally {
                   // The week is re-read either way: a failed delete must not
                   // leave the card looking gone when it is still there.
@@ -340,10 +355,18 @@ export default function PlansScreen() {
             days={movingPlan.days}
             weekDays={daysOfWeek(currentWeekStart())}
             onClose={() => setMovingPlan(null)}
+            // THE SHEET STAYS OPEN, so several days can be chosen in one go.
+            // It used to close on the first tap, which is why a card that can
+            // sit on Monday AND Thursday looked like it could only ever be
+            // moved: the sheet's own copy said "tap a day to put it there, or
+            // tap it again to take it off", and the screen gave you one tap.
+            //
+            // The pick is saved as it is made rather than on a Done button, so
+            // closing the sheet any way at all keeps what was chosen.
             onPick={(picked) => {
               const plan = movingPlan;
-              setMovingPlan(null);
               if (!plan) return;
+              setMovingPlan({ ...plan, days: picked });
               void (async () => {
                 try {
                   await moveToDays(plan.id, picked);

@@ -701,7 +701,16 @@ export function WeekView({
         style={styles.anytimeZone}>
         {anytime.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
-            Everything has a day. Drag a card here to make it flexible.
+            {/* "Everything has a day" was the old line, and Ruth asked what it
+                meant - fairly, because it described the STATE of her week
+                rather than what this section is for, and read like a rule that
+                everything must be given a day.
+
+                Her own words for what it should say: "add activities that you
+                do on an adhoc basis, not necessarily on a fixed day. Drag cards
+                in and out if your week as things change." */}
+            For the things you do when they fit, rather than on a set day. Drag a card in or
+            out as the week changes.
           </ThemedText>
         ) : (
           <View style={styles.grid}>
@@ -1249,6 +1258,18 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     borderRadius: CardRadius,
     padding: Spacing.one,
+    // A ZONE YOU CANNOT HIT IS A FEATURE THAT DOES NOT EXIST (Ruth, 18 October
+    // 2026): "When it was empty, cards were not able to enter Anytime."
+    //
+    // Empty, this held one line of text and eight points of padding - about
+    // thirty points of target, directly under Sunday. Dropping into it was
+    // luck. The drag worked, the measurement worked, and the landing strip was
+    // too thin to land on, so the whole feature read as missing.
+    //
+    // Sized so it is obviously somewhere a card can go, whether or not one is
+    // in it yet.
+    minHeight: 88,
+    justifyContent: 'center',
   },
   // Dimmed, not hidden: the space it leaves is what tells her where it came
   // from if she changes her mind. The LIFT is on the preview under her finger,

@@ -80,7 +80,11 @@ export function LogPlanSheet({
   plan: PlanToLog;
   onClose: () => void;
   onLog: (input: { activity: string; when: Date; minutes: number | null; note: string }) => Promise<void>;
-  /** Take it out of her week entirely. See removeFromWeek for why not "delete". */
+  /**
+   * Clears its days so it drops into Anytime. NOT a delete: Ruth, 18 October
+   * 2026, "it should go into Anytime. If they want to delete it they can do it
+   * from there." It used to call removeFromWeek, which destroyed the card.
+   */
   onRemove?: () => void;
   /**
    * MOVE TO… LIVES HERE (Ruth, 29 September 2026: "in the tap sheet for any
@@ -300,7 +304,7 @@ export function LogPlanSheet({
                   numberOfLines={1}
                   style={styles.removeLabel}
                 >
-                  {confirmRemove ? 'Tap again to take it out' : 'Take out of my week'}
+                  {confirmRemove ? 'Tap again to move it' : 'Take out of my week'}
                 </ThemedText>
               </Pressable>
             )}
