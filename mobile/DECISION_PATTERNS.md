@@ -719,3 +719,35 @@ rewritten around it.
 **The rule: where an artefact has to match an existing look, feed the look
 itself and reserve the words for what the example cannot carry. Reach for the
 example before the adjective — and when an example already exists, notice it.**
+
+## A document nothing imports is a document that rots, and it looks fine the whole time (18 October 2026)
+
+Twenty-two illustrations in, `illustration-brief.mjs` held every expensive thing
+the project had learned about drawing a movement, quoting Ruth directly where
+she had caught something. Nothing in the repository imported it. Every prompt
+had been hand-written at the point of use, which is why the same faults kept
+arriving picture after picture: the face crept back, the wall became a solid
+slab, the figure turned over in mid-air between its own two frames. Each one had
+already been diagnosed and written up, in a file that was never in the path of
+the work.
+
+The second half is the part worth keeping. The file had decayed. It still asked
+for a figure filled with flat sage green, a slim curved direction arrow, and a
+three-quarter view — all three rejected weeks apart, with the rejections
+recorded a few paragraphs further down the same file. Had anything imported it,
+it would have produced the wrong picture on the first call. Nothing ever
+contradicted it, because nothing ever ran it.
+
+The fix was not to write it better. It was to make the document the thing that
+runs — one function that builds every prompt — and to add a test asserting each
+hard-won rule survives in what that function produces, including a hand-written
+prompt proved to fail all of them.
+
+**The rule: knowledge that governs how something is made has to sit in the code
+path that makes it. A file that is only ever read by a person is a file whose
+errors nobody is ever forced to find.** It is the twin of *a guard belongs at
+the write*: that one says enforcement must be in code rather than in an
+instruction, and this one says the same of the instructions themselves. It also
+sharpens *a step described in the documentation as automatic is a step nobody
+checks* — the failure there was a skipped step, and here it is a whole document
+quietly going out of date while being cited.
