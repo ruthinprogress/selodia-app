@@ -70,13 +70,32 @@ const { data: planRows } = await supabase
   .select('content')
   .ilike('kind', '%plan%');
 
+// AND WHAT IS ALREADY DRAWN, WHICH THIS DID NOT ASK UNTIL 18 OCTOBER.
+//
+// Written on the 16th, when movement_illustrations was empty, so skipping
+// exercises with a clip was the whole of "already covered" and the omission was
+// invisible. Two days later the table held twenty-one rows and this was still
+// listing five of them to draw: butterfly stretch, cossack squat, frog stretch,
+// middle splits at the wall, wide-leg forward fold. About GBP 1.80 of redrawing,
+// plus Ruth's time reviewing pictures of movements she had already approved.
+//
+// The resolver is asked rather than the table, so a name that reaches a drawing
+// through an alias counts as covered too.
+const { data: drawnRows } = await supabase.from('movement_illustrations').select('join_key');
+const drawn = new Set((drawnRows ?? []).map((r) => r.join_key));
+
 const prescribed = new Map(); // canonical -> the raw names that map to it
+const alreadyDrawn = [];
 for (const row of planRows ?? []) {
   for (const ex of row.content?.exercises ?? []) {
     if (ex.demoRef) continue;
     const raw = String(ex.name ?? '').trim();
     if (!raw) continue;
     const key = canonical(raw);
+    if (drawn.has(key)) {
+      if (!alreadyDrawn.includes(key)) alreadyDrawn.push(key);
+      continue;
+    }
     if (!prescribed.has(key)) prescribed.set(key, new Set());
     if (raw.toLowerCase() !== key) prescribed.get(key).add(raw);
   }
@@ -93,3 +112,8 @@ console.log(
   `\n  ${prescribed.size} drawings cover ${prescribed.size + raw} names the model has actually written.` +
     `\n  The ${raw} extra are aliases, which cost a row each and no artwork.\n`
 );
+
+if (alreadyDrawn.length > 0) {
+  console.log(`  Not listed because they are already drawn (${alreadyDrawn.length}):`);
+  console.log(`    ${alreadyDrawn.sort().join(', ')}\n`);
+}
