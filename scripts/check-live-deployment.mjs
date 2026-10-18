@@ -180,7 +180,7 @@ async function answerFromTheSite(why) {
   process.exit(1);
 }
 
-const TOKEN = vercelToken();
+let TOKEN = vercelToken();
 if (!TOKEN) await answerFromTheSite('no Vercel credentials on this machine');
 
 // A DEAD TOKEN IS "I CANNOT TELL", NOT A FAILURE AND NOT A CRASH.
@@ -196,11 +196,42 @@ if (!TOKEN) await answerFromTheSite('no Vercel credentials on this machine');
 // everybody to ignore the check that matters.
 class NotAuthorised extends Error {}
 
+// AND THE REFRESH HAS TO BE DRIVEN BY THE ANSWER, NOT BY THE CLAIM
+// (18 October 2026).
+//
+// Ruth: "The vercel thing is always flagged but then you always tell me it's
+// fine as it cycles on. Check thats the case now." It was fine. `npx vercel
+// whoami` and all seven passed, exactly as on 14 October.
+//
+// Which means this had been reporting a lost login, and I had been relaying it
+// to her as urgent, for a second time - after the fix for the first time was
+// written four lines above and says "the check refreshes rather than
+// complains". It did not refresh. vercelToken() refreshes only when the STORED
+// expiresAt says the token has lapsed; when the stored claim looks fine and the
+// API rejects the token anyway, nothing ever tried.
+//
+// So the refresh now hangs off the 403 itself, which is the only thing that
+// actually knows. One attempt, then the honest answer.
+let refreshed = false;
+
 async function api(route) {
   const sep = route.includes('?') ? '&' : '?';
-  const res = await fetch(`https://api.vercel.com${route}${sep}teamId=${TEAM_ID}`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  const call = () =>
+    fetch(`https://api.vercel.com${route}${sep}teamId=${TEAM_ID}`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+
+  let res = await call();
+  if ((res.status === 401 || res.status === 403) && !refreshed) {
+    refreshed = true;
+    if (refreshLogin()) {
+      const fresh = storedAuth()?.token;
+      if (fresh && fresh !== TOKEN) {
+        TOKEN = fresh;
+        res = await call();
+      }
+    }
+  }
   if (res.status === 401 || res.status === 403) throw new NotAuthorised();
   if (!res.ok) throw new Error(`${route} -> ${res.status} ${await res.text()}`);
   return res.json();
