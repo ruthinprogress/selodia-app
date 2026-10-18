@@ -53,6 +53,10 @@ type WeekRow = {
    * sorts or alarms on this - it is read, shown, and spoken back.
    */
   time_of_day: string | null;
+  /** The weekly reminder, if it has one. Null when it never had, or stopped. */
+  remind_at?: string | null;
+  remind_offset_minutes?: number | null;
+  reminder_cancelled_at?: string | null;
   session_entry_id: string | null;
   days: string[];
   /** Set when SHE put this on its day. Null means the days came from the plan. */
@@ -72,6 +76,24 @@ function previewDetail(row: WeekRow, from: string | null): string {
   // THE SAME LINE THE PILL SHOWS, through the same function - so a carried
   // card cannot disagree with the one it was lifted from about its own time.
   return pillDetail(row.time_of_day, row.duration);
+}
+
+/**
+ * The reminder this card actually has, or null.
+ *
+ * A CANCELLED ONE IS NOT ONE. reminder_cancelled_at is a timestamp rather than
+ * a boolean precisely so "never wanted one" and "had one and stopped it" stay
+ * different answers - but to everything on this screen they mean the same
+ * thing: no bell, and the sheet opens with the switch off. Reading remind_at
+ * alone would show a bell on a card somebody silenced from a notification,
+ * which is the exact betrayal that off switch exists to prevent.
+ */
+function activeReminder(row: {
+  remind_at?: string | null;
+  reminder_cancelled_at?: string | null;
+}): string | null {
+  if (row.reminder_cancelled_at) return null;
+  return row.remind_at ?? null;
 }
 
 /** A place a card can be dropped, in window coordinates. */
@@ -166,7 +188,7 @@ export function WeekView({
     const [planRes, logRes, profileRes, stepCount] = await Promise.all([
       supabase
         .from('user_week')
-        .select('id, activity, purpose, cadence, duration, time_of_day, session_entry_id, days, days_chosen_at, cadence_conflict_asked_at')
+        .select('id, activity, purpose, cadence, duration, time_of_day, session_entry_id, days, days_chosen_at, cadence_conflict_asked_at, remind_at, remind_offset_minutes, reminder_cancelled_at')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
       supabase
@@ -645,7 +667,7 @@ export function WeekView({
                     <View collapsable={false}>
                       <PlanPill
                         row={row}
-                        logged={isLogged(row.activity)}
+                        reminds={activeReminder(row) != null}
                         carrying={carrying?.id === row.id}
                         onPress={() =>
                           onLogPlan?.({
@@ -658,6 +680,9 @@ export function WeekView({
                             // once - see PlanToLog.fromDay.
                             fromDay: key,
                             plannedMinutes: clockMinutes(row.time_of_day),
+                            timeOfDay: row.time_of_day,
+                            remindAt: activeReminder(row),
+                            remindOffsetMinutes: row.remind_offset_minutes ?? null,
                           })
                         }
                       />
@@ -729,7 +754,7 @@ export function WeekView({
                   <View collapsable={false}>
                     <PlanCard
                       row={row}
-                      logged={isLogged(row.activity)}
+                      reminds={activeReminder(row) != null}
                       carrying={carrying?.id === row.id}
                       onPress={() =>
                         onLogPlan?.({
@@ -742,6 +767,9 @@ export function WeekView({
                           // That is what turns the control into the delete.
                           fromDay: null,
                           plannedMinutes: clockMinutes(row.time_of_day),
+                          timeOfDay: row.time_of_day,
+                          remindAt: activeReminder(row),
+                          remindOffsetMinutes: row.remind_offset_minutes ?? null,
                         })
                       }
                     />
@@ -924,12 +952,13 @@ export function WeekView({
 
 function PlanPill({
   row,
-  logged,
+  reminds,
   carrying,
   onPress,
 }: {
   row: WeekRow;
-  logged: boolean;
+  /** It has a weekly reminder that has not been switched off. */
+  reminds: boolean;
   /** Lifted: the real card dims and the preview carries the name instead. */
   carrying: boolean;
   onPress: () => void;
@@ -952,14 +981,27 @@ function PlanPill({
       // saying "nineteen thirty" for a card she created by typing "7pm" is
       // correct and unrecognisable; the 24-hour column exists to be scanned by
       // eye, and there is nothing to scan when it is being read aloud.
+      // AND NOT ", LOGGED", for the same reason there is no tick. Leaving it
+      // here would have removed the mark for everybody who can see it and kept
+      // it for everybody who cannot, which is the worse half of the fault.
+      // The bell is announced, because that is a fact about the card.
       accessibilityLabel={`${row.activity}${row.time_of_day ? `, ${row.time_of_day}` : ''}${
         row.duration ? `, ${row.duration}` : ''
-      }${logged ? ', logged' : ''}`}
+      }${reminds ? ', reminder set' : ''}`}
       // TWO ROUTES, BOTH SPOKEN. A screen reader user cannot drag, so the hint
       // names the one they can use. See move-sheet.tsx.
-      accessibilityHint="Opens the log sheet, which has Move to…"
+      accessibilityHint="Opens the log sheet, with its time, reminder and days"
       style={({ pressed }) => [pressed && styles.pressed, carrying && styles.lifted]}>
       <ThemedView type="backgroundElement" style={styles.pill}>
+        {/* A BELL IS NOT A TICK, which is why one went and the other arrived on
+            the same afternoon. A tick says this was done and the week does not
+            do done. A bell says this one will nudge you, which is a fact about
+            the card rather than a verdict on the week.
+
+            Ruth asked for it: "'set up reminder' ... puts a little bell icon on
+            the Plan/excersise card anywhere it shows up." Anywhere, so it is on
+            both the day pill and the Anytime card. */}
+        {reminds && <Ionicons name="notifications-outline" size={12} color={theme.textSecondary} />}
         {/* NO TICK. THE WEEK IS A TEMPLATE, NOT A TO-DO LIST.
             Ruth, 18 October 2026: "I tested the 'log it' button and it placed a
             tick next to the card in week view. Thats not good. Its a template
@@ -1000,12 +1042,13 @@ function PlanPill({
 
 function PlanCard({
   row,
-  logged,
+  reminds,
   carrying,
   onPress,
 }: {
   row: WeekRow;
-  logged: boolean;
+  /** It has a weekly reminder that has not been switched off. */
+  reminds: boolean;
   /** Lifted: the real card dims and the preview carries the name instead. */
   carrying: boolean;
   onPress: () => void;
@@ -1024,16 +1067,20 @@ function PlanCard({
       // find than a hold ever was.
       accessibilityRole="button"
       accessibilityLabel={`${row.activity}${row.cadence ? `, ${row.cadence}` : ''}${
-        logged ? ', logged' : ''
+        reminds ? ', reminder set' : ''
       }`}
-      accessibilityHint="Opens the log sheet, which has Move to…"
+      accessibilityHint="Opens the log sheet, with its time, reminder and days"
       style={({ pressed }) => [pressed && styles.pressed, carrying && styles.lifted]}>
       <ThemedView type="backgroundElement" style={styles.gridCard}>
         <View style={styles.gridCardTop}>
           <ThemedText type="small" style={styles.gridCardName}>
             {row.activity}
           </ThemedText>
-          {/* No tick here either. See the pill above. */}
+          {/* No tick here either. See the pill above. A bell, though: it says
+              this card will nudge you, not that you obeyed it. */}
+          {reminds && (
+            <Ionicons name="notifications-outline" size={13} color={theme.textSecondary} />
+          )}
         </View>
         {row.cadence || row.duration ? (
           <ThemedText type="small" themeColor="textSecondary">

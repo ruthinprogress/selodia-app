@@ -413,7 +413,18 @@ export async function restoreReminders(userId: string): Promise<void> {
     // agreement: somebody can want nothing from the app and still want to be
     // told to take their magnesium.
     const custom = await loadCustomReminders();
-    if (!settings?.enabled && custom.length === 0) return;
+    // AND AGAIN, ONE CAPABILITY LATER (18 October 2026). The note above was
+    // written when custom reminders were added and this gate still counted
+    // only the app's own. Week reminders landed yesterday and the gate was not
+    // widened, so an account that had said no to the log reminders and had no
+    // custom ones would silently never schedule the reminder on a week card -
+    // visible only as an alarm that does not arrive, which is unreportable.
+    //
+    // Three kinds of reminder now, and the question this gate asks is whether
+    // ANY of them is wanted. The next kind has to be added here too; the check
+    // beside it exists so that is noticed rather than remembered.
+    const week = await loadWeekReminders();
+    if (!settings?.enabled && custom.length === 0 && week.length === 0) return;
     const Notifications = await loadNotifications();
     if (!Notifications) return;
 

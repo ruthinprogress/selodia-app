@@ -30,7 +30,10 @@ import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
 import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
 import { dayKeyOf, isWalking, logMatchesPlan, placedOnDays } from '@/lib/week-plan';
+import { CardSettingsSheet, type CardToEdit } from '@/components/card-settings-sheet';
 import { clockMinutes } from '@/lib/day-time';
+import { updateWeekCard, type WeekCardEdit } from '@/lib/week-card';
+import { syncRemindersNow } from '@/lib/notifications';
 import { moveToDays, removeFromWeek } from '@/lib/week-move';
 
 // PLANS (2026-09-20), a destination of its own, from Ruth's navigation brief:
@@ -69,6 +72,7 @@ export default function PlansScreen() {
   const [view, setView] = useState<PlanView>('week');
   // The single-activity log sheet, and the whole-week one.
   const [loggingPlan, setLoggingPlan] = useState<PlanToLog | null>(null);
+  const [editingCard, setEditingCard] = useState<CardToEdit | null>(null);
   const [weekSheet, setWeekSheet] = useState<WeekLogItem[] | null>(null);
   // "MOVE TO…" OPENS FROM THE TAP SHEET, so it is owned here rather than
   // inside the week: the log sheet is this screen's, and a sheet cannot open
@@ -326,6 +330,20 @@ export default function PlansScreen() {
               setMovingPlan(loggingPlan);
               setLoggingPlan(null);
             }}
+            onEdit={() => {
+              const plan = loggingPlan;
+              if (!plan) return;
+              // Same one-sheet-at-a-time rule as the move above.
+              setEditingCard({
+                id: plan.id,
+                activity: plan.activity,
+                timeOfDay: plan.timeOfDay,
+                duration: plan.duration,
+                remindAt: plan.remindAt,
+                remindOffsetMinutes: plan.remindOffsetMinutes,
+              });
+              setLoggingPlan(null);
+            }}
             // TAKE IT OUT OF THE WEEK (Ruth, 1 October 2026: "Plans - Week - no
             // way to delete a card"). The sheet asks twice before calling this,
             // so by the time it runs she has confirmed.
@@ -384,6 +402,28 @@ export default function PlansScreen() {
                   setReloadKey((k) => k + 1);
                 }
               })();
+            }}
+          />
+        )}
+
+        {editingCard && (
+          <CardSettingsSheet
+            card={editingCard}
+            onClose={() => setEditingCard(null)}
+            onSave={async (edit: WeekCardEdit) => {
+              await updateWeekCard(editingCard.id, edit);
+              // THE PHONE IS WHAT ACTUALLY RINGS. The row is only the record:
+              // applyReminderSchedule cancels everything and rebuilds from
+              // stored state, so a reminder that is saved and not re-synced
+              // does not exist until the next launch - and it would look
+              // exactly like the switch being broken.
+              //
+              // Non-fatal on purpose. syncRemindersNow returns false when the
+              // OS refuses permission, and the saved row is still correct; the
+              // reminder starts arriving as soon as notifications are allowed.
+              if (edit.remindAt) await syncRemindersNow();
+              setWeekKey((k) => k + 1);
+              setReloadKey((k) => k + 1);
             }}
           />
         )}

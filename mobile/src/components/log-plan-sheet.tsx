@@ -98,6 +98,11 @@ export type PlanToLog = {
    * to her is the app putting words in her mouth.
    */
   plannedMinutes: number | null;
+  /** Her words for when and how long, so the settings sheet can edit them. */
+  timeOfDay: string | null;
+  /** The reminder as stored, so the sheet opens showing what is already true. */
+  remindAt: string | null;
+  remindOffsetMinutes: number | null;
 };
 
 // MOUNTED ONLY WHILE IT IS OPEN, so every field can be initialised from the
@@ -111,6 +116,7 @@ export function LogPlanSheet({
   onLog,
   onMove,
   onRemove,
+  onEdit,
 }: {
   plan: PlanToLog;
   onClose: () => void;
@@ -139,6 +145,16 @@ export function LogPlanSheet({
    * tremor. The drag is the shortcut; this is the road.
    */
   onMove?: () => void;
+  /**
+   * TIME, HOW LONG, AND THE REMINDER (Ruth, 18 October 2026: "I cant find how
+   * to set the reminder alarm/notification for the activity card", "There is
+   * no way to edit the start time or duration time").
+   *
+   * It lives on the tap sheet for the same reason "Move to…" was put here: a
+   * tap is the one way into a card that every user has, with TalkBack on, with
+   * one hand, on a bus.
+   */
+  onEdit?: () => void;
 }) {
   const theme = useTheme();
   // THE SHEET CLEARS THE TAB BAR, not its contents.
@@ -347,6 +363,22 @@ export function LogPlanSheet({
                   {plan.days.length === 0
                     ? 'Anytime this week'
                     : plan.days.map((d) => DAY_LABEL[d as DayKey] ?? d).join(', ')}
+                </ThemedText>
+              </Pressable>
+            )}
+            {onEdit && (
+              <Pressable
+                onPress={onEdit}
+                accessibilityRole="button"
+                accessibilityLabel={`Change the time, length and reminder for ${plan.activity}`}
+                accessibilityHint="Opens when it happens, how long it takes, and whether it reminds you"
+                hitSlop={Spacing.two}
+                style={({ pressed }) => [styles.moveRow, pressed && styles.pressed]}>
+                <ThemedText type="small" themeColor="accentDeep">
+                  Time, length and reminder
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {plan.remindAt ? 'Reminder on' : 'No reminder'}
                 </ThemedText>
               </Pressable>
             )}
