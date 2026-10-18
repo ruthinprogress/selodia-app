@@ -160,6 +160,8 @@ THE GROUND IS A SOFT SHADOW, NEVER A LINE. Beneath whatever actually touches the
 
 A WALL, WHERE ONE IS NEEDED, IS A SINGLE FINE LINE at the RIGHT edge of the frame, drawn in the same place and at the same scale in both frames. One thin quiet vertical contour line in the same pale terracotta as the figure's outline, and nothing more. Do NOT fill it, shade it, colour it in, or give it width, a panel, a block or a shadow of its own. No bricks, no skirting board, no room, no furniture. The wall is the quietest thing in the frame.
 
+EQUIPMENT IS DRAWN ONLY WHERE THE MOVEMENT NEEDS IT, and then as quietly as the wall. A barbell, a dumbbell, a stick, a box, a chair: the same fine terracotta contour line as the figure, unfilled, no logos, no knurling, no weight plates picked out in detail, no texture. It is the thing in her hands or under her feet and nothing more. Never add equipment that was not named - a bodyweight squat does not acquire a dumbbell because squats often have one - and never draw a mat, a rack, a gym, a window or a floor line.
+
 NO ARROW ANYWHERE. No arrow, no curved line, no swoosh, no motion mark.
 
 NOTHING is brighter than the cream paper, and nothing is darker or more saturated than the figure's own outline.
