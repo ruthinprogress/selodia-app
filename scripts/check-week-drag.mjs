@@ -186,8 +186,14 @@ const BREAK = {
     '\nconst clearCarry = () => {};\n',
   'the hold is bound once': (w) => w.replace('accessibilityRole="button"', 'onLongPress={x}'),
   'the pan waits for the hold': (w) => w.replaceAll('activateAfterLongPress', 'xx'),
+  // ANCHORED ON THE STYLE, NOT ON THE WHOLE ATTRIBUTE. This used to look for
+  // `style={styles.anytimeZone}` exactly, and on 20 October that attribute
+  // became an array - so the mutation matched nothing, the check ran against
+  // an unbroken copy, and the suite correctly called it useless. The lesson is
+  // the mutation's, not the check's: a break that depends on surrounding
+  // syntax stops breaking anything the moment that syntax changes.
   'Anytime never lights up': (w) =>
-    w.replace('style={styles.anytimeZone}', 'style={[styles.anytimeZone, over === ANYTIME && x]}'),
+    w.replace('styles.anytimeZone', 'styles.anytimeZone, over === ANYTIME && x'),
   'today and the drop are different pictures': (w) =>
     w.replace("type={over === key ? 'accentWash' : 'background'}", "type={isToday ? 'a' : 'b'}"),
   'the accessible route survives': (w) => w,

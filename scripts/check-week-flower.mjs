@@ -193,10 +193,16 @@ check('THE THREE NOTES ARE THREE DIFFERENT VOICES', () => {
   );
   // AND THE HEADING IS A HEADING. It was the same size and colour as the three
   // notes under it, which is what made the section read flat.
-  assert.ok(
-    /<ThemedText type="sectionTitle">If the week goes to plan<\/ThemedText>/.test(section),
-    'the section title is back to being another small grey paragraph'
-  );
+  // THE TYPE, NOT THE EXACT TAG. This matched the whole element including its
+  // closing tag, so adding a `style` to make the heading larger broke it -
+  // while a change that actually mattered, like dropping it back to small
+  // secondary text, would have broken it the same way and told you the same
+  // thing. What matters is that the heading is set in the section face and is
+  // not another grey paragraph.
+  const heading = section.slice(section.indexOf('If the week goes to plan') - 300,
+                                section.indexOf('If the week goes to plan'));
+  assert.ok(/type="sectionTitle"/.test(heading), 'the section title is back to being another small grey paragraph');
+  assert.ok(!/themeColor="textSecondary"/.test(heading), 'the heading is drawn in the secondary colour');
   return 'observation, limitation, offer';
 });
 

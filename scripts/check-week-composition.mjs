@@ -130,6 +130,46 @@ check('THE INSIGHT IS THE LARGEST BODY TEXT, AND THE ONLY SERIF', () => {
   return `serif at ${size}`;
 });
 
+check('THE DRAWING FILLS THE PAGE, ON ANY HANDSET', () => {
+  // Ruth, 20 October 2026: "flower as wide as the screen almost so it feel
+  // balanced against the text."
+  //
+  // MEASURED, NOT PICKED. It was 190 - a number chosen to be larger than the
+  // number before it, which is how this comes out wrong again on a phone
+  // nobody tested on. The drawing is 296 units wide to 220 tall, so the size
+  // that fills the column is the column divided by that ratio.
+  assert.ok(/useWindowDimensions/.test(src), 'the flower is back to a fixed size');
+  assert.ok(/PageInset\.horizontal \* 2/.test(src), 'the page margins are not taken off the width');
+  assert.ok(/\* 220\) \/ 296/.test(src), "the ratio is not the drawing's own 296 by 220");
+  assert.ok(/size={flowerSize}/.test(raw), 'the flower is not given the measured size');
+  return "the column, over the artwork's own ratio";
+});
+
+check('AND THE SERIF IS NEVER SET ABOVE REGULAR', () => {
+  // DisplayFont in theme.ts, in capitals, from 18 September 2026 after Ruth
+  // compared five type systems on her own phone: "REGULAR, NEVER SEMIBOLD.
+  // Weight is what makes a serif look modern and insistent; regular at a large
+  // size is what makes it look printed. Nothing in the app should set this
+  // face above 400."
+  //
+  // CHECKED HERE BECAUSE THIS IS WHERE IT WILL BE BROKEN. "Larger bold
+  // heading" is a reasonable thing to ask for and loading a semibold cut is
+  // three lines; the rule is hers to overrule, and not on an adjective.
+  assert.ok(!/DisplayFont\.(semibold|bold|medium)/.test(src), 'the display face is set above regular');
+  const theme = fs.readFileSync('mobile/src/constants/theme.ts', 'utf8');
+  assert.ok(/REGULAR, NEVER SEMIBOLD/.test(theme), 'the rule this checks has been removed from the theme');
+  // SIZE IS THE WEIGHT IN THIS FACE, so the two things she asked to be bolder
+  // are instead clearly bigger than what they were.
+  assert.ok(number(style('planHeading'), 'fontSize') >= 38, 'the heading is no longer larger');
+  assert.ok(number(style('planNote'), 'fontSize') >= 26, 'the observation is no longer larger');
+  // And the order still holds: the heading asks, the observation answers.
+  assert.ok(
+    number(style('planHeading'), 'fontSize') > number(style('planNote'), 'fontSize'),
+    'the observation is as large as the heading and the two compete'
+  );
+  return 'regular, and larger instead';
+});
+
 check('AND THE HIERARCHY IS MADE OF SIZE, COLOUR AND SPACE ONLY', () => {
   // "Avoid: icons, badges, coloured boxes, cards, borders." The first attempt
   // set the two supporting notes off with a left rule, which the artwork draws
@@ -200,6 +240,42 @@ check('EVERY DAY IS THE SAME HEIGHT, AND RULED', () => {
   // target and a borderColor set for that would repaint this too.
   assert.ok(/backgroundColor: theme\.backgroundElement \}\]} \/>/.test(raw), 'the rule lost its colour');
   return 'one height, one hairline';
+});
+
+check('ANYTIME IS ONE MORE LINE, NOT A BOX UNDER THE WEEK', () => {
+  // Ruth, 20 October 2026, on the first attempt at this: "the Anytime this
+  // week and that card in there is too far away. Look at the artwork again,
+  // the plus sits in the same line as the rest, its one more line, like an
+  // extra day of the week almost."
+  //
+  // IT WAS NOT A MARGIN. It was an 88-point container with a 34-point card
+  // floating in the middle of it - a box three times the height of what it
+  // held. The distance she could see was the box, which is why moving the
+  // margins around it never fixed anything.
+  const zone = style('anytimeZone');
+  const day = style('dayRow');
+  assert.strictEqual(
+    number(zone, 'minHeight'),
+    number(day, 'minHeight'),
+    'Anytime is a different height from a day, so it reads as a section rather than a line'
+  );
+  assert.strictEqual(number(zone, 'paddingVertical'), number(day, 'paddingVertical'),
+    'Anytime is padded differently from a day');
+  // AND NOTHING CENTRES ITS CONTENTS ANY MORE. justifyContent: 'center' was
+  // left behind when this became a row, where it means something else
+  // entirely - it was vertical centring in a tall column.
+  assert.ok(!/justifyContent/.test(zone), 'Anytime centres its contents again');
+  // THE GENEROUS TARGET SURVIVES WHERE IT WAS NEEDED. An empty zone has
+  // nothing to aim at, and that is the bug from 18 October: "When it was
+  // empty, cards were not able to enter Anytime."
+  assert.ok(number(style('anytimeZoneEmpty'), 'minHeight') >= 80,
+    'an empty Anytime is too thin to drop a card into again');
+  assert.ok(/anytime\.length === 0 && styles\.anytimeZoneEmpty/.test(raw),
+    'the empty state no longer gets the bigger target');
+  // A CARD ON A LINE IS SIZED TO ITS WORDS. Half-width tiles were right for a
+  // two-column block and read as a tile that failed to fill on a row.
+  assert.ok(!/width: '48\.5%'/.test(src), 'the Anytime cards are fixed half-width tiles again');
+  return 'a day-shaped line, with the target kept where it mattered';
 });
 
 check('AND ANYTIME HAS A WAY IN', () => {

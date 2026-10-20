@@ -1,14 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { type PlanToLog } from '@/components/log-plan-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
+import { CardRadius, DisplayFont, PageInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { byTimeOfDay, clockMinutes, pillDetail } from '@/lib/day-time';
 import { HealthFlower } from '@/components/health-flower';
@@ -214,6 +214,17 @@ export function WeekView({
     (zone: DayKey | typeof ANYTIME | null, all: Date[]) =>
       zone && zone !== ANYTIME ? all[DAY_KEYS.indexOf(zone)] : null,
     []
+  );
+
+  // THE DRAWING FILLS THE COLUMN IT IS IN. HealthFlower takes a HEIGHT and
+  // works its width out from the artwork's own proportions - 296 units across
+  // to 220 down - so the height that fills the page is the page width divided
+  // by that ratio. `width` here is the whole screen, so the page's margins
+  // come off first.
+  const { width: screenWidth } = useWindowDimensions();
+  const flowerSize = useMemo(
+    () => Math.round(((screenWidth - PageInset.horizontal * 2) * 220) / 296),
+    [screenWidth]
   );
 
   const weekStart = useMemo(() => currentWeekStart(), []);
@@ -794,7 +805,7 @@ export function WeekView({
         // Anytime: don't highlight the Anytime section. Only the card itself
         // shows it's being moved." The block is two columns deep, and tinting
         // all of it drowns the card she is carrying.
-        style={styles.anytimeZone}>
+        style={[styles.anytimeZone, anytime.length === 0 && styles.anytimeZoneEmpty]}>
         <View style={styles.anytimeInner}>
         {anytime.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
@@ -957,19 +968,31 @@ export function WeekView({
             "Heading, flower, paragraph, paragraph, paragraph is very flat...
             The flower is the hero. Everything else supports it." A section
             that is the app speaking needs a title that says so. */}
-        <ThemedText type="sectionTitle">If the week goes to plan</ThemedText>
+        {/* BIGGER AGAIN (Ruth, 20 October 2026): "larger bold heading". The
+            size is hers; the weight is not available, and deliberately so -
+            see planHeading in the stylesheet. 40 is pageTitle's size, which is
+            what a screen one level in uses, and this section is now the second
+            half of the page rather than a note at the bottom of it. */}
+        <ThemedText type="sectionTitle" style={styles.planHeading}>
+          If the week goes to plan
+        </ThemedText>
         {plan.sessions === 0 && plan.unknown.length === 0 && plan.anytime === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
             {PLAN_EMPTY}
           </ThemedText>
         ) : (
           <>
-            {/* LARGER BY ABOUT A FIFTH (ChatGPT): "The explanatory text is
-                currently wider than the flower. That makes the flower feel
-                surprisingly small... The flower is the reason this section
-                exists." */}
+            {/* AS WIDE AS THE PAGE (Ruth, 20 October 2026): "flower as wide
+                as the screen almost so it feel balanced against the text."
+
+                MEASURED, NOT GUESSED. 190 was a number picked to be bigger
+                than the last number, which is how this ends up wrong again on
+                a different handset. The drawing is 296 units wide and 220
+                tall, so the size that makes it fill the column is the column
+                divided by that ratio - and it is right on a small phone, a
+                large one and a tablet without anybody choosing again. */}
             <View style={styles.planFlower}>
-              <HealthFlower coverage={plan.coverage} size={190} />
+              <HealthFlower coverage={plan.coverage} size={flowerSize} />
             </View>
             {/* THE OBSERVATION. The one sentence on this screen that is
                 about her week rather than about the app, so it is the only
@@ -1491,6 +1514,20 @@ const styles = StyleSheet.create({
   // THE HEADING BELONGS TO THE FLOWER: "Currently they feel disconnected. I'd
   // reduce that gap substantially." The section's own gap is eight, so the
   // drawing sits closer to its title than anything else sits to anything.
+  // LARGER, AND STILL REGULAR (Ruth, 20 October 2026: "larger bold heading").
+  //
+  // THE SIZE IS HERS. THE WEIGHT IS HER OWN STANDING RULE, which is why this
+  // is not semibold: DisplayFont in theme.ts says, in capitals, "REGULAR,
+  // NEVER SEMIBOLD. Weight is what makes a serif look modern and insistent;
+  // regular at a large size is what makes it look printed. Nothing in the app
+  // should set this face above 400." She settled that on 18 September after
+  // comparing five type systems on her own phone.
+  //
+  // So the presence she is asking for is bought the way that rule says to buy
+  // it - 30 to 40, a third larger. CormorantInfant_600SemiBold ships in the
+  // package and is three lines from being loaded if she wants the rule
+  // overruled; it is not a thing to do quietly on an adjective.
+  planHeading: { fontSize: 40, lineHeight: 48 },
   // THE FLOWER BELONGS TO THE HEADING, so it sits closer to it than anything
   // on this screen sits to anything. 12.
   planFlower: { alignItems: 'center', marginTop: Spacing.three - Spacing.one },
@@ -1503,8 +1540,12 @@ const styles = StyleSheet.create({
   // section title's 30: it answers the heading, it does not repeat it.
   planNote: {
     marginTop: Spacing.four,
-    fontSize: 22,
-    lineHeight: 30,
+    // 22 TO 27 (Ruth: "'As it stands...' text bolder and larger"). Same
+    // reasoning as the heading above: in this face, size is the weight. It
+    // stays clearly under the heading's 40, because it answers the question
+    // the heading asks rather than asking another one.
+    fontSize: 27,
+    lineHeight: 35,
     fontFamily: DisplayFont.regular,
   },
   // QUIETER, AND SET IN A LITTLE: this explains why the drawing is incomplete,
@@ -1643,20 +1684,34 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
     borderRadius: CardRadius,
-    padding: Spacing.one,
-    // A ZONE YOU CANNOT HIT IS A FEATURE THAT DOES NOT EXIST (Ruth, 18 October
-    // 2026): "When it was empty, cards were not able to enter Anytime."
+    // THE SAME PADDING AND THE SAME FLOOR AS A DAY (Ruth, 20 October 2026):
+    // "the plus sits in the same line as the rest, its one more line, like an
+    // extra day of the week almost. It makes it feel like thats a section all
+    // together."
     //
-    // Empty, this held one line of text and eight points of padding - about
-    // thirty points of target, directly under Sunday. Dropping into it was
-    // luck. The drag worked, the measurement worked, and the landing strip was
-    // too thin to land on, so the whole feature read as missing.
-    //
-    // Sized so it is obviously somewhere a card can go, whether or not one is
-    // in it yet.
-    minHeight: 88,
-    justifyContent: 'center',
+    // It was an 88-point box with the card floating in the middle of it, which
+    // is the whole of what "too far away" was: not a margin, a container three
+    // times the height of its contents. At a day's own 44 it is one more line
+    // of the same list, and the column of "+" down the right edge gets its
+    // eighth mark at the spacing of the other seven.
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    minHeight: 44,
   },
+  // A ZONE YOU CANNOT HIT IS A FEATURE THAT DOES NOT EXIST (Ruth, 18 October
+  // 2026): "When it was empty, cards were not able to enter Anytime."
+  //
+  // Empty, this held one line of text and eight points of padding - about
+  // thirty points of target, directly under Sunday. Dropping into it was luck.
+  // The drag worked, the measurement worked, and the landing strip was too
+  // thin to land on, so the whole feature read as missing.
+  //
+  // THAT FIX NOW APPLIES ONLY WHERE IT WAS NEEDED. A populated Anytime has a
+  // card to aim at and is one line, like a day. An empty one has nothing to
+  // aim at, so it keeps the generous target - which is also the only state
+  // where the extra height costs nothing, because there is nothing in there
+  // to float.
+  anytimeZoneEmpty: { minHeight: 88 },
   // Dimmed, not hidden: the space it leaves is what tells her where it came
   // from if she changes her mind. The LIFT is on the preview under her finger,
   // which is the card that is actually moving.
@@ -1690,9 +1745,17 @@ const styles = StyleSheet.create({
     maxWidth: 220,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
-  // Two columns. Percentage rather than a measured width so it survives a
-  // rotation and a bigger font without measuring anything.
-  gridCell: { width: '48.5%' },
+  // SIZED TO THE WORDS, LIKE A DAY'S CARDS, from 20 October 2026. This was two
+  // fixed columns at 48.5% each, which was right while Anytime was a block of
+  // its own underneath the week. It is now one more line OF the week - "like
+  // an extra day of the week almost" - and on a line, one card at half the
+  // width reads as a tile that failed to fill rather than as a card.
+  //
+  // They still wrap, so four of them stack the way four on a Tuesday do. Only
+  // the width rule changed: PlanCard keeps the lighter weight Ruth asked for
+  // in item 8, because these are intentions rather than appointments, and that
+  // was never about how wide they are.
+  gridCell: { flexShrink: 1 },
   gridCard: {
     // LIGHTER THAN A SCHEDULED DAY (item 8). These are intentions, not
     // appointments, so they lost half their height and their big radius - a
