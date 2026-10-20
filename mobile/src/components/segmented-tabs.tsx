@@ -249,7 +249,9 @@ const styles = StyleSheet.create({
     // wide, less 3 of inset either side, a quarter of which is 80 a tab. Four
     // points of padding either side left 72 for the word; two leaves 76.
     paddingHorizontal: 2,
-    alignItems: 'center',
+    // THE LABEL FILLS THE TAB. This was 'center', and that one word is the
+    // whole fault - see `label` below.
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   label: {
@@ -264,12 +266,40 @@ const styles = StyleSheet.create({
     // A point smaller on a control label is not a legibility cost worth
     // arguing about. A word missing its last letter is.
     fontSize: 12,
-    // SHRINK RATHER THAN OVERFLOW. This was flexShrink: 0 - "the tab supplies
-    // the width, and the word keeps whatever it needs of it" - which is true
-    // right up until the word needs more than the tab has, and then it
-    // overflows and is clipped by the parent with no ellipsis to show for it.
-    // That is what "Wee" was.
-    flexShrink: 1,
+    // FOURTH ATTEMPT, 20 October 2026. The first three changed how wide the
+    // WORD is. This changes which box does the clipping, which is the thing
+    // none of them touched.
+    //
+    // THE EVIDENCE WAS ALREADY WRITTEN DOWN ABOVE and it rules out a shortage
+    // of room. "Sessions" drew as "Session", "Rules" as "Rule", "Week" as
+    // "Wee" - exactly one letter each, from three words of three different
+    // lengths - while "Skills", which is the narrowest of the four in Manrope
+    // because of its three thin letters, came out whole.
+    //
+    // A BOX A FEW POINTS TOO SMALL LOSES ONE GLYPH, NOT A PROPORTION, because
+    // Android draws whole glyphs and drops the one that falls partly outside.
+    // So every label that overflowed at all lost precisely its last letter,
+    // however much or little it overflowed by - which is why making the font
+    // smaller twice changed nothing: it moved every word just inside or just
+    // outside the same bad line.
+    //
+    // AND THE BAD LINE WAS THE TEXT'S OWN. `tab` had alignItems: 'center', so
+    // the label was laid out at its MEASURED width and centred in the tab. The
+    // measurement is made in the system face and drawn in Manrope, which is
+    // wider - this file's header blames that mismatch for "Movemen" - so the
+    // box the text clips against was the mismeasurement itself, with no slack
+    // in it anywhere. The tab had about 76 points; the word was being cut at
+    // roughly 62 of its own.
+    //
+    // SO THE LABEL NOW FILLS THE TAB and centres its text inside it. The clip
+    // boundary becomes the tab's width, which is computed from the track, not
+    // from the font - and a measurement that is a few points out has fourteen
+    // points of room to be wrong in. Nothing here is tuned, and nothing here
+    // depends on how wide Manrope happens to be.
+    //
+    // flexShrink is gone rather than flipped. A Pressable lays out as a column,
+    // so flexShrink governed this label's HEIGHT: both earlier arguments about
+    // it, in both directions, were about the wrong axis.
   },
   pressed: { opacity: 0.7 },
 });

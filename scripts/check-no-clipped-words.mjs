@@ -83,6 +83,37 @@ check('AND WEEK AND MONTH CANNOT BECOME "We..." AND "Mon..."', () => {
   return 'no cap, and the earlier fix kept';
 });
 
+check('AND A TAB LABEL IS NOT CLIPPED AT ITS OWN MEASUREMENT', () => {
+  // THE FOURTH REPORT OF THIS CONTROL, 20 October 2026. Her screenshot had
+  // "Sessions" as "Session", "Rules" as "Rule" and "Week" as "Wee" - one
+  // letter each, from three words of different lengths - with "Skills" whole.
+  //
+  // One glyph lost regardless of length is Android dropping the glyph that
+  // falls partly outside the box, so the fix is not a wider word but a wider
+  // BOX: the label fills the tab and centres inside it, rather than being laid
+  // out at its own mismeasured width. alignItems: 'center' on the tab is the
+  // exact line that caused it, so that is what is banned.
+  const src = withoutComments(read('mobile/src/components/segmented-tabs.tsx'));
+  const at = src.indexOf('tab: {');
+  assert.ok(at > -1, 'the tab style moved - this check is testing nothing');
+  const tab = src.slice(at, src.indexOf(`
+  },`, at));
+  assert.ok(
+    !/alignItems:\s*'center'/.test(tab),
+    "the tab centres its label again, so the label is clipped at its own measured width rather than the tab's"
+  );
+  assert.ok(/alignItems:\s*'stretch'/.test(tab), 'the label no longer fills the tab');
+  // Stretching only helps if the text is still centred in the space it gained.
+  const label = src.slice(src.indexOf('label: {'), src.length);
+  assert.ok(/textAlign:\s*'center'/.test(label), 'the label is stretched but no longer centred');
+  // AND NOTHING CONSTRAINS IT. Any of these turns a bad measurement back into
+  // a visible cut, which is what the first three attempts kept rediscovering.
+  assert.ok(!/numberOfLines=/.test(src), 'the tab labels are capped to one line again');
+  assert.ok(!/adjustsFontSizeToFit/.test(src), 'the labels auto-size again, which mismeasures them');
+  assert.ok(!/overflow:\s*'hidden'/.test(src), 'the track clips again');
+  return 'the tab is the boundary, not the font';
+});
+
 check('A FOLD SUMMARY IS NOT DRAWN WHILE THE FOLD IS OPEN', () => {
   // Ruth crossed it out on her screenshot: "Top right header not needed at
   // all". On Balance it repeated the pager two lines below it, which said
@@ -103,6 +134,7 @@ check('AND NO INVISIBLE CHARACTERS GOT INTO THESE FILES', () => {
     'mobile/src/components/fold-section.tsx',
     'mobile/src/components/report-link.tsx',
     'mobile/src/components/balance-flower-section.tsx',
+    'mobile/src/components/segmented-tabs.tsx',
   ];
   for (const f of files) {
     const src = read(f);

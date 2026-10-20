@@ -1,5 +1,18 @@
 // IS `_To process` SAFE TO EMPTY?
 //
+//   node scripts/probe-to-process.mjs
+//
+// RENAMED FROM check- ON 20 OCTOBER 2026. This is a question somebody asked
+// once, not a property of the app, and check-all.mjs discovers every check-*
+// file - so a one-off investigation from 23 September was being re-run on
+// every build, and had started failing: the Dropbox call it opens with,
+// team/members/list_v2, now comes back "Invalid API call", which is a token
+// without team scope rather than a fault in anything here.
+//
+// A suite that cannot pass teaches everyone to read past a red line, which is
+// the opposite of what the other 149 are for. The repo's probe-* scripts are
+// where questions like this one live.
+//
 // It holds 150 files, 385 MB, all dated 17 September. The question is not what
 // is in it but whether every clip in it already reached the library, because
 // that is the only thing that makes it disposable.

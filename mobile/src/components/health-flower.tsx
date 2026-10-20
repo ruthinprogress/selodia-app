@@ -13,6 +13,20 @@ import {
   type Dimension,
   type FlowerCoverage,
 } from '@/lib/health-flower';
+// THE SHAPE, FROM ONE PLACE. These were declared in this file until 20 October
+// 2026, when the report gained a flower of its own: the server renders HTML and
+// cannot import a React Native component, so the measurements moved somewhere
+// both halves can read. See flower-geometry.ts.
+import {
+  BOX,
+  CENTRE,
+  PETAL_OPACITY,
+  RING_OPACITY,
+  TIP_RING_R,
+  VIEW_W,
+  VIEW_X,
+  petalFor,
+} from '@/lib/flower-geometry';
 
 // The Health Flower.
 //
@@ -26,50 +40,6 @@ import {
 // before it tells them what they did. A week with three dimensions covered is
 // three petals, and that is the whole picture. At 0% nothing renders at all.
 //
-// THE GEOMETRY IS THE APPROVED DESIGN'S (Ruth, 11 September; confirmed on 12
-// September as the fix for the flower's "render bug"). It is the same drawing the
-// ElevenLabs deck carries, so the flower in the deck and the flower in the app
-// are one object rather than two drawings of one idea. Taken from
-// `2026-09-11 Health Flower approved, in balance.svg` and its part-way sibling in
-// Build Specs/Branding & Assets/Visual Assets.
-//
-//   full petal: ry = 38, tip at 72 from centre, so cy = 38 + ry
-//   at P%:      ry = 5 + 33 * P/100, cy = 38 + ry
-//
-// A full petal runs from 72 out to 4 past the centre, which is what makes the six
-// overlap there like a Venn diagram. The previous geometry (12 x 34, tip at 68)
-// stopped exactly at the centre, so full petals only touched.
-//
-// The 5 is a visible floor rather than a clamp, so growth stays monotonic: a
-// clamp would draw 5% and 12% at identical size, and two different weeks must
-// never produce the same petal.
-//
-// rx is tied to ry by the full petal's own aspect ratio rather than held
-// constant. Holding it constant makes a low-coverage petal a wide flat blob
-// lying across the stem, which is not a petal at any size; tying it keeps every
-// petal a proper oval pointing outward, whether it is at 8% or 100%. The
-// approved part-way file follows the same rule (rx = ry / 3.8 throughout).
-
-const BOX = 220;
-const CENTRE = 110;
-const FULL_RY = 38;
-const FULL_RX = 10;
-const TIP_Y = CENTRE - 72; // 38
-const ASPECT = FULL_RY / FULL_RX; // 3.8
-
-// The labels sit wider than the 220 square, so the drawing gets a margin either
-// side, as the approved file does. The centre stays at 110, the midpoint of the
-// range, which is what keeps the seed overlay (positioned at 50% of the
-// wrapper) exactly on the flower's centre - so any change here must stay
-// symmetric about 110.
-//
-// WIDENED FROM 26 TO 38 (2026-09-25), to pay for readable labels. See
-// LABEL_SIZE: at 9 units the longest of them, "Flexibility", ended at 225 and
-// had room to spare. At a size somebody over forty can actually read it ends
-// near 248, and a label clipped by the viewBox is a dimension with no name.
-const VIEW_X = -38;
-const VIEW_W = 296;
-
 // THE LABELS WERE THE SMALLEST TEXT IN THE APP BY A LONG WAY (2026-09-25).
 //
 // One unit of this drawing renders at size/220 points, so on Today - where the
@@ -84,19 +54,6 @@ const VIEW_W = 296;
 // is drawn at its full 220. The floor, not a compromise with it.
 const LABEL_SIZE = 13.5;
 
-// A nonzero petal is never invisible. A strictly proportional oval would be
-// under a pixel tall at low coverage, which reads as nothing logged rather than
-// as a little logged. So the scale runs from a visible floor up to the full
-// petal rather than from zero - which also keeps it MONOTONIC: clamping at a
-// floor instead would draw 5% and 12% at exactly the same size, and two
-// different weeks must not produce the same petal.
-const MIN_VISIBLE_RY = 5;
-
-// Petals overlap at the centre, and at half opacity, as approved, so where two
-// meet their colours mix rather than one covering the other. That mixing is the
-// whole visual argument of the centre: the dimensions are not separate numbers.
-const PETAL_OPACITY = 0.5;
-
 // THE SEED: the cream mark on a translucent terracotta disc, as approved.
 //
 // It has changed twice, and the history is the reason for the current values.
@@ -109,20 +66,6 @@ const PETAL_OPACITY = 0.5;
 const SEED_DISC_R = 12;
 const SEED_DISC_OPACITY = 0.38;
 const SEED_MARK_R = 8;
-
-// THE TIP RING. The radius the petals grow to - 72 from the centre, the same
-// number TIP_Y is derived from, so the ring and the tips cannot drift apart.
-// Sage, which this palette holds as a line-and-fill colour and never as text,
-// and faint: it is the ground the flower sits on, not a mark on it.
-const TIP_RING_R = 72;
-const RING_OPACITY = 0.55;
-
-function petalFor(coverage: number): { rx: number; ry: number; cy: number } | null {
-  if (!Number.isFinite(coverage) || coverage <= 0) return null;
-  const pct = Math.min(100, coverage) / 100;
-  const ry = MIN_VISIBLE_RY + (FULL_RY - MIN_VISIBLE_RY) * pct;
-  return { rx: ry / ASPECT, ry, cy: TIP_Y + ry };
-}
 
 // Where each label sits, taken from the approved design. The tips moved 4 units
 // further out, so every label moved out with them, and all still clear the tips.

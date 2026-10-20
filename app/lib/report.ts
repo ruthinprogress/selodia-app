@@ -1,3 +1,8 @@
+import {
+  coverageFromRows,
+  type CoverageRow,
+  type FlowerCoverage,
+} from './health-flower-dimensions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // THE REPORT, BUILT FROM BLOCKS (2026-09-20, rebuilt the same evening).
@@ -355,6 +360,13 @@ export type ReportData = {
     days: number;
     minutes: number;
     kinds: { what: string; minutes: number; sessions: number }[];
+    /**
+     * THE FLOWER FOR THIS PERIOD ALONE, never an average across the report.
+     * See groupActivity for why that distinction is the whole feature.
+     */
+    coverage: FlowerCoverage;
+    /** How many of this period's sessions carried a coverage classification. */
+    classified: number;
   }[];
   /** Every kind across the whole period, most minutes first. */
   activityKinds: { what: string; minutes: number; sessions: number }[];
@@ -551,7 +563,13 @@ export async function loadReport(
       activityBlock
         ? db
             .from('activity_logs')
-            .select('happened_at, activity_type, duration_min, intensity')
+            // THE SIX COVERAGE COLUMNS COME TOO, 20 October 2026, so the
+            // report can draw a flower per week or per month. They are written
+            // once when the row is logged and never recomputed, so this costs
+            // six numbers a row and no classification work at all.
+            .select(
+              'happened_at, activity_type, duration_min, intensity, cover_strength, cover_cardio, cover_flexibility, cover_balance, cover_bone, cover_recovery'
+            )
             .eq('user_id', userId)
             .gte('happened_at', fromISO)
             .lte('happened_at', toISO)
@@ -624,6 +642,12 @@ export async function loadReport(
     activity_type: string | null;
     duration_min: number | null;
     intensity: string | null;
+    cover_strength: number | null;
+    cover_cardio: number | null;
+    cover_flexibility: number | null;
+    cover_balance: number | null;
+    cover_bone: number | null;
+    cover_recovery: number | null;
   }[]).filter((a) => activityTypes.size === 0 || activityTypes.has(sameName(a.activity_type)));
 
   // One shape for the summary and the table, so a session cannot be counted one
@@ -632,6 +656,12 @@ export async function loadReport(
     at: a.happened_at,
     what: (a.activity_type ?? 'a session').trim(),
     minutes: a.duration_min,
+    cover_strength: a.cover_strength,
+    cover_cardio: a.cover_cardio,
+    cover_flexibility: a.cover_flexibility,
+    cover_balance: a.cover_balance,
+    cover_bone: a.cover_bone,
+    cover_recovery: a.cover_recovery,
   }));
 
   return {
@@ -875,7 +905,7 @@ export function weekBeginning(day: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-type Session = { at: string; what: string; minutes: number | null };
+type Session = { at: string; what: string; minutes: number | null } & Partial<CoverageRow>;
 
 /** Every kind of movement in a set of sessions, most minutes first. */
 export function countKinds(rows: Session[]): { what: string; minutes: number; sessions: number }[] {
@@ -909,6 +939,8 @@ export function groupActivity(
   days: number;
   minutes: number;
   kinds: { what: string; minutes: number; sessions: number }[];
+  coverage: FlowerCoverage;
+  classified: number;
 }[] {
   if (rows.length === 0) return [];
 
@@ -929,14 +961,47 @@ export function groupActivity(
 
   return filled.map((label) => {
     const b = buckets.get(label);
+    const rows = b?.rows ?? [];
     return {
       label,
-      sessions: b?.rows.length ?? 0,
+      sessions: rows.length,
       days: b?.days.size ?? 0,
-      minutes: (b?.rows ?? []).reduce((n, r) => n + (r.minutes ?? 0), 0),
-      kinds: countKinds(b?.rows ?? []),
+      minutes: rows.reduce((n, r) => n + (r.minutes ?? 0), 0),
+      kinds: countKinds(rows),
+      // ITS OWN PERIOD'S TARGET, NEVER THE WHOLE REPORT'S. Ruth, 20 October
+      // 2026, on why the report could not simply show one flower: "going hard
+      // 2 weeks and nothing the rest of the time may shoe as adequate when
+      // it's actually not."
+      //
+      // She is describing an average, and an average is exactly what one
+      // flower over six months would be. So each period is measured against
+      // what that period alone was asked for - a week against one week, a
+      // month against its own number of weeks - and the empty ones stay in the
+      // row, drawn empty. Six flowers that go full, full, bare, bare, bare,
+      // bare tell the true story; one half-filled flower does not.
+      coverage: coverageFromRows(rows as CoverageRow[], weeksIn(label, grain)),
+      // How many of those sessions carried a classification at all. Without
+      // it, a period drawn bare is ambiguous: it could be a quiet fortnight or
+      // six sessions nothing could weigh, and the caption has to say which.
+      classified: rows.filter((r) => typeof r.cover_strength === 'number').length,
     };
   });
+}
+
+/**
+ * How many weeks a period is worth, for the coverage target.
+ *
+ * A WEEK IS ONE. A MONTH IS ITS OWN LENGTH, not a flat four: February and
+ * August would otherwise be held to the same bar, and the shorter month would
+ * come out looking like the better one for no reason but the calendar.
+ */
+export function weeksIn(label: string, grain: 'weekly' | 'monthly'): number {
+  if (grain === 'weekly') return 1;
+  const [y, m] = label.split('-').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return 4;
+  // Day 0 of the next month is the last day of this one.
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return days / 7;
 }
 
 /** Every week or month from the first to the last, gaps included. */

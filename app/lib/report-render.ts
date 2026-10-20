@@ -1,3 +1,15 @@
+import {
+  DIMENSIONS,
+  DIMENSION_COLOUR,
+  DIMENSION_LABEL,
+  PETAL_OPACITY,
+  RING_OPACITY,
+  TIP_RING_R,
+  CENTRE,
+  BOX,
+  petalFor,
+  type FlowerCoverage,
+} from './health-flower-dimensions';
 import { LOCKUP_INNER, LOCKUP_VIEWBOX, MARK_INNER, MARK_VIEWBOX } from './brand/marks';
 import { capital, longDate, type ReportData } from './report';
 
@@ -505,6 +517,12 @@ export function renderReport(data: ReportData): string {
   .trend svg { display: block; width: 100%; height: 11mm; margin: 2mm 0 1mm; }
   .trend .ends { display: flex; justify-content: space-between; font-size: 7.4pt; color: var(--faint); font-variant-numeric: tabular-nums; }
 
+  /* ---- A flower per week or month ------------------------------------ */
+  .flws { display: flex; flex-wrap: wrap; gap: 2mm; margin: 2mm 0 1mm; }
+  .flw { flex: 0 0 auto; width: 22mm; text-align: center; }
+  .flw svg { display: block; width: 22mm; height: 22mm; }
+  .flw .lab { font-size: 7.4pt; color: var(--faint); margin-top: .4mm; }
+
   /* ---- The shape of the movement ------------------------------------- */
   .chart { display: flex; gap: 3mm; align-items: stretch; margin: 2mm 0 2mm; }
   .bars { flex: 1; display: flex; align-items: flex-end; gap: 1.6mm; height: 34mm; border-bottom: 0.4pt solid var(--rule); }
@@ -766,7 +784,101 @@ function activityShape(data: ReportData): Block[] | null {
     kinds.map((k) => [capital(k.what), String(k.sessions), hoursMinutes(k.minutes)])
   );
 
-  return [chart, ...table, `<h3>Across the whole period</h3>`, ...totals];
+  return [chart, ...flowers(periods, grain), ...table, `<h3>Across the whole period</h3>`, ...totals];
+}
+
+/**
+ * A ROW OF FLOWERS, one per period, each measured against its own.
+ *
+ * WHAT THIS IS FOR, in her words: "going hard 2 weeks and nothing the rest of
+ * the time may shoe as adequate when it's actually not." A row where two
+ * flowers are full and four are bare says that at a glance; a single averaged
+ * flower says "about a third" and hides it completely.
+ *
+ * NOTHING IS AVERAGED ANYWHERE HERE, and the caption says so, because a reader
+ * who assumes otherwise reads the row backwards.
+ *
+ * IT IS ONLY DRAWN WHEN SOMETHING WAS CLASSIFIED. A row of six empty flowers
+ * under a bar chart showing plenty of movement would be a drawing of the app's
+ * own gap, presented as a fact about her.
+ */
+function flowers(
+  periods: NonNullable<ReportData['activityPeriods']>,
+  grain: 'weekly' | 'monthly'
+): Block[] {
+  const classified = periods.reduce((n, p) => n + (p.classified ?? 0), 0);
+  if (classified === 0) return [];
+
+  const unweighed = periods.reduce((n, p) => n + (p.sessions - (p.classified ?? 0)), 0);
+  const word = grain === 'weekly' ? 'week' : 'month';
+
+  const cells = periods
+    .map(
+      (p) => `<div class="flw">${flowerSvg(p.coverage)}
+        <div class="lab">${esc(grain === 'weekly' ? dayMonth(p.label) : shortMonth(p.label))}</div></div>`
+    )
+    .join('');
+
+  // THE CAPTION CARRIES THE WHOLE ARGUMENT, so it says three things and stops:
+  // what a petal is, that each ${word} stands alone, and what is missing from
+  // the picture. The last one matters most in a clinical document - a reader
+  // who thinks a bare flower means a quiet week, when it means six sessions
+  // nothing could weigh, has been misled by us rather than by the data.
+  const missing =
+    unweighed > 0
+      ? ` ${unweighed} ${plural(unweighed, 'session')} could not be weighted and ${unweighed === 1 ? 'is' : 'are'} not in these drawings, though ${unweighed === 1 ? 'it is' : 'they are'} in the table below.`
+      : '';
+
+  return [
+    `<h3>What each ${word} covered</h3>
+     <div class="flws">${cells}</div>
+     <div class="legend">${flowerKey()}</div>` +
+      intro(
+        `One flower per ${word}. A petal grows from its tip inward as that ${word}'s movement builds, and each ${word} is measured against itself alone - nothing here is averaged across the report, so a strong ${word} cannot fill in for a quiet one.${missing} A bare flower means nothing was recorded, which is not the same as nothing being done.`
+      ),
+  ];
+}
+
+/**
+ * ONE FLOWER PER WEEK OR MONTH, drawn from that period alone.
+ *
+ * Ruth, 20 October 2026, on why the report cannot show a single flower:
+ * "going hard 2 weeks and nothing the rest of the time may shoe as adequate
+ * when it's actually not." One flower over a six-month report is an average,
+ * and an average is precisely the thing that hides a fortnight of nothing.
+ *
+ * THIS IS THE SAME FLOWER AS THE ONE ON HER PHONE. Every number it is drawn
+ * from - the petal geometry, the colours, the target - is generated from the
+ * app's own files by scripts/generate-report-flower.mjs, so the drawing in a
+ * document she hands to a doctor cannot quietly differ from the drawing she
+ * was looking at when she built it.
+ *
+ * NO LABELS ON THE PETALS, unlike the app's. At the size these print - six or
+ * more across a page - the labels would be smaller than this document's own
+ * floor, and six unreadable words around each of six flowers is noise. The key
+ * beneath names the colours once.
+ *
+ * NO OUTLINES, as everywhere else: at 0% nothing is drawn. The circle is where
+ * a full petal reaches, which is the same ground the app draws it on.
+ */
+function flowerSvg(coverage: FlowerCoverage): string {
+  const petals = DIMENSIONS.map((d, i) => {
+    const pt = petalFor(coverage[d]);
+    if (!pt) return '';
+    const r = (n: number) => Math.round(n * 10) / 10;
+    return `<ellipse cx="${CENTRE}" cy="${r(pt.cy)}" rx="${r(pt.rx)}" ry="${r(pt.ry)}" fill="${DIMENSION_COLOUR[d]}" opacity="${PETAL_OPACITY}" transform="rotate(${i * 60} ${CENTRE} ${CENTRE})"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${BOX} ${BOX}" aria-hidden="true">
+    <circle cx="${CENTRE}" cy="${CENTRE}" r="${TIP_RING_R}" fill="none" stroke="${SAGE}" stroke-width="1" opacity="${RING_OPACITY}"/>
+    ${petals}
+  </svg>`;
+}
+
+/** The six colours named once, rather than around every flower. */
+function flowerKey(): string {
+  return DIMENSIONS.map(
+    (d) => `<span class="key"><i style="background:${DIMENSION_COLOUR[d]}"></i>${esc(DIMENSION_LABEL[d])}</span>`
+  ).join('');
 }
 
 function hoursMinutes(minutes: number): string {
