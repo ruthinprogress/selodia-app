@@ -8,7 +8,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-nativ
 import { type PlanToLog } from '@/components/log-plan-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { CardRadius, DisplayFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { byTimeOfDay, clockMinutes, pillDetail } from '@/lib/day-time';
 import { HealthFlower } from '@/components/health-flower';
@@ -189,9 +189,32 @@ export function WeekView({
   const [carryFrom, setCarryFrom] = useState<string | null>(null);
   /** The highlighted zone, mirrored into JS only when it actually changes. */
   const [over, setOver] = useState<string | null>(null);
-  // The "+" on a day, which offers the Anytime activities to put there.
-  const [addingTo, setAddingTo] = useState<DayKey | null>(null);
+  // The "+" on a day, which offers the Anytime activities to put there - and
+  // since 20 October the "+" on Anytime itself, which was missing. Ruth: "extra
+  // + to add in Anytime (it's a needed addition)". It was: every day had a way
+  // in and this section had none, so nothing could be put here unless
+  // something was already here to drag.
+  const [addingTo, setAddingTo] = useState<DayKey | typeof ANYTIME | null>(null);
   const [conflict, setConflict] = useState<{ row: WeekRow; detail: CadenceConflict } | null>(null);
+
+  /**
+   * The days a new card gets, for whichever zone the "+" was tapped in.
+   *
+   * ANYTIME IS AN EMPTY LIST, which is what Anytime IS throughout this file -
+   * `anytime` above is `planned.filter(r => sits(r).length === 0)`. So adding
+   * here is the same write as dragging a card out of the week, and no new
+   * concept arrives with the new button.
+   */
+  const daysFor = useCallback(
+    (zone: DayKey | typeof ANYTIME) => (zone === ANYTIME ? [] : [zone]),
+    []
+  );
+  /** The date a zone sits on, which Anytime has none of, deliberately. */
+  const dateFor = useCallback(
+    (zone: DayKey | typeof ANYTIME | null, all: Date[]) =>
+      zone && zone !== ANYTIME ? all[DAY_KEYS.indexOf(zone)] : null,
+    []
+  );
 
   const weekStart = useMemo(() => currentWeekStart(), []);
   const days = useMemo(() => daysOfWeek(weekStart), [weekStart]);
@@ -577,7 +600,7 @@ export function WeekView({
         </ThemedView>
         <AddToDaySheet
           dayKey={addingTo}
-          date={addingTo ? days[DAY_KEYS.indexOf(addingTo)] : null}
+          date={dateFor(addingTo, days)}
           candidates={[]}
           onClose={() => setAddingTo(null)}
           onPick={() => setAddingTo(null)}
@@ -585,7 +608,7 @@ export function WeekView({
             const key = addingTo;
             if (!key) return false;
             try {
-              await addToWeek(activity, [key], timeOfDay);
+              await addToWeek(activity, daysFor(key), timeOfDay);
             } catch {
               return false;
             }
@@ -624,8 +647,11 @@ export function WeekView({
           const isToday = key === todayKey;
           const items = onDay(key);
           return (
+            // THE ROW AND ITS RULE. The ThemedView inside is the measured drop
+            // zone and has to stay exactly that, so the hairline is wrapped
+            // alongside it rather than added to it.
+            <View key={key}>
             <ThemedView
-              key={key}
               // MEASURED, SO IT CAN BE DROPPED ON. collapsable={false} is not
               // optional: without it Android may flatten a plain view out of
               // the native tree entirely, and measureInWindow on something
@@ -731,7 +757,19 @@ export function WeekView({
                 style={({ pressed }) => [styles.addDay, pressed && styles.pressedStrong]}>
                 <Ionicons name="add" size={16} color={theme.textSecondary} />
               </Pressable>
-            </ThemedView>
+              </ThemedView>
+              {/* THE RULE IS IN THE ARTWORK AND WAS NOT IN THE BUILD. Seven
+                  days separated by nothing but space read as seven floating
+                  rows; the hairline is what makes them a column, and it is the
+                  single cheapest thing on this screen that makes it look
+                  finished rather than laid out.
+
+                  A SIBLING, NOT A BORDER ON THE ROW. `dayRow` already spends
+                  its border on the drop target - transparent at rest,
+                  accentDeep when a card is over it - and a borderColor set for
+                  that would repaint this one too. */}
+              <View style={[styles.dayRule, { backgroundColor: theme.backgroundElement }]} />
+            </View>
           );
         })}
 
@@ -757,6 +795,7 @@ export function WeekView({
         // shows it's being moved." The block is two columns deep, and tinting
         // all of it drowns the card she is carrying.
         style={styles.anytimeZone}>
+        <View style={styles.anytimeInner}>
         {anytime.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
             {/* "Everything has a day" was the old line, and Ruth asked what it
@@ -803,6 +842,25 @@ export function WeekView({
             ))}
           </View>
         )}
+        </View>
+        {/* THE "+" THE ARTWORK HAS AND THE BUILD DID NOT (Ruth, 20 October
+            2026): "extra + to add in Anytime (it's a needed addition)".
+
+            It was genuinely missing, not just unstyled. Every day had a way to
+            put something on it and this section had none, so the only route
+            into Anytime was to drag a card out of the week - which means
+            nothing can be added here until something is already there.
+
+            SAME PLACE, SAME SIZE, SAME QUIETNESS as the seven above it, so the
+            column of "+" runs unbroken down the right edge. */}
+        <Pressable
+          onPress={() => setAddingTo(ANYTIME)}
+          accessibilityRole="button"
+          accessibilityLabel="Add an activity to Anytime this week"
+          hitSlop={Spacing.three}
+          style={({ pressed }) => [styles.addDay, pressed && styles.pressedStrong]}>
+          <Ionicons name="add" size={16} color={theme.textSecondary} />
+        </Pressable>
       </View>
 
       {/* ---- walking ---- */}
@@ -823,29 +881,36 @@ export function WeekView({
         </View>
       )}
 
-      {/* ---- the hint, and the week button ---- */}
-      <View style={styles.footer}>
-        {/* SHOWN UNTIL SHE HAS MOVED ONE, AND THEN NEVER AGAIN. Her
-            instruction. A hint that stays forever becomes furniture, and
-            furniture is what people stop reading. */}
-        {!dragUsed && (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-            Hold a card and drag it to another day, or tap it and choose Move
-            to…
-          </ThemedText>
-        )}
-        {onLogWeek && (
-          <Pressable
-            onPress={onLogWeek}
-            accessibilityRole="button"
-            accessibilityLabel="Log the week"
-            style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedView type="backgroundElement" style={styles.weekButton}>
-              <ThemedText type="smallBold">Log the week</ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
-      </View>
+      {/* ---- the footer of the week ---- */}
+      {/* THE BUTTON ENDS THE WEEK, AND THE PROMISE IS ITS CAPTION. It used to
+          share a row with the drag hint, which made it a control sitting beside
+          some text rather than the thing the whole block builds to.
+
+          FULL WIDTH AND FILLED, as the artwork draws it. A pale pill the width
+          of its own label is what made this screen read as unfinished: the one
+          action on the page was the quietest object on it. */}
+      {/* SHOWN UNTIL SHE HAS MOVED ONE, AND THEN NEVER AGAIN. Her instruction.
+          A hint that stays forever becomes furniture, and furniture is what
+          people stop reading. Above the button now, on its own line, because
+          nothing shares a row with a full-width control. */}
+      {!dragUsed && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+          Hold a card and drag it to another day, or tap it and choose Move to…
+        </ThemedText>
+      )}
+      {onLogWeek && (
+        <Pressable
+          onPress={onLogWeek}
+          accessibilityRole="button"
+          accessibilityLabel="Log the week"
+          style={({ pressed }) => [styles.weekButtonWrap, pressed && styles.pressed]}>
+          <View style={[styles.weekButton, { backgroundColor: theme.accent }]}>
+            <ThemedText type="smallBold" style={{ color: theme.background }}>
+              Log the week
+            </ThemedText>
+          </View>
+        </Pressable>
+      )}
 
       {/* "NOT A SCORE" WENT, 20 October 2026. Ruth: "Remove 'not a score'
           anywhere in app thats marketing language, not for inside the app
@@ -908,7 +973,10 @@ export function WeekView({
             </View>
             {/* THE OBSERVATION. The one sentence on this screen that is
                 about her week rather than about the app, so it is the only
-                one at full size and full colour. */}
+                one at full size and full colour - and in the display serif,
+                which the artwork sets it in and which nothing else in this
+                section uses. It is the insight; the two lines under it explain
+                the drawing. */}
             {planGapNote(plan.coverage, (d) => DIMENSION_LABEL[d]) ? (
               <ThemedText style={styles.planNote}>
                 {planGapNote(plan.coverage, (d) => DIMENSION_LABEL[d])}
@@ -989,21 +1057,24 @@ export function WeekView({
       {/* ---- add to a day ---- */}
       <AddToDaySheet
         dayKey={addingTo}
-        date={addingTo ? days[DAY_KEYS.indexOf(addingTo)] : null}
+        date={dateFor(addingTo, days)}
         candidates={planned}
         onClose={() => setAddingTo(null)}
         onPick={(row) => {
           const key = addingTo;
           setAddingTo(null);
           if (!key || !row) return;
-          const next = [...new Set([...(row.days ?? []), key])];
+          // ONTO A DAY ADDS ONE; INTO ANYTIME TAKES THEM ALL AWAY. The
+          // second is the same write the drag makes, which is why the card
+          // simply arrives where the finger would have put it.
+          const next = key === ANYTIME ? [] : [...new Set([...(row.days ?? []), key])];
           void applyMove(row, next);
         }}
         onAdd={async (activity, timeOfDay) => {
           const key = addingTo;
           if (!key) return false;
           try {
-            await addToWeek(activity, [key], timeOfDay);
+            await addToWeek(activity, daysFor(key), timeOfDay);
           } catch {
             return false;
           }
@@ -1020,9 +1091,10 @@ export function WeekView({
           router.push({
             pathname: '/',
             params: {
-              prefill: key
-                ? `I'd like to add something to my week on ${DAY_LABEL[key]}.`
-                : "I'd like to add something to my week.",
+              prefill:
+                key && key !== ANYTIME
+                  ? `I'd like to add something to my week on ${DAY_LABEL[key]}.`
+                  : "I'd like to add something to my week.",
               askNow: '1',
               // One navigation, one nonce - see (tabs)/index.tsx.
               askNonce: String(Date.now()),
@@ -1240,7 +1312,8 @@ function AddToDaySheet({
   onAdd,
   onNew,
 }: {
-  dayKey: DayKey | null;
+  /** A day, or Anytime, or nothing when the sheet is shut. */
+  dayKey: DayKey | typeof ANYTIME | null;
   date: Date | null;
   candidates: WeekRow[];
   onClose: () => void;
@@ -1271,10 +1344,20 @@ function AddToDaySheet({
     setWhen('');
   }
 
-  if (!dayKey || !date) return null;
-  // Anything not already on this day, which includes things that are on other
-  // days: "also on Thursday" is a real thing to want.
-  const choices = candidates.filter((r) => !(r.days ?? []).includes(dayKey));
+  // ANYTIME HAS NO DATE, which is the whole of what Anytime means, so the date
+  // is required for a day and never for this.
+  const toAnytime = dayKey === ANYTIME;
+  // WHAT THE BUTTON CALLS WHERE IT IS SENDING THINGS. One value, so the label
+  // a screen reader hears and the words drawn on the button cannot drift.
+  const destination = toAnytime ? 'Anytime' : DAY_LABEL[dayKey as DayKey];
+  if (!dayKey || (!date && !toAnytime)) return null;
+  // Anything not already there. On a day that includes things that are on
+  // other days - "also on Thursday" is a real thing to want - and on Anytime
+  // it is everything that currently sits on a day, which is how a card comes
+  // back out of the week without a drag.
+  const choices = toAnytime
+    ? candidates.filter((r) => (r.days ?? []).length > 0)
+    : candidates.filter((r) => !(r.days ?? []).includes(dayKey));
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.scrimFull} onPress={onClose} accessibilityLabel="Close" />
@@ -1282,7 +1365,7 @@ function AddToDaySheet({
         <View style={[styles.grabber, { backgroundColor: theme.backgroundSelected }]} />
         <View style={styles.sheetBody}>
           <ThemedText type="sectionTitle">
-            Add to {DAY_LABEL[dayKey]} {shortDate(date)}
+            {toAnytime ? 'Add to Anytime' : `Add to ${DAY_LABEL[dayKey as DayKey]} ${shortDate(date as Date)}`}
           </ThemedText>
           {choices.length === 0 ? (
             // TWO DIFFERENT NOTHINGS. An empty week has nothing to offer yet;
@@ -1291,7 +1374,9 @@ function AddToDaySheet({
             <ThemedText type="small" themeColor="textSecondary">
               {candidates.length === 0
                 ? 'Nothing in your week yet. Type the first thing below.'
-                : 'Everything in your week is already on this day.'}
+                : toAnytime
+                  ? 'Everything in your week is already here.'
+                  : 'Everything in your week is already on this day.'}
             </ThemedText>
           ) : (
             choices.map((row) => (
@@ -1349,7 +1434,7 @@ function AddToDaySheet({
             onPress={() => void submit()}
             disabled={!name.trim() || adding}
             accessibilityRole="button"
-            accessibilityLabel={`Add to ${DAY_LABEL[dayKey]}`}
+            accessibilityLabel={`Add to ${destination}`}
             accessibilityState={{ disabled: !name.trim() || adding }}
             style={({ pressed }) => pressed && styles.pressed}>
             <ThemedView
@@ -1360,7 +1445,7 @@ function AddToDaySheet({
                 (!name.trim() || adding) && styles.addButtonOff,
               ]}>
               <ThemedText type="small" style={{ color: theme.background }}>
-                {adding ? 'Adding…' : `Add to ${DAY_LABEL[dayKey]}`}
+                {adding ? 'Adding…' : `Add to ${destination}`}
               </ThemedText>
             </ThemedView>
           </Pressable>
@@ -1387,26 +1472,59 @@ const styles = StyleSheet.create({
   // Everything above this line is hers - the plan she wrote. Everything below
   // it is the app reading that plan back to her. That is the only boundary on
   // the screen worth marking, and it is marked with space alone.
-  planCover: { gap: Spacing.two, marginTop: Spacing.five + Spacing.three },
+  // ---- THE SECOND CHAPTER -------------------------------------------
+  //
+  // RE-COMPOSED, NOT NUDGED (Ruth, 20 October 2026, relaying a brief written
+  // after the first attempt barely moved: "Do not preserve the existing
+  // vertical spacing. I am asking for a layout redesign rather than
+  // incremental refinement.") Every number below is the brief's own.
+  //
+  // The page is two chapters: the week she writes, and the app reading it
+  // back. Nothing separates them but space - no card, no panel, no coloured
+  // ground - because "a card would fight the rest of Selodia".
+  //
+  // 56 IS THE CHAPTER BREAK. The gap is set here rather than as a margin on
+  // the caption above it, so the pause belongs to the thing it introduces.
+  // `gap: 0` because every child below states its own distance: an even gap
+  // is what made five paragraphs read as one wall.
+  planCover: { gap: 0, marginTop: 56 },
   // THE HEADING BELONGS TO THE FLOWER: "Currently they feel disconnected. I'd
   // reduce that gap substantially." The section's own gap is eight, so the
   // drawing sits closer to its title than anything else sits to anything.
-  planFlower: { alignItems: 'center', marginTop: Spacing.one },
+  // THE FLOWER BELONGS TO THE HEADING, so it sits closer to it than anything
+  // on this screen sits to anything. 12.
+  planFlower: { alignItems: 'center', marginTop: Spacing.three - Spacing.one },
   // THE OBSERVATION IS THE POINT OF THE SECTION, so it is the one piece of
   // body text here at full weight and full colour. Everything under it is
   // support. ChatGPT: "This should be the largest and darkest piece of body
   // text."
-  planNote: { marginTop: Spacing.two },
+  // THE INSIGHT. Largest body text on the screen and the darkest, in the
+  // display serif, with real room under the drawing. 22 rather than the
+  // section title's 30: it answers the heading, it does not repeat it.
+  planNote: {
+    marginTop: Spacing.four,
+    fontSize: 22,
+    lineHeight: 30,
+    fontFamily: DisplayFont.regular,
+  },
   // QUIETER, AND SET IN A LITTLE: this explains why the drawing is incomplete,
   // which is information about the app rather than about her week. "It should
   // feel like supporting information."
-  planLimit: { paddingLeft: Spacing.two },
+  // SUPPORTING INFORMATION, AND IT MUST NOT COMPETE. Smaller, lighter, and
+  // held to about four fifths of the width - a paragraph that runs the full
+  // measure reads as important whatever size it is set at.
+  planLimit: { marginTop: Spacing.three, maxWidth: '80%' },
   // THE ONE LINE THAT OFFERS SOMETHING TO DO. Terracotta body text rather than
   // bold or a button - "just enough to suggest here's something you can do
   // without becoming a button" - and accentDeep rather than accent, because
   // the full-strength terracotta is the token this app reserves for fills and
   // large type and does not clear AA as small text.
-  planDo: { marginTop: Spacing.two, paddingLeft: Spacing.two },
+  // THE ONE LINE THAT OFFERS SOMETHING TO DO. Same size as the note above it
+  // and not bold - the separation is 28 points of space and the terracotta,
+  // nothing else. accentDeep rather than accent, because the theme reserves
+  // full-strength terracotta for fills and large type and it does not clear
+  // AA as small text.
+  planDo: { marginTop: Spacing.five - Spacing.one, maxWidth: '80%' },
   // THE DENSITY PASS (Ruth, 1 October, UI item 2: "the entire week should
   // ideally fit on one phone screen"). Spacing.two between seven day rows, a
   // heading, a section and a footer was ~64pt of pure gap. Spacing.one halves it
@@ -1463,6 +1581,12 @@ const styles = StyleSheet.create({
   // weeks with room in them, which are the ones that were reading as broken.
   dayRowEmpty: {},
   dayLabel: { width: 54 },
+  // THE HAIRLINE UNDER EACH DAY, which the artwork has and the build did not.
+  // Sand, the app's own element tone, so it reads as a ruled page rather than
+  // a table. One point, not a border - see where it is drawn for why.
+  dayRule: { height: 1, marginLeft: Spacing.two, opacity: 0.7 },
+  // The Anytime cards take the room, the "+" keeps its column.
+  anytimeInner: { flex: 1 },
   dayName: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   // Small, because it marks a day rather than announcing one.
   todayDot: { width: 6, height: 6, borderRadius: 3 },
@@ -1495,8 +1619,11 @@ const styles = StyleSheet.create({
   // heading belong to what follows it rather than float between the two.
   // Nothing is drawn, because "the app feels deliberately un-card-like" and a
   // rule here would be the first one on the screen.
+  // 30 FROM SUNDAY. Far enough to be a new heading, near enough that Anytime
+  // is still the tail of the week rather than a section discovered after the
+  // end of the page. The brief asks for 28 to 32.
   anytimeHeading: {
-    marginTop: Spacing.five,
+    marginTop: 30,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -1504,9 +1631,15 @@ const styles = StyleSheet.create({
   // does not require her to hit a gap between two cards. The border is
   // transparent until she is over it, so nothing is drawn at rest.
   anytimeZone: {
-    // Twelve from the heading: Spacing.two here plus the block's own gap of
-    // four. See anytimeHeading for why the two gaps are different sizes.
+    // TWELVE FROM THE HEADING, against thirty above it. The asymmetry is what
+    // ties the label to the cards under it instead of leaving it floating
+    // between two blocks.
     marginTop: Spacing.two,
+    // THE CARDS AND THE "+" SIT IN ONE ROW, so the column of "+" runs unbroken
+    // from Monday to here, which is how the artwork draws it.
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     borderWidth: 2,
     borderColor: 'transparent',
     borderRadius: CardRadius,
@@ -1594,16 +1727,25 @@ const styles = StyleSheet.create({
   },
   // AT NORMAL SIZE, which is her instruction. It used to be drawn at a size
   // nobody could read, which is the same as not showing it.
-  hint: { flex: 1 },
-  // EIGHT, NOT TWENTY (ChatGPT): "The explanatory sentence becomes almost like
-  // a caption beneath the button." It is about the button it sits under, not a
-  // separate thought, so it is tied to it rather than floating between the
-  // button and whatever comes next.
-  promise: { marginTop: Spacing.one },
+  // ITS OWN LINE, ABOVE THE BUTTON. Nothing shares a row with a full-width
+  // control, and this is instruction rather than caption.
+  hint: { marginTop: Spacing.three },
+  // EIGHT. "The explanatory sentence becomes almost like a caption beneath the
+  // button." It is about the button it sits under, not a separate thought.
+  promise: { marginTop: Spacing.two, textAlign: 'center' },
+  // 24 FROM THE ANYTIME CARDS: the button ends the week, so it is the last
+  // thing in that block rather than a control floating after it.
+  weekButtonWrap: { marginTop: Spacing.four },
+  // FULL WIDTH AND FILLED, as the artwork draws it. This was a pale pill the
+  // width of its own label, which made the only action on the page the
+  // quietest object on it - the single biggest reason the screen read as
+  // unfinished. The pattern is the app's own: theme.accent behind
+  // theme.background text, the same as the Log button on the activity sheet.
   weekButton: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    paddingVertical: 14,
     borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrim: {
     flex: 1,
