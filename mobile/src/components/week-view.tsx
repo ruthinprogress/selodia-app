@@ -11,11 +11,14 @@ import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { byTimeOfDay, clockMinutes, pillDetail } from '@/lib/day-time';
+import { HealthFlower } from '@/components/health-flower';
+import { DIMENSION_LABEL } from '@/lib/health-flower';
+import { planGapNote, plannedCoverage, PLAN_EMPTY } from '@/lib/week-coverage';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 import { addToWeek, moveToDays, withDay } from '@/lib/week-move';
-import { currentWeekStart, daysOfWeek, weekRange } from '@/lib/week';
-import { cadenceConflict, cadenceForDays, DAY_KEYS, DAY_LABEL, dayKeyOf, isWalking, logMatchesPlan, placedOnDays, shortDate, type CadenceConflict, type DayKey } from '@/lib/week-plan';
+import { currentWeekStart, daysOfWeek } from '@/lib/week';
+import { cadenceConflict, cadenceForDays, DAY_KEYS, DAY_LABEL, dayKeyOf, isWalking, placedOnDays, shortDate, type CadenceConflict, type DayKey } from '@/lib/week-plan';
 
 // MY WEEK, AS A WEEK (Ruth's design screen 1, 29 September 2026).
 //
@@ -64,7 +67,6 @@ type WeekRow = {
   cadence_conflict_asked_at: string | null;
 };
 
-type LoggedName = { activity_type: string | null; happened_at: string };
 
 /**
  * THE SAME SECOND LINE THE CARD HAD. A pill on a day shows its duration; a
@@ -126,7 +128,6 @@ export function WeekView({
 }) {
   const theme = useTheme();
   const [rows, setRows] = useState<WeekRow[]>([]);
-  const [logged, setLogged] = useState<LoggedName[]>([]);
   const [steps, setSteps] = useState<number | null>(null);
   const [guidance, setGuidance] = useState<string | null>(null);
   const [dragUsed, setDragUsed] = useState(true);
@@ -184,25 +185,24 @@ export function WeekView({
   const todayKey = dayKeyOf(new Date());
 
   const load = useCallback(async () => {
-    const { startISO, endISO } = weekRange(weekStart);
-    const [planRes, logRes, profileRes, stepCount] = await Promise.all([
+    // THE ACTIVITY LOGS QUERY WENT WITH THE TICK (20 October 2026). It existed
+    // only to answer "has this been logged this week", which drew the tick
+    // Ruth asked to be removed that morning - "Its a template not a to do
+    // list" - and it kept running on every open of this tab afterwards,
+    // fetching a week of rows for nobody. A read nothing reads is not free and
+    // is not visible: lint found it, not a person.
+    const [planRes, profileRes, stepCount] = await Promise.all([
       supabase
         .from('user_week')
         .select('id, activity, purpose, cadence, duration, time_of_day, session_entry_id, days, days_chosen_at, cadence_conflict_asked_at, remind_at, remind_offset_minutes, reminder_cancelled_at')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
-      supabase
-        .from('activity_logs')
-        .select('activity_type, happened_at')
-        .gte('happened_at', startISO)
-        .lt('happened_at', endISO),
       supabase.from('user_profile').select('guidance_mode, week_drag_used_at').maybeSingle(),
       syncTodaySteps(),
     ]);
 
     const planRows = (planRes.error ? [] : (planRes.data ?? [])) as WeekRow[];
     setRows(planRows);
-    setLogged((logRes.error ? [] : (logRes.data ?? [])) as LoggedName[]);
     const p = profileRes.data as { guidance_mode: string | null; week_drag_used_at: string | null } | null;
     setGuidance(p?.guidance_mode ?? null);
     setDragUsed(Boolean(p?.week_drag_used_at));
@@ -217,7 +217,10 @@ export function WeekView({
       const detail = cadenceConflict(clash.cadence, clash.days ?? []);
       if (detail) setConflict({ row: clash, detail });
     }
-  }, [weekStart]);
+    // NO DEPENDENCIES. The week range went with the activity-logs query, so
+    // nothing in here reads weekStart any more - the plan rows are not scoped
+    // to a week, because the Week is a template rather than a date range.
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -249,6 +252,14 @@ export function WeekView({
   // reach a different one. See placedOnDays there.
   const sits = (r: WeekRow) => placedOnDays(guidance, r);
 
+  // WHAT THE PLAN WOULD COVER. Walking is left in, unlike the list below: it is
+  // counted by the phone rather than logged, but it is still something she does
+  // every week and it genuinely builds bone and cardio. Leaving it out would
+  // make the plan look thinner than the week actually is.
+  const plan = useMemo(
+    () => plannedCoverage(rows.map((r) => ({ activity: r.activity, days: r.days }))),
+    [rows]
+  );
   const walking = rows.find((r) => isWalking(r.activity)) ?? null;
   const planned = rows.filter((r) => !isWalking(r.activity));
 
@@ -265,12 +276,6 @@ export function WeekView({
   // ANYTIME HOLDS WHATEVER IS NOT ON A DAY - the ones with no days at all, and
   // under "Let me lead" the ones she has not placed yet.
   const anytime = planned.filter((r) => sits(r).length === 0);
-
-  /** Has this plan been logged this week? A tick, never a cross. */
-  const isLogged = useCallback(
-    (activity: string) => logged.some((l) => logMatchesPlan(l.activity_type ?? '', activity)),
-    [logged]
-  );
 
   // MEASURE EVERY DROP TARGET, ONCE, AT THE MOMENT SHE PICKS A CARD UP.
   //
@@ -827,6 +832,61 @@ export function WeekView({
         This is the shape of your week, not a score. Nothing here is ever marked done or missed.
       </ThemedText>
 
+      {/* WHAT THIS PLAN WOULD COVER (Ruth, 20 October 2026): "we have a Week
+          Planner, and it doesnt connect to the Health Flower at all. Would it
+          be useful to have a health flower in Week so the design could help you
+          build a weekly plan that covers what you need?"
+
+          IT IS A DIFFERENT CLAIM FROM THE ONE ON NOW, and that is what lets it
+          name gaps. Now is drawn from the Movement log and describes a life
+          already lived, so what is missing there would be a verdict on
+          somebody. This describes a plan, and what a plan does not cover is a
+          fact about the plan - her line, in the explainer next door: "see where
+          there may be gaps to support protective movement and make sure you're
+          allowing for enough rest."
+
+          UNDER THE "NOT A SCORE" LINE ON PURPOSE. That sentence is the first
+          thing read about this screen and it has to stay first, because a
+          drawing that fills up is exactly the thing it is promising this screen
+          is not.
+
+          THE SAME DRAWING, NOT A SECOND MODE. The ring already shows the full
+          extent without reading as a target - Ruth settled that when the
+          petals were turned to grow inward: "they are a starting point, not a
+          target". So the gaps are named in words underneath instead, which can
+          say WHICH, where a faint outline can only say "something". */}
+      <View style={styles.planCover}>
+        <ThemedText type="small" themeColor="textSecondary">
+          If the week goes to plan
+        </ThemedText>
+        {plan.sessions === 0 && plan.unknown.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {PLAN_EMPTY}
+          </ThemedText>
+        ) : (
+          <>
+            <View style={styles.planFlower}>
+              <HealthFlower coverage={plan.coverage} size={160} />
+            </View>
+            {planGapNote(plan.coverage, (d) => DIMENSION_LABEL[d]) ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {planGapNote(plan.coverage, (d) => DIMENSION_LABEL[d])}
+              </ThemedText>
+            ) : null}
+            {/* NAMED, NOT DROPPED. A card the weighting table does not know
+                contributes nothing, and a silently thinner drawing would be
+                the app blaming her plan for its own gap. */}
+            {plan.unknown.length > 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {`I do not know yet what ${plan.unknown.join(', ')} ` +
+                  `${plan.unknown.length === 1 ? 'covers' : 'cover'}, so ` +
+                  `${plan.unknown.length === 1 ? 'it is' : 'they are'} not in this drawing.`}
+              </ThemedText>
+            ) : null}
+          </>
+        )}
+      </View>
+
       {/* ---- the card she is carrying ----
 
           It follows the finger rather than the card moving in place, which
@@ -1256,6 +1316,8 @@ function AddToDaySheet({
 }
 
 const styles = StyleSheet.create({
+  planCover: { gap: Spacing.two, marginTop: Spacing.three },
+  planFlower: { alignItems: 'center' },
   // THE DENSITY PASS (Ruth, 1 October, UI item 2: "the entire week should
   // ideally fit on one phone screen"). Spacing.two between seven day rows, a
   // heading, a section and a footer was ~64pt of pure gap. Spacing.one halves it
