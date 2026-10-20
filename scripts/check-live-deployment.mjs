@@ -53,6 +53,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+/** The repo root, for reading .env.local. */
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+
 const PROJECT_ID = 'prj_XmdCSQK6WwMtZPNh6yCCVxKeQOat';
 const TEAM_ID = 'team_l9Ts8pCYpUMxLMxHKgZjmjhX';
 const PRODUCTION_DOMAINS = ['selodia.app', 'api.selodia.app', 'www.selodia.app'];
@@ -109,8 +112,42 @@ function refreshLogin() {
   }
 }
 
+/**
+ * VERCEL_TOKEN out of .env.local, which is where this project keeps its keys.
+ *
+ * THIS IS WHY THE LOGIN KEPT EXPIRING (20 October 2026). Ruth: "Its happened so
+ * many times, I go to fix it and you say its refreshed."
+ *
+ * The line below preferred process.env.VERCEL_TOKEN and nothing ever put one
+ * there - no part of this script read .env.local, and `node` does not load it.
+ * So the branch was unreachable from the day it was written, every run fell
+ * through to the OAuth login that `vercel login` creates, and that login
+ * expires. Refreshing it just restarts the same clock, which is exactly what
+ * "I go to fix it and you say its refreshed" describes.
+ *
+ * A dashboard access token does not expire unless it is given an expiry. Put
+ * one in .env.local as VERCEL_TOKEN and this stops happening rather than
+ * happening again in eight days. scripts/fix-vercel-login.cmd sets it up.
+ */
+function tokenFromEnvFile() {
+  try {
+    const text = fs.readFileSync(path.join(ROOT, '.env.local'), 'utf8');
+    for (const line of text.split(/\r?\n/)) {
+      const i = line.indexOf('=');
+      if (i > 0 && !line.startsWith('#') && line.slice(0, i).trim() === 'VERCEL_TOKEN') {
+        return line.slice(i + 1).trim().replace(/^["']|["']$/g, '') || null;
+      }
+    }
+  } catch {
+    // No .env.local on this machine is not an error - fall through to the login.
+  }
+  return null;
+}
+
 function vercelToken() {
   if (process.env.VERCEL_TOKEN) return process.env.VERCEL_TOKEN;
+  const fromFile = tokenFromEnvFile();
+  if (fromFile) return fromFile;
   const auth = storedAuth();
   if (!auth) return null;
   // Seconds, not milliseconds. A minute of slack, so a token about to lapse
@@ -120,6 +157,13 @@ function vercelToken() {
   if (!refreshLogin()) return auth.token;
   return storedAuth()?.token ?? auth.token;
 }
+
+/**
+ * True when this run is answering from the site because the token is missing
+ * or dead, rather than because it chose to. See the FAIL below for why that is
+ * worth distinguishing.
+ */
+let degraded = false;
 
 /**
  * WHEN VERCEL CANNOT BE ASKED, ASK THE SITE (12 October 2026).
@@ -138,6 +182,7 @@ function vercelToken() {
  * Only if the site does not answer either does this skip.
  */
 async function answerFromTheSite(why) {
+  degraded = true;
   let live;
   try {
     const res = await fetch('https://api.selodia.app/api/version');
@@ -161,6 +206,30 @@ async function answerFromTheSite(why) {
   const head = git('rev-parse', `origin/${BRANCH}`);
   if (liveSha === head) {
     console.log(`  PASS     what is live on api.selodia.app is the tip of origin/${BRANCH} (${head.slice(0, 7)})`);
+    // A LOST LOGIN IS A FAILURE, NOT A NOTE (20 October 2026, the second time).
+    //
+    // This printed PASS and exited 0, so a suite of 150 came back clean while
+    // the one check that can see a BROKEN build was switched off. On 20 October
+    // a production build failed at 11:18 and the first anyone knew was an email
+    // Ruth forwarded nine hours later. The Open Actionables list already
+    // carried the same sentence from eight days before: "the Vercel login on
+    // the computer had expired for days, so a failed build went unnoticed."
+    //
+    // WHAT THE SITE CAN AND CANNOT ANSWER. /api/version says which commit is
+    // SERVING, which is why the line above is real. It cannot say whether a
+    // later build FAILED - a failed deploy leaves the previous one serving, so
+    // "live is the tip of main" and "the last three builds errored" are true at
+    // the same time. Only the Vercel API can tell those apart, and that needs
+    // the token.
+    if (degraded) {
+      console.log(
+        '  FAIL     ...but the Vercel credentials are gone, so nothing here can see a FAILED build.\n' +
+          '           A failed deploy leaves the last good one serving, so the line above stays\n' +
+          '           true while builds error. Fix: double-click scripts/fix-vercel-login.cmd.'
+      );
+      console.log('\n  1 passed, 1 failed\n');
+      process.exit(1);
+    }
     console.log('\n  1 passed, 0 failed\n');
     process.exit(0);
   }
