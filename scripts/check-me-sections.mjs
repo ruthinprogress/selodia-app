@@ -1,30 +1,24 @@
-// A SHUT SECTION SAYS WHETHER THERE IS ANYTHING IN IT, AND STAYS SHUT.
+// THE ME TAB'S HEADINGS, AND THE TAB THE APP SAYS A CARD WENT TO.
 //
-//   node --import ./scripts/ts-resolve-hook.mjs scripts/check-me-sections.mjs
+//   node scripts/check-me-sections.mjs
 //
-// Ruth, 7 October 2026: "I do like the idea of just a number to mark quietly how
-// many items in each section, like you did in Body Manual", and then "yes,
-// remember if sections were open".
+// Ruth, 20 October 2026, two findings from one screenful:
 //
-// THE COUNT IS NOT DECORATION. The Body Manual learned this the hard way and
-// wrote it down: a folded section showing a heading and nothing is
-// "indistinguishable from an empty list". Her Plans goals section was shut one
-// afternoon, read as empty, and cost her the time. The moment a section on the
-// Me tab can fold, it inherits that fault exactly, so the count ships in the
-// same change as the fold or not at all.
+//   "It says Almanac still, but actually it's Me tab."
+//   "We have Health competing with How I Access Care, which is confusing...
+//    Details I am asked for - rename to 'Details to Access Health Care'. HOW i
+//    access Care - rename to 'Health Care Records'. merge 'Health' into Health
+//    care records"
 //
-// AND THE POLARITY OF THE MEMORY IS THE PART THAT COULD HAVE GONE WRONG. The
-// store records the sections she has SHUT. A list of OPEN ones would have had to
-// mean "everything is shut" for every row that already exists, which would have
-// folded every section of every account on the deploy.
+// RENAMED AT RENDER, NEVER IN THE DATABASE, which is the whole risk here. The
+// section name is written into every row's content and matched against by the
+// server, so renaming the stored string would mean rewriting rows she has
+// already filed - and any that were missed would quietly vanish from the tab.
+// goal-display.ts settled this pattern months ago: capitalise at render, never
+// in the database. These are headings; the stored words are identities.
 
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
-
-const root = 'file://' + process.cwd().replace(/\\/g, '/');
-const { EMPTY, readLayout, layoutOf } = await import(root + '/mobile/src/lib/log-layout-rules.ts');
-
-const me = readFileSync('mobile/src/components/me-protocol.tsx', 'utf8');
+import fs from 'node:fs';
 
 let pass = 0;
 const failures = [];
@@ -39,111 +33,137 @@ function check(name, fn) {
   }
 }
 
-console.log('\n  THE ME TAB FOLDS, AND REMEMBERS\n');
+const protocol = fs.readFileSync('mobile/src/components/me-protocol.tsx', 'utf8');
+const careLib = fs.readFileSync('mobile/src/lib/care-admin.ts', 'utf8');
+// THE SERVER KEEPS ITS OWN COPY of the same constant, and the mobile file says
+// so: "Must equal the server's." The first version of this check read only the
+// phone's, so mutating the server's to prove the check could fail changed
+// nothing and the check passed - which is how a guard that reads one of two
+// copies looks from the outside. Both are read now.
+const careServer = fs.readFileSync('app/lib/care-admin.ts', 'utf8');
+const detailsLib = fs.readFileSync('mobile/src/lib/care-constants.ts', 'utf8');
+const pending = fs.readFileSync('app/lib/pending-save.ts', 'utf8');
+const structure = fs.readFileSync('app/lib/app-structure.ts', 'utf8');
 
-check('a stored layout from before today still opens everything', () => {
-  // THE DEPLOY TEST. Every me_layout row in the database right now was written
-  // without a `closed` key.
-  const old = readLayout({ order: ['Supplements', 'Health'], hidden: [] });
-  assert.deepStrictEqual(old.closed, [], 'an older row comes back with sections already shut');
-  assert.deepStrictEqual(old.order, ['Supplements', 'Health'], 'the order was lost');
-  assert.deepStrictEqual(EMPTY.closed, [], 'the empty layout has something shut');
-  return 'no closed key means nothing is shut';
-});
+console.log('\n  THE ME TAB SAYS WHERE THINGS ARE\n');
 
-check('a shut section round-trips', () => {
-  const saved = layoutOf(['Health', 'Supplements'], [], ['Supplements']);
-  const read = readLayout(saved);
-  assert.deepStrictEqual(read.closed, ['Supplements'], 'the fold did not survive the store');
-  assert.ok(read.order.includes('Supplements'), 'a shut section fell out of the order');
-  // AND A SHUT SECTION IS NOT A HIDDEN ONE. Hidden removes it from the tab.
-  assert.deepStrictEqual(read.hidden, [], 'shutting a section hid it instead');
-  return 'closed survives, and is not hidden';
-});
-
-check('reordering does not reopen what she shut', () => {
-  // The obvious way to write the reorder handler drops everything it does not
-  // mention, and `closed` would have gone with it.
-  const at = me.indexOf('const keep = useCallback');
-  assert.ok(at > 0, 'the reorder handler has moved');
-  const handler = me.slice(at, at + 700);
+check('THE STORED SECTION NAMES ARE UNTOUCHED', () => {
+  // THE THING THAT MUST NOT CHANGE. Rename these and every row already filed
+  // under the old string stops being found - by the tab and by the server.
+  for (const [where, source] of [
+    ['the phone', careLib],
+    ['the server', careServer],
+  ]) {
+    assert.ok(
+      /export const CARE_SECTION = 'How I Access Care';/.test(source),
+      `the stored care section was renamed on ${where} - rows already filed under it are now orphaned`
+    );
+  }
+  // AND THE TWO COPIES MUST AGREE, which is the fault a single-file check
+  // cannot see: one renamed and one not would file new records under a section
+  // the other never looks in.
+  const onPhone = careLib.match(/export const CARE_SECTION = '([^']+)';/)?.[1];
+  const onServer = careServer.match(/export const CARE_SECTION = '([^']+)';/)?.[1];
+  assert.strictEqual(onPhone, onServer, 'the phone and the server disagree about the stored section');
   assert.ok(
-    /layoutOf\(order, \[\], layout\.closed\)/.test(handler),
-    'the reorder saves without her folds, so dragging a section reopens all of them'
+    /export const DETAILS_SECTION = 'Details I Am Asked For';/.test(detailsLib),
+    'the stored details section was renamed - same problem'
   );
-  assert.ok(/\.\.\.prev/.test(handler), 'the reorder replaces the whole layout rather than updating it');
-  return 'folds survive a drag';
+  return 'identities intact';
 });
 
-check('the fold is saved on the tap, not on leaving', () => {
-  const at = me.indexOf('const toggleSection');
-  assert.ok(at > 0, 'there is no toggle at all');
-  const toggle = me.slice(at, at + 800);
-  assert.ok(/saveLayout\('me_layout'/.test(toggle), 'the fold is never written to the store');
-  return 'written immediately';
-});
-
-check('a shut section carries a count', () => {
-  // SINCE 14 OCTOBER A SECTION MAY DRAW SOMETHING OTHER THAN ME CARDS - her
-  // standing details are not almanac rows - so the count comes from
-  // `instead.count` when one is given and from the rows otherwise. Both arms
-  // are required here: a section that passed `instead` and forgot the count
-  // would show nothing beside a shut heading, which is the exact thing this
-  // check was built to prevent.
+check('AND THE HEADINGS SHE READS ARE THE NEW ONES', () => {
+  assert.ok(/CARE_SECTION_LABEL = 'Health Care Records'/.test(careLib), 'the care heading is old');
   assert.ok(
-    /\{instead \? instead\.count : section\.rows\.length\}/.test(me),
-    'the heading shows no count, so a shut section cannot be told from an empty one'
+    /DETAILS_SECTION_LABEL = 'Details to Access Health Care'/.test(detailsLib),
+    'the details heading is old'
   );
-  // HOW I ACCESS CARE COUNTS ITS OWN since 12 October 2026, when it stopped
-  // being a group inside Health and became its own section, drawn by the same
-  // renderSection as every other, so one count covers both. Her standing
-  // details go through the same renderer for the same reason.
-  assert.ok(/\{renderSection\(care, [^)]*\)\}/.test(me), 'the care section is not drawn by the shared renderer, so it has no count');
-  assert.ok(/count: details\.length,/.test(me), 'the standing details section has no count beside its heading');
-  return 'every section, How I Access Care and her standing details included';
-});
-
-check('the heading is the control and the body is behind it', () => {
-  assert.ok(/onPress=\{\(\) => toggleSection\(section\.name\)\}/.test(me), 'the heading does not fold anything');
-  assert.ok(/\{!isShut\(section\.name\) && \(/.test(me), 'the body renders whether or not the section is shut');
+  // Rendered, not merely defined - a constant nothing draws is the fault this
+  // whole project keeps relearning.
+  assert.ok(/const heading =/.test(protocol), 'nothing maps a section name to its heading');
+  assert.ok(/\{heading\}/.test(protocol), 'the heading is computed and never drawn');
   assert.ok(
-    /accessibilityState=\{\{ expanded: !isShut\(section\.name\) \}\}/.test(me),
-    'a screen reader is not told whether the section is open'
+    !/\{section\.name\}\s*\n\s*<\/ThemedText>/.test(protocol),
+    'the raw stored name is still being drawn as the heading'
   );
-  return 'one target, and it says what it is';
+  // And spoken, or a screen reader gets the old name.
+  assert.ok(/accessibilityLabel=\{heading\}/.test(protocol), 'a screen reader hears the old name');
+  return 'both renamed at render, drawn and spoken';
 });
 
-check('the card names itself when it opens chat', () => {
-  // Since 7 October chat draws the anchor on arrival, so a tag with no title
-  // reads "Talking about this entry" over a card that has one.
-  const at = me.indexOf('I would like to talk through');
-  assert.ok(at > 0, 'the talk-this-through link has gone');
-  // THE WINDOW IS THE BLOCK, NOT A NUMBER (9 October 2026). This was 400
-  // characters, then 700, and it failed a third time - on correct code, because
-  // a comment explaining why 'me' is not a readable discussType pushed
-  // seedTitle past the end. A check that fails when a note grows is measuring
-  // the wrong thing, so it now reads to the end of the params object it is
-  // actually asking about.
-  const close = me.indexOf('});', at);
-  assert.ok(close > at, 'the params object around the link does not close');
-  const link = me.slice(at, close);
-  assert.ok(/seedTitle: row\.title/.test(link), 'the card sends no title, so the anchor cannot name it');
-  return 'the anchor says the card name';
+check('HEALTH IS MERGED IN, AND NOT SHOWN TWICE', () => {
+  assert.ok(/MERGED_INTO_CARE = 'Health'/.test(careLib), 'nothing names the merged section');
+  assert.ok(
+    /n !== CARE_SECTION && n !== MERGED_INTO_CARE/.test(protocol),
+    'Health still appears as its own top-level section as well'
+  );
+  const at = protocol.indexOf('const care = useMemo');
+  const body = protocol.slice(at, at + 700);
+  assert.ok(
+    /sectionOf\(e\.category\) === MERGED_INTO_CARE/.test(body),
+    'the Health cards are filtered out of the list and never shown anywhere'
+  );
+  // Care records first: the paperwork is what somebody opens this for at a desk
+  // with a receptionist waiting.
+  const careFirst = body.indexOf('=== CARE_SECTION');
+  const healthNext = body.indexOf('=== MERGED_INTO_CARE');
+  assert.ok(careFirst > -1 && healthNext > careFirst, 'the health cards come before the paperwork');
+  return 'one heading, records first';
 });
 
-check('and this check can fail', () => {
-  // The shipped behaviour before today: no closed key at all.
-  const asShipped = { order: ['Health'], hidden: [] };
-  assert.ok(!('closed' in asShipped), 'the fixture is not the old shape');
-  const read = readLayout(asShipped);
-  assert.deepStrictEqual(read.closed, [], 'an old row is being read as having folds');
-  // And a layout that claims a fold is distinguishable from one that does not.
-  assert.notDeepStrictEqual(
-    readLayout(layoutOf(['Health'], [], ['Health'])).closed,
-    read.closed,
-    'a shut section is indistinguishable from an open one'
+check('AND THE STATUS WORD SURVIVES THE MERGE', () => {
+  // Ruth, the same morning: "lets keep the lovely 'active' 'paused' etc label
+  // function on records". It is on MeCardRow, which every section renders, so
+  // the merge cannot lose it - but nothing said so, and a later edit could.
+  assert.ok(/card\.status &&/.test(protocol), 'the status word is no longer drawn');
+  assert.ok(
+    /card\.status === 'Active' \? 'Paused' : 'Active'/.test(protocol),
+    'tapping the status no longer toggles it'
   );
-  return 'the old shape and the new one are told apart';
+  assert.ok(
+    /<MeCardRow row=\{row\} sections=\{sectionNames\}/.test(protocol),
+    'sections render rows some other way, so the status may not reach all of them'
+  );
+  return 'drawn, togglable, and on the one row component';
+});
+
+check('A ME CARD IS NOT SAID TO BE IN THE ALMANAC', () => {
+  // They share a table and nothing else. The old line said both at once -
+  // "your Almanac, under Me" - which is the Almanac screen in Settings and the
+  // Me tab described as though one contained the other.
+  assert.ok(/Kept in your Me tab\./.test(pending), 'the confirmation no longer names the Me tab');
+  assert.ok(
+    !/Kept in your Almanac, under Me/.test(pending),
+    'the confirmation still sends her to the Almanac for a Me card'
+  );
+  assert.ok(/'to their Me tab'/.test(pending), 'the waiting-offer prompt still says Almanac');
+  return 'Me tab, in the confirmation and the offer';
+});
+
+check('and a care record names the heading she will read', () => {
+  assert.ok(
+    /Kept in Health Care Records, at the bottom of Me\./.test(pending),
+    'the care confirmation names a heading that is no longer on screen'
+  );
+  assert.ok(
+    /CARE_OFFER_QUESTION = 'Want me to keep that in your Health Care Records\?';/.test(pending),
+    'the care offer still asks about How I Access Care'
+  );
+  return 'offer and confirmation both say the heading';
+});
+
+check('AND THE APP MAP DESCRIBES THE TAB AS IT IS', () => {
+  // It said "the Health section has How I Access Care inside it", which stopped
+  // being true on 12 October when care became its own section at the bottom,
+  // and was still being read to the model today.
+  assert.ok(
+    !/the Health section has "How I Access Care" inside it/.test(structure),
+    'the app map still describes the structure from 6 October'
+  );
+  assert.ok(/Details to Access Health Care/.test(structure), 'the map does not know the new heading');
+  assert.ok(/Health Care Records/.test(structure), 'the map does not know the new heading');
+  assert.ok(/Active, Paused/.test(structure), 'the map does not mention the status word');
+  return 'both headings and the status word';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

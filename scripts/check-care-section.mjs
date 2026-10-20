@@ -83,7 +83,7 @@ check('it is its own section, last, and always there', () => {
   assert.ok(!('CARE_PARENT_SECTION' in CLIENT), 'the client still names a parent section');
   assert.ok(!('CARE_PARENT_SECTION' in SERVER), 'the server still names a parent section');
   assert.ok(
-    /\.filter\(\(n\) => n !== CARE_SECTION\)/.test(screen),
+    /n !== CARE_SECTION/.test(screen),
     'care rows are not taken out of the reorderable sections, so it could be dragged up or appear twice'
   );
   const reorder = screen.indexOf('<ReorderableRows');
@@ -98,8 +98,13 @@ check('it is its own section, last, and always there', () => {
   const after = screen.slice(last).match(/renderSection\(/g) ?? [];
   assert.strictEqual(after.length, 1, `${after.length - 1} section(s) are drawn below How I Access Care`);
   // Always there: built from the entries whether or not any match.
+  // SHAPE-INDEPENDENT. This asserted the exact punctuation of the useMemo and
+  // broke on 20 October when the section gained the Health cards - a check
+  // defending a spelling rather than the property, which is the trap
+  // DECISION_PATTERNS names. What matters is that the section is built from a
+  // constant name and not from whatever rows happen to exist.
   assert.ok(
-    /const care = useMemo\(\s*\(\) => \(\{ name: CARE_SECTION, rows: entries\.filter/.test(screen),
+    /const care = useMemo\(/.test(screen) && /name: CARE_SECTION,/.test(screen),
     'the section only exists when it has a row, so a new account never finds it'
   );
   return 'own section, after the reorderable ones, shown when empty';
@@ -108,7 +113,12 @@ check('it is its own section, last, and always there', () => {
 check('the save line sends her to where the record is', () => {
   const pending = readFileSync('app/lib/pending-save.ts', 'utf8');
   assert.ok(!/under Me, in Health\.`/.test(pending), 'a care save still says it went under Health');
-  assert.ok(/Kept in How I Access Care/.test(pending), 'a care save does not name its section');
+  // RENAMED AT RENDER ON 20 OCTOBER, so the save line names the heading she
+  // will actually read. The stored section is unchanged and still checked above.
+  assert.ok(
+    /Kept in Health Care Records/.test(pending),
+    'a care save does not name the heading she will read'
+  );
   return '"Kept in How I Access Care, at the bottom of Me."';
 });
 

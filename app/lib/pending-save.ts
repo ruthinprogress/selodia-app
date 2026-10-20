@@ -535,7 +535,11 @@ export function pendingSavePrompt(pending: PendingSave): string {
         ? 'to their week'
         : type === 'skill'
           ? 'to their Skills'
-          : 'to their Almanac';
+          : type === 'me'
+            ? 'to their Me tab'
+            : type === 'care'
+              ? 'to Health Care Records, at the bottom of Me'
+              : 'to their Almanac';
   return `
 
 YOU OFFERED TO KEEP SOMETHING AND ARE WAITING ON AN ANSWER. In an earlier turn you offered to save "${title}" ${where} as ${TYPE_WORD[type]}, and they have not answered yet.
@@ -562,10 +566,14 @@ export const ME_OFFER_QUESTION = 'Want me to keep that in your Me tab?';
 
 /**
  * A care record's own question, because it is not a Me card and should not be
- * offered as one. It is kept in How I Access Care, under Health, and that is
- * where she will look for it at a reception desk.
+ * offered as one. It is kept in Health Care Records, at the bottom of Me, and
+ * that is where she will look for it at a reception desk.
+ *
+ * The heading was renamed on 20 October 2026 and the stored section was not:
+ * see CARE_SECTION_LABEL. This question says the heading, because a question is
+ * read by a person.
  */
-export const CARE_OFFER_QUESTION = 'Want me to keep that in How I Access Care?';
+export const CARE_OFFER_QUESTION = 'Want me to keep that in your Health Care Records?';
 
 /**
  * A MARKER'S OFFER SAYS WHAT IT CHANGES, for the same reason a rule's does.
@@ -1155,11 +1163,23 @@ export function saveAppliedNote(
     // offered to eat, quietly and from now on, which is a different kind of
     // thing from a card she can go and read.
     if (type === 'marker') return `Noted. It will be taken into account from now on.`;
-    if (type === 'me') return `Kept in your Almanac, under Me.`;
+    // "ALMANAC" IS NOT WHERE A ME CARD IS (Ruth, 20 October 2026): "It says
+    // Almanac still, but actually it's Me tab."
+    //
+    // This line already carried the comment above it saying Me and Insights are
+    // different tabs, and still named the wrong one - it said both at once,
+    // "your Almanac, under Me", which is the Almanac screen in Settings and the
+    // Me tab described as though one contained the other. They share a table
+    // and nothing else. She tapped Me and found it, so the card was right and
+    // only the sentence was wrong.
+    if (type === 'me') return `Kept in your Me tab.`;
     // ITS OWN SECTION, LAST ON ME, since 12 October 2026 ("It's not working
     // hidden"). The line names the section, because "under Me, in Health" sent
     // her to a place the record no longer is.
-    if (type === 'care') return `Kept in How I Access Care, at the bottom of Me.`;
+    // RENAMED 20 OCTOBER 2026, at render only: "HOW i access Care - rename to
+    // 'Health Care Records'". The stored section is unchanged, so this names
+    // the heading she will actually read at the bottom of Me.
+    if (type === 'care') return `Kept in Health Care Records, at the bottom of Me.`;
     // A rule earns a longer sentence than the others, because agreeing to it
     // changes what gets built from now on and she should be able to see where
     // it went.

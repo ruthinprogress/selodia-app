@@ -31,6 +31,20 @@ export type StandingDetail = {
  */
 export const DETAILS_SECTION = 'Details I Am Asked For';
 
+/**
+ * What she sees, since 20 October 2026: "Details I am asked for - rename to
+ * 'Details to Access Health Care'".
+ *
+ * Her reason is the one above, one step on. "The details she is asked for"
+ * names the moment; it does not say what the moment is FOR, which matters once
+ * the section below it is called Health Care Records. These two headings now
+ * read as a pair: the details you need to get care, then the records of it.
+ *
+ * Renamed at render, never in the database. DETAILS_SECTION above is matched
+ * against stored rows.
+ */
+export const DETAILS_SECTION_LABEL = 'Details to Access Health Care';
+
 /** The line under it: what belongs here, in the order it gets asked for. */
 export const DETAILS_SUBTITLE = 'Numbers, memberships, references';
 

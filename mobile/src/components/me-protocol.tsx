@@ -16,9 +16,20 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
-import { CARE_EMPTY, CARE_SECTION, CARE_SUBTITLE } from '@/lib/care-admin';
+import {
+  CARE_EMPTY,
+  CARE_SECTION,
+  CARE_SECTION_LABEL,
+  CARE_SUBTITLE,
+  MERGED_INTO_CARE,
+} from '@/lib/care-admin';
 import { StandingDetails } from '@/components/standing-details';
-import { DETAILS_SECTION, DETAILS_SUBTITLE, type StandingDetail } from '@/lib/care-constants';
+import {
+  DETAILS_SECTION,
+  DETAILS_SECTION_LABEL,
+  DETAILS_SUBTITLE,
+  type StandingDetail,
+} from '@/lib/care-constants';
 import { arrange, layoutOf, loadLayout, saveLayout, type LogLayout } from '@/lib/log-layout';
 import { ME_STATUSES, readMeCard, sectionOf, type MeCard, type MeStatus } from '@/lib/me-card';
 import { updateMeCard } from '@/lib/me-card-write';
@@ -107,7 +118,13 @@ export function MeProtocol({
       list.push(entry);
       map.set(name, list);
     }
-    return orderSections([...map.keys()].filter((n) => n !== CARE_SECTION)).map((name) => ({
+    // HEALTH IS NOT A TOP-LEVEL SECTION ANY MORE (Ruth, 20 October 2026: "We
+    // have Health competing with How I Access Care, which is confusing").
+    // Its cards are shown under Health Care Records below, so it is filtered
+    // out here rather than appearing twice.
+    return orderSections(
+      [...map.keys()].filter((n) => n !== CARE_SECTION && n !== MERGED_INTO_CARE)
+    ).map((name) => ({
       name,
       rows: map.get(name) ?? [],
     }));
@@ -125,8 +142,23 @@ export function MeProtocol({
   //
   // SHOWN EVEN WHEN EMPTY, with a line saying how something gets there, because
   // a section she cannot see is a feature she does not know she has.
+  //
+  // AND IT NOW HOLDS HEALTH TOO (Ruth, 20 October 2026). Two headings for one
+  // subject is the confusion she named: nobody can tell from the outside which
+  // of their health notes is a "Health" card and which is a care record. The
+  // rows keep their stored sections - that string is an identity and the server
+  // matches on it - and are shown under one heading.
+  //
+  // CARE RECORDS FIRST, then the health cards. The paperwork is what somebody
+  // opens this for in a hurry, at a desk, with a receptionist waiting.
   const care = useMemo(
-    () => ({ name: CARE_SECTION, rows: entries.filter((e) => sectionOf(e.category) === CARE_SECTION) }),
+    () => ({
+      name: CARE_SECTION,
+      rows: [
+        ...entries.filter((e) => sectionOf(e.category) === CARE_SECTION),
+        ...entries.filter((e) => sectionOf(e.category) === MERGED_INTO_CARE),
+      ],
+    }),
     [entries]
   );
 
@@ -208,7 +240,20 @@ export function MeProtocol({
     section: { name: string; rows: AlmanacRow[] },
     i: number,
     instead?: { count: number; subtitle: string; body: React.ReactNode }
-  ) => (
+  ) => {
+    // THE HEADING IS A LABEL, THE NAME IS AN IDENTITY (Ruth, 20 October 2026).
+    // Two sections were renamed that day and neither stored string moved: the
+    // section name is written into every row's content and matched on by the
+    // server, so renaming it would mean rewriting rows she has already filed.
+    // Same reasoning as goal-display.ts, which capitalises at render and never
+    // in the database.
+    const heading =
+      section.name === CARE_SECTION
+        ? CARE_SECTION_LABEL
+        : section.name === DETAILS_SECTION
+          ? DETAILS_SECTION_LABEL
+          : section.name;
+    return (
       <View key={section.name} style={styles.section}>
         {/* A THIN RULE BETWEEN SECTIONS, NOT AROUND EACH CARD (item 6:
             "Cormorant headings with thin dividers between sections, no cards
@@ -237,7 +282,7 @@ export function MeProtocol({
           onPress={() => toggleSection(section.name)}
           accessibilityRole="button"
           accessibilityState={{ expanded: !isShut(section.name) }}
-          accessibilityLabel={section.name}
+          accessibilityLabel={heading}
           accessibilityHint={isShut(section.name) ? 'Shows this section' : 'Folds this section away'}
           hitSlop={Spacing.two}
           style={({ pressed }) => [styles.headingRow, pressed && styles.pressed]}
@@ -252,7 +297,7 @@ export function MeProtocol({
               drawn at the page title's own size, so every section on the
               tab shouted as loudly as the word Me above them. */}
           <ThemedText type="sectionTitle" style={styles.heading}>
-            {section.name}
+            {heading}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {instead ? instead.count : section.rows.length}
@@ -294,7 +339,8 @@ export function MeProtocol({
           </>
         )}
       </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.wrap}>

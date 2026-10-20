@@ -49,6 +49,31 @@ export const CARE_SUBTITLE = 'Letters, numbers, references, emails';
 export const CARE_SECTION = 'How I Access Care';
 
 /**
+ * WHAT SHE SEES AT THE TOP OF IT (Ruth, 20 October 2026):
+ *
+ *   "We have Health competing with How I Access Care, which is confusing...
+ *    HOW i access Care - rename to 'Health Care Records'. merge 'Health' into
+ *    Health care records"
+ *
+ * RENAMED AT RENDER, NEVER IN THE DATABASE, which is the pattern goal-display
+ * already uses and the reason it exists. CARE_SECTION above is the value
+ * written into every care record's content and matched against on the server;
+ * changing that string would mean rewriting rows she has already filed, and
+ * leaving any that were missed invisible. The stored word is an identity. This
+ * is the heading.
+ */
+export const CARE_SECTION_LABEL = 'Health Care Records';
+
+/**
+ * The section whose cards now live under that heading too.
+ *
+ * "Health" and "How I Access Care" sat side by side as two separate things,
+ * and she is right that nobody can tell from the outside which of her health
+ * notes belongs in which. One heading, both kinds of card.
+ */
+export const MERGED_INTO_CARE = 'Health';
+
+/**
  * What she sees when the group is there but has nothing in it yet.
  *
  * NAMES THE THING SHE WOULD DO, not the state of the database. "No records yet"
