@@ -281,7 +281,7 @@ Ideal candidates include academics or practitioners working in the areas of:
 - Dance and movement science
 
 Potential names flagged for outreach (not yet contacted):
-- Stacy Sims (women's physiology)
+- Stacy Sims (women's physiology) — **not approached directly, but see section 12: her company, Collective X Health, was emailed on 20 October 2026**
 - Abbie Smith-Ryan (women's exercise science)
 - Kirsty Elliott-Sale (female athlete health, menstrual cycle effects on performance, Nottingham Trent University)
 
@@ -307,6 +307,32 @@ The reference for voice in public, for the bio, and for how posts are composed. 
 
 ---
 
-*Last updated: 9 September 2026*
+## 12. Partnership outreach
+
+A record of who has been approached about partnership, what was said, and what is owed next. It is a log, not a plan: nothing here is a commitment to a direction until there is a reply worth acting on.
+
+### Collective X Health (20 October 2026)
+
+**Who they are.** Collective X Health (CX), collectivex.health. A B2B women's health intelligence platform, co-founded by Dr Stacy Sims (Chief Research Officer), with CEO Lindsey Abramo and Chief Brand Officer Angelica Marden. They came out of stealth on 13 October 2026 with a $3.2M oversubscribed pre-seed (Forbes, PR Newswire).
+
+They license peer-reviewed, female-specific research to businesses through an API, and say they answer only from vetted research and cite sources every time. They can act as a product's whole women's health evidence base, or validate an existing one. Pricing is reported as an annual enterprise licence plus usage overages, arranged through a demo request — likely above current budget, with startup access unknown. They also run a research grant programme and a research marketplace spanning industry and academia.
+
+**Why it matters to Selodía.**
+- It validates the core premise: the women's health data gap is real, and now fundable.
+- It is a possible route to have Selodía's existing cited evidence base checked and extended with female-specific research.
+- It fits the parked long-game research idea: opt-in, long-term data on women 40+ who train.
+
+**What was done.**
+- 20 October 2026 — Ruth commented on CX's Forbes post on Instagram and followed the account.
+- 20 October 2026 — Ruth emailed business@collectivex.health from hello@selodia.app. Subject: *"Selodia x Collective X: UK app for women 40+"*. She asked whether there is a route in for an early-stage consumer app, offered future real-world data on women 40+ who train (with user consent), and offered to share our evidence list by email. No call was requested.
+
+**Status: awaiting reply.** Follow up if there is no reply by 3 November 2026.
+
+**If they reply**, prepare before any call: the questions to ask, the cost of a startup tier, and which parts of our evidence list to lead with.
+
+
+---
+
+*Last updated: 20 October 2026*
 
 *Build spec reference: `SELODIA_SPEC.md` Part Fifteen (visual identity), `SELODIA_LANGUAGE_RULES.md` (voice and safety language).*

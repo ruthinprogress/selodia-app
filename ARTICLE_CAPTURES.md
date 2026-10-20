@@ -1063,3 +1063,12 @@ it is a condition, and a condition is not a claim.
 
 Together they made plans unsaveable, and the diagnostics showed it had been
 happening for days rather than once.
+
+## 20 October 2026 — The researcher who shaped my return to lifting just got funded to solve the problem Selodía is built on
+
+Dr Stacy Sims's new company, Collective X Health, raised $3.2M to close the
+women's health data gap. The researcher who shaped my post-partum return to
+lifting just got funded to solve the problem Selodía is built on. I emailed them
+the same evening.
+
+The gap is real, and now it's fundable.
