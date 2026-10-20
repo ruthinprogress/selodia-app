@@ -170,6 +170,64 @@ export function unmatchedNames(rows: PlannedWeekRow[]): string[] {
   ];
 }
 
+/** "a, b and c", which is how a person lists things. */
+function andList(names: string[]): string {
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/**
+ * Why a card the weighting table does not know is missing from the drawing.
+ *
+ * REWRITTEN 20 OCTOBER 2026. The old line was "I do not know yet what Rocket
+ * Yoga, Pull-up practice cover. Log them once and they will count here."
+ * ChatGPT, reading the screen: "That feels much calmer" of the version below,
+ * and about the original: "they're all written as explanations of the app
+ * rather than observations about the plan."
+ *
+ * THE NAMES STAY. The shorter rewrite offered - "Some activities haven't been
+ * logged before" - is the one thing not taken from that review. Naming the
+ * card is the whole use of the sentence: "Rocket Yoga is not in this" is
+ * something she can act on in ten seconds, and "some activities" is something
+ * she cannot act on at all. A check asserts the names are in it.
+ *
+ * AND IT IS TRUE AS WRITTEN. An activity the table does not hold is classified
+ * by the server the first time it is logged, and the Week then reads that
+ * classification back out of her own rows - so logging it really is what makes
+ * it appear here. See week-coverage-lookup.ts.
+ */
+export function unknownNote(names: string[]): string | null {
+  if (names.length === 0) return null;
+  const many = names.length > 1;
+  return (
+    `${andList(names)} ${many ? 'have' : 'has'} not been logged yet, so ` +
+    `${many ? 'they are' : 'it is'} not included here. ` +
+    `${many ? 'They' : 'It'} will appear once you have logged ${many ? 'them' : 'it'}.`
+  );
+}
+
+/**
+ * Why the cards in Anytime are not in the drawing, and what to do about it.
+ *
+ * IT NO LONGER OPENS WITH A DIGIT. The old line began "1 in Anytime is not
+ * counted here" - ChatGPT: "Starting a sentence with '1' is exactly the sort
+ * of thing Selodia shouldn't do. It immediately feels mechanical." It was also
+ * a count of something she can see for herself.
+ *
+ * IT NAMES THE SECTION AND OFFERS THE MOVE. Ruth, 20 October 2026: "A user
+ * should be able to quickly see the overall shape of the flower by dropping
+ * things in and out from anytime, it's body literacy aid." The drag is real
+ * and has its own check suite, so the sentence is not promising a gesture the
+ * screen does not have.
+ */
+export function anytimeNote(count: number): string | null {
+  if (count <= 0) return null;
+  return (
+    'Activities in Anytime only count once they sit on a day. ' +
+    'Drag one onto the week to see what it would add.'
+  );
+}
+
 /** What to say when the plan is empty, which is not the same as thin. */
 export const PLAN_EMPTY =
   'Nothing in your week yet. What you add here is the plan, not a promise.';

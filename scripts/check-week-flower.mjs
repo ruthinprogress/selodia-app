@@ -26,7 +26,9 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const here = (p) => pathToFileURL(path.join(process.cwd(), p)).href;
-const { plannedCoverage, planGapNote, THIN } = await import(here('mobile/src/lib/week-coverage.ts'));
+const { plannedCoverage, planGapNote, THIN, unknownNote, anytimeNote } = await import(
+  here('mobile/src/lib/week-coverage.ts')
+);
 const { DIMENSION_LABEL } = await import(here('mobile/src/lib/health-flower.ts'));
 
 let pass = 0;
@@ -125,7 +127,20 @@ check('AN UNKNOWN ACTIVITY IS NAMED, NEVER SILENTLY DROPPED', () => {
   assert.strictEqual(p.sessions, 1, 'the unknown card was counted as a session anyway');
   // Named once however many days it sits on.
   assert.strictEqual(p.unknown.length, 1, 'it is named once per day rather than once');
-  assert.ok(/I do not know yet what/.test(viewRaw), 'the screen never says which card it cannot read');
+  // THE BEHAVIOUR, NOT THE WORDING. This used to match the literal sentence
+  // "I do not know yet what", which meant it broke the moment the copy was
+  // rewritten on 20 October - and would have passed just as happily if the
+  // rewrite had quietly dropped the names. What matters is that the card is
+  // NAMED, so that is what is asserted.
+  const note = unknownNote(['Rocket Yoga', 'Pull-up practice']);
+  assert.ok(note, 'nothing is said about a card that cannot be read');
+  for (const name of ['Rocket Yoga', 'Pull-up practice']) {
+    assert.ok(note.includes(name), `the note no longer names "${name}"`);
+  }
+  assert.strictEqual(unknownNote([]), null, 'a plan with nothing unknown still says something');
+  const one = unknownNote(['Rocket Yoga']);
+  assert.ok(/\bhas\b/.test(one) && !/\bthey\b/i.test(one), `one card reads as many: "${one}"`);
+  assert.ok(/unknownNote\(plan\.unknown\)/.test(viewRaw), 'the screen no longer draws that note');
 
   // AND HER OWN LOGS ANSWER IT WHEN THE TABLE CANNOT. Ruth asked why "Pull-up
   // practice" counted for nothing. The table is thirty-one broad activity
@@ -155,6 +170,57 @@ check('AN UNKNOWN ACTIVITY IS NAMED, NEVER SILENTLY DROPPED', () => {
   return 'named once, and answered from her logs when it can be';
 });
 
+check('THE THREE NOTES ARE THREE DIFFERENT VOICES', () => {
+  // ChatGPT, 20 October 2026, looking at this section: "Those three lines are
+  // trying to do three completely different jobs... they're all written as
+  // explanations of the app rather than observations about the plan."
+  //
+  // The observation is about HER WEEK and is the point of the section. The
+  // other two are about the APP - why the drawing is incomplete, and what a
+  // card in Anytime does - so they are set quieter and support it. Checked
+  // because three paragraphs at one size is the state this was in, and nothing
+  // in a typecheck notices a hierarchy collapsing back into a flat list.
+  const section = viewRaw.slice(viewRaw.indexOf('styles.planCover'));
+  assert.ok(/<ThemedText style={styles\.planNote}>/.test(section), 'the observation is no longer the loud one');
+  assert.ok(/styles\.planLimit/.test(section), 'the system note is no longer set apart');
+  assert.ok(/themeColor="accentDeep"[^>]*styles\.planDo/.test(section), 'the one actionable line lost its colour');
+  // ACCENTDEEP, NEVER ACCENT. The theme says so in as many words: the full
+  // strength terracotta is "the accent at full strength - fills, icons, large
+  // type. NOT small text."
+  assert.ok(
+    !/type="small"\s+themeColor="accent"/.test(section),
+    'small text is drawn in the full-strength accent, which does not clear AA'
+  );
+  // AND THE HEADING IS A HEADING. It was the same size and colour as the three
+  // notes under it, which is what made the section read flat.
+  assert.ok(
+    /<ThemedText type="sectionTitle">If the week goes to plan<\/ThemedText>/.test(section),
+    'the section title is back to being another small grey paragraph'
+  );
+  return 'observation, limitation, offer';
+});
+
+check('AND NO NOTE OPENS WITH A NUMBER', () => {
+  // "Starting a sentence with '1' is exactly the sort of thing Selodia
+  // shouldn't do. It immediately feels mechanical." It was also counting
+  // something she can see for herself.
+  for (const [what, text] of [
+    ['the Anytime note at one', anytimeNote(1)],
+    ['the Anytime note at four', anytimeNote(4)],
+    ['the unknown note', unknownNote(['Rope climbing'])],
+  ]) {
+    assert.ok(text, `${what} says nothing`);
+    assert.ok(!/^\d/.test(text), `${what} opens with a digit: "${text}"`);
+  }
+  assert.strictEqual(anytimeNote(0), null, 'an empty Anytime is still commented on');
+  // IT OFFERS THE MOVE, and the move exists - check-week-drag covers it, so
+  // this is not promising a gesture the screen does not have.
+  assert.ok(/[Dd]rag/.test(anytimeNote(1)), 'the note no longer says what she can do');
+  // AND IT STILL SAYS WHY, or it is an instruction with no reason behind it.
+  assert.ok(/once they sit on a day/i.test(anytimeNote(1)), 'the note no longer says why Anytime is out');
+  return 'no digits, and the reason kept';
+});
+
 check('IT IS MEASURED AGAINST THE SAME BAR AS A LOGGED WEEK', () => {
   // A plan judged against an easier target would call a week covered that the
   // Now flower then calls thin, and she would have no way to tell which lied.
@@ -169,10 +235,22 @@ check('IT IS MEASURED AGAINST THE SAME BAR AS A LOGGED WEEK', () => {
 check('IT KNOWS NOTHING ABOUT WHETHER SHE DID ANY OF IT', () => {
   // THE WHOLE RISK. The Week has no completion column and this must not become
   // one by the back door.
-  assert.ok(
-    !/activity_logs|happened_at|logged|completed|done\b/i.test(lib),
-    'the plan coverage reads something about what was actually done'
-  );
+  // MECHANISMS, NOT ENGLISH WORDS. This used to ban the words "logged" and
+  // "done" anywhere in the file, and on 20 October it started failing for the
+  // right reason and the wrong cause: the copy explaining an unrecognised card
+  // moved into this lib so it could be tested, and it says the word "logged"
+  // to the person reading it. Banning a word in prose is not a test of what
+  // code does - so what is banned now is the means of knowing: a table, a
+  // query, a timestamp, a completion column.
+  for (const banned of [
+    /activity_logs/i,
+    /happened_at/i,
+    /\.from\(/,
+    /completed|complete_at|done_at|ticked/i,
+    /supabase/i,
+  ]) {
+    assert.ok(!banned.test(lib), `the plan coverage reaches for ${banned} - that is how a tick comes back`);
+  }
   // And the Week screen no longer fetches the logs at all: that query went with
   // the tick, and kept running for nobody until lint found it.
   assert.ok(

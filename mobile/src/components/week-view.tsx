@@ -13,7 +13,14 @@ import { useTheme } from '@/hooks/use-theme';
 import { byTimeOfDay, clockMinutes, pillDetail } from '@/lib/day-time';
 import { HealthFlower } from '@/components/health-flower';
 import { DIMENSION_LABEL } from '@/lib/health-flower';
-import { planGapNote, plannedCoverage, PLAN_EMPTY, unmatchedNames } from '@/lib/week-coverage';
+import {
+  anytimeNote,
+  planGapNote,
+  plannedCoverage,
+  PLAN_EMPTY,
+  unknownNote,
+  unmatchedNames,
+} from '@/lib/week-coverage';
 import { knownFromLogs, type KnownCoverage } from '@/lib/week-coverage-lookup';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
@@ -851,7 +858,7 @@ export function WeekView({
           yet decided anything. What is left states the fact and stops: nothing
           here is ever marked done or missed. A promise beats a positioning
           line, and it is checkable. */}
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="textSecondary" style={styles.promise}>
         Nothing here is ever marked done or missed.
       </ThemedText>
 
@@ -879,32 +886,44 @@ export function WeekView({
           target". So the gaps are named in words underneath instead, which can
           say WHICH, where a faint outline can only say "something". */}
       <View style={styles.planCover}>
-        <ThemedText type="small" themeColor="textSecondary">
-          If the week goes to plan
-        </ThemedText>
+        {/* A REAL HEADING, 20 October 2026. It was small secondary text, the
+            same size and colour as the three notes beneath it, so the section
+            read as five flat paragraphs with a picture in them. ChatGPT:
+            "Heading, flower, paragraph, paragraph, paragraph is very flat...
+            The flower is the hero. Everything else supports it." A section
+            that is the app speaking needs a title that says so. */}
+        <ThemedText type="sectionTitle">If the week goes to plan</ThemedText>
         {plan.sessions === 0 && plan.unknown.length === 0 && plan.anytime === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
             {PLAN_EMPTY}
           </ThemedText>
         ) : (
           <>
+            {/* LARGER BY ABOUT A FIFTH (ChatGPT): "The explanatory text is
+                currently wider than the flower. That makes the flower feel
+                surprisingly small... The flower is the reason this section
+                exists." */}
             <View style={styles.planFlower}>
-              <HealthFlower coverage={plan.coverage} size={160} />
+              <HealthFlower coverage={plan.coverage} size={190} />
             </View>
+            {/* THE OBSERVATION. The one sentence on this screen that is
+                about her week rather than about the app, so it is the only
+                one at full size and full colour. */}
             {planGapNote(plan.coverage, (d) => DIMENSION_LABEL[d]) ? (
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText style={styles.planNote}>
                 {planGapNote(plan.coverage, (d) => DIMENSION_LABEL[d])}
               </ThemedText>
             ) : null}
             {/* NAMED, NOT DROPPED. A card the weighting table does not know
                 contributes nothing, and a silently thinner drawing would be
-                the app blaming her plan for its own gap. */}
-            {plan.unknown.length > 0 ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                {`I do not know yet what ${plan.unknown.join(', ')} ` +
-                  `${plan.unknown.length === 1 ? 'covers' : 'cover'}. Log ` +
-                  `${plan.unknown.length === 1 ? 'it' : 'them'} once and ` +
-                  `${plan.unknown.length === 1 ? 'it' : 'they'} will count here.`}
+                the app blaming her plan for its own gap.
+
+                QUIETER THAN THE OBSERVATION ABOVE IT. This explains why the
+                drawing is incomplete, which is a fact about the app; the
+                sentence above is a fact about her week. See unknownNote. */}
+            {unknownNote(plan.unknown) ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.planLimit}>
+                {unknownNote(plan.unknown)}
               </ThemedText>
             ) : null}
             {/* ANYTIME IS COUNTED AND SAID, NOT DROPPED (Ruth, 20 October
@@ -923,10 +942,9 @@ export function WeekView({
                 overall shape of the flower by dropping things in and out from
                 anytime, it's body literacy aid." If Anytime counted, dragging
                 a card onto a day would change nothing. */}
-            {plan.anytime > 0 ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                {`${plan.anytime} in Anytime ${plan.anytime === 1 ? 'is' : 'are'} not counted here, ` +
-                  `because this is a week. Drag one onto a day to see what it would add.`}
+            {anytimeNote(plan.anytime) ? (
+              <ThemedText type="small" themeColor="accentDeep" style={styles.planDo}>
+                {anytimeNote(plan.anytime)}
               </ThemedText>
             ) : null}
           </>
@@ -1362,8 +1380,33 @@ function AddToDaySheet({
 }
 
 const styles = StyleSheet.create({
-  planCover: { gap: Spacing.two, marginTop: Spacing.three },
-  planFlower: { alignItems: 'center' },
+  // A CHAPTER BREAK, NOT A CARD (ChatGPT, 20 October 2026). Asked whether the
+  // flower wants a container: "No. A card would fight the rest of Selodia. The
+  // app feels deliberately un-card-like. Instead I'd separate by rhythm."
+  //
+  // Everything above this line is hers - the plan she wrote. Everything below
+  // it is the app reading that plan back to her. That is the only boundary on
+  // the screen worth marking, and it is marked with space alone.
+  planCover: { gap: Spacing.two, marginTop: Spacing.five + Spacing.three },
+  // THE HEADING BELONGS TO THE FLOWER: "Currently they feel disconnected. I'd
+  // reduce that gap substantially." The section's own gap is eight, so the
+  // drawing sits closer to its title than anything else sits to anything.
+  planFlower: { alignItems: 'center', marginTop: Spacing.one },
+  // THE OBSERVATION IS THE POINT OF THE SECTION, so it is the one piece of
+  // body text here at full weight and full colour. Everything under it is
+  // support. ChatGPT: "This should be the largest and darkest piece of body
+  // text."
+  planNote: { marginTop: Spacing.two },
+  // QUIETER, AND SET IN A LITTLE: this explains why the drawing is incomplete,
+  // which is information about the app rather than about her week. "It should
+  // feel like supporting information."
+  planLimit: { paddingLeft: Spacing.two },
+  // THE ONE LINE THAT OFFERS SOMETHING TO DO. Terracotta body text rather than
+  // bold or a button - "just enough to suggest here's something you can do
+  // without becoming a button" - and accentDeep rather than accent, because
+  // the full-strength terracotta is the token this app reserves for fills and
+  // large type and does not clear AA as small text.
+  planDo: { marginTop: Spacing.two, paddingLeft: Spacing.two },
   // THE DENSITY PASS (Ruth, 1 October, UI item 2: "the entire week should
   // ideally fit on one phone screen"). Spacing.two between seven day rows, a
   // heading, a section and a footer was ~64pt of pure gap. Spacing.one halves it
@@ -1399,11 +1442,26 @@ const styles = StyleSheet.create({
   },
   // Fixed so every day's activities start at the same x, which is what makes
   // the column read as a week rather than as seven unrelated rows.
-  // AN EMPTY DAY GIVES UP ITS HEIGHT, not its place. Item 6: the emphasis
-  // falls on the days with something in them, and it falls there because the
-  // empty ones stopped claiming the same room - nothing was added to the busy
-  // ones to achieve it.
-  dayRowEmpty: { minHeight: 30, paddingVertical: 0 },
+  // AN EMPTY DAY KEEPS ITS HEIGHT AGAIN, 20 October 2026, reversing the
+  // density pass that took it away. ChatGPT, asked to look at this screen:
+  // "Currently the empty days read like missing content. Instead they should
+  // read like deliberate white space... Every day occupies exactly the same
+  // vertical rhythm. That makes Wednesday feel intentionally open rather than
+  // forgotten."
+  //
+  // THIS IS NOT AN OUTSIDE OPINION OVERRULING HERS. Both sides of it are
+  // Ruth's, written weeks apart and left in tension in this same stylesheet:
+  // `dayRow` above says the floor "keeps the seven days an even column when
+  // some are empty and some are not, which is what lets the week be read as a
+  // shape", and this said the opposite. An even column was the older intent
+  // and the better one; a 30pt row next to a 44pt one is what made an empty
+  // Wednesday look like a row that failed to load.
+  //
+  // THE COST, STATED: the week is up to 60 points taller when most of it is
+  // empty, against UI item 2, "the entire week should ideally fit on one phone
+  // screen". A full week was always the same height - this only affects the
+  // weeks with room in them, which are the ones that were reading as broken.
+  dayRowEmpty: {},
   dayLabel: { width: 54 },
   dayName: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   // Small, because it marks a day rather than announcing one.
@@ -1426,8 +1484,19 @@ const styles = StyleSheet.create({
   // Wraps rather than pushing the pill past the edge when an activity has a
   // long name and a long time. Both lines are numberOfLines={1}.
   pillText: { flexShrink: 1 },
+  // AN EIGHTH ROW, NOT A SECTION AFTER THE PAGE (ChatGPT, 20 October 2026):
+  // "Right now it feels like you've reached the end of the page and discovered
+  // another section afterwards... The divider can be incredibly subtle - a
+  // little extra top margin and the small uppercase heading. The important
+  // thing is the spacing."
+  //
+  // So the only divider is space, and the space is asymmetric: a clear step
+  // down from Sunday, then a short one to the cards, which is what makes the
+  // heading belong to what follows it rather than float between the two.
+  // Nothing is drawn, because "the app feels deliberately un-card-like" and a
+  // rule here would be the first one on the screen.
   anytimeHeading: {
-    marginTop: Spacing.two,
+    marginTop: Spacing.five,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -1435,6 +1504,9 @@ const styles = StyleSheet.create({
   // does not require her to hit a gap between two cards. The border is
   // transparent until she is over it, so nothing is drawn at rest.
   anytimeZone: {
+    // Twelve from the heading: Spacing.two here plus the block's own gap of
+    // four. See anytimeHeading for why the two gaps are different sizes.
+    marginTop: Spacing.two,
     borderWidth: 2,
     borderColor: 'transparent',
     borderRadius: CardRadius,
@@ -1523,6 +1595,11 @@ const styles = StyleSheet.create({
   // AT NORMAL SIZE, which is her instruction. It used to be drawn at a size
   // nobody could read, which is the same as not showing it.
   hint: { flex: 1 },
+  // EIGHT, NOT TWENTY (ChatGPT): "The explanatory sentence becomes almost like
+  // a caption beneath the button." It is about the button it sits under, not a
+  // separate thought, so it is tied to it rather than floating between the
+  // button and whatever comes next.
+  promise: { marginTop: Spacing.one },
   weekButton: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
