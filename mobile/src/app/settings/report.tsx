@@ -47,7 +47,14 @@ import { hasVotedFor, voteForFeature, voteMessage } from '@/lib/feature-vote';
 // A4. When there is a new native build, expo-print can write the file directly
 // from the same HTML.
 
-type PickableRecord = { id: string; title: string; when: string; detail?: string | null };
+type PickableRecord = {
+  id: string;
+  title: string;
+  when: string;
+  detail?: string | null;
+  /** Archived. Listed at the bottom of its picker, never filtered out. */
+  closed?: boolean;
+};
 type PickableValue = { value: string; count: number };
 
 type Catalogue = {
@@ -251,14 +258,46 @@ function Picker({
               </ThemedText>
             </Pressable>
           </View>
-          {records?.map((r) => (
-            <Checkbox
-              key={r.id}
-              checked={chosen.has(r.id)}
-              onToggle={() => onPick(source, r.id)}
-              label={r.detail?.trim() ? `${r.title} — ${r.detail.trim()}` : r.title}
-            />
-          ))}
+          {/* CLOSED RECORDS ARE LISTED, NOT HIDDEN (Ruth, 20 October 2026):
+              "ALL ReCORDS must be selectable in Report Builder, thats exactly
+              what I wanted to make sure during this restructure."
+
+              Archiving a record tidies the Me tab. It must not quietly shrink
+              a document she hands to a consultant - and the old ones are often
+              exactly what a consultant asked to see. Two filters in report.ts
+              would have done that silently, including one that ran AFTER she
+              ticked, so a closed record could be ticked, look ticked, and be
+              missing from the PDF.
+
+              So they sit at the bottom, under a line that says what they are,
+              unticked like everything else and tickable like everything else.
+              She can see what she is leaving out, which is the difference
+              between a choice and an omission. */}
+          {records
+            ?.filter((r) => !r.closed)
+            .map((r) => (
+              <Checkbox
+                key={r.id}
+                checked={chosen.has(r.id)}
+                onToggle={() => onPick(source, r.id)}
+                label={r.detail?.trim() ? `${r.title} — ${r.detail.trim()}` : r.title}
+              />
+            ))}
+          {records?.some((r) => r.closed) ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+              Closed, and still yours to include.
+            </ThemedText>
+          ) : null}
+          {records
+            ?.filter((r) => r.closed)
+            .map((r) => (
+              <Checkbox
+                key={r.id}
+                checked={chosen.has(r.id)}
+                onToggle={() => onPick(source, r.id)}
+                label={r.detail?.trim() ? `${r.title} — ${r.detail.trim()}` : r.title}
+              />
+            ))}
           {values?.map((v) => (
             <Checkbox
               key={v.value}
@@ -953,8 +992,17 @@ export default function ReportScreen() {
 
           {picker({
             source: 'cards',
-            title: 'Summaries',
-            hint: 'Built from your conversations and notes. Selodía holds no medical documents, scans or test results.',
+            title: 'From your Me tab',
+            // IT NOW CARRIES THE CARE RECORDS TOO, so the heading had to stop
+            // saying "Summaries" - a referral letter's reference is not a
+            // summary of anything. Named after where she will have seen them.
+            //
+            // THE LAST SENTENCE STAYS EXACTLY AS IT WAS. A care record holds
+            // the references, names and numbers she shared from a letter; it
+            // is not the letter. Somebody handing this to a consultant has to
+            // know the difference, and it is the kind of line that quietly
+            // rots when a section grows underneath it.
+            hint: 'The cards you keep and your health care records - letters, references and contacts, as you gave them. Selodía holds no medical documents, scans or test results.',
             records: catalogue.cards,
           })}
 

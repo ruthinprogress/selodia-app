@@ -71,7 +71,28 @@ export type ReportSelection = {
 };
 
 /** A record that can be picked one at a time. */
-export type PickableRecord = { id: string; title: string; when: string; detail?: string | null };
+export type PickableRecord = {
+  id: string;
+  title: string;
+  when: string;
+  detail?: string | null;
+  /**
+   * Closed, and therefore OFFERED RATHER THAN HIDDEN (Ruth, 20 October 2026):
+   * "ALL ReCORDS must be selectable in Report Builder, thats exactly what I
+   * wanted to make sure during this restructure."
+   *
+   * The archive writes status 'closed', and the line that used to build this
+   * catalogue filtered on `status === 'active'` - so the day archiving shipped,
+   * every record she tidied away would have vanished from the builder without a
+   * word. A report that quietly shrinks is the worst failure available to a
+   * document somebody hands to a consultant, and the old stuff is often exactly
+   * what the consultant wants.
+   *
+   * So a closed record is listed, in its own group, not ticked by default. She
+   * can see what she is leaving out, which is the whole difference.
+   */
+  closed?: boolean;
+};
 /** A value the data carries, offered as a filter. */
 export type PickableValue = { value: string; count: number };
 
@@ -97,7 +118,22 @@ export type ReportCatalogue = {
   activityTypes: PickableValue[];
 };
 
-const CARD_KINDS = ['me', 'routine', 'self-care routine', 'note', 'protocol'];
+// WHAT COUNTS AS A CARD FROM THE ME TAB.
+//
+// 'care' WAS MISSING UNTIL 20 OCTOBER 2026, and nothing noticed because the
+// builder draws itself from this list: a kind that is not here is not absent
+// from the screen, it was never on it. So seven of Ruth's records - a referral
+// letter, an insurance claim, a consultant's confirming email, her practice's
+// contact details - could not be put in a report at all.
+//
+// Which is backwards. A referral and a claim reference are close to the most
+// useful things a report can carry, and they are the ones she would otherwise
+// be reading out at a desk from memory.
+//
+// Found by checking rather than by it being reported, because nobody reports a
+// tick box that was never drawn. See principle: an absent thing presents as a
+// working one.
+const CARD_KINDS = ['me', 'care', 'routine', 'self-care routine', 'note', 'protocol'];
 
 /**
  * THE PROFILE IS FIVE SEPARATE FACTS, NOT ONE (Ruth, 21 September 2026): "there
@@ -207,7 +243,12 @@ export async function loadCatalogue(db: SupabaseClient, userId: string): Promise
     updated_at: string | null;
     status: string | null;
   };
-  const live = ((entries.data ?? []) as Entry[]).filter((e) => (e.status ?? 'active') === 'active');
+  // EVERY RECORD, OPEN OR CLOSED. This filtered to status 'active' and would
+  // have silently emptied the builder of anything archived - see
+  // PickableRecord.closed for why that is the one failure this document cannot
+  // have. Closed rows are marked instead, and the chooser offers them unticked.
+  const all = (entries.data ?? []) as Entry[];
+  const live = all;
 
   // The first line of an entry, so a list of four symptoms can be told apart
   // without opening any of them.
@@ -219,6 +260,9 @@ export async function loadCatalogue(db: SupabaseClient, userId: string): Promise
       title: e.title?.trim() || 'Untitled',
       when: e.updated_at ?? e.created_at,
       detail: firstLine.length > 90 ? `${firstLine.slice(0, 89).trimEnd()}…` : firstLine || null,
+      // Undefined rather than false for an open record, so the shape of a
+      // catalogue built before archiving existed is unchanged.
+      closed: (e.status ?? 'active') === 'active' ? undefined : true,
     };
   };
 
@@ -533,7 +577,17 @@ export async function loadReport(
     updated_at: string | null;
     status: string | null;
   };
-  const entries = ((entryRows.data ?? []) as Entry[]).filter((e) => (e.status ?? 'active') === 'active');
+  // NO STATUS FILTER HERE EITHER, AND THIS WAS THE SHARPER HALF OF IT.
+  //
+  // The catalogue above decides what she is OFFERED; this decides what the
+  // finished document contains. Filtering here meant a closed record could be
+  // listed, ticked, shown as ticked - and then dropped out of the PDF, with
+  // nothing anywhere saying so. A report that quietly omits what somebody
+  // deliberately chose is worse than one that omits it openly, because she
+  // would hand it over believing it was in there.
+  //
+  // Nothing unwanted can arrive: `chosen` below keeps only the ids she ticked.
+  const entries = (entryRows.data ?? []) as Entry[];
   // Picked one at a time, so nothing arrives that she did not tick.
   const chosen = (b: ReportBlock | null) =>
     b ? entries.filter((e) => (b.ids ?? []).includes(e.id)) : [];
