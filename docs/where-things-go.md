@@ -69,6 +69,24 @@ So the whole loop, in one place:
 | Where do the masters live? | `Build Specs\Branding & Assets\Visual Assets\` |
 | How does the person who asked find out? | `node scripts/thank-the-requesters.mjs "<movement>"` sends them a thank you |
 
+**A fault in the margin is painted out, not regenerated.** Ruth, 20 October
+2026, after I had spent 72p regenerating a drawing because it had START and
+FINISH written into it: *"Why cant you just erase the drawn on text. That would
+be way easier than re-generating and wasting money..."*
+
+She is right, and the reasoning generalises. Regenerating rolls the dice on
+every rule at once - the replacement came back with no text and three NEW faults
+(figure filling the frame, washes merged into one mass, a hard floor line), so
+the approved picture would have been traded for an unapproved one at 36p a go.
+Painting out a mark that sits on blank paper changes nothing else, costs
+nothing, and cannot fail a review it has already passed.
+
+The method, for next time: find the mark's bounding box, confirm the ring of
+pixels around it is uniform paper, then copy a clean patch of paper from
+directly above it so the grain carries through rather than flat-filling. Verify
+by re-scanning for non-paper pixels and by looking at it. Regenerate only when
+the fault is in the DRAWING - a wrong pose, a face, a bald head.
+
 **The 16:9 default has cost money twice.** It was written down in a memory note
 and not in this table, so the second time it was rediscovered by spending 36p on
 a landscape picture of a handstand. It is in the table now, which is the only
