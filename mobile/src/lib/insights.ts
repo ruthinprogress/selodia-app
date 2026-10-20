@@ -59,7 +59,20 @@ export const INSIGHT_PILL_LABEL: Record<InsightType, string> = {
   bodyManual: 'Body Manual',
 };
 
-export type AlmanacRow = AlmanacEntryRow & { content: unknown; created_at: string };
+export type AlmanacRow = AlmanacEntryRow & {
+  content: unknown;
+  created_at: string;
+  /**
+   * The LIFECYCLE, not the card's own status word.
+   *
+   * 'active' or 'closed'. A card's Taking / Paused / As needed lives inside
+   * `content`; this is whether the record is still in play at all, and it is
+   * the column the report builder reads to decide what to offer. See
+   * lib/me-archive.ts. Optional because every screen that reads a row predates
+   * it and most do not ask for it.
+   */
+  status?: string | null;
+};
 
 const norm = (s: string | null | undefined): string =>
   typeof s === 'string' ? s.trim().toLowerCase() : '';

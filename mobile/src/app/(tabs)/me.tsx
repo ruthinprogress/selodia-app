@@ -87,7 +87,7 @@ export default function MeScreen() {
         const [{ data, error }, { data: detailRows }] = await Promise.all([
           supabase
             .from('almanac_entries')
-            .select('id, kind, title, category, content, created_at, updated_at')
+            .select('id, kind, title, category, content, created_at, updated_at, status')
             .eq('status', 'active')
             .order('created_at', { ascending: false }),
           // NEWEST TOUCHED FIRST, not alphabetical. The number she gave or

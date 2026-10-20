@@ -115,9 +115,17 @@ check('AND THE STATUS WORD SURVIVES THE MERGE', () => {
   // Ruth, the same morning: "lets keep the lovely 'active' 'paused' etc label
   // function on records". It is on MeCardRow, which every section renders, so
   // the merge cannot lose it - but nothing said so, and a later edit could.
-  assert.ok(/card\.status &&/.test(protocol), 'the status word is no longer drawn');
+  // THE PROPERTY, NOT THE SPELLING. This read `card.status &&`, and broke on
+  // 20 October when every record gained a default status and Closed was added
+  // above it - a check defending an expression rather than the behaviour.
+  // See DECISION_PATTERNS, 18 October.
   assert.ok(
-    /card\.status === 'Active' \? 'Paused' : 'Active'/.test(protocol),
+    /const status = card\.status \?\? 'Active';/.test(protocol),
+    'cards no longer resolve a status to draw'
+  );
+  assert.ok(/\{status\}/.test(protocol), 'the status word is no longer drawn');
+  assert.ok(
+    /status === 'Active' \? 'Paused' : 'Active'/.test(protocol),
     'tapping the status no longer toggles it'
   );
   assert.ok(

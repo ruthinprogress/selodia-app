@@ -56,6 +56,16 @@ import { setOpenSwipe, subscribeOpenSwipe } from '@/lib/open-swipe';
 /** How far it opens. Enough for the mark and its air, and no further. */
 const OPEN = 64;
 
+/**
+ * Wider when a second action is revealed, so each one keeps a full target.
+ *
+ * Ruth, 20 October 2026, on archiving records out of the Me tab: "It could
+ * even be another icon (the Almanac book icon?) Along side delete at swipe
+ * left". One reveal, two choices, in the place her thumb already goes to get
+ * rid of something.
+ */
+const OPEN_TWO = 128;
+
 /** Past this, releasing opens rather than springs back. */
 const CATCH = 28;
 
@@ -65,6 +75,9 @@ export function SwipeToDelete({
   what,
   onDelete,
   onDeleted,
+  onArchive,
+  archiveLabel,
+  archiveIcon,
   children,
 }: {
   /** Omitted when `onDelete` does the removing. */
@@ -85,6 +98,22 @@ export function SwipeToDelete({
    */
   onDelete?: () => Promise<void> | void;
   onDeleted?: () => void;
+  /**
+   * A SECOND, GENTLER ACTION beside the delete, revealed by the same swipe.
+   *
+   * Supplied only where tidying something away is a real thing to want - the
+   * Me tab, where a finished referral should stop filling a list of ailments
+   * without being destroyed. Everywhere else this stays undefined and the
+   * reveal is exactly as it was.
+   *
+   * IT SITS LEFT OF THE DELETE, so the destructive one stays furthest out: a
+   * swipe that runs on too far meets the archive first.
+   */
+  onArchive?: () => Promise<void> | void;
+  /** Named in the accessible label, e.g. "Archive" or "Put back". */
+  archiveLabel?: string;
+  /** The mark to draw for it. Defaults to the book. */
+  archiveIcon?: 'book-outline' | 'arrow-undo-outline';
   children: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -95,6 +124,8 @@ export function SwipeToDelete({
   // id, because the same entry can legitimately be on screen twice - a plan in
   // a list and the same plan in a detail sheet - and those are two rows.
   const mine = useId();
+  // How far the card slides, which is also how wide the revealed strip is.
+  const reveal = onArchive ? OPEN_TWO : OPEN;
 
   const settle = useCallback(
     (next: boolean) => {
@@ -129,7 +160,7 @@ export function SwipeToDelete({
     })
     .onEnd(() => {
       const shouldOpen = x.get() < -CATCH;
-      x.set(withSpring(shouldOpen ? -OPEN : 0, { damping: 18, stiffness: 180 }));
+      x.set(withSpring(shouldOpen ? -reveal : 0, { damping: 18, stiffness: 180 }));
       runOnJS(settle)(shouldOpen);
     });
 
@@ -149,13 +180,49 @@ export function SwipeToDelete({
     onDeleted?.();
   }
 
+  /**
+   * NOTHING IS DESTROYED HERE, which is the whole difference from remove().
+   *
+   * The caller does the write and owns what it means; this only closes the
+   * swipe and gets out of the way. busy is left alone on purpose - an archived
+   * row stays on screen until the list re-reads, and a spinner in the strip
+   * behind it would be describing a card that is about to move anyway.
+   */
+  async function archive() {
+    if (busy || !onArchive) return;
+    setOpenSwipe(null);
+    setOpen(false);
+    x.set(withSpring(0, { damping: 18, stiffness: 180 }));
+    await onArchive();
+  }
+
   return (
     <View style={styles.wrap}>
       {/* BEHIND THE CARD, at the card's own height - which it gets by being
           stretched to this wrapper, and the wrapper is exactly the card now
           that it adds no padding of its own. No fill, so there is no shape to
           match. */}
-      <Animated.View style={[styles.behind, revealed]} pointerEvents={open ? 'auto' : 'none'}>
+      <Animated.View
+        style={[styles.behind, { width: reveal }, revealed]}
+        pointerEvents={open ? 'auto' : 'none'}
+      >
+        {/* THE GENTLER ONE FIRST, so the destructive one stays furthest out
+            and a swipe that runs on meets the archive rather than the bin. */}
+        {onArchive ? (
+          <Pressable
+            onPress={() => void archive()}
+            disabled={!open || busy}
+            accessibilityRole="button"
+            accessibilityLabel={`${archiveLabel ?? 'Archive'} ${what}`}
+            style={({ pressed }) => [styles.hit, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={archiveIcon ?? 'book-outline'}
+              size={22}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => void remove()}
           disabled={!open || busy}
@@ -220,14 +287,17 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
-    width: OPEN,
+    // Width is set at render, because it depends on how many actions there are.
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   // The whole panel is the target once it is open, which is 64 by the card's
   // height - comfortably past the 44 a control needs.
   hit: {
-    width: '100%',
+    // flex rather than full width, so two actions share the strip evenly and
+    // one still fills it.
+    flex: 1,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',

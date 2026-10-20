@@ -14,6 +14,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { byStatusThenRecent, lifecycleOf, setClosed } from '@/lib/me-archive';
 import { authedPost } from '@/lib/api';
 import type { AlmanacRow } from '@/lib/insights';
 import {
@@ -247,6 +248,20 @@ export function MeProtocol({
     // server, so renaming it would mean rewriting rows she has already filed.
     // Same reasoning as goal-display.ts, which capitalises at render and never
     // in the database.
+    // OPEN AND CLOSED, AND THE OPEN ONES IN HER ORDER (Ruth: "Active get moved
+    // to the top of the list, paused next, inactive get stored chronologically
+    // below"). The arithmetic lives in lib/me-archive.ts so it can be tested
+    // without a screen.
+    const openRows = byStatusThenRecent(
+      section.rows
+        .filter((r) => lifecycleOf(r.status) === 'active')
+        .map((r) => ({ row: r, status: readMeCard(r.content).status, when: r.updated_at }))
+    ).map((x) => x.row);
+    const closedRows = section.rows
+      .filter((r) => lifecycleOf(r.status) === 'closed')
+      // Chronologically, as she asked, and newest first like everything else.
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
     const heading =
       section.name === CARE_SECTION
         ? CARE_SECTION_LABEL
@@ -325,17 +340,79 @@ export function MeProtocol({
             {CARE_EMPTY}
           </ThemedText>
         ) : null}
-        {section.rows.map((row) => (
+        {openRows.map((row) => (
           <SwipeToDelete
             key={row.id}
             table="almanac_entries"
             id={row.id}
+            onArchive={async () => {
+              await setClosed(row.id, true);
+              onChanged?.();
+            }}
+            archiveLabel="Close"
+            archiveIcon="book-outline"
             what={row.title}
             onDeleted={onDeleted}
           >
             <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
           </SwipeToDelete>
         ))}
+
+        {/* CLOSED, UNDER A BAR, STILL HERE (Ruth, 20 October 2026): "Add to
+            Archive list - still accessible but under the collapsible bar to
+            keep this space calm... they can just be tidied into a collapsible
+            bar at the bottom and unarchived if they before active again."
+
+            IN THE SAME SECTION, not a separate screen, which was her own
+            instruction and is the better shape: a record does not move house
+            when it finishes, it just stops taking up room. It also means the
+            report builder needs no special case to find them, and she said
+            that was the point of the whole restructure.
+
+            SHUT BY DEFAULT. The section exists to be calm, and a bar that
+            opens itself is a list of old ailments with an extra step. */}
+        {closedRows.length > 0 ? (
+          <>
+            <Pressable
+              onPress={() => toggleSection(`${section.name}::closed`)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: !isShut(`${section.name}::closed`) }}
+              accessibilityLabel={`Closed in ${heading}`}
+              accessibilityHint={
+                isShut(`${section.name}::closed`) ? 'Shows the closed ones' : 'Folds them away'
+              }
+              hitSlop={Spacing.two}
+              style={({ pressed }) => [styles.closedBar, pressed && styles.pressed]}
+            >
+              <Ionicons
+                name={isShut(`${section.name}::closed`) ? 'chevron-forward' : 'chevron-down'}
+                size={14}
+                color={theme.textSecondary}
+              />
+              <ThemedText type="small" themeColor="textSecondary">
+                {`Closed · ${closedRows.length}`}
+              </ThemedText>
+            </Pressable>
+            {!isShut(`${section.name}::closed`) &&
+              closedRows.map((row) => (
+                <SwipeToDelete
+                  key={row.id}
+                  table="almanac_entries"
+                  id={row.id}
+                  onArchive={async () => {
+                    await setClosed(row.id, false);
+                    onChanged?.();
+                  }}
+                  archiveLabel="Open again"
+                  archiveIcon="arrow-undo-outline"
+                  what={row.title}
+                  onDeleted={onDeleted}
+                >
+                  <MeCardRow row={row} sections={sectionNames} onChanged={onChanged} />
+                </SwipeToDelete>
+              ))}
+          </>
+        ) : null}
           </>
         )}
       </View>
@@ -458,6 +535,9 @@ function MeCardRow({
   sections: string[];
   onChanged?: () => void;
 }) {
+  // READ FROM THE ROW, not passed in, so a card cannot be drawn as open while
+  // sitting under the Closed bar. One source for the fact.
+  const closed = lifecycleOf(row.status) === 'closed';
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [showingLetter, setShowingLetter] = useState(false);
@@ -476,11 +556,25 @@ function MeCardRow({
   // those two: the others - Taking, Ordered, Dietary source, As needed - are
   // not a pair, so there is nothing for a tap to mean. A control whose effect
   // somebody cannot predict is worse than one that is absent.
-  const togglable = card.status === 'Active' || card.status === 'Paused';
+  // EVERY RECORD HAS ONE NOW (Ruth, 20 October 2026): "I'd like for all records
+  // to have the active/paused."
+  //
+  // me-card.ts says status is "where relevant - a weekly call has no status; a
+  // supplement does", and that was right when this tab held routines and
+  // protocols. It is not right for what the tab holds today: a referral letter,
+  // an insurance claim, a practice's contact details are each either in play or
+  // not, and a card with no word beside it was simply unsorted - which is the
+  // list she is trying to get out of.
+  //
+  // DEFAULTED AT RENDER, NEVER WRITTEN. Nothing backfills a status onto rows
+  // she already has; an untouched record reads as Active and only stores a
+  // status once she taps it. Same reasoning as the headings next door.
+  const status = card.status ?? 'Active';
+  const togglable = status === 'Active' || status === 'Paused';
   const toggle = async () => {
     if (busy || !togglable) return;
     setBusy(true);
-    const next = card.status === 'Active' ? 'Paused' : 'Active';
+    const next = status === 'Active' ? 'Paused' : 'Active';
     await updateMeCard(row.id, { status: next });
     onChanged?.();
     setBusy(false);
@@ -522,31 +616,42 @@ function MeCardRow({
         {/* THE STATUS IS A WORD, NEVER A TICK (Ruth's answer 5). Paused reads
             quieter than the rest, because it is still part of the record and
             not still part of the routine. */}
-        {card.status &&
-          (togglable ? (
+        {/* CLOSED OVERRIDES IT, because a closed record is not Active-or-Paused
+            any more and saying "Active" on something she has tidied away would
+            be the card arguing with the bar it is sitting under. */}
+        {closed ? (
+          <ThemedText type="detail" themeColor="textSecondary" style={styles.status}>
+            Closed
+          </ThemedText>
+        ) : (
+          togglable ? (
             <Pressable
               onPress={() => void toggle()}
               disabled={busy}
               accessibilityRole="button"
               accessibilityLabel={
-                card.status === 'Active' ? `Pause ${row.title}` : `Make ${row.title} active again`
+                status === 'Active' ? `Pause ${row.title}` : `Make ${row.title} active again`
               }
               hitSlop={Spacing.two}
               style={({ pressed }) => pressed && styles.pressed}
             >
               <ThemedText type="detail" style={styles.status}>
-                {busy ? '\u2026' : card.status}
+                {busy ? '\u2026' : status}
               </ThemedText>
             </Pressable>
           ) : (
             <ThemedText
               type="detail"
-              themeColor={card.status === 'Paused' ? 'textSecondary' : 'text'}
+              // Not Active or Paused in this branch - those are the togglable
+              // pair above - so it is Taking, Ordered, Dietary source or As
+              // needed, all of which read at full strength.
+              themeColor="text"
               style={styles.status}
             >
-              {card.status}
+              {status}
             </ThemedText>
-          ))}
+          )
+        )}
         {expandable && (
           <Ionicons
             name={open ? 'chevron-down' : 'chevron-forward'}
@@ -917,6 +1022,15 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
 }
 
 const styles = StyleSheet.create({
+  // Quiet, and a full-height target: it is the least important control in the
+  // section and still has to be hittable with a thumb.
+  closedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    minHeight: 44,
+    marginTop: Spacing.two,
+  },
   links: { flexDirection: 'row', gap: Spacing.four, paddingTop: Spacing.two },
   link: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   backdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.three },
