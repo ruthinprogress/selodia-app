@@ -88,11 +88,28 @@ check('A CARD COUNTS ONCE PER DAY IT IS ON', () => {
   assert.strictEqual(once.sessions, 1);
   assert.strictEqual(twice.sessions, 2, 'two days did not count as two sessions');
   assert.ok(twice.coverage.balance > once.coverage.balance, 'the second day added nothing');
-  // AN ANYTIME CARD COUNTS ONCE. It is in the plan; counting it more than once
-  // would invent a frequency she never gave.
+  // AN ANYTIME CARD COUNTS FOR NOTHING (Ruth, 20 October 2026): "Anytime
+  // shouldn't be in flower... the recommendations and cumulative protective
+  // qualities are weekly." Checked externally and she is right - the WHO
+  // states all of it per week. A card with no day has no cadence, so counting
+  // it claims one she never gave.
   const anytime = plannedCoverage([{ activity: 'ballet', days: [] }]);
-  assert.strictEqual(anytime.sessions, 1, 'an Anytime card counted as none, or as more than one');
-  return 'per day, and Anytime once';
+  assert.strictEqual(anytime.sessions, 0, 'an Anytime card was counted as a session');
+  assert.strictEqual(anytime.anytime, 1, 'the Anytime card is not counted so it can be said');
+  for (const d of Object.keys(anytime.coverage)) {
+    assert.strictEqual(anytime.coverage[d], 0, `an Anytime card filled ${d}`);
+  }
+  // AND THAT IS WHAT MAKES THE DRAWING WORTH PLAYING WITH, which she saw
+  // straight afterwards: "A user should be able to quickly see the overall
+  // shape of the flower by dropping things in and out from anytime, it's body
+  // literacy aid." If Anytime counted, dragging a card onto a day would change
+  // nothing at all.
+  const onADay = plannedCoverage([{ activity: 'ballet', days: ['tue'] }]);
+  assert.ok(
+    onADay.coverage.balance > anytime.coverage.balance,
+    'dragging a card out of Anytime onto a day changes nothing, so the drawing teaches nothing'
+  );
+  return 'per day, and Anytime for nothing';
 });
 
 check('AN UNKNOWN ACTIVITY IS NAMED, NEVER SILENTLY DROPPED', () => {
@@ -109,7 +126,33 @@ check('AN UNKNOWN ACTIVITY IS NAMED, NEVER SILENTLY DROPPED', () => {
   // Named once however many days it sits on.
   assert.strictEqual(p.unknown.length, 1, 'it is named once per day rather than once');
   assert.ok(/I do not know yet what/.test(viewRaw), 'the screen never says which card it cannot read');
-  return 'named once, contributes nothing';
+
+  // AND HER OWN LOGS ANSWER IT WHEN THE TABLE CANNOT. Ruth asked why "Pull-up
+  // practice" counted for nothing. The table is thirty-one broad activity
+  // TYPES; anything else is classified by the server with an AI call once, at
+  // log time, and written onto that row. So the answer was already in her
+  // rows, paid for, and the Week was ignoring it.
+  const known = {
+    'pull-up practice': {
+      strength: 80,
+      cardio: 20,
+      flexibility: 15,
+      balance: 25,
+      bone: 30,
+      recovery: 0,
+    },
+  };
+  const learned = plannedCoverage(
+    [{ activity: 'Pull-up practice', days: ['tue'] }],
+    known
+  );
+  assert.deepStrictEqual(learned.unknown, [], 'a previously logged activity is still called unknown');
+  assert.strictEqual(learned.sessions, 1, 'a previously logged activity still counts for nothing');
+  assert.ok(learned.coverage.strength > 0, 'the coverage from her own log was not used');
+  // IT IS A LOOKUP, NOT A GUESS: nothing is inferred from a similar name.
+  const unrelated = plannedCoverage([{ activity: 'Pull-ups', days: ['tue'] }], known);
+  assert.deepStrictEqual(unrelated.unknown, ['Pull-ups'], 'a different name was matched anyway');
+  return 'named once, and answered from her logs when it can be';
 });
 
 check('IT IS MEASURED AGAINST THE SAME BAR AS A LOGGED WEEK', () => {
@@ -166,11 +209,15 @@ check('THE GAP NOTE NAMES AND STOPS', () => {
 check('AND THE NOT-A-SCORE LINE STILL COMES FIRST', () => {
   // That sentence is the first thing read about this screen, and a drawing
   // which fills up is exactly what it promises this screen is not.
-  const promise = viewRaw.indexOf('not a score. Nothing here is ever marked done or missed');
+  // THE LINE LOST ITS MARKETING HALF, 20 October 2026. Ruth: "Remove 'not a
+  // score' anywhere in app thats marketing language... feels like a hard sell
+  // marketing pitch." What is checked is the promise, which is the half that
+  // was ever load-bearing - and it is the one a tick would break.
+  const promise = viewRaw.indexOf('Nothing here is ever marked done or missed');
   const flower = viewRaw.indexOf('If the week goes to plan');
-  assert.ok(promise > -1, 'the promise that this is not a score is gone');
+  assert.ok(promise > -1, 'the promise that nothing is marked done or missed is gone');
   assert.ok(flower > -1, 'the plan flower is gone');
-  assert.ok(promise < flower, 'the flower now sits above the line promising it is not a score');
+  assert.ok(promise < flower, 'the flower now sits above the promise it must not contradict');
   return 'promise, then drawing';
 });
 

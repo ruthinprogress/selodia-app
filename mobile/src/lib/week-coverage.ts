@@ -1,4 +1,4 @@
-import { coverageFor } from '@/lib/activity-weights';
+import { coverageFor, type Coverage } from '@/lib/activity-weights';
 import { DIMENSIONS, WEEKLY_TARGET, type Dimension, type FlowerCoverage } from '@/lib/health-flower';
 
 // WHAT A PLANNED WEEK WOULD COVER.
@@ -39,25 +39,44 @@ export type PlannedWeekRow = {
 
 export type PlannedCoverage = {
   coverage: FlowerCoverage;
-  /** Activity names the weighting table does not recognise. */
+  /** Activity names nothing could put a weighting on. */
   unknown: string[];
   /** How many sessions the plan holds, counting a card once per day. */
   sessions: number;
+  /** Cards sitting in Anytime, which have no weekly cadence to count. */
+  anytime: number;
 };
 
 /**
  * Sum what the cards in a week would contribute.
  *
  * ONCE PER DAY IT IS ON, because a card on Tuesday and Thursday is two
- * sessions and the plan is two sessions heavier for it. That is the one place
- * this differs from reading a list of card names.
+ * sessions and the plan is two sessions heavier for it.
  *
- * AN ANYTIME CARD COUNTS ONCE. It is in the plan - "the things you do when they
- * fit" - and leaving it out would make a week of unscheduled intentions look
- * empty. Counting it more than once would be inventing a frequency she did not
- * give.
+ * AN ANYTIME CARD COUNTS FOR NOTHING, which is the opposite of what this did
+ * when it was written. Ruth, 20 October 2026: "Anytime shouldn't be in flower
+ * as as far as I remember, the recommendations and cumulative protective
+ * qualities are weekly. Check thats right though externally."
+ *
+ * CHECKED, AND IT IS. Every guideline the six dimensions rest on is stated per
+ * week: the WHO asks for muscle-strengthening on at least two days each week,
+ * 150 to 300 minutes of moderate aerobic activity each week, and for people
+ * over 65 balance work on three or more days a week. A card in Anytime has no
+ * committed frequency at all - it is "the things you do when they fit" - so
+ * counting it as a weekly contribution claims a cadence she never gave, and
+ * fills a petal on the strength of an intention.
+ *
+ * IT IS NOT DROPPED SILENTLY. The caller says how many are sitting there, so
+ * the drawing never looks thin for a reason nobody can see.
  */
-export function plannedCoverage(rows: PlannedWeekRow[]): PlannedCoverage {
+export function plannedCoverage(
+  rows: PlannedWeekRow[],
+  /**
+   * Coverage already worked out for activities she has logged before, keyed by
+   * the lowercased name. See knownFromLogs.
+   */
+  known?: Record<string, Coverage>
+): PlannedCoverage {
   const total: Record<Dimension, number> = {
     strength: 0,
     cardio: 0,
@@ -69,9 +88,18 @@ export function plannedCoverage(rows: PlannedWeekRow[]): PlannedCoverage {
   const unknown: string[] = [];
   let sessions = 0;
 
+  let anytime = 0;
+
   for (const row of rows) {
-    const weights = coverageFor(row.activity);
-    const times = Math.max(1, row.days?.length ?? 0);
+    const times = row.days?.length ?? 0;
+    if (times === 0) {
+      // No day, no weekly cadence, no contribution. Counted so it can be said.
+      anytime += 1;
+      continue;
+    }
+    // THE TABLE FIRST, THEN HER OWN HISTORY. See knownFrom for why the second
+    // one exists and why it is not a guess.
+    const weights = coverageFor(row.activity) ?? known?.[row.activity.trim().toLowerCase()] ?? null;
     if (!weights) {
       // Named once however many days it is on: she needs to know the card is
       // not understood, not how often it is not understood.
@@ -91,7 +119,7 @@ export function plannedCoverage(rows: PlannedWeekRow[]): PlannedCoverage {
     coverage[d] = Math.min(100, Math.round((total[d] / WEEKLY_TARGET) * 100));
   }
 
-  return { coverage, unknown, sessions };
+  return { coverage, unknown, sessions, anytime };
 }
 
 /** Below this a dimension counts as not really covered by the plan. */
@@ -124,6 +152,22 @@ export function planGapNote(
       ? names[0]
       : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
   return `As it stands, this week is light on ${list}.`;
+}
+
+/**
+ * The names on scheduled cards that the weighting table does not hold, so the
+ * screen can go and ask her own logs about just those. Anytime cards are left
+ * out because they contribute nothing either way.
+ */
+export function unmatchedNames(rows: PlannedWeekRow[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .filter((r) => (r.days?.length ?? 0) > 0)
+        .map((r) => r.activity)
+        .filter((a) => !coverageFor(a))
+    ),
+  ];
 }
 
 /** What to say when the plan is empty, which is not the same as thin. */

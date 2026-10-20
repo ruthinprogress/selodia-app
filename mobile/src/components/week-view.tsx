@@ -13,7 +13,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { byTimeOfDay, clockMinutes, pillDetail } from '@/lib/day-time';
 import { HealthFlower } from '@/components/health-flower';
 import { DIMENSION_LABEL } from '@/lib/health-flower';
-import { planGapNote, plannedCoverage, PLAN_EMPTY } from '@/lib/week-coverage';
+import { planGapNote, plannedCoverage, PLAN_EMPTY, unmatchedNames } from '@/lib/week-coverage';
+import { knownFromLogs, type KnownCoverage } from '@/lib/week-coverage-lookup';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 import { addToWeek, moveToDays, withDay } from '@/lib/week-move';
@@ -128,6 +129,11 @@ export function WeekView({
 }) {
   const theme = useTheme();
   const [rows, setRows] = useState<WeekRow[]>([]);
+  // COVERAGE HER OWN LOGS ALREADY KNOW, for card names the weighting table
+  // does not hold. See lib/week-coverage-lookup.ts: the classification was
+  // made once by the server when she logged the thing, and reading it back
+  // costs one query, only when there is something to ask about.
+  const [known, setKnown] = useState<KnownCoverage>({});
   const [steps, setSteps] = useState<number | null>(null);
   const [guidance, setGuidance] = useState<string | null>(null);
   const [dragUsed, setDragUsed] = useState(true);
@@ -203,6 +209,12 @@ export function WeekView({
 
     const planRows = (planRes.error ? [] : (planRes.data ?? [])) as WeekRow[];
     setRows(planRows);
+    // ONLY THE NAMES THE TABLE CANNOT ANSWER, so an ordinary week costs no
+    // second query at all.
+    const asking = unmatchedNames(
+      planRows.map((r) => ({ activity: r.activity, days: r.days }))
+    );
+    setKnown(asking.length > 0 ? await knownFromLogs(asking) : {});
     const p = profileRes.data as { guidance_mode: string | null; week_drag_used_at: string | null } | null;
     setGuidance(p?.guidance_mode ?? null);
     setDragUsed(Boolean(p?.week_drag_used_at));
@@ -257,8 +269,8 @@ export function WeekView({
   // every week and it genuinely builds bone and cardio. Leaving it out would
   // make the plan look thinner than the week actually is.
   const plan = useMemo(
-    () => plannedCoverage(rows.map((r) => ({ activity: r.activity, days: r.days }))),
-    [rows]
+    () => plannedCoverage(rows.map((r) => ({ activity: r.activity, days: r.days })), known),
+    [rows, known]
   );
   const walking = rows.find((r) => isWalking(r.activity)) ?? null;
   const planned = rows.filter((r) => !isWalking(r.activity));
@@ -828,8 +840,19 @@ export function WeekView({
         )}
       </View>
 
+      {/* "NOT A SCORE" WENT, 20 October 2026. Ruth: "Remove 'not a score'
+          anywhere in app thats marketing language, not for inside the app
+          itself, feels like a hard sell marketing pitch."
+
+          She is right, and it is worth being precise about why, because the
+          sentence was doing a real job and the job survives. "This is the
+          shape of your week, not a score" was the app arguing with an
+          accusation nobody had made - defending itself to somebody who had not
+          yet decided anything. What is left states the fact and stops: nothing
+          here is ever marked done or missed. A promise beats a positioning
+          line, and it is checkable. */}
       <ThemedText type="small" themeColor="textSecondary">
-        This is the shape of your week, not a score. Nothing here is ever marked done or missed.
+        Nothing here is ever marked done or missed.
       </ThemedText>
 
       {/* WHAT THIS PLAN WOULD COVER (Ruth, 20 October 2026): "we have a Week
@@ -859,7 +882,7 @@ export function WeekView({
         <ThemedText type="small" themeColor="textSecondary">
           If the week goes to plan
         </ThemedText>
-        {plan.sessions === 0 && plan.unknown.length === 0 ? (
+        {plan.sessions === 0 && plan.unknown.length === 0 && plan.anytime === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
             {PLAN_EMPTY}
           </ThemedText>
@@ -879,8 +902,31 @@ export function WeekView({
             {plan.unknown.length > 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
                 {`I do not know yet what ${plan.unknown.join(', ')} ` +
-                  `${plan.unknown.length === 1 ? 'covers' : 'cover'}, so ` +
-                  `${plan.unknown.length === 1 ? 'it is' : 'they are'} not in this drawing.`}
+                  `${plan.unknown.length === 1 ? 'covers' : 'cover'}. Log ` +
+                  `${plan.unknown.length === 1 ? 'it' : 'them'} once and ` +
+                  `${plan.unknown.length === 1 ? 'it' : 'they'} will count here.`}
+              </ThemedText>
+            ) : null}
+            {/* ANYTIME IS COUNTED AND SAID, NOT DROPPED (Ruth, 20 October
+                2026): "Anytime shouldn't be in flower as as far as I remember,
+                the recommendations and cumulative protective qualities are
+                weekly."
+
+                Checked and she is right: the WHO states all of it per week -
+                strengthening on at least two days a week, 150 to 300 minutes
+                of moderate activity a week, balance work three days a week
+                over 65. A card with no day has no cadence, so counting it
+                claims one she never gave.
+
+                AND IT IS WHAT MAKES THE DRAWING WORTH PLAYING WITH, which she
+                saw straight after: "A user should be able to quickly see the
+                overall shape of the flower by dropping things in and out from
+                anytime, it's body literacy aid." If Anytime counted, dragging
+                a card onto a day would change nothing. */}
+            {plan.anytime > 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {`${plan.anytime} in Anytime ${plan.anytime === 1 ? 'is' : 'are'} not counted here, ` +
+                  `because this is a week. Drag one onto a day to see what it would add.`}
               </ThemedText>
             ) : null}
           </>
@@ -1071,7 +1117,7 @@ function PlanPill({
             the objection is not how loud it is, it is that a tick means done
             and nothing on this screen is ever done. Six lines below the pills
             the screen says so in its own words - "This is the shape of your
-            week, not a score. Nothing here is ever marked done or missed" -
+            week: nothing here is ever marked done or missed" -
             which the tick had been contradicting on the same screenful.
 
             What was logged lives in the movement log, which is a record of what
