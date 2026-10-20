@@ -104,7 +104,7 @@ export default function BodyOverviewScreen() {
   // flower. A shut section saying "across the six dimensions" told her nothing
   // she could not already guess, and she struck it out; "September" is what a
   // folded section should say about what is behind it.
-  const [flowerMode, setFlowerMode] = useState<FlowerMode>('week');
+  const [flowerMode, setFlowerMode] = useState<FlowerMode>('days7');
   const [flowerBack, setFlowerBack] = useState(0);
   const flowerLabel = flowerRange(flowerMode, flowerBack).label;
 

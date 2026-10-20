@@ -23,7 +23,42 @@
 // both at local midnight, so a session stamped exactly at midnight lands in one
 // window and never in two.
 
-export type FlowerMode = 'week' | 'month';
+// ROLLING, NOT CALENDAR (Ruth, 20 October 2026):
+//
+//   "What if it's always the last 7 days or last 30 days as default view
+//    starting from the currect day. That way its just the shape of what
+//    happened, as opposed of implying that more needs doing this week/month
+//    with all the empty petals if its monday or 1st of the month."
+//
+// SHE FOUND AN ARITHMETIC FAULT, not a preference. A calendar window set
+// `days: 7` for "this week" whatever day it actually was, and the target scales
+// by that - so on a Monday morning ONE elapsed day was measured against a full
+// week's target, and on the 1st of a month one day against thirty-one. The
+// drawing was not saying "you have done little this week". It was saying "this
+// week has not happened yet", in the visual language of "you have done little",
+// on a screen about somebody's body.
+//
+// THE ORIGINAL DESIGN WAS ROLLING and the reasoning survives in
+// balance-flower-section.tsx: "six weeks is long enough for a picture to be
+// about somebody's life rather than about their last seven days." Calendar
+// windows arrived as a side effect of adding back and forward paging on
+// 7 October; nobody ever argued for the boundary on its own merits.
+//
+// TODAY IS INCLUDED even though it is still in progress, because excluding it
+// on a screen called Now would be strange. That leaves at most a one-day
+// shortfall against a seven-day target, where the calendar window could be six
+// days short - and it never resets to near-nothing overnight.
+//
+// THE CALENDAR WINDOWS ARE NOT GONE, they moved to where they earn their place.
+// Ruth: "going hard 2 weeks and nothing the rest of the time may shoe as
+// adequate when it's actually not" - so the report builder gets week-by-week
+// and month-by-month flowers, where the distribution is the point. Here, where
+// the question is "what has my life looked like lately", rolling is the honest
+// shape.
+export type FlowerMode = 'days7' | 'days30';
+
+/** How many days each mode looks back over, today included. */
+export const MODE_DAYS: Record<FlowerMode, number> = { days7: 7, days30: 30 };
 
 export type FlowerRange = {
   from: Date;
@@ -50,57 +85,46 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/** Local midnight on the Monday of the week containing `d`. */
-export function mondayOf(d: Date): Date {
-  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  // getDay is 0 for Sunday, and the week starts on Monday everywhere else in
-  // this app, so Sunday counts as the seventh day of the week before it.
-  const shift = (out.getDay() + 6) % 7;
-  out.setDate(out.getDate() - shift);
-  return out;
-}
-
-/** Whole days between two local midnights. */
-function daysBetween(from: Date, to: Date): number {
-  return Math.round((to.getTime() - from.getTime()) / 86_400_000);
-}
+// mondayOf AND daysBetween WENT WITH THE CALENDAR WINDOWS, 20 October 2026.
+// Both existed only to find a week boundary or measure an uneven month, and a
+// rolling window has neither. Deleted rather than left: an exported helper
+// nothing calls is the next person's evidence that weeks still matter here.
+// lib/week.ts has its own mondayOf for the Week tab, which genuinely does start
+// on a Monday.
 
 /**
- * The window to draw, `back` steps before the one containing `now`.
+ * The window to draw: `length` days ending today, stepped back by whole windows.
  *
- * back = 0 is the current week or month, 1 is the one before it, and so on.
+ * back = 0 is the stretch ending today, 1 is the stretch before that, and so
+ * on - so paging never lands on a part-window and the target always matches the
+ * days in it.
+ *
+ * EVERY WINDOW IS THE SAME LENGTH, which is what makes the denominator honest
+ * and the drawings comparable. A calendar month could not promise that: thirty
+ * days against thirty-one is a different target for the same effort.
  */
 export function flowerRange(mode: FlowerMode, back: number, now: Date = new Date()): FlowerRange {
   const steps = Math.max(0, Math.min(MAX_BACK, Math.round(back)));
+  const length = MODE_DAYS[mode];
 
-  if (mode === 'week') {
-    const from = mondayOf(now);
-    from.setDate(from.getDate() - steps * 7);
-    const to = new Date(from);
-    to.setDate(to.getDate() + 7);
-    return {
-      from,
-      to,
-      label: steps === 0 ? 'this week' : steps === 1 ? 'last week' : `week of ${dayMonth(from)}`,
-      days: 7,
-    };
-  }
+  // Half-open and local, as before: `to` is the midnight AFTER today, so
+  // anything logged today is inside the window and nothing is in two windows.
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  to.setDate(to.getDate() + 1 - steps * length);
+  const from = new Date(to);
+  from.setDate(from.getDate() - length);
 
-  // A CALENDAR MONTH, NOT FOUR WEEKS. Paging back through months and landing on
-  // "week of 8 September" would be the app answering a different question from
-  // the one the button asked. setMonth handles the lengths and the year turn.
-  const from = new Date(now.getFullYear(), now.getMonth() - steps, 1);
-  const to = new Date(from.getFullYear(), from.getMonth() + 1, 1);
   return {
     from,
     to,
+    // IT SAYS WHAT IT IS. "this week" invited the reading she objected to -
+    // that the week is a thing with a shape you are filling. "the last 7 days"
+    // is a description of a stretch of time that has already happened.
     label:
       steps === 0
-        ? 'this month'
-        : from.getFullYear() === now.getFullYear()
-          ? MONTHS[from.getMonth()]
-          : `${MONTHS[from.getMonth()]} ${from.getFullYear()}`,
-    days: daysBetween(from, to),
+        ? `the last ${length} days`
+        : `the ${length} days to ${dayMonth(new Date(to.getTime() - 86_400_000))}`,
+    days: length,
   };
 }
 

@@ -66,7 +66,7 @@ check('BUILD A REPORT CANNOT BECOME "Build a rep..."', () => {
 
 check('AND WEEK AND MONTH CANNOT BECOME "We..." AND "Mon..."', () => {
   const src = withoutComments(read('mobile/src/components/balance-flower-section.tsx'));
-  const at = src.indexOf("{m === 'week' ? 'Week' : 'Month'}");
+  const at = src.indexOf("{m === 'days7' ? '7 days' : '30 days'}");
   assert.ok(at > -1, 'the mode labels moved - this check is testing nothing');
   const el = src.lastIndexOf('<ThemedText', at);
   assert.ok(
@@ -76,6 +76,10 @@ check('AND WEEK AND MONTH CANNOT BECOME "We..." AND "Mon..."', () => {
   // The number-tuning from the previous attempt stays - it is not wrong, it
   // was just not sufficient on its own.
   assert.ok(/modeLabel: \{ flexShrink: 0/.test(src), 'the earlier flexShrink fix was removed');
+  // The labels got shorter on 20 October when the window went rolling - "7
+  // days" and "30 days" rather than "Week" and "Month" - which retires the
+  // clipping for good. Kept checked anyway: shorter is not the same as safe,
+  // and the cap is what did the damage.
   return 'no cap, and the earlier fix kept';
 });
 

@@ -90,43 +90,55 @@ check('what the model is told matches what is there', () => {
 
 console.log('\n  WHICH STRETCH\n');
 
-check('this week is Monday to Monday, half open and local', () => {
-  // A Wednesday.
+check('A WINDOW ENDS TODAY AND REACHES BACK, 20 October 2026', () => {
+  // SUPERSEDES "this week is Monday to Monday" AND "a month is the calendar
+  // month". Both were correct for the windows that existed when they were
+  // written, and both described the fault Ruth found:
+  //
+  //   "That way its just the shape of what happened, as opposed of implying
+  //    that more needs doing this week/month with all the empty petals if its
+  //    monday or 1st of the month."
+  //
+  // A calendar window reported its FULL length whatever day it was, and the
+  // target scales by that - so one elapsed day was measured against a whole
+  // week, or a whole month. The window now ends today and reaches back, so the
+  // denominator only ever counts days that have happened.
+  //
+  // The detailed arithmetic lives in check-flower-window.mjs. What is kept
+  // here is the contract this file has always guarded: half-open, local, and
+  // the right length.
   const now = new Date(2026, 9, 7, 14, 0, 0);
-  const r = RANGE.flowerRange('week', 0, now);
-  assert.strictEqual(r.from.getDay(), 1, 'the week does not start on Monday');
-  assert.strictEqual(r.days, 7, 'a week is not seven days');
-  assert.strictEqual(r.to.getTime() - r.from.getTime(), 7 * 86_400_000, 'the window is not a week long');
-  assert.strictEqual(r.label, 'this week');
-  // SUNDAY BELONGS TO THE WEEK BEFORE IT, which getDay does not do on its own.
-  const sunday = new Date(2026, 9, 11, 23, 30, 0);
-  assert.strictEqual(RANGE.flowerRange('week', 0, sunday).from.getDate(), 5, 'Sunday fell into the next week');
-  return 'Monday 5 October to Monday 12 October';
+  for (const [mode, length] of [['days7', 7], ['days30', 30]]) {
+    const r = RANGE.flowerRange(mode, 0, now);
+    assert.strictEqual(r.days, length, `${mode} is not ${length} days`);
+    assert.strictEqual(
+      r.to.getTime() - r.from.getTime(),
+      length * 86_400_000,
+      `${mode} does not span ${length} days`
+    );
+    // Half-open at local midnight after today: a session stamped today is in,
+    // and nothing lands in two windows.
+    assert.strictEqual(
+      r.to.getTime(),
+      new Date(2026, 9, 8).getTime(),
+      `${mode} does not end at the midnight after today`
+    );
+    assert.strictEqual(r.to.getHours(), 0, 'the boundary is not local midnight');
+  }
+  assert.strictEqual(RANGE.flowerRange('days7', 0, now).label, 'the last 7 days');
+  // A LEAP YEAR IS NO LONGER SPECIAL, which is the point of a fixed length:
+  // thirty days is thirty days in February too.
+  assert.strictEqual(RANGE.flowerRange('days30', 0, new Date(2028, 1, 15)).days, 30);
+  return 'ends today, reaches back, same length always';
 });
 
-check('a month is the calendar month, not four weeks', () => {
+check('and the span in weeks matches the days in it', () => {
+  // The target scales by this, so a window that claimed more weeks than it
+  // holds would set the bar high and draw a thin flower for a full life.
   const now = new Date(2026, 9, 7);
-  const r = RANGE.flowerRange('month', 0, now);
-  assert.strictEqual(r.from.getDate(), 1, 'a month does not start on the first');
-  assert.strictEqual(r.days, 31, 'October is not 31 days long');
-  assert.strictEqual(r.label, 'this month');
-  // ROUNDING A MONTH TO FOUR WEEKS WOULD SET THE TARGET 10% LIGHT and fill
-  // every petal that bit too easily, which is why the span is fractional.
-  assert.ok(Math.abs(RANGE.weeksIn(r) - 31 / 7) < 1e-9, 'the span is not the real length in weeks');
-  // February, and a leap year, because setMonth is doing the work.
-  assert.strictEqual(RANGE.flowerRange('month', 0, new Date(2026, 1, 15)).days, 28, 'February 2026 is not 28 days');
-  assert.strictEqual(RANGE.flowerRange('month', 0, new Date(2028, 1, 15)).days, 29, 'February 2028 is not 29 days');
-  return '31, 28 and 29 days, each exact';
-});
-
-check('paging back crosses the year without naming it wrongly', () => {
-  const now = new Date(2026, 0, 15);
-  assert.strictEqual(RANGE.flowerRange('month', 1, now).label, 'December 2025', 'last year is not named');
-  assert.strictEqual(RANGE.flowerRange('month', 0, now).label, 'this month');
-  assert.strictEqual(RANGE.flowerRange('week', 1, now).label, 'last week');
-  // Further back than "last" gets a date rather than a count nobody can hold.
-  assert.ok(/^week of /.test(RANGE.flowerRange('week', 4, now).label), 'an older week has no date in its name');
-  return 'December 2025, last week, week of ...';
+  assert.ok(Math.abs(RANGE.weeksIn(RANGE.flowerRange('days7', 0, now)) - 1) < 1e-9);
+  assert.ok(Math.abs(RANGE.weeksIn(RANGE.flowerRange('days30', 0, now)) - 30 / 7) < 1e-9);
+  return 'one week, and thirty sevenths';
 });
 
 check('there is no future to page into, and a floor to stop at', () => {

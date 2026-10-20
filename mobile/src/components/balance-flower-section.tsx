@@ -79,13 +79,15 @@ export function BalanceFlowerSection({
     <View style={styles.wrap}>
 
       <View style={styles.modes}>
-        {(['week', 'month'] as FlowerMode[]).map((m) => (
+        {(['days7', 'days30'] as FlowerMode[]).map((m) => (
           <Pressable
             key={m}
             onPress={() => pick(m)}
             accessibilityRole="button"
             accessibilityState={{ selected: mode === m }}
-            accessibilityLabel={m === 'week' ? 'Show a week at a time' : 'Show a month at a time'}
+            accessibilityLabel={
+              m === 'days7' ? 'Show the last seven days' : 'Show the last thirty days'
+            }
             hitSlop={Spacing.two}
             style={({ pressed }) => [styles.mode, pressed && styles.pressed]}
           >
@@ -101,7 +103,7 @@ export function BalanceFlowerSection({
               // "Week" has no second line to wrap onto. See report-link.tsx.
               style={styles.modeLabel}
             >
-              {m === 'week' ? 'Week' : 'Month'}
+              {m === 'days7' ? '7 days' : '30 days'}
             </ThemedText>
           </Pressable>
         ))}
@@ -115,7 +117,9 @@ export function BalanceFlowerSection({
           onPress={() => onBack(back + 1)}
           disabled={!canGoBack(back)}
           accessibilityRole="button"
-          accessibilityLabel={mode === 'week' ? 'The week before' : 'The month before'}
+          accessibilityLabel={
+            mode === 'days7' ? 'The seven days before that' : 'The thirty days before that'
+          }
           hitSlop={Spacing.two}
           style={({ pressed }) => pressed && styles.pressed}
         >
@@ -134,7 +138,9 @@ export function BalanceFlowerSection({
           onPress={() => onBack(Math.max(0, back - 1))}
           disabled={!canGoForward(back)}
           accessibilityRole="button"
-          accessibilityLabel={mode === 'week' ? 'The week after' : 'The month after'}
+          accessibilityLabel={
+            mode === 'days7' ? 'The seven days after that' : 'The thirty days after that'
+          }
           hitSlop={Spacing.two}
           style={({ pressed }) => pressed && styles.pressed}
         >
