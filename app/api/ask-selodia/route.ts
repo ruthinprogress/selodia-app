@@ -22,6 +22,7 @@ import {
 import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-honesty';
 import { buildLongHistory } from '../../lib/long-history';
 import { weekReadBlock } from '../../lib/week-read';
+import { calendarNote, reminderNote, type ReminderResult } from '../../lib/action-notes';
 import { checkCalendarEvent, type CalendarResult } from '../../lib/calendar-event';
 import { whoTheyAreBlock } from '../../lib/who-they-are';
 import { coerceConstants, constantsBlock, forgetConstants, readConstants, recordConstants } from '../../lib/care-constants';
@@ -2287,7 +2288,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         + 'THE TIME GOES IN "time", IN THEIR WORDS AND NOT PARSED. "french class on thursday night at 7pm" is time "7pm"; "evening", "after work" and "before the school run" are equally valid and must be kept as they said them. Leave it out when they did not say. A WEEK ENTRY NEED NOT BE EXERCISE - a class, a commitment, a standing arrangement all belong there, because something can earn a place in their week by taking the time rather than by being training. '
         + 'A CARE RECORD IS WHAT THEY NEED IN ORDER TO GET CARE: their GP practice, a clinic, who they are under, how to contact them, an online booking or contact system such as Klinik or the NHS App, a phone number, a reference or membership number, when they are next seen. Offer it with type "care" when they SHOW you one of these - a photo, a screenshot, a letter - or tell you one directly. Title it with the thing itself - the practice or clinic by its own name, exactly as written - never a description of a card, "why" says in one plain line what it is for, and "detail" carries the names, numbers and steps exactly as shown or said, never improved. If it is not clear the detail is theirs - a practice website could be anybody\'s - offer it anyway: the reply asks whether it is theirs and the app asks before keeping it, so nothing is filed on a guess. It is NOT a me card: a me card is how they choose to live, a care record is how they reach the people who look after them. Never offer one because a conversation merely sounded administrative. '
         + 'A ME CARD is for a settled decision about how they live - a supplement, a routine, a dietary decision, a standing commitment - and its status, where it has one, must be exactly one of: Taking, Ordered, Dietary source, As needed, Active, Paused. WHAT THEY TAKE REGULARLY GOES ON ONE CARD TITLED EXACTLY "Medications", section "Medication", with each medicine or supplement as its OWN item - name as they said it, `when` carrying the dose and the timing in their words ("75mcg, each morning"), and `purpose` only if they said what it is for. Use that exact title every time so a later addition merges into the same card instead of starting a second list, and never split one list across two cards. Supplements they describe as part of a routine can stay on their own card; a list of things they take is this one. See the Almanac section of your instructions for when each type applies. '
-        + 'A RULE is a MOVEMENT CONSTRAINT: something they must never do, or something that is always fine, usually because a clinician said so or because of a condition or injury. "My surgeon said no loaded squats" is a rule; "I hate burpees" is not. kind is "never" or "always". matchTerms are the lowercase movement words the app should match against a generated plan - for "no heavy deadlifts or loaded squats" that is ["deadlift", "loaded squat", "back squat"] - and they matter, because the app uses them to physically remove movements from anything it builds, so a term that is too narrow means a rule that does not work. advisedBy is who said so, if they named anybody. '
+        + 'A RULE is a MOVEMENT CONSTRAINT: something they must never do, or something that is always fine, usually because a clinician said so or because of a condition or injury. "My surgeon said no loaded squats" is a rule; "I hate burpees" is not. kind is "never" or "always". matchTerms are the lowercase movement words the app should match against a generated plan - for "no heavy deadlifts or loaded squats" that is ["deadlift", "loaded squat", "back squat"] - and they matter, because the app matches them against anything it builds, so a term that is too narrow means a rule that does not work. A MATCH FLAGS THE MOVEMENT AND ASKS THEM - it does not take it out. The plan they asked for is the plan they get, with a line saying which movement touches which rule and whether they still want it. advisedBy is who said so, if they named anybody. '
         + 'The app stores the offer and saves it only if they say yes. NEVER save a rule silently and never treat one as agreed because it was mentioned: a rule changes what gets built for them from then on, so it is confirmed first, always. Never for a plan, a passing remark or a one-off observation, and never while an earlier offer is still waiting. A TEST RESULT THEY HAVE BEEN GIVEN, AND A CONDITION THEY ARE MANAGING, ARE THE EXCEPTIONS and are offered as a marker and a condition, as described above: this closing line used to forbid "a plain result" outright, and that is exactly what a marker is.',
     },
     meUpdate: {
@@ -3039,10 +3040,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // So the reply must never say it is set - the app confirms once the phone has
   // actually scheduled it, exactly as a food log is confirmed by the app rather
   // than by the sentence.
-  let reminderResult:
-    | { action: 'created'; label: string; atTime: string; weekday: number | null }
-    | { action: 'cancelled'; label: string; count: number }
-    | null = null;
+  let reminderResult: ReminderResult | null = null;
 
   if (result.reminderAction === 'create') {
     const label = (result.reminderLabel ?? '').trim();
@@ -3058,8 +3056,10 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       const { error } = await supabase
         .from('custom_reminders')
         .insert({ user_id: user.id, label, at_time: atTime, weekday, source: isVoice ? 'voice' : 'chat' });
-      if (error) console.log('CUSTOM REMINDER INSERT FAILED:', error.message);
-      else reminderResult = { action: 'created', label, atTime, weekday };
+      if (error) {
+        console.log('CUSTOM REMINDER INSERT FAILED:', error.message);
+        reminderResult = { action: 'failed', label, doing: 'create' };
+      } else reminderResult = { action: 'created', label, atTime, weekday };
     }
   } else if (result.reminderAction === 'cancel') {
     const label = (result.reminderLabel ?? '').trim();
@@ -3070,11 +3070,14 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       const { data: stopped, error } = await supabase
         .from('custom_reminders')
         .update({ active: false })
+        .eq('user_id', user.id)
         .eq('active', true)
         .ilike('label', `%${label.replace(/[%_]/g, '')}%`)
         .select('id');
-      if (error) console.log('CUSTOM REMINDER CANCEL FAILED:', error.message);
-      else reminderResult = { action: 'cancelled', label, count: stopped?.length ?? 0 };
+      if (error) {
+        console.log('CUSTOM REMINDER CANCEL FAILED:', error.message);
+        reminderResult = { action: 'failed', label, doing: 'cancel' };
+      } else reminderResult = { action: 'cancelled', label, count: stopped?.length ?? 0 };
     }
   }
 
@@ -3109,8 +3112,11 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       const { error } = await supabase
         .from('calendar_events')
         .insert({ user_id: user.id, ...checked.row });
-      if (error) console.log('CALENDAR INSERT FAILED:', error.message);
-      else
+      if (error) {
+        console.log('CALENDAR INSERT FAILED:', error.message);
+        // AND THE TURN IS TOLD, not just the server log. See action-notes.ts.
+        calendarResult = { action: 'failed', doing: 'add' };
+      } else
         calendarResult = {
           action: 'added',
           title: checked.row.title,
@@ -3132,8 +3138,10 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         .gte('event_date', todayKey)
         .ilike('title', `%${title.replace(/[%_]/g, '')}%`)
         .select('id');
-      if (error) console.log('CALENDAR CANCEL FAILED:', error.message);
-      else calendarResult = { action: 'cancelled', title, count: removed?.length ?? 0 };
+      if (error) {
+        console.log('CALENDAR CANCEL FAILED:', error.message);
+        calendarResult = { action: 'failed', doing: 'cancel' };
+      } else calendarResult = { action: 'cancelled', title, count: removed?.length ?? 0 };
     }
   }
 
@@ -4842,16 +4850,37 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     saveNote,
     meNote,
     weekNote,
-    // WHAT A RULE TOOK OUT IS SAID, NOT HIDDEN (2026-09-28). A session that
-    // quietly comes back two movements shorter teaches her the app is
-    // unreliable; one that names the rule teaches her the rule is working,
-    // which is the only reason to have written it down.
+    // WHAT A RULE FLAGGED IS SAID, NOT HIDDEN (2026-09-28, and the verb
+    // changed on 20 October 2026). A session that quietly comes back two
+    // movements shorter teaches her the app is unreliable; one that names the
+    // rule teaches her the rule is working, which is the only reason to have
+    // written it down.
+    //
+    // NOTHING IS TAKEN OUT ANY MORE. Ruth: "they should be guiding the chat,
+    // so they should flag that excersise would not pass their health Rules and
+    // is the user sure they want them added, not just not allow it, thats very
+    // annoying... An app that decided what a user can and cannot do is not
+    // helpful, it's inflexible." The variable keeps its old name; what it
+    // carries is a question.
     ruleRemovalNote,
     // AND WHEN A PLAN COULD NOT BE EDITED BECAUSE TWO SHARE ITS NAME. The app
     // is the only thing in the turn that knows: the reply was written before
     // the lookup ran, so without this she is told the change landed when
     // nothing was saved at all.
     planEditNote,
+    // WHAT BECAME OF THE DIARY ENTRY AND THE REMINDER (20 October 2026).
+    //
+    // Selodia's own chat named this as the first thing that makes its job
+    // harder: "I can't see what happened after I act. I asked for the calendar
+    // entry and the reminder, but couldn't tell whether they worked."
+    //
+    // Both results existed and neither reached here. They went into the HTTP
+    // response, which the phone reads, and into the server log - never into
+    // the block the REPLY is written from. So the one participant that has to
+    // describe what happened was the one participant not told. See
+    // action-notes.ts.
+    calendarNote(calendarResult),
+    reminderNote(reminderResult),
     honestyNote,
     // THE REPLY MAY NOT CLAIM A WRITE THAT DID NOT HAPPEN (2026-09-30).
     //

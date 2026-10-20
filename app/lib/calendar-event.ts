@@ -147,4 +147,12 @@ export type CalendarResult =
       reminderDropped: boolean;
     }
   | { action: 'refused'; because: CalendarRefusal['because']; detail?: string }
-  | { action: 'cancelled'; title: string; count: number };
+  | { action: 'cancelled'; title: string; count: number }
+  // A DATABASE ERROR IS AN OUTCOME, NOT A LOG LINE (20 October 2026). The
+  // insert used to write its error to the server console and leave the result
+  // null, so the turn ended indistinguishable from one that never touched the
+  // diary at all - and the reply was written by a model that had been told
+  // nothing either way. Selodia's own chat reported this before anyone found
+  // it: "I asked for the calendar entry and the reminder, but couldn't tell
+  // whether they worked."
+  | { action: 'failed'; doing: 'add' | 'cancel' };

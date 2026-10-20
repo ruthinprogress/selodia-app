@@ -48,12 +48,36 @@ async function tokens(text) {
   return res.input_tokens;
 }
 
-const PIECES = [
-  ['GENERAL_CONDUCT', 'app/lib/conduct.ts'],
-  ['CAPABILITIES', 'app/lib/capabilities.ts'],
-  ['APP_STRUCTURE_PROMPT_BLOCK', 'app/lib/app-structure.ts'],
-  ['VOICE_CONDUCT_BLOCK', 'app/lib/app-structure.ts'],
-];
+// FOUND, NOT LISTED (20 October 2026). This was a hand-written list naming
+// app/lib/conduct.ts and app/lib/capabilities.ts, neither of which exists any
+// more - so the script that measures the prompt crashed on its first read, and
+// had done since those files were renamed. Nobody noticed, because nobody runs
+// a measuring tool until they need a measurement.
+//
+// Selodia's own chat asked for one: "A lot of my instructions repeat
+// themselves. A shorter version, with each rule said once, would probably make
+// me more reliable." That is a request for evidence before a cut, and the
+// evidence was unobtainable.
+//
+// So the blocks are discovered. Any `export const NAME = \`...\`` in app/lib is
+// a candidate, which means a new prompt block is measured the day it is
+// written rather than the day somebody remembers to add it here.
+function discoverPieces() {
+  const dir = path.join(ROOT, 'app/lib');
+  const out = [];
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.endsWith('.ts')) continue;
+    const rel = `app/lib/${name}`;
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    for (const m of src.matchAll(/export const ([A-Z][A-Z0-9_]*) = `/g)) {
+      out.push([m[1], rel]);
+    }
+  }
+  // Biggest first, since the question is always what to cut.
+  return out;
+}
+
+const PIECES = discoverPieces();
 
 console.log('\n  WHAT THE MODEL READS, IN TOKENS\n');
 

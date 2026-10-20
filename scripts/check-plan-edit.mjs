@@ -43,7 +43,10 @@ function check(name, fn) {
   }
 }
 
-const route = fs.readFileSync('app/api/ask-selodia/route.ts', 'utf8');
+// Line endings normalised: the anchors below are written with a backslash-n
+// and this repo checks out CRLF on Windows, so they stopped matching the
+// moment a git stash rewrote the file.
+const route = fs.readFileSync('app/api/ask-selodia/route.ts', 'utf8').replace(/\r\n/g, '\n');
 const removal = fs.readFileSync('app/lib/plan-removal.ts', 'utf8');
 
 console.log('\n  AN EDIT REPLACES, IT DOES NOT ADD\n');
