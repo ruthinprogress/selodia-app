@@ -104,7 +104,7 @@ import {
 } from '../../lib/log-correction';
 import { saveAlmanacEntry } from '../../lib/almanac';
 import { buildAllergyPrompt, filtersFood, recordAllergies, type Allergy } from '../../lib/allergies';
-import { planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
+import { findPlanToEdit, planRemovalMessage, removePlanTitled } from '../../lib/plan-removal';
 import { contentWords } from '../../lib/food-dedupe';
 import { MACRO_COLUMN, buildTrackedMacroBlock, trackedMacroKeys } from '../../lib/tracked-macro-summary';
 import { blockedSuggestionMessage, runAllergyGate } from '../../lib/allergy-gate';
@@ -1472,7 +1472,9 @@ DO NOT STATE ANY FIGURE YOURSELF, and do not say what the answer is. You have no
 
 AND DO NOT PROMISE A VERDICT. The table shows the days and says how many there were; it does not declare a cause, and neither do you, on this turn or a later one. If they come back and ask what it means, the honest answer is what is in front of them both and how few or many days it rests on.
 
-REMOVING A SAVED PLAN: set removePlanTitled when they ask for one of their own saved plans to be deleted. This is NOT a correction and has nothing to do with correctionKind, which is for something just logged: a plan is named and can be months old. The app matches the title, works out for itself what to do when two plans share a name, removes it and states the outcome - including when it could not. So never say a plan has been deleted, and never say which copy went; acknowledge, and let the app report. If you cannot tell which plan they mean, leave it unset and ask.
+CHANGING A PLAN THEY ALREADY HAVE: set editsPlanTitled to that plan's own title, and send the WHOLE plan as it should now read in almanacContent - everything staying as well as whatever is being added or taken out. The app replaces that plan, keeping its id and its history. WITHOUT IT A SECOND COPY IS WRITTEN and they end up with two plans of the same name, which is exactly what happened on 20 October. If two plans already share that name the app refuses and asks which, naming their dates, so do not guess. A genuinely new plan on a similar subject is not an edit and leaves this unset.
+
+REMOVING A SAVED PLAN: set removePlanTitled when they ask for one of their own saved plans to be deleted. This is NOT a correction and has nothing to do with correctionKind, which is for something just logged: a plan is named and can be months old. The app matches the title, works out for itself what to do when two plans share a name, removes it and states the outcome - including when it could not. So never say a plan has been deleted, and never say which copy went; acknowledge, and let the app report. If TWO plans share the name and they have said which - "the older one", "the one from yesterday" - set removePlanSavedOn to that plan's date as well, and the app will take the right one. Only leave removePlanTitled unset when you cannot tell which plan they mean at all, and then ask.
 
 CORRECTIONS: Set correctionDate whenever they name a day - "yesterday's food", "Saturday's entries". Without it only the last day or so is reachable, which is how somebody asking on Sunday for Saturday's lunch gets told it cannot be found. When the person is fixing or removing something they JUST logged rather than logging something new, set correctionKind and correctionAction instead of logIntent - see those fields. A MOVE IS ITS OWN ACTION and is what they usually want when a day is wrong: set correctionAction 'move' with correctionDate for the day it is on and correctionMoveTo for the day it belongs on. Do not offer to delete it and log it again, because a correction and a log cannot both happen in one turn and that offer has twice left a copy behind. The app performs it and tells them itself, so do not claim in your reply that you have changed or deleted anything; acknowledge naturally and move on. If you cannot tell whether they mean to correct a value or remove the entry, set neither and simply ask. When they say something went in more than once, set correctionScope to 'duplicates' so all the copies go together rather than one per turn.
 
@@ -2109,6 +2111,16 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       type: 'string',
       description:
         "The exact title of one of their SAVED PLANS they are asking to remove - \"delete the inner thigh routine\", \"get rid of the duplicate thigh workout\", \"I don't want that plan any more\". Use the plan's own title as it appears in the list above, not their paraphrase of it. The app finds it, decides what to do about duplicates, removes it and SAYS SO ITSELF - so acknowledge naturally and never state in your reply that it is gone, because you do not know whether it was. Leave unset for anything that is not a saved plan, and for a plan they are only talking about.",
+    },
+    editsPlanTitled: {
+      type: 'string',
+      description:
+        "Set when they are asking you to CHANGE a plan they already have, rather than build a new one - \"add these to yesterday's workout plan\", \"take the lunges out of my ballet plan\", \"make the pull-up one shorter\". Give that plan's own title exactly as it appears in the list above. Then set almanacKind, almanacTitle and almanacContent to the plan AS IT SHOULD NOW READ, in full, including everything that is staying - the app replaces the old one with what you send, keeping its id and its history. WITHOUT THIS A SECOND COPY IS CREATED and they end up with two plans of the same name. Leave it unset when they want a genuinely new plan, even on a similar subject.",
+    },
+    removePlanSavedOn: {
+      type: 'string',
+      description:
+        "Only alongside removePlanTitled, and only when they have TWO plans with the same title and have said which one they mean - 'remove the one from yesterday', 'delete the older one'. The day that plan was saved, as yyyy-mm-dd, worked out from today's date in the WHAT DAY IT IS block. Without it, two same-named plans whose movements differ are left alone and they are asked which. 'The older one' and 'the newer one' are answerable from the list above, which gives each plan's date.",
     },
     correctionKind: {
       type: 'string',
@@ -2782,6 +2794,8 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     calendarBring?: string;
     calendarRemindMinutesBefore?: number;
     removePlanTitled?: string;
+    removePlanSavedOn?: string;
+    editsPlanTitled?: string;
     correctionKind?: string;
     correctionDurationMin?: number;
     correctionIntensity?: string;
@@ -3142,7 +3156,12 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // depend on the model obeying it.
   let planNote: string | null = null;
   if (typeof result.removePlanTitled === 'string' && result.removePlanTitled.trim()) {
-    const outcome = await removePlanTitled(supabase, user.id, result.removePlanTitled.trim());
+    const outcome = await removePlanTitled(
+      supabase,
+      user.id,
+      result.removePlanTitled.trim(),
+      typeof result.removePlanSavedOn === 'string' ? result.removePlanSavedOn.trim() : null
+    );
     planNote = planRemovalMessage(outcome);
     console.log(
       'PLAN REMOVAL:',
@@ -4254,6 +4273,38 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     }
   }
 
+  // THE PLAN THIS SAVE IS EDITING, resolved before the save so it can replace
+  // rather than add. Ambiguity is refused and said out loud rather than guessed
+  // at: two plans share a title in her account right now, and editing one at
+  // random would overwrite work she wrote.
+  let editedPlanId: string | null = null;
+  let planEditNote: string | null = null;
+  if (
+    result.almanacKind &&
+    result.almanacTitle &&
+    !insightsKind &&
+    typeof result.editsPlanTitled === 'string' &&
+    result.editsPlanTitled.trim()
+  ) {
+    const target = await findPlanToEdit(supabase, user.id, result.editsPlanTitled.trim());
+    if (target.found) {
+      editedPlanId = target.id;
+    } else if (target.reason === 'ambiguous') {
+      const list = target.candidates
+        .map((c) => `the one from ${c.date} with ${c.movements} movements`)
+        .join(', and ');
+      planEditNote =
+        `You have more than one plan called "${result.editsPlanTitled.trim()}" - ${list}. ` +
+        `I have not changed either. Tell me which one and I will.`;
+      // NOTHING IS SAVED AT ALL in this case, because saving would add the
+      // third copy of a plan she already has two of - which is the fault this
+      // whole change exists to stop.
+      result.almanacKind = undefined;
+    }
+    // 'not-found' falls through deliberately: she named a plan that is not
+    // there, and what she described is then a new plan rather than an edit.
+  }
+
   if (result.almanacKind && result.almanacTitle && !insightsKind) {
     const entry = await saveAlmanacEntry(
       supabase,
@@ -4264,9 +4315,21 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         category: result.almanacCategory,
         content: result.almanacContent,
       },
-      // The plan this conversation is about, when it is about one: a plan saved
-      // during a talk anchored to a plan is an edit of it (2026-09-20).
-      provisionalTag?.entryType === 'plan' ? provisionalTag.entryId : null
+      // WHICH EXISTING PLAN THIS SAVE REPLACES, if any.
+      //
+      // Two routes reach it. A conversation ANCHORED to a plan has always meant
+      // a save is an edit of it (2026-09-20) - but that only works if she
+      // tapped into the plan first. Naming it in words reached nothing, so a
+      // save fell through to the insert.
+      //
+      // Ruth, 20 October 2026, having asked to add three movements to
+      // yesterday's ballet plan: "it duplicated instead of added... But thete
+      // should never have been a duplicate in the first place." The ten-minute
+      // same-entry guard in almanac.ts could not catch it, and its window is
+      // right: an edit happens whenever she thinks of it, and hers was a day
+      // later. So the model names the plan instead of the app guessing from
+      // timing. See findPlanToEdit.
+      editedPlanId ?? (provisionalTag?.entryType === 'plan' ? provisionalTag.entryId : null)
     );
     if (entry) savedAlmanac = { kind: entry.kind, title: entry.title };
   }
@@ -4784,6 +4847,11 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     // unreliable; one that names the rule teaches her the rule is working,
     // which is the only reason to have written it down.
     ruleRemovalNote,
+    // AND WHEN A PLAN COULD NOT BE EDITED BECAUSE TWO SHARE ITS NAME. The app
+    // is the only thing in the turn that knows: the reply was written before
+    // the lookup ran, so without this she is told the change landed when
+    // nothing was saved at all.
+    planEditNote,
     honestyNote,
     // THE REPLY MAY NOT CLAIM A WRITE THAT DID NOT HAPPEN (2026-09-30).
     //

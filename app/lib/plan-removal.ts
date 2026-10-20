@@ -60,7 +60,21 @@ function planFingerprint(content: unknown): string | null {
 export async function removePlanTitled(
   supabase: SupabaseClient,
   userId: string,
-  rawTitle: string
+  rawTitle: string,
+  /**
+   * The day the one she means was saved, as yyyy-mm-dd, when two share a title.
+   *
+   * Ruth, 20 October 2026: "offered to dekete one, then it said it couldn't
+   * tell them apart... Some illogical reasoning there putting the work onto the
+   * user, not good."
+   *
+   * The refusal below is right in general - two plans sharing a name but not
+   * their movements are two plans, and picking between them loses work. It was
+   * useless to her because there was no way to ANSWER it. She knew which one;
+   * the app had no field for her to say so. A date is the thing she can
+   * actually name, and the plan list she is shown carries one for every plan.
+   */
+  savedOn?: string | null
 ): Promise<PlanRemoval> {
   const wanted = normalise(rawTitle);
   if (!wanted) return { done: false, reason: 'not-found', title: rawTitle };
@@ -93,6 +107,14 @@ export async function removePlanTitled(
   }
 
   if (matches.length === 0) return { done: false, reason: 'not-found', title: rawTitle };
+
+  // SHE NAMED THE DAY, SO THE AMBIGUITY IS OVER. Narrowed before the identical-
+  // content rule below, because a date is a direct answer and that rule is an
+  // inference. If the date picks out exactly one, that is the one she means.
+  if (matches.length > 1 && savedOn && /^\d{4}-\d{2}-\d{2}$/.test(savedOn)) {
+    const onThatDay = matches.filter((r) => r.created_at.slice(0, 10) === savedOn);
+    if (onThatDay.length === 1) matches = onThatDay;
+  }
 
   let doomed: Row[];
   let kept: number;
@@ -145,4 +167,80 @@ export function planRemovalMessage(r: PlanRemoval): string {
     default:
       return `Something went wrong removing "${r.title}", so nothing has changed.`;
   }
+}
+
+/**
+ * Find the plan a title names, so a save can REPLACE it instead of adding a
+ * second copy.
+ *
+ * Ruth, 20 October 2026, after asking to add three movements to yesterday's
+ * ballet plan: "it duplicated instead of added, offered to delete one, then it
+ * said it couldn't tell them apart. It was logical to remove them one before
+ * the additions... But thete should never have been a duplicate in the first
+ * place."
+ *
+ * WHY THE EXISTING GUARD DID NOT CATCH IT. almanac.ts already refuses to write
+ * the same plan twice - same kind, same title, within ten minutes, and the
+ * newer content replaces the older. That window is deliberate and its reasoning
+ * holds: ten minutes catches a conversation repeating itself, and keeps
+ * deliberately saving a fresh version next week as a new entry.
+ *
+ * It cannot catch an EDIT, because an edit happens whenever she thinks of it.
+ * Hers was a day later. There was a route for this - a conversation anchored to
+ * a plan saves as an edit of it - but only if she had tapped into that plan
+ * first. Naming it in words reached nothing, so the save fell through to the
+ * insert and she got two.
+ *
+ * SO THE MODEL SAYS WHICH PLAN IT IS EDITING, rather than the app inferring it
+ * from timing. Timing was the wrong question, exactly as it was for removal:
+ * see the note at the top of this file about why recency does not identify a
+ * plan. A title does.
+ *
+ * AMBIGUITY IS REFUSED, NOT GUESSED. Two plans sharing a name is the state this
+ * function exists to stop happening again, but it can still be the state it
+ * finds - as it is in her account today. Editing one of them at random would
+ * overwrite work she wrote. The caller reports it and asks, with the dates.
+ */
+export async function findPlanToEdit(
+  supabase: SupabaseClient,
+  userId: string,
+  rawTitle: string
+): Promise<
+  | { found: true; id: string; title: string }
+  | { found: false; reason: 'not-found' | 'ambiguous'; candidates: { date: string; movements: number }[] }
+> {
+  const wanted = normalise(rawTitle);
+  if (!wanted) return { found: false, reason: 'not-found', candidates: [] };
+
+  const { data, error } = await supabase
+    .from('almanac_entries')
+    .select('id, title, content, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.log('PLAN EDIT: read failed -', error.message);
+    return { found: false, reason: 'not-found', candidates: [] };
+  }
+
+  const plans = ((data ?? []) as Row[]).filter((r) => planFingerprint(r.content) !== null);
+  let matches = plans.filter((r) => normalise(r.title) === wanted);
+  if (matches.length === 0) {
+    const loose = plans.filter(
+      (r) => normalise(r.title).includes(wanted) || wanted.includes(normalise(r.title))
+    );
+    if (loose.length === 1) matches = loose;
+    else if (loose.length > 1) matches = loose;
+  }
+
+  if (matches.length === 0) return { found: false, reason: 'not-found', candidates: [] };
+  if (matches.length === 1) return { found: true, id: matches[0].id, title: matches[0].title };
+
+  return {
+    found: false,
+    reason: 'ambiguous',
+    candidates: matches.map((r) => ({
+      date: r.created_at.slice(0, 10),
+      movements: prepareWorkoutPlan(r.content)?.exercises.length ?? 0,
+    })),
+  };
 }
