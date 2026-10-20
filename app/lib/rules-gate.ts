@@ -19,10 +19,32 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // So there is no model layer here and there does not need to be one. Layer 1 is
 // the prompt, layer 2 is this, and layer 2 never fails open.
 //
-// IT REMOVES, IT DOES NOT REFUSE. Dropping the whole plan because one movement
-// broke a rule would punish her for the model's mistake and leave her with
-// nothing. The excluded movements are named back, so she can see the rule
-// working rather than wonder why her session is short.
+// IT FLAGS, IT DOES NOT REMOVE (Ruth, 20 October 2026, from daily use):
+//
+//   "An app that decided what a user can and cannot do is not helpful, it's
+//    inflexible. Those things on Rules should be delectable, plus they should
+//    be guiding the chat, so they should flag that excersise would not pass
+//    theur health Rules and is the user sure they want them added, not just
+//    not allow it, thats very annoying"
+//
+// It used to take the movement out. She asked for a ballet plan, three
+// movements were silently dropped for breaking a quad-dominant rule she had set
+// herself months earlier, and the only way out was to delete the rule - which
+// the Rules screen did not allow. The app had made a decision about her body
+// that she could not overrule, in either direction.
+//
+// WHY THE OLD REASONING WAS WRONG, since it was written down confidently. It
+// argued from the allergy gate: a contraindicated movement is an injury risk,
+// and a prompt is a request. Both halves are still true. What it missed is that
+// a food allergy is a fact about a body and a movement rule is a JUDGEMENT about
+// one - made by her, or by a clinician months ago, about a knee that has since
+// changed. She is the only person who knows whether it still holds today, and
+// the gate was built so that her answer could not reach it.
+//
+// SO THE PLAN KEEPS EVERYTHING AND SAYS WHAT BREAKS WHAT. A warning she can act
+// on beats a removal she cannot, and the informed version of the same caution
+// is a sentence naming the rule and asking if she is sure. Nothing is hidden
+// either way; the difference is who decides.
 
 export type Rule = {
   id: string;
@@ -43,10 +65,16 @@ export type PlanExercise = {
 };
 
 export type RulesVerdict = {
-  /** The exercises that survived. Same objects, same order. */
+  /**
+   * EVERY exercise, untouched and in order.
+   *
+   * It is still called `kept` so that a caller which ignores `flagged` saves
+   * the whole plan rather than an empty one - the safe direction to fail in,
+   * now that the safety is a sentence rather than a deletion.
+   */
   kept: PlanExercise[];
-  /** What was taken out, and which rule took it. */
-  removed: { exercise: string; rule: string }[];
+  /** What breaks a rule, and which rule it breaks. Nothing is taken out. */
+  flagged: { exercise: string; rule: string }[];
 };
 
 /**
@@ -111,48 +139,63 @@ function mentions(haystack: string, term: string): boolean {
 }
 
 /**
- * Take out anything a never-rule forbids.
+ * Name anything a never-rule covers. TAKES NOTHING OUT.
  *
  * Checks the exercise name AND its group, because a plan can name a movement
  * innocuously and group it under exactly the thing that is out of bounds -
  * "leg extension" in the group "quads" is the case that matters.
+ *
+ * The matching is unchanged and deliberately so: it was never the matching that
+ * was wrong, it was what happened next. See the header.
  */
 export function applyRules(exercises: PlanExercise[], rules: Rule[]): RulesVerdict {
   const never = rules.filter((r) => r.kind === 'never' && r.matchTerms.length > 0);
-  if (never.length === 0) return { kept: exercises, removed: [] };
+  if (never.length === 0) return { kept: exercises, flagged: [] };
 
-  const kept: PlanExercise[] = [];
-  const removed: { exercise: string; rule: string }[] = [];
+  const flagged: { exercise: string; rule: string }[] = [];
 
   for (const exercise of exercises) {
     const haystack = `${exercise.name ?? ''} ${exercise.group ?? ''}`;
     const broken = never.find((rule) => rule.matchTerms.some((term) => mentions(haystack, term)));
-    if (broken) removed.push({ exercise: String(exercise.name ?? 'an exercise'), rule: broken.phrase });
-    else kept.push(exercise);
+    if (broken) {
+      flagged.push({ exercise: String(exercise.name ?? 'an exercise'), rule: broken.phrase });
+    }
   }
 
-  return { kept, removed };
+  // Every exercise, including the flagged ones. The plan she asked for is the
+  // plan she gets, and the note below tells her what to look at.
+  return { kept: exercises, flagged };
 }
 
 /**
- * What to say when something was taken out.
+ * What to say when something in the plan breaks a rule.
  *
- * NAMED, NOT HIDDEN. A session that quietly comes back two movements shorter
- * teaches her that the app is unreliable. A session that says which rule
- * removed what teaches her that the rule is working, which is the only reason
- * to have written it down.
+ * IT IS IN THE PLAN, AND SHE IS TOLD. The old version of this sentence said a
+ * movement "is not in this" - a statement about something she could no longer
+ * do anything about. This one names what to look at and leaves the decision
+ * where it belongs.
+ *
+ * IT ENDS BY ASKING, because she asked it to: "is the user sure they want them
+ * added". A warning with no way to answer it is the removal again in softer
+ * words.
  *
  * NO APOLOGY AND NO ALARM. It is a fact about her plan, not a telling-off.
  */
-export function removalNote(removed: { exercise: string; rule: string }[]): string | null {
-  if (removed.length === 0) return null;
-  const rules = [...new Set(removed.map((r) => r.rule))];
-  const names = removed.map((r) => r.exercise);
+export function flagNote(flagged: { exercise: string; rule: string }[]): string | null {
+  if (flagged.length === 0) return null;
+  const rules = [...new Set(flagged.map((r) => r.rule))];
+  const names = flagged.map((r) => r.exercise);
   const list =
     names.length === 1
       ? names[0]
       : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  return `${list} ${names.length === 1 ? 'is' : 'are'} not in this, because of your rule about ${rules.join(' and ')}.`;
+  const isAre = names.length === 1 ? 'is' : 'are';
+  const itThem = names.length === 1 ? 'it' : 'them';
+  return (
+    `${list} ${isAre} in this plan, and ${isAre} covered by your rule about ` +
+    `${rules.join(' and ')}. I have left ${itThem} in - say if you would rather ` +
+    `${itThem === 'it' ? 'it came' : 'they came'} out, or change the rule on your Rules tab.`
+  );
 }
 
 /** The prompt block: layer 1, which asks rather than enforces. */
@@ -163,9 +206,9 @@ export function rulesPrompt(rules: Rule[]): string {
   const lines: string[] = [];
   if (never.length > 0) {
     lines.push(
-      `MOVEMENTS THIS PERSON NEVER DOES, and must never appear in anything you suggest or build: ${never
+      `MOVEMENTS THIS PERSON HAS RULED OUT FOR THEMSELVES: ${never
         .map((r) => r.phrase)
-        .join('; ')}. These are clinical constraints, not preferences. Do not offer a variation, a lighter version or a substitute that amounts to the same movement, and do not explain the rule back to them unless they ask.`
+        .join('; ')}. Prefer something else wherever something else does the job, and reach for one of these only when it genuinely is the movement the goal needs. WHEN YOU DO INCLUDE ONE, SAY SO IN ONE SENTENCE - name it, name the rule it falls under, and ask whether they still want it. Do not quietly leave it out and do not refuse to build the plan: they set this rule, a knee changes, and they are the only one who knows whether it still holds today. The app says the same thing underneath your reply, so one plain sentence is enough and never a warning box or a lecture.`
     );
   }
   if (always.length > 0) {

@@ -21,10 +21,27 @@ import { supabase } from '@/lib/supabase';
 // loudest thing on the screen, not the quietest. Recorded because the concern
 // was real and the answer was better than the concern.
 //
-// NOTHING IS EDITED HERE YET. A rule arrives through chat, which offers and
-// waits for a yes, or through an uploaded letter. Editing in place would want a
-// confirmation flow of its own, and a half-built one on a screen about clinical
-// constraints is worse than none.
+// A RULE CAN BE REMOVED HERE (Ruth, 20 October 2026, from daily use):
+//
+//   "There is no way to remove anything from the Rules page. That needs
+//    changing. An app that decided what a user can and cannot do is not
+//    helpful, it's inflexible."
+//
+// This file used to say: "NOTHING IS EDITED HERE YET... Editing in place would
+// want a confirmation flow of its own, and a half-built one on a screen about
+// clinical constraints is worse than none." The caution was right and the
+// conclusion was wrong, and what proved it was her using the app: a
+// quad-dominant rule she had set months earlier was pulling movements out of a
+// ballet plan, chat could not remove the rule, and this screen could not
+// either. The rule outlived the knee and there was no door.
+//
+// IT STILL SAYS "TELL SELODIA IN CHAT" FOR CHANGING ONE, and that is not a
+// contradiction. Changing a rule is a judgement with a reason behind it, which
+// belongs in a conversation. Removing one is a single decision about her own
+// body, and it only needs a second tap.
+//
+// EDITING IN PLACE IS STILL NOT HERE, for the original reason. Delete is the
+// whole of what she asked for and the whole of what this does.
 
 type Rule = {
   id: string;
@@ -43,6 +60,11 @@ export function RulesView() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [context, setContext] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+
+  // Bumped after a delete so the list re-reads. The load already runs on focus;
+  // this gives it a second reason to run without duplicating the query.
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -65,7 +87,7 @@ export function RulesView() {
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [reloadKey])
   );
 
   if (!loaded) return null;
@@ -119,7 +141,7 @@ export function RulesView() {
             Never
           </ThemedText>
           {never.map((rule) => (
-            <RuleRow key={rule.id} rule={rule} />
+            <RuleRow key={rule.id} rule={rule} onRemoved={reload} />
           ))}
         </ThemedView>
       )}
@@ -130,20 +152,43 @@ export function RulesView() {
             Always OK
           </ThemedText>
           {always.map((rule) => (
-            <RuleRow key={rule.id} rule={rule} />
+            <RuleRow key={rule.id} rule={rule} onRemoved={reload} />
           ))}
         </ThemedView>
       )}
 
+      {/* WHAT THEY NOW DO, which changed on 20 October 2026. They used to be
+          applied by taking the movement out; now a plan keeps everything and
+          names what falls under a rule. See app/lib/rules-gate.ts. Saying
+          "applied to everything" would be the old behaviour described in the
+          present tense. */}
       <ThemedText type="small" themeColor="textSecondary">
-        These are applied to everything Selodía builds for you, not just remembered. To change one,
-        say so in chat.
+        Selodía checks everything it builds against these and tells you when something falls under
+        one, rather than leaving it out. To change a rule, say so in chat. To remove one, tap Remove
+        above.
       </ThemedText>
     </ThemedView>
   );
 }
 
-function RuleRow({ rule }: { rule: Rule }) {
+function RuleRow({ rule, onRemoved }: { rule: Rule; onRemoved: () => void }) {
+  const theme = useTheme();
+  // TWO TAPS, the same shape as removing a food entry or a week card. A rule is
+  // not precious - it can be said again in chat in a sentence - but a screen
+  // about constraints on a body should not lose one to a misplaced thumb.
+  const [confirm, setConfirm] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function remove() {
+    setFailed(false);
+    const { error } = await supabase.from('user_rules').delete().eq('id', rule.id);
+    // SAID, NEVER SWALLOWED. A delete that silently fails leaves the rule still
+    // shaping her plans while she believes it is gone, which is the same fault
+    // as the gate removing movements she could not see.
+    if (error) setFailed(true);
+    else onRemoved();
+  }
+
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
       <ThemedText type="small">{rule.phrase}</ThemedText>
@@ -157,11 +202,31 @@ function RuleRow({ rule }: { rule: Rule }) {
           Waiting for you to confirm. Being applied in the meantime.
         </ThemedText>
       )}
+
+      {failed ? (
+        <ThemedText type="small" themeColor="danger">
+          That did not remove. Check your connection and try again.
+        </ThemedText>
+      ) : null}
+
+      <Pressable
+        onPress={() => (confirm ? void remove() : setConfirm(true))}
+        accessibilityRole="button"
+        accessibilityLabel={confirm ? `Confirm, remove ${rule.phrase}` : `Remove ${rule.phrase}`}
+        accessibilityHint="Takes this rule off your list. Selodía will stop checking against it"
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.remove, pressed && styles.pressed]}>
+        <ThemedText type="small" themeColor={confirm ? 'danger' : 'textSecondary'}>
+          {confirm ? 'Tap again to remove it' : 'Remove'}
+        </ThemedText>
+      </Pressable>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  // 44 is the smallest a control should be, and this one is quiet on purpose.
+  remove: { minHeight: 44, justifyContent: 'center' },
   block: { gap: Spacing.three },
   group: { gap: Spacing.two },
   eyebrow: { textTransform: 'uppercase', letterSpacing: 0.8 },

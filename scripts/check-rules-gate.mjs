@@ -23,7 +23,7 @@
 //
 //   node --import ./scripts/ts-paths.mjs scripts/check-rules-gate.mjs
 
-import { applyRules, normaliseKind, removalNote, rulesPrompt } from '../app/lib/rules-gate.ts';
+import { applyRules, flagNote, normaliseKind, rulesPrompt } from '../app/lib/rules-gate.ts';
 
 const promptOnly = (exercises) => ({ kept: exercises, removed: [] });
 
@@ -68,40 +68,50 @@ const RULES = [
 
 const CHECKS = [
   [
-    'a forbidden movement is removed from the plan',
+    'a movement under a rule is FLAGGED, and both stay in the plan',
     (gate) => {
-      const { kept } = gate(
+      const { kept, flagged } = gate(
         [{ name: 'Barbell deadlift', group: 'posterior chain' }, { name: 'Pull-up', group: 'back' }],
         RULES
       );
-      return kept.length === 1 && kept[0].name === 'Pull-up';
+      return (
+        kept.length === 2 &&
+        flagged.length === 1 &&
+        flagged[0].exercise === 'Barbell deadlift'
+      );
     },
   ],
   [
-    'an UNCONFIRMED rule still removes',
+    'an UNCONFIRMED rule still flags',
     (gate) => {
-      const { kept } = gate([{ name: 'Leg extension', group: 'legs' }], RULES);
-      return kept.length === 0;
+      // A rule heard and not yet confirmed is still worth saying out loud. It
+      // no longer costs her the movement, so the cautious reading is cheap.
+      const { flagged } = gate([{ name: 'Leg extension', group: 'legs' }], RULES);
+      return flagged.length === 1;
     },
   ],
   [
     'the GROUP is checked, not only the name',
     (gate) => {
       // "Step-up" breaks no name rule. Its group does.
-      const { kept } = gate([{ name: 'Step-up', group: 'quads' }], RULES);
-      return kept.length === 0;
+      const { flagged } = gate([{ name: 'Step-up', group: 'quads' }], RULES);
+      return flagged.length === 1;
     },
   ],
   [
-    'an always-OK rule never removes anything',
+    'an always-OK rule flags nothing',
     (gate) => {
-      const { kept } = gate([{ name: 'Hamstring curl', group: 'hamstrings' }], RULES);
-      return kept.length === 1;
+      const { kept, flagged } = gate([{ name: 'Hamstring curl', group: 'hamstrings' }], RULES);
+      return kept.length === 1 && flagged.length === 0;
     },
   ],
   [
-    'the plan is trimmed, never refused outright',
+    'NOTHING IS TAKEN OUT OF THE PLAN',
     (gate) => {
+      // Ruth, 20 October 2026: "An app that decided what a user can and cannot
+      // do is not helpful, it's inflexible." Three movements vanished out of a
+      // ballet plan into a rule she had set months earlier, and neither chat
+      // nor the Rules screen could remove the rule.
       const { kept } = gate(
         [
           { name: 'Barbell deadlift', group: 'posterior chain' },
@@ -110,21 +120,26 @@ const CHECKS = [
         ],
         RULES
       );
-      // Two survive. Losing the whole session because one movement broke a rule
-      // would punish her for the model's mistake.
-      return kept.length === 2;
+      // All three. The plan she asked for is the plan she gets.
+      return kept.length === 3;
     },
   ],
   [
-    'what was removed is named, with the rule that removed it',
+    'what falls under a rule is named, with the rule, and she is asked',
     (gate) => {
-      const { removed } = gate([{ name: 'Barbell deadlift', group: 'posterior chain' }], RULES);
-      if (removed.length !== 1) return false;
-      const note = removalNote(removed);
+      const { flagged } = gate([{ name: 'Barbell deadlift', group: 'posterior chain' }], RULES);
+      if (flagged.length !== 1) return false;
+      const note = flagNote(flagged);
       return (
         typeof note === 'string' &&
         note.includes('Barbell deadlift') &&
-        note.includes('Heavy deadlifts or loaded squats')
+        note.includes('Heavy deadlifts or loaded squats') &&
+        // IT ENDS BY ASKING. A warning with no way to answer it is the removal
+        // again in softer words, which is the thing she objected to.
+        /say if you would rather/i.test(note) &&
+        // And it must not claim the movement is absent, which is what the old
+        // sentence said.
+        !/not in this/i.test(note)
       );
     },
   ],
@@ -138,15 +153,19 @@ const CHECKS = [
       const narrow = [
         { id: 'x', kind: 'never', phrase: 'No rows', matchTerms: ['row'], confirmedAt: null },
       ];
-      const { kept } = gate([{ name: 'Narrow-stance calf raise', group: 'calves' }], narrow);
-      return kept.length === 1;
+      // Matching is unchanged - it was never the matching that was wrong - so
+      // this still checks that 'row' does not fire inside 'Narrow'. It reads
+      // `flagged` now, because nothing is removed to count.
+      const { flagged } = gate([{ name: 'Narrow-stance calf raise', group: 'calves' }], narrow);
+      return flagged.length === 0;
     },
   ],
   [
     'a plural in the plan is caught by a singular rule term',
     (gate) => {
-      const { kept } = gate([{ name: 'Romanian deadlifts', group: 'posterior chain' }], RULES);
-      return kept.length === 0;
+      const { kept, flagged } = gate([{ name: 'Romanian deadlifts', group: 'posterior chain' }], RULES);
+      // Caught by the rule AND still in the plan: both halves matter now.
+      return flagged.length === 1 && kept.length === 1;
     },
   ],
 ];
@@ -161,11 +180,11 @@ const SANITY = [
     'no rules means nothing is touched',
     () => {
       const plan = [{ name: 'Barbell deadlift', group: 'posterior chain' }];
-      const { kept, removed } = applyRules(plan, []);
-      return kept.length === 1 && removed.length === 0;
+      const { kept, flagged } = applyRules(plan, []);
+      return kept.length === 1 && flagged.length === 0;
     },
   ],
-  ['no removals means no note', () => removalNote([]) === null],
+  ['nothing flagged means no note', () => flagNote([]) === null],
 
   // A TECHNIQUE CUE MUST NEVER REMOVE ANYTHING (1 October 2026).
   //
@@ -185,16 +204,19 @@ const SANITY = [
   // said otherwise. These two checks exist because that coercion looked
   // harmless and was the whole bug.
   [
-    'a technique rule removes nothing, even when its words match an exercise',
+    'a technique rule flags nothing, even when its words match an exercise',
     () => {
       const plan = [
         { name: 'Barbell deadlift', group: 'posterior chain' },
         { name: 'Valsalva breathing drill', group: 'core' },
       ];
-      const { kept, removed } = applyRules(plan, [
+      const { kept, flagged } = applyRules(plan, [
         { kind: 'technique', phrase: 'Heavy Valsalva or bearing down', matchTerms: ['valsalva', 'deadlift'] },
       ]);
-      return kept.length === 2 && removed.length === 0;
+      // Not even a warning. A technique cue is guidance on HOW, so there is
+      // nothing for her to be asked about - which is still the whole point of
+      // the kind existing. See the note above.
+      return kept.length === 2 && flagged.length === 0;
     },
   ],
   [
@@ -235,15 +257,32 @@ const PROMPT_CHECKS = [
     },
   ],
   [
-    'the prompt names the never list as clinical, not preference',
+    'THE PROMPT ASKS RATHER THAN FORBIDS, AND NEVER SAYS HIDE IT',
     () => {
+      // Changed 20 October 2026 with the gate below it. Layer 1 used to say the
+      // never list "must never appear in anything you suggest or build", which
+      // made the model refuse before the gate was ever reached - so a plan came
+      // back short twice over, once from the model and once from the code.
       const text = rulesPrompt(RULES);
-      return text.includes('Heavy deadlifts') && /clinical constraints, not preferences/.test(text);
+      return (
+        text.includes('Heavy deadlifts') &&
+        // It must TELL her when it includes one. Silence is the old behaviour
+        // with the enforcement moved into the model, which is worse because
+        // nothing downstream can see it happen.
+        /say so in one sentence/i.test(text) &&
+        /ask whether they still want it/i.test(text) &&
+        /do not quietly leave it out/i.test(text) &&
+        // And it must not have kept the sentence that forbade it outright.
+        !/must never appear/i.test(text)
+      );
     },
   ],
   [
-    'the prompt forbids a substitute that amounts to the same movement',
-    () => /variation, a lighter version or a substitute/.test(rulesPrompt(RULES)),
+    'the prompt tells the model NOT to refuse the whole plan',
+    // Written as a presence rather than an absence after the first version
+    // matched its own instruction - "do not refuse to build the plan" contains
+    // the word refuse. See DECISION_PATTERNS, 18 October: assert the property.
+    () => /do not .{0,40}refuse to build the plan/i.test(rulesPrompt(RULES)),
   ],
   ['no rules means no prompt block at all', () => rulesPrompt([]) === ''],
 ];
@@ -299,3 +338,64 @@ if (!failed && !useless) {
   );
 }
 process.exitCode = failed || useless ? 1 : 0;
+
+// ---------------------------------------------------------------------------
+// AND A RULE CAN BE TAKEN OFF THE LIST (Ruth, 20 October 2026).
+//
+//   "There is no way to remove anything from the Rules page. That needs
+//    changing. An app that decided what a user can and cannot do is not
+//    helpful, it's inflexible."
+//
+// The gate above no longer removes movements, which is half the answer. The
+// other half is that a rule which has outlived the body it was written about
+// has to be removable - hers was set months before the ballet plan it was
+// quietly editing, and neither chat nor the Rules screen could take it off.
+//
+// Source checks rather than behaviour: the delete is one line of Supabase, and
+// the risk is not that it computes wrongly but that a later edit removes the
+// door again, or loses the second tap on a screen about constraints on a body.
+
+import fs from 'node:fs';
+
+const rulesView = fs.readFileSync('mobile/src/components/rules-view.tsx', 'utf8');
+
+const UI = [
+  [
+    'THE RULES SCREEN CAN REMOVE A RULE',
+    () => /from\('user_rules'\)\s*\.delete\(\)/.test(rulesView) && /onRemoved/.test(rulesView),
+  ],
+  [
+    'and it asks twice before it does',
+    () =>
+      /Tap again to remove it/.test(rulesView) &&
+      /confirm \? void remove\(\) : setConfirm\(true\)/.test(rulesView),
+  ],
+  [
+    'a failed removal is said out loud, never swallowed',
+    // A delete that silently fails leaves the rule still shaping her plans
+    // while she believes it is gone - the same fault as the gate removing
+    // movements she could not see.
+    () => /That did not remove/.test(rulesView),
+  ],
+  [
+    'and the screen no longer claims rules are applied by removal',
+    () =>
+      !/applied to everything Selodía builds for you/.test(rulesView) &&
+      /rather than leaving it out/.test(rulesView),
+  ],
+];
+
+let uiFailed = 0;
+console.log('');
+for (const [name, run] of UI) {
+  let ok = false;
+  try {
+    ok = run() === true;
+  } catch {
+    ok = false;
+  }
+  if (!ok) uiFailed += 1;
+  console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${name}`);
+}
+console.log('');
+if (uiFailed > 0) process.exit(1);

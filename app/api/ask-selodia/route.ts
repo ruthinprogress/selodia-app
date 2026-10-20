@@ -122,7 +122,7 @@ import {
 import {
   applyRules,
   loadRules,
-  removalNote,
+  flagNote,
   rulesPrompt,
   type PlanExercise,
 } from '../../lib/rules-gate';
@@ -4234,16 +4234,22 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     const content = result.almanacContent as { exercises?: unknown } | null | undefined;
     if (content && Array.isArray(content.exercises)) {
       const rules = await loadRules(supabase, user.id);
-      const { kept, removed } = applyRules(content.exercises as PlanExercise[], rules);
-      if (removed.length > 0) {
+      const { flagged } = applyRules(content.exercises as PlanExercise[], rules);
+      if (flagged.length > 0) {
         console.log(
-          `RULES GATE: removed ${removed.map((r) => `${r.exercise} (${r.rule})`).join(', ')}`
+          `RULES GATE: flagged ${flagged.map((r) => `${r.exercise} (${r.rule})`).join(', ')}`
         );
-        // The object is rebuilt rather than mutated: `result` is what the model
-        // returned, and keeping it intact means the log of what was proposed
-        // stays honest about what was proposed.
-        result.almanacContent = { ...content, exercises: kept };
-        ruleRemovalNote = removalNote(removed);
+        // NOTHING IS REWRITTEN NOW (Ruth, 20 October 2026). This used to replace
+        // result.almanacContent with the surviving exercises, so the plan that
+        // was saved was not the plan that was proposed. She asked for a ballet
+        // plan, three movements vanished into a rule she had set months before,
+        // and the only way to get them back was to delete the rule - which the
+        // Rules screen did not let her do.
+        //
+        // The plan is saved as the model built it and the note names what to
+        // look at. See rules-gate.ts for why a movement rule is a judgement
+        // rather than a fact, and why that puts the decision with her.
+        ruleRemovalNote = flagNote(flagged);
       }
     }
   }
