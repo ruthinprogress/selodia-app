@@ -63,9 +63,16 @@ So the whole loop, in one place:
 | The same list without Excel | `node scripts/what-to-make-next.mjs` |
 | How is a drawing made? | `scripts/illustration-brief.mjs` holds the art direction and every rule learned the expensive way. Prompts are built by `movementPrompt()`, never by hand |
 | What are the movements and their start/finish? | `scripts/illustration-progressions.mjs` (the four ladders) and `scripts/illustration-movements.mjs` (everything else) |
+| What settings does the generator need? | **`aspect_ratio: "4:5"` and `resolution: "2K"`, set explicitly every time.** The model's own default is **16:9**, so a run that does not set it comes back landscape and unusable. The generate call does not expose the parameter at all - set it with `creative_update_node` first, then `creative_run_flow_nodes` |
+| Which model, and with what reference? | `gemini-3-pro-image`, with the style reference asset `obACoUvNT0BEYmJA7kjN` added to the flow as a node and wired in. About 36p a drawing |
 | How does a finished drawing get into the app? | `node scripts/upload-illustrations.mjs <folder>` - normalises paper and hair, uploads, records the row, and closes the request |
 | Where do the masters live? | `Build Specs\Branding & Assets\Visual Assets\` |
 | How does the person who asked find out? | `node scripts/thank-the-requesters.mjs "<movement>"` sends them a thank you |
+
+**The 16:9 default has cost money twice.** It was written down in a memory note
+and not in this table, so the second time it was rediscovered by spending 36p on
+a landscape picture of a handstand. It is in the table now, which is the only
+version of knowing it that survives a new session.
 
 **The spreadsheet is a view, not the record.** `movement_gaps` in Supabase is the
 record. The file is rewritten from it each time and can be deleted without

@@ -144,7 +144,7 @@
 // the wrong picture on the first call.
 export const STYLE = `Draw ONE new illustration in EXACTLY the style of the reference image: the same fine terracotta contour line, the same UNFILLED figure where the cream ground shows straight through the body, the same muted sage leggings, the same soft pale watercolour washes behind the figure, the same cream ground, the same restraint and generous empty space. Copy the reference's colours exactly.
 
-LAYOUT: one tall portrait image with two frames STACKED VERTICALLY, start above and finish below, sharing the same cream ground. No dividing line, no frame, no border. Both frames seen FROM THE SIDE, at the same camera height, at the same scale, with the figure the same size in each.
+LAYOUT: one tall portrait image with two frames STACKED VERTICALLY, the starting pose in the upper frame and the finishing pose in the lower frame, sharing the same cream ground. Neither frame is captioned or titled. No dividing line, no frame, no border. Both frames seen FROM THE SIDE, at the same camera height, at the same scale, with the figure the same size in each.
 
 THE HEAD IS EMPTY, and this is the instruction most often broken. Inside the outline of the head there is NOTHING except ONE short nose line in profile. No eye, no closed eye, no eyelid, no eyelashes. No eyebrow. No mouth, no lips, no smile. No chin line, no jaw line, no cheekbone. NO CHEEK BLUSH: no pink, no warm patch, no colour of any kind inside the head. No shading inside the head at all. A plain smooth oval of bare cream paper, the outline around it, one small SIMPLE bun of hair, and the nose line. That is all.
 
@@ -172,7 +172,7 @@ NO ARROW ANYWHERE. No arrow, no curved line, no swoosh, no motion mark.
 
 NOTHING is brighter than the cream paper, and nothing is darker or more saturated than the figure's own outline.
 
-ABSOLUTELY NO TEXT ANYWHERE: no title, no movement name, no labels, no captions, no letters, no numbers.`;
+ABSOLUTELY NO TEXT ANYWHERE: no title, no movement name, no labels, no captions, no headings above or beside either frame, no letters, no numbers. Neither frame is named or titled in the picture. The app writes its own words beside the image, so anything written here appears twice.`;
 
 /**
  * Added to any movement where the figure is upside down.
@@ -200,9 +200,22 @@ export function movementPrompt({ name, start, finish, inverted, ruleOut, connect
     '',
     `THE MOVEMENT IS A ${name.toUpperCase()}.`,
     '',
-    `START, upper frame: ${start}`,
+    // THE WORDS "START" AND "FINISH" DO NOT APPEAR IN THIS PROMPT AT ALL
+    // (Ruth, 20 October 2026: "Text start and finish in drawing").
+    //
+    // One of the twenty-one came back with START and FINISH painted into the
+    // margin, and the brief had said "ABSOLUTELY NO TEXT ANYWHERE" the whole
+    // time. The ban was not the problem. THIS WAS: the last thing the generator
+    // read, immediately before drawing, was those two words in capitals at the
+    // head of the only two lines that described what to draw. A ban five
+    // paragraphs earlier loses to a capitalised word in the final line.
+    //
+    // So the frames are named by WHERE THEY ARE rather than by what they are.
+    // Position is what the layout needs to convey, and "upper" is not a word
+    // anybody would caption a drawing with.
+    `UPPER FRAME: ${start}`,
     '',
-    `FINISH, lower frame: ${finish}`,
+    `LOWER FRAME: ${finish}`,
   ];
   if (inverted) parts.push('', NOSE_AND_BUN);
   if (connects) parts.push('', `THE TWO FRAMES MUST CONNECT. ${connects}`);

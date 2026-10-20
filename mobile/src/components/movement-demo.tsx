@@ -160,26 +160,24 @@ export function MovementDemo({
   // 'error' IS STILL A DIFFERENT FACT: this movement HAS a clip and the app
   // could not fetch it. That is worth saying and worth offering to retry,
   // because it is the person's connection or ours - not a limit of what exists.
-  if (state === 'absent') {
-    return (
-      <View style={styles.wrap}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-          The movement
-        </ThemedText>
-        <View
-          style={[
-            styles.slot,
-            styles.absentSlot,
-            { backgroundColor: theme.background, borderColor: theme.backgroundElement },
-          ]}
-        >
-          <ThemedText type="small" themeColor="textSecondary" style={styles.absentText}>
-            No demonstration for this one. The safety note above still applies.
-          </ThemedText>
-        </View>
-      </View>
-    );
-  }
+  // NOTHING AT ALL NOW (Ruth, 20 October 2026): "Empty video space showing up,
+  // should not appear, looks broken."
+  //
+  // THE REASONING ABOVE WAS RIGHT WHEN IT WAS WRITTEN AND THE WORLD MOVED UNDER
+  // IT. A blank slot did read as broken, and a sentence was the honest answer -
+  // on 15 October, when a movement with no clip had nothing else to offer.
+  //
+  // Since then two things fill that gap. The drawing renders here when there is
+  // one, and the written Set up / Do / Feel it steps render whenever there is
+  // no clip. So the slot was announcing "No demonstration for this one"
+  // directly above a demonstration, inside a bordered box the height of a video
+  // - which is the broken-looking thing it was added to prevent.
+  //
+  // The honest sentence is not lost, it has moved: a written movement is not a
+  // gap, which is what the chat prompt has said since the library landed. The
+  // steps ARE the demonstration in that case, and apologising above them
+  // undercuts them.
+  if (state === 'absent') return null;
 
   return (
     <View style={styles.wrap}>

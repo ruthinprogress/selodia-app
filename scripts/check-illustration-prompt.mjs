@@ -222,5 +222,39 @@ check('the review checklist leads with the one that costs the most', () => {
   return `${REVIEW_BEFORE_SENDING.length} checks, head first, none in the prompt`;
 });
 
+check('THE WORDS START AND FINISH APPEAR NOWHERE IN THE PROMPT', () => {
+  // Ruth, 20 October 2026: "Text start and finish in drawing". One of the
+  // twenty-one came back with START and FINISH painted into the cream margin,
+  // and the app writes those same two words beside the picture - so the drawing
+  // said everything twice, in a style that exists to be quiet.
+  //
+  // "ABSOLUTELY NO TEXT ANYWHERE" was already in the prompt and was already
+  // being ignored, so saying it louder would have been the fix that is not one.
+  //
+  // THE CAUSE WAS THE LAST TWO LINES OF THE PROMPT. They read "START, upper
+  // frame: ..." and "FINISH, lower frame: ...": the final thing the generator
+  // saw before drawing was those two words, capitalised, heading the only two
+  // lines that said what to draw. A ban five paragraphs earlier loses to that.
+  //
+  // AND BANNING THEM BY NAME WAS THE SECOND-BEST ANSWER, which the first
+  // attempt at this fix proved: a ban has to name the thing, so the prompt
+  // still contained both words. The property worth holding is simpler and
+  // stronger - the words are not in the prompt at all, in any case, anywhere.
+  // A token that is never shown cannot be copied back.
+  const prompt = movementPrompt({ name: 'test move', start: 'a', finish: 'b' });
+  const occurrences = (prompt.match(/\bSTART\b|\bFINISH\b/gi) ?? []).length;
+  assert.strictEqual(
+    occurrences,
+    0,
+    `the prompt contains START/FINISH ${occurrences} time(s) - the generator paints back what it is shown`
+  );
+  // The two frames still have to be told apart, by WHERE they are rather than
+  // by what they are. "Upper" is not a word anybody captions a drawing with.
+  assert.ok(/UPPER FRAME:/.test(prompt), 'the two frames are no longer distinguished');
+  assert.ok(/LOWER FRAME:/.test(prompt), 'the two frames are no longer distinguished');
+  assert.ok(/no captions/.test(prompt), 'the general no-text rule went with the specific one');
+  return 'absent from the prompt entirely; frames named by position';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
