@@ -79,6 +79,22 @@ for (const root of ROOTS) {
     const code = codeOnly(readFileSync(file, 'utf8'));
     for (const lit of literals(code)) {
       if (!lit.text.includes(EM)) continue;
+      // A VERBATIM QUOTATION IS NOT SCREEN COPY, and must not be reworded.
+      //
+      // flower-explainer.ts holds each dimension's definition twice: `spec` is
+      // the sentence copied word for word out of SELODIA_SPEC.md so that
+      // check-flower-explainer.mjs can prove the two still agree, and `plain`
+      // is what the screen actually says. The spec uses an em dash and this
+      // app's screen copy does not - and "fixing" the quotation would break the
+      // only thing it is for.
+      //
+      // Narrow on purpose: the line must literally begin `spec:`. A rule that
+      // exempted anything near the word would be an exemption anybody could
+      // reach for.
+      const lineStart = code.lastIndexOf('\n', lit.index) + 1;
+      if (/^\s*spec:\s*$|^\s*spec:\s*['"`]/.test(code.slice(lineStart, lit.index + 1))) {
+        continue;
+      }
       scanned += 1;
       // A LETTER OR DIGIT ON BOTH SIDES means it is punctuation in a sentence.
       // A bare dash, or one with only spaces and punctuation around it, is the

@@ -152,35 +152,61 @@ check('there is no future to page into, and a floor to stop at', () => {
   return `floor at ${RANGE.MAX_BACK} windows`;
 });
 
-check('every label the range can produce is singular', () => {
-  // THE PROMISE health-flower.ts MAKES. One clause replaced a lookup of one
-  // sentence per window, and it is only safe because "has been" is right for
-  // every name. A plural label would print "September and October has been".
+check('EVERY LABEL THE RANGE CAN PRODUCE IS PLURAL', () => {
+  // THE PROMISE health-flower.ts MAKES, and it inverted on 20 October 2026.
+  // One clause replaced a lookup of one sentence per window, and it is safe
+  // only while the same verb is right for every name. The names used to be
+  // singular - "this week", "September" - and are now all plural: "the last 7
+  // days", "the 7 days to 13 October".
+  //
+  // THIS CHECK PASSED THROUGH THAT CHANGE WITHOUT NOTICING, because it called
+  // flowerRange with the OLD mode names. An unknown mode returned a window of
+  // `undefined` days labelled "the last undefined days" - sentence-cased, free
+  // of "weeks" and "months", and matching the singular clause. Every assertion
+  // passed on a string no screen could ever show, while the real label was
+  // printing "The last 7 days has been fairly evenly spread." on her phone.
+  //
+  // So the modes are read from the module rather than typed in here, and a
+  // degenerate label fails outright.
   const now = new Date(2026, 9, 7);
+  const modes = Object.keys(RANGE.MODE_DAYS).sort();
+  assert.deepStrictEqual(modes, ['days30', 'days7'], 'the modes changed - update this check');
+
   const labels = [];
   for (const back of [0, 1, 2, 5, RANGE.MAX_BACK]) {
-    labels.push(RANGE.flowerRange('week', back, now).label);
-    labels.push(RANGE.flowerRange('month', back, now).label);
+    for (const mode of modes) labels.push(RANGE.flowerRange(mode, back, now).label);
   }
   for (const l of labels) {
+    // THE ASSERTION THAT WOULD HAVE CAUGHT IT.
+    assert.ok(!/undefined|NaN/.test(l), `"${l}" is not a real label - the mode was not understood`);
+    assert.ok(/\d/.test(l), `"${l}" names no number of days`);
+
     const sentence = evenlySpread(l);
-    assert.ok(/ has been fairly evenly spread\.$/.test(sentence), `"${l}" does not take a singular verb`);
+    assert.ok(
+      / have been fairly evenly spread\.$/.test(sentence),
+      `"${l}" does not take a plural verb`
+    );
     assert.ok(/^[A-Z]/.test(sentence), `"${l}" is not sentence cased`);
-    assert.ok(!/\bweeks\b|\bmonths\b/.test(l), `"${l}" is plural, so the one clause is wrong for it`);
   }
-  return `${labels.length} labels, all singular`;
+  return `${labels.length} labels, all plural and all real`;
 });
 
 check('and this check can fail', () => {
-  assert.ok(/September has been fairly evenly spread\./.test(evenlySpread('September')));
-  // The sentence the old lookup produced when a noun was substituted into it,
-  // which is the fault the singular rule exists to prevent.
-  assert.ok(/Six weeks has been/.test(evenlySpread('six weeks')), 'the fixture is not the known bad case');
   assert.ok(
-    !RANGE.flowerRange('month', 0, new Date(2026, 9, 7)).label.includes('weeks'),
-    'a real label is plural'
+    /The last 7 days have been fairly evenly spread\./.test(evenlySpread('the last 7 days')),
+    'the plural clause is not produced'
   );
-  return 'the plural sentence is reproducible and no real label makes it';
+  // THE SENTENCE THAT WAS LIVE ON HER PHONE, kept as the fixture: a plural name
+  // through the old singular clause. If the clause ever reverts, this catches
+  // it rather than a reader having to notice the grammar.
+  assert.ok(
+    !/days has been/.test(evenlySpread('the last 7 days')),
+    'the singular clause is back, so a plural window reads "7 days has been"'
+  );
+  // And a dead mode must not quietly produce a sentence at all.
+  const dead = RANGE.flowerRange('week', 0, new Date(2026, 9, 7)).label;
+  assert.ok(/undefined/.test(dead), 'a retired mode now returns something plausible, which is worse');
+  return 'the broken sentence is reproducible and no real label makes it';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

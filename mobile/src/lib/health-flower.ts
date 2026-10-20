@@ -240,13 +240,26 @@ const CLEAR_LEAD = 10;
 // and a forward button, so the names are unbounded - "this week", "last week",
 // "September", "week of 8 September". A lookup cannot hold them.
 //
-// WHAT MAKES ONE CLAUSE SAFE IS THAT EVERY ONE OF THOSE NAMES IS SINGULAR, so
-// "has been" is right for all of them. That is a property of flower-range.ts
-// rather than a hope, and check-flower-range.mjs fails if a label it can produce
-// ever stops being singular.
+// AND THE PROMISE INVERTED ON 20 OCTOBER 2026. It used to be that every name
+// was SINGULAR - "this week", "September" - so "has been" was right for all of
+// them. The windows went rolling that day and every name became plural: "the
+// last 7 days", "the 7 days to 13 October". The one clause was still "has
+// been", so the app printed "The last 7 days has been fairly evenly spread."
+//
+// The check that was meant to catch exactly this did not, because it called
+// flowerRange with the old mode names. An unknown mode returned a window of
+// `undefined` days labelled "the last undefined days", which is plural-proof,
+// sentence-cased and contains neither "weeks" nor "months" - so every
+// assertion passed on a string no screen could ever show. A check that calls a
+// function with arguments the function no longer accepts is not testing the
+// function.
+//
+// So the property is the same shape and the opposite value: every label
+// flower-range.ts can produce is PLURAL, and the check now asserts that, and
+// asserts the labels are real.
 export function evenlySpread(period: string): string {
-  const named = period.trim() || 'your week';
-  return `${named.charAt(0).toUpperCase()}${named.slice(1)} has been fairly evenly spread.`;
+  const named = period.trim() || 'the last 7 days';
+  return `${named.charAt(0).toUpperCase()}${named.slice(1)} have been fairly evenly spread.`;
 }
 
 export function weekObservation(c: FlowerCoverage, period: string = 'your week'): string | null {
@@ -255,7 +268,7 @@ export function weekObservation(c: FlowerCoverage, period: string = 'your week')
   const lowest = ranked[ranked.length - 1];
 
   if (c[top] <= 0) return null;
-  if (allDimensionsFull(c)) return 'All six have had your attention.';
+  if (allDimensionsFull(c)) return 'All six have been working.';
   if (c[top] - c[lowest] < CLEAR_LEAD) return evenlySpread(period);
 
   // Everyone within a rounding error of the leader shares the sentence.
@@ -270,14 +283,23 @@ export function weekObservation(c: FlowerCoverage, period: string = 'your week')
   const leaders = ranked.filter((d) => c[top] - c[d] < CLEAR_LEAD);
   const named = leaders.slice(0, 3).map((d) => DIMENSION_LABEL[d]);
 
+  // CREDIT, NOT ALLOCATION. These read "has had most of your attention" until
+  // the section was renamed "What's protecting you" on 20 October 2026. Under
+  // that heading the sentence should ANSWER the heading - and "your attention"
+  // describes how she spent herself, where "done most of the work" describes
+  // what the movement did for her. The same fact, told as something gained.
+  //
+  // It also sits better beside what she said the drawing is for: "it's actually
+  // encouraging to see that a lot of activities fill up the requirements
+  // naturally."
   if (leaders.length === 1) {
-    return `${named[0]} has had most of your attention.`;
+    return `${named[0]} has done most of the work.`;
   }
   if (leaders.length === 2) {
-    return `${named[0]} and ${named[1]} have had most of your attention.`;
+    return `${named[0]} and ${named[1]} have done most of the work.`;
   }
   if (leaders.length === 3) {
-    return `${named[0]}, ${named[1]} and ${named[2]} have had most of your attention.`;
+    return `${named[0]}, ${named[1]} and ${named[2]} have done most of the work.`;
   }
   // Four or five joint leaders over a spread week. Listing them all reads as a
   // recital, and the one or two left out are the only real information in it -

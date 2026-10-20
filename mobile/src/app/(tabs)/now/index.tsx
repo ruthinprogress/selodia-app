@@ -159,8 +159,21 @@ export default function BodyOverviewScreen() {
               <DiarySection />
             </FoldSection>
 
+            {/* NOT "BALANCE" (Ruth, 20 October 2026): "We have Health competing
+                with How I Access Care, which is confusing" was the Me tab, and
+                this is the same fault here - the section was called Balance
+                and one of the six petals inside it is also called Balance.
+                Picking the section name rather than the petal: Balance the
+                petal is a defined physiological concept carrying two citations
+                in the spec, and the container is the cheaper thing to move.
+
+                SHE CHOSE THE WORDS. The brief went out for other opinions and
+                came back to this one. It fits the voice the other headings
+                already use - "What you're working towards", "What you've
+                noticed" - and it names the SUBJECT rather than the drawing,
+                which was the fault in everything I suggested first. */}
             <FoldSection
-              title="Balance"
+              title="What's protecting you"
               summary={flowerLabel}
               open={open.flower}
               onToggle={() => toggle('flower')}

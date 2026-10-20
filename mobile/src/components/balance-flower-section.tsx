@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HealthFlower } from '@/components/health-flower';
@@ -9,6 +9,16 @@ import { Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
 import { useTheme } from '@/hooks/use-theme';
 import { weekObservation } from '@/lib/health-flower';
+import {
+  DIMENSION_NOTES,
+  EXPLAINER_EVIDENCE,
+  EXPLAINER_INTRO,
+  EXPLAINER_METHOD,
+  EXPLAINER_TITLE,
+  EXPLAINER_UNLOGGED,
+  EXPLAINER_WEEK_LINK,
+  NOTE_ORDER,
+} from '@/lib/flower-explainer';
 import { canGoBack, canGoForward, flowerRange, type FlowerMode } from '@/lib/flower-range';
 
 // THE BALANCE FLOWER, ON THE ALMANAC (Ruth, 25 September 2026, item 8: "Remove
@@ -64,6 +74,10 @@ export function BalanceFlowerSection({
   const range = useMemo(() => flowerRange(mode, back), [mode, back]);
   const { coverage, loading } = useHealthFlower(range);
   const note = coverage ? weekObservation(coverage, range.label) : null;
+  // SHUT BY DEFAULT, and not remembered. The log layout store exists for folds
+  // somebody arranges; this one is read once or twice ever and then not again,
+  // so persisting it would be machinery for a preference nobody holds.
+  const [explaining, setExplaining] = useState(false);
 
   const pick = (next: FlowerMode) => {
     onMode(next);
@@ -183,6 +197,77 @@ export function BalanceFlowerSection({
           Nothing logged in {range.label}.
         </ThemedText>
       ) : null}
+
+      {/* WHAT THIS SHOWS (Ruth, 20 October 2026): "an explanation of why it is
+          those categories and how it's calculated might be useful in a
+          collapsible below it."
+
+          SHUT BY DEFAULT and quiet, because the drawing is the point and this
+          is for the once or twice somebody wonders. Its content is in
+          lib/flower-explainer.ts, tied to the spec by a check - an explainer is
+          the longest label in the app and the likeliest to quietly stop being
+          true. */}
+      <Pressable
+        onPress={() => setExplaining((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: explaining }}
+        accessibilityLabel={EXPLAINER_TITLE}
+        accessibilityHint={explaining ? 'Folds this away' : 'Explains the six and how they fill'}
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.explainBar, pressed && styles.pressed]}
+      >
+        <Ionicons
+          name={explaining ? 'chevron-down' : 'chevron-forward'}
+          size={14}
+          color={theme.textSecondary}
+        />
+        <ThemedText type="small" themeColor="textSecondary">
+          {EXPLAINER_TITLE}
+        </ThemedText>
+      </Pressable>
+
+      {explaining ? (
+        <View style={styles.explainer}>
+          <ThemedText type="small">{EXPLAINER_INTRO}</ThemedText>
+
+          {NOTE_ORDER.map((d) => (
+            <View key={d} style={styles.note}>
+              <ThemedText type="smallBold">{DIMENSION_NOTES[d].title}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {DIMENSION_NOTES[d].plain}
+              </ThemedText>
+            </View>
+          ))}
+
+          <ThemedText type="small" themeColor="textSecondary">
+            {EXPLAINER_METHOD}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {EXPLAINER_EVIDENCE}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {EXPLAINER_UNLOGGED}
+          </ThemedText>
+
+          {/* A LIVE LINK, NOT A MENTION (Ruth: the mention of the Week planner
+              "needs a live link to it, so they're not left to fend for
+              themselves"). Plans opens on the Week segment already - "WEEK
+              FIRST ON ARRIVAL" - so this lands where the sentence above says
+              it will, rather than on a tab she then has to read. */}
+          <Pressable
+            onPress={() => router.push('/(tabs)/plans')}
+            accessibilityRole="button"
+            accessibilityLabel={EXPLAINER_WEEK_LINK}
+            accessibilityHint="Opens your Week, where a regular activity can be added"
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [styles.weekLink, pressed && styles.pressed]}
+          >
+            <ThemedText type="small" themeColor="accentDeep">
+              {EXPLAINER_WEEK_LINK}
+            </ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -195,6 +280,17 @@ const SIZE = 220;
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
+  // The quietest control on the section, and still a full-height target.
+  explainBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    minHeight: 44,
+    marginTop: Spacing.two,
+  },
+  explainer: { gap: Spacing.three },
+  note: { gap: 2 },
+  weekLink: { minHeight: 44, justifyContent: 'center' },
   // Week and Month sit together as a pair of words rather than a control: the
   // tab's own switch is the only segmented thing on this screen and a second
   // one would read as a second level of navigation.
