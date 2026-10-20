@@ -145,15 +145,42 @@ export const EXPLAINER_EVIDENCE =
  * anywhere, and nothing reads it for the flower.
  *
  * That is the exact fault this whole week has been spent on, committed inside
- * the sentence meant to be the honest one. The Week keeps its place in the
- * paragraph, because remembering is a real reason to put something there, but
- * the sentence now says plainly which half does the counting.
+ * the sentence meant to be the honest one.
+ *
+ * IT NAMES THE MOVEMENT LOG NOW, rather than "logging". Hers again: "The Now
+ * flower is made from the movement that was logged in the Movement log." A
+ * screen she can open beats a verb she has to interpret, and it is the honest
+ * answer to "where does this come from".
  *
  * This stays true after the Week gains a flower of its own: that one will show
- * what a PLAN covers. Only logging reaches this drawing.
+ * what a PLAN covers. Only the Movement log reaches this drawing.
  */
 export const EXPLAINER_UNLOGGED =
-  'This draws what you have logged, not everything you have done. Pushing a loaded pram up a hill, or running up and down the escalators at the tube, is real work your body is getting credit for nowhere. Logging it is what counts it. Your Week is where a regular thing lives so it is easy to remember, though it is the logging that reaches this drawing.';
+  'This is drawn from your Movement log, so it shows what you logged rather than everything you did. Pushing a loaded pram up a hill, or running up and down the escalators at the tube, is real work your body is getting credit for nowhere. Log it and it counts here.';
+
+/**
+ * WHAT THE WEEK IS, in her words and separated from the note above.
+ *
+ * Ruth, 20 October 2026, correcting a tail clause that had tried to do both
+ * jobs at once:
+ *
+ *   "Your Week is where you can timetable/outline your regular activity, see
+ *    where there may be gaps to support protective movement and make sure
+ *    you're allowing for enough rest. It's the weekly plan for when all goes to
+ *    plan."
+ *
+ * THAT LAST SENTENCE IS THE CLEAREST STATEMENT OF WHAT THE WEEK IS anywhere in
+ * this app, and it is hers. It says the thing the Week screen has needed since
+ * it was built: a plan is what you intend, not a record of what happened, so
+ * nothing on it is ever owed.
+ *
+ * AND IT IS THE ONE PLACE GAPS BELONG. The drawing above must never show what
+ * is missing, because that would be a verdict on a life already lived. A plan
+ * is different: what a plan does not cover is a fact about the plan. She says
+ * so here herself, which settles the design of the Week's own flower.
+ */
+export const EXPLAINER_WEEK =
+  'Your Week is where you timetable the regular things. You can see where there may be gaps in what protects you, and make sure you are allowing enough rest. It is the weekly plan for when all goes to plan.';
 
 /** The words on the link into the Week. */
 export const EXPLAINER_WEEK_LINK = 'Open your Week';

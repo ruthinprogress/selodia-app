@@ -16,6 +16,7 @@ import {
   EXPLAINER_METHOD,
   EXPLAINER_TITLE,
   EXPLAINER_UNLOGGED,
+  EXPLAINER_WEEK,
   EXPLAINER_WEEK_LINK,
   NOTE_ORDER,
 } from '@/lib/flower-explainer';
@@ -247,6 +248,9 @@ export function BalanceFlowerSection({
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {EXPLAINER_UNLOGGED}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {EXPLAINER_WEEK}
           </ThemedText>
 
           {/* A LIVE LINK, NOT A MENTION (Ruth: the mention of the Week planner

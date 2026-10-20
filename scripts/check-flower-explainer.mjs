@@ -31,8 +31,14 @@ import path from 'node:path';
 const mod = await import(
   pathToFileURL(path.join(process.cwd(), 'mobile', 'src', 'lib', 'flower-explainer.ts')).href
 );
-const { DIMENSION_NOTES, NOTE_ORDER, EXPLAINER_METHOD, EXPLAINER_EVIDENCE, EXPLAINER_UNLOGGED } =
-  mod;
+const {
+  DIMENSION_NOTES,
+  NOTE_ORDER,
+  EXPLAINER_METHOD,
+  EXPLAINER_EVIDENCE,
+  EXPLAINER_UNLOGGED,
+  EXPLAINER_WEEK,
+} = mod;
 
 let pass = 0;
 const failures = [];
@@ -135,8 +141,11 @@ check('IT ADMITS WHAT IT CANNOT SEE, IN HER EXAMPLES', () => {
   assert.ok(/pram/i.test(EXPLAINER_UNLOGGED), 'her pram example is gone');
   assert.ok(/escalator/i.test(EXPLAINER_UNLOGGED), 'her escalator example is gone');
   assert.ok(!/incidental/i.test(EXPLAINER_UNLOGGED), 'it has been tidied into jargon');
-  // It names the way in rather than only the gap.
-  assert.ok(/Week/.test(EXPLAINER_UNLOGGED), 'it does not say a regular thing can go in the Week');
+  // IT NAMES THE SCREEN, not a verb. Ruth: "The Now flower is made from the
+  // movement that was logged in the Movement log." A place she can open beats
+  // a word she has to interpret, and it is the honest answer to "where does
+  // this come from".
+  assert.ok(/Movement log/.test(EXPLAINER_UNLOGGED), 'it does not say where the drawing comes from');
   // AND IT MUST NOT CLAIM THE WEEK COUNTS. Ruth, an hour after this shipped:
   // "nothing gets counted from Plans unless it's logged, it's merely a planning
   // tool." The code agrees - the Week writes no coverage anywhere and nothing
@@ -146,15 +155,31 @@ check('IT ADMITS WHAT IT CANNOT SEE, IN HER EXAMPLES', () => {
   //
   // It stays wrong after the Week gains a flower of its own: that one will show
   // what a PLAN covers. Only logging reaches this drawing.
-  assert.ok(
-    !/Week[^.]*\bcount/i.test(EXPLAINER_UNLOGGED),
-    'the copy says the Week counts towards the flower, and it does not'
-  );
-  assert.ok(
-    /logging/i.test(EXPLAINER_UNLOGGED),
-    'it no longer says that logging is the thing that counts'
-  );
-  return 'logged, pram, escalators, the way in, and no false claim';
+  for (const [where, text] of [
+    ['the unlogged note', EXPLAINER_UNLOGGED],
+    ['the Week paragraph', EXPLAINER_WEEK],
+  ]) {
+    assert.ok(
+      !/Week[^.]*\bcounts?\b/i.test(text),
+      `${where} says the Week counts towards the flower, and it does not`
+    );
+  }
+  return 'Movement log, pram, escalators, and no false claim';
+});
+
+check('THE WEEK IS DESCRIBED AS A PLAN, NOT A RECORD', () => {
+  // Ruth's own sentence, and the clearest statement of what the Week is
+  // anywhere in this app: "It's the weekly plan for when all goes to plan."
+  // A plan is what you intend, so nothing on it is ever owed - which is the
+  // same reason the Week has no ticks.
+  assert.ok(/when all goes to plan/i.test(EXPLAINER_WEEK), 'her sentence about the Week is gone');
+  assert.ok(/rest/i.test(EXPLAINER_WEEK), 'it no longer mentions allowing for rest');
+  // GAPS BELONG HERE AND NOWHERE ELSE. The drawing must never show what is
+  // missing from a life already lived; what a PLAN does not cover is a fact
+  // about the plan. She drew that line herself in this paragraph, which is
+  // also what settles the design of the Week's own flower.
+  assert.ok(/gaps/i.test(EXPLAINER_WEEK), 'the one place gaps are allowed no longer says so');
+  return 'a plan, with gaps and rest';
 });
 
 check('AND THE WEEK IS A LIVE LINK, NOT A MENTION', () => {
