@@ -137,9 +137,23 @@ export const EXPLAINER_EVIDENCE =
  *
  * It ends by naming the way in rather than the gap, because a disclaimer that
  * somebody can do nothing about is just a smaller drawing with an excuse.
+ *
+ * AND IT SAID SOMETHING UNTRUE FOR AN HOUR. The first version read "if it
+ * happens most weeks, it can live in your Week and count from then on". Ruth:
+ * "nothing gets counted from Plans unless it's logged, it's merely a planning
+ * tool." She is right and the code agrees - the Week writes no coverage
+ * anywhere, and nothing reads it for the flower.
+ *
+ * That is the exact fault this whole week has been spent on, committed inside
+ * the sentence meant to be the honest one. The Week keeps its place in the
+ * paragraph, because remembering is a real reason to put something there, but
+ * the sentence now says plainly which half does the counting.
+ *
+ * This stays true after the Week gains a flower of its own: that one will show
+ * what a PLAN covers. Only logging reaches this drawing.
  */
 export const EXPLAINER_UNLOGGED =
-  'This draws what you have logged, not everything you have done. Pushing a loaded pram up a hill, or running up and down the escalators at the tube, is real work your body is getting credit for nowhere. Log it if you like. If it happens most weeks, it can live in your Week and count from then on.';
+  'This draws what you have logged, not everything you have done. Pushing a loaded pram up a hill, or running up and down the escalators at the tube, is real work your body is getting credit for nowhere. Logging it is what counts it. Your Week is where a regular thing lives so it is easy to remember, though it is the logging that reaches this drawing.';
 
 /** The words on the link into the Week. */
 export const EXPLAINER_WEEK_LINK = 'Open your Week';

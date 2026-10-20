@@ -268,7 +268,8 @@ export function weekObservation(c: FlowerCoverage, period: string = 'your week')
   const lowest = ranked[ranked.length - 1];
 
   if (c[top] <= 0) return null;
-  if (allDimensionsFull(c)) return 'All six have been working.';
+  // Same rule: what she did is the subject, and the six are what it built.
+  if (allDimensionsFull(c)) return 'What you did reached all six.';
   if (c[top] - c[lowest] < CLEAR_LEAD) return evenlySpread(period);
 
   // Everyone within a rounding error of the leader shares the sentence.
@@ -283,23 +284,37 @@ export function weekObservation(c: FlowerCoverage, period: string = 'your week')
   const leaders = ranked.filter((d) => c[top] - c[d] < CLEAR_LEAD);
   const named = leaders.slice(0, 3).map((d) => DIMENSION_LABEL[d]);
 
-  // CREDIT, NOT ALLOCATION. These read "has had most of your attention" until
-  // the section was renamed "What's protecting you" on 20 October 2026. Under
-  // that heading the sentence should ANSWER the heading - and "your attention"
-  // describes how she spent herself, where "done most of the work" describes
-  // what the movement did for her. The same fact, told as something gained.
+  // THE ACTIVITIES ARE THE ACTOR, NOT THE DIMENSIONS (Ruth, 20 October 2026).
   //
-  // It also sits better beside what she said the drawing is for: "it's actually
-  // encouraging to see that a lot of activities fill up the requirements
-  // naturally."
+  // This said "has had most of your attention", which describes how she spent
+  // herself rather than what she got. Changed to "has done most of the work",
+  // which she also rejected, and the second reason is the better one:
+  //
+  //   "The balance and strength haven't done the work, whatever activities were
+  //    done did the work and accumulated the protective qualities. The summary
+  //    should give interpretation thats an additional understanding/literacy to
+  //    that the flower shows. It explains what the flower shows."
+  //
+  // Strength is not an agent. It is a protective quality that a week of
+  // activity built up, and a sentence that makes it the subject teaches the
+  // reader the wrong model of their own body.
+  //
+  // SO THE SENTENCE IS A READING OF THE DRAWING. Petal lengths say which
+  // qualities grew; this says it in words, with what she did as the thing that
+  // did it. That is the literacy she means - somebody who reads this a few
+  // times learns that a ballet class is building four things at once, which is
+  // not visible from a list of logged sessions.
+  //
+  // STILL ONE CLAUSE AND STILL NO SECOND SENTENCE. See the note below about
+  // never naming what was left out.
   if (leaders.length === 1) {
-    return `${named[0]} has done most of the work.`;
+    return `Most of what you did built ${named[0].toLowerCase()}.`;
   }
   if (leaders.length === 2) {
-    return `${named[0]} and ${named[1]} have done most of the work.`;
+    return `Most of what you did built ${named[0].toLowerCase()} and ${named[1].toLowerCase()}.`;
   }
   if (leaders.length === 3) {
-    return `${named[0]}, ${named[1]} and ${named[2]} have done most of the work.`;
+    return `Most of what you did built ${named[0].toLowerCase()}, ${named[1].toLowerCase()} and ${named[2].toLowerCase()}.`;
   }
   // Four or five joint leaders over a spread week. Listing them all reads as a
   // recital, and the one or two left out are the only real information in it -

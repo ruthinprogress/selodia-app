@@ -137,7 +137,24 @@ check('IT ADMITS WHAT IT CANNOT SEE, IN HER EXAMPLES', () => {
   assert.ok(!/incidental/i.test(EXPLAINER_UNLOGGED), 'it has been tidied into jargon');
   // It names the way in rather than only the gap.
   assert.ok(/Week/.test(EXPLAINER_UNLOGGED), 'it does not say a regular thing can go in the Week');
-  return 'logged, pram, escalators, and the way in';
+  // AND IT MUST NOT CLAIM THE WEEK COUNTS. Ruth, an hour after this shipped:
+  // "nothing gets counted from Plans unless it's logged, it's merely a planning
+  // tool." The code agrees - the Week writes no coverage anywhere and nothing
+  // reads it for the flower. The first version said "it can live in your Week
+  // and count from then on", which is the exact fault this app has spent a week
+  // fixing, committed inside the sentence meant to be the honest one.
+  //
+  // It stays wrong after the Week gains a flower of its own: that one will show
+  // what a PLAN covers. Only logging reaches this drawing.
+  assert.ok(
+    !/Week[^.]*\bcount/i.test(EXPLAINER_UNLOGGED),
+    'the copy says the Week counts towards the flower, and it does not'
+  );
+  assert.ok(
+    /logging/i.test(EXPLAINER_UNLOGGED),
+    'it no longer says that logging is the thing that counts'
+  );
+  return 'logged, pram, escalators, the way in, and no false claim';
 });
 
 check('AND THE WEEK IS A LIVE LINK, NOT A MENTION', () => {
