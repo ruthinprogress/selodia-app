@@ -7,6 +7,7 @@ import { DiarySection } from '@/components/diary-section';
 import { loadUpcoming } from '@/lib/calendar';
 import { flowerRange, type FlowerMode } from '@/lib/flower-range';
 import { FoldSection } from '@/components/fold-section';
+import { PageLink } from '@/components/page-link';
 import { HydrationToast, type WaterAction } from '@/components/hydration-card';
 import { OverviewPanel } from '@/components/overview-panel';
 import { ReportLink } from '@/components/report-link';
@@ -149,6 +150,7 @@ export default function BodyOverviewScreen() {
                 Thursday is more use at a glance than a six-dimension flower,
                 and less use than nothing at all is what it was yesterday. */}
             <FoldSection
+              ruled
               title="Coming up"
               summary={
                 upcoming == null ? 'loading' : upcoming === 0 ? 'nothing yet' : String(upcoming)
@@ -173,6 +175,7 @@ export default function BodyOverviewScreen() {
                 noticed" - and it names the SUBJECT rather than the drawing,
                 which was the fault in everything I suggested first. */}
             <FoldSection
+              ruled
               title="What's protecting you"
               summary={flowerLabel}
               open={open.flower}
@@ -186,11 +189,26 @@ export default function BodyOverviewScreen() {
               />
             </FoldSection>
 
-            {/* HER BUTTON, ON THIS SCREEN (7 October): "A button on Now opens
-                the report builder, which is no longer under Data." It is its own
-                row in More as well, which is two doors to one screen rather than
-                two screens. */}
-            <ReportLink start={['symptoms', 'insights']} label="Build a report" />
+            {/* TWO WAYS ON, AT THE FOOT OF THE PAGE. The Now artwork (20
+                October 2026) draws them as a pair under the folds, and only
+                one of them existed - "Open your Week" was in the drawing and
+                not in the app.
+
+                IT IS WORTH ADDING RATHER THAN DELETING FROM THE DRAWING. The
+                flower on this screen is made from the Movement log and the one
+                on the Week is made from the plan; somebody who has just read
+                "most of what you did built balance and strength" and wants to
+                change next week has nowhere to go from here. The explainer
+                already links there for the same reason.
+
+                HER BUTTON, ON THIS SCREEN (7 October): "A button on Now opens
+                the report builder, which is no longer under Data." It is its
+                own row in More as well, which is two doors to one screen
+                rather than two screens. */}
+            <View style={styles.ways}>
+              <PageLink to="/(tabs)/plans" label="Open your Week" icon="calendar-outline" />
+              <ReportLink start={['symptoms', 'insights']} label="Build a report" />
+            </View>
           </View>
         </ScrollView>
         <HydrationToast
@@ -211,6 +229,10 @@ export default function BodyOverviewScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   sections: { gap: Spacing.four, marginTop: Spacing.four },
+  // THE TWO WAYS OUT SIT TOGETHER, so they read as a pair at the foot rather
+  // than as one more section. ReportLink brings its own top padding, which is
+  // why this adds none.
+  ways: { gap: 0 },
   safeArea: { flex: 1 },
   content: {
     // flexGrow rather than flex: fills the viewport when the content is short,

@@ -197,7 +197,16 @@ check('AND THE WEEK IS A LIVE LINK, NOT A MENTION', () => {
 check('THE SECTION IS NOT CALLED AFTER ONE OF ITS OWN PETALS', () => {
   // The fault that started this: a section called Balance containing a petal
   // called Balance.
-  const titleMatch = now.match(/<FoldSection\s+title="([^"]+)"\s+summary=\{flowerLabel\}/);
+  // FOUND BY WHAT IT HOLDS, NOT BY THE ORDER OF ITS PROPS. This matched
+  // `<FoldSection title="..." summary={flowerLabel}` with the two attributes
+  // adjacent and in that order, so adding a `ruled` prop on 20 October broke
+  // it - while the fault it guards, a section named after one of its own
+  // petals, was nowhere near. The flower section is the one whose summary is
+  // flowerLabel; its title is whatever title it carries.
+  const at = now.indexOf('summary={flowerLabel}');
+  assert.ok(at > -1, 'no section summarises itself with flowerLabel - the flower section moved');
+  const opening = now.slice(now.lastIndexOf('<FoldSection', at), at);
+  const titleMatch = opening.match(/title="([^"]+)"/);
   assert.ok(titleMatch, 'the flower section has no title, or it moved');
   const title = titleMatch[1];
   assert.strictEqual(title, "What's protecting you", `the section is called "${title}"`);

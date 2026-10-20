@@ -27,6 +27,7 @@ export function FoldSection({
   open,
   onToggle,
   children,
+  ruled = false,
 }: {
   title: string;
   /**
@@ -39,11 +40,21 @@ export function FoldSection({
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  /**
+   * A hairline above the heading, so a run of these reads as one list.
+   *
+   * ON THE SECTION, NOT BETWEEN THEM (Now artwork, 20 October 2026). A rule
+   * drawn by the parent between children has to know which child is first,
+   * which is how a list ends up with a stray line above its own heading the
+   * day somebody reorders it. Each section is told whether it follows another.
+   */
+  ruled?: boolean;
 }) {
   const theme = useTheme();
 
   return (
     <View style={styles.wrap}>
+      {ruled ? <View style={[styles.rule, { backgroundColor: theme.backgroundElement }]} /> : null}
       <Pressable
         onPress={onToggle}
         accessibilityRole="button"
@@ -88,6 +99,9 @@ export function FoldSection({
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
+  // The same hairline the Week's days use, in the same sand, so the two
+  // screens are ruled by one line rather than by two that nearly match.
+  rule: { height: 1, opacity: 0.7, marginBottom: Spacing.two },
   // The chevron, the title and the summary are one target, as they are in the
   // Body Manual and on the Me tab.
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
