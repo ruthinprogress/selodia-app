@@ -797,3 +797,39 @@ specific thing gets built is a genuinely good device — write it as a one-shot,
 and when it fires, replace it with the property rather than re-arming it.** A
 fuse that has fired has done the whole of its job; leaving it in place is how a
 check starts defending the status quo instead of the reason for it.
+
+## An anchor made of syntax is not an anchor (20 October 2026)
+
+The rule above — assert the property, never a current instance of it — got a
+sharper version in one evening, because four checks broke in four different ways
+and none of them was defending anything that had changed.
+
+`check-week-flower` matched the literal sentence *"I do not know yet what"*, so
+rewriting that copy broke it — and a rewrite that quietly dropped the activity
+names, which is the thing the check exists to prevent, would have passed.
+`check-flower-explainer` matched `title="..."` and `summary={flowerLabel}` as
+adjacent attributes in that order, so adding a `ruled` prop broke it while the
+fault it guards, a section named after one of its own petals, was nowhere near.
+`check-week-drag`'s mutation was anchored on the exact string
+`style={styles.anytimeZone}`, and when that attribute became an array the
+mutation stopped breaking anything — the check then passed against an unbroken
+copy and the suite reported it **useless**, which is the only reason anybody
+found out. And two checks matched `
+` against a file that git had just
+rewritten to CRLF, failing with nothing about the code having changed.
+
+The common fault is narrower than the old rule and worth naming on its own: all
+four were anchored on **syntax** — a wording, an attribute order, an exact
+attribute string, a line ending. Syntax changes constantly and for reasons that
+have nothing to do with the property being protected, so an anchor made of it
+fires on innocent edits and sleeps through guilty ones. The behaviour-shaped
+versions cost nothing more: call the function and assert the names are in its
+output; find the section by the summary it carries and read whatever title it
+has; anchor a mutation on the style name rather than the whole attribute;
+normalise line endings on read.
+
+**The rule: anchor on something the code must mean, never on how it currently
+reads.** And the corollary, learned the same evening from the one that reported
+itself: a mutation test is the only thing that catches a check which has stopped
+testing anything, so a check worth writing is worth proving can fail — every
+time it is touched, not only the day it is written.
