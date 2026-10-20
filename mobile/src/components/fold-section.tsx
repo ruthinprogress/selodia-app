@@ -62,9 +62,23 @@ export function FoldSection({
           {title}
         </ThemedText>
         <View style={styles.spacer} />
-        <ThemedText type="small" themeColor="textSecondary" style={styles.summary}>
-          {summary}
-        </ThemedText>
+        {/* ONLY WHILE IT IS SHUT (Ruth, 20 October 2026, crossing it out on her
+            screenshot: "Top right header not needed at all").
+
+            A summary exists to say what is BEHIND a shut fold. Open, the thing
+            itself is on the screen - and on Balance it was repeating the pager
+            two lines below it, which said "this week" in full while this one
+            had been clipped to "this".
+
+            That clipping is the "Wee" fault again: the word needs more room
+            than Android measured for it, overflows, and the parent cuts it
+            with no ellipsis to show for it. Not drawing it when it has nothing
+            to add removes the duplicate and the clip together. */}
+        {open ? null : (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.summary}>
+            {summary}
+          </ThemedText>
+        )}
       </Pressable>
 
       {open ? <View style={styles.body}>{children}</View> : null}

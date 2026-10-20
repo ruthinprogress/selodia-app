@@ -181,7 +181,9 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
           </Pressable>
         </View>
       ) : null}
-      {reporting ? <ReportSheet onClose={() => setReporting(false)} /> : null}
+      {reporting ? (
+        <ReportSheet from={pathname} onClose={() => setReporting(false)} />
+      ) : null}
       <View
         style={[styles.mark, { top: insets.top + TOP_GAP, backgroundColor: theme.background }]}
       >

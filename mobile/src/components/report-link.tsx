@@ -55,7 +55,29 @@ export function ReportLink({
         style={({ pressed }) => [styles.link, pressed && styles.pressed]}
       >
         <Ionicons name="document-text-outline" size={15} color={theme.textSecondary} />
-        <ThemedText type="small" themeColor="textSecondary" textBreakStrategy="simple" style={styles.label} numberOfLines={1}>
+        {/* IT CANNOT TRUNCATE, BECAUSE TRUNCATION IS THE BUG (Ruth, reported
+            through the in-app button on 20 October 2026: "The word report in
+            'build a report' is missing").
+
+            THIS IS THE FOURTH TIME this family of fault has been fixed, and
+            the first three were fixed by adjusting how it measures - remove
+            alignItems, add flexShrink, set textBreakStrategy. Each held until
+            it did not. "Wee" on the Plans tab is the same fault with a
+            different word.
+
+            There is no shortage of room: the row is the full width of the
+            screen and the label is three short words. Android's measurement
+            comes back short anyway, and `numberOfLines={1}` turns that bad
+            measurement into a visible lie - "Build a rep...". So the ellipsis
+            is gone. With nothing to truncate to, a bad measurement can only
+            wrap, which shows every word and is a safe failure rather than a
+            wrong one. */}
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          textBreakStrategy="simple"
+          style={styles.label}
+        >
           {label}
         </ThemedText>
       </Pressable>
@@ -70,7 +92,9 @@ const styles = StyleSheet.create({
   // segmented-tabs.tsx has the same fault written up: "that is what Wee was".
   row: { paddingTop: Spacing.four, paddingBottom: Spacing.two },
   link: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  // Shrinks to an ellipsis rather than overflowing and being cut.
+  // Shrinks by WRAPPING rather than by ellipsis: see the note at the label.
+  // flexShrink stays so it can never push the row wider than the screen; what
+  // went is the single-line cap that turned shrinking into cutting.
   label: { flexShrink: 1 },
   pressed: { opacity: 0.6 },
 });

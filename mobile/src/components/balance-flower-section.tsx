@@ -92,8 +92,14 @@ export function BalanceFlowerSection({
             <ThemedText
               type="small"
               themeColor={mode === m ? 'accentDeep' : 'textSecondary'}
+              // NO numberOfLines (Ruth, 20 October 2026: "We..." and "Mon...").
+              // flexShrink: 0 was already on both the Pressable and the label -
+              // the number-tuning fix - and they still came back cut, because
+              // a single-line cap turns Android's short measurement into an
+              // ellipsis however little the box is allowed to shrink. With
+              // nothing to truncate to, a bad measurement can only wrap, and
+              // "Week" has no second line to wrap onto. See report-link.tsx.
               style={styles.modeLabel}
-              numberOfLines={1}
             >
               {m === 'week' ? 'Week' : 'Month'}
             </ThemedText>

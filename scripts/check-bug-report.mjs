@@ -54,6 +54,24 @@ check('THE BUTTON IS ON EVERY SCREEN, AND ONLY DURING THE BETA', () => {
   return 'beside the seeds, beta only, fails closed';
 });
 
+check('AND THE REPORT SAYS WHICH SCREEN IT CAME FROM', () => {
+  // THE FIELD THE BUTTON EXISTS FOR, and the first two reports through it both
+  // arrived empty. reportBug falls back to lastScreen(), which is only ever
+  // written by the More mark - so the beetle, which does not go through More,
+  // recorded nothing at all. The argument for putting it on every screen was
+  // that the screen name is often the only usable clue in a stranger's report.
+  //
+  // It never needed the fallback: the sheet opens on top of the screen in
+  // question, so the current route is the right answer and the simplest one.
+  assert.ok(/from\?: string \| null;/.test(sheet), 'the sheet cannot be told where it opened');
+  assert.ok(/screen: from/.test(sheet), 'it knows where it opened and does not send it');
+  assert.ok(
+    /<ReportSheet from=\{pathname\}/.test(header),
+    'the header does not hand the sheet the route it is on'
+  );
+  return 'the current route, not a remembered one';
+});
+
 check('ONE SEND PATH, NOT TWO INSERTS INTO ONE TABLE', () => {
   // The settings form built its own insert field by field. A second copy in the
   // sheet is how one of them quietly stops collecting something, and the fields

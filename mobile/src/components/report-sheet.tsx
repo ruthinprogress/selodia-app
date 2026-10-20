@@ -44,7 +44,27 @@ import { reportBug, reportContext } from '@/lib/report-bug';
 // the opposite of what this product is for, and the list is short enough to
 // print." It is shorter still here, so it is printed.
 
-export function ReportSheet({ onClose }: { onClose: () => void }) {
+export function ReportSheet({
+  onClose,
+  from,
+}: {
+  onClose: () => void;
+  /**
+   * THE SCREEN SHE WAS ON, PASSED IN RATHER THAN LOOKED UP.
+   *
+   * Ruth's first two reports through this button both arrived with no screen
+   * on them, which is the one field the button was put on every screen to
+   * capture. reportBug falls back to lastScreen(), and lastScreen() is only
+   * ever written by the More mark - so the beetle, which does not go through
+   * More, recorded nothing.
+   *
+   * It does not need the fallback anyway. The Settings form has to remember
+   * where somebody CAME FROM, because by the time it is open they have
+   * navigated away. This sheet opens on top of the screen in question, so the
+   * current route is the right answer and the simplest one.
+   */
+  from?: string | null;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const clearance = BottomTabInset || 80;
@@ -71,7 +91,7 @@ export function ReportSheet({ onClose }: { onClose: () => void }) {
     if (sending || !text.trim()) return;
     setSending(true);
     setFailed(false);
-    const result = await reportBug({ message: text, screenshotUri: shot });
+    const result = await reportBug({ message: text, screenshotUri: shot, screen: from });
     setSending(false);
     if (result.ok) setSent({ screenshotLost: result.screenshotLost });
     else setFailed(true);

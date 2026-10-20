@@ -1,0 +1,119 @@
+// SHORT WORDS DO NOT GET CUT.
+//
+//   node scripts/check-no-clipped-words.mjs
+//
+// "Wee". "Mont". "Build a". "across the six". "this". Four years of this app's
+// history in five clipped words, and every one of them was a label with plenty
+// of room on the screen beside it.
+//
+// THE CAUSE IS ALWAYS THE SAME and it is not a shortage of space. Android
+// measures a short run of text, the measurement comes back smaller than the
+// text needs, and whatever the layout does next turns that bad number into
+// something visible: with `numberOfLines={1}` it becomes an ellipsis, and
+// without it the parent clips the overflow with nothing to show for it.
+//
+// THE FIRST THREE FIXES TUNED THE MEASUREMENT - remove alignItems, add
+// flexShrink: 0, set textBreakStrategy - and each held until it did not.
+// segmented-tabs.tsx and report-link.tsx both carry write-ups of their own
+// earlier fix, which is how you know the earlier fix did not hold.
+//
+// SO THIS CHECK DOES NOT TUNE ANYTHING. It bans the single-line cap on the
+// labels that have actually been cut. Without a cap, a bad measurement can only
+// wrap - which shows every word, and is a safe failure rather than a wrong one.
+// A long title that genuinely needs an ellipsis is a different thing and is not
+// covered here.
+
+import assert from 'node:assert';
+import fs from 'node:fs';
+
+let pass = 0;
+const failures = [];
+function check(name, fn) {
+  try {
+    const note = fn();
+    console.log(`  PASS  ${name}${note ? `   ${note}` : ''}`);
+    pass += 1;
+  } catch (e) {
+    console.log(`  FAIL  ${name}\n          ${e.message}`);
+    failures.push(name);
+  }
+}
+
+const read = (p) => fs.readFileSync(p, 'utf8');
+
+/** Source with its comments removed, so a check cannot match its own prose. */
+const withoutComments = (src) =>
+  src.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/^\s*\/\/.*$/gm, '');
+
+console.log('\n  NO SHORT LABEL IS CAPPED TO ONE LINE\n');
+
+check('BUILD A REPORT CANNOT BECOME "Build a rep..."', () => {
+  // COMMENTS STRIPPED FIRST. The first version of this check matched the word
+  // "numberOfLines" inside the comment explaining why it is gone, and matched
+  // accessibilityLabel={label} rather than the label itself. A check that reads
+  // prose is reading the wrong thing.
+  const src = withoutComments(read('mobile/src/components/report-link.tsx'));
+  const at = src.indexOf('style={styles.label}');
+  assert.ok(at > -1, 'the label element moved - this check is testing nothing');
+  const el = src.lastIndexOf('<ThemedText', at);
+  const close = src.indexOf('>', at);
+  assert.ok(
+    !/numberOfLines=/.test(src.slice(el, close)),
+    'the report link caps its label to one line again, so a short measurement becomes an ellipsis'
+  );
+  return 'no cap on the label';
+});
+
+check('AND WEEK AND MONTH CANNOT BECOME "We..." AND "Mon..."', () => {
+  const src = withoutComments(read('mobile/src/components/balance-flower-section.tsx'));
+  const at = src.indexOf("{m === 'week' ? 'Week' : 'Month'}");
+  assert.ok(at > -1, 'the mode labels moved - this check is testing nothing');
+  const el = src.lastIndexOf('<ThemedText', at);
+  assert.ok(
+    !/numberOfLines=/.test(src.slice(el, at)),
+    'the Week/Month labels are capped to one line again'
+  );
+  // The number-tuning from the previous attempt stays - it is not wrong, it
+  // was just not sufficient on its own.
+  assert.ok(/modeLabel: \{ flexShrink: 0/.test(src), 'the earlier flexShrink fix was removed');
+  return 'no cap, and the earlier fix kept';
+});
+
+check('A FOLD SUMMARY IS NOT DRAWN WHILE THE FOLD IS OPEN', () => {
+  // Ruth crossed it out on her screenshot: "Top right header not needed at
+  // all". On Balance it repeated the pager two lines below it, which said
+  // "this week" in full while this one had been clipped to "this".
+  const src = read('mobile/src/components/fold-section.tsx');
+  assert.ok(/\{open \? null : \(/.test(src), 'the summary is drawn even when the fold is open');
+  // It must still exist when shut, which is the only reason it is there.
+  const at = src.indexOf('{open ? null : (');
+  assert.ok(/\{summary\}/.test(src.slice(at, at + 400)), 'the summary is gone entirely');
+  return 'shut only';
+});
+
+check('AND NO INVISIBLE CHARACTERS GOT INTO THESE FILES', () => {
+  // A zero-width space went into fold-section.tsx while this very fix was
+  // being written, inside a comment about text rendering. It survives a
+  // typecheck, a lint and a review by eye.
+  const files = [
+    'mobile/src/components/fold-section.tsx',
+    'mobile/src/components/report-link.tsx',
+    'mobile/src/components/balance-flower-section.tsx',
+  ];
+  for (const f of files) {
+    const src = read(f);
+    for (const [name, ch] of [
+      ['zero-width space', '​'],
+      ['zero-width non-joiner', '‌'],
+      ['zero-width joiner', '‍'],
+      ['byte order mark', '﻿'],
+      ['backspace', '\u0008'],
+    ]) {
+      assert.ok(!src.includes(ch), `${f} contains a ${name}`);
+    }
+  }
+  return `${files.length} files, five characters each`;
+});
+
+console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
+if (failures.length > 0) process.exit(1);
