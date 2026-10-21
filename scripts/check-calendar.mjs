@@ -30,6 +30,7 @@ const { checkCalendarEvent, validEventDate, daysAhead } = await import(
 const { reminderMoment, eventDateLabel, eventTimeLabel } = await import(
   here('mobile/src/lib/calendar-time.ts')
 );
+const { calendarNote } = await import(here('app/lib/action-notes.ts'));
 
 let pass = 0;
 const failures = [];
@@ -234,6 +235,96 @@ check('AND RESTORING A REMINDER DOES NOT INVENT AN HOUR', () => {
   assert.ok(/reminder_cancelled_at: null/.test(body), 'restoring does not clear the cancellation');
   assert.ok(!/remind_at:/.test(body), 'restoring writes a reminder time, which is hers to have set');
   return 'the cancellation only';
+});
+
+check('A REMINDER ARRIVES WITH WHAT IT TAKES TO ACT', () => {
+  // Ruth, 21 October 2026: "the whole point is that when you chat, it pulls the
+  // relevant details and then saves them in calendar with exactly what you will
+  // need to complete the task when the reminder comes either by notification OR
+  // by calendar write. It should pull all of that from chat and the records."
+  //
+  // THE DETAIL IS GATHERED WHEN THE ENTRY IS WRITTEN, because that is when it
+  // is in front of the model - the number read off a letter, the reference she
+  // decided to quote. A week later the reminder fires and nobody is in the
+  // conversation any more. Stored at write time or lost for good.
+  const r = checkCalendarEvent(
+    { title: 'ring the GP', date: '2026-10-27', notes: 'Surgery: 020 7946 0102' },
+    '2026-10-21'
+  );
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.row.notes, 'Surgery: 020 7946 0102', 'the detail was not stored');
+  // Nothing gathered stays nothing, rather than an empty line in the reminder.
+  const bare = checkCalendarEvent({ title: 'physio', date: '2026-10-27' }, '2026-10-21');
+  assert.strictEqual(bare.row.notes, null, 'an empty note became a string');
+  const blank = checkCalendarEvent(
+    { title: 'physio', date: '2026-10-27', notes: '   ' },
+    '2026-10-21'
+  );
+  assert.strictEqual(blank.row.notes, null, 'whitespace became a note');
+  assert.ok(/^\s*notes text/m.test(migration), 'there is no column to store it in');
+  return 'gathered at write time, or null';
+});
+
+check('AND THE NOTIFICATION CARRIES IT, NOT JUST THE DIARY', () => {
+  // "either by notification OR by calendar write" - both halves. The phone
+  // reads the stored rows, so a column nothing puts in the body is one she only
+  // finds by opening the app, which is the trip the reminder was meant to save.
+  const notif = fs.readFileSync('mobile/src/lib/notifications.ts', 'utf8');
+  const lib = fs.readFileSync('mobile/src/lib/calendar.ts', 'utf8');
+  assert.ok(/notes/.test(lib), 'the phone never reads the notes column');
+  const at = notif.indexOf('calendarEventId: e.id');
+  assert.ok(at > -1, 'the diary reminder is no longer scheduled here');
+  const around = notif.slice(Math.max(0, at - 1200), at);
+  // THE BODY ITSELF, not a variable computed above it - the fault worth
+  // catching is the notes being worked out and then left out of the line.
+  assert.ok(/e\.notes/.test(around), 'the notes are never read off the row');
+  const body = around.slice(around.lastIndexOf('body:'));
+  assert.ok(/\$\{notes\}/.test(body), 'the notification body leaves the detail behind');
+  return 'the body carries it';
+});
+
+check('AND A NUMBER IS NEVER INVENTED TO FILL IT', () => {
+  // A made-up phone number is the one failure here that does damage, because
+  // she will ring it, and ring it from a reminder she trusts. The field is told
+  // where it may read from - this conversation and her own records - and told
+  // to omit itself rather than pad.
+  const at = route.indexOf('calendarNotes:');
+  assert.ok(at > -1, 'the classifier cannot gather anything to act with');
+  const field = route.slice(at, at + 2600);
+  assert.ok(/THIS CONVERSATION/.test(field), 'it is not told to read the conversation');
+  assert.ok(/THEIR RECORD/.test(field), 'it is not told to read her own records');
+  assert.ok(/Never invent a number/.test(field), 'nothing forbids inventing a number');
+  assert.ok(/omit this entirely/.test(field), 'it is not told it may gather nothing');
+  return 'two sources, and nothing beyond them';
+});
+
+check('AND THE REPLY KNOWS WHAT WENT IN WITH IT', () => {
+  // She asks for the reminder and asks what is on it in the same breath. The
+  // model that gathered the number is the one being asked, and without the
+  // outcome line it would be answering from memory of its own tool call - which
+  // is the guessing this app keeps having to undo.
+  const line = calendarNote({
+    action: 'added',
+    title: 'ring the GP',
+    eventDate: '2026-10-27',
+    eventTime: '09:00',
+    notes: 'Surgery: 020 7946 0102',
+    reminderDropped: false,
+  });
+  assert.ok(/020 7946 0102/.test(line), 'the reply cannot say what was saved with it');
+  // QUOTED, NOT SUMMARISED. A paraphrase of a phone number is a wrong number.
+  assert.ok(/"Surgery: 020 7946 0102"/.test(line), 'the detail is not quoted as stored');
+  // And nothing gathered says nothing, rather than an empty quotation.
+  const bare = calendarNote({
+    action: 'added',
+    title: 'physio',
+    eventDate: '2026-10-27',
+    eventTime: null,
+    notes: null,
+    reminderDropped: false,
+  });
+  assert.ok(!/Saved with it/.test(bare), 'an entry with no detail claims one');
+  return 'quoted back to the turn that gathered it';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

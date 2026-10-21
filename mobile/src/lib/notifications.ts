@@ -351,10 +351,26 @@ export async function applyReminderSchedule(times: string[]): Promise<void> {
       if (!at) continue;
       const where = e.place ? ` at ${e.place}` : '';
       const bring = e.what_to_bring ? `. Bring ${e.what_to_bring}` : '';
+      // WHAT SHE NEEDS TO DO IT, IN THE NOTIFICATION ITSELF (Ruth, 21 October
+      // 2026): "it pulls the relevant details and then saves them for you in
+      // calendar with exactly what you will need to complete the task when the
+      // reminder comes either by notification OR by calendar write."
+      //
+      // The notification is the moment of acting. A reminder that says "ring
+      // the GP" and nothing else sends her to find the number at exactly the
+      // point she had decided to make the call - which is where the intention
+      // gets dropped. The number was gathered when the entry was written; this
+      // is the half that delivers it.
+      //
+      // ON ITS OWN LINE, because Android collapses a notification to one line
+      // until it is expanded, and the title is what has to survive that. The
+      // detail is what she sees when she pulls it down.
+      const notes = e.notes ? `
+${e.notes}` : '';
       await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Selodía',
-          body: `${e.title}${where}${bring}`,
+          body: `${e.title}${where}${bring}${notes}`,
           data: { destination: 'now', calendarEventId: e.id },
         },
         trigger: {

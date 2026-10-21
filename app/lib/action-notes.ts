@@ -60,7 +60,14 @@ export function calendarNote(r: CalendarResult | null): string | null {
       const dropped = r.reminderDropped
         ? ' The reminder they asked for was not set, because the entry has no time on it.'
         : '';
-      return `diary entry written: "${r.title}" on ${when}.${dropped}`;
+      // AND WHAT TRAVELLED WITH IT. The detail was gathered from this
+      // conversation and her records, so the turn that gathered it is exactly
+      // the turn that will be asked "did you put the number in?". Quoted as
+      // stored, because a paraphrase of a phone number is a wrong one.
+      const carried = r.notes
+        ? ` Saved with it, so it arrives when the reminder does: "${r.notes}".`
+        : '';
+      return `diary entry written: "${r.title}" on ${when}.${dropped}${carried}`;
     }
     case 'cancelled':
       return r.count === 0

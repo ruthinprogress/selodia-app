@@ -63,6 +63,25 @@ export type CalendarRow = {
   event_time: string | null;
   place: string | null;
   what_to_bring: string | null;
+  /**
+   * WHAT SHE NEEDS IN HER HAND TO ACTUALLY DO IT (Ruth, 21 October 2026).
+   *
+   * "the whole point is that when you chat, it pulls the relevant details and
+   * then saves them for you in calendar with exactly what you will need to
+   * complete the task when the reminder comes... It should pull all of that
+   * from chat and the records."
+   *
+   * The column already existed and nothing could write to it: the classifier
+   * had fields for a title, a date, a time, a place and what to bring, and no
+   * field for the phone number, the reference, or the thing she decided to
+   * ask. So a reminder to ring the GP arrived saying "ring the GP" and she
+   * still had to go and find the number.
+   *
+   * It is filled from what the model already holds - this conversation and her
+   * own records - at the moment the entry is written. Nothing new is fetched
+   * and nothing is asked for twice.
+   */
+  notes: string | null;
   remind_at: string | null;
   remind_offset_minutes: number | null;
 };
@@ -88,6 +107,7 @@ export function checkCalendarEvent(
     time?: string;
     place?: string;
     bring?: string;
+    notes?: string;
     remindMinutesBefore?: number;
   },
   todayKey: string
@@ -127,6 +147,9 @@ export function checkCalendarEvent(
       event_time: eventTime,
       place: (input.place ?? '').trim() || null,
       what_to_bring: (input.bring ?? '').trim() || null,
+      // Trimmed to null like the rest: an empty string in this column would
+      // draw an empty "Notes" row on the detail sheet.
+      notes: (input.notes ?? '').trim() || null,
       // Stored the same way a week card stores it, so fireTime() does the
       // subtracting for both and the arithmetic is tested once.
       remind_at: canRemind ? eventTime : null,
@@ -144,6 +167,14 @@ export type CalendarResult =
       title: string;
       eventDate: string;
       eventTime: string | null;
+      /**
+       * WHAT WAS SAVED ALONGSIDE IT, back to the turn that asked for it.
+       *
+       * She can ask "what did you put with it?" in the same breath, and a
+       * reply that has to guess would either claim the number is in there or
+       * claim it is not. The row knows; this is how the row says so.
+       */
+      notes: string | null;
       reminderDropped: boolean;
     }
   | { action: 'refused'; because: CalendarRefusal['because']; detail?: string }

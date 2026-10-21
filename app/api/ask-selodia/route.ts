@@ -2127,6 +2127,19 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "With calendarAction 'add', only if they mentioned something to take or do beforehand: \"the referral letter\", \"a urine sample\", \"nothing to eat after midnight\". Omit if they did not say. Never invent what somebody should bring to a medical appointment.",
     },
+    calendarNotes: {
+      type: 'string',
+      description:
+        "With calendarAction 'add'. EVERYTHING THEY WILL NEED IN THEIR HAND TO ACTUALLY DO THIS, gathered now so the reminder arrives useful instead of arriving as a title. " +
+        'A reminder that says only "ring the GP" leaves them hunting for the number at the moment they were trying to act. ' +
+        'PULL IT FROM TWO PLACES, BOTH OF WHICH YOU ALREADY HAVE. ' +
+        'First, THIS CONVERSATION: the reference number they read out, what they decided to ask, who said to call back, the symptom they want to describe, what the letter said. ' +
+        'Second, THEIR RECORD ABOVE: a phone number, a surgery or clinic name, a patient or case reference sitting in their health care records or their Me cards. ' +
+        'If their records hold the GP number and they ask to be reminded to ring the GP, PUT THE NUMBER IN. That is the whole point of having it. ' +
+        'Write it as short lines somebody can read at a glance while holding a phone, not a paragraph: "Surgery: 020 7946 0102", "Ask about the knee referral from 14 Oct", "Say the pain is worse going downstairs". ' +
+        'ONLY WHAT IS ACTUALLY THERE. Never invent a number, a reference, a department or an address, and never guess at one that looks close - a wrong phone number is worse than none, because they will ring it. ' +
+        'If their record holds nothing relevant and the conversation gave nothing beyond the task itself, omit this entirely rather than padding it.',
+    },
     calendarRemindMinutesBefore: {
       type: 'number',
       description:
@@ -2823,6 +2836,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     calendarTime?: string;
     calendarPlace?: string;
     calendarBring?: string;
+    calendarNotes?: string;
     calendarRemindMinutesBefore?: number;
     removePlanTitled?: string;
     removePlanSavedOn?: string;
@@ -3127,6 +3141,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         time: result.calendarTime,
         place: result.calendarPlace,
         bring: result.calendarBring,
+        notes: result.calendarNotes,
         remindMinutesBefore: result.calendarRemindMinutesBefore,
       },
       todayKey
@@ -3183,6 +3198,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           title: checked.row.title,
           eventDate: checked.row.event_date,
           eventTime: checked.row.event_time,
+          notes: checked.row.notes,
           reminderDropped: checked.reminderDropped,
         };
       }
