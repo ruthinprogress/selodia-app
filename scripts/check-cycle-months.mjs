@@ -25,11 +25,12 @@
 // None of those would look like a bug. They would look like her body.
 
 import assert from 'node:assert';
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const here = (p) => pathToFileURL(path.join(process.cwd(), p)).href;
-const { cycleMonths, byYear, monthTitles, rowDetail, rowLength, cyclePattern, bleedLength } =
+const { cycleMonths, byYear, monthTitles, rowDetail, rowLength, cyclePattern, bleedLength, endDayOptions, LONGEST_BLEED } =
   await import(here('mobile/src/lib/cycle-months.ts'));
 const { monthSummary, dayLine, dayOfCycle, shortDay, endDate } = await import(
   here('mobile/src/lib/cycle-month-detail.ts')
@@ -223,6 +224,74 @@ check('AND A START IN THE FUTURE NEVER PRINTS A NEGATIVE DAY', () => {
   const rows = cycleMonths([ev('2026-10-25', 'period_start')], TODAY);
   assert.strictEqual(rows[0].dayOfCycle, 1, `printed day ${rows[0].dayOfCycle}`);
   return 'day one at worst';
+});
+
+check('AND A PERIOD CAN BE CLOSED LONG AFTER IT ENDED', () => {
+  // Ruth, 21 October 2026: "there is no way to say when the period in September
+  // ended." She was right, and the gap had a shape: the end could only ever be
+  // recorded from the Cycle screen's own action, which offers the last fourteen
+  // days from TODAY. So a September period could be closed during September and
+  // never afterwards - while its row went on printing "End not logged" with no
+  // way to answer it, which is the worst kind of thing for an app to say.
+  const days = endDayOptions('2026-09-27', '2026-10-19', '2026-10-21');
+  assert.ok(days.length > 0, 'a period weeks ago can still not be closed');
+  assert.strictEqual(days[0], '2026-09-27', 'a one-day period cannot be recorded');
+  // NEVER PAST THE NEXT PERIOD. An end after that is not this period's end, and
+  // bleedLength would refuse it afterwards anyway - so it is not offered.
+  assert.ok(days.every((d) => d < '2026-10-19'), 'a day in the next cycle was offered as this one\'s end');
+  // THE BOUND ONLY BITES WHEN THE NEXT PERIOD BEGAN INSIDE THE FOURTEEN DAYS,
+  // which the first version of this check never exercised - fourteen days from
+  // 27 September stop well short of 19 October on their own, so the assertion
+  // above passed with the bound removed entirely.
+  const tight = endDayOptions('2026-09-27', '2026-10-01', '2026-10-21');
+  assert.deepStrictEqual(
+    tight,
+    ['2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30'],
+    tight.join(', ')
+  );
+  assert.ok(days.length <= LONGEST_BLEED, `${days.length} days offered`);
+
+  // AND NEVER IN THE FUTURE. A period cannot have ended on a day that has not
+  // happened, and the current cycle is the one where that is reachable.
+  const current = endDayOptions('2026-10-19', null, '2026-10-21');
+  assert.deepStrictEqual(current, ['2026-10-19', '2026-10-20', '2026-10-21'], current.join(', '));
+  return 'from the period, not from today';
+});
+
+check('AND THE CYCLE SHE DELETES TAKES ITS END WITH IT', () => {
+  // A stray end left behind attaches to the cycle BEFORE this one: bleedLength
+  // bounds an end by the next start, and with this start gone the previous one
+  // reaches straight through it. The row she deleted would come back as a wrong
+  // bleed length on a row she never touched.
+  const screen = fs.readFileSync('mobile/src/app/(tabs)/log/cycle-month.tsx', 'utf8');
+  const at = screen.indexOf('async function deleteCycle');
+  assert.ok(at > -1, 'there is still no way to delete a cycle in the app');
+  const body = screen.slice(at, at + 1600);
+  assert.ok(/'period_end'/.test(body), 'deleting a cycle leaves its end behind');
+  assert.ok(/'period_start'/.test(body), 'the start is not deleted');
+  // The bound itself, not merely the word: "nextStart" appears elsewhere in
+  // this function and kept the loose version of this assertion green.
+  assert.ok(
+    /\.lt\('event_date', nextStart\)/.test(body),
+    'the end deletion is not bounded by the next cycle'
+  );
+  // AND IT ASKS FIRST. Removing a period start changes a row she did not touch.
+  // THE QUESTION IS THE ONLY DOOR. Asserting that the word "confirming"
+  // appears is not the same claim and stayed true when the button was wired
+  // straight to the delete.
+  assert.ok(
+    /onPress=\{\(\) => setConfirming\(true\)\}/.test(screen),
+    'a cycle is deleted on one unguarded tap'
+  );
+  const ways = [...screen.matchAll(/void deleteCycle\(\)/g)];
+  assert.strictEqual(ways.length, 1, `${ways.length} ways to reach the delete`);
+  // WHAT SHE LOGGED ON THOSE DAYS IS HERS. A symptom is an observation about a
+  // date, not a possession of the cycle that happened to contain it.
+  assert.ok(
+    !/daily_observations/.test(body),
+    'deleting a cycle also deletes what she logged on those days'
+  );
+  return 'start and end, bounded, after asking';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

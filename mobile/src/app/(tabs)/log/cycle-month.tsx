@@ -9,7 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { cycleMonths, monthTitles } from '@/lib/cycle-months';
+import { Chips } from '@/components/cycle-cards';
+import { cycleMonths, endDayOptions, monthTitles } from '@/lib/cycle-months';
 import {
   dayLine,
   dayOfCycle,
@@ -18,6 +19,7 @@ import {
   type DayRow,
 } from '@/lib/cycle-month-detail';
 import { currentUserId } from '@/lib/current-user';
+import { human } from '@/lib/day-names';
 import { today } from '@/lib/day-names';
 import { supabase } from '@/lib/supabase';
 
@@ -38,6 +40,13 @@ export default function CycleMonthScreen() {
   const [events, setEvents] = useState<{ event_date: string; event_type: string }[]>([]);
   const [days, setDays] = useState<DayRow[]>([]);
   const [open, setOpen] = useState(false);
+  // THE TWO THINGS THIS SCREEN COULD NOT DO (Ruth, 21 October 2026): "Delete
+  // this entry. It was a test. Theres no way to delete it at all in the app."
+  // And: "there is no way to say when the period in September ended."
+  const [ending, setEnding] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,6 +83,73 @@ export default function CycleMonthScreen() {
       };
     }, [start])
   );
+
+  async function recordEnd(on: string) {
+    if (busy || !start) return;
+    setBusy(true);
+    try {
+      const userId = await currentUserId();
+      if (!userId) return;
+      const { error } = await supabase
+        .from('cycle_events')
+        .upsert(
+          { user_id: userId, event_date: on, event_type: 'period_end' },
+          { onConflict: 'user_id,event_date,event_type' }
+        );
+      if (error) {
+        setNote('That did not save. Worth trying again.');
+        return;
+      }
+      setEvents((e) => [...e, { event_date: on, event_type: 'period_end' }]);
+      setEnding(false);
+      setNote(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * REMOVING A CYCLE REMOVES THE WHOLE CYCLE, start and end together.
+   *
+   * Leaving a stray end behind would attach it to the cycle BEFORE this one -
+   * bleedLength bounds an end by the next start, and with this start gone the
+   * previous one reaches straight through it. The row she deleted would come
+   * back as a wrong bleed length on a row she did not touch.
+   *
+   * WHAT IT DOES NOT TOUCH is anything she logged on those days. Symptoms, flow
+   * and notes are observations about a date and belong to her, not to the cycle
+   * that happened to contain them - see the note in cycle-day.tsx about a
+   * symptom being just a symptom.
+   */
+  async function deleteCycle() {
+    if (busy || !start) return;
+    setBusy(true);
+    try {
+      const userId = await currentUserId();
+      if (!userId) return;
+      let ends = supabase
+        .from('cycle_events')
+        .delete()
+        .eq('user_id', userId)
+        .eq('event_type', 'period_end')
+        .gte('event_date', start);
+      if (nextStart) ends = ends.lt('event_date', nextStart);
+      await ends;
+      const { error } = await supabase
+        .from('cycle_events')
+        .delete()
+        .eq('user_id', userId)
+        .eq('event_type', 'period_start')
+        .eq('event_date', start);
+      if (error) {
+        setNote('That did not delete. Worth trying again.');
+        return;
+      }
+      router.back();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const rows = useMemo(() => cycleMonths(events, today()), [events]);
   const titles = useMemo(() => monthTitles(rows), [rows]);
@@ -142,6 +218,102 @@ export default function CycleMonthScreen() {
           </>
         )}
       </ThemedView>
+
+      {/* WHAT SHE CAN DO TO THIS CYCLE. Both of these were missing entirely
+          (Ruth, 21 October 2026): "Theres no way to delete it at all in the
+          app", and "there is no way to say when the period in September
+          ended."
+
+          THE END WAS REACHABLE ONLY WHILE IT WAS RECENT. The Cycle screen's own
+          action offers the last fourteen days from TODAY, so a September period
+          could be closed in September and never afterwards - while the row went
+          on printing "End not logged" with no way to answer it. Here the days
+          are offered relative to the period itself. */}
+      <View style={styles.actions}>
+        {!row.ongoing && summary.bleedLabel == null && (
+          <>
+            <Pressable
+              onPress={() => setEnding((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Say when this period ended"
+              hitSlop={Spacing.two}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <ThemedText type="small" themeColor="link">
+                Say when this period ended
+              </ThemedText>
+            </Pressable>
+            {ending && (
+              <Chips
+                options={endDayOptions(row.start, nextStart, today()).map(human)}
+                selected={[]}
+                single
+                onToggle={(label) => {
+                  const d = endDayOptions(row.start, nextStart, today()).find((x) => human(x) === label);
+                  if (d) void recordEnd(d);
+                }}
+              />
+            )}
+          </>
+        )}
+
+        {/* DELETING ASKS FIRST, and says what goes. A period start is the spine
+            of the record: remove it and the cycle before it grows to swallow
+            this one, which is a change to a row she did not touch. */}
+        {confirming ? (
+          <View style={styles.confirm}>
+            <ThemedText type="small">
+              Delete this cycle? The start{summary.bleedLabel ? ' and its end' : ''} will go, and{' '}
+              {nextStart ? 'the cycle before it will run on to the next one' : 'the one before it becomes the current cycle'}.
+              Anything logged on these days stays.
+            </ThemedText>
+            <View style={styles.confirmRow}>
+              <Pressable
+                onPress={() => void deleteCycle()}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Yes, delete this cycle"
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedView style={[styles.danger, { backgroundColor: theme.danger }]}>
+                  <ThemedText type="smallBold" themeColor="background">
+                    {busy ? 'Deleting…' : 'Delete it'}
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
+              <Pressable
+                onPress={() => setConfirming(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Keep this cycle"
+                hitSlop={Spacing.two}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedText type="small" themeColor="link">
+                  Keep it
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setConfirming(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Delete this cycle"
+            hitSlop={Spacing.two}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <ThemedText type="small" themeColor="textSecondary">
+              Delete this cycle
+            </ThemedText>
+          </Pressable>
+        )}
+
+        {note && (
+          <ThemedText type="detail" themeColor="textSecondary">
+            {note}
+          </ThemedText>
+        )}
+      </View>
 
       {/* THE DAILY LOG, FOLDED. Her drawing shows it shut on arrival and open
           on a tap, with the chevron saying which way it goes. */}
@@ -232,6 +404,10 @@ const styles = StyleSheet.create({
   commonHead: { marginTop: Spacing.three },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two },
   chip: { paddingVertical: 6, paddingHorizontal: Spacing.three, borderRadius: Spacing.four },
+  actions: { gap: Spacing.two, alignItems: 'flex-start', marginBottom: Spacing.three },
+  confirm: { gap: Spacing.two },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  danger: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.four, borderRadius: Spacing.four, minHeight: 44, justifyContent: 'center' },
   foldBar: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: Spacing.two },
   // FILLS THE BAR rather than hugging its own measured width - the one word
   // that took four attempts to find on the segmented tabs.

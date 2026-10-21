@@ -151,6 +151,43 @@ export function monthTitles(rows: CycleMonth[]): string[] {
   });
 }
 
+/** A bleed longer than this is not a bleed, so it is not offered as one. */
+export const LONGEST_BLEED = 14;
+
+/**
+ * The days this period could have ended on - Ruth, 21 October 2026: "there is
+ * no way to say when the period in September ended."
+ *
+ * She was right, and the gap had a shape. The end could only ever be recorded
+ * from the Cycle screen's own action, which offers the last fourteen days from
+ * TODAY - so a September period could be closed during September and never
+ * afterwards. "End not logged" then printed on the row with no way to answer it,
+ * which is the worst kind of thing for an app to say.
+ *
+ * SO THE DAYS ARE OFFERED RELATIVE TO THE PERIOD, not to today. From the day it
+ * started - a one-day period is real - and stopping before the next one began,
+ * because an end after that is not this period's end.
+ */
+export function endDayOptions(
+  start: string,
+  nextStart: string | null,
+  today: string
+): string[] {
+  const p = parts(start);
+  if (!p) return [];
+  const out: string[] = [];
+  for (let i = 0; i < LONGEST_BLEED; i += 1) {
+    const d = new Date(p.y, p.m - 1, p.d + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // Never past the next period, and never in the future - a period cannot
+    // have ended on a day that has not happened.
+    if (nextStart != null && key >= nextStart) break;
+    if (key > today) break;
+    out.push(key);
+  }
+  return out;
+}
+
 /** The months grouped under their year, newest year first, for the overview. */
 export function byYear(rows: CycleMonth[]): { year: number; months: CycleMonth[] }[] {
   const out: { year: number; months: CycleMonth[] }[] = [];
