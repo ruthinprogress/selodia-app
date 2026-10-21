@@ -25,6 +25,7 @@ import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
+import { coverageColumns } from '@/lib/coverage-columns';
 import { splitByTab, type AlmanacRow } from '@/lib/insights';
 import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
@@ -180,6 +181,13 @@ export default function PlansScreen() {
       happened_at: at.toISOString(),
       source: 'plan',
       notes: input.note || null,
+      // AND WHAT IT CONTRIBUTES TO THE FLOWER (21 October 2026). Every row
+      // written from this screen had null in all six cover_* columns, so a
+      // planned session she ticked off counted for nothing in "What's
+      // protecting you" - the movement she most deliberately did being the
+      // movement the drawing could not see. See coverage-columns.ts for the
+      // count that found it.
+      ...coverageColumns(input.activity),
     });
     if (error) throw new Error(error.message);
     setWeekKey((k) => k + 1);

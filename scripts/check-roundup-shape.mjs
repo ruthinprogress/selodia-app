@@ -144,5 +144,48 @@ check('and this check can fail', () => {
   return 'the old sort put Friday before Tuesday';
 });
 
+check('IT IS WRITTEN AS A WEEK THAT HAS FINISHED', () => {
+  // Ruth, 21 October 2026: "the title 'Last Week' is clearly about last week,
+  // but the prose in the block says 'this week' - that's wrong."
+  //
+  // IT IS WRITTEN ON A SUNDAY AND READ ALL WEEK. At the moment of writing
+  // "this week" is true; by Monday morning it is not, and it sits under a
+  // heading saying Last week for the seven days after that. Nothing in the
+  // prompt had ever told the model when it would be read.
+  const prompt = readFileSync('app/lib/roundup-prompt.ts', 'utf8');
+  const code = prompt.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(/THE WEEK IS FINISHED/.test(code), 'the model is no longer told the week is over');
+  // THE BAN QUOTES THE PHRASE IT BANS, so the instruction itself contains
+  // "this week" in quotes. Matching that is a check reading its own prose -
+  // the fault this project has hit six times. Quoted mentions come out; an
+  // unquoted one is the model being told to write it.
+  const used = code.replace(/"this week"/g, '');
+  assert.ok(
+    !/this week/.test(used),
+    'the prompt says "this week" again, which is false from Monday onwards'
+  );
+  return 'past tense, and the model knows why';
+});
+
+check('AND AN OBSERVATION HAS TO BEAT ONE SCREEN', () => {
+  // Ruth: "the interpretation shown feels a little weak... neither insightful
+  // nor helpful." The shape asked for up to three things that "stood out" with
+  // nothing saying what makes one worth saying - so the model filled the
+  // slots, and a filled slot is a sentence rather than an observation.
+  //
+  // THE TEST IS WHETHER SHE COULD HAVE SEEN IT ON ONE SCREEN. "Food was logged
+  // on five days" is a figure already on the card. Two things that happened
+  // near each other, in different logs, is something only this document is in
+  // a position to notice.
+  const prompt = readFileSync('app/lib/roundup-prompt.ts', 'utf8');
+  assert.ok(
+    /could not see by looking at one screen/i.test(prompt),
+    'nothing tells the model what makes an observation worth writing'
+  );
+  // AND FEWER IS ALLOWED, or the test above becomes pressure to invent one.
+  assert.ok(/WRITE FEWER/.test(prompt), 'the model is still required to fill three slots');
+  return 'a connection, or nothing';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
