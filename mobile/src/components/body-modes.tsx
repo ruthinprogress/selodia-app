@@ -219,13 +219,19 @@ export function BodyModes({
   // the toggles to: 'Current Approach'"). It had no name at all - the shut line
   // was the state and nothing said what the state was OF, so the first thing on
   // the card was an answer to an unasked question.
-  const summary = [
-    `${APPROACH_HEADING}: ${modeLabel(mode)}`,
-    paused ? 'Paused' : null,
-    figure,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // TWO LINES, NOT ONE STRING THAT WRAPS (Ruth, 21 October 2026): "'Current
+  // approach: losing fat' should be in bold - it gets lost and washed out
+  // otherwise. that header needs to be on one line... The text below the
+  // heading should also fit in one line."
+  //
+  // It was all of this joined with middots into a single secondary-coloured
+  // string capped at two lines, with the Resume button taking a bite out of
+  // its width - so the name of the card and its state wrapped into each other
+  // and neither was legible. The title is the title; the state goes under it.
+  const title = `${APPROACH_HEADING}: ${modeLabel(mode)}`;
+  const state = [paused ? 'Paused' : null, figure].filter(Boolean).join(' · ');
+  /** Both lines, for anything that needs the whole thing in one go. */
+  const summary = [title, state].filter(Boolean).join(' · ');
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
@@ -241,39 +247,60 @@ export function BodyModes({
           accessibilityHint={open ? 'Hides your approach' : 'Shows your approach'}
           hitSlop={Spacing.two}
           style={({ pressed }) => [styles.headLine, pressed && styles.pressed]}>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-            {summary}
-          </ThemedText>
+          {/* THE NAME OF THE CARD, AT FULL STRENGTH. It was secondary-coloured
+              and the same size as its own state line, which is what "gets lost
+              and washed out" describes. */}
+          <ThemedText type="smallBold">{title}</ThemedText>
+          {state ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {state}
+            </ThemedText>
+          ) : null}
         </Pressable>
 
-        {!nothingChosen && (
+        {/* THE ARROW, AND RESUME UNDER IT (Ruth, 21 October 2026): "Resume
+            button needs to move to the far right of the box, under the arrow,
+            and be dark terracotta for more contrast."
+
+            Out of the title's row entirely, which is what lets the title fit on
+            one line - it was sharing that width with a pill and losing. */}
+        <View style={styles.headRight}>
           <Pressable
-            onPress={() => void write(mode, !paused)}
-            disabled={saving}
-            accessibilityRole="button"
-            accessibilityLabel={pauseToggleLabel(paused)}
-            accessibilityState={{ disabled: saving }}
+            onPress={() => setOpen((o) => !o)}
+            accessibilityLabel={open ? 'Hide' : 'Show'}
             hitSlop={Spacing.two}
-            style={({ pressed }) => [
-              styles.pause,
-              { borderColor: theme.textSecondary },
-              pressed && styles.pressed,
-            ]}>
-            <ThemedText type="small">{pauseToggleLabel(paused)}</ThemedText>
+            style={({ pressed }) => pressed && styles.pressed}>
+            <Ionicons
+              name={open ? 'chevron-down' : 'chevron-forward'}
+              size={14}
+              color={theme.textSecondary}
+            />
           </Pressable>
-        )}
 
-        <Pressable
-          onPress={() => setOpen((o) => !o)}
-          accessibilityLabel={open ? 'Hide' : 'Show'}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <Ionicons
-            name={open ? 'chevron-down' : 'chevron-forward'}
-            size={14}
-            color={theme.textSecondary}
-          />
-        </Pressable>
+          {!nothingChosen && (
+            <Pressable
+              onPress={() => void write(mode, !paused)}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel={pauseToggleLabel(paused)}
+              accessibilityState={{ disabled: saving }}
+              hitSlop={Spacing.two}
+              style={({ pressed }) => [
+                styles.pause,
+                // FILLED, NOT OUTLINED. It was a hairline in textSecondary on
+                // sand, which is the quietest possible treatment for the only
+                // control on the card. accentDeep rather than accent: this
+                // carries text, and the theme reserves full-strength terracotta
+                // for fills behind nothing and for large type.
+                { backgroundColor: theme.accentDeep },
+                pressed && styles.pressed,
+              ]}>
+              <ThemedText type="small" style={{ color: theme.background }}>
+                {pauseToggleLabel(paused)}
+              </ThemedText>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {open && (
@@ -316,7 +343,24 @@ export function BodyModes({
             </ThemedText>
           )}
 
-          {/* THE SAME FOUR SWITCHES AS SETUP, from the same component. They were
+          {/* THE CHOICES HAVE A HEADING (Ruth, 21 October 2026): "Add the
+              title: 'Current Approach' in bold, where the artwork says 'Your
+              goal' (as we don't say that, but good to re-iterate the language
+              next to the selections)."
+
+              THE ARTWORK SAID "YOUR GOAL" AND THIS APP DOES NOT. A goal here
+              is the thing on the Plans tab that somebody wrote in their own
+              words; this is which way their guide is pointed, and calling it a
+              goal would make two different things answer to one name on two
+              screens. Same words as the card's own title, which is the point -
+              it names the choice again right where the choice is made.
+
+              The same constant the card title uses, so the two cannot drift. */}
+          <ThemedText type="smallBold" style={styles.choicesHeading}>
+            {APPROACH_HEADING}
+          </ThemedText>
+
+          {/* THE SAME FOUR CHOICES AS SETUP, from the same component. They were
               four hand-written <Toggle> blocks here and about to be a fifth,
               sixth, seventh and eighth on the setup screen - see
               body-mode-toggles.tsx for why that is the shape to avoid. */}
@@ -457,15 +501,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  headLine: { flexGrow: 1, flexShrink: 1, paddingVertical: Spacing.one },
+  // TOP, NOT CENTRE. The left side is now two lines and the right side is a
+  // chevron with a button under it; centring either against the other leaves
+  // both floating.
+  head: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
+  headLine: { flexGrow: 1, flexShrink: 1, paddingVertical: Spacing.one, gap: 2 },
+  // The arrow, then Resume beneath it, both against the right edge.
+  headRight: { alignItems: 'flex-end', gap: Spacing.two, paddingTop: Spacing.one },
   pause: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: ButtonRadius,
-    borderWidth: 1,
   },
   body: { gap: Spacing.three, paddingTop: Spacing.three },
+  // Tight to the choices under it, so it reads as their heading rather than as
+  // another paragraph in the card.
+  choicesHeading: { marginBottom: -Spacing.two },
   link: { textDecorationLine: 'underline' },
   safetyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   safetyText: { flexGrow: 1, flexShrink: 1 },
