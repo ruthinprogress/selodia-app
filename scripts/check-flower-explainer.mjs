@@ -32,6 +32,7 @@ const mod = await import(
   pathToFileURL(path.join(process.cwd(), 'mobile', 'src', 'lib', 'flower-explainer.ts')).href
 );
 const {
+  EXPLAINER_TITLE,
   DIMENSION_NOTES,
   NOTE_ORDER,
   EXPLAINER_INTRO,
@@ -264,6 +265,31 @@ check('THE SECTION IS NOT CALLED AFTER ONE OF ITS OWN PETALS', () => {
     );
   }
   return `"${title}", clashing with none of the six`;
+});
+
+check('AND THE BAR INSIDE IT DOES NOT REPEAT THAT NAME', () => {
+  // Ruth, 21 October 2026, on a screenshot of the open fold: "Fix heading".
+  //
+  // The rewrite the day before set the collapsible's label to the fold's own
+  // title, so the screen read "What's protecting you" and then, inside it,
+  // "What's protecting you" again - and with the fold open the second one is
+  // the only heading on screen. A bar whose label is the name of the thing it
+  // is already inside tells nobody what tapping it would do.
+  //
+  // A GUARD RATHER THAN A MEMORY, because the two strings live in different
+  // files and nothing would ever make them disagree out loud.
+  const now = fs.readFileSync('mobile/src/app/(tabs)/now/index.tsx', 'utf8');
+  const at = now.indexOf('summary={flowerLabel}');
+  const opening = now.slice(now.lastIndexOf('<FoldSection', at), at);
+  const title = opening.match(/title="([^"]+)"/)[1];
+  assert.notStrictEqual(
+    EXPLAINER_TITLE.toLowerCase(),
+    title.toLowerCase(),
+    'the collapsible is labelled with the name of the section it sits inside'
+  );
+  // And it still says what it opens rather than what it is about.
+  assert.ok(EXPLAINER_TITLE.length > 8, 'the label is too short to say anything');
+  return `"${EXPLAINER_TITLE}" inside "${title}"`;
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

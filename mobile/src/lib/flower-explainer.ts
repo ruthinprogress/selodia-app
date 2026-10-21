@@ -99,7 +99,12 @@ export const NOTE_ORDER: Dimension[] = [
 // "What this shows" is what a tooltip says. These six are the thing the app is
 // teaching, and naming them as foundations says they are worth knowing rather
 // than that the drawing needs explaining.
-export const EXPLAINER_TITLE = "What's protecting you";
+// AND IT IS NOT THE SECTION'S OWN NAME (21 October 2026). Yesterday's
+// rewrite set this to "What's protecting you", which is the heading of the
+// fold this bar sits INSIDE - so the screen said it twice, and the inner one
+// read as a fragment that told her nothing about what tapping it would do.
+// Her words above are the ones that belong here: a bar says what it opens.
+export const EXPLAINER_TITLE = 'Learn about these six foundations';
 
 /**
  * THE OPENING LINE IS HERS, and it is better than anything written for the job:

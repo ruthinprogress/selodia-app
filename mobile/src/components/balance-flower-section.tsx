@@ -21,6 +21,7 @@ import {
   NOTE_ORDER,
 } from '@/lib/flower-explainer';
 import { canGoBack, canGoForward, flowerRange, type FlowerMode } from '@/lib/flower-range';
+import { placeUnreadSessions, placementSentence } from '@/lib/place-unread-sessions';
 
 // THE BALANCE FLOWER, ON THE ALMANAC (Ruth, 25 September 2026, item 8: "Remove
 // the 'This week' heading and the balance flower chart from Today entirely.
@@ -79,7 +80,11 @@ export function BalanceFlowerSection({
   // Rebuilt only when the choice changes, because the hook keys its read on the
   // two timestamps and a fresh Date every render would re-query forever.
   const range = useMemo(() => flowerRange(mode, back), [mode, back]);
-  const { coverage, loading, unclassifiedCount } = useHealthFlower(range);
+  const { coverage, loading, unclassifiedCount, reload } = useHealthFlower(range);
+  // The tap that resolves an unplaced session, and what came of it. Null
+  // until she asks, so the line stays one quiet sentence until it is useful.
+  const [placing, setPlacing] = useState(false);
+  const [placement, setPlacement] = useState<string | null>(null);
   const note = coverage ? weekObservation(coverage, range.label) : null;
   // SHUT BY DEFAULT, and not remembered. The log layout store exists for folds
   // somebody arranges; this one is read once or twice ever and then not again,
@@ -209,10 +214,60 @@ export function BalanceFlowerSection({
           difference between "you did less" and "I could not see some of it",
           and only one of those is a statement about her. */}
       {!loading && unclassifiedCount > 0 ? (
+        /* AND SOMETHING TO DO ABOUT IT (Ruth, 21 October 2026, on a screenshot
+           of the line with nothing to tap): "It needs a link for user to
+           resolve this. Its not clear."
+
+           The sentence alone left her knowing the drawing was under-reporting
+           and holding no way to stop it, which is worse than not knowing. One
+           tap runs the same classifier a chat turn would have run - see
+           api/place-activity for why these rows were ever left behind.
+
+           THE WHOLE LINE IS THE TARGET, not a word inside it. The thing she
+           wants to act on is the sentence she just read. */
+        <Pressable
+          onPress={async () => {
+            if (placing) return;
+            setPlacing(true);
+            setPlacement(null);
+            const outcome = await placeUnreadSessions(range);
+            setPlacement(placementSentence(outcome));
+            setPlacing(false);
+            // The drawing re-reads itself, so a petal that just gained a
+            // session grows while she is looking at it.
+            if (outcome.ok && outcome.placed.length > 0) reload();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={
+            unclassifiedCount === 1
+              ? 'One session is not counted yet. Place it on the six.'
+              : `${unclassifiedCount} sessions are not counted yet. Place them on the six.`
+          }
+          accessibilityHint="Works out which of the six they fed"
+          accessibilityState={{ busy: placing }}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.unplaced, pressed && styles.pressed]}
+        >
+          <ThemedText type="detail" themeColor="textSecondary">
+            {unclassifiedCount === 1
+              ? '1 session is not counted here yet, because it could not be placed on these six.'
+              : `${unclassifiedCount} sessions are not counted here yet, because they could not be placed on these six.`}
+          </ThemedText>
+          {/* THE WORDS THAT SAY IT IS A THING YOU CAN PRESS. A sentence in the
+              same grey as every other note reads as a notice; this is the half
+              that makes it an offer. */}
+          <ThemedText type="detail" themeColor="link">
+            {placing ? 'Working it out…' : 'Count them'}
+          </ThemedText>
+        </Pressable>
+      ) : null}
+
+      {/* WHAT CAME OF IT, including the ones it still could not place. A silent
+          success would leave her to work out whether anything happened by
+          watching the petals. */}
+      {placement ? (
         <ThemedText type="detail" themeColor="textSecondary">
-          {unclassifiedCount === 1
-            ? '1 session is not counted here yet, because it could not be placed on these six.'
-            : `${unclassifiedCount} sessions are not counted here yet, because they could not be placed on these six.`}
+          {placement}
         </ThemedText>
       ) : null}
 
@@ -306,6 +361,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     marginTop: Spacing.two,
   },
+  unplaced: { gap: 2, minHeight: 44, justifyContent: 'center' },
   explainer: { gap: Spacing.three },
   note: { gap: 2 },
   weekLink: { minHeight: 44, justifyContent: 'center' },
