@@ -8,6 +8,7 @@ import { BodyModes } from '@/components/body-modes';
 import { HydrationCard, type WaterAction } from '@/components/hydration-card';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
+import { TodayFocus } from '@/components/today-focus';
 import { DisplayFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { resolveTDEE } from '@/lib/body-metrics';
@@ -120,6 +121,8 @@ type OverviewData = {
   cycleDay: number | null;
   // "On the plan: gym", or null. Guide me only, planned days only.
   plannedLine: string | null;
+  /** Whether she asked to be guided, which decides what "nothing" means. */
+  guided: boolean;
 };
 
 type ProfileRow = {
@@ -524,6 +527,7 @@ export function OverviewPanel({
           (weekRows ?? []) as { activity: string; days: string[] }[],
           profile?.guidance_mode ?? null
         ),
+        guided: (profile?.guidance_mode ?? null) === 'guide_me',
       };
       setData(next);
       // Kept for the next opening, so the screen starts full rather than empty.
@@ -595,11 +599,35 @@ export function OverviewPanel({
             Somebody who does not do it finds the line gone tomorrow and nothing
             else changed - no carry-over, no count, no note that it did not
             happen. */}
-        {data.plannedLine ? (
-          <ThemedText type="small" themeColor="accentDeep">
-            {data.plannedLine}
-          </ThemedText>
-        ) : null}
+        {/* TODAY'S FOCUS (Ruth, 21 October 2026): "'Today's focus' is nice,
+            warmer than on the plan, and the terracotta section breaks up the
+            page a little."
+
+            THE ARROW GOES TO THE WEEK, which is where the line comes from -
+            "I like that this section now has an arrow on the right to take you
+            to...... the week? I suppose so, so they can see where it's coming
+            from."
+
+            AND A DAY WITH NOTHING ON IT OFFERS A REST DAY. Her idea, and it
+            closes a real gap: "rest day today" has always worked in chat and
+            nobody knew, including her. It is an OFFER and never automatic - a
+            day with nothing planned is not a rest day, it is a day with
+            nothing planned, and writing one on her behalf would be the app
+            inventing a record she did not make.
+
+            IT GOES QUIET ONCE SOMETHING IS LOGGED. Nothing planned and ballet
+            already in the log is not a day that needs anything from this
+            card. */}
+        <TodayFocus
+          planned={data.plannedLine}
+          // === true, because a snapshot cached before 21 October has no
+          // such field and arrives as undefined. Falling back to not-guided
+          // says the milder of the two nothings, which is the right way to be
+          // wrong for one render.
+          guided={data.guided === true}
+          anythingLogged={data.activityNames.length > 0}
+          onLogged={() => setReloadKey((k) => k + 1)}
+        />
       </View>
 
       {/* The daily line is NOT here any more - see the foot of this screen
