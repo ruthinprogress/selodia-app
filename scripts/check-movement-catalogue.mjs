@@ -232,13 +232,18 @@ await check('AND IT IS TOLD WHAT NOT TO DO WITH THAT LIST', async () => {
   //   one is the preference hardening into a constraint, which is the fault
   //   this whole arrangement is supposed to avoid.
   const route = fs.readFileSync('app/api/ask-selodia/route.ts', 'utf8');
-  assert.ok(/COPY THE NAME EXACTLY AS WRITTEN ABOVE/.test(route), 'exact clip naming is not required');
+  // THE LIST LEFT THE PROMPT ON 21 OCTOBER 2026 and became a search tool, so
+  // three of these four rules moved with it into the tool's own description -
+  // which is where the model reads them at the moment it is choosing a name.
+  // The rules did not change. Only the page they are written on did.
+  const toolText = fs.readFileSync('app/lib/movement-tool.ts', 'utf8');
+  assert.ok(/COPY A NAME EXACTLY AS IT COMES BACK/.test(toolText), 'exact clip naming is not required');
   assert.ok(
-    /PICK THE ONE SOMEBODY WOULD WANT ON THEIR CARD/.test(route),
+    /pick the one somebody would want on their card/i.test(toolText),
     'nothing steers it away from the machine and version names'
   );
   assert.ok(
-    /NEVER USE A NAME THAT IS NOT IN THE LIST ABOVE JUST BECAUSE IT LOOKS SIMILAR/.test(route),
+    /never use a name that did NOT come back just because it looks similar/i.test(toolText),
     'nothing forbids reaching for a near miss'
   );
   assert.ok(
@@ -252,6 +257,10 @@ await check('AND IT IS TOLD WHAT NOT TO DO WITH THAT LIST', async () => {
     .select('join_key')
     .eq('join_key', 'band two legs calf raise - (band under both legs) version 2');
   assert.strictEqual(data?.length, 1, 'the ugly-name example is not a real clip any more');
+  assert.ok(
+    /band two legs calf raise/.test(toolText),
+    'the worked example went missing when the rule moved'
+  );
   return '4 instructions, and the example verified against the library';
 });
 
@@ -296,9 +305,16 @@ await check('A WRITTEN MOVEMENT IS NOT DESCRIBED AS A GAP', async () => {
 
   // The ORDER matters too: look first, choose from what is there, write only
   // what nothing covers.
+  // The ORDER survived the move, and it even improved: the model now decides
+  // what the person needs FIRST and searches for those, rather than reading a
+  // list and choosing from it - which was always the risk of handing it one.
   assert.ok(
-    /Look at both lists above FIRST/.test(route),
-    'the chat is no longer told to look before it chooses'
+    /Decide FIRST what movements will actually get this person to the goal/.test(route),
+    'the chat is no longer told to decide before it looks'
+  );
+  assert.ok(
+    /call the tool with those movements/.test(route),
+    'nothing tells it to look the movements up once it has chosen them'
   );
   return 'a format, not an absence - and the request is told where it goes';
 });

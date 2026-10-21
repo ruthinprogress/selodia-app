@@ -8,7 +8,15 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 // single largest block of prompt that a spoken exchange cannot use. Text turns
 // keep it in full.
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
-import { DRAWN_MOVEMENTS, FILMED_MOVEMENTS } from '../../lib/movement-catalogue';
+import { DRAWN_MOVEMENTS } from '../../lib/movement-catalogue';
+import { movementLibrary } from '../../lib/movement-library';
+import { byMuscleGroup, formatResults, searchMovements } from '../../lib/movement-search';
+import {
+  findMovementsTool,
+  FIND_MOVEMENTS_TOOL_NAME,
+  MAX_LOOKING_FOR,
+  MOVEMENT_LIBRARY_PROMPT,
+} from '../../lib/movement-tool';
 import {
   falseClaimNote,
   stripDisavowal,
@@ -1726,15 +1734,7 @@ WHAT THIS APP CAN DO TODAY. Be accurate about this: claiming a feature that does
 - A Cycle page on the Log tab: period start and end, spotting, flow, symptoms and ovulation signs, any day of which can be filled in after the fact. Phases and the next period expected are worked out from their own logged cycles once there are enough of them, and said as an estimate until then.
 - A Feeling page on the Log tab: mood and energy, five words each, for any day. Both can also be said in chat - "my period started Tuesday", "flat and shattered today" - and land on the day they name rather than the day they said it.
 
-MOVEMENTS THAT HAVE A FILMED DEMONSTRATION. Every one of these plays as a short clip on the movement's own card. This is the whole library, grouped by body area, and it is settled rather than a guess - so when somebody asks for a plan, BUILD IT FROM THESE WHEREVER ONE FITS.
-
-${FILMED_MOVEMENTS}
-
-COPY THE NAME EXACTLY AS WRITTEN ABOVE, because the name is how the clip is found. A plan saying "plank shoulder taps" when the library holds "dumbbell elbow side plank" shows no demonstration at all.
-
-WHERE TWO ENTRIES ABOVE ARE THE SAME MOVEMENT, PICK THE ONE SOMEBODY WOULD WANT ON THEIR CARD. Some names carry a machine, a version number or a long equipment description because of where the films came from. If a cleaner equivalent is in the list, use that. Never put a name like "band two legs calf raise - (band under both legs) version 2" in front of somebody when "bodyweight calf raise" is also there.
-
-AND NEVER USE A NAME THAT IS NOT IN THE LIST ABOVE JUST BECAUSE IT LOOKS SIMILAR. A bulgarian split squat is not a split squat, a sissy squat is not a bodyweight squat, and a reverse plank leg raise is not a plank. A confidently wrong demonstration is worse than none, because somebody will copy what they see.
+${MOVEMENT_LIBRARY_PROMPT}
 
 MOVEMENTS THAT HAVE A DRAWN DEMONSTRATION. These are drawn, in the app, and shown on the movement's own card - a start position and a finish position, with the whole progression available from it.
 
@@ -1744,9 +1744,9 @@ WHEN TWO MOVEMENTS WOULD SERVE THE REQUEST ABOUT EQUALLY WELL, PICK THE ONE ON T
 
 IT IS A TIE-BREAK AND NOTHING MORE. Never build a plan around what happens to be drawn, never leave out the movement somebody actually needs because there is no picture of it, and never mention this list or explain why a movement was chosen. A plan made of the seven handstand stages because they are the seven we drew would be a worse plan than the right movements with no pictures. Most of the library is not drawn yet, so a plan with nothing from this list is a perfectly ordinary plan.
 
-AND NEVER SAY WHAT YOU CANNOT SEE ABOUT IT. Both lists above are settled, not a guess, exactly like the [video] marks on their saved plans. You can see the whole library of films and drawings right now, before anything is saved. NEVER tell anybody you cannot see what has a demonstration, and never tell them you can only tell once a plan is saved - that was true once and it is not true now.
+AND NEVER SAY WHAT YOU CANNOT SEE ABOUT IT. What the tool returns is settled, not a guess, exactly like the [video] marks on their saved plans. You can find out what has a film or a drawing right now, before anything is saved, by calling the tool - so find out rather than hedging. NEVER tell anybody you cannot see what has a demonstration, and never tell them you can only tell once a plan is saved - that was true once and it is not true now.
 
-HOW TO BUILD A PLAN, IN ORDER. Look at both lists above FIRST and choose the movements that will actually get this person to the goal they asked for. Only when nothing in either list will do that job do you write a movement that is not on them - and then you write it fully, with its how-to steps, exactly as you would any other.
+HOW TO BUILD A PLAN, IN ORDER. Decide FIRST what movements will actually get this person to the goal they asked for. Then call the tool with those movements to find out what the library calls them, and use its names. A movement the library does not have is written fully, with its how-to steps, exactly as you would any other - the right movement with no picture beats the wrong movement with one.
 
 A WRITTEN MOVEMENT IS NOT A GAP IN THEIR PLAN. It is one of the three ways this app teaches a movement: a film, a drawing, or written instructions. All three are real and the plan is complete either way. NEVER tell somebody a movement is missing, unavailable, not covered, not in the library, or that you do not have it - because you do have it, and saying otherwise makes a finished plan sound broken.
 
@@ -2585,7 +2585,16 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
         : turnRestPrompt,
     },
   ];
-  const firstTools: Anthropic.Messages.Tool[] = [{ ...tool, cache_control: { type: 'ephemeral' } }];
+  // TWO TOOLS NOW: one that ANSWERS and one that DECIDES.
+  //
+  // find_movements replaced 27,573 characters of movement names in the prompt -
+  // see lib/movement-tool.ts. It is listed first and the decision tool carries
+  // the cache breakpoint, so the whole static tools block still caches as one
+  // prefix and the order never varies.
+  const firstTools: Anthropic.Messages.Tool[] = [
+    findMovementsTool,
+    { ...tool, cache_control: { type: 'ephemeral' } },
+  ];
 
   // THE FOURTH BREAKPOINT, AND IT IS FREE (Ruth, 15 October 2026: "latency next").
   //
@@ -2676,7 +2685,14 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       system: firstSystem,
       messages,
       tools: firstTools,
-      tool_choice: leadMode ? { type: 'auto' } : { type: 'tool', name: CLASSIFY_TOOL_NAME },
+      // ANY, NOT THE DECISION TOOL BY NAME (21 October 2026). Forcing
+      // classify_and_reply made find_movements unreachable: the model has to be
+      // allowed to choose which tool it calls in order to be able to look
+      // anything up. 'any' keeps the guarantee that actually mattered - it can
+      // never answer in plain text and skip the safety classification - and the
+      // loop below runs until it has decided, forcing the decision tool by name
+      // on the last attempt so the turn always ends in one.
+      tool_choice: leadMode ? { type: 'auto' } : { type: 'any' },
       // The same effort as the reply step, so the cache it reuses survives.
       ...(leadMode ? { output_config: { effort: LEAD_EFFORT } } : {}),
     }, {
@@ -2702,6 +2718,95 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   }
 
   timing.mark('modelAnswered');
+
+  // ANSWERING A LOOK-UP, THEN LETTING THE TURN FINISH.
+  //
+  // The movement library left the prompt on 21 October 2026 and became a tool -
+  // see lib/movement-tool.ts for why, and lib/movement-search.ts for what the
+  // measurement was. A tool the model can call is a tool somebody has to
+  // answer, which is this.
+  //
+  // IT COSTS A ROUND TRIP, AND ONLY ON THE TURNS THAT ASK. An ordinary message
+  // - a meal, a mood, a question - never calls it and runs exactly as before,
+  // one call. A turn that is building a workout spends a second call to learn
+  // what the library really holds, against 7,659 tokens saved on every turn of
+  // every kind. Latency is hers to mind, so this is written down rather than
+  // buried: plan turns get slower, everything else gets cheaper.
+  //
+  // CAPPED, AND THE LAST ATTEMPT IS FORCED. Two searches is more than a session
+  // needs. After that the decision tool is demanded by name, so a model that
+  // would happily keep browsing cannot leave the turn without a classification
+  // - which is the guarantee the old forced tool_choice gave for free.
+  const MAX_SEARCHES = 2;
+  for (let searched = 0; searched < MAX_SEARCHES; searched += 1) {
+    const asked = response.content.find(
+      (b): b is Anthropic.Messages.ToolUseBlock =>
+        b.type === 'tool_use' && b.name === FIND_MOVEMENTS_TOOL_NAME
+    );
+    if (!asked) break;
+
+    // Each leg of the turn is its own billable call, so each one is recorded.
+    // Without this a plan turn would report the cost of its last leg only.
+    recordModelUsage({ userId, turnId, call: 'classify', model: firstModel, usage: response.usage });
+
+    const input = (asked.input ?? {}) as { lookingFor?: unknown; bodyArea?: unknown };
+    const phrases = Array.isArray(input.lookingFor)
+      ? input.lookingFor.map((x) => String(x)).filter((x) => x.trim()).slice(0, MAX_LOOKING_FOR)
+      : [];
+    const library = await movementLibrary(supabase);
+    const found = searchMovements(library, phrases);
+    const browsed =
+      typeof input.bodyArea === 'string' && input.bodyArea.trim()
+        ? byMuscleGroup(library, input.bodyArea)
+        : [];
+    const answer =
+      [
+        formatResults(found),
+        browsed.length > 0
+          ? `\nEverything filmed under ${input.bodyArea}: ${browsed.map((h) => h.name).join('; ')}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+        // A LIBRARY THAT COULD NOT BE READ SAYS SO, rather than coming back
+        // empty and reading as "we have none of these". The plan is still built;
+        // it simply arrives without demonstrations.
+        || 'The movement library could not be read just now. Build the plan on what they need and name the movements plainly.';
+
+    console.log('MOVEMENT LOOKUP:', JSON.stringify({ phrases, hits: found.map((f) => f.hits.length) }));
+
+    messages.push({ role: 'assistant', content: response.content });
+    messages.push({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: asked.id, content: answer }],
+    });
+
+    const lastAttempt = searched === MAX_SEARCHES - 1;
+    try {
+      response = await anthropic.messages.create(
+        {
+          model: firstModel,
+          max_tokens: leadMode ? LEAD_FIRST_MAX_TOKENS : 2000,
+          system: firstSystem,
+          messages,
+          tools: firstTools,
+          tool_choice: lastAttempt
+            ? { type: 'tool', name: CLASSIFY_TOOL_NAME }
+            : leadMode
+              ? { type: 'auto' }
+              : { type: 'any' },
+          ...(leadMode ? { output_config: { effort: LEAD_EFFORT } } : {}),
+        },
+        { signal: request.signal }
+      );
+    } catch (err) {
+      if (request.signal?.aborted || (err as { name?: string })?.name === 'AbortError') {
+        return NextResponse.json({ error: 'Abandoned' }, { status: 499 });
+      }
+      console.log('ANTHROPIC API ERROR (movement lookup):', err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+    }
+  }
 
   // WHETHER THE CACHE ACTUALLY HIT, rather than whether we asked it to. The
   // first attempt at caching on this route put the breakpoint after a prompt
