@@ -49,12 +49,37 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 
 /** The real matcher, the one the app uses when it saves a plan. */
 async function resolve(names) {
+  return resolveWith('resolve_movement_refs', names);
+}
+
+/**
+ * AND THE DRAWINGS, WHICH THIS SCRIPT USED NOT TO ASK ABOUT (21 October 2026).
+ *
+ * It asked resolve_movement_refs only, so its first list - "already prescribed
+ * with no demonstration" - counted every movement with no CLIP, including the
+ * twenty-one Selodía has already drawn. "Wall-supported middle split slide"
+ * sat at the top of the draw list with its drawing in the library.
+ *
+ * That is the one fault here that costs money. This list is what decides what
+ * gets drawn next, at about 36p a drawing and a one-year image budget, so a
+ * name on it that is already drawn is paid for twice and lands as a second
+ * picture of the same movement.
+ *
+ * A DRAWING IS A DEMONSTRATION. Worse than a clip, which is why the card
+ * prefers the clip and why this script still reports the clip gap - but it is
+ * not nothing, and the person holding the plan is not being handed words.
+ */
+async function resolveDrawings(names) {
+  return resolveWith('resolve_illustration_refs', names);
+}
+
+async function resolveWith(fn, names) {
   const found = new Map();
   for (let i = 0; i < names.length; i += 60) {
     const batch = names.slice(i, i + 60);
-    const { data, error } = await supabase.rpc('resolve_movement_refs', { names: batch });
+    const { data, error } = await supabase.rpc(fn, { names: batch });
     if (error) throw new Error(error.message);
-    for (const row of data ?? []) found.set(row.input_name, row.join_key);
+    for (const row of data ?? []) if (row.join_key) found.set(row.input_name, row.join_key);
   }
   return found;
 }
@@ -77,20 +102,29 @@ for (const row of planRows ?? []) {
     prescribed.set(name, seen);
   }
 }
-const realGaps = [...prescribed.entries()]
+const noClip = [...prescribed.entries()]
   .filter(([, v]) => !v.hasClip)
   .sort((a, b) => b[1].count - a[1].count);
+// Split by whether we drew it. Both halves are reported: the first is work,
+// the second is the library doing its job and must not be re-commissioned.
+const prescribedDrawings = await resolveDrawings(noClip.map(([n]) => n));
+const realGaps = noClip.filter(([n]) => !prescribedDrawings.has(n));
+const coveredByDrawing = noClip.filter(([n]) => prescribedDrawings.has(n));
 
 // ---- 2. The vocabulary ---------------------------------------------------
 const all = Object.values(VOCABULARY).flat();
 const resolved = await resolve(all);
+// The same question of the drawings, for the same reason: a vocabulary entry we
+// have already drawn is not a thing to draw.
+const drawn = await resolveDrawings(all);
 const missingByGroup = {};
 let covered = 0;
 for (const [group, names] of Object.entries(VOCABULARY)) {
-  const missing = names.filter((n) => !resolved.get(n));
+  const missing = names.filter((n) => !resolved.get(n) && !drawn.has(n));
   covered += names.length - missing.length;
   missingByGroup[group] = missing;
 }
+const drawnNotFilmed = all.filter((n) => !resolved.get(n) && drawn.has(n));
 
 // ---- 3. MISSING, OR MERELY NAMED DIFFERENTLY? ----------------------------
 //
@@ -151,6 +185,18 @@ if (process.argv.includes('--brief')) {
   console.log('  (these have reached somebody already, so they come first)\n');
   for (const [name, v] of realGaps) {
     console.log(`    ${String(v.count).padStart(2)}x  ${name}`);
+  }
+  if (coveredByDrawing.length > 0) {
+    // NOT WORK, AND NAMED SO NOBODY PAYS TO DRAW IT TWICE. These reached
+    // somebody with no clip, which is why they used to be counted above - but
+    // a drawing went out with them, so they did not arrive as words.
+    console.log('');
+    console.log('  AND THESE HAVE NO CLIP BUT ARE ALREADY DRAWN: ' + coveredByDrawing.length);
+    console.log('  (they arrive as a picture. Here so they are not commissioned again.)');
+    console.log('');
+    for (const [name, v] of coveredByDrawing) {
+      console.log(`    ${String(v.count).padStart(2)}x  ${name}  ->  ${prescribedDrawings.get(name)}`);
+    }
   }
 
   console.log(`\n  THE VOCABULARY: ${covered} of ${all.length} covered, ${all.length - covered} missing\n`);
