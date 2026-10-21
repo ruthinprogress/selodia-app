@@ -39,7 +39,11 @@ const CLOCK_HOUR = `(?:\\d{1,2}|${Object.keys(WORD_NUMBERS).join('|')})`;
 
 function readClock(raw: string): number | null {
   const t = raw.trim().toLowerCase();
-  const m = new RegExp(`^(?:(half)\\s+(?:past\\s+)?)?(${CLOCK_HOUR})(?::(\\d{2}))?\\s*(am|pm)?$`).exec(t);
+  // A DOT IS A COLON HERE. "up at 5.30" is how it is typed at least as often as
+  // "5:30", and this read the colon only - so the time was found by the search
+  // and then thrown away by the parse, which looks exactly like the sentence
+  // having no time in it.
+  const m = new RegExp(`^(?:(half)\\s+(?:past\\s+)?)?(${CLOCK_HOUR})(?:[:.](\\d{2}))?\\s*(am|pm)?$`).exec(t);
   if (!m) return null;
   // The hour is spoken as often as it is written: "half eleven till half six".
   const hourValue = /^\d+$/.test(m[2]) ? Number(m[2]) : WORD_NUMBERS[m[2]];
@@ -61,21 +65,81 @@ function asTime(mins: number): string {
 }
 
 /** Bed and wake times, when both are given. Handles the crossing of midnight. */
+//
+// REWRITTEN 21 OCTOBER 2026, because it could not read the plainest sentence
+// anybody says about sleep. Ruth tried twice from chat and was told both times
+// that nothing had been saved:
+//
+//   "bed at 10, woken at 5 or 6 by Felix, then into his bed until 7 or 8"
+//
+// and the app then offered to try one night on its own, which failed too. On a
+// bench of ten ordinary phrasings, SEVEN returned nothing - including "I went
+// to bed at 10 and woke at 6", which is the sentence this feature exists for.
+//
+// WHY IT FAILED, and it is worth naming because it is the kind of fault that
+// looks like bad luck and is not. It matched one shape: "X to Y", or the exact
+// string "bed at X" followed by at most eight NON-LETTER characters and then
+// one of three wake words. So "and" between them broke it, because "and" is
+// made of letters. And "woken" was not one of the three wake words - only
+// "woke", "got up" and "was awake".
+//
+// SO THE TWO TIMES ARE READ INDEPENDENTLY NOW. Whatever words sit between them
+// are somebody's night, not a delimiter: a child's name, a second bed, a reason.
+// The range form is still tried first, because "10 till 6" names both at once.
+function readBedWord(text: string): RegExpMatchArray | null {
+  const clock = `(?:half\\s+(?:past\\s+)?)?${CLOCK_HOUR}(?:[:.]\\d{2})?\\s*(?:am|pm)?`;
+  // "went to bed at 10", "bed 10pm", "lights out at half ten", "asleep by 11".
+  return new RegExp(
+    `\\b(?:went to bed|in bed|to bed|bed|turned in|lights out|asleep|fell asleep)\\s*(?:at|around|about|by|from)?\\s*(${clock})`
+  ).exec(text);
+}
+
+function readWakeWords(text: string): string[] {
+  const clock = `(?:half\\s+(?:past\\s+)?)?${CLOCK_HOUR}(?:[:.]\\d{2})?\\s*(?:am|pm)?`;
+  // EVERY WAKING IN THE SENTENCE, in order. Her night had two - woken at five,
+  // then up for the day at seven - and the one that ends the night is the last.
+  //
+  // NOT A COUNT OF WAKINGS. "woke 3 times" is three wakings, not three o'clock,
+  // and readAwakenings owns that sentence - so a number followed by "times" or
+  // "x" is refused here.
+  const re = new RegExp(
+    `\\b(?:woke|woken|awoke|awake|got up|up|until|till|til)\\s*(?:up)?\\s*(?:at|around|about)?\\s*(${clock})(?!\\s*(?:times?|x\\b))`,
+    'g'
+  );
+  const found: string[] = [];
+  for (const m of text.matchAll(re)) found.push(m[1]);
+  return found;
+}
+
 function readWindow(text: string): { bed: number; wake: number } | null {
-  const clock = `(?:half\\s+(?:past\\s+)?)?${CLOCK_HOUR}(?::\\d{2})?\\s*(?:am|pm)?`;
-  const m =
-    new RegExp(`\\b(?:from\\s+)?(${clock})\\s*(?:till|til|until|to|-|–)\\s*(${clock})`).exec(text) ??
-    new RegExp(
-      `\\bbed at\\s+(${clock})[^a-z0-9]{0,8}(?:i\\s+)?(?:woke|got up|was awake)(?:\\s*(?:up|at|around))*\\s+(${clock})`
-    ).exec(text);
-  if (!m) return null;
-  let bed = readClock(m[1]);
-  let wake = readClock(m[2]);
+  const clock = `(?:half\\s+(?:past\\s+)?)?${CLOCK_HOUR}(?:[:.]\\d{2})?\\s*(?:am|pm)?`;
+  // The range form names both at once and is unambiguous, so it wins.
+  const range = new RegExp(
+    `\\b(?:from\\s+)?(${clock})\\s*(?:till|til|until|to|-|–)\\s*(${clock})`
+  ).exec(text);
+
+  let bedRaw: string | null = null;
+  let wakeRaw: string | null = null;
+  if (range) {
+    bedRaw = range[1];
+    wakeRaw = range[2];
+  } else {
+    const bed = readBedWord(text);
+    const wakes = readWakeWords(text);
+    if (!bed || wakes.length === 0) return null;
+    bedRaw = bed[1];
+    // THE LAST ONE, because that is when the night ended. A waking in the
+    // middle is a waking, not a morning, and readAwakenings counts those.
+    wakeRaw = wakes[wakes.length - 1];
+  }
+
+  let bed = readClock(bedRaw);
+  let wake = readClock(wakeRaw);
   if (bed == null || wake == null) return null;
   // An unsuffixed evening hour between 6 and 11 is pm; an unsuffixed waking
   // hour under 12 is am. Both are how the sentence would be read aloud.
-  if (!/am|pm/.test(m[1]) && bed >= 6 * 60 && bed < 12 * 60) bed += 12 * 60;
-  if (!/am|pm/.test(m[2]) && wake >= 12 * 60) wake -= 12 * 60;
+  if (!/am|pm/.test(bedRaw) && bed >= 6 * 60 && bed < 12 * 60) bed += 12 * 60;
+  if (!/am|pm/.test(wakeRaw) && wake >= 12 * 60) wake -= 12 * 60;
   return { bed, wake };
 }
 
