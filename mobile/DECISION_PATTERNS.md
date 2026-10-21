@@ -833,3 +833,109 @@ reads.** And the corollary, learned the same evening from the one that reported
 itself: a mutation test is the only thing that catches a check which has stopped
 testing anything, so a check worth writing is worth proving can fail — every
 time it is touched, not only the day it is written.
+
+## A search can be confidently wrong where a list was only long
+
+21 October 2026. The chat prompt carried every one of 950 filmed movement names
+on every turn — 27,573 characters, about a fifth of the month's model bill, sent
+whether the turn was about building a workout or about a period starting. Ruth
+chose the fix herself: "make it a tool - i'm assuming this means it's like a
+database it can go to when needed."
+
+The list had one virtue that is easy to miss until it is gone: **it was true.**
+Long, wasteful, read in full every turn, and never wrong about what the library
+held. A search is not like that. Measured on the real library the first version
+returned "3 leg dog pose" for *bird dog* and a column of hip thrusts for *hip
+hinge* — each on the strength of a single shared word, each a confidently wrong
+demonstration of the kind this project calls its worst available outcome,
+because somebody then copies what they see.
+
+The fix was to set the bar by **which error is cheap**. A miss costs a picture:
+the prompt has always said a plan with no demonstration is a perfectly ordinary
+plan, and the tool now says so again in its own answer. A wrong hit costs
+somebody's form. So the rule is every word, or a clear majority of them, and a
+phrase that finds nothing says NOTHING FILMED out loud rather than returning an
+empty list to be skimmed past.
+
+**The pattern: when replacing a dumb complete thing with a clever partial one,
+find the error the new thing can make that the old one could not, and price the
+two errors against each other before tuning anything.** The saving is not the
+hard part; it was arithmetic. What the saving costs is the part nobody measures.
+
+## Delete the stale sentence; do not update it
+
+Same change, and it nearly undid the whole thing. The prompt said "You can see
+the whole library of films and drawings right now, before anything is saved" —
+true on the Monday, false on the Tuesday, and sitting four paragraphs from the
+new instruction telling the model to look things up.
+
+At this prompt's size a correction does not replace what it corrects, it
+**argues** with it, and the older, more emphatic sentence usually wins. That is
+already written down here; what this session adds is the shape it takes when a
+*capability* changes rather than a rule. Nobody writes a contradiction on
+purpose. It arrives as a sentence that was accurate when written, describing an
+arrangement that no longer exists, and it reads as confident because it was.
+
+**So when a change alters what the model can SEE, grep the prompt for every
+sentence that describes the old arrangement and delete it — before writing the
+new one.** A sentence that has become false is not improved by a sentence that
+is true.
+
+## Decide the mode from the data, never from the caller
+
+The cycle day screen became three screens in one — a record, a form, and the
+stop after saving. The obvious wiring is a parameter: the month list opens it
+for reading, "Anything to note today?" opens it for writing.
+
+It is decided by the day instead. A day with something on it opens as a record,
+because that is what somebody came to read; an empty day opens as the form,
+because an empty record is a screen saying "nothing" with a button underneath.
+
+Both routes then get the right thing without either of them knowing the rule,
+which is the point. **A parameter is a promise every caller has to keep, and the
+one that forgets is the one nobody tests.** When the data already implies the
+answer, read it from the data — then adding a fourth door costs nothing and
+cannot get it wrong.
+
+## The third time, the class needs a name
+
+Food duplication, found for the third time. 18 September: grammar words made one
+dinner into nine rows. 12 October: a day label made one dessert into two.
+21 October: "for lunch" made one sandwich into two.
+
+Every one is the same shape — a word that describes nothing anybody ate, sitting
+in the comparison, splitting one plate in half — and every one was fixed by
+adding that word to a list and moving on. Three sets now: FUNCTION_WORDS,
+DAY_WORDS, MEAL_WORDS.
+
+The honest reading is that the first fix solved an instance and named it as
+though it were the class. "Grammar is not food" was right and too small; the
+class is **anything a person says around their food that is not food**, and
+meals, days and talk about the log are all of it.
+
+**When the same bug returns in new clothing, the previous fix did not fail — its
+NAME was too narrow, and the name is what decides whether the next instance is
+anticipated or discovered.** Worth asking at the second occurrence, not the
+third: what is the general thing of which this is an example, and what else is
+already an example of it?
+
+## Offer the way out where the problem is named
+
+"1 session is not counted here yet, because it could not be placed on these six"
+shipped with nothing to tap. Her note: "It needs a link for user to resolve
+this. Its not clear."
+
+The sentence was honest and that was the trouble. It told her the drawing was
+under-reporting and handed her no way to stop it, which leaves somebody worse
+off than silence would: now she knows the number is wrong and can do nothing.
+
+The same shape turned up twice more the same day. A cycle whose row said "End
+not logged" could only be closed from an action offering the last fourteen days
+from *today*, so a September period was unclosable in October — the app naming a
+gap in her record and refusing to let her fill it. And a test cycle she wanted
+gone had no delete anywhere.
+
+**A sentence admitting a gap carries an obligation to offer the way out of it,
+in the same place, at the same moment.** Honesty without a remedy is not a
+smaller version of the fix; on a screen about trusting your own record it is
+worse than saying nothing.

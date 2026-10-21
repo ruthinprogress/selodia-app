@@ -1072,3 +1072,36 @@ lifting just got funded to solve the problem Selodía is built on. I emailed the
 the same evening.
 
 The gap is real, and now it's fundable.
+
+## 21 October 2026 — My app could not hear the most ordinary sentence anyone says about sleep
+
+I tried to log my sleep from chat last night. It did not save. I tried again
+with just one night on its own. That did not save either. The app told me so,
+which I was glad about, but my sleep log was still empty.
+
+What I had typed was this. Bed at 10, woken at 5 or 6 by my son, then into his
+bed until 7 or 8. That is a normal night in this house.
+
+The reason it failed is small and a bit funny. The code was looking for the word
+bed, then a time, then one of three words for waking up. Between them it allowed
+punctuation and spaces and nothing else. So the word and broke it. And is made of
+letters.
+
+It also did not know the word woken. It knew woke, got up and was awake. Not
+woken.
+
+We tested ten normal ways of saying how you slept. Seven of them saved nothing.
+One of those was I went to bed at 10 and woke at 6, which is the exact sentence
+the whole feature exists for.
+
+Here is the part I keep thinking about. Nothing had ever tested this. Not once.
+It had been broken for about a month and the only way anyone would find out is
+by being a real person, typing a real sentence, on a real night with a child in
+the bed. That is me. For now I am the only one.
+
+Every app has this. The demo works because the person doing the demo types the
+sentence the code was written for. Then someone tired types what actually
+happened and nothing lands.
+
+It is fixed. There are eight tests on it now. They fail against yesterday's
+version, which is the only way to know a test is doing anything at all.
