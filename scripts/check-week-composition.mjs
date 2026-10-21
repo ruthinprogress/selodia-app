@@ -320,6 +320,39 @@ check('AND ANYTIME HAS A WAY IN', () => {
   return 'a "+", and somewhere for it to put things';
 });
 
+check('THE ANYTIME LANDING AREA IS BIGGER THAN THE ROW', () => {
+  // Ruth, 21 October 2026: "the drop in card function is not working, perhaps
+  // the landing area is too small. can you fix it without moving the ui
+  // design?" She had it exactly right.
+  //
+  // THIS IS THE THIRD TIME ANYTIME HAS BEEN HARD TO DROP ON. 18 October: "When
+  // it was empty, cards were not able to enter Anytime", fixed by making it 88
+  // tall. 21 October: it became a 44-point row to line up with the days, and
+  // the drop broke again - because the hit test is a point-in-rectangle
+  // against the FINGER, which is underneath the card being carried.
+  //
+  // WHY 44 IS ENOUGH FOR A DAY AND NOT FOR THIS. The seven days are one
+  // contiguous band, so a near miss lands on the day above or below. Anytime
+  // sits alone with space above and the button below, so a near miss hits
+  // nothing. Same height, completely different odds - which is why this is
+  // checked as a RELATIONSHIP to the drawn row rather than as a minimum.
+  const hit = style('anytimeHit');
+  const pad = number(hit, 'paddingVertical');
+  const pull = number(hit, 'marginVertical');
+  assert.ok(pad > 0, 'the Anytime landing area is no bigger than the row it draws');
+  // AND THE LAYOUT MUST NOT MOVE, which is the half she asked for by name.
+  // The padding that grows the measured box and the margin that takes the
+  // room back are the same number, or the row shifts.
+  assert.strictEqual(pad, -pull, `the hit area adds ${pad} and takes back ${-pull}, so the row moves`);
+  // THE REF IS ON THE MEASURED BOX. Padding a wrapper nothing measures would
+  // look like a fix and do nothing at all.
+  assert.ok(
+    /zoneRefs\.current\[ANYTIME\] = node;[\s\S]{0,200}styles\.anytimeHit/.test(raw),
+    'the drop zone is measured on the drawn row again, not on the padded wrapper'
+  );
+  return `${pad} either side, and the margin gives it back`;
+});
+
 check('AND THE PLANS TITLE STARTS BELOW THE MORE BAR, NOT INSIDE IT', () => {
   // Ruth, 21 October 2026: "Plans title is too close to the bug and More bar,
   // it looks squashed."

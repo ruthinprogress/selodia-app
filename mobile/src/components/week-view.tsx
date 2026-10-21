@@ -790,11 +790,40 @@ export function WeekView({
           down from sectionTitle - which is the size the Plans segments use - to
           the same small uppercase label the goal block uses. Same family, less
           weight, and it stops competing with the seven days above it. */}
+      {/* THE LANDING AREA IS BIGGER THAN THE ROW, and nothing drawn moves
+          (Ruth, 21 October 2026): "the drop in card function is not working,
+          perhaps the landing area is too small. can you fix it without moving
+          the ui design?"
+
+          SHE DIAGNOSED IT CORRECTLY. Anytime became a 44-point row yesterday
+          to line up with the days, down from the 88 it was given on 18 October
+          for exactly this reason - and the hit test is a point-in-rectangle
+          against the FINGER, which is under the card she is carrying and
+          cannot see what it is over.
+
+          WHY 44 IS ENOUGH FOR A DAY AND NOT FOR THIS. The seven days are a
+          contiguous band: a near miss lands on the day above or below, so
+          every drop inside the week hits something. Anytime sits alone with
+          space above it and the button below, so a near miss hits nothing at
+          all and the card flies home. Same height, completely different odds.
+
+          SO THE MEASURED BOX IS PADDED AND THE MARGIN TAKES IT BACK. The
+          wrapper is 32 points taller than what is drawn and occupies exactly
+          the same room, because the padding it adds and the margin it removes
+          are the same number. The ref moves here, since the measured view is
+          the one that has to be generous.
+
+          IT CANNOT STEAL FROM A DAY. The extra reach is in the empty space
+          above the row and below it, where no other zone is - and the hit test
+          takes the first match in insertion order, which is Monday to Sunday
+          before Anytime, so an overlap would resolve to the day in any case. */}
       <View
         ref={(node) => {
           zoneRefs.current[ANYTIME] = node;
         }}
         collapsable={false}
+        style={styles.anytimeHit}>
+      <View
         // STILL A DROP TARGET, NEVER A HIGHLIGHT. Ruth: "Dropping into
         // Anytime: don't highlight the Anytime section. Only the card itself
         // shows it's being moved." The block is two columns deep, and tinting
@@ -886,6 +915,7 @@ export function WeekView({
           style={({ pressed }) => [styles.addDay, pressed && styles.pressedStrong]}>
           <Ionicons name="add" size={16} color={theme.textSecondary} />
         </Pressable>
+      </View>
       </View>
 
       {/* ---- walking ---- */}
@@ -1666,6 +1696,15 @@ const styles = StyleSheet.create({
   // The whole block is the drop target, not each card, so "back to Anytime"
   // does not require her to hit a gap between two cards. The border is
   // transparent until she is over it, so nothing is drawn at rest.
+  // THE BOX THAT IS MEASURED, not the box that is drawn. See where it is used
+  // for why it is bigger than the row inside it.
+  //
+  // THE TWO NUMBERS ARE THE SAME NUMBER, so the wrapper takes up exactly the
+  // room the row would have on its own: sixteen points of padding on each
+  // side, sixteen taken back by the margin. If anybody changes one of these,
+  // change the other, or the layout moves - which is the one thing she asked
+  // this fix not to do.
+  anytimeHit: { paddingVertical: Spacing.three, marginVertical: -Spacing.three },
   anytimeZone: {
     // EIGHT FROM SUNDAY'S RULE, down from thirty-eight (Ruth, 21 October
     // 2026): "Anytime text still needs to be higher." One notch of separation
