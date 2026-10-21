@@ -2130,7 +2130,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
     calendarRemindMinutesBefore: {
       type: 'number',
       description:
-        "With calendarAction 'add', only if they asked to be reminded AND the thing has a time: 60 for \"remind me an hour before\", 1440 for \"the day before\". Omit if they did not ask. Do not offer a number they did not name.",
+        "With calendarAction 'add', whenever they asked to be REMINDED and the thing has a time. The number is how long BEFORE: 60 for \"remind me an hour before\", 1440 for \"the day before\". IF THEY ASKED TO BE REMINDED AND NAMED NO LEAD TIME, SET 0, which reminds them at the time itself - do not omit it. Omitting it means no reminder is set at all, so \"remind me to ring the GP on the 27th at 9\" becomes a silent line in their diary and nothing ever arrives. Only omit it when they did not ask to be reminded at all. Never invent a lead time they did not name.",
     },
     draftRequest: {
       type: 'string',

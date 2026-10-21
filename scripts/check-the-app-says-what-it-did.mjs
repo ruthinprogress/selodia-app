@@ -262,5 +262,35 @@ check('AND THE SAME ENTRY CANNOT BE WRITTEN TWICE', () => {
   return 'refused at the write, and said as neither';
 });
 
+check('AND A "REMIND ME" ACTUALLY SETS A REMINDER', () => {
+  // Ruth, 21 October 2026: "Calendar reminder not working from chat request."
+  //
+  // remind_at is set only when calendarRemindMinutesBefore arrives, and the
+  // field told the model "Omit if they did not ask. Do not offer a number they
+  // did not name." The second sentence is right about the LEAD TIME and was
+  // read as "no reminder at all" - so "remind me to ring the GP on the 27th at
+  // 9" became a silent line in her diary and nothing ever arrived.
+  //
+  // ZERO IS A VALID ANSWER AND ALWAYS WAS: checkCalendarEvent treats any
+  // finite number as wanting a reminder and Math.max(0, ...) keeps it. The
+  // field simply never said so.
+  const at = raw.indexOf('calendarRemindMinutesBefore');
+  assert.ok(at > -1, 'the reminder field is gone - this check is testing nothing');
+  const field = raw.slice(at, at + 1400);
+  assert.ok(/SET 0/.test(field), 'the model is not told what to send when no lead time was named');
+  assert.ok(
+    !/Omit if they did not ask\. Do not offer a number they did not name\./.test(field),
+    'the field tells the model to omit the reminder again'
+  );
+  // AND THE GUARD BEHIND IT STILL ACCEPTS ZERO, or the wording above is a lie.
+  const cal = fs.readFileSync('app/lib/calendar-event.ts', 'utf8');
+  assert.ok(
+    /Number\.isFinite\(input\.remindMinutesBefore\)/.test(cal),
+    'the check no longer treats any finite number as wanting a reminder'
+  );
+  assert.ok(/Math\.max\(0,/.test(cal), 'a zero lead time is no longer kept');
+  return 'zero means at the time, not no reminder';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
