@@ -108,14 +108,15 @@ const RULES = [
     () => MISSED_SESSION === null,
   ],
   [
-    'the planned-day line appears only in Guide me',
+    // THE TWO MODES WENT ON 21 OCTOBER 2026. This asserted that the line
+    // appeared ONLY for somebody who had chosen "Guide me" - a question taken
+    // out of onboarding weeks before, so the stored value was null for
+    // everybody and the line had quietly stopped appearing for anybody at all.
+    // Everyone has a Week, so everyone is told what is on it today.
+    'the planned-day line does not ask which mode she is in',
     () => {
       const rows = [{ activity: 'Gym', days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] }];
-      return (
-        plannedTodayLine(rows, 'guide_me') !== null &&
-        plannedTodayLine(rows, 'let_me_lead') === null &&
-        plannedTodayLine(rows, null) === null
-      );
+      return plannedTodayLine(rows) !== null && plannedTodayLine([]) === null;
     },
   ],
   [
@@ -125,9 +126,8 @@ const RULES = [
       const monday = new Date('2026-09-28T09:00:00');
       const rows = [{ activity: 'Gym', days: ['sun'] }];
       return (
-        plannedTodayLine(rows, 'guide_me', monday) === null &&
-        plannedTodayLine([{ activity: 'Gym', days: ['mon'] }], 'guide_me', monday) ===
-          'On the plan: gym'
+        plannedTodayLine(rows, monday) === null &&
+        plannedTodayLine([{ activity: 'Gym', days: ['mon'] }], monday) === 'On the plan: gym'
       );
     },
   ],

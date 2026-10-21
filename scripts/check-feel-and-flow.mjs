@@ -332,22 +332,29 @@ await check('a look-back with no feel goals says nothing', () => {
 
 // ----------------------------------------------------------------- the nudge
 
-await check('the nudge is gated on Guide me, and the tap is always there', () => {
+await check('there is no nudge, and the tap is always there', () => {
+  // THE NUDGE WENT WITH THE TWO MODES, 21 October 2026. It was shown only to
+  // somebody who had chosen "Guide me", and that question had been taken out
+  // of onboarding weeks before - so the stored value was null for everybody
+  // and the line had already stopped appearing for anybody at all.
+  //
+  // The note it carried called never-nudging "the quiet default and the right
+  // way round", which is also what this app says about itself everywhere else:
+  // it observes, it does not tell somebody what they should get round to. So
+  // the behaviour everyone already had is kept and the branch nobody could
+  // reach is gone.
   const block = read('mobile/src/components/goals-block.tsx');
+  assert.ok(!/guidance/.test(block), 'the look-back is gated on a mode again');
   assert.ok(
-    /guidance === 'guide_me' && dueForLookback/.test(block),
-    'the nudge is not gated on Guide me'
+    !/It has been a while\. Worth a look back/.test(block),
+    'the nudge is back, and nothing decides who sees it'
   );
-  // The LINK must not be gated: her instruction is that it is always reachable by
-  // tap in Plans.
-  const linkAt = block.indexOf("router.push('/look-back')");
-  assert.ok(linkAt > 0, 'there is no tap to the look-back at all');
-  const before = block.slice(Math.max(0, linkAt - 400), linkAt);
+  // THE TAP IS THE WHOLE ROUTE NOW, so it had better be there.
   assert.ok(
-    !/guidance === 'guide_me'[^}]*$/.test(before),
-    'the look-back link itself is gated on Guide me, so Let me lead cannot reach it'
+    block.includes("router.push('/look-back')"),
+    'there is no tap to the look-back at all'
   );
-  return 'nudged only for Guide me, tappable for everyone';
+  return 'no nudge, tappable for everyone';
 });
 
 await check('an unset pace is never nudged', async () => {

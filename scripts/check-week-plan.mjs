@@ -49,24 +49,25 @@ const GROUPS = {
     const chosen = { days: ['wed'], days_chosen_at: '2026-09-29T09:00:00Z' };
     const nowhere = { days: [], days_chosen_at: null };
 
-    check('placedOnDays', 'Guide me honours the plan', () => {
-      assert.deepEqual(impl('guide_me', suggested), ['mon', 'thu']);
+    // THE TWO MODES WENT ON 21 OCTOBER 2026 and the plan is always honoured.
+    // "Guide me" had been taken out of onboarding weeks earlier and moved to a
+    // Settings screen that was never linked, so the stored value was null for
+    // everybody and the "Let me lead" branch was unreachable. Ruth: "I think
+    // maybe we scrap those two modes as a new user might not know what it
+    // means and will lose functionality before even seeing it."
+    //
+    // What is left is what everybody already had.
+    check('placedOnDays', 'a card sits on the days its plan names', () => {
+      assert.deepEqual(impl(suggested), ['mon', 'thu']);
     });
-    check('placedOnDays', 'no setting yet behaves like Guide me', () => {
-      assert.deepEqual(impl(null, suggested), ['mon', 'thu']);
+    check('placedOnDays', 'a day she chose herself is honoured the same way', () => {
+      assert.deepEqual(impl(chosen), ['wed']);
     });
-    check('placedOnDays', 'Let me lead ignores a day she did not choose', () => {
-      assert.deepEqual(impl('let_me_lead', suggested), []);
-    });
-    check('placedOnDays', 'Let me lead keeps a day she DID choose', () => {
-      assert.deepEqual(impl('let_me_lead', chosen), ['wed']);
-    });
-    check('placedOnDays', 'a plan with no days is in Anytime either way', () => {
-      assert.deepEqual(impl('guide_me', nowhere), []);
-      assert.deepEqual(impl('let_me_lead', nowhere), []);
+    check('placedOnDays', 'a plan with no days is in Anytime', () => {
+      assert.deepEqual(impl(nowhere), []);
     });
     check('placedOnDays', 'a null days column does not throw', () => {
-      assert.deepEqual(impl('guide_me', { days: null, days_chosen_at: null }), []);
+      assert.deepEqual(impl({ days: null, days_chosen_at: null }), []);
     });
   },
 

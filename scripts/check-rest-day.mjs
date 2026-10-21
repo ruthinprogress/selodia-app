@@ -80,8 +80,25 @@ check('AND IT COUNTS TOWARDS THE FLOWER', () => {
   // A tap that logs something the drawing cannot see is theatre. Rest is in
   // the weighting table at 100% recovery, and a phone-written row carried no
   // coverage at all until 21 October.
+  // FIFTEEN, NOT A HUNDRED, FROM 21 OCTOBER 2026. The app earns recovery three
+  // ways and they have to agree. recovery.ts scores a night's sleep at up to 28
+  // and an INFERRED rest day at 15, reasoned out loud: "resting is good,
+  // sleeping is better, and three rest days in a row should not out-score a
+  // week of proper nights." The weighting table said 100, reconciled with
+  // nothing - so a tapped rest day was worth nearly seven of the same rest day
+  // inferred, and two of them filled the petal on their own.
+  //
+  // CHECKED AGAINST recovery.ts RATHER THAN AGAINST 15, so the two cannot drift
+  // apart again by somebody changing one of them.
+  const recovery = read('mobile/src/lib/recovery.ts');
+  const inferred = Number(recovery.match(/REST_DAY_POINTS = (\d+)/)?.[1]);
+  assert.ok(Number.isFinite(inferred), 'REST_DAY_POINTS is gone from recovery.ts');
   const cover = coverageColumns(REST_DAY);
-  assert.strictEqual(cover.cover_recovery, 100, 'a rest day no longer reads as recovery');
+  assert.strictEqual(
+    cover.cover_recovery,
+    inferred,
+    `a tapped rest day is worth ${cover.cover_recovery} and an inferred one ${inferred}`
+  );
   for (const col of ['cover_strength', 'cover_cardio', 'cover_flexibility', 'cover_balance', 'cover_bone']) {
     assert.strictEqual(cover[col], 0, `${col} is not zero on a rest day`);
   }
@@ -117,11 +134,12 @@ check('AND THE CARD GOES QUIET WHEN THERE IS NOTHING TO SAY', () => {
     /if \(!planned && anythingLogged\) return null;/.test(codeOnly(card)),
     'the card is drawn on a day it has nothing to offer'
   );
-  // TWO DIFFERENT NOTHINGS. Somebody leading their own week has no week to be
-  // empty, so "nothing planned" describes a thing they never asked for.
-  assert.ok(/Nothing planned today/.test(card), 'the guided empty day lost its wording');
-  assert.ok(/Nothing logged yet today/.test(card), 'the unguided day is told its week is empty');
-  return 'silent when it should be, and honest in both modes';
+  // ONE NOTHING. This used to say different things depending on whether she
+  // had chosen "Guide me"; the two modes went on 21 October, everybody has a
+  // Week, and there is one true sentence.
+  assert.ok(/Nothing planned today/.test(card), 'the empty day lost its wording');
+  assert.ok(!/guided/.test(card), 'the card asks which mode she is in again');
+  return 'silent when it should be, and one true nothing';
 });
 
 check('A TAP THAT FAILED SAYS SO', () => {

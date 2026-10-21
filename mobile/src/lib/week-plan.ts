@@ -162,12 +162,21 @@ export function isWalking(activity: string): boolean {
 // Thursday for something the week shows in Anytime is the app arguing with
 // itself in front of her.
 //
-// "Guide me" honours the plan. "Let me lead" does not, until she has moved the
-// card herself - which is what days_chosen_at records.
-export function placedOnDays(
-  guidance: string | null,
-  row: { days: string[] | null; days_chosen_at: string | null }
-): string[] {
-  if (guidance === 'let_me_lead' && !row.days_chosen_at) return [];
+// THE TWO MODES ARE GONE, 21 October 2026, and the plan is always honoured.
+//
+// Ruth: "I think maybe we scrap those two modes as a new user might not know
+// what it means and will lose functionality before even seeing it. Let's
+// re-introduce it if we need to after real user data."
+//
+// IT WAS ALREADY MOSTLY GONE. `guidance` was taken out of the seven onboarding
+// questions weeks ago and moved to Settings, so nobody is asked and the stored
+// value is null for everybody who has signed up since. Counted before removing
+// it: three of four accounts had never set it, and the fourth is Ruth's own.
+//
+// So this keeps the behaviour that was already everyone's default - a card
+// sits on the days its plan names - and drops the branch that one person could
+// reach from a Settings screen nobody visits. days_chosen_at stays: it still
+// records that she moved a card herself, which the Week uses elsewhere.
+export function placedOnDays(row: { days: string[] | null }): string[] {
   return row.days ?? [];
 }

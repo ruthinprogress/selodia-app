@@ -36,7 +36,13 @@ const SPINE = [
   'activities.tsx',
   'steer-around.tsx',
   'allergies.tsx',
-  'guidance.tsx',
+  // guidance.tsx is gone, 21 October 2026. It asked somebody to choose between
+  // "Guide me" and "Let me lead" before they had seen the app, was taken out
+  // of the seven onboarding questions weeks earlier, and was then never linked
+  // from anywhere - so it sat unreachable while the branch it fed went dead.
+  // Ruth: "a new user might not know what it means and will lose functionality
+  // before even seeing it. Let's re-introduce it if we need to after real user
+  // data."
 ];
 
 // Strings a screen displays. Comments are not copy, and stripping them matters:

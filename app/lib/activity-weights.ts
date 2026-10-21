@@ -50,7 +50,7 @@ export const ACTIVITY_WEIGHTS: Record<string, Coverage> = {
   'football/team sports':    { strength: 55, cardio: 80, flexibility: 20, balance: 45, bone: 50, recovery:   0 },
   'gymnastics':              { strength: 70, cardio: 40, flexibility: 80, balance: 80, bone: 50, recovery:   0 },
   'stretching/mobility':     { strength:  5, cardio:  5, flexibility: 95, balance: 30, bone:  5, recovery:  40 },
-  'rest day (intentional)':  { strength:  0, cardio:  0, flexibility:  0, balance:  0, bone:  0, recovery: 100 },
+  'rest day (intentional)':  { strength:  0, cardio:  0, flexibility:  0, balance:  0, bone:  0, recovery:  15 },
   'gardening':               { strength: 20, cardio: 30, flexibility: 20, balance: 25, bone: 30, recovery:  25 },
   'cycling (spin class)':    { strength: 50, cardio: 95, flexibility:  5, balance:  5, bone:  5, recovery:   0 },
   'crossfit':                { strength: 85, cardio: 75, flexibility: 15, balance: 30, bone: 65, recovery:   0 },

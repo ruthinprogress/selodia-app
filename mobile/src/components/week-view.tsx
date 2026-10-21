@@ -142,7 +142,6 @@ export function WeekView({
   // costs one query, only when there is something to ask about.
   const [known, setKnown] = useState<KnownCoverage>({});
   const [steps, setSteps] = useState<number | null>(null);
-  const [guidance, setGuidance] = useState<string | null>(null);
   const [dragUsed, setDragUsed] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
@@ -244,7 +243,7 @@ export function WeekView({
         .select('id, activity, purpose, cadence, duration, time_of_day, session_entry_id, days, days_chosen_at, cadence_conflict_asked_at, remind_at, remind_offset_minutes, reminder_cancelled_at')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
-      supabase.from('user_profile').select('guidance_mode, week_drag_used_at').maybeSingle(),
+      supabase.from('user_profile').select('week_drag_used_at').maybeSingle(),
       syncTodaySteps(),
     ]);
 
@@ -256,8 +255,7 @@ export function WeekView({
       planRows.map((r) => ({ activity: r.activity, days: r.days }))
     );
     setKnown(asking.length > 0 ? await knownFromLogs(asking) : {});
-    const p = profileRes.data as { guidance_mode: string | null; week_drag_used_at: string | null } | null;
-    setGuidance(p?.guidance_mode ?? null);
+    const p = profileRes.data as { week_drag_used_at: string | null } | null;
     setDragUsed(Boolean(p?.week_drag_used_at));
     setSteps(stepCount);
     setLoaded(true);
@@ -303,7 +301,7 @@ export function WeekView({
   // throwing away her answer because of a mode would lose it.
   // THE ANSWER COMES FROM week-plan.ts, so the "Log the week" sheet cannot
   // reach a different one. See placedOnDays there.
-  const sits = (r: WeekRow) => placedOnDays(guidance, r);
+  const sits = (r: WeekRow) => placedOnDays(r);
 
   // WHAT THE PLAN WOULD COVER. Walking is left in, unlike the list below: it is
   // counted by the phone rather than logged, but it is still something she does

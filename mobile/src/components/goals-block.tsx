@@ -99,16 +99,6 @@ export function GoalsBlock() {
   const [days, setDays] = useState<{ label: string; source: string }[]>([]);
   /** Her last answer, so the section can say when she last looked. */
   const [lastLookback, setLastLookback] = useState<{ answer: string; at: string } | null>(null);
-  /**
-   * HER PACE. Ruth, item 7: "The look-back is nudged ONLY if she chose Guide me;
-   * otherwise only by tap in Plans."
-   *
-   * NULL IS NOT GUIDE ME, and that matters now that `guidance` is no longer one
-   * of the seven questions: somebody who has never been asked is never nudged,
-   * which is the quiet default and the right way round. Let me lead is also
-   * never nudged. The tap below is always there either way.
-   */
-  const [guidance, setGuidance] = useState<string | null>(null);
   // SHE HID HER GOALS AND IT DID NOT STICK. Said out loud rather than swallowed:
   // they are folded away for now, but they will be back on show next time, and
   // if she is relying on this in a public place she needs to know that. The one
@@ -132,7 +122,7 @@ export function GoalsBlock() {
           .from('user_goals')
           .select('id', { count: 'exact', head: true })
           .not('archived_at', 'is', null);
-        const [{ data: feelRows }, { data: lookRows }, { data: pace }] = await Promise.all([
+        const [{ data: feelRows }, { data: lookRows }] = await Promise.all([
           supabase
             .from('feel_goals')
             .select('label, source')
@@ -143,7 +133,6 @@ export function GoalsBlock() {
             .select('answer, created_at')
             .order('created_at', { ascending: false })
             .limit(1),
-          supabase.from('user_profile').select('guidance_mode').maybeSingle(),
         ]);
         if (cancelled) return;
         setGoals(error ? [] : ((data ?? []) as Goal[]));
@@ -153,7 +142,6 @@ export function GoalsBlock() {
         setLastLookback(
           last ? { answer: String(last.answer), at: String(last.created_at) } : null
         );
-        setGuidance((pace as { guidance_mode?: string | null } | null)?.guidance_mode ?? null);
         setCollapsed(folded);
         setLoaded(true);
       })();
@@ -307,19 +295,17 @@ export function GoalsBlock() {
               </ThemedText>
             )}
           </ThemedView>
-          {/* THE NUDGE, AND ONLY FOR GUIDE ME. Her instruction. It is one quiet
-              line above a link that is always there, never a badge, a count or a
-              reminder that something is overdue - there is no schedule to be late
-              for. Shown when she has never looked back, or when the last time was
-              a fortnight or more ago, because asking weekly about how her days
-              feel is the friction this app exists to remove. */}
-          {guidance === 'guide_me' && dueForLookback(lastLookback?.at ?? null) && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {lastLookback
-                ? 'It has been a while. Worth a look back when you have a minute.'
-                : 'Whenever you are ready, you can look back on how your days feel.'}
-            </ThemedText>
-          )}
+          {/* THE NUDGE IS GONE, 21 October 2026, with the two modes it hung on.
+              It was shown only to somebody who had chosen "Guide me", and that
+              question was taken out of onboarding weeks ago - so the stored
+              value is null for everybody and this line had already stopped
+              appearing for anybody at all.
+              The note that was here called never-nudging "the quiet default and
+              the right way round", and that is also what the app says about
+              itself everywhere else: it observes, it does not tell somebody
+              what they should get round to. So the behaviour everyone already
+              had is kept, and the branch nobody could reach has gone.
+              The tap below is unchanged and was always there either way. */}
           <Pressable
             onPress={() => router.push('/look-back')}
             accessibilityRole="link"

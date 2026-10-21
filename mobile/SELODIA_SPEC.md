@@ -798,6 +798,17 @@ Each dimension maps to one petal of the health flower. Weightings represent the 
 
 ### Weighting table
 
+**Rest day was 100% and is 15%, from 21 October 2026.** The app earns recovery
+three ways and they have to agree. `recovery.ts` scores a night's sleep at up to
+28 points and an inferred rest day — a day with nothing on it, following a hard
+day — at 15, with the reasoning written beside it: *"resting is good, sleeping is
+better, and three rest days in a row should not out-score a week of proper
+nights."* This row said 100, reconciled with nothing, so a rest day logged
+through the table was worth nearly seven of the same rest day inferred, and two
+of them filled the recovery petal on their own. Ruth, on being shown the two
+numbers: "make the tapped one 15 too."
+
+
 Weightings are evidence-based estimates representing a typical session's contribution to each dimension. All claims are cited below.
 
 | Activity | Strength | Cardio | Flexibility | Balance | Bone | Recovery |
@@ -827,7 +838,7 @@ Weightings are evidence-based estimates representing a typical session's contrib
 | Football/team sports | 55% | 80% | 20% | 45% | 50% | 0% |
 | Gymnastics | 70% | 40% | 80% | 80% | 50% | 0% |
 | Stretching/mobility | 5% | 5% | 95% | 30% | 5% | 40% |
-| Rest day (intentional) | 0% | 0% | 0% | 0% | 0% | 100% |
+| Rest day (intentional) | 0% | 0% | 0% | 0% | 0% | 15% |
 | Gardening | 20% | 30% | 20% | 25% | 30% | 25% |
 | Cycling (spin class) | 50% | 95% | 5% | 5% | 5% | 0% |
 | Crossfit | 85% | 75% | 15% | 30% | 65% | 0% |

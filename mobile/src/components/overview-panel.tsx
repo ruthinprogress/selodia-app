@@ -121,8 +121,6 @@ type OverviewData = {
   cycleDay: number | null;
   // "On the plan: gym", or null. Guide me only, planned days only.
   plannedLine: string | null;
-  /** Whether she asked to be guided, which decides what "nothing" means. */
-  guided: boolean;
 };
 
 type ProfileRow = {
@@ -137,7 +135,6 @@ type ProfileRow = {
   training_state: string | null;
   deficit_state: string | null;
   first_name: string | null;
-  guidance_mode: string | null;
   // Read so the cycle day can be suppressed for anybody who is not on a regular
   // cycle. See cycleDayFrom.
   life_stage: string | null;
@@ -350,7 +347,7 @@ export function OverviewPanel({
           supabase
             .from('user_profile')
             .select(
-              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, guidance_mode, training_state, deficit_state'
+              'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, muscle_focus_state, has_scales, protein_target_g, first_name, life_stage, training_state, deficit_state'
             )
             .maybeSingle(),
           supabase.from('food_logs').select('kcal, protein_g').gte('happened_at', dayStart),
@@ -524,10 +521,8 @@ export function OverviewPanel({
           (profile?.life_stage ?? null) as LifeStage | null
         ),
         plannedLine: plannedTodayLine(
-          (weekRows ?? []) as { activity: string; days: string[] }[],
-          profile?.guidance_mode ?? null
+          (weekRows ?? []) as { activity: string; days: string[] }[]
         ),
-        guided: (profile?.guidance_mode ?? null) === 'guide_me',
       };
       setData(next);
       // Kept for the next opening, so the screen starts full rather than empty.
@@ -620,11 +615,6 @@ export function OverviewPanel({
             card. */}
         <TodayFocus
           planned={data.plannedLine}
-          // === true, because a snapshot cached before 21 October has no
-          // such field and arrives as undefined. Falling back to not-guided
-          // says the milder of the two nothings, which is the right way to be
-          // wrong for one render.
-          guided={data.guided === true}
           anythingLogged={data.activityNames.length > 0}
           onLogged={() => setReloadKey((k) => k + 1)}
         />

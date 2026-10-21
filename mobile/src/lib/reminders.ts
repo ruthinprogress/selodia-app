@@ -127,12 +127,18 @@ export function todayKey(now: Date = new Date()): Day {
  * marked done and My Week has no completion at all. Somebody who does not do it
  * should find the line gone tomorrow and nothing else changed.
  */
+// THE TWO MODES ARE GONE, 21 October 2026. This returned null unless she had
+// chosen "Guide me" - a question that was taken out of onboarding weeks ago and
+// moved to a Settings screen nobody visits, so the stored value is null for
+// everybody and this line had stopped appearing for anybody at all.
+//
+// Ruth: "I think maybe we scrap those two modes as a new user might not know
+// what it means and will lose functionality before even seeing it." Everyone
+// has a Week, so everyone can be told what is on it today.
 export function plannedTodayLine(
   rows: { activity: string; days: string[] }[],
-  guidanceMode: string | null,
   now: Date = new Date()
 ): string | null {
-  if (guidanceMode !== 'guide_me') return null;
   const key = todayKey(now);
   const today = rows.filter((r) => r.days.includes(key)).map((r) => r.activity);
   if (today.length === 0) return null;

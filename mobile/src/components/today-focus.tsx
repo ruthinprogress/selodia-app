@@ -43,14 +43,11 @@ import { logRestDay } from '@/lib/log-rest-day';
 
 export function TodayFocus({
   planned,
-  guided,
   anythingLogged,
   onLogged,
 }: {
   /** "On the plan: ballet", or null when nothing is on today. */
   planned: string | null;
-  /** Whether she asked to be guided, which decides what "nothing" means. */
-  guided: boolean;
   /** Anything at all in today's movement log. */
   anythingLogged: boolean;
   onLogged: () => void;
@@ -92,12 +89,12 @@ export function TodayFocus({
         {planned ? (
           <ThemedText type="small">{planned.replace(/^On the plan:\s*/i, '')}</ThemedText>
         ) : (
-          // TWO DIFFERENT NOTHINGS. Somebody who asked to be guided has an
-          // empty day in a week they keep; somebody leading has no week to be
-          // empty, so telling them nothing is planned describes a thing they
-          // never asked for.
+          // ONE NOTHING, NOT TWO. This said different things depending on
+          // whether she had chosen "Guide me", because somebody leading their
+          // own week had no week to be empty. The two modes went on 21 October
+          // and everybody has a Week, so there is one true sentence.
           <ThemedText type="small" themeColor="textSecondary">
-            {guided ? 'Nothing planned today' : 'Nothing logged yet today'}
+            Nothing planned today
           </ThemedText>
         )}
         {failed ? (

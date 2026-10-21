@@ -198,7 +198,7 @@ export default function PlansScreen() {
   async function openWeekSheet() {
     const start = currentWeekStart();
     const { startISO, endISO } = weekRange(start);
-    const [planRes, logRes, profileRes] = await Promise.all([
+    const [planRes, logRes] = await Promise.all([
       supabase
         .from('user_week')
         .select('id, activity, duration, days, days_chosen_at, time_of_day')
@@ -211,10 +211,7 @@ export default function PlansScreen() {
       // THE SAME QUESTION THE WEEK ASKS. Under "Let me lead" a plan has no day
       // until she gives it one, so this sheet must not offer Thursday for
       // something the week itself is showing in Anytime.
-      supabase.from('user_profile').select('guidance_mode').maybeSingle(),
     ]);
-    const guidance =
-      (profileRes.data as { guidance_mode: string | null } | null)?.guidance_mode ?? null;
     const logs = (logRes.data ?? []) as { activity_type: string | null; happened_at: string }[];
     const items: WeekLogItem[] = [];
     for (const row of (planRes.data ?? []) as {
@@ -226,7 +223,7 @@ export default function PlansScreen() {
       time_of_day: string | null;
     }[]) {
       if (isWalking(row.activity)) continue; // counted by the phone, not logged here
-      const sits = placedOnDays(guidance, row);
+      const sits = placedOnDays(row);
       for (const date of daysOfWeek(start)) {
         if (!sits.includes(dayKeyOf(date))) continue;
         const already = logs.some(
