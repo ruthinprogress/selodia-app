@@ -8,6 +8,7 @@ import { loadUpcoming } from '@/lib/calendar';
 import { flowerRange, type FlowerMode } from '@/lib/flower-range';
 import { FoldSection } from '@/components/fold-section';
 import { PageLink } from '@/components/page-link';
+import { useTheme } from '@/hooks/use-theme';
 import { HydrationToast, type WaterAction } from '@/components/hydration-card';
 import { OverviewPanel } from '@/components/overview-panel';
 import { ReportLink } from '@/components/report-link';
@@ -53,6 +54,7 @@ import { supabase } from '@/lib/supabase';
 // empty until there is something true to put in it. A screen that promises
 // patterns and shows nothing reads as broken.
 export default function BodyOverviewScreen() {
+  const theme = useTheme();
   // The water card's Undo note, drawn here - outside the scroll view - so it
   // floats above the bottom navigation wherever the page is scrolled to.
   const [water, setWater] = useState<WaterAction | null>(null);
@@ -125,6 +127,7 @@ export default function BodyOverviewScreen() {
                 plumbing, and the Sunday job will fill this in on its own. */}
             {roundup.statements.length > 0 ? (
               <FoldSection
+                hideSummary
                 title="Last week"
                 // NOT THE STATEMENTS' OWN RANGE. That read "Last week  the last
                 // 6 weeks", which is two different stretches of time in one row.
@@ -151,6 +154,7 @@ export default function BodyOverviewScreen() {
                 and less use than nothing at all is what it was yesterday. */}
             <FoldSection
               ruled
+              hideSummary
               title="Coming up"
               summary={
                 upcoming == null ? 'loading' : upcoming === 0 ? 'nothing yet' : String(upcoming)
@@ -176,6 +180,7 @@ export default function BodyOverviewScreen() {
                 which was the fault in everything I suggested first. */}
             <FoldSection
               ruled
+              hideSummary
               title="What's protecting you"
               summary={flowerLabel}
               open={open.flower}
@@ -205,6 +210,10 @@ export default function BodyOverviewScreen() {
                 the report builder, which is no longer under Data." It is its
                 own row in More as well, which is two doors to one screen
                 rather than two screens. */}
+            {/* A RULE ABOVE THE WAYS OUT, as the artwork draws it: the folds
+                are a ruled list and these close it. Without it the two links
+                float after the last section rather than ending the page. */}
+            <View style={[styles.waysRule, { backgroundColor: theme.backgroundElement }]} />
             <View style={styles.ways}>
               <PageLink to="/(tabs)/plans" label="Open your Week" icon="calendar-outline" />
               <ReportLink start={['symptoms', 'insights']} label="Build a report" />
@@ -233,6 +242,9 @@ const styles = StyleSheet.create({
   // than as one more section. ReportLink brings its own top padding, which is
   // why this adds none.
   ways: { gap: 0 },
+  // The same hairline the folds and the Week's days use. Drawn here rather
+  // than as a `ruled` FoldSection, because this is not a section.
+  waysRule: { height: 1, opacity: 0.7, marginTop: Spacing.four },
   safeArea: { flex: 1 },
   content: {
     // flexGrow rather than flex: fills the viewport when the content is short,

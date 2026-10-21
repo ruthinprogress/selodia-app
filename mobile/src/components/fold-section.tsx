@@ -28,6 +28,7 @@ export function FoldSection({
   onToggle,
   children,
   ruled = false,
+  hideSummary = false,
 }: {
   title: string;
   /**
@@ -49,6 +50,21 @@ export function FoldSection({
    * day somebody reorders it. Each section is told whether it follows another.
    */
   ruled?: boolean;
+  /**
+   * Draw the row without its summary, as the Now artwork does.
+   *
+   * THE SUMMARY IS NOT REMOVED, ONLY UNDRAWN. It still goes into the
+   * accessibility label, so a screen reader still hears "Coming up, nothing
+   * yet" - which is the reading where knowing-before-opening matters most, and
+   * the one that cost an afternoon on the Body Manual when a shut section was
+   * "indistinguishable from an empty list".
+   *
+   * OPT-IN, so the Me tab and the Body Manual keep theirs. Their summaries are
+   * counts of records and carry information the title does not; Now's were
+   * "from Sunday's roundup" and "the last 7 days", which is a second caption
+   * beside a serif heading.
+   */
+  hideSummary?: boolean;
 }) {
   const theme = useTheme();
 
@@ -85,11 +101,19 @@ export function FoldSection({
             than Android measured for it, overflows, and the parent cuts it
             with no ellipsis to show for it. Not drawing it when it has nothing
             to add removes the duplicate and the clip together. */}
-        {open ? null : (
+        {open || hideSummary ? null : (
           <ThemedText type="small" themeColor="textSecondary" style={styles.summary}>
             {summary}
           </ThemedText>
         )}
+        {/* THE WAY IN, AT THE END OF THE ROW (Now artwork, 21 October 2026).
+            Every row in this app that opens something carries one - the figure
+            rows above, the links below - and these were the only openable
+            things on the screen without it. With the summary undrawn it is
+            also what keeps the row from reading as a dead heading. */}
+        {hideSummary ? (
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+        ) : null}
       </Pressable>
 
       {open ? <View style={styles.body}>{children}</View> : null}

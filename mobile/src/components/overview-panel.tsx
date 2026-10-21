@@ -626,7 +626,13 @@ export function OverviewPanel({
 
           The figures keep their spotlight ids, so the guided tour still has
           somewhere to point. */}
+      {/* RULED TOP AND BOTTOM, 21 October 2026, from the Now artwork. The
+          comment on Hairline below said "between Food and Body, and nowhere
+          else", which was right when the rule was there to stop two figure
+          rows merging. The drawing uses it differently: the three rows are a
+          small table, and a table is closed at both ends. */}
       <View style={styles.figures}>
+        <Hairline />
         {/* Straight to the view, not to the Log's list (2026-09-20): tapping
             Food on Today means "show me my food", and a list in between would
             be a step that answers nothing. */}
@@ -835,6 +841,10 @@ export function OverviewPanel({
             <MovementFigures steps={data.steps} names={data.activityNames} />
           </FigureRow>
         ) : null}
+        {/* AND CLOSED AT THE BOTTOM. On a day with no movement the row above
+            is absent, so this rule closes the table under Body instead - which
+            is right, because the table is however many rows it has. */}
+        <Hairline />
 
         {/* STEPS DO NOT APPEAR HERE. They are on the "This week" heading, which
             is where the Activity square's one irreplaceable figure went when
@@ -969,8 +979,12 @@ function FigureRow({
   );
 }
 
-// The one rule on the screen: between Food and Body, and nowhere else. A
-// component rather than a style so it can read the theme without the panel
+// The rule between the figure rows, and since 21 October around them too - see
+// where the table is drawn. The note here used to say "between Food and Body,
+// and nowhere else", which was right while its job was stopping two rows of
+// figures from merging; the artwork uses it to close a small table instead.
+//
+// A component rather than a style, so it can read the theme without the panel
 // above growing a hook for one line.
 function Hairline() {
   const theme = useTheme();

@@ -118,11 +118,21 @@ check('A FOLD SUMMARY IS NOT DRAWN WHILE THE FOLD IS OPEN', () => {
   // Ruth crossed it out on her screenshot: "Top right header not needed at
   // all". On Balance it repeated the pager two lines below it, which said
   // "this week" in full while this one had been clipped to "this".
+  //
+  // MATCHED ON THE GUARD, NOT ON THE EXACT TERNARY. This looked for the literal
+  // `{open ? null : (` and broke on 21 October when a second condition joined
+  // it for the Now artwork - `{open || hideSummary ? null : (` - which does the
+  // same thing and more. What matters is that `open` is one of the reasons the
+  // summary is not drawn, never how the expression happens to read.
   const src = read('mobile/src/components/fold-section.tsx');
-  assert.ok(/\{open \? null : \(/.test(src), 'the summary is drawn even when the fold is open');
-  // It must still exist when shut, which is the only reason it is there.
-  const at = src.indexOf('{open ? null : (');
-  assert.ok(/\{summary\}/.test(src.slice(at, at + 400)), 'the summary is gone entirely');
+  // ANCHORED ON THE DRAWN ELEMENT. `{summary}` alone also matches the
+  // `${summary}` inside the accessibility label, which is a different thing
+  // entirely and is supposed to be there whatever the fold is doing.
+  const at = src.indexOf('style={styles.summary}');
+  assert.ok(at > -1, 'the summary is no longer drawn at all');
+  const guard = src.slice(Math.max(0, at - 200), at);
+  assert.ok(/\?\s*null\s*:/.test(guard), 'the summary is no longer guarded by a condition at all');
+  assert.ok(/\bopen\b/.test(guard), 'the summary is drawn even when the fold is open');
   return 'shut only';
 });
 

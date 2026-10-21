@@ -147,6 +147,15 @@ export function HydrationCard({
             still decides how full the droplet looks; it simply is not stated.
             A shape filling up does not accuse anybody of anything the way
             "800 of 1900" does. */}
+        {/* THE DROP AND THE FIGURE STAND SIDE BY SIDE (Now artwork, 21
+            October 2026). They were stacked, which made the one thing on this
+            screen you can DO into a tall centred column in the middle of a
+            page of rows. Beside each other they read as one object and give
+            the closing line back its space.
+
+            THE EXPANDED DRINKS PANEL STAYS BELOW BOTH, which is why this wraps
+            the two of them rather than turning the whole block into a row. */}
+        <View style={styles.dropRow}>
         <Pressable
           onPress={() => {
             setOpen((v) => !v);
@@ -179,6 +188,7 @@ export function HydrationCard({
         >
           <ThemedText style={styles.amount}>{formatVolume(ml)}</ThemedText>
         </Pressable>
+        </View>
 
         {open && (
           <View style={styles.panel}>
@@ -283,6 +293,9 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingVertical: Spacing.two,
   },
+  // The drop and its figure, on one line. Centred as a pair, so the object
+  // still sits in the middle of a screen of left-aligned rows.
+  dropRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   droplet: { alignItems: 'center', justifyContent: 'center' },
   // The belly's centre in the drawing's own box: the drop spans 130 units tall
   // and its round part is centred near y 84, which is 65% down rather than 50%.
