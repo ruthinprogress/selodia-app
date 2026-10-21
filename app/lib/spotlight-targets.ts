@@ -51,6 +51,7 @@ export const SPOTLIGHT_TARGETS = {
   'body.food': 'the "Food" heading on Now, which opens the food log',
   'body.measurements': 'the "Body" heading on Now, which opens the measurements log',
   'body.activity': 'the "Activity" heading on Now, which opens the movement log',
+  'body.sleep': 'the "Sleep" heading on Now, which opens the sleep log',
   'overview.stats': 'the weight and muscle figures under the "Body" heading on Now',
   'overview.calories': "today's calorie figure under the \"Food\" heading on Now",
   'overview.protein': "today's protein figure under the \"Food\" heading on Now",

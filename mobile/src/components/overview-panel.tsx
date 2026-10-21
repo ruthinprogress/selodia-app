@@ -16,6 +16,7 @@ import { withoutDailySummaries } from '@/lib/daily-summary-rows';
 import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
 import { hydrationToday } from '@/lib/hydration';
 import { hydrationGoal } from '@/lib/hydration-goal';
+import { formatDuration, lastNight, QUALITY_LABEL, type SleepQuality } from '@/lib/sleep';
 import { formatLogDate, toLocalDateKey } from '@/lib/week';
 import {
   findWeekAgoReading,
@@ -115,6 +116,14 @@ type OverviewData = {
   // because a zero is a claim that somebody has not moved.
   steps: number | null;
   hydrationMl: number;
+  /**
+   * Last night, or null when nothing was logged for it.
+   *
+   * NULL DRAWS NOTHING, like the Movement row above it. A night with no entry
+   * is a night nobody described, and "0h" would be a claim that somebody did
+   * not sleep.
+   */
+  sleep: { minutes: number | null; quality: string | null; awakenings: number | null } | null;
   // Days since the last recorded period start, 1-based, or null when no cycle
   // has ever been logged. Read, never inferred: a cycle day guessed from an
   // average would be a number about somebody's body that nobody measured.
@@ -338,6 +347,7 @@ export function OverviewPanel({
         stepsToday,
         { data: lastPeriod },
         { data: weekRows },
+        { data: lastNightRow },
       ] = await Promise.all([
           supabase
             .from('body_measurements')
@@ -373,6 +383,25 @@ export function OverviewPanel({
           // in Guide me and are empty for everybody else, so for most people
           // this returns rows whose `days` array is empty and the line is null.
           supabase.from('user_week').select('activity, days').order('sort_order', { ascending: true }),
+          // LAST NIGHT (Ruth, 21 October 2026): "does sleep need a space on
+          // Now? it's extremely important....and we've sort of ignored it."
+          //
+          // It is the largest single recovery input in the whole model - a
+          // logged night is worth up to 28 points against a target of 200, so
+          // seven good nights very nearly fills the petal on its own - and
+          // there was nowhere on this screen to see it. A recovery petal
+          // reading zero was being understood as a fact about her body when it
+          // was a fact about what the app had been told.
+          //
+          // THE NIGHT THAT HAS JUST ENDED, not tonight. lastNight() is the
+          // evening it began, which is how sleep_logs keys a night, so on
+          // Tuesday morning this is Monday night rather than an empty row
+          // waiting for bedtime.
+          supabase
+            .from('sleep_logs')
+            .select('duration_min, quality, awakenings')
+            .eq('night_of', lastNight())
+            .maybeSingle(),
         ]);
 
       const rows = (measurements ?? []) as MeasurementRow[];
@@ -516,6 +545,13 @@ export function OverviewPanel({
         ],
         steps: stepsToday,
         hydrationMl: hydrationToday((drinks ?? []) as { ml: number; happened_at: string }[]).ml,
+        sleep: lastNightRow
+          ? {
+              minutes: (lastNightRow as { duration_min: number | null }).duration_min,
+              quality: (lastNightRow as { quality: string | null }).quality,
+              awakenings: (lastNightRow as { awakenings: number | null }).awakenings,
+            }
+          : null,
         cycleDay: cycleDayFrom(
           (lastPeriod as { event_date: string } | null)?.event_date ?? null,
           (profile?.life_stage ?? null) as LifeStage | null
@@ -859,6 +895,39 @@ export function OverviewPanel({
             <MovementFigures steps={data.steps} names={data.activityNames} />
           </FigureRow>
         ) : null}
+        {/* SLEEP, THE FOURTH ROW (Ruth, 21 October 2026): "does sleep need a
+            space on Now? it's extremely important....and we've sort of ignored
+            it."
+
+            IT BELONGS IN THIS TABLE RATHER THAN IN A SECTION OF ITS OWN. It is
+            a figure about her body, which is exactly what these rows are, and
+            the Sleep screen already exists - so this is a door, not a feature.
+            It also costs one row on a screen she has twice said must not get
+            taller.
+
+            THE FLOWER HAD BEEN MAKING THIS ARGUMENT ON ITS OWN. A logged night
+            is worth up to 28 recovery points against a target of 200, so seven
+            good nights very nearly fills that petal - it is the largest single
+            recovery input in the model, and there was nowhere here to see it
+            or reach it. A recovery petal reading zero was being understood as
+            a fact about her body when it was a fact about what she had told
+            the app.
+
+            A NIGHT WITH NOTHING LOGGED DRAWS NO ROW, like Movement above it.
+            "0h" is a claim that somebody did not sleep. */}
+        {data.sleep && (data.sleep.minutes != null || data.sleep.quality) ? (
+          <>
+            <Hairline />
+            <FigureRow id="body.sleep" label="Sleep" href="/log/sleep">
+              <SleepFigures
+                minutes={data.sleep.minutes}
+                quality={data.sleep.quality}
+                awakenings={data.sleep.awakenings}
+              />
+            </FigureRow>
+          </>
+        ) : null}
+
         {/* AND CLOSED AT THE BOTTOM. On a day with no movement the row above
             is absent, so this rule closes the table under Body instead - which
             is right, because the table is however many rows it has. */}
@@ -967,7 +1036,7 @@ function FigureRow({
   href,
   children,
 }: {
-  id: 'body.food' | 'body.measurements' | 'body.activity';
+  id: 'body.food' | 'body.measurements' | 'body.activity' | 'body.sleep';
   label: string;
   href: Href;
   children: React.ReactNode;
@@ -1015,6 +1084,49 @@ function Hairline() {
 // Both halves are optional and the row above only draws when at least one of
 // them exists. A step count with no sessions is an ordinary day; sessions with
 // no step count is an ordinary phone, or a refused permission (lib/steps.ts).
+/**
+ * Last night, as figures rather than a sentence.
+ *
+ * WHAT IT SHOWS IS WHAT SHE SAID, and nothing more. Hours if she gave them,
+ * how it felt if she said, how many times she woke if she counted. A night
+ * described as "broken" with no hours shows "Broken" and no number, because an
+ * invented duration on a sleep record is worse than a missing one.
+ */
+function SleepFigures({
+  minutes,
+  quality,
+  awakenings,
+}: {
+  minutes: number | null;
+  quality: string | null;
+  awakenings: number | null;
+}) {
+  const hours = formatDuration(minutes);
+  const felt = quality ? QUALITY_LABEL[quality as SleepQuality] ?? null : null;
+  return (
+    <>
+      {hours ? (
+        <ThemedText type="smallBold" style={styles.statValue}>
+          {hours}
+        </ThemedText>
+      ) : null}
+      {felt ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.statValue}>
+          {felt}
+        </ThemedText>
+      ) : null}
+      {/* ONLY WHEN SHE COUNTED, and never a zero: "woke 0 times" is a sentence
+          nobody says, and a night she did not count is not a night she slept
+          through. */}
+      {typeof awakenings === 'number' && awakenings > 0 ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.statValue}>
+          {`woke ${awakenings}×`}
+        </ThemedText>
+      ) : null}
+    </>
+  );
+}
+
 function MovementFigures({ steps, names }: { steps: number | null; names: string[] }) {
   const theme = useTheme();
   return (

@@ -80,7 +80,7 @@ export function BalanceFlowerSection({
   // Rebuilt only when the choice changes, because the hook keys its read on the
   // two timestamps and a fresh Date every render would re-query forever.
   const range = useMemo(() => flowerRange(mode, back), [mode, back]);
-  const { coverage, loading } = useHealthFlower(range);
+  const { coverage, loading, unclassifiedCount } = useHealthFlower(range);
   const note = coverage ? weekObservation(coverage, range.label) : null;
   // SHUT BY DEFAULT, and not remembered. The log layout store exists for folds
   // somebody arranges; this one is read once or twice ever and then not again,
@@ -191,6 +191,29 @@ export function BalanceFlowerSection({
            would read as the drawing being broken. */
         <ThemedText type="small" themeColor="textSecondary">
           Nothing logged in {range.label}.
+        </ThemedText>
+      ) : null}
+
+      {/* A SESSION THE DRAWING COULD NOT PLACE IS SAID OUT LOUD (21 October
+          2026). The hook has counted these since the window went rolling and
+          nothing ever showed the number.
+
+          THIS IS THE SAME HONESTY THE WEEK'S FLOWER ALREADY HAS, where an
+          activity the weighting table does not hold is named rather than
+          quietly dropped. Here it could not be named - there may be several,
+          and this is a drawing rather than a list - so it is counted.
+
+          WHY IT MATTERS MORE THAN IT LOOKS. Until this morning a third of
+          Ruth's logged sessions carried no classification at all, and a petal
+          reading low was indistinguishable from a petal reading low BECAUSE
+          the app could not read what she had done. A number here is the
+          difference between "you did less" and "I could not see some of it",
+          and only one of those is a statement about her. */}
+      {!loading && unclassifiedCount > 0 ? (
+        <ThemedText type="detail" themeColor="textSecondary">
+          {unclassifiedCount === 1
+            ? '1 session is not counted here yet, because it could not be placed on these six.'
+            : `${unclassifiedCount} sessions are not counted here yet, because they could not be placed on these six.`}
         </ThemedText>
       ) : null}
 

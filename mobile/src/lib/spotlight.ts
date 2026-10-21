@@ -27,6 +27,7 @@ export const SPOTLIGHT_IDS = [
   'body.food',
   'body.measurements',
   'body.activity',
+  'body.sleep',
   'overview.stats',
   'overview.calories',
   'overview.protein',
