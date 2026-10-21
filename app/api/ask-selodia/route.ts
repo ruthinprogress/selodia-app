@@ -23,6 +23,7 @@ import { needDurationNote, unsavedNote, type LogAttempt } from '../../lib/save-h
 import { buildLongHistory } from '../../lib/long-history';
 import { weekReadBlock } from '../../lib/week-read';
 import { calendarNote, reminderNote, type ReminderResult } from '../../lib/action-notes';
+import { diaryBlock, type DiaryRow } from '../../lib/diary-block';
 import { checkCalendarEvent, type CalendarResult } from '../../lib/calendar-event';
 import { whoTheyAreBlock } from '../../lib/who-they-are';
 import { coerceConstants, constantsBlock, forgetConstants, readConstants, recordConstants } from '../../lib/care-constants';
@@ -602,10 +603,18 @@ export async function POST(request: NextRequest) {
   // at the time BECAUSE it was one small read, and the cost only exists in the
   // sequence. That is the same shape as the argument-list trap already written
   // up in DECISION_PATTERNS - a thing that reads plausibly on its own line.
+  // TODAY, AS A DATE KEY, HOISTED (21 October 2026). The diary read below needs
+  // it and it was declared four hundred lines further down - so this is the
+  // same expression, moved up, with the later declaration now pointing here.
+  // Two copies of "what day is it" in one request is how a turn ends up
+  // straddling midnight in two different directions.
+  const todayKey = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [ctxResult, longHistoryBlock, sodiumResult, recoverableRows, cycleRecurrence] =
+  const [ctxResult, longHistoryBlock, sodiumResult, recoverableRows, cycleRecurrence, diaryRows] =
     await Promise.all([
     supabase.rpc('turn_context', {
       p_since: contextSince.toISOString(),
@@ -637,11 +646,31 @@ export async function POST(request: NextRequest) {
     // Not folded into turn_context because that RPC runs on every turn and
     // this is only interesting on cycle-aware ones.
     cycleRecurrencesFor(supabase, user.id),
+    // WHAT IS ALREADY IN HER DIARY (21 October 2026).
+    //
+    // calendar_events was written by this route and never read by it, so the
+    // model could create an entry and could be asked to cancel one - by
+    // matching a title against a list it had never seen. Its own words after
+    // failing twice: "I've been guessing at what the entries are called, and
+    // that's why this keeps missing."
+    //
+    // From today forward, soonest first, and all of it: a diary is a handful
+    // of rows, and somebody with one thing booked in March wants to be told
+    // about it in January. See app/lib/diary-block.ts.
+    supabase
+      .from('calendar_events')
+      .select('title, event_date, event_time, place')
+      .eq('user_id', user.id)
+      .gte('event_date', todayKey)
+      .order('event_date', { ascending: true })
+      .order('event_time', { ascending: true, nullsFirst: true })
+      .limit(40),
   ]);
 
   const { data: ctx, error: ctxError } = ctxResult;
   const sodiumRows = sodiumResult.data;
   const recoverableBlock = recoverablePrompt(recoverableRows);
+  const diaryContextBlock = diaryBlock((diaryRows?.data ?? []) as DiaryRow[]);
 
   // FAIL LOUDLY RATHER THAN ANSWER WITHOUT HER RECORD. Twenty separate reads
   // used to fail one at a time and the turn carried on with a hole in it. One
@@ -1062,7 +1091,7 @@ ${cycleRecurrence.block}`
   // was a date. Cycle and feeling both are - "I came on Tuesday" is a Tuesday
   // event - and a model asked to resolve a weekday without knowing today's is
   // being asked to guess at the one field that must not be guessed.
-  const todayKey = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
   const todayBlock = `
 
 WHAT DAY IT IS: today is ${new Date(`${todayKey}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })} (${todayKey}). Use this whenever you have to turn a day somebody named into an actual date. A weekday with no other detail means the most recent one that has already happened, never one still to come.`;
@@ -1566,7 +1595,7 @@ ${longHistoryBlock ? `
 ${longHistoryBlock}
 ` : ''}
 ${plansBlock}${meCardsBlock}${careBlock}${constantsContextBlock ? `\n${constantsContextBlock}\n` : ''}${weekReadContextBlock ? `\n${weekReadContextBlock}\n` : ''}${insightsBlock}
-${allergyBlock}${rulesBlock ? `\n${rulesBlock}\n` : ''}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
+${diaryContextBlock ? `\n${diaryContextBlock}\n` : ''}${allergyBlock}${rulesBlock ? `\n${rulesBlock}\n` : ''}${healthContextBlock ? `\n${healthContextBlock}\n` : ''}${cycleContextBlock ? `\n${cycleContextBlock}\n` : ''}${yesterdayBlock ? `\n${yesterdayBlock}\n` : ''}`;
 
 
   // Item 43. The standing instruction, for every turn AFTER an unsafe goal was
@@ -2481,6 +2510,7 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
             constantsContextBlock,
             whoBlock,
             weekReadContextBlock,
+            diaryContextBlock,
             allergyBlock,
             rulesBlock,
             // THE OTHER THREE THE GUARD FOUND, each read before being wired
@@ -3109,6 +3139,37 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       };
       console.log('CALENDAR REFUSED:', checked.because);
     } else {
+      // A GUARD AT THE WRITE, NOT AN INSTRUCTION (21 October 2026). Ruth found
+      // three copies of "contact GP if ear ringing persists" on 27 October,
+      // made across three turns that were each wrongly told the previous one
+      // had failed.
+      //
+      // The feedback fault is fixed next door, and the model can now see her
+      // diary - but neither of those is a reason to let the row be written
+      // twice. This project's own rule: never ask the model not to do a thing
+      // twice, enforce it where the row is created.
+      //
+      // SAME TITLE, SAME DAY IS THE SAME ENTRY. Not the time: two copies of
+      // one appointment, one with an hour and one without, are what she
+      // actually got, and treating those as different is what let it happen.
+      // Two genuinely different things on one day with one name is a thing
+      // nobody does - and if they do, the reply says it is already there and
+      // they can say so.
+      const { data: already } = await supabase
+        .from('calendar_events')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('event_date', checked.row.event_date)
+        .ilike('title', checked.row.title)
+        .limit(1);
+      if (already && already.length > 0) {
+        calendarResult = {
+          action: 'duplicate',
+          title: checked.row.title,
+          eventDate: checked.row.event_date,
+        };
+        console.log('CALENDAR DUPLICATE REFUSED:', checked.row.title);
+      } else {
       const { error } = await supabase
         .from('calendar_events')
         .insert({ user_id: user.id, ...checked.row });
@@ -3124,6 +3185,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           eventTime: checked.row.event_time,
           reminderDropped: checked.reminderDropped,
         };
+      }
     }
   } else if (result.calendarAction === 'cancel') {
     const title = (result.calendarTitle ?? '').trim();
@@ -5060,6 +5122,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           constantsContextBlock,
           whoBlock,
           weekReadContextBlock,
+            diaryContextBlock,
           healthContextBlock,
           allergyBlock,
           rulesBlock,
@@ -5135,6 +5198,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             constantsContextBlock,
             whoBlock,
             weekReadContextBlock,
+            diaryContextBlock,
             allergyBlock,
             rulesBlock,
             healthContextBlock,
@@ -5241,6 +5305,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
             constantsContextBlock,
             whoBlock,
             weekReadContextBlock,
+            diaryContextBlock,
             allergyBlock,
             rulesBlock,
             // THE OTHER THREE THE GUARD FOUND, each read before being wired

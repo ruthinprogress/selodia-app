@@ -74,6 +74,14 @@ export function calendarNote(r: CalendarResult | null): string | null {
       // SAID IN THE PLAINEST POSSIBLE TERMS, because this is the line that
       // stops a reply claiming a write that did not happen.
       return 'the diary entry FAILED to save. Nothing is in their diary. Do not say it is.';
+    case 'duplicate':
+      // NEITHER A SUCCESS NOR A FAILURE, and it has to read as neither. "It
+      // saved" sends her looking for a second copy; "it failed" is what
+      // produced the three copies in the first place.
+      return (
+        `"${r.title}" is ALREADY in their diary on ${r.eventDate}, so no second copy was made. ` +
+        'Tell them it is already there rather than that it was added or that it failed.'
+      );
   }
 }
 

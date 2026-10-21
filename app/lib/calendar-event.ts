@@ -155,4 +155,8 @@ export type CalendarResult =
   // nothing either way. Selodia's own chat reported this before anyone found
   // it: "I asked for the calendar entry and the reminder, but couldn't tell
   // whether they worked."
-  | { action: 'failed'; doing: 'add' | 'cancel' };
+  | { action: 'failed'; doing: 'add' | 'cancel' }
+  // ALREADY THERE, WHICH IS NOT A FAILURE AND NOT A SUCCESS. The reply has to
+  // be able to say "that is already in your diary" rather than either claiming
+  // a write that did not happen or reporting an error that did not occur.
+  | { action: 'duplicate'; title: string; eventDate: string };

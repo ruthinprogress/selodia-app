@@ -32,6 +32,7 @@ import path from 'node:path';
 
 const here = (p) => pathToFileURL(path.join(process.cwd(), p)).href;
 const { calendarNote, reminderNote } = await import(here('app/lib/action-notes.ts'));
+const { diaryBlock } = await import(here('app/lib/diary-block.ts'));
 
 let pass = 0;
 const failures = [];
@@ -195,6 +196,70 @@ check('AND THE PROMPT DOES NOT DESCRIBE A RULE THAT REMOVES', () => {
   const gate = fs.readFileSync('app/lib/rules-gate.ts', 'utf8');
   assert.ok(/kept: exercises, flagged/.test(gate), 'applyRules strips exercises again');
   return 'flagged in both halves';
+});
+
+check('THE MODEL CAN SEE THE DIARY IT IS ASKED TO EDIT', () => {
+  // Selodía's own chat, 21 October 2026, after failing twice to remove a
+  // duplicate: "I've been guessing at what the entries are called, and that's
+  // why this keeps missing. Could you type the words exactly as they appear?"
+  //
+  // calendar_events was WRITTEN by this route and never READ by it, so the
+  // model could create an entry and could be asked to cancel one - by matching
+  // a title against a list it had never been shown. It ended up asking Ruth to
+  // read her own screen back to it.
+  assert.ok(/from\('calendar_events'\)\s*\.select\(/.test(route), 'the diary is still never read');
+  assert.ok(/diaryContextBlock/.test(route), 'the diary is read and then not given to the model');
+  // IN THE RECORD, not merely computed. A block built and never interpolated
+  // is the exact shape of the bug this fixes.
+  const at = route.indexOf('${allergyBlock}');
+  assert.ok(at > -1, 'the record assembly moved - this check is testing nothing');
+  assert.ok(
+    /\$\{diaryContextBlock \?/.test(route.slice(Math.max(0, at - 400), at + 200)),
+    'the diary block is built but never reaches the record'
+  );
+  // THE TITLE IS QUOTED EXACTLY, because matching against it is the only thing
+  // this block is for. A tidied title would reproduce the fault.
+  const block = diaryBlock([
+    { title: 'contact GP if ear ringing persists', event_date: '2026-10-27', event_time: '09:00' },
+  ]);
+  assert.ok(block.includes('"contact GP if ear ringing persists"'), 'the title is not quoted verbatim');
+  assert.ok(/EXACTLY/.test(block), 'nothing tells the model the title is what gets matched');
+  assert.strictEqual(diaryBlock([]), null, 'an empty diary still costs a block');
+  return 'read, quoted, and in the record';
+});
+
+check('AND THE SAME ENTRY CANNOT BE WRITTEN TWICE', () => {
+  // Ruth found three copies of "contact GP if ear ringing persists" on 27
+  // October, made across three turns each wrongly told the one before had
+  // failed. The feedback fault is fixed next door; this is the half that does
+  // not depend on the model behaving.
+  //
+  // This project's own rule: never ask the model not to do a thing twice,
+  // enforce it where the row is created.
+  // ANCHORED ON THE ADD BRANCH, not on the first mention of the table. The
+  // diary is now READ at the top of the turn as well, so the first
+  // `from('calendar_events')` is that query and a window from there never
+  // reaches the write at all - which is a check that passes while testing
+  // nothing.
+  const at = route.indexOf("result.calendarAction === 'add'");
+  assert.ok(at > -1, 'the diary add branch moved - this check is testing nothing');
+  const add = route.slice(at, at + 2500);
+  assert.ok(/action: 'duplicate'/.test(add), 'an identical diary entry can be inserted again');
+  assert.ok(
+    /\.eq\('event_date'[\s\S]{0,200}\.ilike\('title'/.test(add),
+    'the duplicate check does not match on title and date'
+  );
+  // SAME TITLE, SAME DAY IS THE SAME ENTRY - not the time. Two copies of one
+  // appointment, one with an hour and one without, is exactly what she got.
+  assert.ok(
+    !/\.eq\('event_time'/.test(add),
+    'the time is part of the match, so the pair she saw is still possible'
+  );
+  // AND IT READS AS NEITHER A SAVE NOR A FAILURE.
+  const note = calendarNote({ action: 'duplicate', title: 'physio', eventDate: '2026-10-27' });
+  assert.ok(/ALREADY/.test(note), 'a duplicate is not described as already there');
+  assert.ok(!/FAILED/.test(note), 'a duplicate reads as a failure, which is what caused the copies');
+  return 'refused at the write, and said as neither';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
