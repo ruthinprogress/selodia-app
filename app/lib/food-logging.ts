@@ -97,6 +97,7 @@ export function buildFoodLogFields(macros: ParsedMacros) {
     sodium_mg: macros.sodium_mg ?? null,
     // Null, never zero: see FOOD_PARSE_OMIT_RATHER_THAN_GUESS.
     calcium_mg: macros.calcium_mg ?? null,
+    iron_mg: macros.iron_mg ?? null,
     saturated_fat_g: macros.saturated_fat_g ?? null,
     sugar_g: macros.sugar_g ?? null,
     fibre_g: macros.fibre_g ?? null,
@@ -148,6 +149,7 @@ export async function writeItems(
       fat_g: it.fat_g ?? null,
       sodium_mg: it.sodium_mg ?? null,
       calcium_mg: it.calcium_mg ?? null,
+      iron_mg: it.iron_mg ?? null,
       saturated_fat_g: it.saturated_fat_g ?? null,
       sugar_g: it.sugar_g ?? null,
       fibre_g: it.fibre_g ?? null,
@@ -208,6 +210,7 @@ export async function writeItems(
         fibre_g: sum((i) => i.fibre_g, 1),
         sodium_mg: sum((i) => i.sodium_mg, 0),
         calcium_mg: sum((i) => i.calcium_mg, 0),
+        iron_mg: sum((i) => i.iron_mg, 0),
       })
       .eq('id', foodLogId);
     if (totalsError) {

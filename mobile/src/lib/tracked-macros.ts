@@ -25,14 +25,25 @@ export type MacroKey =
   | 'carbs'
   | 'sugar'
   | 'fibre'
-  | 'salt';
+  | 'salt'
+  // CALCIUM AND IRON (Ruth, 21 October 2026): "Lets offer calcium and iron.
+  // Its important to my demographic."
+  //
+  // She is right, and they are the two that are specifically right. A woman
+  // over forty is losing bone density whether or not she is watching it, and a
+  // woman who is still menstruating is losing iron every month. The columns
+  // have existed since the food parser was written and nothing ever offered
+  // them - calcium was asked for and shown nowhere, iron was never even asked
+  // for, so every one of her 161 entries holds null.
+  | 'calcium'
+  | 'iron';
 
 export type MacroSpec = {
   key: MacroKey;
   /** As it reads in Settings, and in onboarding. */
   label: string;
   /** As it reads on a row: "34 g protein", "445 kcal". */
-  unit: 'kcal' | 'g';
+  unit: 'kcal' | 'g' | 'mg';
   /** The column on a food row that carries it. */
   column: string;
   /** Sentence case, one line, for the toggle's own explanation. */
@@ -58,6 +69,22 @@ export const MACROS: MacroSpec[] = [
   { key: 'sugar', label: 'Sugar', unit: 'g', column: 'sugar_g', short: 'Sugar' },
   { key: 'fibre', label: 'Fibre', unit: 'g', column: 'fibre_g', short: 'Fibre' },
   { key: 'salt', label: 'Salt', unit: 'g', column: 'sodium_mg', short: 'Salt' },
+  {
+    key: 'calcium',
+    label: 'Calcium',
+    unit: 'mg',
+    column: 'calcium_mg',
+    detail: 'Bone density falls faster around and after menopause.',
+    short: 'Calcium',
+  },
+  {
+    key: 'iron',
+    label: 'Iron',
+    unit: 'mg',
+    column: 'iron_mg',
+    detail: 'Monthly bleeding is the commonest cause of low iron in women.',
+    short: 'Iron',
+  },
 ];
 
 /** The two that are not hers to switch off. */
@@ -108,6 +135,11 @@ function say(key: MacroKey, value: number): string {
   const spec = MACROS.find((m) => m.key === key);
   if (!spec) return '';
   if (key === 'kcal') return `${Math.round(value).toLocaleString('en-GB')} kcal`;
+  // MILLIGRAMS ARE WHOLE NUMBERS. "243.6 mg calcium" claims a precision no
+  // estimate of a meal has, and reads as a laboratory result rather than as the
+  // approximation it is. Grams keep their decimal under ten, where the
+  // difference between 4 and 4.5 is a real share of the figure.
+  if (spec.unit === 'mg') return `${Math.round(value)} mg ${spec.label.toLowerCase()}`;
   // A figure under ten grams reads better with one decimal; above it, none.
   const n = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
   // A SPACE BEFORE THE UNIT, EVERYWHERE (Ruth, 27 September 2026, item 8:
@@ -136,6 +168,8 @@ export function macroFigure(key: MacroKey, row: Record<string, unknown>): string
   const v = amount(key, row);
   if (v === null) return null;
   if (key === 'kcal') return Math.round(v).toLocaleString('en-GB');
+  const spec = MACROS.find((m) => m.key === key);
+  if (spec?.unit === 'mg') return `${Math.round(v)} mg`;
   const n = v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
   return `${n} g`;
 }
