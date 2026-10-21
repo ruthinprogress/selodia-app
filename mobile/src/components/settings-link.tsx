@@ -67,6 +67,22 @@ const TOP_GAP = Spacing.two;
 /** One size everywhere. */
 const MARK_SIZE = 22;
 
+/**
+ * How far the band reaches below the safe area, so a page can start under it.
+ *
+ * EXPORTED 21 OCTOBER 2026, because a screen had no way to know. Ruth: "Plans
+ * title is too close to the bug and More bar, it looks squashed."
+ *
+ * The arithmetic said so. The band is this tall below the status bar, and a
+ * page's content starts at PageInset.top, which is 32 - so the title began ten
+ * points ABOVE where the band ends and was drawn underneath it. Nobody chose
+ * that; the two numbers simply never met.
+ *
+ * A screen that puts a title at the very top adds this to its own inset rather
+ * than guessing a margin, so the two can never drift apart again.
+ */
+export const SETTINGS_BAR_DROP = TOP_GAP + MARK_SIZE + 12;
+
 export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -159,7 +175,7 @@ export function SettingsLink({ spotlight = false }: { spotlight?: boolean }) {
         pointerEvents="none"
         style={[
           styles.band,
-          { height: insets.top + TOP_GAP + MARK_SIZE + 12, backgroundColor: theme.background },
+          { height: insets.top + SETTINGS_BAR_DROP, backgroundColor: theme.background },
         ]}
       />
       {inBeta ? (

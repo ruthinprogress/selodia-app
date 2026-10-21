@@ -204,14 +204,29 @@ check('THE BUTTON IS THE FULL WIDTH OF THE PAGE AND FILLED', () => {
   return 'full width, filled, alone';
 });
 
-check('ANYTIME IS THE TAIL OF THE WEEK, NOT A NEW PAGE', () => {
-  // "Reduce the gap after Sunday considerably... Sunday, 28-32px, ANYTIME THIS
-  // WEEK, 12px, activity card."
-  const above = number(style('anytimeHeading'), 'marginTop');
-  const below = number(style('anytimeZone'), 'marginTop');
-  assert.ok(above >= 24 && above <= 36, `Sunday to the heading is ${above}, outside 28 to 32`);
-  assert.ok(below < above, `the heading floats: ${above} above it and ${below} below`);
-  return `${above} above, ${below} below`;
+check('ANYTIME IS AN EIGHTH DAY, NOT A HEADING ABOVE A BOX', () => {
+  // Ruth, 21 October 2026: "Anytime text still needs to be higher, and aligned
+  // with the left column width of the week and aligned with the table, as if
+  // it's a 7th day name heading."
+  //
+  // IT WAS A FULL-WIDTH UPPERCASE TITLE SITTING ABOVE THE ROW, which is what
+  // kept it reading as a new section however the spacing moved - the gap had
+  // already been cut from 38 to 12 and it still looked like a new page,
+  // because a title above a thing is a section whatever its margin says.
+  //
+  // In the day column, in two lines, it is the same shape as "Mon" over
+  // "19 Oct": the week has eight labels in one column rather than seven and a
+  // heading. So what is checked is the POSITION, not a number.
+  assert.ok(!/anytimeHeading/.test(src), 'Anytime has a title above it again rather than a label in the column');
+  const zone = raw.slice(raw.indexOf('styles.anytimeZone, anytime.length === 0'));
+  const label = zone.slice(0, zone.indexOf('styles.anytimeInner'));
+  assert.ok(/styles\.dayLabel/.test(label), 'the Anytime label is not in the day-name column');
+  assert.ok(/>Anytime</.test(label), 'the label no longer says Anytime');
+  assert.ok(/this week/.test(label), 'the second line is gone, so it is not shaped like a day');
+  // AND IT SITS CLOSE. Eight from Sunday's rule, where it used to be 38.
+  const gap = number(style('anytimeZone'), 'marginTop');
+  assert.ok(gap <= 12, `Anytime is ${gap} below the week, which reads as a separate block again`);
+  return `in the day column, ${gap} below Sunday`;
 });
 
 check('AND THE BUTTON AND ITS CAPTION CLOSE THE WEEK TOGETHER', () => {
@@ -275,6 +290,15 @@ check('ANYTIME IS ONE MORE LINE, NOT A BOX UNDER THE WEEK', () => {
   // A CARD ON A LINE IS SIZED TO ITS WORDS. Half-width tiles were right for a
   // two-column block and read as a tile that failed to fill on a row.
   assert.ok(!/width: '48\.5%'/.test(src), 'the Anytime cards are fixed half-width tiles again');
+  // AND THE SAME BORDER, which is what puts the "+" in the same column (Ruth,
+  // 21 October 2026: "The plus sign for anytime is not below the others in the
+  // same spacing"). It was 2 against the days' 1, so this row's content box
+  // was two points narrower and everything in it sat a point to the left.
+  assert.strictEqual(
+    number(zone, 'borderWidth'),
+    number(day, 'borderWidth'),
+    'Anytime has a different border from a day, so its "+" sits out of the column'
+  );
   return 'a day-shaped line, with the target kept where it mattered';
 });
 
@@ -294,6 +318,32 @@ check('AND ANYTIME HAS A WAY IN', () => {
     /styles\.addDay/.test(raw), 'the Anytime "+" is a different object from the days\' ones');
   assert.ok(/flexDirection: 'row'/.test(style('anytimeZone')), 'the cards and the "+" no longer share a row');
   return 'a "+", and somewhere for it to put things';
+});
+
+check('AND THE PLANS TITLE STARTS BELOW THE MORE BAR, NOT INSIDE IT', () => {
+  // Ruth, 21 October 2026: "Plans title is too close to the bug and More bar,
+  // it looks squashed."
+  //
+  // IT WAS NOT CLOSE TO IT, IT WAS UNDER IT, and the arithmetic says so. The
+  // band in settings-link reaches TOP_GAP + MARK_SIZE + 12 below the status
+  // bar - 42 - and a page's content starts at PageInset.top, which is 32. So
+  // the title's line box began ten points inside the band. Nobody chose that:
+  // the two numbers live in different files and had never been compared.
+  //
+  // CHECKED AS A RELATIONSHIP, NOT A MARGIN. A number here would be the same
+  // mistake a third time: another file holding a copy of the bar's height.
+  const link = fs.readFileSync('mobile/src/components/settings-link.tsx', 'utf8');
+  assert.ok(/export const SETTINGS_BAR_DROP/.test(link), 'the bar no longer publishes how far it reaches');
+  assert.ok(
+    /height: insets\.top \+ SETTINGS_BAR_DROP/.test(link),
+    'the band draws itself from a different number than the one it exports'
+  );
+  const plans = fs.readFileSync('mobile/src/app/(tabs)/plans.tsx', 'utf8');
+  assert.ok(
+    /pageTitle: \{ marginTop: SETTINGS_BAR_DROP - PageInset\.top \+ /.test(plans),
+    'the Plans title clears the bar by a guessed margin rather than by the difference'
+  );
+  return 'measured from the bar, not guessed';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

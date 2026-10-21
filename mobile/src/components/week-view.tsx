@@ -790,12 +790,6 @@ export function WeekView({
           down from sectionTitle - which is the size the Plans segments use - to
           the same small uppercase label the goal block uses. Same family, less
           weight, and it stops competing with the seven days above it. */}
-      {/* SENTENCE CASE IN THE SOURCE, uppercased by the stylesheet. A literal
-          all-caps string is read out letter by letter by some screen readers;
-          textTransform changes only what is drawn. */}
-      <ThemedText type="small" themeColor="textSecondary" style={styles.anytimeHeading}>
-        Anytime this week
-      </ThemedText>
       <View
         ref={(node) => {
           zoneRefs.current[ANYTIME] = node;
@@ -806,6 +800,26 @@ export function WeekView({
         // shows it's being moved." The block is two columns deep, and tinting
         // all of it drowns the card she is carrying.
         style={[styles.anytimeZone, anytime.length === 0 && styles.anytimeZoneEmpty]}>
+        {/* THE LABEL IS A DAY NAME NOW (Ruth, 21 October 2026): "Anytime text
+            still needs to be higher, and aligned with the left column width of
+            the week and aligned with the table, as if it's a 7th day name
+            heading."
+
+            It was a full-width uppercase heading sitting ABOVE the row, which
+            is what kept it reading as a new section however much the spacing
+            moved. In the left column, in two lines, it is the same shape as
+            "Mon" over "19 Oct" - so the week has eight labels in one column
+            rather than seven and a title.
+
+            SENTENCE CASE AND NOT UPPERCASE, because the seven above it are. A
+            small-caps label in the day column would be a different kind of
+            thing wearing a day's position. */}
+        <View style={styles.dayLabel}>
+          <ThemedText type="smallBold">Anytime</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            this week
+          </ThemedText>
+        </View>
         <View style={styles.anytimeInner}>
         {anytime.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary">
@@ -1649,41 +1663,33 @@ const styles = StyleSheet.create({
   // Wraps rather than pushing the pill past the edge when an activity has a
   // long name and a long time. Both lines are numberOfLines={1}.
   pillText: { flexShrink: 1 },
-  // AN EIGHTH ROW, NOT A SECTION AFTER THE PAGE (ChatGPT, 20 October 2026):
-  // "Right now it feels like you've reached the end of the page and discovered
-  // another section afterwards... The divider can be incredibly subtle - a
-  // little extra top margin and the small uppercase heading. The important
-  // thing is the spacing."
-  //
-  // So the only divider is space, and the space is asymmetric: a clear step
-  // down from Sunday, then a short one to the cards, which is what makes the
-  // heading belong to what follows it rather than float between the two.
-  // Nothing is drawn, because "the app feels deliberately un-card-like" and a
-  // rule here would be the first one on the screen.
-  // 30 FROM SUNDAY. Far enough to be a new heading, near enough that Anytime
-  // is still the tail of the week rather than a section discovered after the
-  // end of the page. The brief asks for 28 to 32.
-  anytimeHeading: {
-    marginTop: 30,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
   // The whole block is the drop target, not each card, so "back to Anytime"
   // does not require her to hit a gap between two cards. The border is
   // transparent until she is over it, so nothing is drawn at rest.
   anytimeZone: {
-    // TWELVE FROM THE HEADING, against thirty above it. The asymmetry is what
-    // ties the label to the cards under it instead of leaving it floating
-    // between two blocks.
+    // EIGHT FROM SUNDAY'S RULE, down from thirty-eight (Ruth, 21 October
+    // 2026): "Anytime text still needs to be higher." One notch of separation
+    // rather than a gap another row would fit in - the two-line label is what
+    // says this one is different, so the space no longer has to.
     marginTop: Spacing.two,
     // THE CARDS AND THE "+" SIT IN ONE ROW, so the column of "+" runs unbroken
     // from Monday to here, which is how the artwork draws it.
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderWidth: 2,
+    // A DAY'S BORDER, NOT A CARD'S (Ruth, 21 October 2026): "The plus sign for
+    // anytime is not below the others in the same spacing."
+    //
+    // It was two points where every day above it is one, so this row's content
+    // box was two points narrower and the "+" sat a point to the left of the
+    // seven it lines up with. Invisible in the code, obvious down the column.
+    //
+    // The radius comes down with it, for the reason the days' did: a 20pt
+    // corner on a 44pt row is almost a stadium, and this is a line of a diary
+    // like the seven above it.
+    borderWidth: 1,
     borderColor: 'transparent',
-    borderRadius: CardRadius,
+    borderRadius: 12,
     // THE SAME PADDING AND THE SAME FLOOR AS A DAY (Ruth, 20 October 2026):
     // "the plus sits in the same line as the rest, its one more line, like an
     // extra day of the week almost. It makes it feel like thats a section all

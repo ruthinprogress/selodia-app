@@ -19,7 +19,7 @@ import { SegmentedTabs, type SegmentedTabItem } from '@/components/segmented-tab
 import { SkillsView } from '@/components/skills-view';
 import { WeekView } from '@/components/week-view';
 import { MovementLibrary } from '@/components/movement-library';
-import { SettingsLink } from '@/components/settings-link';
+import { SETTINGS_BAR_DROP, SettingsLink } from '@/components/settings-link';
 import { SpotlightScroll } from '@/components/spotlight-provider';
 import { SpotlightTarget } from '@/components/spotlight-target';
 import { ThemedText } from '@/components/themed-text';
@@ -260,7 +260,24 @@ export default function PlansScreen() {
           contentContainerStyle={styles.content}
         >
           <SpotlightScroll scrollRef={scrollRef}>
-            <ThemedText type="display">Plans</ThemedText>
+            {/* CLEAR OF THE BAR, AND THEN SOME (Ruth, 21 October 2026): "Plans
+                title is too close to the bug and More bar, it looks squashed...
+                move it down towards the next heading to give it more breathing
+                room."
+
+                It was not close to the bar, it was UNDER it. The band reaches
+                SETTINGS_BAR_DROP below the status bar and the page starts at
+                PageInset.top, which is ten points less - so the title's own
+                line box began inside the band. Nobody chose that: the two
+                numbers were set in different files and never compared.
+
+                So the drop is taken from the bar itself rather than guessed,
+                with Spacing.three of real air under it. The gap to the goal
+                block below closes by the same amount, which is the half she
+                asked for: "move it down towards the next heading". */}
+            <ThemedText type="display" style={styles.pageTitle}>
+              Plans
+            </ThemedText>
 
             {/* ABOVE THE CONTROL, AND ON EVERY SEGMENT. A goal is the reason
                 the rest of this screen exists, so it is not something to
@@ -523,6 +540,9 @@ export default function PlansScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
+  // The title starts below the More bar rather than inside it. See where it is
+  // drawn for the arithmetic that was wrong.
+  pageTitle: { marginTop: SETTINGS_BAR_DROP - PageInset.top + Spacing.three },
   content: {
     paddingHorizontal: PageInset.horizontal,
     paddingTop: PageInset.top,
