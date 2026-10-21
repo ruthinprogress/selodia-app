@@ -58,6 +58,35 @@ const FUNCTION_WORDS = new Set([
   'already', 'again', 'other',
 ]);
 
+// AND A MEAL IS NOT A FOOD (21 October 2026). Ruth: "Duplications in food
+// logging still occurring", with a lunch logged twice:
+//
+//   "wholemeal bread sandwich with salami, cheese and rocket for lunch"
+//   "2 black Americano coffees; wholemeal bread sandwich with salami,
+//    cheese and rocket"
+//
+// One word stood between them. "lunch" is in the first and not the second, so
+// the first was not a subset of the second, so they were two meals - and her
+// day carried the sandwich twice.
+//
+// IT IS THE SAME CLASS AS THE DAY WORDS AND FOR THE SAME REASON. A meal name
+// describes nothing anybody ate; it varies between two accounts of one plate
+// depending on whether the speaker tacked "for lunch" on the end; and the app
+// already keeps it somewhere else entirely, in meal_label, so nothing is lost
+// by dropping it here.
+//
+// It was never only her sentence: "porridge for breakfast" and "porridge" were
+// two breakfasts for everybody, every morning, until this line.
+//
+// TEA IS NOT ON THIS LIST, and that is deliberate. In British usage it is a
+// meal and it is also a drink, and dropping it would let "a cup of tea" and "a
+// biscuit" collapse into one another on a thin day. The ambiguous word stays a
+// food.
+export const MEAL_WORDS = new Set([
+  'breakfast', 'brunch', 'lunch', 'lunchtime', 'dinner', 'supper', 'elevenses',
+  'snack', 'meal', 'pudding', 'dessert', 'starter', 'main', 'course',
+]);
+
 // DAYS ARE NOT FOOD EITHER (12 October 2026). Catching up her Sunday, one entry
 // arrived as "Sunday 11 Oct: two bowls of ice cream" and the same ice cream as
 // "two bowls of ice cream". Three extra words made them two desserts, and her
@@ -109,7 +138,7 @@ export function contentWords(text: string): Set<string> {
   return new Set(
     normaliseFoodText(text)
       .split(' ')
-      .filter((w) => w.length > 0 && !FUNCTION_WORDS.has(w) && !DAY_WORDS.has(w))
+      .filter((w) => w.length > 0 && !FUNCTION_WORDS.has(w) && !DAY_WORDS.has(w) && !MEAL_WORDS.has(w))
       .map((w) => singular(NUMBER_WORDS[w] ?? w))
   );
 }
@@ -138,9 +167,18 @@ export function sameMeal(existing: string, incoming: string): SameMeal {
   if (a.size === 0 || b.size === 0) return null;
 
   if (a.size < SHORT_ENTRY_WORDS || b.size < SHORT_ENTRY_WORDS) {
-    return normaliseFoodText(existing) === normaliseFoodText(incoming)
-      ? { how: 'same', basis: 'exact' }
-      : null;
+    // THE SAME WORDS, NOT THE SAME SENTENCE (21 October 2026). This compared
+    // the normalised TEXT, so the meal and day words that are dropped from
+    // every other comparison were still being counted here - and short entries
+    // are where they appear most. "Porridge for breakfast" and "porridge" were
+    // two breakfasts for everybody, every morning.
+    //
+    // THE TIGHT WINDOW IS WHAT MAKES THIS SAFE, and it is unchanged: a short
+    // entry only ever merges inside two minutes, so a second cup of tea an hour
+    // later is still a second cup of tea. What has changed is only that the
+    // grammar around the food stops making one thing look like two.
+    const same = a.size === b.size && isSubset(a, b);
+    return same ? { how: 'same', basis: 'exact' } : null;
   }
 
   const aInB = isSubset(a, b);
