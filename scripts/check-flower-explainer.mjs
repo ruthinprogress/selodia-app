@@ -34,8 +34,8 @@ const mod = await import(
 const {
   DIMENSION_NOTES,
   NOTE_ORDER,
+  EXPLAINER_INTRO,
   EXPLAINER_METHOD,
-  EXPLAINER_EVIDENCE,
   EXPLAINER_UNLOGGED,
   EXPLAINER_WEEK,
 } = mod;
@@ -109,9 +109,10 @@ check('THE WEIGHTINGS ARE NEVER QUOTED', () => {
   // The embargo in the spec's methodology note. A percentage anywhere in this
   // copy is the cited weighting it forbids.
   const all = [
+    EXPLAINER_INTRO,
     EXPLAINER_METHOD,
-    EXPLAINER_EVIDENCE,
     EXPLAINER_UNLOGGED,
+    EXPLAINER_WEEK,
     ...NOTE_ORDER.map((d) => DIMENSION_NOTES[d].plain),
   ].join(' ');
   assert.ok(!/\d+\s*%/.test(all), 'a percentage is shown, which the spec embargoes until review');
@@ -121,13 +122,32 @@ check('THE WEIGHTINGS ARE NEVER QUOTED', () => {
   return 'no percentages, no target';
 });
 
-check('AND IT SAYS WHERE THE NUMBERS STAND', () => {
-  // Ruth took this call: say the weightings are estimates under review. It is
-  // the honest status, and for an app aimed at women who have been fobbed off
-  // it reads as trust rather than weakness.
-  assert.ok(/expert review/i.test(EXPLAINER_EVIDENCE), 'the review status is no longer said');
-  assert.ok(/estimate/i.test(EXPLAINER_EVIDENCE), 'the numbers are presented as settled');
-  return 'estimate, and under review';
+check('AND THE COPY CANNOT OVERSTATE WHAT IT KNOWS', () => {
+  // THIS USED TO CHECK THE OPPOSITE. Until 21 October 2026 the explainer
+  // volunteered that the weightings are "our own calibrated estimate, and is
+  // going out for expert review", and this asserted that sentence was present.
+  // Ruth took it out, on the argument that the user does not need the internal
+  // model and that leading with uncertainty makes a feature feel less
+  // confident before anybody has used it.
+  //
+  // WHAT THE EMBARGO FORBIDS IS UNCHANGED, and it is the half worth guarding:
+  // Part Eight says specific weightings must not be cited until the review is
+  // published. Dropping a sentence about uncertainty is allowed; printing a
+  // number is not, and the check above is that guard.
+  //
+  // So this checks the other half - that the copy does not claim the certainty
+  // it has just stopped disclaiming.
+  const all = [
+    EXPLAINER_INTRO,
+    EXPLAINER_METHOD,
+    EXPLAINER_UNLOGGED,
+    EXPLAINER_WEEK,
+    ...NOTE_ORDER.map((d) => DIMENSION_NOTES[d].plain),
+  ].join(' ');
+  for (const overclaim of [/\bproven\b/i, /\bclinically\b/i, /\bguarantee/i, /\bscientifically\b/i]) {
+    assert.ok(!overclaim.test(all), `the explainer claims ${overclaim} without the review behind it`);
+  }
+  return 'no claim the review has not earned';
 });
 
 check('IT ADMITS WHAT IT CANNOT SEE, IN HER EXAMPLES', () => {
@@ -137,9 +157,26 @@ check('IT ADMITS WHAT IT CANNOT SEE, IN HER EXAMPLES', () => {
   //
   // HER EXAMPLES RATHER THAN "INCIDENTAL ACTIVITY", which is the phrase a
   // health app reaches for and which names nothing anybody recognises.
+  // THE EXAMPLES WENT ON 21 OCTOBER 2026, and the point they made stayed.
+  // "It's charming, but it's long and specific. A general statement ('Everyday
+  // movement counts too') achieves the same thing in one sentence." Ruth took
+  // that, and the page is now meant to read "like an exhibit in a museum:
+  // simple, calm and slightly intriguing".
+  //
+  // SO WHAT IS CHECKED IS THE ADMISSION, NOT THE ANECDOTE. The drawing shows
+  // what was logged rather than everything that was done, and everyday
+  // movement counts when it is logged - that claim is the whole reason this
+  // paragraph exists, and losing it would turn a thin flower back into a
+  // verdict on somebody's week.
   assert.ok(/logged/i.test(EXPLAINER_UNLOGGED), 'it does not say the drawing is of what was logged');
-  assert.ok(/pram/i.test(EXPLAINER_UNLOGGED), 'her pram example is gone');
-  assert.ok(/escalator/i.test(EXPLAINER_UNLOGGED), 'her escalator example is gone');
+  assert.ok(
+    /not everything/i.test(EXPLAINER_UNLOGGED),
+    'it no longer admits the drawing is less than what she did'
+  );
+  assert.ok(
+    /everyday movement/i.test(EXPLAINER_UNLOGGED),
+    'it no longer says that ordinary movement counts too'
+  );
   assert.ok(!/incidental/i.test(EXPLAINER_UNLOGGED), 'it has been tidied into jargon');
   // IT NAMES THE SCREEN, not a verb. Ruth: "The Now flower is made from the
   // movement that was logged in the Movement log." A place she can open beats
@@ -164,7 +201,7 @@ check('IT ADMITS WHAT IT CANNOT SEE, IN HER EXAMPLES', () => {
       `${where} says the Week counts towards the flower, and it does not`
     );
   }
-  return 'Movement log, pram, escalators, and no false claim';
+  return 'the Movement log named, and everyday movement still counts';
 });
 
 check('THE WEEK IS DESCRIBED AS A PLAN, NOT A RECORD', () => {
@@ -172,14 +209,24 @@ check('THE WEEK IS DESCRIBED AS A PLAN, NOT A RECORD', () => {
   // anywhere in this app: "It's the weekly plan for when all goes to plan."
   // A plan is what you intend, so nothing on it is ever owed - which is the
   // same reason the Week has no ticks.
-  assert.ok(/when all goes to plan/i.test(EXPLAINER_WEEK), 'her sentence about the Week is gone');
-  assert.ok(/rest/i.test(EXPLAINER_WEEK), 'it no longer mentions allowing for rest');
-  // GAPS BELONG HERE AND NOWHERE ELSE. The drawing must never show what is
-  // missing from a life already lived; what a PLAN does not cover is a fact
-  // about the plan. She drew that line herself in this paragraph, which is
-  // also what settles the design of the Week's own flower.
-  assert.ok(/gaps/i.test(EXPLAINER_WEEK), 'the one place gaps are allowed no longer says so');
-  return 'a plan, with gaps and rest';
+  // SHORTENED ON 21 OCTOBER 2026 to "Your Week helps you plan a balanced week,
+  // making space for movement, recovery and everything else life brings." Her
+  // longer sentence - "the weekly plan for when all goes to plan" - is still
+  // the clearest statement of what the Week is, and it has not been lost: it
+  // lives in week-coverage.ts, where the Week's own flower is built and where
+  // the rule it justifies actually bites.
+  //
+  // WHAT THIS PARAGRAPH HAS TO KEEP DOING is say the Week is for PLANNING. A
+  // plan is what you intend, so nothing on it is ever owed, which is the same
+  // reason the Week has no ticks - and a sentence that described it as a
+  // record would undo that in one word.
+  assert.ok(/plan/i.test(EXPLAINER_WEEK), 'the Week is no longer described as a plan');
+  assert.ok(/recovery|rest/i.test(EXPLAINER_WEEK), 'it no longer makes room for rest');
+  // AND IT MUST NOT READ AS A RECORD OF WHAT HAPPENED.
+  for (const past of [/\blogged\b/i, /\bdid\b/i, /\bcompleted\b/i, /\bdone\b/i]) {
+    assert.ok(!past.test(EXPLAINER_WEEK), `the Week paragraph says ${past}, which makes it a record`);
+  }
+  return 'a plan, with room for recovery';
 });
 
 check('AND THE WEEK IS A LIVE LINK, NOT A MENTION', () => {

@@ -12,7 +12,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { weekObservation } from '@/lib/health-flower';
 import {
   DIMENSION_NOTES,
-  EXPLAINER_EVIDENCE,
   EXPLAINER_INTRO,
   EXPLAINER_METHOD,
   EXPLAINER_TITLE,
@@ -260,9 +259,6 @@ export function BalanceFlowerSection({
 
           <ThemedText type="small" themeColor="textSecondary">
             {EXPLAINER_METHOD}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {EXPLAINER_EVIDENCE}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {EXPLAINER_UNLOGGED}
