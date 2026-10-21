@@ -85,3 +85,27 @@ export async function cancelEventReminder(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * And switch it back on.
+ *
+ * ADDED 21 OCTOBER 2026, when the swipe made this a toggle. Ruth: "I wonder if
+ * the same could be said for turning off the reminder. It could just be slide
+ * to the left and see delete and Ring bell/ring bell strike through, most
+ * people know this."
+ *
+ * A CONTROL THAT ONLY GOES ONE WAY IS A TRAP. Cancelling was reachable from
+ * the notification and from the detail sheet, and nothing anywhere put it
+ * back - so a reminder switched off by a mis-swipe was gone for good, and the
+ * only way to get it back was to delete the entry and describe it again.
+ *
+ * remind_at is untouched: the hour she asked for is hers and was never the
+ * thing that changed. Only the cancellation is lifted.
+ */
+export async function restoreEventReminder(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('calendar_events')
+    .update({ reminder_cancelled_at: null })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+

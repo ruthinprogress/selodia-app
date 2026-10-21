@@ -144,17 +144,23 @@ check('CLOSED RECORDS SIT UNDER A BAR, SHUT BY DEFAULT', () => {
 });
 
 check('AND CLOSING IS A SWIPE, BESIDE THE DELETE, NOT INSTEAD OF IT', () => {
-  assert.ok(/onArchive\?: \(\) => Promise<void> \| void;/.test(swipe), 'the swipe has no second action');
-  // THE GENTLER ONE FIRST, so a swipe that runs on too far meets the archive
-  // rather than the bin.
-  const archiveAt = swipe.indexOf('void archive()');
+  // RENAMED ON 21 OCTOBER 2026, from onArchive to onSecond. The props were
+  // named for the first thing they did - closing a finished referral - and had
+  // already grown "Close" and "Open again" here. The diary then added a third,
+  // turning a reminder off, and three jobs under one word is a prop that has
+  // stopped saying what it does. What this guards is unchanged: a second
+  // action exists, it sits inboard of the delete, and it destroys nothing.
+  assert.ok(/onSecond\?: \(\) => Promise<void> \| void;/.test(swipe), 'the swipe has no second action');
+  // THE GENTLER ONE FIRST, so a swipe that runs on too far meets it rather
+  // than the bin.
+  const secondAt = swipe.indexOf('void second()');
   const deleteAt = swipe.indexOf('void remove()');
-  assert.ok(archiveAt > -1 && deleteAt > archiveAt, 'the delete sits inboard of the archive');
-  // And archiving destroys nothing.
+  assert.ok(secondAt > -1 && deleteAt > secondAt, 'the delete sits inboard of the gentler action');
+  // And closing destroys nothing.
   const at = archive.indexOf('export async function setClosed');
   assert.ok(!/\.delete\(\)/.test(archive.slice(at)), 'closing a record deletes it');
-  assert.ok(/archiveLabel="Open again"/.test(protocol), 'a closed record cannot be reopened');
-  return 'two actions, archive inboard, nothing destroyed';
+  assert.ok(/secondLabel="Open again"/.test(protocol), 'a closed record cannot be reopened');
+  return 'two actions, the gentler one inboard, nothing destroyed';
 });
 
 check('EVERY RECORD SHOWS A STATUS, AND A CLOSED ONE SAYS CLOSED', () => {

@@ -75,9 +75,9 @@ export function SwipeToDelete({
   what,
   onDelete,
   onDeleted,
-  onArchive,
-  archiveLabel,
-  archiveIcon,
+  onSecond,
+  secondLabel,
+  secondIcon,
   children,
 }: {
   /** Omitted when `onDelete` does the removing. */
@@ -101,6 +101,12 @@ export function SwipeToDelete({
   /**
    * A SECOND, GENTLER ACTION beside the delete, revealed by the same swipe.
    *
+   * RENAMED ON 21 OCTOBER 2026. These were named for the first thing they did -
+   * tidying a finished referral out of the Me tab - and had already grown two
+   * more meanings there, "Close" and "Open again". The diary adds a third,
+   * turning a reminder off. Three jobs under one word is how a prop stops
+   * telling the truth about what it does.
+   *
    * Supplied only where tidying something away is a real thing to want - the
    * Me tab, where a finished referral should stop filling a list of ailments
    * without being destroyed. Everywhere else this stays undefined and the
@@ -109,11 +115,15 @@ export function SwipeToDelete({
    * IT SITS LEFT OF THE DELETE, so the destructive one stays furthest out: a
    * swipe that runs on too far meets the archive first.
    */
-  onArchive?: () => Promise<void> | void;
-  /** Named in the accessible label, e.g. "Archive" or "Put back". */
-  archiveLabel?: string;
+  onSecond?: () => Promise<void> | void;
+  /** Named in the accessible label, e.g. "Close", "Open again", "Reminder off". */
+  secondLabel?: string;
   /** The mark to draw for it. Defaults to the book. */
-  archiveIcon?: 'book-outline' | 'arrow-undo-outline';
+  secondIcon?:
+    | 'book-outline'
+    | 'arrow-undo-outline'
+    | 'notifications-off-outline'
+    | 'notifications-outline';
   children: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -125,7 +135,7 @@ export function SwipeToDelete({
   // a list and the same plan in a detail sheet - and those are two rows.
   const mine = useId();
   // How far the card slides, which is also how wide the revealed strip is.
-  const reveal = onArchive ? OPEN_TWO : OPEN;
+  const reveal = onSecond ? OPEN_TWO : OPEN;
 
   const settle = useCallback(
     (next: boolean) => {
@@ -188,12 +198,12 @@ export function SwipeToDelete({
    * row stays on screen until the list re-reads, and a spinner in the strip
    * behind it would be describing a card that is about to move anyway.
    */
-  async function archive() {
-    if (busy || !onArchive) return;
+  async function second() {
+    if (busy || !onSecond) return;
     setOpenSwipe(null);
     setOpen(false);
     x.set(withSpring(0, { damping: 18, stiffness: 180 }));
-    await onArchive();
+    await onSecond();
   }
 
   return (
@@ -208,16 +218,16 @@ export function SwipeToDelete({
       >
         {/* THE GENTLER ONE FIRST, so the destructive one stays furthest out
             and a swipe that runs on meets the archive rather than the bin. */}
-        {onArchive ? (
+        {onSecond ? (
           <Pressable
-            onPress={() => void archive()}
+            onPress={() => void second()}
             disabled={!open || busy}
             accessibilityRole="button"
-            accessibilityLabel={`${archiveLabel ?? 'Archive'} ${what}`}
+            accessibilityLabel={`${secondLabel ?? 'More'} ${what}`}
             style={({ pressed }) => [styles.hit, pressed && styles.pressed]}
           >
             <Ionicons
-              name={archiveIcon ?? 'book-outline'}
+              name={secondIcon ?? 'book-outline'}
               size={22}
               color={theme.textSecondary}
             />

@@ -29,6 +29,7 @@ export function FoldSection({
   children,
   ruled = false,
   hideSummary = false,
+  more,
 }: {
   title: string;
   /**
@@ -65,6 +66,19 @@ export function FoldSection({
    * beside a serif heading.
    */
   hideSummary?: boolean;
+  /**
+   * Where the arrow at the end of the row goes, when it goes anywhere.
+   *
+   * Ruth, 21 October 2026, of Coming up: "the arrow on the right should take
+   * them to the section where details are stored for accessing care so they
+   * can call easily and see they can store those details there."
+   *
+   * WITHOUT THIS THE ARROW IS DECORATION. It was drawn inside the pressable
+   * that opens the fold, so it did the same thing as the title - which is fine
+   * as an affordance and a small lie as an arrow. Given a destination it
+   * becomes its own control and says where it is going.
+   */
+  more?: { label: string; onPress: () => void };
 }) {
   const theme = useTheme();
 
@@ -111,10 +125,26 @@ export function FoldSection({
             rows above, the links below - and these were the only openable
             things on the screen without it. With the summary undrawn it is
             also what keeps the row from reading as a dead heading. */}
-        {hideSummary ? (
+        {hideSummary && !more ? (
           <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
         ) : null}
       </Pressable>
+
+      {/* ITS OWN CONTROL, OUTSIDE THE FOLD'S PRESSABLE. Nested pressables are
+          how you open a panel when you meant to go somewhere - the note on
+          body-modes says the same thing about Resume, and for the same
+          reason. */}
+      {more ? (
+        <Pressable
+          onPress={more.onPress}
+          accessibilityRole="button"
+          accessibilityLabel={more.label}
+          hitSlop={Spacing.two}
+          style={({ pressed }) => [styles.more, pressed && styles.pressed]}
+        >
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+        </Pressable>
+      ) : null}
 
       {open ? <View style={styles.body}>{children}</View> : null}
     </View>
@@ -122,7 +152,11 @@ export function FoldSection({
 }
 
 const styles = StyleSheet.create({
+  // A ROW, so the arrow can sit at the end of the heading rather than under it.
   wrap: { gap: Spacing.two },
+  // Pulled up onto the heading's own line. The head below is the flexing part,
+  // so this only has to hold the arrow against the right edge.
+  more: { position: 'absolute', right: 0, top: 0, padding: Spacing.one },
   // The same hairline the Week's days use, in the same sand, so the two
   // screens are ruled by one line rather than by two that nearly match.
   rule: { height: 1, opacity: 0.7, marginBottom: Spacing.two },

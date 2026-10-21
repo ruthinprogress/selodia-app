@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BalanceFlowerSection } from '@/components/balance-flower-section';
@@ -155,6 +156,19 @@ export default function BodyOverviewScreen() {
             <FoldSection
               ruled
               hideSummary
+              // WHERE THE DETAILS FOR RINGING THEM LIVE (Ruth, 21 October
+              // 2026): "the arrow on the right should take them to the section
+              // where details are stored for accessing care so they can call
+              // easily and see they can store those details there."
+              //
+              // The Me tab, which holds Health Care Records. It takes no
+              // parameters, so this lands on the tab rather than scrolling to
+              // the section - an honest door rather than a deep link that
+              // pretends to be one.
+              more={{
+                label: 'Open your health care records',
+                onPress: () => router.push('/(tabs)/me'),
+              }}
               title="Coming up"
               summary={
                 upcoming == null ? 'loading' : upcoming === 0 ? 'nothing yet' : String(upcoming)

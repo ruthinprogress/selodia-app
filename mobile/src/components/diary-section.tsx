@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { sentenceStart } from '@/lib/sentence-start';
 import { ThemedView } from '@/components/themed-view';
@@ -10,6 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   cancelEventReminder,
   deleteEvent,
+  restoreEventReminder,
   eventDateLabel,
   eventTimeLabel,
   loadUpcoming,
@@ -60,9 +62,36 @@ export function DiarySection({ reloadKey }: { reloadKey?: number }) {
           {events.map((e) => {
             const time = eventTimeLabel(e.event_time);
             const reminds = Boolean(e.remind_at && !e.reminder_cancelled_at);
+            // WHAT A SWIPE CAN DO HERE (Ruth, 21 October 2026): "I want all
+            // pills like this to slide to delete. I wonder if the same could be
+            // said for turning off the reminder... most people know this."
+            //
+            // The same gesture the Log and the Me tab already use, so the
+            // reveal, the catch distance and the one-open-at-a-time rule are
+            // one behaviour rather than a second copy of it.
+            //
+            // THE BELL ONLY APPEARS WHEN THERE IS ONE. An entry with no
+            // reminder has nothing to switch, and a struck-through bell on it
+            // would offer something that cannot happen.
+            const hasReminder = Boolean(e.remind_at);
             return (
-              <Pressable
+              <SwipeToDelete
                 key={e.id}
+                what={sentenceStart(e.title)}
+                onDelete={() => deleteEvent(e.id)}
+                onDeleted={() => void load()}
+                onSecond={
+                  hasReminder
+                    ? async () => {
+                        await (reminds ? cancelEventReminder(e.id) : restoreEventReminder(e.id));
+                        void load();
+                      }
+                    : undefined
+                }
+                secondLabel={reminds ? 'Reminder off' : 'Reminder on'}
+                secondIcon={reminds ? 'notifications-off-outline' : 'notifications-outline'}
+              >
+              <Pressable
                 onPress={() => setOpen(e)}
                 accessibilityRole="button"
                 accessibilityLabel={`${sentenceStart(e.title)}, ${eventDateLabel(e.event_date)}${
@@ -85,6 +114,7 @@ export function DiarySection({ reloadKey }: { reloadKey?: number }) {
                   </ThemedText>
                 </ThemedView>
               </Pressable>
+              </SwipeToDelete>
             );
           })}
         </View>

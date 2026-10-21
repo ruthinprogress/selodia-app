@@ -345,12 +345,12 @@ export function MeProtocol({
             key={row.id}
             table="almanac_entries"
             id={row.id}
-            onArchive={async () => {
+            onSecond={async () => {
               await setClosed(row.id, true);
               onChanged?.();
             }}
-            archiveLabel="Close"
-            archiveIcon="book-outline"
+            secondLabel="Close"
+            secondIcon="book-outline"
             what={row.title}
             onDeleted={onDeleted}
           >
@@ -399,12 +399,12 @@ export function MeProtocol({
                   key={row.id}
                   table="almanac_entries"
                   id={row.id}
-                  onArchive={async () => {
+                  onSecond={async () => {
                     await setClosed(row.id, false);
                     onChanged?.();
                   }}
-                  archiveLabel="Open again"
-                  archiveIcon="arrow-undo-outline"
+                  secondLabel="Open again"
+                  secondIcon="arrow-undo-outline"
                   what={row.title}
                   onDeleted={onDeleted}
                 >

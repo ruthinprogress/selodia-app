@@ -197,5 +197,44 @@ check('AND THE PROMPT NO LONGER SAYS APPOINTMENTS ARE IMPOSSIBLE', () => {
   return 'the example moved to the gap that is still real';
 });
 
+check('A DIARY ENTRY SLIDES TO DELETE, AND THE BELL TOGGLES', () => {
+  // Ruth, 21 October 2026: "I want all pills like this to slide to delete. I
+  // wonder if the same could be said for turning off the reminder. It could
+  // just be slide to the left and see delete and Ring bell/ring bell strike
+  // through, most people know this."
+  //
+  // THE SAME GESTURE THE LOG AND THE ME TAB ALREADY USE, rather than a second
+  // copy of it - so the reveal, the catch distance and the one-open-at-a-time
+  // rule stay one behaviour.
+  const diary = fs.readFileSync('mobile/src/components/diary-section.tsx', 'utf8');
+  assert.ok(/<SwipeToDelete/.test(diary), 'a diary entry no longer slides to delete');
+  assert.ok(/onDelete=\{\(\) => deleteEvent\(e\.id\)\}/.test(diary), 'the swipe does not delete the entry');
+  // THE BELL IS A TOGGLE, BOTH WAYS. Cancelling used to be reachable from the
+  // notification and from the detail sheet with nothing anywhere to put it
+  // back, so a reminder switched off by a mis-swipe was gone for good.
+  assert.ok(/restoreEventReminder/.test(diary), 'a cancelled reminder cannot be switched back on');
+  assert.ok(/cancelEventReminder/.test(diary), 'the reminder cannot be switched off from the swipe');
+  assert.ok(
+    /Reminder off/.test(diary) && /Reminder on/.test(diary),
+    'the bell does not say which way it goes'
+  );
+  // AND IT ONLY APPEARS WHEN THERE IS A REMINDER TO SWITCH. A struck-through
+  // bell on an entry that never had one offers something that cannot happen.
+  assert.ok(/hasReminder/.test(diary), 'the bell is offered on entries with no reminder');
+  return 'delete, and a bell that goes both ways';
+});
+
+check('AND RESTORING A REMINDER DOES NOT INVENT AN HOUR', () => {
+  // The hour she asked for is hers and was never what changed - only the
+  // cancellation is lifted.
+  const lib = fs.readFileSync('mobile/src/lib/calendar.ts', 'utf8');
+  const at = lib.indexOf('export async function restoreEventReminder');
+  assert.ok(at > -1, 'there is no way to switch a reminder back on');
+  const body = lib.slice(at, at + 400);
+  assert.ok(/reminder_cancelled_at: null/.test(body), 'restoring does not clear the cancellation');
+  assert.ok(!/remind_at:/.test(body), 'restoring writes a reminder time, which is hers to have set');
+  return 'the cancellation only';
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
