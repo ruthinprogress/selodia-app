@@ -5,6 +5,8 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { BodyScreen } from '@/components/body-screen';
+import { CycleDaySaved } from '@/components/cycle-day-saved';
+import { CycleDayView } from '@/components/cycle-day-view';
 import { AddAnother, Card, Chips, GroupedChips } from '@/components/cycle-cards';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -62,6 +64,20 @@ export default function CycleDayScreen() {
   const [showTemperature, setShowTemperature] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // READING, WRITING, OR JUST FINISHED - screens 4, 5 and 7 of her artwork.
+  //
+  // 'view' is the day as a record; 'edit' is the form that was all this screen
+  // ever had; 'saved' is the stop her drawing puts between them, so finishing
+  // does not leave somebody sitting on the form they have just finished with.
+  //
+  // WHICH ONE IT OPENS ON IS DECIDED BY THE DAY ITSELF, not by where she came
+  // from. A day with something on it opens as a record, because she came to
+  // read it; a day with nothing on it opens as the form, because there is
+  // nothing to read and an empty record would be a screen saying "nothing"
+  // with a button under it. That also makes "Anything to note today?" land
+  // straight on the form, which is screen 6.
+  const [mode, setMode] = useState<'view' | 'edit' | 'saved'>('edit');
+  const [emptied, setEmptied] = useState(false);
   const [feeling, setFeeling] = useState<Record<string, Rating>>({});
 
   // Her period history, for the line that says where this day sits, and the
@@ -126,6 +142,11 @@ export default function CycleDayScreen() {
       setTemperature(row?.temperature_c != null ? String(row.temperature_c) : '');
       setShowTemperature(row?.temperature_c != null);
       setNote(null);
+      // A DAY WITH SOMETHING ON IT OPENS AS A RECORD. Decided by the day
+      // rather than by where she came from - see the mode state above. The
+      // feeling rows arrive below and can only add to this, never take away.
+      setMode(row ? 'view' : 'edit');
+      setEmptied(false);
 
       const { data: rated } = await supabase
         .from('daily_ratings')
@@ -156,7 +177,10 @@ export default function CycleDayScreen() {
       // saving an empty one.
       if (isEmptyDay(value)) {
         await supabase.from('daily_observations').delete().eq('user_id', userId).eq('day', day);
-        setNote('Nothing recorded for this day.');
+        // EMPTYING A DAY IS A REAL THING TO WANT, so it gets its own words
+        // rather than a tick over a sentence that would not be true.
+        setEmptied(true);
+        setMode('saved');
         return;
       }
 
@@ -182,7 +206,8 @@ export default function CycleDayScreen() {
         if (!usedSymptoms.includes(s)) setUsedSymptoms((u) => [s, ...u]);
       }
       setTemperature(value.temperatureC != null ? String(value.temperatureC) : '');
-      setNote(`Saved for ${human(day)}.`);
+      setEmptied(false);
+      setMode('saved');
     } finally {
       setSaving(false);
     }
@@ -240,6 +265,32 @@ export default function CycleDayScreen() {
           />
         </Pressable>
       </ThemedView>
+
+      {/* WHAT SITS UNDER THE DAY BAR DEPENDS ON WHY SHE IS HERE. The bar
+          itself never moves: stepping to the day before is as useful while
+          reading as while writing, and a control that disappears between two
+          views of the same screen is the dead control principle 8 rules out. */}
+      {mode === 'saved' ? (
+        <CycleDaySaved
+          heading={
+            emptied
+              ? `Nothing recorded for ${day === today() ? 'today' : human(day)}.`
+              : day === today()
+                ? "Today's log saved"
+                : `Saved for ${human(day)}`
+          }
+          deleted={emptied}
+          onView={() => setMode('view')}
+          onChat={() => router.push('/')}
+        />
+      ) : mode === 'view' ? (
+        <CycleDayView
+          entry={entry}
+          said={said.map((x) => ({ label: x.m.label, word: x.word as string }))}
+          onEdit={() => setMode('edit')}
+        />
+      ) : (
+        <>
 
       <Card icon="wave" title="Flow">
         <Chips
@@ -386,6 +437,8 @@ export default function CycleDayScreen() {
           Or just tell Selodía in chat.
         </ThemedText>
       </View>
+        </>
+      )}
     </BodyScreen>
   );
 }
