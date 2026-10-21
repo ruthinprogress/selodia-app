@@ -30,9 +30,10 @@ import assert from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
-const { trackedMacroKeys, buildTrackedMacroBlock } = await import(
+const { trackedMacroKeys, buildTrackedMacroBlock, MACRO_COLUMN } = await import(
   root + '/app/lib/tracked-macro-summary.ts'
 );
+const { MACROS } = await import(root + '/mobile/src/lib/tracked-macros.ts');
 
 let pass = 0;
 const failures = [];
@@ -363,6 +364,40 @@ await check('and this one can fail', async () => {
   const asShipped = foodFacts(food, 7);
   assert.ok(!/saturated fat/.test(asShipped), 'the fixture is not the old behaviour');
   return 'the version she hit four times is detected';
+});
+
+check('EVERY MACRO THE PHONE OFFERS IS ONE THE CHAT KNOWS', () => {
+  // THE WIRE, NOT THE ARITHMETIC - which is what this whole file is about.
+  //
+  // trackedMacroKeys filters what she switched on against MACRO_COLUMN, so a
+  // macro the phone offers and this table does not hold is dropped in silence.
+  // The chat then tells her, in the words this check was written to stop, that
+  // her record does not keep it.
+  //
+  // It nearly happened the same hour calcium and iron shipped: they went onto
+  // the phone's macro list and this table did not know either of them. So the
+  // two lists are compared rather than trusted, because the next macro will be
+  // added by somebody who has not read this comment.
+  const phone = MACROS.map((m) => m.key).filter((k) => k !== 'kcal' && k !== 'protein');
+  const missing = phone.filter((k) => !(k in MACRO_COLUMN));
+  assert.deepStrictEqual(missing, [], `the chat cannot see: ${missing.join(', ')}`);
+  // And it survives the filter, which is the step that actually drops them.
+  assert.deepStrictEqual(trackedMacroKeys(phone).sort(), [...phone].sort());
+  return `${phone.length} optional macros, all readable by chat`;
+});
+
+check('AND IRON IS NOT QUOTED AT ONE FIGURE', () => {
+  // The reason she asked for iron: the published figure nearly halves at the
+  // age most of this app's users are near. One number would be wrong for half
+  // of them, and the record does not always say which half somebody is in.
+  const iron = MACRO_COLUMN.iron;
+  assert.ok(iron, 'iron is not a macro the chat knows');
+  assert.ok(/14\.8mg/.test(iron.guideline) && /8\.7mg/.test(iron.guideline), iron.guideline);
+  assert.ok(/say both rather than choosing one/.test(iron.guideline), 'it may pick one and be wrong');
+  // Calcium states the figure and sends the diagnosis question where it belongs.
+  assert.ok(/700mg/.test(MACRO_COLUMN.calcium.guideline), 'calcium has no published figure');
+  assert.ok(/clinician/.test(MACRO_COLUMN.calcium.guideline), 'calcium reads as medical advice');
+  return 'both figures, and whose question it is';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

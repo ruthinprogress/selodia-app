@@ -135,6 +135,31 @@ export const MACRO_COLUMN: Record<
     unit: 'mg sodium',
     guideline: 'NHS guidance is no more than 6g of salt a day for adults, which is about 2,400mg of sodium',
   },
+  // CALCIUM AND IRON (Ruth, 21 October 2026): "Lets offer calcium and iron.
+  // Its important to my demographic."
+  //
+  // They reached the phone the same day and would have stopped dead here.
+  // trackedMacroKeys filters against this table, so a macro she had switched
+  // on and that is absent from it is silently dropped - and the chat would
+  // then tell her, in the file written about exactly this failure, that her
+  // record does not keep calcium.
+  calcium: {
+    column: 'calcium_mg',
+    label: 'calcium',
+    unit: 'mg',
+    guideline:
+      'NHS guidance is 700mg a day for adults. Whether somebody needs more than that after menopause, or alongside a bone-density diagnosis or its treatment, is a question for their clinician rather than something to work out from a food log',
+  },
+  iron: {
+    column: 'iron_mg',
+    label: 'iron',
+    unit: 'mg',
+    // THE SPLIT IS THE POINT, and it is the reason she named iron. The figure
+    // nearly halves at the age most of this app's users are near, so quoting
+    // one number would be wrong for half of them and unknowable for the rest.
+    guideline:
+      'NHS guidance is 14.8mg a day for women aged 19 to 50 and 8.7mg a day for women over 50, because the higher figure covers monthly blood loss - so which one applies depends on whether they are still having periods, and if that is not clear from their record, say both rather than choosing one',
+  },
 };
 
 /**
