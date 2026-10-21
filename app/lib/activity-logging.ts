@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { resolveCoverage } from './classify-activity';
 import { recordModelUsage } from './usage-record';
 
 import { coverageFor } from './activity-weights';
@@ -184,13 +186,30 @@ export async function logActivityFromText(
   );
   if (loggable.length === 0) return [];
 
-  let rowsToInsert = loggable.map((activity: ParsedActivity) => {
-    // Health Flower coverage, resolved once here rather than on every render of
-    // the Overview. Null when the activity is not in the weighting table, and
-    // the six columns stay null together: a partially classified row would be
+  // COVERAGE FOR EVERY ONE, INCLUDING THE ONES THE TABLE DOES NOT HOLD.
+  //
+  // This was `coverageFor` alone, and the comment underneath promised a
+  // classifier that had never been written - so an activity outside the
+  // thirty-one broad types got six nulls and counted for nothing in the Health
+  // Flower, forever. Fourteen of Ruth's forty-eight sessions.
+  //
+  // resolveCoverage tries the table, then the shared dictionary, then the
+  // model, and writes what the model said back to the dictionary - so a name
+  // is paid for once across every user and never again. It returns null rather
+  // than throwing, so a classification that fails leaves the row exactly where
+  // it would have been.
+  const covers = await Promise.all(
+    loggable.map((a: ParsedActivity) =>
+      resolveCoverage(supabase, anthropic, a.activity_type, userId)
+    )
+  );
+
+  let rowsToInsert = loggable.map((activity: ParsedActivity, i: number) => {
+    // Resolved once here rather than on every render of the Overview, and the
+    // six columns stay null together: a partially classified row would be
     // worse than an unclassified one, because the flower would count the
     // dimensions it found and silently treat the rest as zero.
-    const cover = coverageFor(activity.activity_type);
+    const cover = covers[i];
     return {
     user_id: userId,
     happened_at: finalHappenedAt,
