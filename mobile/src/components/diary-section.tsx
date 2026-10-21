@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, View, type TextStyle, type ViewStyle } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { sentenceStart } from '@/lib/sentence-start';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -64,7 +65,7 @@ export function DiarySection({ reloadKey }: { reloadKey?: number }) {
                 key={e.id}
                 onPress={() => setOpen(e)}
                 accessibilityRole="button"
-                accessibilityLabel={`${e.title}, ${eventDateLabel(e.event_date)}${
+                accessibilityLabel={`${sentenceStart(e.title)}, ${eventDateLabel(e.event_date)}${
                   time ? ` at ${time}` : ''
                 }${reminds ? ', reminder set' : ''}`}
                 accessibilityHint="Opens it, with where it is and what to bring"
@@ -72,7 +73,7 @@ export function DiarySection({ reloadKey }: { reloadKey?: number }) {
                 <ThemedView type="backgroundElement" style={styles.row}>
                   <View style={styles.rowTop}>
                     <ThemedText type="smallBold" style={styles.title}>
-                      {e.title}
+                      {sentenceStart(e.title)}
                     </ThemedText>
                     {/* THE TIME, OR NOTHING AT ALL. A date with no hour is the
                         normal state of a hospital letter, and an invented 9am
@@ -138,7 +139,7 @@ function EventSheet({
       <ThemedView style={[styles.sheet, { paddingBottom: insets.bottom + clearance }]}>
         <View style={[styles.grabber, { backgroundColor: theme.backgroundSelected }]} />
         <View style={styles.body}>
-          <ThemedText type="sectionTitle">{event.title}</ThemedText>
+          <ThemedText type="sectionTitle">{sentenceStart(event.title)}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {[eventDateLabel(event.event_date), time].filter(Boolean).join(' · ')}
           </ThemedText>

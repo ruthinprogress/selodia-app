@@ -92,7 +92,14 @@ export const NOTE_ORDER: Dimension[] = [
 ];
 
 /** Opens the explainer. Short, because it sits under a drawing. */
-export const EXPLAINER_TITLE = 'What this shows';
+// BODY LITERACY LANGUAGE, NOT A HELP LINK (Ruth, 21 October 2026): "'Learn
+// about these six foundations' is but better body literacy language - change it
+// from What's this."
+//
+// "What this shows" is what a tooltip says. These six are the thing the app is
+// teaching, and naming them as foundations says they are worth knowing rather
+// than that the drawing needs explaining.
+export const EXPLAINER_TITLE = 'Learn about these six foundations';
 
 /**
  * THE OPENING LINE IS HERS, and it is better than anything written for the job:

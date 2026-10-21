@@ -91,10 +91,20 @@ const styles = StyleSheet.create({
   // "Build a" with no ellipsis to show for it (Ruth's screenshot, 7 October).
   // segmented-tabs.tsx has the same fault written up: "that is what Wee was".
   row: { paddingTop: Spacing.four, paddingBottom: Spacing.two },
-  link: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  // Shrinks by WRAPPING rather than by ellipsis: see the note at the label.
-  // flexShrink stays so it can never push the row wider than the screen; what
-  // went is the single-line cap that turned shrinking into cutting.
-  label: { flexShrink: 1 },
+  link: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, alignSelf: 'stretch' },
+  // IT FILLS THE ROW RATHER THAN HUGGING ITS OWN MEASUREMENT (21 October
+  // 2026, and this is the fifth report in this family).
+  //
+  // flexShrink: 1 was the fix on 20 October and it is not enough on its own:
+  // it lets the box be narrower than the text, and the clip boundary is then
+  // the measurement itself - which Android makes in the system face and draws
+  // in Manrope, so it comes back short. segmented-tabs.tsx has the whole
+  // write-up; the cure that held there was to stop the label being sized by
+  // its own content.
+  //
+  // flex: 1 gives it everything left after the icon, so the boundary is the
+  // page width. A short measurement can then only wrap, which shows every
+  // word, and with no line cap there is nothing to truncate to.
+  label: { flex: 1 },
   pressed: { opacity: 0.6 },
 });

@@ -65,22 +65,20 @@ check('BUILD A REPORT CANNOT BECOME "Build a rep..."', () => {
 });
 
 check('AND WEEK AND MONTH CANNOT BECOME "We..." AND "Mon..."', () => {
+  // THE CONTROL BECAME THE APP'S OWN PILL, 21 October 2026. These were two
+  // hand-drawn words in a row here, carrying their own copy of the clipping
+  // fix; they are now SegmentedTabs, which is the control the rest of the app
+  // uses and which has its own check next door - "A TAB LABEL IS NOT CLIPPED
+  // AT ITS OWN MEASUREMENT".
+  //
+  // So what is asserted here is that this section does NOT draw its own, which
+  // is the thing that would quietly reintroduce the fault. A second pill is a
+  // second place for the same bug to live.
   const src = withoutComments(read('mobile/src/components/balance-flower-section.tsx'));
-  const at = src.indexOf("{m === 'days7' ? '7 days' : '30 days'}");
-  assert.ok(at > -1, 'the mode labels moved - this check is testing nothing');
-  const el = src.lastIndexOf('<ThemedText', at);
-  assert.ok(
-    !/numberOfLines=/.test(src.slice(el, at)),
-    'the Week/Month labels are capped to one line again'
-  );
-  // The number-tuning from the previous attempt stays - it is not wrong, it
-  // was just not sufficient on its own.
-  assert.ok(/modeLabel: \{ flexShrink: 0/.test(src), 'the earlier flexShrink fix was removed');
-  // The labels got shorter on 20 October when the window went rolling - "7
-  // days" and "30 days" rather than "Week" and "Month" - which retires the
-  // clipping for good. Kept checked anyway: shorter is not the same as safe,
-  // and the cap is what did the damage.
-  return 'no cap, and the earlier fix kept';
+  assert.ok(/SegmentedTabs/.test(src), 'the window picker is hand-drawn again rather than the shared pill');
+  assert.ok(!/modeLabel/.test(src), 'the old hand-drawn labels are back alongside the pill');
+  assert.ok(!/numberOfLines=/.test(src), 'something in this section caps a label to one line again');
+  return 'the shared pill, not a second one';
 });
 
 check('AND A TAB LABEL IS NOT CLIPPED AT ITS OWN MEASUREMENT', () => {

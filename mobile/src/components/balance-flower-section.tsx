@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HealthFlower } from '@/components/health-flower';
+import { SegmentedTabs } from '@/components/segmented-tabs';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useHealthFlower } from '@/hooks/use-health-flower';
@@ -58,6 +59,12 @@ import { canGoBack, canGoForward, flowerRange, type FlowerMode } from '@/lib/flo
 // something she can see rather than something the app decided for her: the week
 // view will look sparse on a quiet week, and the month view beside it will not.
 
+/** The two windows, in the pill's own shape. */
+const FLOWER_WINDOWS = [
+  { id: 'days7', label: '7 days' },
+  { id: 'days30', label: '30 days' },
+] as const;
+
 export function BalanceFlowerSection({
   mode,
   back,
@@ -93,35 +100,23 @@ export function BalanceFlowerSection({
   return (
     <View style={styles.wrap}>
 
-      <View style={styles.modes}>
-        {(['days7', 'days30'] as FlowerMode[]).map((m) => (
-          <Pressable
-            key={m}
-            onPress={() => pick(m)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: mode === m }}
-            accessibilityLabel={
-              m === 'days7' ? 'Show the last seven days' : 'Show the last thirty days'
-            }
-            hitSlop={Spacing.two}
-            style={({ pressed }) => [styles.mode, pressed && styles.pressed]}
-          >
-            <ThemedText
-              type="small"
-              themeColor={mode === m ? 'accentDeep' : 'textSecondary'}
-              // NO numberOfLines (Ruth, 20 October 2026: "We..." and "Mon...").
-              // flexShrink: 0 was already on both the Pressable and the label -
-              // the number-tuning fix - and they still came back cut, because
-              // a single-line cap turns Android's short measurement into an
-              // ellipsis however little the box is allowed to shrink. With
-              // nothing to truncate to, a bad measurement can only wrap, and
-              // "Week" has no second line to wrap onto. See report-link.tsx.
-              style={styles.modeLabel}
-            >
-              {m === 'days7' ? '7 days' : '30 days'}
-            </ThemedText>
-          </Pressable>
-        ))}
+      {/* A PILL, NOT TWO WORDS IN A ROW (Ruth, 21 October 2026): "pill in
+          artwork to decide 7 day and 30 days is nice, let's do it."
+
+          THE SAME CONTROL THE REST OF THE APP USES, rather than a second one
+          drawn here. SegmentedTabs is the pill on Plans and on the Log, and it
+          carries five rounds of clipping history and the fix that finally held
+          - a label that fills its tab instead of being sized by its own
+          measurement. A hand-rolled pill here would start that story again.
+
+          NARROW AND CENTRED, because two short words should not span the page
+          the way four tab names do. */}
+      <View style={styles.modesWrap}>
+        <SegmentedTabs
+          items={FLOWER_WINDOWS}
+          value={mode}
+          onChange={(m) => pick(m as FlowerMode)}
+        />
       </View>
 
       {/* THE WINDOW NAMES ITSELF BETWEEN ITS OWN ARROWS. Without the label a
@@ -298,14 +293,9 @@ const styles = StyleSheet.create({
   // Week and Month sit together as a pair of words rather than a control: the
   // tab's own switch is the only segmented thing on this screen and a second
   // one would read as a second level of navigation.
-  modes: { flexDirection: 'row', gap: Spacing.three },
-  // NEVER SQUEEZED. These came back as "Wee" and "Mont" on her phone, which is
-  // the fault segmented-tabs.tsx writes up at length: the word needs more than
-  // its box has, overflows, and is clipped by the parent with no ellipsis. A
-  // content-sized word in a row must not shrink, and includeFontPadding off
-  // stops Android reserving room it then measures as used.
-  mode: { paddingVertical: 2, flexShrink: 0 },
-  modeLabel: { flexShrink: 0, includeFontPadding: false },
+  // The pill is narrower than the page and centred. SegmentedTabs fills
+  // whatever it is given, so the width is set here rather than inside it.
+  modesWrap: { alignSelf: 'center', width: 220 },
   // The arrows hug the label rather than the screen edges, so the three read as
   // one object: back, where you are, forward.
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three },

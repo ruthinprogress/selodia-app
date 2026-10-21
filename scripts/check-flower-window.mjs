@@ -155,9 +155,13 @@ check('THE LABEL DESCRIBES A STRETCH THAT HAPPENED', () => {
 });
 
 check('AND THE CONTROL SAYS DAYS, NOT WEEKS', () => {
-  assert.ok(/'7 days' : '30 days'/.test(section), 'the toggle still offers Week and Month');
-  assert.ok(!/'Week' : 'Month'/.test(section), 'the old labels are still there');
-  // Shorter labels, which also retires the clipping that started this.
+  // THE LABELS, WHEREVER THEY ARE DECLARED. This matched the ternary
+  // `'7 days' : '30 days'` inline in the markup, so moving the two windows into
+  // a list for the pill broke it - while the fault it guards, a control that
+  // says Week and Month over a rolling window, was nowhere near.
+  assert.ok(/'7 days'/.test(section), 'the seven-day window is no longer labelled in days');
+  assert.ok(/'30 days'/.test(section), 'the thirty-day window is no longer labelled in days');
+  assert.ok(!/'Week'/.test(section) && !/'Month'/.test(section), 'the old calendar labels are back');
   assert.ok(/days7/.test(section) && /days30/.test(section), 'the modes are still named for calendars');
   return '7 days / 30 days';
 });

@@ -218,6 +218,10 @@ export default function BodyOverviewScreen() {
               <PageLink to="/(tabs)/plans" label="Open your Week" icon="calendar-outline" />
               <ReportLink start={['symptoms', 'insights']} label="Build a report" />
             </View>
+            {/* AND A RULE AFTER THEM (Ruth, 21 October 2026): "the line before
+                and after keep these nicely contained, do that." Closed at both
+                ends, like the figures table at the top of the screen. */}
+            <View style={[styles.waysRule, styles.waysRuleEnd, { backgroundColor: theme.backgroundElement }]} />
           </View>
         </ScrollView>
         <HydrationToast
@@ -245,6 +249,8 @@ const styles = StyleSheet.create({
   // The same hairline the folds and the Week's days use. Drawn here rather
   // than as a `ruled` FoldSection, because this is not a section.
   waysRule: { height: 1, opacity: 0.7, marginTop: Spacing.four },
+  // The closing one sits tight to the links it closes, not a section away.
+  waysRuleEnd: { marginTop: Spacing.two },
   safeArea: { flex: 1 },
   content: {
     // flexGrow rather than flex: fills the viewport when the content is short,
