@@ -39,6 +39,7 @@ export const APP_GUIDE: GuideEntry[] = [
     use: 'Every kind of record in one list, each opening its own history: Food & Drink, Water, Sleep, Feeling, Cycle, Measurements and Activity. Tap a section to see past days and change or delete an entry.',
   },
   { route: '(tabs)/log/food-history', name: 'Food & Drink', reach: 'Log, then Food & Drink', use: 'Each day of the week with its meals and totals; arrows move between weeks. Tap a meal to see its items, ask about it or delete it.' },
+  { route: '(tabs)/log/nutrients', name: 'What these mean', reach: 'Log, Food & Drink, then "What these mean"', use: 'What each nutrient does in the body and the foods it comes from, for the ones you watch and the ones you do not. Nothing about your own figures - ask in chat for that.' },
   { route: '(tabs)/log/water-history', name: 'Water', reach: 'Log, then Water', use: 'Drinks by day.' },
   { route: '(tabs)/log/sleep', name: 'Sleep', reach: 'Log, then Sleep', use: 'Nights logged and how they felt.' },
   { route: '(tabs)/log/feeling', name: 'Feeling', reach: 'Log, then Feeling', use: 'Mood and energy over time, and the notes you gave with them.' },

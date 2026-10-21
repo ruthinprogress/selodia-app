@@ -1,16 +1,18 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { ThemedView } from '@/components/themed-view';
+import { CardRadius, Spacing } from '@/constants/theme';
 import { useFocusReload } from '@/hooks/use-focus-reload';
 import { entryLabel } from '@/lib/food-today';
 import { removeEntry } from '@/lib/remove-entry';
 import { supabase } from '@/lib/supabase';
-import { averageLine, macroLine, type MacroKey } from '@/lib/tracked-macros';
+import { averageLine, macroLine, sumRows, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
 import {
   addWeeks,
@@ -234,6 +236,18 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
           key,
           date,
           summary: <ThemedText type="small">{summaryOf(list)}</ThemedText>,
+          // OPEN, THE DAY SHOWS WHAT SHE ACTUALLY TRACKS (Ruth, 21 October
+          // 2026). Collapsed stays calories and protein, because a week of
+          // rows is for scanning and both her artworks show it that way. Open
+          // is where the day is being read rather than skimmed, and where a
+          // macro she switched on has somewhere to appear - it had none
+          // before, on any screen, at any level above a single meal.
+          openSummary: (
+            <ThemedText type="small">
+              {macroLine(sumRows(list as unknown as Record<string, unknown>[]), tracked) ||
+                summaryOf(list)}
+            </ThemedText>
+          ),
           at: list[0]?.happened_at ?? null,
           entries,
         };
@@ -251,6 +265,48 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
   return (
     <View style={styles.wrap}>
       <QuickLogBar kind="food" onLogged={() => setReloadKey((k) => k + 1)} />
+
+      {/* THE WEEK, READ BEFORE IT IS SCROLLED (Ruth, 21 October 2026): "What
+          we need is a clearer Weekly summary on the week logging page -
+          currently a tiny text line at the bottom of the table."
+          
+          It was `type="detail"` grey text rendered after the whole list and
+          after the breakdown card, which is to say: after everything, in the
+          smallest type on the screen. The figures were right and nobody was
+          ever going to read them.
+
+          "DAILY AVERAGE", NOT "THIS WEEK" (her item 8, 27 September). It reads
+          as a weekly total otherwise, and 1,326 kcal for a week would be a
+          frightening thing to show somebody about their own eating. The figure
+          never changed; the label was doing the lying. */}
+      {week.line ? (
+        <ThemedView type="backgroundElement" style={styles.weekCard}>
+          <ThemedText type="smallBold">Daily average this week</ThemedText>
+          <ThemedText type="small">{week.line}</ThemedText>
+          {/* OVER THE DAYS THAT WERE LOGGED, which is why the count is beside
+              it rather than left to be assumed. An average of three days is a
+              different claim from an average of seven, and the difference is
+              the whole reason somebody would doubt the number. */}
+          <ThemedText type="detail" themeColor="textSecondary">
+            {week.daysLogged} of 7 days logged
+          </ThemedText>
+          {/* THE WAY IN TO WHAT THEY MEAN. It sits under the figures rather
+              than in a menu, because the moment somebody wonders what fibre is
+              for is the moment they are looking at their fibre. Static copy -
+              see lib/macro-explainers.ts for why it is not generated. */}
+          <Pressable
+            onPress={() => router.push('/log/nutrients')}
+            accessibilityRole="button"
+            accessibilityLabel="What these nutrients mean"
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [styles.meaning, pressed && styles.pressed]}
+          >
+            <ThemedText type="small" themeColor="link">
+              What these mean
+            </ThemedText>
+          </Pressable>
+        </ThemedView>
+      ) : null}
 
       <DayLog
         days={days}
@@ -282,21 +338,15 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
         />
       ) : null}
 
-      {week.line ? (
-        <ThemedText type="detail" themeColor="textSecondary">
-          {/* "Daily average this week", not "This week" (item 8). It reads
-              as a weekly total otherwise, and 1,326 kcal for a week would be a
-              frightening number to show somebody about their own eating. The
-              figure never changed; the label was doing the lying. */}
-          {`Daily average this week: ${week.line}  ·  ${week.daysLogged} of 7 days logged`}
-        </ThemedText>
-      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.three },
+  weekCard: { gap: 4, padding: Spacing.four, borderRadius: CardRadius },
+  meaning: { marginTop: Spacing.two, minHeight: 44, justifyContent: 'center' },
+  pressed: { opacity: 0.6 },
 });
 
 export { addWeeks };

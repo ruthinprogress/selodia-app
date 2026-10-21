@@ -200,6 +200,41 @@ export function macroLine(row: Record<string, unknown>, tracked: MacroKey[]): st
  * rule is older than this screen and is why the line says how many days it is
  * an average of.
  */
+/**
+ * A day's rows added up, as a row - so every reader that knows how to read one
+ * meal can read a whole day without learning anything new.
+ *
+ * Ruth, 21 October 2026: "Theres no daily totals on each day, even when
+ * expanded. And alot of the insights are hidden in little numbers, some of
+ * which dont even show up."
+ *
+ * The last clause was the real fault and it was not a layout one. The day line
+ * was built from kcal and protein by hand, in the screen, ignoring what she had
+ * switched on entirely - so somebody who turned on fibre and salt saw them on
+ * each meal and never once on a day. Totals are summed from the RAW columns
+ * here, which is what lets salt stay sodium until the moment it is spoken.
+ *
+ * AND ABSENT STAYS ABSENT. A macro no row carried is left out of the total
+ * rather than summed to zero, because a day of meals nobody worked the fibre
+ * out for is not a day with no fibre in it.
+ */
+export function sumRows(rows: Record<string, unknown>[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const m of MACROS) {
+    let has = false;
+    let total = 0;
+    for (const row of rows) {
+      const raw = row[m.column];
+      const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+      if (!Number.isFinite(n)) continue;
+      total += n;
+      has = true;
+    }
+    if (has) out[m.column] = total;
+  }
+  return out;
+}
+
 export function averageLine(
   days: Record<string, unknown>[][],
   tracked: MacroKey[]
