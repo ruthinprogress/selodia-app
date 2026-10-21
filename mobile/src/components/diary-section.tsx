@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +38,7 @@ import {
 // closing first was seeing what you had told it.
 
 export function DiarySection({ reloadKey }: { reloadKey?: number }) {
+  const theme = useTheme();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [open, setOpen] = useState<CalendarEvent | null>(null);
 
@@ -108,6 +110,15 @@ export function DiarySection({ reloadKey }: { reloadKey?: number }) {
                         normal state of a hospital letter, and an invented 9am
                         would look like information. */}
                     {time ? <ThemedText type="small">{time}</ThemedText> : null}
+                    {/* AND THE ARROW, BECAUSE THERE IS A ROUTE (Ruth, 21
+                        October 2026): "still arrow if there's a route."
+
+                        There is: the card opens its own detail, with where it
+                        is and what to bring. What there is NOT is a link back
+                        to the conversation it came from - a diary entry
+                        records no thread - so this points at the detail and
+                        claims nothing else. */}
+                    <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
                   </View>
                   <ThemedText type="small" themeColor="textSecondary">
                     {[eventDateLabel(e.event_date), e.place].filter(Boolean).join(' · ')}
