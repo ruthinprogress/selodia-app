@@ -165,10 +165,22 @@ await check('AND HAS A COLUMN ON BOTH TABLES', async () => {
   // that does not exist, which is exactly the failure a new macro would hit on
   // its first real write - except here it happens on this machine instead of
   // on her phone.
+  // ONLY A MISSING COLUMN IS A FAILURE. Postgres answers 42703 - "column
+  // food_logs.magnesium_mg does not exist" - and that is the thing worth
+  // blocking a push for. An unreachable database answers with an empty code
+  // and "TypeError: fetch failed", which means the laptop is on a train, not
+  // that the schema is wrong.
+  //
+  // THE FIRST VERSION OF THIS TREATED THEM THE SAME, so a dropped connection
+  // would have turned the whole suite red and stopped work for a reason that
+  // had nothing to do with the code. A check that cries wolf offline is a
+  // check somebody eventually comments out, and then it is guarding nothing.
   const missing = [];
   for (const table of ['food_logs', 'food_items']) {
     const { error } = await db.from(table).select(MACRO_COLUMNS).limit(1);
-    if (error) missing.push(`${table}: ${error.message}`);
+    if (!error) continue;
+    if (error.code === '42703') missing.push(`${table}: ${error.message}`);
+    else return `skipped: could not reach the database (${error.code || 'no code'})`;
   }
   assert.deepStrictEqual(missing, [], missing.join(' | '));
   return 'food_logs and food_items both hold all ten';
