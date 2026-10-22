@@ -98,24 +98,38 @@ check('THE CARD IS A CARD, NOT A PAGE', () => {
   assert.ok(!/type="sectionTitle"/.test(card), 'the figures are at heading size');
   const size = /figure: \{ fontSize: (\d+)/.exec(card);
   assert.ok(size, 'the figure size is no longer stated in one place');
-  assert.ok(Number(size[1]) <= 24, `the figures are ${size[1]}px`);
+  // SIZED AGAINST THE LOG, not against a scale. Her instruction after the
+  // third attempt: "They only need to be a tiny bit bigger than the food log
+  // table text font size." The day rows are `small`, which is 14, so the
+  // ceiling is one step above that and not a round number somebody liked.
+  const LOG_BODY = 14;
+  assert.ok(
+    Number(size[1]) > LOG_BODY && Number(size[1]) <= LOG_BODY + 4,
+    `the figures are ${size[1]}px against a log body of ${LOG_BODY}px`
+  );
   return `${size[1]}px figures`;
 });
 
-check('AND NO ROW BEGINS WITH A DANGLING RULE', () => {
-  // The second fault in the same screenshot, and the subtler one. The hairline
-  // was drawn before every column except the very FIRST, which is right for
-  // one row and wrong for every row after it - so each wrapped line began with
-  // a rule hanging off its left edge.
+check('AND THE DANGLING RULE CANNOT COME BACK, BECAUSE THERE ARE NO RULES', () => {
+  // This check used to assert that the hairlines were worked out per row. They
+  // were drawn before every column but the first, so every wrapped line began
+  // with one hanging off its left edge, and the fix was index arithmetic.
   //
-  // The rule belongs to a cell's left edge and is drawn from the index, which
-  // is arithmetic rather than a guess about where the text wrapped.
-  assert.ok(/i % PER_ROW !== 0/.test(card), 'the dividers are not worked out per row');
-  assert.ok(!/i > 0 &&/.test(card), 'the divider is still drawn before every cell but the first');
-  // And the cells are a fixed share, so columns line up down the card rather
-  // than with whatever happened to be above them.
-  assert.ok(/width: '33\.33%'/.test(card), 'the cells are no longer a fixed third');
-  return 'a rule between, never before';
+  // The rules are gone now. They were right in her artwork, which puts six
+  // figures in ONE line where a rule separates; around a grid they are a
+  // lattice, and a lattice is weight - which is what "overbearing" was
+  // describing. Whitespace separates these perfectly well and weighs nothing.
+  //
+  // So the assertion is MOVED rather than removed, as the one defending the
+  // rules screen's tap-twice confirm was. Deleting a check when its behaviour
+  // changes leaves nothing guarding the new behaviour - and here the new
+  // behaviour is strictly stronger: with no rules there is no index to get
+  // wrong, so the bug class is gone rather than guarded.
+  assert.ok(!/borderLeftWidth/.test(card), 'the hairlines are back, and so is the bug they carried');
+  assert.ok(!/i % PER_ROW/.test(card), 'something is being drawn per row position again');
+  // The cells are still a fixed share, so columns line up down the card.
+  assert.ok(/width: `\$\{100 \/ PER_ROW\}%`/.test(card), 'the cells are no longer an even share');
+  return 'no rules, no arithmetic, no dangling anything';
 });
 
 check('AND THE CARD WRAPS RATHER THAN SCROLLING SIDEWAYS', () => {

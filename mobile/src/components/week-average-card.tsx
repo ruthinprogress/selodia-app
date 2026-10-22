@@ -97,27 +97,39 @@ export function WeekAverageCard({
           LEFT edge and is drawn only when the cell is not first in its row,
           which is arithmetic on the index rather than on where the text
           happened to wrap. */}
+      {/* SMALLER AGAIN, AND NO RULES (22 October 2026, second attempt: "Its
+          still huge and overbearing").
+
+          The first fix took the figures from 32px to 22px and kept three to a
+          row, which is still eight large numbers stacked three rows deep - a
+          card taller than the log it sits above. Two rounds of trimming a size
+          was the wrong move: the problem is that EIGHT FIGURES CANNOT BE BIG.
+          Her artwork fits six in one row precisely because they are small.
+
+          So: four to a row, seventeen point, and the hairlines gone. The rules
+          were the artwork's, drawn around six figures in a single line where
+          they separate; around a grid they are a lattice, and a lattice is
+          weight. Whitespace separates these perfectly well and weighs nothing,
+          which is the whole of what "overbearing" was describing.
+
+          It also deletes a bug class rather than fixing one: with no rules
+          there is no index arithmetic, so there is no row that can begin with
+          a dangling one. */}
       <View style={styles.figures}>
-        {columns.map((m, i) => {
+        {columns.map((m) => {
           const child = (Object.keys(UNDER) as MacroKey[]).find(
             (k) => UNDER[k] === m.key && tracked.includes(k) && figure(k)
           );
           return (
-            <View
-              key={m.key}
-              style={[
-                styles.cell,
-                i % PER_ROW !== 0 && { borderLeftWidth: 1, borderLeftColor: theme.background },
-              ]}
-            >
+            <View key={m.key} style={styles.cell}>
               <ThemedText type="small" style={styles.figure}>
                 {figure(m.key)}
               </ThemedText>
-              <ThemedText type="detail" themeColor="textSecondary">
+              <ThemedText type="detail" themeColor="textSecondary" style={styles.label}>
                 {m.short.toLowerCase()}
               </ThemedText>
               {child && (
-                <ThemedText type="detail" themeColor="textSecondary" style={styles.child}>
+                <ThemedText type="detail" themeColor="textSecondary" style={styles.label}>
                   {figure(child)} {MACROS.find((x) => x.key === child)?.short.toLowerCase()}
                 </ThemedText>
               )}
@@ -129,21 +141,27 @@ export function WeekAverageCard({
   );
 }
 
-/** Three to a row. Four is too tight for "1,228" beside a label on a phone. */
-const PER_ROW = 3;
+/** Four to a row. Eight figures is two lines, which is a card rather than a page. */
+const PER_ROW = 4;
 
 const styles = StyleSheet.create({
-  card: { padding: Spacing.four, borderRadius: CardRadius, gap: Spacing.three },
+  // Tighter than a normal card: this one is read on the way past.
+  card: { padding: Spacing.three, borderRadius: CardRadius, gap: Spacing.two },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
-  heading: { flex: 1, gap: 2 },
+  heading: { flex: 1, gap: 1 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44 },
   figures: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Spacing.three },
-  // A THIRD EACH, so the columns line up down the card rather than lining up
-  // with whatever happened to be above them.
-  cell: { width: '33.33%', paddingHorizontal: Spacing.three, gap: 1 },
-  // 22, NOT 32. Big enough to be the thing you land on, small enough that
-  // eight of them are a card rather than a page.
-  figure: { fontSize: 22, lineHeight: 28 },
-  child: { marginTop: 2 },
+  cell: { width: `${100 / PER_ROW}%`, paddingRight: Spacing.two },
+  // SIXTEEN, AND SIZED AGAINST THE LOG RATHER THAN AGAINST A SCALE (Ruth,
+  // 22 October 2026): "They only need to be a tiny bit bigger than the food log
+  // table text font size."
+  //
+  // That is the sentence I should have started from. The day rows beneath this
+  // card are `small`, which is 14, so the card's figures sit one step above the
+  // thing they summarise and no further. Three goes at this - 32, then 22, then
+  // 17 - were all me choosing a size in the abstract and asking whether it
+  // looked big. The right question was what it had to be bigger THAN.
+  figure: { fontSize: 16, lineHeight: 20 },
+  label: { lineHeight: 15 },
   pressed: { opacity: 0.6 },
 });
