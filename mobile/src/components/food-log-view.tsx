@@ -12,7 +12,7 @@ import { useFocusReload } from '@/hooks/use-focus-reload';
 import { entryLabel } from '@/lib/food-today';
 import { removeEntry } from '@/lib/remove-entry';
 import { supabase } from '@/lib/supabase';
-import { averageLine, macroLine, sumRows, type MacroKey } from '@/lib/tracked-macros';
+import { averageLine, MACRO_COLUMNS, macroLine, sumRows, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
 import {
   addWeeks,
@@ -64,8 +64,11 @@ type FoodRow = {
   sodium_mg: number | null;
 };
 
-const SELECT =
-  'id, happened_at, meal_label, raw_text, kcal, protein_g, carbs_g, fat_g, saturated_fat_g, sugar_g, fibre_g, sodium_mg';
+// THE MACRO COLUMNS ARE GENERATED, NOT TYPED (22 October 2026). This string
+// named them by hand and was written before calcium and iron existed, so two
+// macros she had switched on were read as "nobody worked them out" - on every
+// line, in every total, twice reported as a bug.
+const SELECT = `id, happened_at, meal_label, raw_text, ${MACRO_COLUMNS}`;
 
 /** The day's totals, each value labelled. Her example: "1,840 kcal · 112 g protein". */
 function summaryOf(rows: FoodRow[]): string {
@@ -171,7 +174,10 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
         .lt('happened_at', endISO)
         .order('happened_at', { ascending: true });
       if (cancelled) return;
-      setRows((data ?? []) as FoodRow[]);
+      // Through unknown, because SELECT is now built rather than a literal and
+      // the client can no longer infer the row shape from it. The shape is
+      // asserted by a check instead - see check-every-macro-is-fetched.
+      setRows((data ?? []) as unknown as FoodRow[]);
     })();
     return () => {
       cancelled = true;

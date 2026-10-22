@@ -87,6 +87,24 @@ export const MACROS: MacroSpec[] = [
   },
 ];
 
+/**
+ * Every macro column, for a select.
+ *
+ * DERIVED, BECAUSE THE HAND-WRITTEN VERSION WAS WRONG WITHIN A DAY. Ruth,
+ * 22 October 2026, twice: "Iron and calcium not showing on food logs", and
+ * then "Iron and Calcium. Not showing up still."
+ *
+ * Both times the pipeline was fine. The parser filled calcium and iron, the
+ * columns held them, her setting listed them - and the screen's query named
+ * its columns by hand, in a string written before either existed. So the rows
+ * arrived without the fields, amount() read undefined, and both macros were
+ * filtered off every line and every total as "not worked out".
+ *
+ * A list of columns kept in step with MACROS by memory is a list that goes out
+ * of step the first time somebody adds one. This is that list, generated.
+ */
+export const MACRO_COLUMNS = MACROS.map((m) => m.column).join(', ');
+
 /** The two that are not hers to switch off. */
 export const ALWAYS_ON: MacroKey[] = ['kcal', 'protein'];
 

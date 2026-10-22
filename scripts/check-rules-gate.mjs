@@ -353,7 +353,22 @@ process.exitCode = failed || useless ? 1 : 0;
 //
 // Source checks rather than behaviour: the delete is one line of Supabase, and
 // the risk is not that it computes wrongly but that a later edit removes the
-// door again, or loses the second tap on a screen about constraints on a body.
+// door again.
+//
+// THE SECOND TAP IS GONE, AND SHE TOOK IT (22 October 2026): "We have a
+// 'Delete a pill' convention across the app. It should always be swipe left to
+// reveal bin icon. Not sure why you deviated from that."
+//
+// This check used to defend a tap-twice confirm that existed only here. The
+// reasoning for it was real - a screen about constraints on a body is not one
+// to delete from by accident - but it was answered better elsewhere: every
+// other deletable row in the app slides left to a bin AND carries an undo. The
+// slide is the deliberate act, and undo beats a confirm because it costs
+// nothing when she meant it and recovers the case where she did not.
+//
+// So the assertion is not deleted, it is MOVED: this now defends the
+// convention instead of the exception. A check that is simply removed when the
+// behaviour it guarded changes leaves nothing guarding the new behaviour.
 
 import fs from 'node:fs';
 
@@ -365,10 +380,12 @@ const UI = [
     () => /from\('user_rules'\)\s*\.delete\(\)/.test(rulesView) && /onRemoved/.test(rulesView),
   ],
   [
-    'and it asks twice before it does',
+    'and it slides left to a bin, like every other deletable row',
     () =>
-      /Tap again to remove it/.test(rulesView) &&
-      /confirm \? void remove\(\) : setConfirm\(true\)/.test(rulesView),
+      /<SwipeToDelete/.test(rulesView) &&
+      /onDelete=\{remove\}/.test(rulesView) &&
+      // The exception is gone, not merely unused.
+      !/Tap again to remove it/.test(rulesView),
   ],
   [
     'a failed removal is said out loud, never swallowed',

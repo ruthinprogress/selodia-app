@@ -48,6 +48,9 @@ const GLYPH: Record<ActivityIconKind, keyof typeof MaterialCommunityIcons.glyphM
   climb: 'hiking',
   // A figure mid-split says flexibility where a mat or a bending spine did not.
   stretch: 'gymnastics',
+  // A rest day. Not the moon, which the Sleep log already owns, and not a bed,
+  // which would make a rest day read as a nap rather than as a day.
+  rest: 'sofa-outline',
   // Anything unrecognised: a movement, not a sport.
   movement: 'human-handsup',
 };

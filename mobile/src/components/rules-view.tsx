@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
@@ -176,7 +177,6 @@ function RuleRow({ rule, onRemoved }: { rule: Rule; onRemoved: () => void }) {
   // TWO TAPS, the same shape as removing a food entry or a week card. A rule is
   // not precious - it can be said again in chat in a sentence - but a screen
   // about constraints on a body should not lose one to a misplaced thumb.
-  const [confirm, setConfirm] = useState(false);
   const [failed, setFailed] = useState(false);
 
   async function remove() {
@@ -190,43 +190,47 @@ function RuleRow({ rule, onRemoved }: { rule: Rule; onRemoved: () => void }) {
   }
 
   return (
-    <ThemedView type="backgroundElement" style={styles.row}>
-      <ThemedText type="small">{rule.phrase}</ThemedText>
-      {/* AN UNCONFIRMED RULE IS SHOWN AS UNCONFIRMED and is still being
-          applied. Saying so is the honest version: hiding it would mean a
-          movement disappearing from her sessions for a reason she never
-          agreed to, and hiding the rule while keeping the effect is the worse
-          half of both options. */}
-      {rule.confirmed_at ? null : (
-        <ThemedText type="small" themeColor="textSecondary">
-          Waiting for you to confirm. Being applied in the meantime.
-        </ThemedText>
-      )}
+    // SWIPE LEFT, BIN ICON - THE CONVENTION, NOT A SECOND ONE (Ruth, 22 October
+    // 2026): "We have a 'Delete a pill' convention across the app. It should
+    // always be swipe left to reveal bin icon. Not sure why you deviated from
+    // that."
+    //
+    // This screen had a "Remove" text button that turned into "Tap again to
+    // remove it" - a tap-twice confirm, invented here and used nowhere else.
+    // The log, the Me tab and the diary all slide. Two ways to delete means
+    // guessing which one a row uses, and a convention only saves anybody
+    // anything if it has no exceptions.
+    //
+    // THE CONFIRM GOES WITH IT, and that is the right trade. The slide IS the
+    // deliberate act, and SwipeToDelete carries an undo - which is a better
+    // answer than a confirm, because it costs nothing when she meant it and
+    // recovers the case where she did not.
+    <SwipeToDelete what={rule.phrase} onDelete={remove} onDeleted={onRemoved}>
+      <ThemedView type="backgroundElement" style={styles.row}>
+        <ThemedText type="small">{rule.phrase}</ThemedText>
+        {/* AN UNCONFIRMED RULE IS SHOWN AS UNCONFIRMED and is still being
+            applied. Saying so is the honest version: hiding it would mean a
+            movement disappearing from her sessions for a reason she never
+            agreed to, and hiding the rule while keeping the effect is the worse
+            half of both options. */}
+        {rule.confirmed_at ? null : (
+          <ThemedText type="small" themeColor="textSecondary">
+            Waiting for you to confirm. Being applied in the meantime.
+          </ThemedText>
+        )}
 
-      {failed ? (
-        <ThemedText type="small" themeColor="danger">
-          That did not remove. Check your connection and try again.
-        </ThemedText>
-      ) : null}
+        {failed ? (
+          <ThemedText type="small" themeColor="danger">
+            That did not remove. Check your connection and try again.
+          </ThemedText>
+        ) : null}
 
-      <Pressable
-        onPress={() => (confirm ? void remove() : setConfirm(true))}
-        accessibilityRole="button"
-        accessibilityLabel={confirm ? `Confirm, remove ${rule.phrase}` : `Remove ${rule.phrase}`}
-        accessibilityHint="Takes this rule off your list. Selodía will stop checking against it"
-        hitSlop={Spacing.two}
-        style={({ pressed }) => [styles.remove, pressed && styles.pressed]}>
-        <ThemedText type="small" themeColor={confirm ? 'danger' : 'textSecondary'}>
-          {confirm ? 'Tap again to remove it' : 'Remove'}
-        </ThemedText>
-      </Pressable>
-    </ThemedView>
+      </ThemedView>
+    </SwipeToDelete>
   );
 }
 
 const styles = StyleSheet.create({
-  // 44 is the smallest a control should be, and this one is quiet on purpose.
-  remove: { minHeight: 44, justifyContent: 'center' },
   block: { gap: Spacing.three },
   group: { gap: Spacing.two },
   eyebrow: { textTransform: 'uppercase', letterSpacing: 0.8 },

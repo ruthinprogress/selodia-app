@@ -13,7 +13,7 @@ import { pairCard, showsPair, type PairItem } from '@/lib/pair';
 import { aminoProfile } from '@/lib/protein-quality';
 import { removeFoodItem } from '@/lib/remove-food-item';
 import { supabase } from '@/lib/supabase';
-import { MACROS, macroFigure, macroLine, type MacroKey } from '@/lib/tracked-macros';
+import { MACRO_COLUMNS, MACROS, macroFigure, macroLine, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
 
 // The "What's In Here" breakdown card (build item 13) — the READ-ONLY half of
@@ -116,19 +116,26 @@ export function FoodBreakdownCard({
             // happened_at is not displayed on this card - it is read so the
             // chat card it hands off to can head itself with the right date
             // immediately rather than waiting for its own lookup.
-            'meal_label, raw_text, happened_at, kcal, protein_g, carbs_g, fat_g, saturated_fat_g, sugar_g, fibre_g, sodium_mg, breakdown_type, protein_source'
+            `meal_label, raw_text, happened_at, ${MACRO_COLUMNS}, breakdown_type, protein_source`
           )
           .eq('id', foodLogId)
           .maybeSingle(),
         supabase
           .from('food_items')
-          .select('id, name, quantity, kcal, protein_g, protein_source, amino_profile')
+          // THE SAME LIST, ONE LEVEL DOWN. This one fetched calories and protein
+          // and nothing else, so an item could never show a macro she tracks even
+          // where the parser had worked it out. food_items carries the same ten
+          // columns as the log it belongs to.
+          .select(`id, name, quantity, ${MACRO_COLUMNS}, protein_source, amino_profile`)
           .eq('food_log_id', foodLogId)
           .order('created_at', { ascending: true }),
       ]);
       if (cancelled) return;
-      setLog((logRow ?? null) as FoodLog | null);
-      setItems((itemRows ?? []) as FoodItem[]);
+      // Both through unknown: the selects are built from MACRO_COLUMNS now, so
+      // the client cannot infer a row shape from a literal. The shape is
+      // asserted by check-every-macro-is-fetched instead.
+      setLog((logRow ?? null) as unknown as FoodLog | null);
+      setItems((itemRows ?? []) as unknown as FoodItem[]);
     })();
     return () => {
       cancelled = true;
