@@ -86,6 +86,38 @@ check('SATURATED FAT AND SUGAR STAY SUBORDINATE', () => {
   return 'two nested, the rest in columns';
 });
 
+check('THE CARD IS A CARD, NOT A PAGE', () => {
+  // Ruth's screenshot, 22 October 2026, and one word: "This is not good."
+  //
+  // The figures were `title` - 32px, the size meant for a screen's name - used
+  // eight times in one card. It filled the phone and left a single day row
+  // visible underneath it. Size discipline is not a style preference here: the
+  // card exists so the week can be read ON THE WAY to the log, and a card that
+  // hides the log has eaten the thing it was summarising.
+  assert.ok(!/type="title"/.test(card), 'the figures are back at 32px');
+  assert.ok(!/type="sectionTitle"/.test(card), 'the figures are at heading size');
+  const size = /figure: \{ fontSize: (\d+)/.exec(card);
+  assert.ok(size, 'the figure size is no longer stated in one place');
+  assert.ok(Number(size[1]) <= 24, `the figures are ${size[1]}px`);
+  return `${size[1]}px figures`;
+});
+
+check('AND NO ROW BEGINS WITH A DANGLING RULE', () => {
+  // The second fault in the same screenshot, and the subtler one. The hairline
+  // was drawn before every column except the very FIRST, which is right for
+  // one row and wrong for every row after it - so each wrapped line began with
+  // a rule hanging off its left edge.
+  //
+  // The rule belongs to a cell's left edge and is drawn from the index, which
+  // is arithmetic rather than a guess about where the text wrapped.
+  assert.ok(/i % PER_ROW !== 0/.test(card), 'the dividers are not worked out per row');
+  assert.ok(!/i > 0 &&/.test(card), 'the divider is still drawn before every cell but the first');
+  // And the cells are a fixed share, so columns line up down the card rather
+  // than with whatever happened to be above them.
+  assert.ok(/width: '33\.33%'/.test(card), 'the cells are no longer a fixed third');
+  return 'a rule between, never before';
+});
+
 check('AND THE CARD WRAPS RATHER THAN SCROLLING SIDEWAYS', () => {
   // Six columns do not fit a phone in one line, and a row that scrolls
   // sideways hides figures behind an edge nobody thinks to drag.

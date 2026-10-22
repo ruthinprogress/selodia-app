@@ -82,27 +82,45 @@ export function WeekAverageCard({
         </Pressable>
       </View>
 
+      {/* A GRID OF THREE, NOT A WRAPPING ROW (22 October 2026, her screenshot
+          and one word: "This is not good").
+
+          THREE THINGS WERE WRONG AND TWO WERE THE SAME MISTAKE. The figures
+          were `title`, which is 32px - a size meant for a screen's name, used
+          eight times in one card, so the card ate the page and left one day
+          visible underneath it. And the hairlines were drawn before every
+          column except the very first, which is correct for ONE row and wrong
+          for every row after it: each wrapped line began with a rule hanging
+          off its left edge.
+
+          A fixed three-column grid fixes both. The rule belongs to a cell's
+          LEFT edge and is drawn only when the cell is not first in its row,
+          which is arithmetic on the index rather than on where the text
+          happened to wrap. */}
       <View style={styles.figures}>
         {columns.map((m, i) => {
           const child = (Object.keys(UNDER) as MacroKey[]).find(
             (k) => UNDER[k] === m.key && tracked.includes(k) && figure(k)
           );
           return (
-            <View key={m.key} style={styles.column}>
-              {/* A HAIRLINE BETWEEN, NOT AROUND. The first column has none, so
-                  the row reads as a set rather than as a table. */}
-              {i > 0 && <View style={[styles.rule, { backgroundColor: theme.background }]} />}
-              <View style={styles.columnText}>
-                <ThemedText type="title">{figure(m.key)}</ThemedText>
-                <ThemedText type="detail" themeColor="textSecondary">
-                  {m.short.toLowerCase()}
+            <View
+              key={m.key}
+              style={[
+                styles.cell,
+                i % PER_ROW !== 0 && { borderLeftWidth: 1, borderLeftColor: theme.background },
+              ]}
+            >
+              <ThemedText type="small" style={styles.figure}>
+                {figure(m.key)}
+              </ThemedText>
+              <ThemedText type="detail" themeColor="textSecondary">
+                {m.short.toLowerCase()}
+              </ThemedText>
+              {child && (
+                <ThemedText type="detail" themeColor="textSecondary" style={styles.child}>
+                  {figure(child)} {MACROS.find((x) => x.key === child)?.short.toLowerCase()}
                 </ThemedText>
-                {child && (
-                  <ThemedText type="detail" themeColor="textSecondary" style={styles.child}>
-                    {figure(child)} {MACROS.find((x) => x.key === child)?.short.toLowerCase()}
-                  </ThemedText>
-                )}
-              </View>
+              )}
             </View>
           );
         })}
@@ -111,17 +129,21 @@ export function WeekAverageCard({
   );
 }
 
+/** Three to a row. Four is too tight for "1,228" beside a label on a phone. */
+const PER_ROW = 3;
+
 const styles = StyleSheet.create({
   card: { padding: Spacing.four, borderRadius: CardRadius, gap: Spacing.three },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
   heading: { flex: 1, gap: 2 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44 },
-  // WRAPS RATHER THAN SCROLLS. Six columns do not fit a phone in one line, and
-  // a row that scrolls sideways hides figures behind an edge nobody taps.
   figures: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Spacing.three },
-  column: { flexDirection: 'row' },
-  columnText: { paddingRight: Spacing.three, gap: 1 },
-  rule: { width: 1, alignSelf: 'stretch', marginRight: Spacing.three },
+  // A THIRD EACH, so the columns line up down the card rather than lining up
+  // with whatever happened to be above them.
+  cell: { width: '33.33%', paddingHorizontal: Spacing.three, gap: 1 },
+  // 22, NOT 32. Big enough to be the thing you land on, small enough that
+  // eight of them are a card rather than a page.
+  figure: { fontSize: 22, lineHeight: 28 },
   child: { marginTop: 2 },
   pressed: { opacity: 0.6 },
 });
