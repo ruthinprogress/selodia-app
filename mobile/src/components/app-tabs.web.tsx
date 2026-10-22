@@ -30,7 +30,7 @@ const TABS = [
   { name: 'chat', href: '/', label: 'Chat', icon: 'chatbubble-ellipses-outline' },
   { name: 'log', href: '/log', label: 'Log', icon: 'create-outline' },
   { name: 'now', href: '/now', label: 'Now', icon: 'today-outline' },
-  { name: 'plans', href: '/plans', label: 'Plans', icon: 'compass-outline' },
+  { name: 'plans', href: '/plans', label: 'Plans', icon: 'map-outline' },
   { name: 'me', href: '/me', label: 'Me', icon: 'person-outline' },
 ] as const;
 

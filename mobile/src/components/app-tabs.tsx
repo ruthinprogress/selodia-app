@@ -58,11 +58,21 @@ export default function AppTabs() {
 
       {/* PLANS (Ruth's navigation brief, 2026-09-20): "What am I intentionally
           following?" Everything that was the Almanac's Movement view, moved
-          rather than rebuilt. */}
+          rather than rebuilt.
+
+          A MAP, NOT A COMPASS (22 October 2026). It was a compass until today
+          and everybody read it as Explore - including ChatGPT, which relabelled
+          the tab "Explore" unprompted while drawing her food artwork. That is
+          about as clean a piece of evidence as a misread icon ever gives you.
+
+          A compass says "browse around", which is the opposite of both things
+          this tab holds: her week, and what she is working towards. A map is a
+          route already chosen, which is her own phrase for the tab - what am I
+          intentionally following. */}
       <NativeTabs.Trigger name="plans">
         <NativeTabs.Trigger.Label>Plans</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="compass-outline" />}
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="map-outline" />}
         />
       </NativeTabs.Trigger>
 
