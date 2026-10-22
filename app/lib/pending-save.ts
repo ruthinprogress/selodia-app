@@ -802,11 +802,34 @@ export function applyRedirect(
 // saveAppliedNote in the same turn; the route is one request per call.
 let lastSkillOutcome: SkillAddOutcome | null = null;
 
+// A REFUSAL IS NOT A FAILURE, AND THEY READ IDENTICALLY (22 October 2026).
+//
+// Ruth's chat told her twice: "my note to keep watching for them didn't save,
+// so it may not carry over to later conversations." She had asked it to watch
+// her calcium and iron, which are not health markers this app keeps, so the
+// proposal was REFUSED - correctly, and permanently.
+//
+// commitSave returns null for both outcomes: a write that failed, and a
+// proposal it declined to make. saveAppliedNote cannot tell them apart, so it
+// said the only sentence it has - "That didn't save just now. Ask me again and
+// I'll try once more." Asking again would have refused again, every time.
+//
+// THE PROJECT HAS WRITTEN THIS DOWN ONCE ALREADY, about the diary: "A REFUSAL
+// IS AN OUTCOME TOO... 'I put it in' and 'I would not put it in because it is
+// already gone' are different things to be told." This path never got its half.
+//
+// Module-scope for the same reason as lastSkillOutcome above, and read in the
+// same breath: one request per call.
+let lastRefusal: string | null = null;
+
 export async function commitSave(
   supabase: SupabaseClient,
   userId: string,
   proposal: ProposedSave
 ): Promise<{ kind: string; title: string } | null> {
+  // Cleared on the way in, so a refusal recorded by an earlier call in the
+  // same process can never be read as this one's outcome.
+  lastRefusal = null;
   // A RULE GOES TO ITS OWN TABLE, not to the Almanac. The Almanac is a record of
   // what happened and what was noticed; a rule is a constraint the generator has
   // to obey, and app/lib/rules-gate.ts reads it from user_rules before any plan
@@ -846,6 +869,11 @@ export async function commitSave(
 
     if (!MARKER_COLUMNS.includes(marker) || !MARKER_STATUSES.includes(status)) {
       console.log('MARKER: refused an unrecognised marker or status -', marker, status);
+      // NAMED, so the reply can say what it could not keep rather than blaming
+      // a write that never happened.
+      lastRefusal = marker
+        ? `${marker} is not one of the health markers this app keeps, so there was nothing to note`
+        : 'that is not one of the health markers this app keeps, so there was nothing to note';
       return null;
     }
 
@@ -1206,6 +1234,15 @@ export function saveAppliedNote(
   // anymore, it's in Plans." Every success line above says the right place; the
   // failure line was still saying Almanac for all of them, including the ones
   // that have never been in the Almanac.
-  if (attempted) return "That didn't save just now. Ask me again and I'll try once more.";
+  if (attempted) {
+    // A REFUSAL SAYS WHAT IT REFUSED, and does NOT invite her to try again -
+    // the same request would be refused the same way every time, which is how
+    // somebody ends up asking three times and being told three times that a
+    // write failed. See lastRefusal above for what she was actually told.
+    const refused = lastRefusal;
+    lastRefusal = null;
+    if (refused) return `${refused}. Nothing was lost, and asking again would not change it.`;
+    return "That didn't save just now. Ask me again and I'll try once more.";
+  }
   return null;
 }
