@@ -10,6 +10,7 @@ import { getSupabaseForRequest, userIdForRequest } from '../../lib/supabase';
 import { APP_STRUCTURE_PROMPT_BLOCK, VOICE_CONDUCT_BLOCK } from '../../lib/app-structure';
 import { DRAWN_MOVEMENTS } from '../../lib/movement-catalogue';
 import { movementLibrary } from '../../lib/movement-library';
+import { macroChange, macroChangeNote } from '../../lib/track-macros-request';
 import { byMuscleGroup, formatResults, searchMovements } from '../../lib/movement-search';
 import {
   findMovementsTool,
@@ -2127,6 +2128,18 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
       description:
         "With calendarAction 'add', only if they mentioned something to take or do beforehand: \"the referral letter\", \"a urine sample\", \"nothing to eat after midnight\". Omit if they did not say. Never invent what somebody should bring to a medical appointment.",
     },
+    startTrackingMacros: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        "Set when they ask to SEE a nutrient on their food from now on - \"I want to track my calcium and iron intake\", \"can you start showing fibre\", \"add salt to what I see\". Use their own words, one per entry: calcium, iron, fibre, sugar, salt, fat, saturated fat, carbs. THE APP SWITCHES IT ON AND SAYS SO ITSELF, so acknowledge naturally and never state in your reply that it is done - you do not know whether the write succeeded, and the app does. It keeps calories, protein, fat, saturated fat, carbs, sugar, fibre, salt, calcium and iron, and nothing else; ask for anything outside that list and the app will say so rather than pretending. Calories and protein are always shown and cannot be switched off. Leave unset when they are merely ASKING ABOUT a nutrient rather than asking to see it on every entry.",
+    },
+    stopTrackingMacros: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        "Set when they ask to STOP seeing a nutrient on their food - \"take sugar off\", \"I don't need to see carbs any more\". Their words, one per entry. Nothing is deleted and nothing stops being recorded: this only changes what is shown. Calories and protein cannot be switched off. The app does it and says so itself.",
+    },
     calendarNotes: {
       type: 'string',
       description:
@@ -2942,6 +2955,8 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     calendarPlace?: string;
     calendarBring?: string;
     calendarNotes?: string;
+    startTrackingMacros?: string[];
+    stopTrackingMacros?: string[];
     calendarRemindMinutesBefore?: number;
     removePlanTitled?: string;
     removePlanSavedOn?: string;
@@ -3237,6 +3252,36 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // this app where a silent guess is only discovered by missing the thing, so
   // every refusal carries a reason that can be read out.
   let calendarResult: CalendarResult | null = null;
+
+  // WHAT SHE ASKED TO SEE ON HER FOOD (22 October 2026). "I want to track my
+  // calcium and iron intake" - said to the chat on the 21st, understood, and
+  // answered with directions to a menu, because reading the setting was built
+  // and changing it was not. Reported the next morning as "Iron and calcium not
+  // showing on food logs", which is how it looked from where she stood.
+  //
+  // IT CANNOT SWITCH OFF CALORIES OR PROTEIN. Not because it is told not to:
+  // the list it works from holds only the optional macros, so there is no name
+  // the model could send that would reach them.
+  let macroNote: string | null = null;
+  if (
+    (result.startTrackingMacros && result.startTrackingMacros.length > 0) ||
+    (result.stopTrackingMacros && result.stopTrackingMacros.length > 0)
+  ) {
+    const change = macroChange(
+      profile?.tracked_macros ?? null,
+      result.startTrackingMacros ?? [],
+      result.stopTrackingMacros ?? []
+    );
+    if (change.next === null) {
+      macroNote = macroChangeNote(change, 'nothing');
+    } else {
+      const { error } = await supabase
+        .from('user_profile')
+        .upsert({ user_id: user.id, tracked_macros: change.next }, { onConflict: 'user_id' });
+      if (error) console.log('TRACKED MACROS: chat could not save -', error.message);
+      macroNote = macroChangeNote(change, error ? 'failed' : 'saved');
+    }
+  }
 
   if (result.calendarAction === 'add') {
     const checked = checkCalendarEvent(
@@ -5064,6 +5109,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     // action-notes.ts.
     calendarNote(calendarResult),
     reminderNote(reminderResult),
+    macroNote,
     honestyNote,
     // THE REPLY MAY NOT CLAIM A WRITE THAT DID NOT HAPPEN (2026-09-30).
     //

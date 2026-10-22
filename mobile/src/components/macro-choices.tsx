@@ -38,6 +38,8 @@ export function MacroChoices({
 }) {
   const [chosen, setChosen] = useState<MacroKey[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // The macro whose last save failed, so the row can say so where she tapped.
+  const [failed, setFailed] = useState<MacroKey | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,10 +58,31 @@ export function MacroChoices({
   // behaves that way, and a set of tick boxes with no obvious commit is exactly
   // where somebody backs out and loses what they chose.
   async function toggle(key: MacroKey) {
+    const before = chosen;
     const next = chosen.includes(key) ? chosen.filter((k) => k !== key) : [...chosen, key];
     setChosen(next);
     onChange?.(next);
-    await saveTrackedMacros(next);
+    setFailed(null);
+
+    // THE ANSWER IS READ NOW (22 October 2026). saveTrackedMacros was written
+    // to return false "so a caller can say so rather than assume", and this
+    // caller assumed - it awaited the promise and threw the result away.
+    //
+    // WHAT THAT LOOKS LIKE FROM THE OUTSIDE. The tick appears, because the tick
+    // is optimistic. Nothing says otherwise. She leaves the screen believing
+    // she has switched something on, and the only way she ever finds out is by
+    // noticing, days later, that the column she asked for has never appeared -
+    // which is exactly how calcium and iron were reported: "Iron and calcium
+    // not showing on food logs."
+    //
+    // So a failed write puts the tick back where it was and says so. A silent
+    // wrong tick is worse than an error, because an error can be acted on.
+    const saved = await saveTrackedMacros(next);
+    if (!saved) {
+      setChosen(before);
+      onChange?.(before);
+      setFailed(key);
+    }
   }
 
   const always = MACROS.filter((m) => ALWAYS_ON.includes(m.key));
@@ -86,12 +109,27 @@ export function MacroChoices({
       {loaded && (
         <ThemedView type="backgroundElement" style={styles.card}>
           {OPTIONAL.map((m) => (
-            <Checkbox
-              key={m.key}
-              checked={chosen.includes(m.key)}
-              onToggle={() => void toggle(m.key)}
-              label={m.label}
-            />
+            <View key={m.key}>
+              <Checkbox
+                checked={chosen.includes(m.key)}
+                onToggle={() => void toggle(m.key)}
+                label={m.label}
+              />
+              {/* SAID WHERE SHE TAPPED, not in a banner at the top. The row is
+                  what she was looking at and the row is what did not change. */}
+              {failed === m.key && (
+                <ThemedText type="detail" themeColor="danger" style={styles.failed}>
+                  That did not save. Worth tapping again.
+                </ThemedText>
+              )}
+              {/* AND WHY IT IS WORTH WATCHING, for the two that answer a
+                  question somebody her age is actually asking. */}
+              {m.detail && (
+                <ThemedText type="detail" themeColor="textSecondary" style={styles.detail}>
+                  {m.detail}
+                </ThemedText>
+              )}
+            </View>
           ))}
         </ThemedView>
       )}
@@ -105,6 +143,8 @@ export function MacroChoices({
 }
 
 const styles = StyleSheet.create({
+  failed: { paddingLeft: 34, paddingBottom: 6 },
+  detail: { paddingLeft: 34, paddingBottom: 6, lineHeight: 16 },
   wrap: { gap: Spacing.two },
   card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },
   fixedRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
