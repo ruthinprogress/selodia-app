@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseForRequest } from '../../lib/supabase';
-import { buildFoodLogFields, logFoodFromText, writeItems } from '../../lib/food-logging';
+import { buildFoodLogFields, hasFood, logFoodFromText, writeItems } from '../../lib/food-logging';
 import { loadRememberedFoods, rememberedFoodsBlock } from '../../lib/food-memory';
 import {
   FOOD_PARSE_CLASSIFICATION_RULES,
@@ -131,6 +131,31 @@ export async function POST(request: NextRequest) {
   } catch {
     console.log('PARSE-FOOD JSON PARSE ERROR:', cleanedText);
     return NextResponse.json({ error: 'Something went wrong reading that entry' }, { status: 500 });
+  }
+
+  // A COMPLAINT IS NOT A MEAL, AND NEITHER IS A PHOTOGRAPH OF NOTHING.
+  //
+  // hasFood was written on 16 September 2026 in a commit called exactly that,
+  // and it was only ever applied to the CHAT path - buildFoodRows filters its
+  // entries through it. This route inserts straight into food_logs and has
+  // never checked. Found in her own record on 22 October: three rows carrying
+  // no food at all, one of them dated the day AFTER the guard shipped.
+  //
+  //   raw_text                                     meal_label        items
+  //   "I want to reduce body fat..."               No food entry         0
+  //   "I'd already had a couple of mouthfuls."     Partial intake        0
+  //   ""                                           Unknown               0
+  //
+  // The MODEL knew. It wrote "No food entry" in the label and sent back no
+  // items and no calories, and the row went in anyway - into her log, into her
+  // daily totals, and into every weekly average since.
+  //
+  // BLACK COFFEE IS NOT ONE OF THESE and must survive: it is 0 kcal with one
+  // item, which is a real drink honestly recorded. hasFood keeps it for that
+  // reason - an item is food, whatever it weighs.
+  if (!hasFood(macros as unknown as Parameters<typeof hasFood>[0])) {
+    console.log('PARSE-FOOD: nothing in this one to log -', macros.meal_label ?? '(no label)');
+    return NextResponse.json({ nothingToLog: true });
   }
 
   const { data, error } = await supabase

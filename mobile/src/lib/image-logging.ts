@@ -87,6 +87,13 @@ export type ImageLogResult =
   // what she needs is spread over them - so this status carries the photo back
   // to the caller, which puts it in the document tray and waits for the rest.
   // Nothing is read and nothing is saved until she says the letter is complete.
+  // THE PHOTOGRAPH HELD NO FOOD, and nothing was written.
+  //
+  // Same shape as 'duplicate' above and for the same reason she gave then:
+  // "It was just a duplicate - just could have said that, what it said was
+  // weird." Handing an empty response to foodAckFacts produces prose about a
+  // meal that was never logged, which is the weirdness she meant.
+  | { status: 'nothing_to_log'; kind: 'food' }
   | { status: 'document'; image: PickedImage }
   // CARRIES THE PHOTO NOW (12 October 2026), so the caller can put it into the
   // conversation instead of ending with "I couldn't quite make that out". See
@@ -214,9 +221,12 @@ export async function classifyAndLog(image: PickedImage): Promise<ImageLogResult
       facts = await bodyAckFacts(saved as never);
     } else if (kind === 'food') {
       // parse-food returns the inserted food_logs row, so the id is already here.
-      const saved = await authedPost<{ id?: string }>('/api/parse-food', {
+      const saved = await authedPost<{ id?: string; nothingToLog?: boolean }>('/api/parse-food', {
         images: [{ imageBase64: image.base64, mediaType: image.mediaType }],
       });
+      // Said as itself rather than described by an acknowledgment built from
+      // an empty row - see the status above.
+      if (saved?.nothingToLog) return { status: 'nothing_to_log', kind: 'food' };
       foodLogId = typeof saved?.id === 'string' ? saved.id : null;
       facts = await foodAckFacts(saved as never);
     } else {
@@ -268,6 +278,11 @@ export function messageForResult(result: ImageLogResult): string | null {
       // silence here is not restraint - it is a log that vanishes into a toast.
       // See app/lib/log-acknowledgment.ts for the full reasoning.
       return result.message;
+    case 'nothing_to_log':
+      // IN WORLD, AND WITHOUT BLAME. She photographed something; it had no food
+      // in it. That is an ordinary outcome - a menu, a receipt, a screenshot of
+      // a recipe she has not eaten - and not a failure of hers or of the photo.
+      return "I could not see anything you'd eaten in that one, so I have not logged it. Tell me what it was and I'll put it in.";
     case 'duplicate': {
       // THE DAY IN THE PHOTOGRAPH, NOT TODAY (Ruth, 26 September 2026). She
       // re-uploaded a scale screenshot from the 24th to replace a reading she
