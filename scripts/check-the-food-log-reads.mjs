@@ -164,5 +164,39 @@ check('AND THE ROWS ARE SHUT WHEN SHE ARRIVES', () => {
   return 'shut, and pointing the right way';
 });
 
+check('THE NUTRIENT MARKS ARE IN THE HOUSE STYLE', () => {
+  // Ruth, 22 October 2026: "icons are inconsistent and not on brand - worth
+  // getting Chatgpt to make a set here?"
+  //
+  // She was right about the inconsistency, and the app already answers the
+  // question: there is a house style, with three sets drawn in it already -
+  // measurement-icon, drink-icons, food-category-icon. A 24-square, no fills,
+  // 1.4 stroke, round caps, one colour passed in.
+  //
+  // What was here instead was ten Material glyphs picked one at a time: a sun,
+  // a laboratory molecule, a droplet, a droplet with a percent sign, a stalk
+  // of barley and a salt cellar are five drawing languages, and no amount of
+  // tinting makes them one.
+  const icon = fs.readFileSync('mobile/src/components/nutrient-icon.tsx', 'utf8');
+  assert.ok(/viewBox="0 0 24 24"/.test(icon), 'the marks are not on the 24 grid the others use');
+  assert.ok(/strokeWidth: 1\.4/.test(icon), 'the stroke is not the house weight');
+  assert.ok(/strokeLinecap: 'round'/.test(icon), 'the caps are not round');
+  assert.ok(/fill: 'none'/.test(icon), 'the marks are filled');
+  // And no glyph family is reached for alongside them, which is how the
+  // inconsistency arrived in the first place.
+  const row = fs.readFileSync('mobile/src/components/nutrient-row.tsx', 'utf8');
+  assert.ok(!/MaterialCommunityIcons/.test(row), 'a Material glyph is back among the drawn marks');
+  return '24 grid, 1.4 stroke, no fills';
+});
+
+check('AND EVERY NUTRIENT HAS ONE', () => {
+  // A row whose badge is empty is worse than a row with the wrong icon: it
+  // reads as a drawing that failed to load.
+  const icon = fs.readFileSync('mobile/src/components/nutrient-icon.tsx', 'utf8');
+  const missing = MACROS.filter((m) => !new RegExp(`macroKey === '${m.key}'`).test(icon)).map((m) => m.key);
+  assert.deepStrictEqual(missing, [], `no mark drawn for: ${missing.join(', ')}`);
+  return `${MACROS.length} marks`;
+});
+
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
 if (failures.length > 0) process.exit(1);
