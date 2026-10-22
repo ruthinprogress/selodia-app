@@ -1,14 +1,15 @@
-import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
 import { QuickLogBar } from '@/components/quick-log-bar';
+import { WeekAverageCard } from '@/components/week-average-card';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useFocusReload } from '@/hooks/use-focus-reload';
+import { FoodCategoryIcon } from '@/components/food-category-icon';
+import { foodCategory } from '@/lib/food-category';
 import { entryLabel } from '@/lib/food-today';
 import { removeEntry } from '@/lib/remove-entry';
 import { supabase } from '@/lib/supabase';
@@ -220,6 +221,16 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
             id: row.id,
             label,
             detail: macroLine(row as unknown as Record<string, unknown>, tracked) || null,
+            // THE CATEGORY MARK IS BACK (her artwork, 22 October 2026). It was
+            // dropped on 27 September for being the one icon this screen had
+            // and no other - and her drawing puts a round mark at the head of
+            // every entry. Asked which should fill it now the food photos are
+            // out, she chose this one.
+            //
+            // The drawing it leads is not the food, which is the point: a
+            // glance down the column says what KIND of day it was before any
+            // number is read.
+            mark: <FoodCategoryIcon category={foodCategory(row as never)} size={18} />,
             // GROUPED BY MEAL WHERE SHE RECORDED ONE, by time otherwise. Most
             // entries arrive through the conversation, which rarely names a
             // meal, so the fallback is the common case rather than the edge.
@@ -285,34 +296,10 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
           as a weekly total otherwise, and 1,326 kcal for a week would be a
           frightening thing to show somebody about their own eating. The figure
           never changed; the label was doing the lying. */}
-      {week.line ? (
-        <ThemedView type="backgroundElement" style={styles.weekCard}>
-          <ThemedText type="smallBold">Daily average this week</ThemedText>
-          <ThemedText type="small">{week.line}</ThemedText>
-          {/* OVER THE DAYS THAT WERE LOGGED, which is why the count is beside
-              it rather than left to be assumed. An average of three days is a
-              different claim from an average of seven, and the difference is
-              the whole reason somebody would doubt the number. */}
-          <ThemedText type="detail" themeColor="textSecondary">
-            {week.daysLogged} of 7 days logged
-          </ThemedText>
-          {/* THE WAY IN TO WHAT THEY MEAN. It sits under the figures rather
-              than in a menu, because the moment somebody wonders what fibre is
-              for is the moment they are looking at their fibre. Static copy -
-              see lib/macro-explainers.ts for why it is not generated. */}
-          <Pressable
-            onPress={() => router.push('/log/nutrients')}
-            accessibilityRole="button"
-            accessibilityLabel="What these nutrients mean"
-            hitSlop={Spacing.two}
-            style={({ pressed }) => [styles.meaning, pressed && styles.pressed]}
-          >
-            <ThemedText type="small" themeColor="link">
-              What these mean
-            </ThemedText>
-          </Pressable>
-        </ThemedView>
-      ) : null}
+      {/* THE WEEK AS FIGURES, NOT A SENTENCE (her artwork, 22 October 2026).
+          Eight numbers in one running line is every number she asked for, in
+          the order she asked for them, and unreadable. See week-average-card. */}
+      <WeekAverageCard averages={week.averages} tracked={tracked} daysLogged={week.daysLogged} />
 
       <DayLog
         days={days}
@@ -350,9 +337,6 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.three },
-  weekCard: { gap: 4, padding: Spacing.four, borderRadius: CardRadius },
-  meaning: { marginTop: Spacing.two, minHeight: 44, justifyContent: 'center' },
-  pressed: { opacity: 0.6 },
 });
 
 export { addWeeks };

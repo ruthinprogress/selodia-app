@@ -256,9 +256,9 @@ export function sumRows(rows: Record<string, unknown>[]): Record<string, number>
 export function averageLine(
   days: Record<string, unknown>[][],
   tracked: MacroKey[]
-): { line: string; daysLogged: number } {
+): { line: string; daysLogged: number; averages: Record<string, number> } {
   const logged = days.filter((rows) => rows.length > 0);
-  if (logged.length === 0) return { line: '', daysLogged: 0 };
+  if (logged.length === 0) return { line: '', daysLogged: 0, averages: {} };
 
   const sums: Record<string, number> = {};
   const seen: Record<string, number> = {};
@@ -283,7 +283,23 @@ export function averageLine(
   const line = MACROS.filter((m) => tracked.includes(m.key) && seen[m.key])
     .map((m) => say(m.key, sums[m.key] / seen[m.key]))
     .join(' · ');
-  return { line, daysLogged: logged.length };
+
+  // THE FIGURES AS WELL AS THE SENTENCE (22 October 2026). Her artwork lays the
+  // week out as columns, which needs the numbers rather than the prose - and
+  // the arithmetic above is the only place that knows how many days each macro
+  // was actually worked out on. Keyed by COLUMN, so macroFigure can read it the
+  // same way it reads a real row.
+  //
+  // SALT GOES BACK TO SODIUM, because amount() converts on the way out and
+  // would convert again on the way in. The one unit in this file that is not
+  // what it is stored as is the one that has to be undone here.
+  const averages: Record<string, number> = {};
+  for (const m of MACROS) {
+    if (!seen[m.key]) continue;
+    const mean = sums[m.key] / seen[m.key];
+    averages[m.column] = m.key === 'salt' ? mean * SODIUM_MG_PER_G_SALT : mean;
+  }
+  return { line, daysLogged: logged.length, averages };
 }
 
 /** The same line for a day or a week, from rows that have already been summed. */

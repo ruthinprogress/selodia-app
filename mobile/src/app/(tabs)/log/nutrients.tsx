@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { BodyScreen } from '@/components/body-screen';
+import { NutrientRow } from '@/components/nutrient-row';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
-import { explainerFor } from '@/lib/macro-explainers';
+import { Spacing } from '@/constants/theme';
 import { MACROS, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
 
@@ -52,12 +51,12 @@ export default function NutrientsScreen() {
   return (
     <BodyScreen title="What these mean">
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
-        What each one does in your body, and the foods it comes from. Nothing here is about your own
-        figures - ask in chat for that.
+        A plain guide to what each nutrient does in your body, and where it comes from. Nothing here
+        is about your own figures – ask in chat for that.
       </ThemedText>
 
       {watching.map((m) => (
-        <Nutrient key={m.key} label={m.label} macroKey={m.key} />
+        <NutrientRow key={m.key} label={m.label} macroKey={m.key} />
       ))}
 
       {rest.length > 0 && (
@@ -66,7 +65,7 @@ export default function NutrientsScreen() {
             Not currently shown on your food
           </ThemedText>
           {rest.map((m) => (
-            <Nutrient key={m.key} label={m.label} macroKey={m.key} />
+            <NutrientRow key={m.key} label={m.label} macroKey={m.key} />
           ))}
         </>
       )}
@@ -74,33 +73,9 @@ export default function NutrientsScreen() {
   );
 }
 
-function Nutrient({ label, macroKey }: { label: string; macroKey: MacroKey }) {
-  const e = explainerFor(macroKey);
-  if (!e) return null;
-  return (
-    <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <ThemedText type="small" style={styles.body}>
-        {e.what}
-      </ThemedText>
-      <View style={styles.where}>
-        <ThemedText type="detail" themeColor="textSecondary">
-          Where it comes from
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-          {e.where}
-        </ThemedText>
-      </View>
-    </ThemedView>
-  );
-}
-
 const styles = StyleSheet.create({
   intro: { lineHeight: 20, marginBottom: Spacing.three },
-  card: { gap: Spacing.two, padding: Spacing.four, borderRadius: CardRadius, marginBottom: Spacing.three },
   // LINE HEIGHT, BECAUSE THIS IS THE ONE SCREEN IN THE APP WITH PARAGRAPHS ON
   // IT. The default leading is set for labels and single lines.
-  body: { lineHeight: 21 },
-  where: { gap: 2, marginTop: Spacing.two },
   restHead: { marginTop: Spacing.three, marginBottom: Spacing.three },
 });
