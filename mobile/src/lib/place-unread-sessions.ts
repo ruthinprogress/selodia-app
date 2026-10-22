@@ -48,3 +48,30 @@ export async function placeUnreadSessions(range: {
     return { ok: false };
   }
 }
+
+/**
+ * Place ONE session from her own description of it.
+ *
+ * THE ONLY CASE WHERE A TAP EARNS ITS PLACE. Everything the classifier can do
+ * alone now happens when the row is written - see plans.tsx. What is left is a
+ * name with nothing in it: "gym session" describes a building, and no amount of
+ * re-running anything will place it. Told what she did there, the same
+ * classifier places it at once.
+ *
+ * Ruth, 22 October 2026, on the version that did not ask her anything: "I
+ * thought the reason we put that there was because it needed more info to make
+ * sense to the algorithm of the flower. What did it do? That was a bit odd and
+ * pointless."
+ */
+export async function describeSession(id: string, describedAs: string): Promise<PlaceOutcome> {
+  try {
+    const result = await authedPost<{ placed: Placed[]; unplaced: Unplaced[] }>(
+      '/api/place-activity',
+      { id, describedAs }
+    );
+    return { ok: true, placed: result.placed ?? [], unplaced: result.unplaced ?? [] };
+  } catch (error) {
+    console.log('DESCRIBE SESSION FAILED:', error instanceof Error ? error.message : error);
+    return { ok: false };
+  }
+}

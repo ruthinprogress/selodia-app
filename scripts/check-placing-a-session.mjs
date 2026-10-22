@@ -84,7 +84,14 @@ check('ALL SIX COLUMNS OR NONE', () => {
 });
 
 check('A WRITE THAT FAILED IS NOT A PLACEMENT', () => {
-  const at = route.indexOf('writeError');
+  // FROM THE BATCH LOOP, not from the top of the file. The single-session
+  // describe path was added above it on 22 October and owns the first
+  // 'writeError' in the file, which is a different write with a different
+  // (also correct) shape. A check that drifts onto the wrong function reports
+  // a fault in code that is fine.
+  const batch = route.indexOf('for (const [name, group] of byName)');
+  assert.ok(batch > -1, 'the batch loop is gone');
+  const at = route.indexOf('writeError', batch);
   assert.ok(at > -1, 'the write is not checked at all');
   const after = route.slice(at, at + 600);
   assert.ok(/stillUnplaced\.push/.test(after), 'a failed write is reported as placed');
@@ -110,7 +117,8 @@ check('A NAME IT CANNOT PLACE IS LEFT ALONE', () => {
   // resolveCoverage returns null rather than guessing, and null has to stay
   // null: a guessed classification is worse than an uncounted session, because
   // the drawing would then be confidently wrong about what her body was given.
-  const at = route.indexOf('if (!coverage)');
+  const batch = route.indexOf('for (const [name, group] of byName)');
+  const at = route.indexOf('if (!coverage)', batch);
   assert.ok(at > -1, 'nothing handles a name the classifier could not place');
   const after = route.slice(at, at + 300);
   assert.ok(/stillUnplaced\.push/.test(after), 'an unplaceable name is not reported');
@@ -153,6 +161,60 @@ check('AND IT NAMES THEM UNTIL NAMING STOPS BEING READABLE', () => {
   });
   assert.ok(/Pull-up practice/.test(repeats), 'one repeated name was counted instead of named');
   return 'named up to three, counted beyond';
+});
+
+check('A PLANNED SESSION IS PLACED WHEN IT IS WRITTEN', () => {
+  // Ruth, 22 October 2026, on tapping the link that placed her Pull-up
+  // practice: "I thought the reason we put that there was because it needed
+  // more info to make sense to the algorithm of the flower. What did it do?
+  // That was a bit odd and pointless."
+  //
+  // She was right, and the answer was not a better button. A button that runs a
+  // classifier needing NOTHING from her is the app asking permission to do its
+  // own work. The row should never have been unclassified.
+  const plans = fs.readFileSync('mobile/src/app/(tabs)/plans.tsx', 'utf8');
+  assert.ok(/placeUnreadSessions/.test(plans), 'a planned session is still left for her to place by hand');
+  // ONLY WHEN THE PHONE'S OWN TABLE CANNOT ANSWER IT. Thirty-one names are free
+  // and instant; asking the server for those would be a round trip for nothing.
+  assert.ok(
+    /Object\.keys\(coverageColumns\(input\.activity\)\)\.length === 0/.test(plans),
+    'the server is asked even for names the phone already knows'
+  );
+  // AND NOT AWAITED. The row is saved and correct; this only fills in what it
+  // contributes, and a failure must not cost her the log.
+  assert.ok(/void placeUnreadSessions/.test(plans), 'the log now waits on a classification');
+  return 'classified at the write, only when needed';
+});
+
+check('AND THE ONE THING SHE CAN HELP WITH IS THE ONE THING SHE IS ASKED', () => {
+  // What reaches the screen now is a name with nothing in it. "Gym session"
+  // describes a building; no amount of re-running anything places it, and the
+  // only thing that can is her saying what she did there.
+  assert.ok(/What did your \{u\.activityType\} involve\?/.test(section),
+    'the unplaceable sessions are named but nothing is asked');
+  assert.ok(/describeSession/.test(section), 'her description goes nowhere');
+  // It leaves the question up when the description did not help either, rather
+  // than clearing it and implying success.
+  const at = section.indexOf('await describeSession(');
+  assert.ok(at > -1, 'her description is never sent');
+  const after = section.slice(at, at + 700);
+  assert.ok(/outcome\.ok && outcome\.placed\.length > 0/.test(after),
+    'the question disappears whether or not it worked');
+  return 'asked, and only cleared when it landed';
+});
+
+check('AND HER WORDS ARE ADDED TO THE NAME, NEVER OVER IT', () => {
+  // The stored name is what she called it and other things match on it, so the
+  // description joins it rather than replacing it - and "gym session: squats,
+  // bench press" places better than either half alone.
+  assert.ok(/\$\{row\.activity_type\}: \$\{describedAs\}/.test(route),
+    'her description replaces the name she gave it');
+  assert.ok(!/activity_type: describedAs/.test(route), 'the stored name is overwritten');
+  // A description that still cannot be placed writes nothing and says so.
+  const at = route.indexOf('if (!coverage) {');
+  assert.ok(at > -1, 'a description that fails to place is not handled');
+  assert.ok(/unplaced: \[\{ id/.test(route.slice(at, at + 260)), 'it is not reported back as unplaced');
+  return 'name plus description, and null stays null';
 });
 
 console.log(`\n  ${pass} passed, ${failures.length} failed\n`);

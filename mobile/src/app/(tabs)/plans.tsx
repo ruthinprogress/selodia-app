@@ -26,6 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, PageInset, Spacing } from '@/constants/theme';
 import { coverageColumns } from '@/lib/coverage-columns';
+import { placeUnreadSessions } from '@/lib/place-unread-sessions';
 import { splitByTab, type AlmanacRow } from '@/lib/insights';
 import { closeOpenSwipe } from '@/lib/open-swipe';
 import { supabase } from '@/lib/supabase';
@@ -191,6 +192,37 @@ export default function PlansScreen() {
     });
     if (error) throw new Error(error.message);
     setWeekKey((k) => k + 1);
+
+    // AND IF THIS SCREEN DOES NOT KNOW THE NAME, THE SERVER IS ASKED NOW
+    // (22 October 2026). Ruth, on tapping the link that placed her Pull-up
+    // practice: "I thought the reason we put that there was because it needed
+    // more info to make sense to the algorithm of the flower. What did it do?
+    // That was a bit odd and pointless."
+    //
+    // She was right. The link ran a classifier that needed NOTHING from her,
+    // which makes it a button asking her to request work the app could have
+    // done by itself. The honest fix is not a better button; it is for the row
+    // never to be unclassified in the first place.
+    //
+    // THE PHONE'S TABLE HOLDS THIRTY-ONE NAMES and answers those for nothing.
+    // Anything else used to stay null for good, because the server classifier
+    // only ever ran on the path a chat turn takes - which is how "Pull-up
+    // practice" sat uncounted while being the movement she most deliberately
+    // did.
+    //
+    // NOT AWAITED, AND FAILING IS FINE. The row is already saved and already
+    // correct; this only fills in what it contributes. A classification that
+    // does not happen leaves exactly what was there before, and the line on the
+    // flower still says so.
+    if (Object.keys(coverageColumns(input.activity)).length === 0) {
+      const from = new Date(at);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(from);
+      to.setDate(to.getDate() + 1);
+      void placeUnreadSessions({ from, to }).then((outcome) => {
+        if (outcome.ok && outcome.placed.length > 0) setWeekKey((k) => k + 1);
+      });
+    }
   }
 
   // WHAT THE WEEK SHEET OFFERS: every planned day of this week, with the ones

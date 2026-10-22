@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { HealthFlower } from '@/components/health-flower';
 import { SegmentedTabs } from '@/components/segmented-tabs';
@@ -21,7 +21,7 @@ import {
   NOTE_ORDER,
 } from '@/lib/flower-explainer';
 import { canGoBack, canGoForward, flowerRange, type FlowerMode } from '@/lib/flower-range';
-import { placeUnreadSessions, placementSentence } from '@/lib/place-unread-sessions';
+import { describeSession, placeUnreadSessions, placementSentence, type Unplaced } from '@/lib/place-unread-sessions';
 
 // THE BALANCE FLOWER, ON THE ALMANAC (Ruth, 25 September 2026, item 8: "Remove
 // the 'This week' heading and the balance flower chart from Today entirely.
@@ -85,6 +85,9 @@ export function BalanceFlowerSection({
   // until she asks, so the line stays one quiet sentence until it is useful.
   const [placing, setPlacing] = useState(false);
   const [placement, setPlacement] = useState<string | null>(null);
+  // THE ONES NOTHING COULD PLACE, which are the only ones she can help with.
+  const [stuck, setStuck] = useState<Unplaced[]>([]);
+  const [describing, setDescribing] = useState<Record<string, string>>({});
   const note = coverage ? weekObservation(coverage, range.label) : null;
   // SHUT BY DEFAULT, and not remembered. The log layout store exists for folds
   // somebody arranges; this one is read once or twice ever and then not again,
@@ -232,6 +235,7 @@ export function BalanceFlowerSection({
             setPlacement(null);
             const outcome = await placeUnreadSessions(range);
             setPlacement(placementSentence(outcome));
+            setStuck(outcome.ok ? outcome.unplaced : []);
             setPlacing(false);
             // The drawing re-reads itself, so a petal that just gained a
             // session grows while she is looking at it.
@@ -270,6 +274,46 @@ export function BalanceFlowerSection({
           {placement}
         </ThemedText>
       ) : null}
+
+      {/* AND THE ONES NOTHING CAN PLACE GET THE QUESTION SHE EXPECTED.
+          Ruth, 22 October 2026: "I thought the reason we put that there was
+          because it needed more info to make sense to the algorithm of the
+          flower. What did it do? That was a bit odd and pointless."
+
+          She was right. Everything the classifier can do alone now happens when
+          the row is written. What reaches here is a name with nothing in it -
+          "gym session" describes a building - and the only thing that can place
+          it is her saying what she did there. */}
+      {stuck.map((u) => (
+        <View key={u.id} style={styles.describe}>
+          <ThemedText type="detail" themeColor="textSecondary">
+            What did your {u.activityType} involve?
+          </ThemedText>
+          <TextInput
+            value={describing[u.id] ?? ''}
+            onChangeText={(t) => setDescribing((d) => ({ ...d, [u.id]: t }))}
+            placeholder="squats, bench press, rows"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, { color: theme.text, borderColor: theme.backgroundElement }]}
+            accessibilityLabel={`What your ${u.activityType} involved`}
+            returnKeyType="done"
+            onSubmitEditing={async () => {
+              const said = (describing[u.id] ?? '').trim();
+              if (!said || placing) return;
+              setPlacing(true);
+              const outcome = await describeSession(u.id, said);
+              setPlacement(placementSentence(outcome));
+              // Gone from the list only when it actually landed; a description
+              // that still could not be placed leaves the question up.
+              if (outcome.ok && outcome.placed.length > 0) {
+                setStuck((rest) => rest.filter((x) => x.id !== u.id));
+                reload();
+              }
+              setPlacing(false);
+            }}
+          />
+        </View>
+      ))}
 
       {/* WHAT THIS SHOWS (Ruth, 20 October 2026): "an explanation of why it is
           those categories and how it's calculated might be useful in a
@@ -362,6 +406,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   unplaced: { gap: 2, minHeight: 44, justifyContent: 'center' },
+  describe: { gap: Spacing.two, marginTop: Spacing.two },
+  input: { borderWidth: 1, borderRadius: Spacing.three, paddingHorizontal: Spacing.three, minHeight: 44 },
   explainer: { gap: Spacing.three },
   note: { gap: 2 },
   weekLink: { minHeight: 44, justifyContent: 'center' },

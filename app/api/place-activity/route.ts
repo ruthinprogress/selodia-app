@@ -57,7 +57,70 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
     from?: unknown;
     to?: unknown;
+    id?: unknown;
+    describedAs?: unknown;
   } | null;
+
+  // ONE SESSION, IN HER OWN WORDS (22 October 2026). Ruth, on tapping the link
+  // that placed her Pull-up practice: "I thought the reason we put that there
+  // was because it needed more info to make sense to the algorithm of the
+  // flower. What did it do? That was a bit odd and pointless."
+  //
+  // She was right about what the link SHOULD be. A button that runs a
+  // classifier needing nothing from her is the app asking permission to do its
+  // own work. The root cause is fixed where the row is written - a planned
+  // session is classified the moment it is logged - and what is left is the
+  // genuinely unplaceable name, where the only thing that can help IS her.
+  //
+  // "Gym session" is the real example and it is hers. Nothing can place it,
+  // because nothing is in it: the words describe a building. Told what she did
+  // there, the same classifier places it immediately.
+  const id = typeof body?.id === 'string' ? body.id : null;
+  const describedAs = typeof body?.describedAs === 'string' ? body.describedAs.trim() : '';
+  if (id && describedAs) {
+    const { data: row } = await supabase
+      .from('activity_logs')
+      .select('id, activity_type')
+      .eq('user_id', user.id)
+      .eq('id', id)
+      .maybeSingle();
+    if (!row) return NextResponse.json({ error: 'No such session' }, { status: 404 });
+
+    // HER DESCRIPTION, WITH THE NAME STILL ON IT. "Gym session: squats, bench
+    // press, rows" places better than either half alone, and the stored name
+    // is never changed - it is what she called it, and other things match on it.
+    const coverage = await resolveCoverage(
+      supabase,
+      anthropic,
+      `${row.activity_type}: ${describedAs}`,
+      user.id
+    );
+    if (!coverage) {
+      return NextResponse.json({ placed: [], unplaced: [{ id, activityType: row.activity_type }] });
+    }
+    const columns: Record<string, number> = {};
+    for (const d of DIMENSIONS) columns[COVER_COLUMN[d]] = coverage[d];
+    const { error: writeError } = await supabase
+      .from('activity_logs')
+      .update(columns)
+      .eq('user_id', user.id)
+      .eq('id', id);
+    if (writeError) {
+      console.log('PLACE ACTIVITY DESCRIBED WRITE FAILED:', writeError.message);
+      return NextResponse.json({ placed: [], unplaced: [{ id, activityType: row.activity_type }] });
+    }
+    return NextResponse.json({
+      placed: [
+        {
+          id,
+          activityType: row.activity_type,
+          dimensions: DIMENSIONS.filter((d) => coverage[d] >= 20),
+        },
+      ],
+      unplaced: [],
+    });
+  }
+
   const from = typeof body?.from === 'string' ? body.from : null;
   const to = typeof body?.to === 'string' ? body.to : null;
   if (!from || !to) {
