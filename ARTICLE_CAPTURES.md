@@ -1105,3 +1105,36 @@ happened and nothing lands.
 
 It is fixed. There are eight tests on it now. They fail against yesterday's
 version, which is the only way to know a test is doing anything at all.
+
+## 22 October 2026 — I told her it was fixed. It had never reached her phone.
+
+I spent an hour today making a card on the food screen smaller. She said it was
+too big. I made it smaller. She said it was still too big. I made it smaller
+again. She said it was still too big.
+
+The third time, I checked properly. The change had been built and committed
+hours earlier. The bit that sends it to her phone had stalled, quietly, and I
+had told her it was done without looking at whether it was.
+
+So she had been looking at the old version the whole time, telling me my fix
+had not worked, and she was right. It had not worked. It had not arrived.
+
+The painful part is that the tool I used already guards against this. Somebody
+wrote it months ago after exactly this happened, and left a note in it saying
+so. It checks what actually landed and refuses if the answer is wrong. I ran it
+in the background and read the fact that it had finished, not what it said.
+
+That is the same mistake the app itself is built to prevent. Half of what we
+have written this month is rules about not telling someone a thing was saved
+unless you watched it save. I wrote several of those rules this week.
+
+It is very easy to build a careful system and then stand outside it.
+
+The other half of the day was better. She asked why the same kind of bug keeps
+coming back, and the honest answer was that it is three different bugs wearing
+the same coat. One fact that nine separate places have to agree about. A rule
+that exists and is only applied at one of two doors. An answer a function gives
+that nobody reads.
+
+None of those are logic errors. The code computes perfectly. It is the joins
+that fail, and we had tests for everything except the joins.

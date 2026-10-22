@@ -73,7 +73,8 @@ export function plannedCoverage(
   rows: PlannedWeekRow[],
   /**
    * Coverage already worked out for activities she has logged before, keyed by
-   * the lowercased name. See knownFromLogs.
+   * the lowercased name. See coverageForPlannedNames, which fills it from her
+   * own rows, the shared dictionary and the classifier, in that order.
    */
   known?: Record<string, Coverage>
 ): PlannedCoverage {

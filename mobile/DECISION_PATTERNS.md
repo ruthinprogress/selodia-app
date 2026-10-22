@@ -939,3 +939,71 @@ gone had no delete anywhere.
 in the same place, at the same moment.** Honesty without a remedy is not a
 smaller version of the fix; on a screen about trusting your own record it is
 worse than saying nothing.
+
+## Do not report a delivery you have not read
+
+22 October 2026, and the worst half-hour of the session. The weekly card fix
+was built, committed and published — and the publish stalled, fifteen minutes,
+zero output, never reaching the upload. I told her it was live. She looked, saw
+the old build, and said "This is not good." I then rebuilt the thing that was
+already built, told her again, and she said "it's still huge."
+
+Two rounds of her time spent on a fix that had never reached her phone.
+
+`publish-update.mjs` was not at fault. It already reads the branches back after
+publishing and exits non-zero if one is not serving what was just sent — its own
+comment says why: *"this whole script exists because a success line was trusted
+as evidence of delivery."* The script does the right thing. **I backgrounded it
+and reported success without reading its answer**, which is the identical fault,
+one level up, in the one participant the script cannot check.
+
+It got worse before it got better: the retry was piped through `head`, which
+closed the pipe and killed the upload partway through. A truncated read of a
+long-running job is not a read, it is an interruption.
+
+**The rule: a background job's exit is not its result. Read the line that says
+delivered, every time, before saying it.** This is the same discipline the app
+enforces on the model — *never claim a write you did not make* — and the person
+writing that rule is not exempt from it.
+
+## When the symptom is real and the diagnosis is wrong
+
+She reported the Week's flower explaining that sessions "haven't been logged
+yet", and proposed a fix: say instead that the duration, intensity or type were
+not set, and make the list clickable.
+
+The symptom was exactly right — the paragraph was unreadable and gave no way to
+act. The reason was not. `duration` and `intensity` appear **zero times** in
+that file; neither is used. The real rule is that an activity is excluded when
+its NAME has never been classified.
+
+Had her wording shipped, the app would have stated a confident, plausible, false
+explanation — the kind nobody catches later, because it reads like someone knew.
+
+**The rule: when a request comes with its own diagnosis, check the diagnosis
+against the code before building the fix — and say so when it differs.** She is
+describing what she can see, which is the symptom; the cause is the part only
+the code knows. Accepting a wrong cause because the symptom was right is how a
+plausible lie gets written down.
+
+And the better answer was usually available: once the cause was known, the gap
+could be CLOSED rather than explained. Seven of her eight planned sessions
+resolved without her doing anything.
+
+## Size against the thing beside it, not against a scale
+
+Three goes at the weekly card — 32pt, then 22, then 17 — were all the same
+mistake: choosing a size in the abstract and asking whether it looked big. Each
+time she said it was still too big, and each time I trimmed it a bit.
+
+Her fourth message answered it in one line: *"They only need to be a tiny bit
+bigger than the food log table text font size."* The rows under the card are 14.
+The figures are 16.
+
+**The rule: a size is a relationship, not a value.** When something is too big,
+the question is not "how big should it be" but "what is it meant to be bigger
+than, and by how much". The answer is on the same screen, and it is checkable —
+which a number somebody liked the look of is not.
+
+The same applies to the tenth decision about padding, radius and weight. If
+there is no neighbour to measure against, that is itself worth noticing.
