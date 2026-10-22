@@ -1,5 +1,6 @@
 import type { Coverage } from '@/lib/activity-weights';
 import { COVER_COLUMN, DIMENSIONS } from '@/lib/health-flower';
+import { authedPost } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
 // WHAT HER OWN LOGS ALREADY KNOW.
@@ -95,4 +96,90 @@ export async function knownFromLogs(names: string[]): Promise<KnownCoverage> {
     if (whole) out[name] = coverage;
   }
   return out;
+}
+
+/**
+ * The shared dictionary: what anybody's logging has already established about a
+ * name, with no user attached.
+ *
+ * FREE, AND TRIED BEFORE THE MODEL. activity_coverage is keyed on the lowercased
+ * name and read-only to everybody, so the second person to plan "reformer
+ * pilates" costs nothing at all. See app/lib/classify-activity.ts, which writes
+ * it.
+ */
+async function knownFromDictionary(names: string[]): Promise<KnownCoverage> {
+  const keys = [...new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean))];
+  if (keys.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('activity_coverage')
+    .select(
+      'name_key, cover_strength, cover_cardio, cover_flexibility, cover_balance, cover_bone, cover_recovery'
+    )
+    .in('name_key', keys);
+  if (error || !data) return {};
+
+  const out: KnownCoverage = {};
+  for (const row of data as Record<string, unknown>[]) {
+    const key = String(row.name_key ?? '');
+    const coverage = {} as Coverage;
+    let whole = true;
+    for (const d of DIMENSIONS) {
+      const v = row[COVER_COLUMN[d]];
+      if (typeof v !== 'number') {
+        whole = false;
+        break;
+      }
+      coverage[d] = v;
+    }
+    // ALL SIX OR NONE, the same rule the rows follow.
+    if (whole && key) out[key] = coverage;
+  }
+  return out;
+}
+
+/**
+ * Everything the Week can find out about these names, cheapest first.
+ *
+ * Ruth, 22 October 2026, on the paragraph this removes: "it reads a bit crazy
+ * right now, and its not clear why."
+ *
+ * THREE PLACES, IN COST ORDER. Her own rows, then the shared dictionary, then
+ * the server - which tries the hand-written table and the dictionary again
+ * before it asks the model, and writes back whatever it learns. So the
+ * expensive case is once per NAME EVER, for everybody, rather than the
+ * per-render AI call this file was written to avoid.
+ *
+ * THE ASK IS NARROWED AT EVERY STEP, so a week of ordinary activities reaches
+ * the network once and the model never.
+ *
+ * AND A FAILURE COSTS NOTHING. Anything unresolved stays unknown, which is
+ * exactly where it was before - the Week then names it, as it always has.
+ */
+export async function coverageForPlannedNames(names: string[]): Promise<KnownCoverage> {
+  const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+  if (wanted.length === 0) return {};
+
+  const found = await knownFromLogs(wanted);
+  const stillUnknown = () => wanted.filter((n) => !found[n.trim().toLowerCase()]);
+
+  let missing = stillUnknown();
+  if (missing.length === 0) return found;
+
+  Object.assign(found, await knownFromDictionary(missing));
+  missing = stillUnknown();
+  if (missing.length === 0) return found;
+
+  try {
+    const { coverage } = await authedPost<{ coverage: Record<string, Coverage | null> }>(
+      '/api/classify-names',
+      { names: missing }
+    );
+    for (const [name, c] of Object.entries(coverage ?? {})) {
+      if (c) found[name.trim().toLowerCase()] = c;
+    }
+  } catch (error) {
+    console.log('WEEK COVERAGE: could not classify -', error instanceof Error ? error.message : error);
+  }
+  return found;
 }

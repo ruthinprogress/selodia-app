@@ -199,10 +199,27 @@ function andList(names: string[]): string {
 export function unknownNote(names: string[]): string | null {
   if (names.length === 0) return null;
   const many = names.length > 1;
+  // REWRITTEN AGAIN, 22 OCTOBER 2026, because the reason changed under it.
+  //
+  // Ruth: "The flower in Week saying stuff isn't included because it's not been
+  // logged yet... reads a bit crazy right now, and its not clear why."
+  //
+  // It read oddly for two reasons. It named five sessions in a running
+  // paragraph, which on a screen headed "If the week goes to plan" is the
+  // drawing admitting it has not drawn the plan. And "log it and it will
+  // appear" was true when written and is no longer the reason: the Week now
+  // asks the classifier, so anything placeable is already in the petals above.
+  //
+  // Seven of her eight planned sessions resolved the moment that shipped. What
+  // is left is the genuine remainder - a card whose name is mostly logistics,
+  // like "Climbing at Yonder (Félix joins at 4pm, depends on the nanny)" - and
+  // for those the honest answer is not "log it", because logging it under the
+  // same name fails in exactly the same way. It is that nobody can tell what
+  // the session IS from what it is called.
   return (
-    `${andList(names)} ${many ? 'have' : 'has'} not been logged yet, so ` +
-    `${many ? 'they are' : 'it is'} not included here. ` +
-    `${many ? 'They' : 'It'} will appear once you have logged ${many ? 'them' : 'it'}.`
+    `${andList(names)} ${many ? 'are' : 'is'} not in the drawing above: ` +
+    `${many ? 'their names do' : 'its name does'} not say what the session involves. ` +
+    `A plainer name - climbing, yoga, a gym session - and ${many ? 'they' : 'it'} will count.`
   );
 }
 

@@ -138,8 +138,15 @@ check('AN UNKNOWN ACTIVITY IS NAMED, NEVER SILENTLY DROPPED', () => {
     assert.ok(note.includes(name), `the note no longer names "${name}"`);
   }
   assert.strictEqual(unknownNote([]), null, 'a plan with nothing unknown still says something');
+  // SINGULAR READS AS SINGULAR, which is the behaviour. The first version of
+  // this asserted the word "has" - a wording anchor, in the check whose own
+  // comment a few lines up says to anchor on behaviour - and it broke on the
+  // next rewrite exactly as that comment predicts. "Rocket Yoga IS not in the
+  // drawing above" is correct English and failed it.
   const one = unknownNote(['Rocket Yoga']);
-  assert.ok(/\bhas\b/.test(one) && !/\bthey\b/i.test(one), `one card reads as many: "${one}"`);
+  assert.ok(!/\b(they|their|them)\b/i.test(one), `one card reads as many: "${one}"`);
+  const two = unknownNote(['Rocket Yoga', 'Pull-up practice']);
+  assert.ok(!/\bits\b/i.test(two), `two cards read as one: "${two}"`);
   assert.ok(/unknownNote\(plan\.unknown\)/.test(viewRaw), 'the screen no longer draws that note');
 
   // AND HER OWN LOGS ANSWER IT WHEN THE TABLE CANNOT. Ruth asked why "Pull-up

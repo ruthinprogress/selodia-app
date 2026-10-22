@@ -21,7 +21,7 @@ import {
   unknownNote,
   unmatchedNames,
 } from '@/lib/week-coverage';
-import { knownFromLogs, type KnownCoverage } from '@/lib/week-coverage-lookup';
+import { coverageForPlannedNames, type KnownCoverage } from '@/lib/week-coverage-lookup';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { supabase } from '@/lib/supabase';
 import { addToWeek, moveToDays, withDay } from '@/lib/week-move';
@@ -254,7 +254,9 @@ export function WeekView({
     const asking = unmatchedNames(
       planRows.map((r) => ({ activity: r.activity, days: r.days }))
     );
-    setKnown(asking.length > 0 ? await knownFromLogs(asking) : {});
+    // HER ROWS, THEN THE SHARED DICTIONARY, THEN THE CLASSIFIER - cheapest
+    // first, and narrowed at every step. See coverageForPlannedNames.
+    setKnown(asking.length > 0 ? await coverageForPlannedNames(asking) : {});
     const p = profileRes.data as { week_drag_used_at: string | null } | null;
     setDragUsed(Boolean(p?.week_drag_used_at));
     setSteps(stepCount);
