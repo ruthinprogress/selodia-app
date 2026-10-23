@@ -133,6 +133,16 @@ def main() -> int:
         )
         repaired["Cash still in the company account"] = still
 
+    # THE RECONCILIATION, which is itself made of addresses and so is itself
+    # breakable by an insert. Added 23 October 2026, the same day the row it
+    # checks was added - and it would have gone stale on the very next cost,
+    # silently, in exactly the way this whole file exists to prevent.
+    confirmed = find_row(ws, "Balance Ruth last confirmed on the business account")
+    diff = find_row(ws, "Difference (must be zero)")
+    if diff and still and confirmed:
+        ws.cell(row=diff, column=4).value = f"=ROUND(D{still}-D{confirmed},2)"
+        repaired["Difference (must be zero)"] = diff
+
     wb.save(BOOK)
 
     # -- READ BACK, AND DO THE ARITHMETIC HERE ------------------------------
@@ -148,9 +158,12 @@ def main() -> int:
     print(f"  cost rows are now {FIRST_DATA_ROW} to {bl}")
 
     ok = True
+    # The two that are built from other rows rather than from the cost range
+    # cannot be checked by looking for the last data row in them.
+    BY_REFERENCE = {"OWED TO RUTH", "Difference (must be zero)"}
     for label, row in repaired.items():
         f = bs.cell(row=row, column=4).value
-        spans = f"D{bl}" in str(f) or f"F{bl}" in str(f) or label == "OWED TO RUTH"
+        spans = f"D{bl}" in str(f) or f"F{bl}" in str(f) or label in BY_REFERENCE
         print(f"  {'ok  ' if spans else 'BAD '} {label}: {f}")
         if not spans:
             ok = False
