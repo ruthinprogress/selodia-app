@@ -34,17 +34,17 @@ const ROWS: { title: string; body: string }[] = [
   {
     title: 'What Selodía reads',
     body:
-      'Your daily step count, and nothing else from your health data. It is read from your phone, not from a watch or an account: if a watch or band sends steps to your phone, Selodía sees the total your phone holds.',
+      'Your daily step count, and - if you connect it from the Sleep screen - when you slept, when you woke, and how often the night broke. Nothing else from your health data. It is read from your phone, not from a watch or an account: if a watch or band sends steps or sleep to your phone, Selodía sees what your phone holds.',
   },
   {
     title: 'What it is used for',
     body:
-      'One thing. Your steps become part of the picture of how much you moved on a given day, so that what you ate can be read against what you did. It appears on Today, in your Log, and in a weekly roundup if you have those on.',
+      'Your steps become part of the picture of how much you moved on a given day, so that what you ate can be read against what you did. A night read from your phone fills in your sleep log without you typing it. Both appear on Today, in your Log, and in a weekly roundup if you have those on.',
   },
   {
     title: 'What is never read',
     body:
-      'Heart rate, sleep stages, blood pressure, blood glucose, oxygen, weight, cycle data, exercise sessions, location, or anything else in your health app. Selodía asks for steps alone. Everything else it knows about your body, you told it yourself.',
+      'Heart rate, blood pressure, blood glucose, oxygen, weight, cycle data, exercise sessions, location, or anything else in your health app. AND NEVER HOW A NIGHT FELT: a watch can time your sleep, it cannot know whether it was restful, so Selodía asks you that and reads only the clock. Everything else it knows about your body, you told it yourself.',
   },
   {
     title: 'Where it goes',

@@ -5,6 +5,7 @@ import { BodyScreen } from '@/components/body-screen';
 import { ReportLink } from '@/components/report-link';
 import { RowDelete } from '@/components/row-delete';
 import { SectionIntro } from '@/components/section-intro';
+import { SleepFromPhone } from '@/components/sleep-from-phone';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -73,6 +74,10 @@ export default function SleepScreen() {
 
   return (
     <BodyScreen title="Sleep">
+
+      {/* BEFORE THE CHIPS, because a night already filled in by the phone is
+          a night she does not have to answer for. See sleep-from-phone. */}
+      <SleepFromPhone onSynced={() => void loadNights().then(setNights)} />
 
       <SectionIntro title="Last night">
         {`${nightLabel(night)}. Tell me what you know, and leave the rest.`}

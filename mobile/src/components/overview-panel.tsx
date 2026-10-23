@@ -908,20 +908,32 @@ export function OverviewPanel({
             a fact about her body when it was a fact about what she had told
             the app.
 
-            A NIGHT WITH NOTHING LOGGED DRAWS NO ROW, like Movement above it.
-            "0h" is a claim that somebody did not sleep. */}
-        {data.sleep && (data.sleep.minutes != null || data.sleep.quality) ? (
-          <>
-            <Hairline />
-            <FigureRow id="body.sleep" label="Sleep" href="/log/sleep">
-              <SleepFigures
-                minutes={data.sleep.minutes}
-                quality={data.sleep.quality}
-                awakenings={data.sleep.awakenings}
-              />
-            </FigureRow>
-          </>
-        ) : null}
+            A NIGHT WITH NOTHING LOGGED DREW NO ROW AT ALL, like Movement
+            above it, on the reasoning that "0h" is a claim somebody did not
+            sleep. The first half of that was wrong (Ruth, 23 October 2026):
+            "sleep needs to show up regardless of logging ... it needs to be
+            there so there is a quick through tap to the sleep page".
+
+            SHE IS RIGHT AND THE DIFFERENCE FROM MOVEMENT IS THE WHOLE POINT.
+            A day with no movement is a real day - a rest day is a fact about
+            her body. A night with no sleep is not: everybody sleeps, so an
+            empty sleep row NEVER means she did not sleep, only that nothing
+            reached the app. Hiding it therefore hides the one state the row
+            could usefully act on, and she looked for sleep on this screen,
+            did not find it, and concluded it had never been built.
+
+            "0h" would still be a lie. "Not logged" is not, and it is the
+            door - which is what the row was always for. */}
+        <>
+          <Hairline />
+          <FigureRow id="body.sleep" label="Sleep" href="/log/sleep">
+            <SleepFigures
+              minutes={data.sleep?.minutes ?? null}
+              quality={data.sleep?.quality ?? null}
+              awakenings={data.sleep?.awakenings ?? null}
+            />
+          </FigureRow>
+        </>
 
         {/* AND CLOSED AT THE BOTTOM. On a day with no movement the row above
             is absent, so this rule closes the table under Body instead - which
@@ -1098,6 +1110,23 @@ function SleepFigures({
 }) {
   const hours = formatDuration(minutes);
   const felt = quality ? QUALITY_LABEL[quality as SleepQuality] ?? null : null;
+
+  // NOTHING YET, SAID AS NOTHING YET (23 October 2026). The row renders on
+  // every day now, so the empty case has to carry a sentence instead of
+  // rendering three nulls and a blank line. "Not logged" is the only true
+  // thing available: she slept, and the app was not told about it.
+  //
+  // NOT "0h", NOT "No sleep", and not a nudge. The row is a door; the
+  // encouragement to walk through it would be the app telling her off for a
+  // night it knows nothing about.
+  if (!hours && !felt && !(typeof awakenings === 'number' && awakenings > 0)) {
+    return (
+      <ThemedText type="small" themeColor="textSecondary" style={styles.statValue}>
+        Not logged
+      </ThemedText>
+    );
+  }
+
   return (
     <>
       {hours ? (
