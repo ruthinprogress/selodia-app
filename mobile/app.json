@@ -134,8 +134,7 @@
         {
           "calendarPermission": "Selodía asks so it can put a session or an appointment into the calendar you already use, instead of keeping it somewhere you would have to remember to check."
         }
-      ],
-      "expo-apple-authentication"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
