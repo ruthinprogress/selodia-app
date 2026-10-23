@@ -652,3 +652,125 @@ export function falseClaimNote(outcome: WriteOutcome): string | null {
   // would not use for it.
   return 'That did not save, so it is not in your record.';
 }
+
+// ===========================================================================
+// THE GUARD RAN IN ONE DIRECTION ONLY, AND THE OTHER ONE IS THE EXPENSIVE ONE.
+// ===========================================================================
+//
+// Everything above catches the app claiming a write that did not happen. It is
+// blind to the opposite - the app DENYING a write that did happen - and that is
+// the failure Ruth actually spent two evenings on.
+//
+// 22 October 2026, from the table rather than from memory. "Aspirational week
+// (childcare pending)" was written to almanac_entries at 22:10:58. Her reply,
+// stored at 22:11:05, opened:
+//
+//   "The plan didn't save, and the quad rule change didn't go through either.
+//    Nothing changed on your Plans tab this time."
+//
+// She said "Save it" again. The next reply told her it was on her Plans tab,
+// and NO SECOND ROW WAS EVER WRITTEN, because the first one had worked. The
+// "successful" retry was the app finally reading its own earlier write. On
+// 21 October she got the same thing three times over and worked it out herself:
+// "The calendar entry did save, all three times you asked."
+//
+// WHY THE MODEL SAYS IT. It is obeying. The plans list in its context is loaded
+// at the top of the turn, four thousand lines before the write; the reply rules
+// say "WHAT IS STORED IS IN THE RECORD BELOW... either the record shows it, in
+// which case say where it is, or it does not, in which case it did not save and
+// you say so". On a led turn the reply is composed in the same call as the save,
+// so the only snapshot available to it is the one from before its own write.
+// The honest conclusion from that snapshot is the false one.
+//
+// This is the same fault the day-figures re-read fixed in October - "the reply
+// was handed the snapshot from before its own correction" - reappearing on the
+// one write that had no re-read and no entry in the write log.
+//
+// WHY A PROMPT RULE CANNOT FIX IT, which save-honesty.ts argued first and which
+// applies here with the sign flipped: the model composes its answer before the
+// save is attempted, so it cannot know the outcome either way.
+//
+// A FALSE DENIAL IS WORSE THAN A FALSE CLAIM, and that is why this exists at
+// all. A false claim loses data she thinks she has. A false denial makes her do
+// finished work again, teaches her the app drops things, and - this is the part
+// that cost her - produces duplicates when the retry does land.
+
+/**
+ * Words that name a thing in prose, per write-log name.
+ *
+ * NARROW, AND MATCHED TO THE SUBJECT RATHER THAN TO THE SENTENCE. A reply can
+ * truthfully say one thing failed while another succeeded - "the plan is in,
+ * the quad rule didn't go through" - so a denial is only false when it names
+ * something the write log says landed. Anything not listed here is never
+ * corrected, which fails safe: an uncorrected true denial is the status quo,
+ * and a wrongly removed true denial would hide a real loss.
+ */
+const SUBJECT_WORDS: Record<string, RegExp> = {
+  plan: /\b(?:plans? tab|plan|routine|programme|program|workout|sessions?)\b/i,
+  'week entry': /\b(?:your week|week entry|in your week)\b/i,
+  'me card': /\b(?:me tab|me card)\b/i,
+  allergy: /\ballerg/i,
+  'saved note': /\bnote\b/i,
+  'remembered detail': /\b(?:detail|remember)/i,
+  'standing detail': /\b(?:detail|remember)/i,
+};
+
+/** The ways this app says a write did not happen. */
+const DENIES: RegExp[] = [
+  /\b(?:did\s*n[o']?t|did not|has\s*n[o']?t|hasn't|was\s*n[o']?t|wasn't)\s+(?:save|saved|go through|gone through|work|land|reach)/i,
+  /\bnothing\s+(?:changed|new|was saved|saved|reached|is on|went in)\b/i,
+  /\b(?:is|are)\s*n[o']?t\s+(?:saved|in your|on your)\b/i,
+  /\bfailed to save\b/i,
+  /\bnot\s+(?:saved|stored|kept)\b/i,
+];
+
+/**
+ * The first sentence denying a write that the log says landed, or null.
+ *
+ * Returned rather than a boolean so the caller can record what was corrected -
+ * a silent fix to a reply is how you stop finding out this is still happening.
+ */
+export function deniesALandedWrite(reply: string, wrote: string[]): string | null {
+  if (wrote.length === 0) return null;
+  const landed = wrote.filter((w) => w in SUBJECT_WORDS);
+  if (landed.length === 0) return null;
+
+  for (const sentence of sentences(reply)) {
+    // AN OFFER IS NOT A DENIAL, same exemption as the claim guard. "Shall I
+    // try saving it again?" names a save that has not happened yet.
+    if (IS_AN_OFFER.test(sentence)) continue;
+    if (!DENIES.some((re) => re.test(sentence))) continue;
+    if (landed.some((name) => SUBJECT_WORDS[name].test(sentence))) return sentence;
+  }
+  return null;
+}
+
+/**
+ * REMOVE THE DENIAL, exactly as stripSaveClaims removes a false claim.
+ *
+ * Not corrected in place and not argued with: the same reasoning Ruth gave on
+ * 30 September for the other direction - a guard that "contradicts the app's
+ * own confirmation in the same message" puts two voices in front of her
+ * disagreeing about her own record. The sentence comes out and the app's own
+ * save confirmation, which is already published to her screen from the real
+ * write, is the one voice left.
+ */
+export function stripFalseDenial(reply: string, wrote: string[]): string {
+  if (!deniesALandedWrite(reply, wrote)) return reply;
+  const landed = wrote.filter((w) => w in SUBJECT_WORDS);
+
+  const lines = reply.split('\n').map((line) => {
+    if (!line.trim()) return line;
+    return line
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => {
+        if (IS_AN_OFFER.test(sentence)) return true;
+        if (!DENIES.some((re) => re.test(sentence))) return true;
+        return !landed.some((name) => SUBJECT_WORDS[name].test(sentence));
+      })
+      .join(' ')
+      .trim();
+  });
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}

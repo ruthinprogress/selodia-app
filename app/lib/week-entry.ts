@@ -223,3 +223,99 @@ export function weekNoteNeeded(reply: string, outcome: WeekEntryOutcome): boolea
   const placesIt = /\b(your|the)\s+week\b|\bweek view\b|\bin plans\b/i.test(said);
   return !(namesIt && placesIt);
 }
+
+// ===========================================================================
+// SEVERAL AT ONCE, BECAUSE A WEEK IS PLANNED AS A WEEK.
+// ===========================================================================
+//
+// Ruth, 22 October 2026, after an evening designing a training week with the
+// chat - which she rated "a fantastic display of help spanning the Week
+// planning, and picking excersuses, amending and curating for my strength
+// level". Then this, from the transcript at 22:19:
+//
+//   "Wednesday's gym is in your Week now. I can only add one entry at a time,
+//    so the rest need a few more messages from you."
+//
+// She typed "Next". Then "Next". Then "Next". Four sessions, four messages,
+// for one decision she had already made.
+//
+// NOTHING WAS WRONG WITH THE MODEL. The weekEntry field was a single object, so
+// one turn could write exactly one row, and saying so was the honest thing to
+// do. The limit was in the schema, and the schema was written when the field's
+// only use was "add french class on thursday" - one thing, mentioned in
+// passing. Planning a week is the other shape, and it arrived later.
+//
+// SEQUENTIAL AND NOT PARALLEL, deliberately. addWeekEntry reads the existing
+// rows to dedupe and to pick a sort order, so two running at once would each
+// read the table before the other had written to it - and a week planned in one
+// breath is exactly where the same activity turns up twice. Five reads is
+// nothing; two Wednesdays in her week is the fault this app keeps having.
+
+/** Add several in one turn, each seeing the ones before it. */
+export async function addWeekEntries(
+  supabase: SupabaseClient,
+  userId: string,
+  reqs: WeekEntryRequest[]
+): Promise<WeekEntryOutcome[]> {
+  const out: WeekEntryOutcome[] = [];
+  for (const req of reqs) {
+    out.push(await addWeekEntry(supabase, userId, req));
+  }
+  return out;
+}
+
+/**
+ * One line for the lot, rather than five lines stacked up.
+ *
+ * FAILURES ARE NAMED SEPARATELY AND ARE NEVER FOLDED IN. A turn where four
+ * landed and one did not must say which one, or the app has quietly lost a
+ * session inside a sentence about how well it went - and losing one inside good
+ * news is worse than losing one on its own.
+ */
+export function weekEntriesNote(outcomes: WeekEntryOutcome[]): string | null {
+  const real = outcomes.filter((o) => o.kind !== 'nothing');
+  if (real.length === 0) return null;
+  if (real.length === 1) return weekEntryNote(real[0]);
+
+  const failed = real.filter((o) => o.kind === 'failed');
+  const landed = real.filter((o) => o.kind === 'added' || o.kind === 'already') as Extract<
+    WeekEntryOutcome,
+    { kind: 'added' } | { kind: 'already' }
+  >[];
+
+  const parts: string[] = [];
+  if (landed.length > 0) {
+    const names = landed.map((o) => {
+      if (o.kind === 'already') return o.activity;
+      const when =
+        o.days.length > 0 ? o.days.map((d) => DAY_WORD[d] ?? d).join(' and ') : 'Anytime';
+      return `${o.activity} (${when}${o.time ? `, ${o.time}` : ''})`;
+    });
+    const list =
+      names.length === 1
+        ? names[0]
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    parts.push(`${list} ${landed.length === 1 ? 'is' : 'are'} in your week. It's on the Week view in Plans.`);
+  }
+  if (failed.length > 0) {
+    parts.push(
+      `${failed.length === 1 ? 'One of them' : `${failed.length} of them`} didn't go in. ` +
+        "Ask me again and I'll try those once more."
+    );
+  }
+  return parts.join(' ');
+}
+
+/**
+ * Whether the app still needs to speak, across several outcomes.
+ *
+ * ANY ONE OF THEM UNSAID MEANS THE APP SPEAKS. The guarantee weekNoteNeeded
+ * protects is that she is never left without a confirmation; a reply that named
+ * three of five sessions has still left two unconfirmed, and the safe direction
+ * is for the app to say the lot.
+ */
+export function weekNotesNeeded(reply: string, outcomes: WeekEntryOutcome[]): boolean {
+  const real = outcomes.filter((o) => o.kind !== 'nothing');
+  if (real.length === 0) return false;
+  return real.some((o) => weekNoteNeeded(reply, o));
+}

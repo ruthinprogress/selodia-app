@@ -19,7 +19,9 @@ import {
   MOVEMENT_LIBRARY_PROMPT,
 } from '../../lib/movement-tool';
 import {
+  deniesALandedWrite,
   falseClaimNote,
+  stripFalseDenial,
   stripDisavowal,
   stripMachineOutput,
   offerNamesAppStore,
@@ -85,7 +87,7 @@ import {
 import { todayISODate } from '../../lib/workout-logs';
 import { itemsOf } from '../../lib/me-items';
 import { meUpdateNote, updateMeCard } from '../../lib/me-update';
-import { addWeekEntry, weekEntryNote, weekNoteNeeded } from '../../lib/week-entry';
+import { addWeekEntries, weekEntriesNote, weekNotesNeeded } from '../../lib/week-entry';
 import { createWriteLog } from '../../lib/write-log';
 import type { WeekEntryOutcome } from '../../lib/week-entry';
 import { hydrationSaveSummary, logHydrationFromText } from '../../lib/hydration-logging';
@@ -2354,13 +2356,29 @@ WHEN SOMETHING IS NOT POSSIBLE YET. Never refuse flatly and never suggest a work
         + 'Not for adding something new - that is proposedSave with type "me". The app finds the card, changes it, keeps the history, and tells them.',
     },
     weekEntry: {
-      type: 'object',
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          activity: { type: 'string' },
+          days: { type: 'array', items: { type: 'string' } },
+          time: { type: 'string' },
+          duration: { type: 'string' },
+        },
+        required: ['activity'],
+      },
       description:
         'ONLY when they DIRECTLY ask for something to go in their week - "add gym on Wednesday", '
         + '"put french class in my week on thursday night at 7pm", "I swim on Thursdays now, add that". '
-        + '{"activity": the thing in their words ("Gym", "French class"), "days": lowercase three-letter '
-        + 'day names like ["thu"], "time": when in the day IN THEIR WORDS ("7pm", "evening", "after work") '
-        + 'or omit if they did not say, "duration": "~60 min" or omit}. '
+        + 'A LIST, AND PUT THE WHOLE WEEK IN ONE CALL. When several things belong in their week - '
+        + 'a training week worked out together, a set of classes, everything agreed in this '
+        + 'conversation - send them ALL here now, in one array. NEVER say you can only add one at a '
+        + 'time, never add one and ask them to prompt you for the rest, and never ask them to repeat '
+        + 'a session they have already settled. Anything agreed is theirs already; making them ask '
+        + 'again for it is the app taking something back. '
+        + 'Each item is {"activity": the thing in their words ("Gym", "French class"), "days": lowercase '
+        + 'three-letter day names like ["thu"], "time": when in the day IN THEIR WORDS ("7pm", "evening", '
+        + '"after work") or omit if they did not say, "duration": "~60 min" or omit}. '
         + 'ASKING IS THE YES: there is no offer and no confirmation step, exactly as with noteText. The app '
         + 'adds it and tells them itself, so do NOT claim in your reply that it is in their week and do NOT '
         + 'ask whether to add it. '
@@ -2845,9 +2863,29 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     leadMode &&
     (!response.content.some((b) => b.type === 'tool_use') || response.stop_reason === 'max_tokens')
   ) {
+    const ranOutOfRoom = response.stop_reason === 'max_tokens';
     console.log(
-      `LEAD TURN: the lead model ${response.stop_reason === 'max_tokens' ? 'ran out of room' : 'answered without deciding'} - redoing the turn the usual way`
+      `LEAD TURN: the lead model ${ranOutOfRoom ? 'ran out of room' : 'answered without deciding'} - redoing the turn the usual way`
     );
+    // RECORDED, NOT ONLY LOGGED (23 October 2026). On 22 October at 22:08 her
+    // reply stopped mid-sentence - "Here's the plan, with the pending bits
+    // shaped so it still works if they don't land." - and the next turn opened
+    // "My last message cut off before the plan came through." This branch is
+    // where that happened, and it was knowable only from a console line nobody
+    // keeps, so which of the two reasons fired could not be established
+    // afterwards from anything stored. A fallback that leaves no trace is a
+    // fallback that gets diagnosed by guesswork.
+    recordRouteError({
+      userId,
+      turnId,
+      voice: isVoice,
+      label: ranOutOfRoom ? 'lead ran out of room' : 'lead answered without deciding',
+      detail: {
+        stop_reason: response.stop_reason ?? null,
+        output_tokens: response.usage?.output_tokens ?? null,
+        max_tokens: LEAD_FIRST_MAX_TOKENS,
+      },
+    });
     recordModelUsage({ userId, turnId, call: 'classify', model: firstModel, usage: response.usage });
     leadMode = false;
     firstModel = MODEL;
@@ -2855,7 +2893,22 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       response = await anthropic.messages.create(
         {
           model: MODEL,
-          max_tokens: 2000,
+          // THE RESCUE MUST NOT BE TIGHTER THAN THE THING IT IS RESCUING.
+          //
+          // This was 2000 while LEAD_FIRST_MAX_TOKENS is 8000, so one of the
+          // two reasons for arriving here - the lead model running out of room
+          // at eight thousand tokens - was being retried with a quarter of the
+          // space. That retry cannot succeed. It can only truncate again, more
+          // severely, and the turn then ends with a half-written reply and no
+          // save, which is exactly what 22 October 22:08 looks like in the
+          // table: "Here's the plan, with the pending bits shaped so it still
+          // works if they don't land." and then nothing, followed by "My last
+          // message cut off before the plan came through."
+          //
+          // A fallback with a smaller budget than the call it replaces is not a
+          // fallback. Same ceiling, so the retry has at least the room the
+          // first attempt had.
+          max_tokens: LEAD_FIRST_MAX_TOKENS,
           system: firstSystem.map((b, i) => (i === 2 ? { type: 'text' as const, text: turnRestPrompt } : b)),
           messages,
           tools: firstTools,
@@ -2986,7 +3039,12 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
     standingDetailsToRemove?: unknown;
     proposedSave?: unknown;
     meUpdate?: { title?: unknown; status?: unknown; reason?: unknown };
-    weekEntry?: { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown };
+    // AN ARRAY SINCE 23 OCTOBER 2026, and a bare object is still read: the
+    // single-entry shape is what three weeks of prompt examples showed, and a
+    // model that sends one should not lose her session over the punctuation.
+    weekEntry?:
+      | { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown }
+      | { activity?: unknown; days?: unknown; time?: unknown; duration?: unknown }[];
     saveAnswer?: string;
     saveRedirect?: { type?: unknown; section?: unknown };
     daySymptoms?: unknown[];
@@ -4568,6 +4626,21 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
       editedPlanId ?? (provisionalTag?.entryType === 'plan' ? provisionalTag.entryId : null)
     );
     if (entry) savedAlmanac = { kind: entry.kind, title: entry.title };
+    // THE WRITE NOBODY DOWNSTREAM KNEW ABOUT (Ruth, 22-23 October 2026).
+    //
+    // This line was missing, and it is the whole of why saving a plan took her
+    // two or three goes. write-log.ts was built in October precisely because a
+    // hand-kept list had forgotten the allergy, the week entry and the
+    // remembered detail; the plan save was the fourth, and it was never added.
+    //
+    // At 22:10:58 on 22 October "Aspirational week (childcare pending)" was
+    // written to almanac_entries. At 22:11:05, six seconds later, her reply
+    // opened: "The plan didn't save, and the quad rule change didn't go
+    // through either." She said "save it" again, the model said it was on her
+    // Plans tab, and NO SECOND ROW WAS EVER WRITTEN - because the first one had
+    // worked all along. Same shape as 21 October, in her own words from the
+    // chat: "The calendar entry did save, all three times you asked."
+    if (entry) writes.record('plan');
   }
 
   // THE CONVERSATIONAL SAVE (Insights slice 2, 2026-09-12). See pending-save.ts.
@@ -4597,12 +4670,25 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   // the probe that settled it.
   let weekNote: string | null = null;
   // Kept so the reply path can ask whether its own words have already covered it.
-  let weekOutcome: WeekEntryOutcome | null = null;
-  if (result.weekEntry && typeof result.weekEntry.activity === 'string' && result.weekEntry.activity.trim()) {
-    weekOutcome = await addWeekEntry(supabase, user.id, result.weekEntry);
-    weekNote = weekEntryNote(weekOutcome);
-    if (weekOutcome.kind === 'added' || weekOutcome.kind === 'already') writes.record('week entry');
-    console.log('WEEK ENTRY:', JSON.stringify({ outcome: weekOutcome.kind, raw: result.weekEntry }));
+  let weekOutcomes: WeekEntryOutcome[] = [];
+  // ONE OR SEVERAL, READ TOLERANTLY. The field is an array now, so a week can
+  // be planned in one turn instead of four - see addWeekEntries for the "Next,
+  // Next, Next" evening that caused it. A bare object is still accepted
+  // because the old shape is what every example in the prompt showed for three
+  // weeks, and a model that sends one should not lose her session over it.
+  const weekRequests = (
+    Array.isArray(result.weekEntry) ? result.weekEntry : result.weekEntry ? [result.weekEntry] : []
+  ).filter((e) => e && typeof e.activity === 'string' && e.activity.trim());
+  if (weekRequests.length > 0) {
+    weekOutcomes = await addWeekEntries(supabase, user.id, weekRequests);
+    weekNote = weekEntriesNote(weekOutcomes);
+    if (weekOutcomes.some((o) => o.kind === 'added' || o.kind === 'already')) {
+      writes.record('week entry');
+    }
+    console.log(
+      'WEEK ENTRY:',
+      JSON.stringify({ outcomes: weekOutcomes.map((o) => o.kind), raw: weekRequests })
+    );
   }
 
   let offered = false;
@@ -5185,6 +5271,25 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
   }
 
   let replyBody = deadOffer ? stripDeadOffer(safeReplyText) : safeReplyText;
+
+  // AND THE SAME GUARD IN THE OTHER DIRECTION. See claimed-write.ts for the
+  // 22 October timeline: the plan was in the table six seconds before the reply
+  // saying it had not saved was stored. The model is reading the plans snapshot
+  // taken at the top of the turn, which cannot contain the write it is making
+  // in the same turn, so the denial is the honest conclusion from a stale
+  // record. The write log is not stale, so it decides.
+  const falseDenial = deniesALandedWrite(replyBody, wroteThisTurn);
+  if (falseDenial) {
+    replyBody = stripFalseDenial(replyBody, wroteThisTurn);
+    recordRouteError({
+      userId,
+      turnId,
+      voice: Boolean(voice),
+      label: 'denied-a-landed-write',
+      detail: { sentence: falseDenial.slice(0, 300), wrote: wroteThisTurn },
+    });
+  }
+
   let notesStillToAppend = appendedNotes;
 
   // NEVER OVER A REPLY THE SAFETY ARCHITECTURE CHOSE (2026-09-28).
@@ -5601,7 +5706,7 @@ THIS CALL IS THE ONLY CHANCE TO ACT, and that is the whole reason it exists. The
           // else to answer and said it anyway. On "add french class on thursday
           // at 7pm, and how's my protein?" she would have got the protein and no
           // word about her week at all.
-          ...(weekNote && (!weekOutcome || weekNoteNeeded(written.text, weekOutcome))
+          ...(weekNote && weekNotesNeeded(written.text, weekOutcomes)
             ? [weekNote]
             : []),
           ...(liveClaim ? [liveClaim] : []),
