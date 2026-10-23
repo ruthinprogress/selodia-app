@@ -102,6 +102,27 @@ export const aminoProfile = (s: unknown): AminoProfileValue | null =>
 // macro off the row entirely rather than printing 0g - because it cannot tell
 // "this meal had no fibre" from "nobody worked the fibre out", and a zero
 // asserts the first.
+// A WEIGHT THEY GAVE YOU IS A FACT, NOT A HINT (23 October 2026).
+//
+// "80g bakery sausage roll" came back at 280 kcal and "20g bakery sausage
+// roll", fourteen minutes later, at 180 - the same food at 3.5 kcal/g and
+// then at 9.0, which is the energy density of pure fat. The 20g estimate
+// carried 31g of protein, carbs and fat: more macronutrient than the food it
+// was supposedly in.
+//
+// The figures were a normal portion's, wearing the label she typed. There is
+// a check on this now in food-weight-sanity.ts, because an instruction like
+// this is followed almost always, and almost always is the hardest kind of
+// failure to see.
+export const FOOD_PARSE_STATED_WEIGHT_IS_BINDING =
+  ' A WEIGHT OR QUANTITY THE PERSON STATES IS BINDING AND EVERY FIGURE MUST BE'
+  + ' FOR THAT AMOUNT, not for a typical portion of the same food. If they say'
+  + ' 20g, estimate 20g, even when nobody eats only 20g of it. CHECK YOUR OWN'
+  + ' ARITHMETIC BEFORE ANSWERING: protein_g + carbs_g + fat_g is a weight, and'
+  + ' it can never exceed the weight of the food containing it. 31g of macros in'
+  + ' a 20g item is impossible and means the estimate is for a larger portion'
+  + ' than the one asked about. The same food at two different weights must come'
+  + ' back at consistent density: if 80g is 280 kcal then 20g is about 70, not 180.';
 export const FOOD_PARSE_OMIT_RATHER_THAN_GUESS =
   ' SATURATED FAT, SUGAR AND FIBRE: give saturated_fat_g, sugar_g and fibre_g only where the food genuinely tells you ' +
   '- a named whole food, a dish whose components you know, a figure stated on a label the person quoted. ' +

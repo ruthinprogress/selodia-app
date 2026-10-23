@@ -1,3 +1,4 @@
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
 import { authedPost } from '@/lib/api';
@@ -35,9 +36,27 @@ function readingDay(at: string | null): string | null {
 // enough to read a scale display, which is the hardest thing here.
 const PICKER_QUALITY = 0.6;
 
-// Matches the classify route's ceiling. Checked here too so an oversized image
-// fails immediately with something readable rather than after a long upload.
-const MAX_BASE64_BYTES = 8 * 1024 * 1024;
+// THE LONGEST EDGE WE SEND, AND WHY IT IS THIS NUMBER (23 October 2026).
+//
+// The model downsamples anything bigger than about 1568px on its long edge
+// before it looks at it. Every pixel above that is upload time and request size
+// bought for nothing at all - not a sharper read, not a better answer.
+const MAX_EDGE = 1600;
+
+// THE CEILING IS THE PLATFORM'S, NOT OURS, and getting that wrong is why photos
+// did not work.
+//
+// This was 8MB "to match the classify route's ceiling", and the route does say
+// 8MB. But the route never gets a say: a Vercel serverless function rejects any
+// request body over 4.5MB before the handler runs, so every photo between those
+// two numbers died at the platform with no server log and no useful message.
+// Two images have reached this app's database in its entire history, and the
+// last one was a SCREENSHOT - small enough to squeeze under. Ruth, 23 October:
+// "the chat is failing on images again".
+//
+// A ceiling above the real limit is not a ceiling. This one sits under it, with
+// room for the JSON envelope and the media type around the base64.
+const MAX_BASE64_BYTES = 3 * 1024 * 1024;
 
 export type ImageKind = 'body_measurement' | 'food' | 'activity' | 'document' | 'unclear';
 
@@ -132,10 +151,13 @@ export async function pickImage(source: AddSource): Promise<
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return { ok: false, reason: 'denied' };
 
+    // NO base64 FROM THE PICKER. It hands back the ORIGINAL encoded, which is
+    // the multi-megabyte thing we are trying not to send - and then we encoded
+    // it a second time below. The uri is what the resizer wants.
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: 'images',
       quality: PICKER_QUALITY,
-      base64: true,
+      base64: false,
       allowsMultipleSelection: false,
     };
     const result =
@@ -146,11 +168,43 @@ export async function pickImage(source: AddSource): Promise<
     if (result.canceled) return { ok: false, reason: 'cancelled' };
 
     const asset = result.assets?.[0];
-    const mediaType = normalizeMediaType(asset?.mimeType);
-    if (!asset?.base64 || !mediaType) return { ok: false, reason: 'failed' };
-    if (base64Bytes(asset.base64) > MAX_BASE64_BYTES) return { ok: false, reason: 'too_large' };
+    if (!asset?.uri) return { ok: false, reason: 'failed' };
 
-    return { ok: true, image: { base64: asset.base64, mediaType } };
+    // SHRINK IT HERE, ON THE PHONE, BEFORE IT IS A REQUEST BODY.
+    //
+    // A phone camera photo is 3000-4000px on its long edge and several
+    // megabytes even at quality 0.6. Base64 adds a third on top. That is what
+    // was breaching Vercel's 4.5MB body limit, silently, every time she used
+    // the camera rather than a screenshot.
+    //
+    // The LONG edge is the one that is resized, whichever it is. Resizing by
+    // width alone leaves a tall portrait photo tall, which is most of what a
+    // phone takes. And only when it is actually over the limit: resizing a
+    // small image up would invent pixels and grow the payload.
+    //
+    // The contextual API, because manipulateAsync is deprecated in SDK 57 and
+    // AGENTS.md says to heed that.
+    const longEdge = Math.max(asset.width ?? 0, asset.height ?? 0);
+    const context = ImageManipulator.manipulate(asset.uri);
+    if (longEdge > MAX_EDGE) {
+      context.resize(
+        (asset.width ?? 0) >= (asset.height ?? 0) ? { width: MAX_EDGE } : { height: MAX_EDGE }
+      );
+    }
+    const rendered = await context.renderAsync();
+    const saved = await rendered.saveAsync({
+      compress: PICKER_QUALITY,
+      format: SaveFormat.JPEG,
+      base64: true,
+    });
+
+    if (!saved.base64) return { ok: false, reason: 'failed' };
+    // Always JPEG now, because that is what saveAsync was told to write. Taking
+    // the picker's mimeType here would mislabel a converted HEIC or PNG.
+    const mediaType = 'image/jpeg';
+    if (base64Bytes(saved.base64) > MAX_BASE64_BYTES) return { ok: false, reason: 'too_large' };
+
+    return { ok: true, image: { base64: saved.base64, mediaType } };
   } catch {
     return { ok: false, reason: 'failed' };
   }

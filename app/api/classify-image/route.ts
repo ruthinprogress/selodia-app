@@ -27,9 +27,23 @@ type MediaType = (typeof ALLOWED_MEDIA)[number];
 const isMediaType = (v: unknown): v is MediaType =>
   typeof v === 'string' && (ALLOWED_MEDIA as readonly string[]).includes(v);
 
-// Generous for a compressed phone photo, and a real ceiling on what a bad
-// client can push through.
-const MAX_BYTES = 8 * 1024 * 1024;
+// A CEILING ABOVE THE PLATFORM'S LIMIT IS NOT A CEILING (23 October 2026).
+//
+// This was 8MB and described as "generous for a compressed phone photo", which
+// it would be if the request ever arrived. It does not: a Vercel serverless
+// function rejects a body over 4.5MB before this handler runs, so every photo
+// between 4.5MB and 8MB died at the edge with no log here and nothing readable
+// on the phone. The client's own limit pointed at this number, so both ends
+// agreed on a figure neither of them could honour.
+//
+// Two images reached this app's database in its whole history. The last one was
+// a screenshot, which is small enough to get under by accident.
+//
+// 4MB, under the platform's 4.5MB with room for the JSON around the base64. The
+// phone now resizes to a 1600px long edge before sending, which lands a normal
+// photo in the hundreds of kilobytes, so this is a guard against a bad client
+// rather than something an ordinary photo should ever meet.
+const MAX_BYTES = 4 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseForRequest(request);

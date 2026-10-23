@@ -1,3 +1,5 @@
+import { weightIsPossible } from './food-weight-sanity';
+import { recordRouteError } from './turn-diagnostics';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordModelUsage } from './usage-record';
@@ -13,6 +15,7 @@ import {
 import {
   FOOD_PARSE_CLASSIFICATION_RULES,
   FOOD_PARSE_OMIT_RATHER_THAN_GUESS,
+  FOOD_PARSE_STATED_WEIGHT_IS_BINDING,
   FOOD_PARSE_ENTRIES_SCHEMA,
   FOOD_PARSE_JSON_SCHEMA,
   aminoProfile, proteinSource,
@@ -375,6 +378,20 @@ export async function logFoodFromText(
   sourceTurnId?: string
 ): Promise<FoodEntry[]> {
   const today = new Date().toISOString().slice(0, 10);
+  // THE CLOCK, BECAUSE GUESSING THE MEAL FROM THE FOOD GETS IT WRONG
+  // (Ruth, 23 October 2026). Her 19:25 yoghurt and smoked salmon sandwich was
+  // labelled "Breakfast", so her day read Lunch, Snack, Snack, Breakfast,
+  // Snack - correct in time order, with one label that made it look shuffled.
+  //
+  // The instruction below said to use time-of-day clues "if mentioned, or the
+  // food type if not", and the time was never passed in. So it was ALWAYS
+  // guessing from the food, and yoghurt reads as breakfast at any hour. The
+  // app knows what time it is; guessing where a fact is available is a bug.
+  const nowLocal = new Date().toLocaleTimeString('en-GB', {
+    timeZone: 'Europe/London',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   // Her own last value for any food in this text she has logged before, so a
   // staple is counted the same way every time. See lib/food-memory.ts.
@@ -399,8 +416,9 @@ export async function logFoodFromText(
       FOOD_PARSE_JSON_SCHEMA +
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
-    FOOD_PARSE_OMIT_RATHER_THAN_GUESS +
-      ' For meal_label, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
+      FOOD_PARSE_OMIT_RATHER_THAN_GUESS +
+      FOOD_PARSE_STATED_WEIGHT_IS_BINDING +
+      ' For meal_label, infer a short label (e.g. "Breakfast", "Lunch", "Dinner", "Snack"). IT IS NOW ' + nowLocal + ' AND THAT IS THE FIRST THING TO USE. A meal logged in the evening is not breakfast however breakfasty the food is: yoghurt at 19:25 is a snack or part of dinner. Prefer a time-of-day word the person actually said - "this was my breakfast", "this morning" - because they may be catching up on an earlier meal. Fall back on the food type only when you have neither. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
       ' EVERY DRINK ALSO GOES IN "drinks", verbatim and with its quantity, one string each - "1lt water", "black coffee", "two mugs of tea with milk", "a pint of cider", "a glass of orange juice". ALL of them, whatever they contain: water, tea, coffee, squash, juice, milk, a smoothie, a fizzy drink, alcohol. A caloric drink still belongs in "items" as well, with its macros, because it is food too - being in "drinks" is about the volume, not the calories. The one thing that is not a drink is a food that merely borrows the name of one: a coffee cake is not a coffee. Return an empty array when there were none. The app decides what each drink counts toward and converts the volumes itself, so do not estimate a volume and do not leave a drink out for any reason: a litre of water somebody typed and never saw recorded is the failure this field exists to stop.' +
       memory +
       ' Food entry: "' +
@@ -417,7 +435,9 @@ export async function logFoodFromText(
       FOOD_PARSE_ENTRIES_SCHEMA +
       ' ' +
       FOOD_PARSE_CLASSIFICATION_RULES +
-      ' For meal_label on each entry, infer a short label based on context (e.g. "Breakfast", "Lunch", "Dinner", "Snack") using time-of-day clues if mentioned, or the food type if not. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
+      FOOD_PARSE_OMIT_RATHER_THAN_GUESS +
+      FOOD_PARSE_STATED_WEIGHT_IS_BINDING +
+      ' For meal_label on each entry, infer a short label (e.g. "Breakfast", "Lunch", "Dinner", "Snack"). IT IS NOW ' + nowLocal + ' AND THAT IS THE FIRST THING TO USE. A meal logged in the evening is not breakfast however breakfasty the food is: yoghurt at 19:25 is a snack or part of dinner. Prefer a time-of-day word the person actually said - "this was my breakfast", "this morning" - because they may be catching up on an earlier meal. Fall back on the food type only when you have neither. Keep it short - 1-3 words, not a repeat of the food entry itself. Set confidence to "clear" for typed text entries.' +
       ' EVERY DRINK ALSO GOES IN "drinks", verbatim and with its quantity, one string each - "1lt water", "black coffee", "two mugs of tea with milk", "a pint of cider", "a glass of orange juice". ALL of them, whatever they contain: water, tea, coffee, squash, juice, milk, a smoothie, a fizzy drink, alcohol. A caloric drink still belongs in "items" as well, with its macros, because it is food too - being in "drinks" is about the volume, not the calories. The one thing that is not a drink is a food that merely borrows the name of one: a coffee cake is not a coffee. Return an empty array when there were none. The app decides what each drink counts toward and converts the volumes itself, so do not estimate a volume and do not leave a drink out for any reason: a litre of water somebody typed and never saw recorded is the failure this field exists to stop.' +
       memory +
       ' What they said: "' +
@@ -717,6 +737,35 @@ export async function logFoodFromText(
     await writeItems(supabase, id, userId, row.items);
   }
 
+  // THE MACROS CANNOT WEIGH MORE THAN THE FOOD (23 October 2026).
+  //
+  // Her "20g bakery sausage roll" came back with 31g of protein, carbs and
+  // fat in it. The estimate is internally consistent - the macros match its
+  // 180 kcal exactly - so every check comparing calories to macros passed it.
+  // It is a correct estimate of the wrong amount of food, and the only thing
+  // that gives it away is the arithmetic below.
+  //
+  // RECORDED, NOT CORRECTED. See food-weight-sanity.ts: replacing a bad
+  // figure with a second guess is how an app becomes confidently wrong
+  // instead of loudly unsure. The prompt is told the rule as well; this is
+  // how we find out whether being told was enough, instead of assuming it.
+  for (const row of fresh) {
+    const verdict = weightIsPossible(row.rawText, row.fields);
+    if (!verdict.ok) {
+      recordRouteError({
+        userId,
+        turnId: sourceTurnId ?? null,
+        voice: false,
+        label: 'macros outweigh the food',
+        detail: {
+          text: row.rawText.slice(0, 120),
+          statedG: verdict.statedG,
+          macroG: verdict.macroG,
+          kcal: row.fields.kcal ?? null,
+        },
+      });
+    }
+  }
   let inserted: FoodEntry[] = [];
   if (fresh.length > 0) {
     const { data, error } = await supabase
