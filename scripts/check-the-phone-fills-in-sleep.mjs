@@ -179,7 +179,13 @@ check('the privacy screen matches what is actually read', () => {
   assert.match(PRIVACY, /sleep/i, 'the screen does not mention sleep at all');
   assert.match(
     PRIVACY,
-    /never how a night felt/i,
+    // TOLERANT OF THE WORDING, STRICT ABOUT THE PROMISE. This was
+    // /never how a night felt/i and broke the moment the sentence was widened
+    // from sleep to every reading - a check testing one phrasing rather than
+    // the commitment behind it, which is the fault this repository keeps
+    // finding in its own checks. What must survive is a plain statement that
+    // the subjective part is never taken from a device.
+    /never how [a-z ]{0,20}felt/i,
     'the screen does not say the one thing it will not take from a watch'
   );
 });

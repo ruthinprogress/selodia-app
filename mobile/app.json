@@ -3,7 +3,7 @@
     "name": "Selodía",
     "slug": "mobile",
     "owner": "selodia",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "selodia",
@@ -44,7 +44,23 @@
         "android.permission.health.READ_EXERCISE",
         "android.permission.health.READ_HYDRATION",
         "android.permission.health.READ_TOTAL_CALORIES_BURNED",
-        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_BLOOD_PRESSURE",
+        "android.permission.health.READ_BLOOD_GLUCOSE",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_RESPIRATORY_RATE",
+        "android.permission.health.READ_VO2_MAX",
+        "android.permission.health.READ_BODY_TEMPERATURE",
+        "android.permission.health.READ_BASAL_BODY_TEMPERATURE",
+        "android.permission.health.READ_HEIGHT",
+        "android.permission.health.READ_LEAN_BODY_MASS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND",
+        "android.permission.health.READ_HEALTH_DATA_HISTORY",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ],
       "runtimeVersion": {
         "policy": "appVersion"
@@ -85,7 +101,8 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Selodía reads the health data you choose to share - steps, sleep, weight and body composition, workouts, water and cycle dates - so your record is complete without typing it all in twice.",
-          "NSHealthUpdateUsageDescription": "Selodía does not add anything to your Health data. It only ever reads."
+          "NSHealthUpdateUsageDescription": "Selodía does not add anything to your Health data. It only ever reads.",
+          "background": true
         }
       ],
       "react-native-health-connect",
@@ -111,7 +128,14 @@
       ],
       "expo-image",
       "@livekit/react-native-expo-plugin",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Selodía asks so it can put a session or an appointment into the calendar you already use, instead of keeping it somewhere you would have to remember to check."
+        }
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,

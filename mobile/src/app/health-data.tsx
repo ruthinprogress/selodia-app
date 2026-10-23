@@ -34,7 +34,7 @@ const ROWS: { title: string; body: string }[] = [
   {
     title: 'What Selodía reads',
     body:
-      'Your daily step count, and - if you connect it from the Sleep screen - when you slept, when you woke, and how often the night broke. Nothing else from your health data. It is read from your phone, not from a watch or an account: if a watch or band sends steps or sleep to your phone, Selodía sees what your phone holds.',
+      'Only what you switch on. Today that is your step count and, if you connect it from the Sleep screen, when you slept and how often the night broke. Selodía also asks to read the things it has somewhere to put - a resting heart rate, a blood pressure, a temperature, your height - so that if you already measure them, they arrive on their own instead of being typed twice. Nothing is read until you allow that type, and you can allow some and refuse others. It is read from your phone, not from a watch or an account: if a watch or band sends data to your phone, Selodía sees what your phone holds.',
   },
   {
     title: 'What it is used for',
@@ -44,7 +44,7 @@ const ROWS: { title: string; body: string }[] = [
   {
     title: 'What is never read',
     body:
-      'Heart rate, blood pressure, blood glucose, oxygen, weight, cycle data, exercise sessions, location, or anything else in your health app. AND NEVER HOW A NIGHT FELT: a watch can time your sleep, it cannot know whether it was restful, so Selodía asks you that and reads only the clock. Everything else it knows about your body, you told it yourself.',
+      'Your location, anything you have not allowed, and anything from a type Selodía has not asked for. AND NEVER HOW SOMETHING FELT: a watch can time your sleep, it cannot know whether it was restful, so Selodía asks you that and reads only the clock. The same holds for every figure it reads - it records them and notices patterns across your own weeks, and it never tells you a reading is good or bad. That is a conversation for you and a clinician, and Selodía will say so rather than answer it.',
   },
   {
     title: 'Where it goes',
