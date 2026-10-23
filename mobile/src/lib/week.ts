@@ -93,6 +93,20 @@ export function daysOfWeek(weekStart: Date): Date[] {
 // Half-open [startISO, endISO) instants covering the whole local week, for a
 // timestamptz query: happened_at >= startISO and < endISO. Built from local
 // midnights so it captures exactly the seven local days regardless of offset.
+/**
+ * Midnight this morning, local, as an ISO string.
+ *
+ * SHARED BECAUSE IT WAS ABOUT TO BE COPIED (23 October 2026). It lived as a
+ * private function inside overview-panel.tsx, and the Hydration screen needed
+ * the same boundary to read the same day. Two definitions of "today" that
+ * agree now and are maintained apart is the shape this project keeps paying
+ * for - the macro columns, the two prompt branches, the upload ceilings.
+ */
+export function startOfToday(now: Date = new Date()): string {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 export function weekRange(weekStart: Date): { startISO: string; endISO: string } {
   const start = localMidnight(weekStart);
   const end = addWeeks(start, 1);

@@ -17,7 +17,7 @@ import { calculateCalorieTarget, type FocusState } from '@/lib/calorie-target';
 import { hydrationToday } from '@/lib/hydration';
 import { hydrationGoal } from '@/lib/hydration-goal';
 import { formatDuration, lastNight, QUALITY_LABEL, type SleepQuality } from '@/lib/sleep';
-import { formatLogDate, toLocalDateKey } from '@/lib/week';
+import { formatLogDate, startOfToday, toLocalDateKey } from '@/lib/week';
 import {
   findWeekAgoReading,
   formatWeeklyDelta,
@@ -226,11 +226,6 @@ export function cycleDayFrom(lastStart: string | null, stage?: LifeStage | null)
 /** Past this, the last logged start is too old to count from. Her figure. */
 const MAX_CYCLE_DAY = 45;
 
-function startOfToday(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
 
 // The floating Undo note lives on the screen, outside its scroll view, so it can
 // sit above the bottom navigation (see today/index.tsx). The panel reports each
