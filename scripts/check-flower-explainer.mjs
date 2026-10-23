@@ -54,7 +54,11 @@ function check(name, fn) {
   }
 }
 
-const spec = fs.readFileSync('mobile/SELODIA_SPEC.md', 'utf8');
+// NORMALISED, because a table parsed with a line anchor is broken by a stray
+// carriage return - and on 23 October a spec edit flipped the whole file to
+// CRLF, so this check reported that the six-dimension table had vanished.
+// The table was fine. The check was reading it through the wrong newline.
+const spec = fs.readFileSync('mobile/SELODIA_SPEC.md', 'utf8').replace(/\r/g, '');
 const section = fs.readFileSync('mobile/src/components/balance-flower-section.tsx', 'utf8');
 const now = fs.readFileSync('mobile/src/app/(tabs)/now/index.tsx', 'utf8');
 

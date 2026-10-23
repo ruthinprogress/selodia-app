@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { DayLog, type DayEntry, type LogDay } from '@/components/day-log';
 import { FoodBreakdownCard } from '@/components/food-breakdown-card';
+import { hasNutrientTiles, NutrientGrid } from '@/components/nutrient-grid';
 import { QuickLogBar } from '@/components/quick-log-bar';
 import { WeekAverageCard } from '@/components/week-average-card';
 import { ThemedText } from '@/components/themed-text';
@@ -15,6 +16,11 @@ import { removeEntry } from '@/lib/remove-entry';
 import { supabase } from '@/lib/supabase';
 import { averageLine, MACRO_COLUMNS, macroLine, sumRows, type MacroKey } from '@/lib/tracked-macros';
 import { loadTrackedMacros } from '@/lib/tracked-macros-store';
+import {
+  loadNutrientProfile,
+  NO_NUTRIENT_PROFILE,
+  type NutrientProfile,
+} from '@/lib/nutrient-profile';
 import {
   addWeeks,
   currentWeekStart,
@@ -123,6 +129,7 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
   const [weekStart, setWeekStart] = useState<Date>(() => initialWeekStart ?? currentWeekStart());
   const [rows, setRows] = useState<FoodRow[]>([]);
   const [tracked, setTracked] = useState<MacroKey[]>([]);
+  const [profile, setProfile] = useState<NutrientProfile>(NO_NUTRIENT_PROFILE);
   const [reloadKey, setReloadKey] = useState(0);
   /** The entry whose itemised breakdown is open. */
   const [openId, setOpenId] = useState<string | null>(null);
@@ -132,6 +139,19 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
     let cancelled = false;
     void loadTrackedMacros().then((m) => {
       if (!cancelled) setTracked(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  // HER CALORIE AND PROTEIN TARGETS, for the two tiles on the grid that are
+  // hers rather than the NHS's. Re-read with the log, because a target she
+  // changes in Goals has to move the colours here without a restart.
+  useEffect(() => {
+    let cancelled = false;
+    void loadNutrientProfile().then((p) => {
+      if (!cancelled) setProfile(p);
     });
     return () => {
       cancelled = true;
@@ -214,6 +234,9 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
         // being undone by nothing more than the grouping running over an
         // unsorted list. Sorted explicitly here so it cannot come undone again.
         const inOrder = [...list].sort((a, b) => a.happened_at.localeCompare(b.happened_at));
+        // Summed once: the grid, the fallback line and the check all read the
+        // same object, so no two of them can disagree about the day.
+        const totals = sumRows(list as unknown as Record<string, unknown>[]);
         const entries: DayEntry[] = inOrder.map((row) => {
           const heading = mealHeading(row.meal_label, row.happened_at);
           const label = capitalised(withoutMealPrefix(entryLabel(row), heading));
@@ -253,16 +276,28 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
           key,
           date,
           summary: <ThemedText type="small">{summaryOf(list)}</ThemedText>,
-          // OPEN, THE DAY SHOWS WHAT SHE ACTUALLY TRACKS (Ruth, 21 October
-          // 2026). Collapsed stays calories and protein, because a week of
-          // rows is for scanning and both her artworks show it that way. Open
-          // is where the day is being read rather than skimmed, and where a
-          // macro she switched on has somewhere to appear - it had none
-          // before, on any screen, at any level above a single meal.
-          openSummary: (
+          // OPEN, THE DAY SHOWS WHERE IT STANDS (Ruth, 23 October 2026).
+          //
+          // Collapsed stays calories and protein, because a week of rows is for
+          // scanning and both her artworks show it that way. Open is where the
+          // day is being read rather than skimmed - and until today what it
+          // showed was the same running line of figures, which is the thing she
+          // described as pointless: "I can't tell that from a glance and that's
+          // actually not very good body litaracy training."
+          //
+          // So the figures are now a grid, each tile saying where that nutrient
+          // sits against a published figure or against a target she set. The
+          // numbers have not changed. What was missing was the answer.
+          //
+          // IT FALLS BACK TO THE LINE, not to nothing. A day whose entries were
+          // all logged before a macro existed has no figure for it, and a day
+          // with nothing she tracks has no tiles at all - see NutrientGrid,
+          // which returns null rather than an empty frame.
+          openSummary: hasNutrientTiles(totals, tracked) ? (
+            <NutrientGrid values={totals} tracked={tracked} profile={profile} />
+          ) : (
             <ThemedText type="small">
-              {macroLine(sumRows(list as unknown as Record<string, unknown>[]), tracked) ||
-                summaryOf(list)}
+              {macroLine(totals, tracked) || summaryOf(list)}
             </ThemedText>
           ),
           at: list[0]?.happened_at ?? null,

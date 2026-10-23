@@ -77,6 +77,11 @@ export const MACRO_EXPLAINERS: Record<MacroKey, MacroExplainer> = {
     what: 'Sugar is the simplest form of carbohydrate, so it reaches the blood fastest. The figure here counts all of it together - the sugar in a biscuit and the sugar in an apple or a glass of milk are the same chemistry, even though they arrive with very different things alongside them.',
     where: 'Anything sweetened, plus fruit, fruit juice, milk and yoghurt.',
   },
+  freeSugar: {
+    line: 'Sugar added to food, rather than built into it.',
+    what: 'Free sugars are the ones added to food, plus the sugar in honey, syrups and fruit juice. The distinction is not about chemistry - it is the same sugar - but about what it arrives with and how fast. Sugar built into a whole apple comes wrapped in fibre and water, so it is released slowly; the same sugar in juice or a biscuit is not. This is the figure dietary guidance is written about, which is why it is counted separately from the sugar total.',
+    where: 'Biscuits, cakes, chocolate, sweetened drinks, fruit juice, honey and syrups, and sugar added in cooking.',
+  },
   fibre: {
     line: 'Feeds the good bacteria in your gut.',
     what: 'Fibre is the part of a plant you do not digest yourself. It feeds the bacteria living in your large intestine, and as they break it down they make substances that help maintain the gut lining and support the immune system. Different plants carry different fibres and feed different bacteria, which is why variety does more than quantity alone.',

@@ -224,13 +224,139 @@ check('a refusal does not offer a button Android will ignore', () => {
   );
 });
 
-check('the grant is read back, not assumed from the request', () => {
+// -- "NOTHING NEW" WAS THE APP GIVING UP IN TWO WORDS ----------------------
+//
+// Ruth, 23 October 2026, with the screenshot: the card reads "Your phone is
+// filling these in" - so the permission is granted and the app knows it - she
+// taps "Check for new nights", gets "Nothing new.", and that is all. "Thats all
+// it shows and the bitton does nothing."
+//
+// The button WAS working. syncSleepFromPhone returns a count, and 0 carries two
+// unrelated meanings: we already hold every night the phone has, or the phone
+// holds no sleep at all. The second was what was happening and is the only one
+// with a next step - the same granted-no-data case the FIRST connect already
+// diagnoses and offers a way out of. Once connected, that branch was
+// unreachable, so the person who most needs the next step was the only one who
+// could not reach it.
+
+/** The body of one function in the control, so a second copy cannot be read. */
+function functionBody(source, name) {
+  const at = source.indexOf(`function ${name}(`);
+  assert.ok(at > 0, `${name} is not in the control at all`);
+  // To the next top-level declaration, rather than a guessed number of
+  // characters - a fixed slice in this file already failed once on correct
+  // code, because the line it wanted started 16 characters past the end.
+  const next = source.indexOf('\nfunction ', at + 1);
+  const exported = source.indexOf('\nexport ', at + 1);
+  const ends = [next, exported].filter((n) => n > 0);
+  return source.slice(at, ends.length > 0 ? Math.min(...ends) : source.length);
+}
+
+check('a check for new nights reports a reason, not a count', () => {
+  // The card must not call the counting function directly any more: a number
+  // cannot say which kind of nothing it found.
+  assert.match(CONTROL, /checkForNights\(\)/);
+  assert.ok(
+    !/await syncSleepFromPhone\(\)/.test(CONTROL),
+    'the card is back on the bare count, which cannot tell "already have it" '
+      + 'from "nothing is sharing"'
+  );
+  assert.match(SYNC, /export async function checkForNights\(\)/);
+});
+
+check('only a genuinely up-to-date phone is told nothing is new', () => {
+  const body = functionBody(CONTROL, 'stepForCheck');
+  const at = body.indexOf("case 'up-to-date'");
+  assert.ok(at > 0, 'up-to-date is not handled');
+  assert.match(body.slice(at, body.indexOf('case', at + 10)), /Nothing new/);
+  // And the empty-phone case must NOT be one of them.
+  const empty = body.indexOf("case 'nothing-on-phone'");
+  assert.ok(empty > 0, 'nothing-on-phone is not handled');
+  assert.doesNotMatch(body.slice(empty, body.indexOf('case', empty + 10)), /Nothing new/);
+});
+
+check('every outcome of a check has a way out, bar the one that needs none', () => {
+  const body = functionBody(CONTROL, 'stepForCheck');
+  for (const state of ['nothing-on-phone', 'refused', 'no-health-connect']) {
+    const at = body.indexOf(`case '${state}'`);
+    assert.ok(at > 0, `${state} is not handled at all`);
+    const block = body.slice(at, body.indexOf('case', at + 10) + 1 || body.length);
+    assert.match(block, /action:\s*\{/, `${state} offers nothing to do about it`);
+  }
+});
+
+check('it names the switch, in the app the switch lives in', () => {
+  // Ruth: "I won't switch it on, I want selodia to do it. Some users won't
+  // manage. I didnt even know where it was to turn on either. Might lose them."
+  //
+  // Selodía genuinely cannot flip this one - no app may change another app's
+  // sharing settings. Everything short of that is still owed: which app, which
+  // screen, which switch, and why it is hers to tap.
+  // Read with the source's own line joins undone, because this sentence is
+  // long enough to be split across three quoted fragments and the words that
+  // matter land either side of a join.
+  const copy = CONTROL.replace(/'\s*\n\s*\+ '/g, '');
+  assert.match(copy, /Samsung Health/);
+  assert.match(copy, /Settings, then Health Connect, then turn on Sleep/);
+  assert.match(CONTROL, /not allowed to change another app/);
+  assert.match(CONTROL, /only has to be done once/);
+});
+
+check('the two routes to the same dead end say the same thing', () => {
+  // The first connect and a later check arrive at "nothing is sharing" from
+  // opposite ends, and had drifted into two descriptions of it - one naming the
+  // switch and one not. One constant, used twice.
+  assert.match(CONTROL, /const NOTHING_SHARING =/);
+  const uses = CONTROL.split('NOTHING_SHARING').length - 1;
+  assert.ok(uses >= 3, `NOTHING_SHARING is declared and used ${uses - 1} time(s)`);
+});
+
+check('a check re-reads the permission before blaming the sharing', () => {
+  const body = functionBody(SYNC, 'checkForNights');
+  const perm = body.indexOf('hasSleepPermission');
+  const read = body.indexOf('readNightsFromPhone');
+  assert.ok(perm > 0 && read > perm, 'it decides nothing is sharing without checking it may still read');
+});
+
+check('"has anything ever shared sleep" looks back further than a week', () => {
+  // A week of not wearing a watch is not a broken setting, and telling somebody
+  // their sharing is off when they simply did not wear it is worse than silence.
+  assert.match(SYNC, /const EVER_DAYS = 30;/);
+  assert.match(SYNC, /readNightsFromPhone\(EVER_DAYS\)/);
+});
+
+check('the grant comes from the request, not from a second query', () => {
+  // REVERSED ON 23 OCTOBER, and the reversal is the point. This used to require
+  // the opposite - that connectSleep ignore what requestPermission returned and
+  // re-query getGrantedPermissions - on the principle that the record decides
+  // rather than the call that was meant to change it.
+  //
+  // That principle is right for OUR writes and wrong for this one.
+  // requestPermission does not claim anything: it RETURNS the granted set, and
+  // re-querying immediately afterwards reads a cache Android has not finished
+  // committing. Ruth granted sleep, Health Connect recorded it - "Sleep, 1 of 1
+  // selected", Selodia under Allowed access - and the app told her she had
+  // refused it, then offered to take her to Settings to fix something already
+  // fixed. Her screenshots are what proved it.
+  // THE WINDOW IS THE FUNCTION, NOT A GUESSED NUMBER OF CHARACTERS. The first
+  // version of this took 1800 characters, and the line it was looking for
+  // started at 1784 - so the check failed on correct code, and the failure
+  // message blamed the app. A fixed-length slice is a check that breaks when a
+  // comment above the code grows.
   const at = SYNC.indexOf('export async function connectSleep');
-  const block = SYNC.slice(at, at + 1400);
+  const next = SYNC.indexOf('\nexport ', at + 1);
+  const block = SYNC.slice(at, next === -1 ? SYNC.length : next);
   assert.match(
     block,
-    /await hasSleepPermission\(\)/,
-    'it trusts what requestPermission returned instead of reading the grant back'
+    /const granted = await hc\.requestPermission\(/,
+    'the request result is being discarded again, which is what made a granted '
+      + 'permission read as a refusal'
+  );
+  assert.match(
+    block,
+    /!inAnswer && !\(await hasSleepPermission\(\)\)/,
+    'it gives up on one answer. A grant can also arrive a moment AFTER the dialog '
+      + 'closes, so only when both the request and a re-read say no is it a no.'
   );
 });
 // -- every case above must be able to fail ---------------------------------
@@ -271,6 +397,33 @@ mustFail('edge awakenings ignored', () =>
 mustFail('night keyed on the evening', () => assert.equal(nightOfFor('2026-10-21T00:20:00'), '2026-10-21'));
 mustFail('privacy copy checked', () => assert.match(PRIVACY, /asks for steps alone/i));
 mustFail('hers is protected', () => assert.doesNotMatch(SYNC, /row\.source !== SLEEP_SOURCE/));
+
+// The "Nothing new" bug, as it was actually written: the card calling the bare
+// count. Each of these must throw, or the check above could never have caught it.
+mustFail('the bare count accepted', () =>
+  assert.ok(
+    !/await syncSleepFromPhone\(\)/.test('const written = await syncSleepFromPhone();'),
+    'the card back on the count'
+  )
+);
+mustFail('an empty phone told nothing is new', () =>
+  assert.doesNotMatch("case 'nothing-on-phone':\n return { body: 'Nothing new.' };", /Nothing new/)
+);
+mustFail('a dead end with no way out', () =>
+  assert.match("case 'nothing-on-phone':\n return { body: 'Nothing new.' };", /action:\s*\{/)
+);
+mustFail('the switch named only as "your settings"', () =>
+  assert.match('it needs to be set to share sleep with Health Connect', /Settings, then Health Connect, then turn on Sleep/)
+);
+mustFail('blaming the sharing without re-reading the permission', () => {
+  const body = 'async function checkForNights() { const onPhone = await readNightsFromPhone(EVER_DAYS); }';
+  const perm = body.indexOf('hasSleepPermission');
+  const read = body.indexOf('readNightsFromPhone');
+  assert.ok(perm > 0 && read > perm);
+});
+mustFail('a week taken as evidence that nothing shares', () =>
+  assert.match('const EVER_DAYS = 7;', /const EVER_DAYS = 30;/)
+);
 
 for (const f of failures) console.log(`  FAIL  ${f}`);
 for (const u of useless) console.log(`  USELESS  "${u}" passed with its premise inverted`);

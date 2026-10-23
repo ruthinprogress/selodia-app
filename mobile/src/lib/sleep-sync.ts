@@ -170,11 +170,30 @@ export async function connectSleep(): Promise<SleepConnectOutcome> {
     }
     if (!(await hc.initialize())) return { state: 'no-health-connect' };
 
-    await hc.requestPermission([{ accessType: 'read', recordType: 'SleepSession' }]);
-    // READ THE GRANT BACK rather than trusting what the request returned.
-    // Same rule as everywhere else in this project: the record decides, not
-    // the call that was supposed to change it.
-    if (!(await hasSleepPermission())) return { state: 'refused' };
+    // THE REQUEST'S OWN ANSWER IS THE AUTHORITATIVE ONE (Ruth, 23 October
+    // 2026, with the screenshots that proved it).
+    //
+    // This used to throw the result away and re-query getGrantedPermissions,
+    // on the principle that the record decides rather than the call that was
+    // meant to change it. That principle is right for OUR writes and wrong
+    // here: requestPermission does not claim anything, it RETURNS the granted
+    // set, and re-querying straight afterwards reads a cache Android has not
+    // finished committing.
+    //
+    // So she granted sleep, Health Connect recorded it - 'Sleep, 1 of 1
+    // selected', Selodia under Allowed access - and the app told her she had
+    // refused, then offered to take her to Settings to fix something that was
+    // already fixed.
+    const granted = await hc.requestPermission([
+      { accessType: 'read', recordType: 'SleepSession' },
+    ]);
+    const inAnswer = (granted ?? []).some(
+      (p) => (p as { recordType?: string }).recordType === 'SleepSession'
+    );
+    // AND A SECOND LOOK BEFORE GIVING UP, because the opposite staleness is
+    // just as possible: a grant that arrives a moment after the dialog
+    // closes. Only when both say no is it actually a no.
+    if (!inAnswer && !(await hasSleepPermission())) return { state: 'refused' };
 
     const nights = await syncSleepFromPhone();
     return nights > 0 ? { state: 'granted', nights } : { state: 'granted-no-data' };
@@ -239,3 +258,58 @@ export async function syncSleepFromPhone(days = 7): Promise<number> {
 
 /** What the source column says for a night that came from the phone. */
 export const SLEEP_SOURCE = 'phone health platform';
+
+// "NOTHING NEW" WAS THE APP GIVING UP IN TWO WORDS (Ruth, 23 October 2026).
+//
+// Her screenshot: the card reads "Your phone is filling these in", so the
+// permission is granted and Selodía knows it. She taps "Check for new nights"
+// and gets "Nothing new.", and no button. Her words: "Thats all it shows and
+// the bitton does nothing."
+//
+// THE BUTTON WAS WORKING. syncSleepFromPhone returned 0 and 0 has two
+// completely different meanings that it cannot tell apart:
+//
+//   the phone holds nights and we already have them    -> genuinely nothing new
+//   the phone holds no sleep at all                    -> nothing is SHARING
+//
+// The second is the one that was actually happening, and it is the same
+// granted-no-data case connectSleep already diagnoses and offers a way out of -
+// but only on the FIRST connect. Once connected, that whole branch became
+// unreachable, so the one person who most needs the next step is the only one
+// who cannot get to it. A count cannot carry a reason, which is why this
+// returns an outcome like connectSleep does rather than a number.
+//
+// IT LOOKS BACK THIRTY DAYS, NOT SEVEN, to answer the question honestly. "Has
+// anything ever put sleep in here" is not the same question as "is there a new
+// night", and a week of not wearing a watch would otherwise read as a broken
+// setting.
+export type SleepCheckOutcome =
+  /** New or revised nights landed. */
+  | { state: 'updated'; nights: number }
+  /** The phone has nights and we already hold every one of them. */
+  | { state: 'up-to-date' }
+  /** Allowed to read, and there is nothing there to read. */
+  | { state: 'nothing-on-phone' }
+  /** The permission has gone away since the card was drawn. */
+  | { state: 'refused' }
+  | { state: 'no-health-connect' };
+
+/** How far back to look when asking whether anything shares sleep at all. */
+const EVER_DAYS = 30;
+
+/** Check the phone for nights, and say which kind of nothing it found. */
+export async function checkForNights(): Promise<SleepCheckOutcome> {
+  const hc = healthConnect();
+  if (!hc) return { state: 'no-health-connect' };
+
+  // Re-read the permission rather than trusting the card's own state: she may
+  // have turned it off in Health Connect since this screen was drawn, and
+  // "nothing is sharing" would be the wrong thing to tell her if so.
+  if (!(await hasSleepPermission())) return { state: 'refused' };
+
+  const onPhone = await readNightsFromPhone(EVER_DAYS);
+  if (onPhone.length === 0) return { state: 'nothing-on-phone' };
+
+  const written = await syncSleepFromPhone(EVER_DAYS);
+  return written > 0 ? { state: 'updated', nights: written } : { state: 'up-to-date' };
+}

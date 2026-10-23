@@ -28,7 +28,7 @@ import { drinksNamedIn, mentionsDrink } from './caloric-drink';
 import { correctDrinkEstimates } from './drink-composition';
 import { loadRememberedFoods, rememberedFoodsBlock } from './food-memory';
 import { checkStatedWeight, scaleMacros } from './stated-weight';
-import { entriesNeedingSplit, SPLIT_AGAIN } from './itemisation';
+import { entriesNeedingSplit, SPLIT_AGAIN, withMissingDrinks } from './itemisation';
 import { logWaterWithFood } from './water-in-food';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -99,6 +99,7 @@ export function buildFoodLogFields(macros: ParsedMacros) {
     fat_g: macros.fat_g,
     sodium_mg: macros.sodium_mg ?? null,
     // Null, never zero: see FOOD_PARSE_OMIT_RATHER_THAN_GUESS.
+    free_sugar_g: macros.free_sugar_g ?? null,
     calcium_mg: macros.calcium_mg ?? null,
     iron_mg: macros.iron_mg ?? null,
     saturated_fat_g: macros.saturated_fat_g ?? null,
@@ -151,6 +152,7 @@ export async function writeItems(
       carbs_g: it.carbs_g ?? null,
       fat_g: it.fat_g ?? null,
       sodium_mg: it.sodium_mg ?? null,
+      free_sugar_g: it.free_sugar_g ?? null,
       calcium_mg: it.calcium_mg ?? null,
       iron_mg: it.iron_mg ?? null,
       saturated_fat_g: it.saturated_fat_g ?? null,
@@ -212,6 +214,7 @@ export async function writeItems(
         sugar_g: sum((i) => i.sugar_g, 1),
         fibre_g: sum((i) => i.fibre_g, 1),
         sodium_mg: sum((i) => i.sodium_mg, 0),
+        free_sugar_g: sum((i) => i.free_sugar_g, 0),
         calcium_mg: sum((i) => i.calcium_mg, 0),
         iron_mg: sum((i) => i.iron_mg, 0),
       })
@@ -619,6 +622,32 @@ export async function logFoodFromText(
     } catch (err) {
       // A failed retry must never cost the log that already parsed.
       console.log('FOOD: re-ask failed, keeping the first answer -', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // AND IF IT STILL WILL NOT, THE DRINK GETS ITS ROW ANYWAY (23 October 2026).
+  //
+  // "Mug of tea and a cookie" returns the cookie and nothing else, the retry
+  // asks for the tea by name and quoting that exact sentence, and the second
+  // answer is identical to the first. Every time, not sometimes. Asking a
+  // fourth time in a fifth place is not a fix; see withMissingDrinks for what
+  // this adds (her words for the drink) and what it refuses to add (any figure
+  // nobody worked out).
+  //
+  // It runs whether or not the retry fired, because a single-drink entry does
+  // not trip entriesNeedingSplit's count at all and could never have been
+  // re-asked - "flat white" on its own names one thing and gets one row, which
+  // is only correct if that row is the flat white.
+  for (const entry of parsed.entries ?? []) {
+    const text = typeof entry.entry_text === 'string' && entry.entry_text.trim()
+      ? entry.entry_text
+      : foodText;
+    const before = entry.items?.length ?? 0;
+    entry.items = withMissingDrinks(text, entry.items);
+    if (entry.items.length > before) {
+      console.log(
+        `FOOD: the model dropped ${entry.items.length - before} drink the person named - adding the row with no figures`
+      );
     }
   }
 

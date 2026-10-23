@@ -5,6 +5,48 @@
 
 # PART ONE: PRODUCT VISION
 
+## EVERY METRIC ANSWERS FOUR QUESTIONS (23 October 2026)
+
+Arrived at while redesigning the food log, and it is the clearest statement of
+what this app is for that anybody has written down:
+
+| | |
+|---|---|
+| **Status** | Am I okay? *(colour, and one sentence)* |
+| **Meaning** | Why does this matter for my body? |
+| **Evidence** | What created this? |
+| **Action** | What is one realistic thing I could do next? |
+
+**Applied everywhere - sleep, movement, hydration, nutrition, menopause, mood -
+it teaches body literacy without anybody feeling they are being taught.** That
+is a stronger identity than "health tracker". It is closer to an interpreter of
+your own body, which is the thing Ruth has been describing since the beginning:
+"care drops off before it starts", and it drops off the moment logging stops
+paying you back.
+
+**WHY IT MATTERS MORE THAN IT LOOKS.** Ruth, the same day, on a food log that
+showed her averages and nothing else: "I can't tell that from a glance and
+that's actually not very good body litaracy training... I actually don't think
+it's a nice to have - it's the missing piece that was making it feel pointless
+and a chore." A metric that answers only Evidence is a filing cabinet. One that
+answers only Status is a verdict. All four is the difference.
+
+**ACTION IS THE ONE THAT CAN GO WRONG, and it has a rule.** "What could I do
+next" is one word away from an instruction, and this app does not instruct -
+see the explainer rules in Part Twelve and check-macro-explainers.mjs. The form
+that survives is ARITHMETIC, not imperative:
+
+- NOT "Try adding berries or chia seeds."
+- BUT "A handful of berries carries about 2g of fibre. A tablespoon of chia
+  seeds, about 5g."
+
+The second tells somebody exactly what to eat to hit it, more precisely than the
+first, and never tells them to do it. **Say what a food carries, never what they
+should do.** The honest form is also the more useful one, which is why this is a
+rule and not a compromise.
+
+---
+
 ## What This Is
 Unflump is a body literacy app, not a macro tracker. The user talks to it naturally — describes food, logs a reading, asks a question — and gets contextual, accumulating, educational responses. The goal is not to make the user dependent on tracking forever. It is to help them understand their own body well enough that the knowledge becomes internalised and they no longer need to be TOLD. That arc, confusion to understanding to instinct to independence, is the actual product, and every feature exists to scaffold it.
 

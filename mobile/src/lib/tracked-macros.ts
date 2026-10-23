@@ -24,6 +24,7 @@ export type MacroKey =
   | 'saturated'
   | 'carbs'
   | 'sugar'
+  | 'freeSugar'
   | 'fibre'
   | 'salt'
   // CALCIUM AND IRON (Ruth, 21 October 2026): "Lets offer calcium and iron.
@@ -67,6 +68,23 @@ export const MACROS: MacroSpec[] = [
   { key: 'saturated', label: 'Saturated fat', unit: 'g', column: 'saturated_fat_g', short: 'Sat fat' },
   { key: 'carbs', label: 'Carbohydrates', unit: 'g', column: 'carbs_g', short: 'Carbs' },
   { key: 'sugar', label: 'Sugar', unit: 'g', column: 'sugar_g', short: 'Sugar' },
+  // FREE SUGARS (Ruth, 23 October 2026). She asked the question that broke the
+  // old design: "i could eat my tddee in cake and biscuits ane look like i was
+  // healthy on the app". The published 30g figure is about FREE sugars and the
+  // log held only the total, which includes whole fruit and milk - so the two
+  // were not comparable and the sugar tile had to stay grey.
+  //
+  // This is the figure a guideline can actually be set against, and the
+  // distinction it teaches - a biscuit is not an apple - is the most useful
+  // thing this app could tell anybody about what they eat.
+  {
+    key: 'freeSugar',
+    label: 'Free sugars',
+    unit: 'g',
+    column: 'free_sugar_g',
+    detail: 'Added sugar, and the sugar in juice and syrups - not the sugar in whole fruit, vegetables or milk.',
+    short: 'Free sugars',
+  },
   { key: 'fibre', label: 'Fibre', unit: 'g', column: 'fibre_g', short: 'Fibre' },
   { key: 'salt', label: 'Salt', unit: 'g', column: 'sodium_mg', short: 'Salt' },
   {
@@ -139,6 +157,19 @@ export function toStored(keys: MacroKey[]): MacroKey[] {
 
 /** Salt is stored as sodium in milligrams and read by people as salt in grams. */
 const SODIUM_MG_PER_G_SALT = 400;
+
+/**
+ * THE FIGURE AND THE COMPARISON MUST COME FROM THE SAME PLACE.
+ *
+ * Exported for nutrient-standing, which colours a tile by where a value sits
+ * against a published figure. Salt is why this is exported rather than
+ * re-derived: the column is sodium in milligrams and everything on screen is
+ * grams of salt, so anything comparing the raw column to a salt guideline is
+ * out by a factor of 2.5 with no visible symptom.
+ */
+export function macroAmount(key: MacroKey, row: Record<string, unknown>): number | null {
+  return amount(key, row);
+}
 
 function amount(key: MacroKey, row: Record<string, unknown>): number | null {
   const spec = MACROS.find((m) => m.key === key);

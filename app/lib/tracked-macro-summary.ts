@@ -135,6 +135,17 @@ export const MACRO_COLUMN: Record<
     unit: 'mg sodium',
     guideline: 'NHS guidance is no more than 6g of salt a day for adults, which is about 2,400mg of sodium',
   },
+  // FREE SUGARS (Ruth, 23 October 2026): "i could eat my tddee in cake and
+  // biscuits ane look like i was healthy on the app". She was right, and the
+  // reason the sugar tile could say nothing is that sugar_g is the TOTAL and
+  // the published figure is about free sugars. This is the comparable one.
+  freeSugar: {
+    column: 'free_sugar_g',
+    label: 'free sugars',
+    unit: 'g',
+    guideline:
+      'NHS guidance is no more than 30g of free sugars a day for adults - added sugar, plus the sugar in honey, syrups and fruit juice, but NOT the sugar in whole fruit, vegetables or milk',
+  },
   // CALCIUM AND IRON (Ruth, 21 October 2026): "Lets offer calcium and iron.
   // Its important to my demographic."
   //

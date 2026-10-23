@@ -109,6 +109,21 @@ export function NutrientIcon({ macroKey, size = 20, color }: NutrientIconProps) 
         </>
       )}
 
+      {macroKey === 'freeSugar' && (
+        <>
+          {/* THE SAME CUBE, WITH A SPOON OVER IT. Free sugar is not a
+              different substance from sugar - it is the same chemistry,
+              ADDED rather than built in - so a wholly different mark would
+              say they are unrelated things. The spoon is what makes it the
+              added one, and it is the only part that differs. */}
+          <Path d="M13.2 5.6L19.8 9.2L13.2 12.8L6.6 9.2Z" {...line} />
+          <Path d="M6.6 9.2V16L13.2 19.6V12.8" {...line} />
+          <Path d="M19.8 9.2V16L13.2 19.6" {...line} />
+          <Path d="M6.2 4.2C4.5 4.2 3.4 5.2 3.4 6.4C3.4 7.6 4.5 8.4 6.2 8.4C7.9 8.4 9 7.6 9 6.4C9 5.2 7.9 4.2 6.2 4.2Z" {...line} />
+          <Path d="M6.2 8.4V13.4" {...line} />
+        </>
+      )}
+
       {macroKey === 'fibre' && (
         <>
           {/* A leaf with its rib: the plant part you do not digest. */}

@@ -5,12 +5,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import {
+  checkForNights,
   connectSleep,
   hasSleepPermission,
   HEALTH_CONNECT_PACKAGE,
   openHealthConnect,
   openHealthConnectSources,
-  syncSleepFromPhone,
+  type SleepCheckOutcome,
   type SleepConnectOutcome,
 } from '@/lib/sleep-sync';
 
@@ -59,12 +60,13 @@ function stepFor(outcome: SleepConnectOutcome): Step {
     // Samsung Health. So this says where to go and opens the screen that lists
     // what each app is sharing, which is where the gap is visible.
     case 'granted-no-data':
+      // THE SAME WORDS AS THE CHECK, from one constant. These two paths reach
+      // the identical situation from opposite ends - the first connect and a
+      // later check - and had drifted into two descriptions of it, one of which
+      // named the switch and one of which did not.
       return {
-        body:
-          'Selodía can read your sleep now, but nothing has put any in yet. If you track '
-          + 'sleep with Samsung Health or another app, it needs to be set to share sleep '
-          + 'with Health Connect - that switch lives in that app, not here.',
-        action: { label: 'See what is sharing', run: openHealthConnectSources },
+        body: NOTHING_SHARING,
+        action: { label: 'Open Health Connect', run: openHealthConnectSources },
       };
 
     // ANDROID IS HOLDING A NO. Tapping Connect again does nothing at all after
@@ -103,6 +105,77 @@ function stepFor(outcome: SleepConnectOutcome): Step {
   }
 }
 
+// NOTHING IS SHARING SLEEP, SAID IN WORDS SOMEBODY CAN ACT ON.
+//
+// Ruth, on being shown the Health Connect screen and asked to switch it on
+// herself: "I won't switch it on, I want selodia to do it. Some users won't
+// manage. I didnt even know where it was to turn on either. Might lose them."
+//
+// SO WHAT CAN SELODIA ACTUALLY DO, honestly. It cannot flip this switch: the
+// one that is off lives inside Samsung Health, and no app may change another
+// app's sharing settings - that is the whole point of the permission model,
+// and a product that could do it would be a product nobody should install.
+//
+// What it CAN do is everything short of that, and the difference between this
+// and "Not connected" is the entire job:
+//
+//   SAY WHICH SWITCH, by name, in the app it lives in. "Set it to share sleep
+//   with Health Connect" is findable; "check your settings" is not.
+//   OPEN THE SCREEN, so it is one tap rather than a hunt through an app she
+//   did not know had the setting.
+//   SAY WHY, so the step reads as the last one rather than as a wall.
+//
+// "Might lose them" is the real stake, and it is a fair reading: somebody who
+// taps a button, is told nothing happened, and is handed a settings app with no
+// idea what they are looking for does not come back to that screen.
+const NOTHING_SHARING =
+  'Selodía can read your sleep, but nothing has put any in yet. The switch is inside the app '
+  + 'that tracks your sleep - in Samsung Health it is Settings, then Health Connect, then turn '
+  + 'on Sleep. Selodía is not allowed to change another app\'s settings, so this one is yours to '
+  + 'tap, and it only has to be done once.';
+
+/** What to say about a check for new nights, and the way out where there is one. */
+function stepForCheck(outcome: SleepCheckOutcome): Step {
+  switch (outcome.state) {
+    case 'updated':
+      return {
+        body: `Updated ${outcome.nights} night${outcome.nights === 1 ? '' : 's'}.`,
+      };
+
+    // THE HONEST "NOTHING NEW", and it is now the only one. It means the phone
+    // has nights and Selodía already holds every one of them, which is the
+    // system working rather than the system silent.
+    case 'up-to-date':
+      return { body: 'Nothing new - your nights here are up to date.' };
+
+    case 'nothing-on-phone':
+      return {
+        body: NOTHING_SHARING,
+        action: { label: 'Open Health Connect', run: openHealthConnectSources },
+      };
+
+    case 'refused':
+      return {
+        body:
+          'Selodía has lost permission to read your sleep. You can give it back in Health '
+          + 'Connect, under Selodía.',
+        action: { label: 'Open Health Connect', run: openHealthConnect },
+      };
+
+    case 'no-health-connect':
+    default:
+      return {
+        body:
+          'This phone does not have Health Connect, which is what Android uses to pass sleep '
+          + 'between apps. It is free, from Google.',
+        action: {
+          label: 'Get Health Connect',
+          run: () => void Linking.openURL(`market://details?id=${HEALTH_CONNECT_PACKAGE}`),
+        },
+      };
+  }
+}
+
 export function SleepFromPhone({ onSynced }: { onSynced: () => void }) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -132,13 +205,20 @@ export function SleepFromPhone({ onSynced }: { onSynced: () => void }) {
     setBusy(false);
   }
 
+  // "NOTHING NEW" WITH NO WAY OUT WAS THE BUG (Ruth, 23 October 2026): "Thats
+  // all it shows and the bitton does nothing."
+  //
+  // The button was working. It called syncSleepFromPhone, which returns a
+  // COUNT, and zero meant both "you already have every night the phone holds"
+  // and "the phone holds no sleep at all" - the second being what was actually
+  // happening, and the one case with something to do about it. Every other
+  // outcome on this card offers the button that fixes it; this one path had
+  // been answering with the app's own disappointment, which is exactly what
+  // the rest of the file exists to stop.
   async function again() {
     setBusy(true);
     setStep(null);
-    const written = await syncSleepFromPhone();
-    setStep({
-      body: written > 0 ? `Updated ${written} night${written === 1 ? '' : 's'}.` : 'Nothing new.',
-    });
+    setStep(stepForCheck(await checkForNights()));
     onSynced();
     setBusy(false);
   }

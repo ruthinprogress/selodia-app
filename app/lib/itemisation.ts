@@ -89,6 +89,54 @@ export function drinkMissingFromItems(
   );
 }
 
+/**
+ * THE DRINK GETS A ROW EVEN WHEN THE MODEL WILL NOT GIVE IT ONE.
+ *
+ * Found 23 October 2026, still live more than a month after Ruth reported it.
+ * "Mug of tea and a cookie" comes back as one item - the cookie - and the tea
+ * is gone from `items` entirely, although it reaches `drinks` and hydration
+ * correctly. The detector above fires, the retry fires, the retry asks for the
+ * split by name and quotes this exact sentence, and the second answer is the
+ * same as the first. Two attempts, both refused, every time.
+ *
+ * WHY THE PROMPT IS NOT THE FIX, and I spent a model call establishing it: the
+ * instruction is already there in four places, including "Include a zero-calorie
+ * item they mentioned (a black coffee, a tea) as its own row rather than
+ * dropping it". A fifth sentence would be the fourth round of asking a model
+ * not to do something twice, and a guard belongs at the write.
+ *
+ * WHAT THIS ADDS AND WHAT IT REFUSES TO ADD. A row with the drink's own words
+ * and NO FIGURES AT ALL. Her report was about architecture - "the data isn't
+ * there, it was lost at storage time" - and what was lost is the row, not the
+ * macros. A named row with nulls is a record somebody can later ask about, and
+ * every surface in this app already reads a null macro as "nobody worked this
+ * out" and leaves it off rather than printing a zero.
+ *
+ * It will not invent the figures. Splitting 65 kcal between a tea and a cookie
+ * is a division nobody stated, and this file's own rule is that a wrong number
+ * is worse than a missing breakdown. The tea's calories stay inside the entry
+ * total where the model put them, which is why item figures are documented as
+ * only roughly summing to the total.
+ *
+ * ONE ROW PER MISSING DRINK, and only for a drink the person actually named.
+ * This never touches an entry whose drinks all made it through.
+ */
+export function withMissingDrinks(
+  entryText: string | null | undefined,
+  items: ParsedItem[] | undefined
+): ParsedItem[] {
+  const rows = [...(items ?? [])];
+  for (const drink of drinksNamedIn(entryText)) {
+    const present = rows.some((it) =>
+      mentionsDrink(String((it as { name?: unknown }).name ?? ''), drink.noun)
+    );
+    // HER OWN WORDS, including the quantity - "three black coffees", not
+    // "coffee". phrase is what she typed; noun is only for the comparison.
+    if (!present) rows.push({ name: drink.phrase });
+  }
+  return rows;
+}
+
 /** The entries in a parse whose breakdown contradicts their own text. */
 export function entriesNeedingSplit(
   entries: { entry_text?: unknown; items?: ParsedItem[] }[] | undefined,
