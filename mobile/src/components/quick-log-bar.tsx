@@ -134,7 +134,32 @@ export function QuickLogBar({
         setNote(data?.reply?.trim() || 'Nothing to save in that one.');
       }
     } catch {
-      setNote('That did not save. Worth trying again.');
+      // A REQUEST THAT DID NOT COME BACK IS NOT A SAVE THAT DID NOT HAPPEN
+      // (Ruth, 23 October 2026). Both halves of the old line were wrong.
+      //
+      // WHAT HAPPENED, from her own tables. At 13:46:31 she logged turtle bean
+      // soup here. The turn took 25.5 seconds on the server, which answered and
+      // WROTE THE ROW - 295 kcal, still there. The phone gave up before the
+      // answer arrived, threw, and claimed nothing had saved. At 13:47:35 she
+      // did as it suggested and sent the same text again. The only reason there
+      // is not a duplicate lunch in her log is that the dedupe guard caught it.
+      //
+      // THAT IS THE FOOD DUPLICATION SHE HAS REPORTED THREE TIMES. The guard
+      // is a net under it, not a fix; inviting a re-send is what manufactures
+      // the duplicates in the first place.
+      //
+      // All this branch knows is that no answer arrived. It cannot tell a lost
+      // request from a lost reply, and those have opposite fixes. So it
+      // refreshes the log above - which IS the answer, read from the server
+      // rather than guessed at - and points her there, not at the send button.
+      //
+      // The pickImage branch above still says 'worth trying again' and should:
+      // nothing left the phone there, so there is no write to be unsure about.
+      onLogged();
+      setNote(
+        "I didn't hear back, so I can't tell whether that saved. Your log above"
+          + ' is up to date now - check there before sending it again.'
+      );
     } finally {
       setBusy(false);
     }
@@ -178,7 +203,32 @@ export function QuickLogBar({
       setNote(messageForResult(result));
       if (result.status === 'logged') onLogged();
     } catch {
-      setNote('That did not save. Worth trying again.');
+      // A REQUEST THAT DID NOT COME BACK IS NOT A SAVE THAT DID NOT HAPPEN
+      // (Ruth, 23 October 2026). Both halves of the old line were wrong.
+      //
+      // WHAT HAPPENED, from her own tables. At 13:46:31 she logged turtle bean
+      // soup here. The turn took 25.5 seconds on the server, which answered and
+      // WROTE THE ROW - 295 kcal, still there. The phone gave up before the
+      // answer arrived, threw, and claimed nothing had saved. At 13:47:35 she
+      // did as it suggested and sent the same text again. The only reason there
+      // is not a duplicate lunch in her log is that the dedupe guard caught it.
+      //
+      // THAT IS THE FOOD DUPLICATION SHE HAS REPORTED THREE TIMES. The guard
+      // is a net under it, not a fix; inviting a re-send is what manufactures
+      // the duplicates in the first place.
+      //
+      // All this branch knows is that no answer arrived. It cannot tell a lost
+      // request from a lost reply, and those have opposite fixes. So it
+      // refreshes the log above - which IS the answer, read from the server
+      // rather than guessed at - and points her there, not at the send button.
+      //
+      // The pickImage branch above still says 'worth trying again' and should:
+      // nothing left the phone there, so there is no write to be unsure about.
+      onLogged();
+      setNote(
+        "I didn't hear back, so I can't tell whether that saved. Your log above"
+          + ' is up to date now - check there before sending it again.'
+      );
     } finally {
       setBusy(false);
     }

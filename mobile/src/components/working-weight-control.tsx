@@ -127,8 +127,19 @@ export function WorkingWeightControl({
       setHistory((h) => [{ weight_kg: typed, logged_at: new Date().toISOString() }, ...h]);
       setSaved(true);
     } catch {
-      // Never report a save that did not happen.
-      setError("Couldn't save that. Try again");
+      // AND NEVER REPORT A FAILURE YOU CANNOT SEE EITHER (23 October 2026).
+      // The comment here used to read "never report a save that did not
+      // happen", which is the right rule pointed the wrong way: this branch
+      // cannot see whether the save happened. A request that does not come
+      // back may be a lost request or a lost reply, and only one of those is
+      // fixed by sending it again.
+      //
+      // On the food log that exact line produced the duplicates Ruth reported
+      // three times: a 25-second turn wrote her lunch, the phone gave up, the
+      // screen said it had not saved, and she sent it again. A working weight
+      // re-entered the same way is the same row twice, and here there is no
+      // dedupe guard underneath to catch it.
+      setError("I didn't hear back, so I can't tell whether that saved. Reopen this to see what is recorded.");
     } finally {
       setSaving(false);
     }
