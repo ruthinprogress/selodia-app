@@ -17,6 +17,7 @@
 // actually points at, which is both of them, and then reads back what landed.
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { DELIVERY_BRANCH } from './update-target.mjs';
 
 const MOBILE = 'mobile';
@@ -46,6 +47,43 @@ if (bad.length > 0 || message.length > 200) {
   process.exit(2);
 }
 
+// THE TOKEN THAT MAKES THIS WORK WITHOUT A SCREEN (23 October 2026).
+//
+// Ruth, setting up a server she means never to sit in front of again: "the
+// whole point is I remain remote forever, once its set up."
+//
+// eas-cli authenticates from ~/.expo/state.json, which holds a sessionSecret
+// created by `eas login` through a browser. That is the expiring kind, and on a
+// machine with no screen its lapse is a locked door - exactly what the Vercel
+// login did three times in October.
+//
+// EXPO_TOKEN is the other kind: a string, no expiry, no browser, ever. The CLI
+// reads it from the ENVIRONMENT though, and this project keeps its keys in
+// .env.local, so without the line below putting EXPO_TOKEN in that file would
+// look like the fix and do nothing at all. That gap is the whole reason this
+// is here: advice that cannot work is worse than no advice, because it gets
+// believed.
+//
+// Nothing changes when EXPO_TOKEN is absent: the CLI falls back to the session
+// as before, which is right for this laptop today.
+function expoTokenFromEnvFile() {
+  try {
+    for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const i = t.indexOf('=');
+      if (i > 0 && t.slice(0, i).trim() === 'EXPO_TOKEN') {
+        return t.slice(i + 1).trim().replace(/^['"]|['"]$/g, '');
+      }
+    }
+  } catch {
+    /* no .env.local on this machine, which is not an error here */
+  }
+  return null;
+}
+
+const EXPO_TOKEN = process.env.EXPO_TOKEN || expoTokenFromEnvFile();
+
 function eas(args, { capture = true } = {}) {
   // NPX IS A .cmd ON WINDOWS, so this runs through a shell - and a shell splits
   // arguments on spaces regardless of how carefully they were passed as an
@@ -56,6 +94,7 @@ function eas(args, { capture = true } = {}) {
   const quoted = args.map((a) => (process.platform === 'win32' && /\s/.test(a) ? `"${a}"` : a));
   return execFileSync(NPX, ['eas-cli', ...quoted], {
     cwd: MOBILE,
+    env: EXPO_TOKEN ? { ...process.env, EXPO_TOKEN } : process.env,
     encoding: 'utf8',
     stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit',
     maxBuffer: 1024 * 1024 * 32,
