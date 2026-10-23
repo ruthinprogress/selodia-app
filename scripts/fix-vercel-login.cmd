@@ -28,10 +28,21 @@ echo   Opening the Vercel tokens page in your browser now.
 echo.
 echo   On that page:
 echo     1. Click "Create Token"
-echo     2. Name it:  selodia-build-checks
-echo     3. Scope:    ruthinprogress' projects
-echo     4. Expiration: choose "No Expiration"
+echo     2. Name it:  ruth-build-machines
+echo     3. Scope:    Full Account
+echo     4. Expiration: "No Expiration" - it should say "never expire"
 echo     5. Click Create, then copy the token it shows you ONCE
+echo.
+echo   WHY FULL ACCOUNT, and why not the narrower one this used to say.
+echo   This project sits under a team, not a bare personal account, so a
+echo   token scoped to "ruthinprogress' projects" may not see it at all -
+echo   and on a machine with no screen you cannot easily come back and
+echo   redo this. Full Account also covers anything started later.
+echo.
+echo   The name is the thing you would revoke, which is the MACHINE, not
+echo   the task. It used to say "selodia-build-checks", which described a
+echo   job rather than a holder and was written before this token was
+echo   going to live on two computers.
 echo.
 start "" "https://vercel.com/account/settings/tokens"
 timeout /t 3 /nobreak >nul
