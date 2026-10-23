@@ -187,7 +187,6 @@ def check_logs(session):
     else:
         found = sorted({int(n) for n in re.findall(r"Session (\d+)", text)})
         latest = max(found) if found else None
-        gaps = [n for n in range(min(found), max(found) + 1) if n not in found] if found else []
         if session is None:
             print(f"    latest entry     Session {latest} (pass --session N to check this one)")
         elif session in found:
@@ -196,8 +195,36 @@ def check_logs(session):
             print(f"    MISSING          Session {session} is not in the build log (latest is {latest})")
             print("                     python scripts/build_log_append.py entry.txt")
             blocking += 1
-        if gaps:
-            print(f"    GAPS             sessions absent from the run: {gaps}")
+
+        # THE GAP COUNT USED TO BE COMPUTED HERE, FROM SESSION NUMBERS, AND IT
+        # WAS WRONG. It reported every integer missing between the lowest and
+        # highest header: on 22 October 2026 that was [75, 76, 77, 78, 79, 81]
+        # and FOUR OF THE SIX WERE FALSE. 76 and 77 were real sessions, in the
+        # workbook; 81 was in the log, inside a "Session 80-81" header this read
+        # as 80; 75, 78 and 79 never existed, because the numbering drifts and
+        # nothing promises it will not. Two true findings buried under four
+        # false ones is how a check teaches people to scroll past it, and they
+        # did: the line was printed at the close-out on 22 October and acted on
+        # by nobody, including me.
+        #
+        # It was testing a numbering convention, which is a wording, instead of
+        # whether a day of work got written down, which is the behaviour. That
+        # job now belongs to check-build-log-current.mjs, which compares the
+        # build log against the close-out workbook's own register of sessions,
+        # and which runs on every check-all rather than only here - because the
+        # steps of this ceremony are automated and its trigger is not.
+        gaps = subprocess.run(
+            ["node", "scripts/check-build-log-current.mjs"],
+            cwd=REPO, capture_output=True, text=True,
+        )
+        if gaps.returncode == 0:
+            print("    coverage         every session in the workbook has an entry")
+        else:
+            print("    GAPS             sessions closed out with no build log entry:")
+            for line in gaps.stdout.splitlines():
+                if line.strip().startswith("S") and "nothing written" in line:
+                    print(f"                     {line.strip()}")
+            print("                     node scripts/check-build-log-current.mjs")
             blocking += 1
 
     # 2. The article log, by today's date.

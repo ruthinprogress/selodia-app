@@ -100,7 +100,13 @@ def insertion_point(xml: str, before: int | None) -> int:
     # The BODY header. See the note in end_of_session: the contents list says
     # "Session N" too, with two spaces around the separator instead of one. This
     # one has never been bitten and would have been, by the same bug.
-    m = re.search(rf">Session {before} [·—]", xml)
+    # A session that ran over two days writes its header as "Session 80-81", so
+    # the number alone is not what the header starts with. The first version of
+    # this pattern required a separator straight after the number and could not
+    # insert anything ahead of such an entry at all - the same assumption, that
+    # a session header holds exactly one number, that made the close-out check
+    # report four sessions missing that were not.
+    m = re.search(rf">Session {before}(?:[-–]\d+)? [·—]", xml)
     if not m:
         raise SystemExit(f"  Session {before} is not in the build log's body, so there is nothing to insert before.")
     i = xml.rindex("<w:p>", 0, m.start())

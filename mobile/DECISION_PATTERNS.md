@@ -1007,3 +1007,55 @@ which a number somebody liked the look of is not.
 
 The same applies to the tenth decision about padding, radius and weight. If
 there is no neighbour to measure against, that is itself worth noticing.
+
+## Automate the trigger, not just the steps (23 October 2026)
+
+Ruth opened the day with: *"Really unhappy about missing logs. Why is the full
+closing ceremony not happening — it should be going ahead everytime we close a
+session. What exactly is missing? Were the github pushes not sent? If so thats
+extremely serious."*
+
+The pushes were fine. Every commit was on `origin/main`, nothing ahead, nothing
+behind, and the close-out workbook had every working day in it. What was missing
+was three days of the build log — 16, 17 and 18 October, thirty-seven commits —
+the one artefact in the ceremony that is written rather than tabulated, and
+therefore the only one that cannot be reconstructed from anything else.
+
+**WORKFLOW.md had already diagnosed this, in September, in one sentence: "the
+ceremony's steps are automated, its trigger is not."** That was written after
+Session 54 lost twenty-four commits the same way. It was true, it was correct,
+it was written down, and it happened again six weeks later — because a diagnosis
+in a document does not run.
+
+**The rule: a guard that only runs when the thing goes right is not a guard.**
+`closeout_check.py` is thorough, and it only ever executes during a close-out.
+A session that ends without one — she goes to bed, the context runs out, the day
+just stops — never runs the check that would have noticed. The one failure it
+exists to catch is the one failure it structurally cannot see. Same shape as *a
+guard with two doors*, one level up: the door being watched is the one nobody
+comes through.
+
+So the check moved to where the traffic is. `check-build-log-current.mjs` is an
+ordinary member of `check-all`, which runs many times a day, so a missed day
+goes red within hours instead of surviving a week.
+
+**And the old check was asking the wrong question.** It computed gaps from
+session *numbers* — every integer absent between the lowest and highest header.
+On 22 October it reported `[75, 76, 77, 78, 79, 81]`, and **four of those six
+were false**: 76 and 77 were real sessions in the workbook, 81 was in the log
+inside a `Session 80-81` header it read as 80, and 75, 78 and 79 never existed,
+because the numbering drifts and nothing promises it will not. It was testing a
+numbering convention, which is a wording, instead of whether a day of work got
+written down, which is the behaviour. That line was printed at the close-out and
+acted on by nobody, including me — two true findings buried under four false
+ones is exactly how a check teaches people to scroll past it.
+
+The replacement checks the hand-written log against the **close-out workbook**,
+which is script-written and has never drifted. Every session in the register must
+have an entry covering its dates. No numbers, no commit-count heuristics, and it
+catches the drift in both directions.
+
+Three exemptions are stated in the output rather than hidden, so the boundary
+stays a fact instead of a habit: today is never counted; an overnight entry
+covers the morning after it, as the rule says it should; and days the register
+never registered as sessions are listed, not failed.
