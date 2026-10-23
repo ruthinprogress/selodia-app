@@ -112,25 +112,77 @@ export async function hasSleepPermission(): Promise<boolean> {
     return false;
   }
 }
-/** Ask for sleep access. Only ever from a control the person tapped. */
-export async function requestSleepPermission(): Promise<boolean> {
-  const hc = healthConnect();
-  if (!hc) return false;
-  try {
-    if ((await hc.getSdkStatus()) !== hc.SdkAvailabilityStatus.SDK_AVAILABLE) return false;
-    if (!(await hc.initialize())) return false;
-    const granted = await hc.requestPermission([
-      { accessType: 'read', recordType: 'SleepSession' },
-    ]);
-    return (granted ?? []).some(
-      (p) => (p as { recordType?: string }).recordType === 'SleepSession'
-    );
-  } catch (err) {
-    console.log('SLEEP (android): permission request failed -', err);
-    return false;
-  }
+// WHY IT DID NOT WORK IS THE ONLY USEFUL THING TO SAY (Ruth, 23 October
+// 2026): "users shouldn't be coming up against this, the app needs to
+// facilitate the settings required".
+//
+// The first version answered every failure with "Not connected", which is
+// the app reporting its own disappointment. There are four quite different
+// reasons and three of them have an action the app can take her to:
+//
+//   no-health-connect   Health Connect is not on this phone -> install it
+//   needs-update        it is there but too old -> update it
+//   refused             Android is holding a no -> open its settings, because
+//                       Android stops showing the dialog after a refusal and
+//                       tapping Connect again would do nothing forever
+//   granted-no-data     allowed, but nothing is sharing sleep INTO Health
+//                       Connect. On a Samsung that is Samsung Health's own
+//                       setting, which is the likeliest place to get stuck
+//                       and the one no app can change for her.
+//
+// A FIFTH CASE CANNOT BE FIXED FROM HERE AT ALL, and it is the one that was
+// actually happening: an APK built BEFORE the permission was declared. The
+// twelve health permissions entered app.json on 15 October and her build is
+// from the 9th. Android permissions are compiled into the manifest, and an
+// over-the-air update carries only JavaScript - so Health Connect was right
+// to refuse, and no wording here would have changed it. It needs a new build.
+export type SleepConnectOutcome =
+  | { state: 'granted'; nights: number }
+  | { state: 'granted-no-data' }
+  | { state: 'refused' }
+  | { state: 'needs-update' }
+  | { state: 'no-health-connect' };
+
+/** The Health Connect app, for sending somebody to install or update it. */
+export const HEALTH_CONNECT_PACKAGE = 'com.google.android.apps.healthdata';
+
+/** Open Health Connect itself, where a refusal can be undone. */
+export function openHealthConnect(): void {
+  healthConnect()?.openHealthConnectSettings();
 }
 
+/** Open the screen listing what each app may read, for checking a source. */
+export function openHealthConnectSources(): void {
+  healthConnect()?.openHealthConnectDataManagement();
+}
+
+/** Ask for sleep access, and say precisely what happened. */
+export async function connectSleep(): Promise<SleepConnectOutcome> {
+  const hc = healthConnect();
+  if (!hc) return { state: 'no-health-connect' };
+  try {
+    const status = await hc.getSdkStatus();
+    if (status === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+      return { state: 'needs-update' };
+    }
+    if (status !== hc.SdkAvailabilityStatus.SDK_AVAILABLE) {
+      return { state: 'no-health-connect' };
+    }
+    if (!(await hc.initialize())) return { state: 'no-health-connect' };
+
+    await hc.requestPermission([{ accessType: 'read', recordType: 'SleepSession' }]);
+    // READ THE GRANT BACK rather than trusting what the request returned.
+    // Same rule as everywhere else in this project: the record decides, not
+    // the call that was supposed to change it.
+    if (!(await hasSleepPermission())) return { state: 'refused' };
+
+    const nights = await syncSleepFromPhone();
+    return nights > 0 ? { state: 'granted', nights } : { state: 'granted-no-data' };
+  } catch (err) {
+    console.log('SLEEP (android): connect failed -', err);
+    return { state: 'no-health-connect' };
+  }
+}
 /**
  * Bring the phone's nights into sleep_logs, and hand back how many landed.
  *

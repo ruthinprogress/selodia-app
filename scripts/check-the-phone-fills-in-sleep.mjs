@@ -184,6 +184,49 @@ check('the privacy screen matches what is actually read', () => {
   );
 });
 
+// -- a blocked setting is never just named ---------------------------------
+//
+// Ruth, 23 October 2026: "users shouldn't be coming up against this, the app
+// needs to facilitate the settings required." The first version answered every
+// failure with "Not connected", which is the app reporting its own
+// disappointment and handing the problem back - the one thing this product
+// exists not to do.
+
+const CONTROL = read('mobile/src/components/sleep-from-phone.tsx');
+
+check('every failure has a way out beside it', () => {
+  for (const state of ['granted-no-data', 'refused', 'needs-update', 'no-health-connect']) {
+    const at = CONTROL.indexOf(`case '${state}'`);
+    assert.ok(at > 0, `${state} is not handled at all`);
+    const block = CONTROL.slice(at, at + 900);
+    assert.match(
+      block,
+      /action:\s*\{/,
+      `${state} tells her what is wrong and offers nothing to do about it`
+    );
+  }
+});
+
+check('a refusal does not offer a button Android will ignore', () => {
+  const at = CONTROL.indexOf("case 'refused'");
+  const block = CONTROL.slice(at, at + 900);
+  assert.match(
+    block,
+    /openHealthConnect[^A-Za-z]/,
+    'after a refusal Android stops showing its dialog, so the only working route '
+      + 'is Health Connect itself - offering Connect again would be a dead button'
+  );
+});
+
+check('the grant is read back, not assumed from the request', () => {
+  const at = SYNC.indexOf('export async function connectSleep');
+  const block = SYNC.slice(at, at + 1400);
+  assert.match(
+    block,
+    /await hasSleepPermission\(\)/,
+    'it trusts what requestPermission returned instead of reading the grant back'
+  );
+});
 // -- every case above must be able to fail ---------------------------------
 
 const useless = [];
