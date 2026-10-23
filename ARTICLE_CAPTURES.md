@@ -1138,3 +1138,43 @@ that nobody reads.
 
 None of those are logic errors. The code computes perfectly. It is the joins
 that fail, and we had tests for everything except the joins.
+
+## 23 October 2026 — I could eat my whole day in cake and the app would say I was fine.
+
+We were building the part of the food log that tells you where you stand. Not
+just what you ate. Whether it was all right.
+
+Each nutrient gets a colour and a word. In range. A little low. Lower. Higher.
+Underneath it says what it is being measured against, and whose number that is.
+The NHS says thirty grams of fibre. That is the NHS talking, not me, and the
+screen says so.
+
+Then we got to sugar and it was going to be grey. No colour at all.
+
+The reason was fair enough. The published limit is for free sugars. That means
+sugar added to things, plus what is in honey and syrups and fruit juice. It does
+not mean the sugar inside an apple. The app was counting all sugar together, so
+putting that against the limit would have marked nearly everybody as too high
+for eating fruit. So it stayed grey.
+
+And I looked at it and thought, hang on. I could eat my whole day in cake and
+biscuits and the one thing that would obviously be wrong would say nothing at
+all.
+
+That is worse than being wrong. A screen that goes quiet on the one day you most
+expect it to speak teaches you it is not really watching.
+
+The fix was not a cleverer sum. It was storing the right number. The app now
+works out free sugars separately, which is the thing that actually tells a
+biscuit apart from an apple. That difference is probably the single most useful
+thing anybody could learn about what they eat, and it had been sitting there
+unmeasured.
+
+What I keep noticing is how often the answer is like this. Not a better
+calculation on top of the data you have. A different thing recorded in the first
+place.
+
+The rest of the grid was not silent on a cake day, as it turns out. Protein low.
+Fibre low. Saturated fat over. Calcium and iron low. Five warm tiles. The sum of
+it was right. It was the obvious one that was missing, and the obvious one is
+the one people look at.

@@ -1059,3 +1059,56 @@ Three exemptions are stated in the output rather than hidden, so the boundary
 stays a fact instead of a habit: today is never counted; an overnight entry
 covers the morning after it, as the rule says it should; and days the register
 never registered as sessions are listed, not failed.
+
+---
+
+## A unit mismatch has no symptom, so only arithmetic finds it
+
+*23 October 2026, from the food log grid.*
+
+The new nutrient grid colours a tile by where a figure sits against a
+published one. Salt was wired with a ceiling of **2,400** — the milligrams of
+sodium in the NHS six-gram limit — and every salt figure the app displays has
+already been divided by 400 into **grams of salt**. So a 6 g salt day arrived
+at the comparison as the number `2.4`, came back comfortably "In range", and
+the tile was the right colour for entirely the wrong reason.
+
+**Nothing about it looks wrong.** A wrong colour would be visible. This was a
+plausible colour, on a real figure, with a correct-looking constant beside a
+correct-looking unit name — and salt simply became the one nutrient on the grid
+that could never turn, forever, silently. Reading the code does not catch it,
+because both halves are individually right; only putting a known input through
+the whole path does.
+
+The check that found it does not assert a number. It asserts the *relationship*:
+convert 2,400 mg of sodium through the app's own display path and require the
+result to land within half a gram of whatever ceiling the reference holds.
+Written that way it survives a change to either side and fails the moment they
+stop agreeing.
+
+**The rule: when a stored column and a displayed figure are in different units,
+the test is a round trip, not an equality.** And the export exists for exactly
+this — `macroAmount` is public so that nothing can compare against the raw
+column by accident.
+
+---
+
+## A fixed-length slice is a check that fails on correct code
+
+*23 October 2026.*
+
+A sleep assertion took `source.slice(at, at + 1800)` and looked for a line that
+began at character **1,784**. Sixteen characters of it were in the window. The
+check failed, and its message blamed the app — "it gives up on one answer" —
+for code that was correct.
+
+The window had been large enough when it was written. A comment grew above the
+line and pushed it out. **A magic number measuring a distance in a file is a
+dependency on nobody ever editing above it**, which is not a property any file
+has.
+
+Slice to the next declaration instead: `indexOf('\nexport ', at + 1)`. It costs
+one line and cannot drift. The wider lesson is the more expensive one — a
+failing check is not evidence that the code is wrong, and an hour went into
+looking for a bug in a correct function because the failure message was
+confident and specific about the wrong thing.
