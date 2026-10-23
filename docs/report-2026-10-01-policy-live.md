@@ -123,6 +123,13 @@ This report is the first one under it.
   that was dying, not failing. Expired now reads as "I cannot tell", like absent.
   (The token on this laptop **has** expired: `npx vercel login` when convenient.
   Deploys still work; only the check is blind.)
+  **CORRECTED 23 October 2026 — DO NOT FOLLOW THAT SENTENCE.** `vercel login`
+  creates a browser session with an expiry, which is why this kept recurring all
+  month and why it would strand a headless machine that has no browser to
+  re-authorise it. The fix is a no-expiry dashboard token in `.env.local` as
+  `VERCEL_TOKEN`. Kept rather than deleted because it is what the report said at
+  the time, and because it is a fair example of the advice this rule exists to
+  stop. See **Never an interactive login** in `mobile/WORKFLOW.md`.
 - **`check-onboarding-copy.mjs`** went red on two setup screens and was right to.
   It holds the chat prefills as exact strings so a new first-person sentence
   cannot inherit the "her words, not the app's" exemption. Each gained a trailing

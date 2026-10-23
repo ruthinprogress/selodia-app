@@ -126,6 +126,58 @@ Design exploration and build direction are genuinely different working modes, an
 
 ---
 
+## STANDING RULE: never an interactive login, on any machine (Ruth, 23 October 2026)
+
+**Never run `vercel login`, `eas login`, `expo login`, or any other command that
+signs in through a browser. Not on the server, not on the laptop, not "just this
+once to unblock something".** If a credential is missing, the fix is always a
+TOKEN in `.env.local`, never a login.
+
+**The reason, in one line: a session expires and a token does not.**
+
+- A **session** is created by signing in through a browser. It carries an expiry,
+  refreshing it only restarts the same clock, and when it finally lapses the only
+  way back is a browser *on that machine*. On a box with no screen, that is a
+  locked door.
+- A **token** is a string in a file. Created once, given no expiry, it survives
+  reboots, copies to a new machine, and never needs a person again.
+
+**What it already cost.** The Vercel login lapsed three times in October while a
+script to replace it with a no-expiry token sat unrun in `scripts/`. Ruth, on the
+20th: *"Its happened so many times, I go to fix it and you say its refreshed."*
+From 23 October she intends to run a headless server and "remain remote forever,
+once its set up" — and on that machine this stops being an annoyance and becomes
+a lockout.
+
+**The realistic way it goes wrong is not somebody deciding to log in.** It is a
+check failing, printing a fix, and somebody doing what the screen says.
+`check-update-reaches-phone.mjs` said *"Run `npx eas-cli login` from mobile/"*
+until this rule was written. That line, followed once on the server, is the whole
+failure.
+
+**So every mention of these commands anywhere in this repository must carry the
+warning beside it**, and `scripts/check-no-interactive-login.mjs` enforces that:
+it fails if the phrase appears without a prohibition within three lines. Explain
+them as much as you like; never leave one looking like advice.
+
+**What to do instead**, both already double-click files in Build Specs:
+
+| missing | fix | where |
+|---|---|---|
+| `VERCEL_TOKEN` | dashboard token, Full Account, **No Expiration** | `1 - Vercel token (do this first).cmd` |
+| `EXPO_TOKEN` | robot user, **Release Manager**, then its access token | `2 - Paste the Expo token.cmd` |
+
+`node scripts/headless-readiness.mjs` sorts every credential into session or
+token and names anything that still needs a person. Run it on any new machine
+before trusting it.
+
+**Tokens are made in a browser anywhere** — a laptop, a phone, a café — and only
+the resulting string has to reach the server. That is why this rule costs nothing:
+it never stops you creating a credential, it only stops you creating the kind that
+has to be renewed somewhere you cannot reach.
+
+---
+
 ## Claude Code's Standing Boundaries
 - **Never handles account creation, sign-in, or passwords directly** — not even for low-stakes test accounts, not even if explicitly asked and given credentials. This is a hard line, not a judgment call, and it should never be treated as Claude Code being unhelpful — it is working correctly when it declines this and redirects to Ruth doing it herself in her own browser/session.
 - **Sole editor of the spec documents** — Ruth does not maintain a parallel copy to hand over. If a correction or addition is needed, it gets described to Claude Code directly, and Claude Code edits the real file.

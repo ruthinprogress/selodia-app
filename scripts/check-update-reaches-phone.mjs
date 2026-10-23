@@ -117,8 +117,16 @@ function ok(cond, msg) {
 
 const channels = json(['channel:list']);
 if (channels === null) {
-  console.log('  SKIPPED  the EAS CLI is not logged in on this machine.');
-  console.log('           Run `npx eas-cli login` from mobile/, then try again.');
+  // NEVER TELL ANYBODY TO RUN `eas login` (23 October 2026). That is what this
+  // line used to say, and it is the one realistic way the headless server gets
+  // stranded: a check fails, somebody reads the fix off the screen, and runs
+  // the command that creates an EXPIRING browser session on a machine that has
+  // no browser. The fix is a token, which never expires and needs no screen.
+  console.log('  SKIPPED  the EAS CLI has no credentials on this machine.');
+  console.log('           Set EXPO_TOKEN in .env.local - double-click');
+  console.log('           "2 - Paste the Expo token.cmd" in Build Specs.');
+  console.log('           NEVER run `eas login` to fix this: it makes a browser');
+  console.log('           session that expires, which strands a headless machine.');
   process.exit(0);
 }
 

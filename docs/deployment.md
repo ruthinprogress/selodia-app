@@ -4,6 +4,24 @@ Written 1 October 2026, after I told Ruth something confidently wrong about this
 and wasted a slice of her morning on it. The last section is that story, because
 the shape of the mistake is more useful than the correction.
 
+## NEVER an interactive login
+
+**Do not run `vercel login`, `eas login` or `expo login`. Ever, on any machine.**
+
+They create a browser session with an expiry. Refreshing one restarts the same
+clock, and when it lapses the only way back is a browser *on that machine* -
+which a headless server does not have. The Vercel one lapsed three times in
+October before this was written down.
+
+If a credential is missing, the fix is always a token in `.env.local`:
+`VERCEL_TOKEN` (dashboard token, Full Account, **No Expiration**) or `EXPO_TOKEN`
+(a robot user on `selodia`, **Release Manager**). Both have a double-click file in
+Build Specs, and `node scripts/headless-readiness.mjs` says which are missing.
+
+`scripts/check-no-interactive-login.mjs` fails if anything in this repository
+mentions one of those commands without a warning beside it, because the way this
+actually goes wrong is a check printing a fix and somebody doing what it says.
+
 ## The short version
 
 **One Vercel project. Push to `main` and it is live in about a minute.**
