@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { NutrientIcon } from '@/components/nutrient-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CardRadius, Spacing } from '@/constants/theme';
+import { BodyFont, CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { MACROS, macroAmount, macroFigure, type MacroKey } from '@/lib/tracked-macros';
 import {
@@ -98,18 +98,59 @@ function cellFor(
   };
 }
 
+/**
+ * THE ORDER THE CELLS ARE DRAWN IN, which is not the spine's order (Ruth, 24
+ * October 2026).
+ *
+ * Her suggestion, and she was right about why: "I'm just wondering if we put
+ * fat and carbs below kcal and protein, and move fibre and salt to the top
+ * right, if it will look nicer."
+ *
+ * IT EVENS THE ROWS, and that is the real gain. Fat and carbs are the only two
+ * cells that carry a nested line underneath them, so in the spine's order both
+ * tall cells sat in the TOP row and the grid stood a line lopsided. With them
+ * moved down, the four single-line cells make the first row and the two tall
+ * ones share the second.
+ *
+ * It reads better too: energy and protein, then the two she watches as figures
+ * in their own right, then the two composites with their parts, then the
+ * minerals.
+ *
+ * A SEPARATE LIST RATHER THAN A REORDERED SPINE. MACROS drives the parser's
+ * schema, the database columns, the chat summary and the settings list. This is
+ * a fact about one grid's layout, and it has no business moving any of that.
+ *
+ * ANYTHING NOT NAMED HERE STILL APPEARS, at the end. A nutrient added to the
+ * spine and forgotten here is drawn late rather than not at all.
+ */
+const GRID_ORDER: MacroKey[] = [
+  'kcal',
+  'protein',
+  'fibre',
+  'salt',
+  'fat',
+  'carbs',
+  'calcium',
+  'iron',
+];
+
 export function nutrientCells(
   values: Record<string, unknown>,
   tracked: MacroKey[],
   profile: NutrientProfile
 ): Cell[] {
+  const ordered = [
+    ...GRID_ORDER,
+    ...MACROS.map((m) => m.key).filter((k) => !GRID_ORDER.includes(k)),
+  ];
+
   const cells: Cell[] = [];
-  for (const spec of MACROS) {
-    if (!tracked.includes(spec.key) || UNDER[spec.key]) continue;
-    const cell = cellFor(spec.key, values, profile);
+  for (const key of ordered) {
+    if (!tracked.includes(key) || UNDER[key]) continue;
+    const cell = cellFor(key, values, profile);
     if (!cell) continue;
     const childKey = (Object.keys(UNDER) as MacroKey[]).find(
-      (k) => UNDER[k] === spec.key && tracked.includes(k)
+      (k) => UNDER[k] === key && tracked.includes(k)
     );
     cell.child = childKey ? cellFor(childKey, values, profile) : null;
     cells.push(cell);
@@ -188,9 +229,14 @@ export function NutrientGrid({
                 for the one case it means something - a nutrient with nothing
                 honest to compare against - so it is the absence of a state,
                 never a default. */}
+            {/* TWICE THE SIZE, because the mark is now the only thing carrying
+                the state (Ruth, 24 October 2026: "the icons needs to be at
+                least twice as big"). At 18 it was an ornament beside a figure;
+                at 36 it is the first thing the eye lands on, which is what
+                "icon colour shows how you're doing" requires of it. */}
             <NutrientIcon
               macroKey={cell.key}
-              size={18}
+              size={36}
               color={cell.standing ? STANDING_COLOUR[cell.standing] : theme.textSecondary}
             />
             <ThemedText type="detail" themeColor="textSecondary" style={styles.chevron}>
@@ -210,7 +256,7 @@ export function NutrientGrid({
             <View style={styles.child}>
               <NutrientIcon
                 macroKey={cell.child.key}
-                size={12}
+                size={24}
                 color={
                   cell.child.standing
                     ? STANDING_COLOUR[cell.child.standing]
@@ -241,9 +287,11 @@ const styles = StyleSheet.create({
   cell: { width: `${100 / PER_ROW}%`, padding: Spacing.two, gap: 1 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chevron: { fontSize: 15, lineHeight: 18 },
-  // Sized against the log rows beneath the card, which are 14 - one step above
-  // the thing it summarises and no further. Her rule, from the week card.
-  figure: { fontSize: 16, lineHeight: 20 },
+  // BOLD, because the figure is the thing the cell is for (Ruth, 24 October
+  // 2026: "the numbers need to be in bold on the card"). It stays in the SANS -
+  // the serif is now the heading voice, and a figure is data, not a heading.
+  // Sized against the log rows beneath the card, which are 14.
+  figure: { fontSize: 17, lineHeight: 21, fontFamily: BodyFont.semibold },
   child: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   childText: { flexShrink: 1 },
   pressed: { opacity: 0.6 },

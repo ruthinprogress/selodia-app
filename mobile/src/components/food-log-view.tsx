@@ -344,6 +344,21 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
         isPresent={isCurrentWeek}
       />
 
+      {/* THE TABLE HAS A NAME (Ruth, 24 October 2026): "the title for the table
+          beneath is missing. It should have the This Week header in the Bold
+          header text as in the illustration. Changes to Previous Weeks if in
+          past week mode."
+
+          Her artwork has it and I left it out. It is doing more than labelling:
+          the card above is an AVERAGE and the list below is the days it was
+          averaged from, and without a heading between them the list reads as a
+          continuation of the card rather than as its evidence.
+
+          AND IT SAYS WHICH WEEK YOU ARE IN. The stepper moved into the card, so
+          the only thing down here that knows you are looking backwards is this
+          line. */}
+      <ThemedText type="smallBold">{isCurrentWeek ? 'This week' : 'Previous weeks'}</ThemedText>
+
       <DayLog
         days={days}
         weekStart={weekStart}

@@ -116,27 +116,49 @@ export function WeekAverageCard({
             hitSlop={Spacing.three}
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <Ionicons
-              name={explaining ? 'close-outline' : 'information-circle-outline'}
-              size={18}
-              color={theme.textSecondary}
-            />
+            {/* ALWAYS THE "i", NEVER A CROSS (Ruth, 24 October 2026): "The
+                cross to shut the colour explainer should be withing it's own
+                box, top right."
+
+                She is right, and it is a small rule worth keeping: a control
+                that opens a panel belongs to the card, and the control that
+                shuts the panel belongs to the PANEL. Swapping this one glyph
+                between the two jobs made it ambiguous which thing the cross
+                was closing - and left the open panel with no visible way out
+                of its own. */}
+            <Ionicons name="information-circle-outline" size={18} color={theme.textSecondary} />
           </Pressable>
         </View>
       </View>
 
       <NutrientGrid values={averages} tracked={tracked} profile={profile} />
 
-      {explaining ? <ColourExplainer /> : null}
+      {explaining ? <ColourExplainer onClose={() => setExplaining(false)} /> : null}
     </ThemedView>
   );
 }
 
 /** Her artwork's legend section, word for word, shown only when asked for. */
-function ColourExplainer() {
+function ColourExplainer({ onClose }: { onClose: () => void }) {
+  const theme = useTheme();
   return (
     <ThemedView type="background" style={styles.explainer}>
-      <ThemedText type="smallBold">{COLOUR_EXPLAINER.title}</ThemedText>
+      {/* THE CROSS LIVES IN THE BOX IT SHUTS, top right, which is where
+          somebody looks for it. */}
+      <View style={styles.explainerHead}>
+        <ThemedText type="smallBold" style={styles.explainerTitle}>
+          {COLOUR_EXPLAINER.title}
+        </ThemedText>
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          hitSlop={Spacing.three}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <Ionicons name="close-outline" size={20} color={theme.textSecondary} />
+        </Pressable>
+      </View>
       <ThemedText type="detail" themeColor="textSecondary" style={styles.para}>
         {COLOUR_EXPLAINER.basis}
       </ThemedText>
@@ -153,12 +175,6 @@ function ColourExplainer() {
         </View>
       ))}
 
-      <ThemedText type="smallBold" style={styles.whyHead}>
-        {COLOUR_EXPLAINER.whyTitle}
-      </ThemedText>
-      <ThemedText type="detail" themeColor="textSecondary" style={styles.para}>
-        {COLOUR_EXPLAINER.why}
-      </ThemedText>
     </ThemedView>
   );
 }
@@ -173,6 +189,8 @@ const styles = StyleSheet.create({
   heading: { flex: 1, gap: 1 },
   headRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   explainer: { borderRadius: CardRadius, padding: Spacing.three, gap: Spacing.two },
+  explainerHead: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  explainerTitle: { flex: 1 },
   para: { lineHeight: 17 },
   state: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   stateText: { flex: 1 },

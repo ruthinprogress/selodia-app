@@ -278,7 +278,7 @@ check('the grid carries the mark and nothing else', () => {
 });
 
 check('the four states are named behind the "i", in her artwork\'s words', () => {
-  assert.match(CARD, /explaining \? <ColourExplainer \/> : null/);
+  assert.match(CARD, /explaining \? <ColourExplainer onClose=/);
   assert.match(CARD, /setExplaining\(\(v\) => !v\)/);
   assert.deepEqual(S.STANDING_LABEL, {
     'in-range': 'In range',
@@ -291,7 +291,45 @@ check('the four states are named behind the "i", in her artwork\'s words', () =>
   }
   assert.match(S.COLOUR_EXPLAINER.title, /Icon colour shows how you're doing/);
   assert.match(S.COLOUR_EXPLAINER.basis, /your goals, age and sex/);
-  assert.match(S.COLOUR_EXPLAINER.whyTitle, /Why colour, not dots\?/);
+  // "Why colour, not dots?" is deliberately NOT here. Ruth, 24 October: "that
+  // was just for our own understanding to be recorded." It explained why the
+  // design is the way it is, which is a note for the people building it.
+  assert.ok(
+    !('whyTitle' in S.COLOUR_EXPLAINER),
+    'the design rationale is back in front of the reader'
+  );
+});
+
+check('the close sits inside the panel it shuts', () => {
+  // Ruth, 24 October: "The cross to shut the colour explainer should be withing
+  // it's own box, top right." The card's control opens; the panel's shuts.
+  assert.match(CARD, /function ColourExplainer\(\{ onClose \}/);
+  assert.match(CARD, /styles\.explainerHead/);
+  assert.match(CARD, /<Ionicons name="information-circle-outline"/);
+  assert.ok(
+    !/name=\{explaining \? 'close-outline' : 'information-circle-outline'\}/.test(CARD),
+    'the card control is swapping between opening and shutting again'
+  );
+});
+
+check('a heading is in the heading face, at every size', () => {
+  // Ruth, 24 October: "Any title in the app that's in bold should be in the
+  // header font, it looks like coding text in the current font, not editorial
+  // at all." The three bold types are smallBold, subtitle and title.
+  const TEXT = read('mobile/src/components/themed-text.tsx');
+  for (const type of ['smallBold', 'subtitle', 'title']) {
+    const at = TEXT.indexOf(`  ${type}: {`);
+    assert.ok(at > 0, `${type} is not a style any more`);
+    const block = TEXT.slice(at, TEXT.indexOf('},', at));
+    assert.match(block, /fontFamily: DisplayFont\.regular/, `${type} is still set in the sans`);
+  }
+});
+
+check('the table beneath the card says which week it is', () => {
+  // Ruth, 24 October: "the title for the table beneath is missing... Changes to
+  // Previous Weeks if in past week mode." The stepper moved into the card, so
+  // this line is the only thing below it that knows.
+  assert.match(VIEW, /isCurrentWeek \? 'This week' : 'Previous weeks'/);
 });
 
 check('the explainer is NOT on the screen at rest', () => {
@@ -332,13 +370,34 @@ check('that screen exists and shows the figure against its range', () => {
 check('sat fat and sugar are nested, not cells of their own', () => {
   // Ruth, 24 October: "nest sat fat and sugar like now."
   assert.match(GRID, /const UNDER: Partial<Record<MacroKey, MacroKey>> = \{\s*saturated: 'fat',\s*sugar: 'carbs',\s*\}/);
-  assert.match(GRID, /if \(!tracked\.includes\(spec\.key\) \|\| UNDER\[spec\.key\]\) continue;/);
+  assert.match(GRID, /if \(!tracked\.includes\(key\) \|\| UNDER\[key\]\) continue;/);
   assert.match(GRID, /cell\.child \?/);
 });
 
 check('four across, as drawn', () => {
   assert.match(GRID, /const PER_ROW = 4;/);
   assert.match(GRID, /width: `\$\{100 \/ PER_ROW\}%`/);
+});
+
+check('the two cells that carry a nested line share a row', () => {
+  // Ruth's reorder, 24 October. Fat and carbs are the only cells with a child
+  // underneath, so with both in the top row the grid stood a line lopsided.
+  // Read as source, not imported: the component reaches react-native.
+  const at = GRID.indexOf('const GRID_ORDER: MacroKey[] = [');
+  assert.ok(at > 0, 'the grid has gone back to the spine order');
+  const order = GRID.slice(at, GRID.indexOf('];', at))
+    .match(/'([a-zA-Z]+)'/g)
+    .map((s) => s.replace(/'/g, ''));
+  assert.deepEqual(order, ['kcal', 'protein', 'fibre', 'salt', 'fat', 'carbs', 'calcium', 'iron']);
+  // The two nested parents must land in the same row of four.
+  const row = (k) => Math.floor(order.indexOf(k) / 4);
+  assert.equal(row('fat'), row('carbs'), 'fat and carbs are in different rows again');
+});
+
+check('a nutrient left out of the order is still drawn', () => {
+  // The spine drives the parser and the columns; this list is only the layout.
+  // One forgotten entry must be late, never missing.
+  assert.match(GRID, /\.\.\.MACROS\.map\(\(m\) => m\.key\)\.filter\(\(k\) => !GRID_ORDER\.includes\(k\)\)/);
 });
 
 // -- 7. one week, one stepper ---------------------------------------------

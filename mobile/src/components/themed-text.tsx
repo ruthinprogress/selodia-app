@@ -57,11 +57,28 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontFamily: BodyFont.regular,
   },
-  // Section headers land here, so this one takes Comfortaa despite its size.
+  // A HEADING IS A HEADING AT ANY SIZE (Ruth, 24 October 2026):
+  //
+  //   "Any title in the app that's in bold should be in the header font, it
+  //    looks like coding text in the current font, not editorial at all."
+  //
+  // She is describing something real. Manrope SemiBold is a grotesque drawn for
+  // interfaces - it is what the figures and the labels are set in, and it is
+  // excellent at that. Used for a HEADING it reads as a stronger label rather
+  // than as a different kind of thing, so every section on every screen was
+  // announced in the same voice as the data beneath it.
+  //
+  // The serif is the app's heading voice, and it was being used only for a
+  // screen's own name. This puts it on the three bold types - smallBold,
+  // subtitle, title - so a section heading anywhere in the app is editorial.
+  //
+  // THE SIZES GO UP SLIGHTLY WITH THE FACE. Cormorant Infant has a small
+  // x-height, so it reads about a point smaller than a sans at the same size;
+  // 15 here holds the same presence 14 did.
   smallBold: {
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 21,
-    fontFamily: BodyFont.semibold,
+    fontFamily: DisplayFont.regular,
   },
   // MANROPE CARRIES THE TEXT, THE SERIF CARRIES THE HEADINGS (2026-09-18).
   // Comfortaa used to carry both. `small` sat on the system face for exactly
@@ -136,15 +153,22 @@ const styles = StyleSheet.create({
   },
   // 48px until 2026-09-03, where it dominated every screen it opened. 32 is
   // still unmistakably the page's heading without being the whole page.
+  // Both carry the serif now - see smallBold above for her rule. They keep
+  // the descender room the other display types have, because a heading ending
+  // in a g is clipped by Android inside its line box, not outside it.
   title: {
-    fontSize: 32,
-    lineHeight: 40,
-    fontFamily: BodyFont.semibold,
+    fontSize: 34,
+    lineHeight: 44,
+    letterSpacing: DisplayType.tracking,
+    fontFamily: DisplayFont.regular,
+    paddingBottom: 4,
   },
   subtitle: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontFamily: BodyFont.semibold,
+    fontSize: 26,
+    lineHeight: 34,
+    letterSpacing: DisplayType.tracking,
+    fontFamily: DisplayFont.regular,
+    paddingBottom: 3,
   },
   // SECONDARY DATA, a step quieter than body text (Ruth, 2026-09-18: the
   // Movement flow "almost feels like an accessibility mode designed for users

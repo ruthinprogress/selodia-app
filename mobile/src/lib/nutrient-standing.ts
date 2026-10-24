@@ -261,14 +261,22 @@ export const STANDING_NOTE: Record<Standing, string> = {
   higher: 'Above the suggested range.',
 };
 
-/** The heading and the two paragraphs behind the i, also hers. */
+/**
+ * The heading and the line behind the i, hers.
+ *
+ * "WHY COLOUR, NOT DOTS?" IS NOT IN HERE, and was removed on 24 October the day
+ * it was added. Ruth: "Remove 'color, not dots' and explainer text beneath as
+ * that was just for our own understanding to be recorded."
+ *
+ * She is right, and the distinction is worth keeping in mind for every screen:
+ * that paragraph explains why the DESIGN is the way it is. Nobody using the app
+ * asked why it is not dots. A reader needs to know what the colours mean, which
+ * is the two lines below; the reasoning behind them is a note for the people
+ * building it, and it lives in a comment, which is where this one now is.
+ */
 export const COLOUR_EXPLAINER = {
   title: "Icon colour shows how you're doing",
   basis: 'Each nutrient is compared to a range based on your goals, age and sex.',
-  whyTitle: 'Why colour, not dots?',
-  why:
-    'Using the icon colour keeps the screen clean and calm, while still giving you an instant '
-    + "visual sense of what's in range, what to watch and what might need attention.",
 };
 
 /**
