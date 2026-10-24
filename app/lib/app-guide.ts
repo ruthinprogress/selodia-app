@@ -81,6 +81,8 @@ export const APP_GUIDE: GuideEntry[] = [
   { route: 'settings/body-manual', name: 'Body Manual', reach: 'More, then Body Manual', use: 'What your body needs avoided or handled with care: allergies, intolerances, foods you react to, medication, health context.' },
   { route: 'settings/almanac', name: 'Almanac', reach: 'More, then Almanac', use: 'The longer view of you, in short statements drawn from your record over weeks.' },
   { route: 'settings/tracking', name: 'What I track', reach: 'More, then What I track', use: 'Which nutrients and body measurements the app follows for you.' },
+  { route: 'settings/automatic-tracking', name: 'Automatic tracking', reach: 'More, then Automatic tracking', use: 'Everything Selodía can import from your phone or wearable, grouped, each with its status - arriving on its own, waiting for the first data, or not enabled. The place to turn any of it on or off.' },
+  { route: 'settings/automatic-tracking/[kind]', name: 'One tracked type', reach: 'More, Automatic tracking, then a type', use: 'What Selodía reads for that one thing and where it has got to: not turned on, permissions on but waiting for the first data, or arriving with the latest figure shown. Links to manage the permission and to a short guide.' },
   { route: 'settings/devices', name: 'Connected devices', reach: 'More, then Connected devices', use: 'Step counting from the phone\'s health app, and which other devices are and are not supported yet.' },
   { route: 'settings/notifications', name: 'Notifications', reach: 'More, then Notifications', use: 'Daily prompts and reminders.' },
   { route: 'settings/privacy', name: 'Privacy', reach: 'More, then Privacy', use: 'How your data is handled.' },

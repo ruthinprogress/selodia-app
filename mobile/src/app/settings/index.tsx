@@ -143,9 +143,9 @@ export default function SettingsHub() {
         />
         <SettingsRow
           icon="phone-portrait-outline"
-          label="Connected devices"
-          detail="Your phone's health data"
-          onPress={() => router.push('/settings/devices')}
+          label="Automatic tracking"
+          detail="Sleep, steps and other data from your phone"
+          onPress={() => router.push('/settings/automatic-tracking')}
         />
         <SettingsRow
           icon="notifications-outline"

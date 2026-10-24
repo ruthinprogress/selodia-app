@@ -27,6 +27,7 @@ import {
 } from '@/lib/overview-metrics';
 import { PERSONAL_LINE_DAY_ONE, pickDailyPersonalLine } from '@/lib/personal-line';
 import { calculateProteinTarget, proteinTargetLabel } from '@/lib/protein';
+import { syncSleepFromPhone } from '@/lib/sleep-sync';
 import { formatSteps, syncTodaySteps } from '@/lib/steps';
 import { readSnapshot, saveSnapshot } from '@/lib/snapshot';
 import { hidesCycleDay, type LifeStage } from '@/lib/life-stage';
@@ -332,6 +333,26 @@ export function OverviewPanel({
       // phone's health platform, which is slower than any of these queries and
       // depends on none of them. It also WRITES the day's total on the way
       // through, so the figure survives into the roundups and the Activity
+      // SLEEP ARRIVES ON ITS OWN TOO, and until now it did not (Ruth, 24
+      // October 2026): "My phone automatically tracks sleep, i can see it, but
+      // it's not coming through even though i turned it on last night."
+      //
+      // She had granted the permission and nothing had read it, because NOTHING
+      // EVER DID unless she pressed a button. syncSleepFromPhone had three
+      // callers - the Connect button, the Check button and the settings screen
+      // - so "automatic tracking" was automatic for steps and manual for sleep,
+      // which is the one thing the feature is named after.
+      //
+      // DELIBERATELY NOT IN THE BATCH BELOW. That array is destructured BY
+      // POSITION, so adding a call to the middle of it silently renumbers every
+      // result after it - which is exactly what the first attempt at this did,
+      // handing the step count to `lastPeriod` and a week of plans to the sleep
+      // row. It is fired here instead, unawaited: it writes to sleep_logs and
+      // returns a count nobody reads, so nothing downstream depends on when it
+      // lands, and a night Health Connect has not finished processing is simply
+      // picked up on the next open.
+      void syncSleepFromPhone();
+
       // screen rather than existing only for as long as this screen is open.
       const [
         { data: measurements },
