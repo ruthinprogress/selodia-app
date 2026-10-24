@@ -23,6 +23,110 @@ scan did not run rather than that nothing happened.
 
 ---
 
+# Papers cited in Substack article 07 — added 24 October 2026
+
+Article 07, *"Why Smashing It at the Gym Isn't the Flex You Think It Is"*,
+scheduled Friday 20 November 2026. These are the papers in its Sources section.
+
+**The summaries below are Ruth's plain-English versions, not quotes.** Every link
+was opened on 24 October 2026 to confirm it resolves and that the title and year
+match. Three did; the notes under each say what was found, including the one
+figure that could not be confirmed.
+
+---
+
+### 1. Protein for women after exercise
+
+**Dr Stacy Sims, "Why Women Need to Prioritize Protein" (2024).**
+https://www.drstacysims.com/newsletters/articles/posts/Why_Women_Need_to_Prioritize_Protein
+
+*Summary:* Sims, who specialises in women's exercise and nutrition, recommends
+women who train aim for about 30 g of high-quality protein within 30 to 45
+minutes of a session, and about 40 g during perimenopause and after.
+
+**Caveat, and it is the point of listing it beside the next one:** these are her
+own recommendations, not a consensus position, and they are higher than the ISSN
+range below. Her daily figure is **1.7–2.4 g/kg**, against the ISSN's 1.4–2.2.
+Her article links to the research she draws on.
+
+*Checked 24 Oct 2026:* resolves. Published 13 October 2024. The timing and the
+30 g / closer-to-40 g figures are on the page as summarised.
+
+**Used in:** article 07.
+
+---
+
+### 2. Sports nutrition guidance for women
+
+**International Society of Sports Nutrition position stand: nutritional
+concerns of the female athlete (2023).** PMID 37221858.
+https://pubmed.ncbi.nlm.nih.gov/37221858/
+
+*Summary:* Advises protein close to the start or end of exercise, and about 1.4
+to 2.2 g protein per kg bodyweight across the day, spread through it. Women in
+the menopause transition are advised to aim for the higher end.
+
+*Checked 24 Oct 2026:* the link resolves, but **PubMed serves a cookie wall** and
+could not be read directly. The paper and its figures were confirmed from the
+published position stand instead: 1.4–2.2 g/kg/day for women at all stages of
+menstrual function, doses every three to four hours, 0.32–0.38 g/kg as close to
+the start or end of exercise as possible, and the upper end of the range for
+peri- and post-menopausal athletes. **The summary above is accurate.**
+
+*Worth knowing:* there is a free full text at
+https://pmc.ncbi.nlm.nih.gov/articles/PMC10210857/ — a better link for a reader,
+since the PubMed page is an abstract behind a consent banner.
+
+**Used in:** article 07.
+
+---
+
+### 3. Do women need different advice from men?
+
+**Moore DR, Sygo J, Morton JP. "Fuelling the female athlete: Carbohydrate and
+protein recommendations." *European Journal of Sport Science*, 2021; 22(5).**
+DOI 10.1080/17461391.2021.1922508
+https://researchonline.ljmu.ac.uk/id/eprint/18221/
+
+*Summary:* Concluded the evidence isn't strong enough yet to say women need
+different guidelines from men, as long as they eat enough overall, and called for
+more research.
+
+*Checked 24 Oct 2026:* resolves. **The note it came in with gave no title**; the
+real one is recorded above. The conclusion matches the summary — the authors
+consider it "premature to conclude that female athletes require sex specific
+guidelines in relation to CHO or protein requirements provided energy needs are
+met", while calling for work that accounts properly for cycle phase,
+contraceptive use and energy availability.
+
+**Used in:** article 07.
+
+---
+
+### 4. Muscle and energy use
+
+**Wang Z et al. "Specific metabolic rates of major organs and tissues across
+adulthood: evaluation by mechanistic model of resting energy expenditure."
+*American Journal of Clinical Nutrition*, 2010; 92(6): 1369–77.**
+Figure via BioNumbers: https://bionumbers.hms.harvard.edu/bionumber.aspx?id=112385
+
+*Summary:* Skeletal muscle uses about 12.6 calories per kilo per day at rest, so
+gaining or losing a kilo of muscle changes daily energy use only slightly.
+
+*Checked 24 Oct 2026:* the link resolves and the underlying paper is confirmed —
+Wang et al., AJCN 2010, 92(6), 1369–77. **The 12.6 figure could not be confirmed
+from that page.** The BioNumbers entry is a table of specific metabolic rates
+across many tissues, and what came back was the brain's value of 233 kcal/kg/day
+rather than skeletal muscle's. Roughly 13 kcal/kg/day is the figure usually
+quoted from Wang for skeletal muscle, so the summary is very probably right, but
+it is recorded here as unconfirmed rather than ticked off. **Worth one look at
+the table before the article goes out on 20 November**, and if the muscle row is
+there, a direct link to it would be better than the table.
+
+**Used in:** article 07.
+
+---
+
 # Selodía nutrient reference values — 24 October 2026
 
 Not a monthly scan. A task Ruth asked for while building the food log's nutrient
