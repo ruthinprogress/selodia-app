@@ -221,7 +221,11 @@ check('ANYTIME IS AN EIGHTH DAY, NOT A HEADING ABOVE A BOX', () => {
   const zone = raw.slice(raw.indexOf('styles.anytimeZone, anytime.length === 0'));
   const label = zone.slice(0, zone.indexOf('styles.anytimeInner'));
   assert.ok(/styles\.dayLabel/.test(label), 'the Anytime label is not in the day-name column');
-  assert.ok(/>Anytime</.test(label), 'the label no longer says Anytime');
+  // WHITESPACE-TOLERANT, because the word is the thing being checked and not
+  // the formatting. This failed once on correct code: "Anytime" moved onto its
+  // own line when it was given a size that fits the 54pt day column, and
+  // `>Anytime<` stopped matching although the label had not changed at all.
+  assert.ok(/>\s*Anytime\s*</.test(label), 'the label no longer says Anytime');
   assert.ok(/this week/.test(label), 'the second line is gone, so it is not shaped like a day');
   // AND IT SITS CLOSE. Eight from Sunday's rule, where it used to be 38.
   const gap = number(style('anytimeZone'), 'marginTop');

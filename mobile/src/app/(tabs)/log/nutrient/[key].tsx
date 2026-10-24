@@ -12,7 +12,6 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { explainerFor } from '@/lib/macro-explainers';
 import {
-  proteinBySource,
   suggestionsFor,
   whereItCameFrom,
   type ItemRow,
@@ -123,8 +122,30 @@ export default function NutrientScreen() {
       // GOOD SOURCES SHE IS NOT ALREADY EATING, from the CoFID composition
       // table the app already carries - 2,886 foods, UK government data.
       // Nothing is invented here; this only ranks and filters.
+      // SUGGESTIONS ONLY WHERE MORE IS THE POINT, AND ONLY WHEN SHE IS SHORT.
+      //
+      // Ruth, 24 October 2026, on the Carbohydrates screen: "What on earth is
+      // this????" It was offering her white sugar, icing sugar and demerara
+      // sugar, because the candidates were ranked by concentration per 100g and
+      // the most carbohydrate-dense foods in a composition table are sugars.
+      //
+      // THE BUG WAS NOT THE RANKING. It was that nothing asked whether
+      // suggesting MORE of this nutrient made any sense. For a ceiling - salt,
+      // saturated fat, free sugars - it is incoherent. For a band it is
+      // presumptuous. For energy it is absurd. More is the point for exactly
+      // four of the ten: fibre, calcium, iron, and the protein she set herself.
+      //
+      // AND ONLY WHEN SHE IS ACTUALLY UNDER IT, because a section headed
+      // "Suggestions for you" above a nutrient she is already hitting is the
+      // app inventing a problem. This is a food app used by women who have
+      // been told what to eat all their lives; a suggestion it cannot justify
+      // is worse than a blank space.
       const spec = MACROS.find((m) => m.key === key);
-      if (spec && spec.column !== 'kcal') {
+      const ref = referenceFor(key as MacroKey, p);
+      const amountNow = macroAmount(key as MacroKey, week.averages);
+      const worthSuggesting =
+        ref?.shape.kind === 'floor' && amountNow != null && amountNow < ref.shape.value;
+      if (spec && worthSuggesting) {
         const { data: best } = await supabase
           .from('food_composition')
           .select(`name, ${spec.column}`)
@@ -178,10 +199,11 @@ export default function NutrientScreen() {
   }
 
   const explainer = explainerFor(macroKey);
-  // Protein is the one nutrient whose group carries meaning the food names do
-  // not. Everything else lists the foods, which is the truth with no mapping.
-  const sources: SourceRow[] =
-    macroKey === 'protein' ? proteinBySource(items) : whereItCameFrom(items, macroKey);
+  // THE FOODS SHE ATE, for every nutrient without exception. See
+  // nutrient-breakdown.ts for why the one grouping that used to live here is
+  // gone: a heading that says "Where yours came from" has to answer with her
+  // food, not with a taxonomy.
+  const sources: SourceRow[] = whereItCameFrom(items, macroKey);
   // How to have them: an absorption pairing, where one exists for this
   // nutrient's foods. Each is sourced - see nutrient-pairs.ts.
   const pair = nutrientPairFor(suggestions.map((x) => x.food).join(' '), []);
@@ -229,17 +251,21 @@ export default function NutrientScreen() {
       <ThemedView type="backgroundElement" style={styles.figureCard}>
         <View style={styles.figureRow}>
           <View style={styles.figureBlock}>
-            <ThemedText type="title">{figure ?? '—'}</ThemedText>
+            <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {figure ?? '—'}
+            </ThemedText>
             <ThemedText type="detail" themeColor="textSecondary">
               per day on average
             </ThemedText>
           </View>
           {reference ? (
             <View style={styles.targetBlock}>
+              {/* THE WORD ONLY. The figure itself moved under the bar, beside
+                  the span it describes, because printing it twice on one card
+                  was what pushed "122 g" into two lines. */}
               <ThemedText type="detail" themeColor="textSecondary">
-                {reference.kind === 'target' ? 'Target' : 'Guideline'}
+                {reference.kind === 'target' ? 'Your target' : 'Guideline'}
               </ThemedText>
-              <ThemedText type="small">{reference.stated}</ThemedText>
             </View>
           ) : null}
         </View>
@@ -415,10 +441,12 @@ function Bar({
   child,
 }: {
   amount: number;
-  reference: { shape: { kind: 'floor' | 'ceiling' | 'band'; value?: number; low?: number; high?: number } };
+  reference: {
+    shape: { kind: 'floor' | 'ceiling' | 'band'; value?: number; low?: number; high?: number };
+    stated: string;
+  };
   colour: string;
   track: string;
-  /** The part of this nutrient that is also something else: sat fat, sugar. */
   child?: {
     amount: number;
     mark: number | null;
@@ -431,32 +459,60 @@ function Bar({
   const top = s.kind === 'band' ? (s.high ?? 0) * 1.25 : (s.value ?? 0) * 1.25;
   const pct = (n: number): `${number}%` =>
     `${Math.max(0, Math.min(100, (n / top) * 100))}%`;
-  const markAt = s.kind === 'band' ? (s.low ?? 0) : (s.value ?? 0);
+
+  // WHERE "GOOD" IS, AS A REGION RATHER THAN AS A LINE.
+  //
+  // Ruth, 24 October 2026, on the first version: "This diagram makes no sense."
+  // She was right. It drew one or two bare vertical rules on a plain track with
+  // nothing naming them, so the reader had to be told what the lines meant -
+  // and a bar whose whole job is to be understood before it is read had become
+  // something needing a key.
+  //
+  // A floor and a ceiling and a band are three different shapes of "all right",
+  // and each is now drawn as the SPAN it actually is:
+  //
+  //   floor    from the figure upwards  (fibre: more is the point)
+  //   ceiling  from zero up to it       (salt: less is the point)
+  //   band     between the two ends     (her calories, carbohydrate)
+  //
+  // The person's own value sits on top of that span in her standing colour, so
+  // "am I inside it" is answered by looking, not by comparing two numbers.
+  const zone =
+    s.kind === 'floor'
+      ? { from: s.value ?? 0, to: top }
+      : s.kind === 'ceiling'
+        ? { from: 0, to: s.value ?? 0 }
+        : { from: s.low ?? 0, to: s.high ?? 0 };
 
   return (
     <View style={styles.barBlock}>
       <View style={[styles.track, { backgroundColor: track }]}>
+        {/* The span that counts as all right. */}
+        <View
+          style={[
+            styles.zone,
+            { left: pct(zone.from), width: pct(Math.max(0, zone.to - zone.from)) },
+          ]}
+        />
+        {/* Her own figure, over it. */}
         <View style={[styles.fill, { width: pct(amount), backgroundColor: colour }]} />
 
-        {/* THE CHILD, INSIDE THE PARENT AND ON THE PARENT'S SCALE. Drawn over
-            the fill from the same origin, so its width reads as a share of the
-            whole rather than as a second quantity. */}
+        {/* THE PART INSIDE THE WHOLE: saturated fat within fat, sugar within
+            carbohydrate. A thin underline rather than a block, so it reads as
+            subordinate to the figure above it - the first version drew it
+            darker than its own parent, which made the part look like the
+            measurement and the whole look like the background. */}
         {child ? (
           <View
             style={[styles.childFill, { width: pct(child.amount), backgroundColor: child.colour }]}
           />
         ) : null}
-
-        {/* The line to reach, or the line to stay under. */}
-        <View style={[styles.mark, { left: pct(markAt) }]} />
-        {s.kind === 'band' ? <View style={[styles.mark, { left: pct(s.high ?? 0) }]} /> : null}
-
-        {/* And the child's own line, along the same scale - which is what makes
-            it legible as a part rather than as a separate measure. */}
-        {child && child.mark != null ? (
-          <View style={[styles.childMark, { left: pct(child.mark), backgroundColor: child.colour }]} />
-        ) : null}
       </View>
+
+      {/* AND THE SPAN IS NAMED, which is the half that was missing. */}
+      <ThemedText type="detail" themeColor="textSecondary">
+        {reference.stated}
+      </ThemedText>
     </View>
   );
 }
@@ -464,16 +520,16 @@ function Bar({
 const styles = StyleSheet.create({
   figureCard: { borderRadius: CardRadius, padding: Spacing.three, gap: Spacing.three, marginTop: Spacing.two },
   figureRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.three },
-  figureBlock: { flexShrink: 1 },
+  figureBlock: { flexShrink: 0 },
   targetBlock: { alignItems: 'flex-end', flexShrink: 1 },
-  barBlock: { gap: Spacing.one },
-  track: { height: 14, borderRadius: 7, overflow: 'hidden', position: 'relative' },
-  fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 7 },
-  // The child sits INSIDE the parent's bar, sharing its left edge and half its
-  // height, so it reads as a part of the whole rather than as a second bar.
-  childFill: { position: 'absolute', left: 0, bottom: 0, height: 7, borderBottomLeftRadius: 7 },
-  mark: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: '#2D2B28', opacity: 0.45 },
-  childMark: { position: 'absolute', bottom: 0, height: 7, width: 2 },
+  barBlock: { gap: Spacing.two },
+  track: { height: 16, borderRadius: 8, overflow: 'hidden', position: 'relative' },
+  // The span that counts as all right, drawn under her figure rather than as
+  // bare rules beside it.
+  zone: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#2D2B28', opacity: 0.12 },
+  fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 8 },
+  // The part, as a thin underline along the bottom of the whole.
+  childFill: { position: 'absolute', left: 0, bottom: 0, height: 4 },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' },
   swatch: { width: 10, height: 10, borderRadius: 5 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.one },

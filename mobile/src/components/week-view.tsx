@@ -854,8 +854,27 @@ export function WeekView({
         <View style={styles.dayLabel}>
           {/* "Anytime this week" is ONE heading, and it was being set in two
               faces - her example of the fault: "especially since Anytime this
-              week is now in two diferent fonts". */}
-          <ThemedText type="smallBold">Anytime</ThemedText>
+              week is now in two diferent fonts".
+
+              AND IT IS THE ONE WORD TOO LONG FOR THE COLUMN. The day column is
+              54pt, sized for "Wed" and "Thu"; at the heading size "Anytime"
+              broke mid-word into "Anyti / me". Ruth, with the screenshot:
+              "Fix, even if needs to go smaller on anytime this week only."
+
+              So it is smaller, here and nowhere else, and held to one line -
+              because a word broken across two lines reads as a rendering
+              fault, which is what it was. adjustsFontSizeToFit is the belt to
+              the braces: a narrower phone than hers must shrink it further
+              rather than hyphenate it again. */}
+          <ThemedText
+            type="smallBold"
+            style={styles.anytimeLabel}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
+            Anytime
+          </ThemedText>
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.dayDate}>
             this week
           </ThemedText>
@@ -1546,6 +1565,8 @@ const styles = StyleSheet.create({
   // The second line of a day heading: the heading face, a step smaller, so the
   // day and its date read as one label rather than as a label and a figure.
   dayDate: { fontSize: 16, lineHeight: 20, paddingBottom: 0 },
+  // The one label longer than its column. See the note where it is used.
+  anytimeLabel: { fontSize: 17, lineHeight: 22 },
   // A CHAPTER BREAK, NOT A CARD (ChatGPT, 20 October 2026). Asked whether the
   // flower wants a container: "No. A card would fight the rest of Selodia. The
   // app feels deliberately un-card-like. Instead I'd separate by rhythm."

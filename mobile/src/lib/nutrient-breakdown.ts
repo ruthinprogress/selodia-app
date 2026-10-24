@@ -117,57 +117,28 @@ export function whereItCameFrom(items: ItemRow[], key: MacroKey, limit = 6): Sou
  * they are not a judgement about any food, and nothing here calls a food
  * incomplete, because that is a verdict on a food and her own rule forbids it.
  */
-export const PROTEIN_SOURCE_LABEL: Record<string, string> = {
-  animal: 'Meat, fish, dairy & eggs',
-  plant: 'Beans, nuts & grains',
-  collagen: 'Collagen',
-};
-
-/**
- * THREE GROUPS, BECAUSE THE PARSER STORES THREE VALUES.
- *
- * The decision, 23 October, and it is the whole of the reasoning: "protein
- * groups on something the parser already produces, RATHER THAN a food-to-
- * category table somebody has to maintain forever."
- *
- * I then proposed four labels - "Meat & fish, Dairy & eggs, Beans nuts &
- * grains, Collagen" - without noticing that two of them are both `animal`, and
- * on 24 October started writing a regex over food names to split them. Ruth
- * stopped it: "we alredy di this thinking. why are we doing this again... we
- * are going round in circles."
- *
- * She was right. That regex IS the food-to-category table, arriving by the back
- * door and disguised as a display detail - and it would have needed a new entry
- * every time somebody logged a cheese it had not heard of, forever, with a
- * silent mislabel as the failure mode.
- *
- * SO THE LABELS BEND TO THE DATA, NOT THE OTHER WAY ROUND. They keep the
- * register she chose - concrete foods, never "Animal sources", which she
- * rejected on the 23rd - and they group on the stored value with nothing to
- * maintain. The split between meat and dairy is a real distinction and it can
- * be had later for the price of a finer value from the parser; it is not worth
- * a lookup table.
- */
-export function proteinBySource(items: ItemRow[]): SourceRow[] {
-  const byGroup = new Map<string, number>();
-  let total = 0;
-
-  for (const row of items) {
-    const amount = amountOf(row, 'protein');
-    if (amount <= 0) continue;
-    const group = typeof row.protein_source === 'string' ? row.protein_source : null;
-    // UNCLASSIFIED PROTEIN IS ITS OWN ROW, never quietly folded into a group it
-    // was not put in. The totals have to add up to what the figure above says.
-    const label = (group && PROTEIN_SOURCE_LABEL[group]) || 'Not classified';
-    byGroup.set(label, (byGroup.get(label) ?? 0) + amount);
-    total += amount;
-  }
-  if (total <= 0) return [];
-
-  return [...byGroup.entries()]
-    .map(([label, amount]) => ({ label, amount, share: amount / total }))
-    .sort((a, b) => b.amount - a.amount);
-}
+// NO GROUPING. NOT EVEN FOR PROTEIN.
+//
+// Ruth, 24 October 2026, looking at the protein screen: "You literally built
+// what I said not to build.....this is categories, not what itens the user
+// ate."
+//
+// The note of the 23rd said "default: list the foods" and allowed one exception
+// for protein. Every attempt at that exception has gone wrong - first a label
+// set that needed a lookup table, then a regex over food names, then a screen
+// of categories under a heading that says "Where YOURS came from". The
+// exception has now cost more than it has ever returned.
+//
+// So the default is the whole rule. "Where yours came from" lists the foods she
+// ate, for every nutrient, which is:
+//
+//   the literal truth, straight from her own log
+//   nothing to maintain, ever
+//   the answer to vegan, vegetarian and flexitarian without modelling any
+//   and what the heading actually promises
+//
+// IF A GROUPING IS EVER WANTED AGAIN it needs a finer value from the parser and
+// a reason that survives contact with the screen. It does not need this file.
 
 // ── SUGGESTIONS ─────────────────────────────────────────────────────────────
 

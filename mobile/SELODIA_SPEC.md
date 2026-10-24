@@ -62,29 +62,29 @@ will have to say twice.
 
 | | |
 |---|---|
-| **Default** | **List the foods**, straight from her own log. |
-| **Group** | **Only protein**, and only on `protein_source`, which the parser already records at log time. |
-| **Never** | A food-to-category table. Including one disguised as a regex over food names. |
+| **Always** | **List the foods**, straight from her own log. Every nutrient, no exceptions. |
+| **Never** | Categories. No grouping, no food-to-category table, and none disguised as a regex over food names. |
 | **Hide** | Zero rows. |
 
-**Why listing beats grouping.** Her artwork grouped protein and listed foods for
-fibre, and that is the right instinct, not an inconsistency: grouping only helps
-where the group carries meaning. "Meat, poultry & fish" on the fibre screen is
-zero, every time, for everyone. The tell in the drawn version was "Grains &
-other" holding 15% — when a taxonomy needs an *other* bucket that big, it is not
-earning its place.
+**There is no exception for protein, and there was.** The original note allowed
+one — group protein on `protein_source`, which the parser already stores. Every
+attempt to build it went wrong: first a label set that needed a lookup table,
+then a regex over food names, then a screen of categories sitting under a
+heading that says *Where yours came from*. Ruth, seeing it: **"You literally
+built what I said not to build.....this is categories, not what itens the user
+ate."**
+
+The exception cost more than it ever returned, so the default is now the whole
+rule. A heading that promises *yours* has to answer with her food.
 
 **Why no mapping table, ever.** It needs a new entry for every food it has not
-heard of, forever, and its failure mode is a silent mislabel. The labels bend to
-the stored data, not the other way round: *Meat, fish, dairy & eggs / Beans, nuts
-& grains / Collagen*. A finer split is worth having one day for the price of a
-finer value from the parser; it is never worth a lookup table.
+heard of, forever, and its failure mode is a silent mislabel rather than a
+visible break. If a grouping is ever genuinely wanted it needs a finer value
+from the parser and a reason that survives contact with the screen.
 
 **No food is graded.** Nothing is labelled incomplete — that is a verdict on a
 food, which Part Two forbids. The useful truth is not "this one is lesser" but
-"these complete each other", which is a sentence and belongs in the status line.
-Unclassified protein gets its own row rather than being folded into a group it
-was never put in.
+"these complete each other", which is a sentence and belongs in a status line.
 
 ### Dietary constraints are answered by the log, not by a flag
 

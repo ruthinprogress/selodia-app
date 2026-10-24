@@ -159,7 +159,9 @@ check('the nutrient screen says target or guideline, never bare', () => {
   // THIS MOVED OFF THE CELL, which is the point of the redesign: the grid is
   // four things and a glance. The basis is owed, so it is owed on the screen
   // the chevron opens.
-  assert.match(SCREEN, /reference\.kind === 'target' \? 'Target' : 'Guideline'/);
+  assert.match(SCREEN, /reference\.kind === 'target' \? 'Your target' : 'Guideline'/);
+  // The figure itself moved under the bar, beside the span it describes.
+  assert.match(SCREEN, /\{reference\.stated\}/);
   assert.match(SCREEN, /is your own target/);
   assert.match(SCREEN, /from \$\{reference\.source\}/);
 });
@@ -656,43 +658,37 @@ check('the breakdown is in the same unit as the figure above it', () => {
   assert.ok(stew.amount > 0.9 && stew.amount < 1.1, `400 mg sodium came through as ${stew.amount}`);
 });
 
-check('protein is the one thing grouped, in her four groups', () => {
-  // Her labels, settled 24 October: "Meat & fish, Dairy & eggs, Beans nuts &
-  // grains, Collagen". The parser stores three values, so the animal bucket is
-  // split on the food's own name - the one guess in the whole breakdown, and a
-  // guess about a label rather than about a figure.
-  const rows = B.proteinBySource(LOG);
-  const labels = rows.map((r) => r.label);
-  assert.ok(labels.includes('Meat, fish, dairy & eggs'));
-  assert.ok(labels.includes('Beans, nuts & grains'));
-  assert.ok(labels.includes('Collagen'));
-  // Unclassified protein gets its own row rather than being folded into a
-  // group it was never put in.
-  assert.ok(labels.includes('Not classified'), 'unclassified protein was absorbed into a group');
-  const total = rows.reduce((n, r) => n + r.share, 0);
-  assert.ok(Math.abs(total - 1) < 0.0001);
-});
-
 check('no food is labelled incomplete, or graded at all', () => {
-  // THE LABELS THEMSELVES, not the file. Labelling a row "incomplete" is a
-  // judgement about a food, which her 21 October rule forbids - and the useful
-  // truth is not "this one is lesser" but "these complete each other", which is
-  // a sentence rather than a label.
-  const labels = [...Object.values(B.PROTEIN_SOURCE_LABEL), 'Not classified'];
-  assert.deepEqual(Object.values(B.PROTEIN_SOURCE_LABEL), [
-    'Meat, fish, dairy & eggs',
-    'Beans, nuts & grains',
-    'Collagen',
-  ]);
-  for (const label of labels) {
+  // THE ROWS THEMSELVES, which are now her own food names. Labelling anything
+  // "incomplete" is a judgement about a food, which her 21 October rule
+  // forbids - and the useful truth is not "this one is lesser" but "these
+  // complete each other", which is a sentence rather than a label.
+  const rows = B.whereItCameFrom(LOG, 'protein');
+  for (const row of rows) {
     for (const word of ['incomplete', 'poor', 'bad', 'low quality', 'worse']) {
       assert.ok(
-        !label.toLowerCase().includes(word),
-        `"${label}" grades a food - that is a verdict, not a group`
+        !row.label.toLowerCase().includes(word),
+        `"${row.label}" grades a food - that is a verdict, not a name`
       );
     }
   }
-  assert.equal(labels.length, 4);
+});
+
+check('protein lists her foods too, with no categories anywhere', () => {
+  // Ruth, 24 October: "this is categories, not what itens the user ate." The
+  // one exception the original note allowed has been removed - see the spec.
+  const rows = B.whereItCameFrom(LOG, 'protein');
+  const names = rows.map((r) => r.label);
+  assert.ok(names.includes('Chicken breast'), 'protein is not listing her foods');
+  assert.ok(names.includes('Lentils'));
+  for (const category of ['Meat', 'Dairy', 'Beans, nuts', 'Animal', 'Plant', 'Not classified']) {
+    assert.ok(!names.includes(category), `"${category}" is a category, not a food she ate`);
+  }
+  // And the grouping is gone from the code entirely, not merely unused.
+  const src = read('mobile/src/lib/nutrient-breakdown.ts');
+  assert.ok(!/proteinBySource/.test(src), 'the grouping is still here');
+  assert.ok(!/PROTEIN_SOURCE_LABEL/.test(src), 'the category labels are still here');
+  assert.ok(!/proteinBySource/.test(SCREEN), 'the screen still reaches for the grouping');
 });
 
 check('nothing maps food names to categories', () => {
@@ -706,8 +702,10 @@ check('nothing maps food names to categories', () => {
       `"${food}" is named in the grouping code - that is a lookup table`
     );
   }
-  // Groups come off the stored column and nothing else.
-  assert.match(src, /row\.protein_source/);
+  // And there is no grouping left. The column may still appear in the row
+  // TYPE - it is a real column on food_items - but nothing may group by it.
+  assert.ok(!/proteinBySource|PROTEIN_SOURCE_LABEL/.test(src), 'the grouping is back');
+  assert.ok(!/byGroup/.test(src), 'something is grouping rows again');
 });
 
 check('a suggestion is a food she is NOT already eating', () => {
@@ -762,10 +760,49 @@ check('the gate cannot be forgotten at a call site', () => {
   assert.match(SCREEN, /spec\.key,\s*\n\s*avoid\s*\n/);
 });
 
+check('nothing is suggested where more is not the point', () => {
+  // Ruth, 24 October: "What on earth is this????" - the Carbohydrates screen
+  // was offering white sugar, icing sugar and demerara sugar, because the
+  // candidates were ranked by concentration and the densest carbohydrate foods
+  // in a composition table are sugars.
+  //
+  // THE RANKING WAS NOT THE BUG. Nothing asked whether suggesting MORE of this
+  // nutrient made sense at all. For a ceiling it is incoherent; for a band it
+  // is presumptuous; for energy it is absurd.
+  const floors = [];
+  const others = [];
+  for (const m of M.MACROS) {
+    const ref = S.referenceFor(m.key, HERS);
+    if (!ref) continue;
+    (ref.shape.kind === 'floor' ? floors : others).push(m.key);
+  }
+  // The four where more is genuinely the point, and nothing else.
+  assert.deepEqual(floors.sort(), ['calcium', 'fibre', 'iron'].sort());
+  for (const key of others) {
+    assert.notEqual(
+      S.referenceFor(key, HERS).shape.kind,
+      'floor',
+      `${key} would be offered more food`
+    );
+  }
+  // And the screen gates on exactly that, plus being under it.
+  assert.match(SCREEN, /ref\?\.shape\.kind === 'floor' && amountNow != null && amountNow < ref\.shape\.value/);
+  assert.match(SCREEN, /if \(spec && worthSuggesting\)/);
+});
+
+check('a nutrient she is already hitting gets no suggestions', () => {
+  // A section headed "Suggestions for you" above a figure she is meeting is
+  // the app inventing a problem. This is a food app used by women who have
+  // been told what to eat all their lives.
+  const fibre = S.referenceFor('fibre', HERS);
+  assert.equal(S.standingFor(35, fibre), 'in-range');
+  assert.ok(35 > fibre.shape.value, 'the gate would still fire on a day she met it');
+});
+
 check('a figure with no amount is never invented', () => {
   assert.deepEqual(B.suggestionsFor([{ name: 'Water', per100g: 0 }], [], 'fibre', []), []);
   assert.deepEqual(B.whereItCameFrom([], 'fibre'), []);
-  assert.deepEqual(B.proteinBySource([]), []);
+  assert.deepEqual(B.whereItCameFrom([], 'protein'), []);
 });
 
 // -- 10. the child inside the parent's bar --------------------------------
@@ -775,16 +812,25 @@ check('saturated fat is drawn inside the fat bar, on the same scale', () => {
   // which actualy then shows it as part of the fat, which is truer."
   assert.match(SCREEN, /const CHILD_OF: Partial<Record<MacroKey, MacroKey>> = \{\s*fat: 'saturated',\s*carbs: 'sugar',\s*\}/);
   assert.match(SCREEN, /styles\.childFill/);
-  assert.match(SCREEN, /styles\.childMark/);
   // Inside, sharing the parent's left edge - not a second bar beneath, which
-  // would invite adding the two together.
-  assert.match(SCREEN, /childFill: \{ position: 'absolute', left: 0, bottom: 0/);
+  // would invite adding the two together. A thin underline, so the part reads
+  // as subordinate to the whole rather than as the measurement itself.
+  assert.match(SCREEN, /childFill: \{ position: 'absolute', left: 0, bottom: 0, height: 4 \}/);
 });
 
-check('a child with no guideline gets no marker rather than a guessed one', () => {
-  // Sugar has no reference, so the segment is drawn and the line is not.
-  assert.match(SCREEN, /childRef && childRef\.shape\.kind === 'ceiling' \? childRef\.shape\.value : null/);
-  assert.match(SCREEN, /child && child\.mark != null \?/);
+check('the bar names its own span rather than drawing bare lines', () => {
+  // Ruth, 24 October: "This diagram makes no sense." It drew one or two
+  // unlabelled vertical rules on a plain track, so the reader had to be told
+  // what the lines meant - a bar whose job is to be understood before it is
+  // read had become something needing a key.
+  //
+  // A floor, a ceiling and a band are three shapes of "all right", and each is
+  // now drawn as the span it actually is, with the figure written beneath.
+  assert.match(SCREEN, /const zone =/);
+  assert.match(SCREEN, /s\.kind === 'floor'/);
+  assert.match(SCREEN, /s\.kind === 'ceiling'/);
+  assert.match(SCREEN, /styles\.zone/);
+  assert.ok(!/styles\.mark\b/.test(SCREEN), 'the bare marker lines are back');
 });
 
 check('the generic food list was replaced, not kept alongside', () => {
@@ -825,6 +871,7 @@ check('the scoped decisions are in the spec, not only in a chat', () => {
   for (const line of [
     'List the foods',
     'food-to-category table',
+    'no exception for protein',
     'Hide',
     'no vegan, vegetarian or flexitarian flag',
     'Never anything the allergy gate catches',
@@ -835,16 +882,11 @@ check('the scoped decisions are in the spec, not only in a chat', () => {
   }
 });
 
-check('the spec and the code agree about the protein groups', () => {
-  // Two copies of one decision is how they drift. The spec names the labels;
-  // this asserts the code still uses those exact words.
+check('the spec records that there are no categories', () => {
   const at = SPEC.indexOf('SCOPED DECISIONS: THE FOOD LOG');
-  // Whitespace-flattened: the spec is hard-wrapped at 80 columns, so a label
-  // can straddle a line break. The decision is the words, not the wrapping.
   const section = SPEC.slice(at, at + 6000).replace(/\s+/g, ' ');
-  for (const label of Object.values(B.PROTEIN_SOURCE_LABEL)) {
-    assert.ok(section.includes(label), `the spec does not name the group "${label}"`);
-  }
+  assert.ok(section.includes('There is no exception for protein'));
+  assert.ok(section.includes('Every nutrient, no exceptions'));
 });
 
 // -- every case above must be able to fail -------------------------------
@@ -998,12 +1040,22 @@ mustFail('the scope quietly dropped from the spec', () =>
   assert.ok(''.includes('SCOPED DECISIONS: THE FOOD LOG'))
 );
 
-mustFail('a food-to-category table creeping back in', () => {
-  // The decision of 23 October, held as a check rather than as a memory:
-  // protein groups on what the parser stores, never on a list of food names
-  // somebody has to maintain. A regex over foods is that list in disguise.
+mustFail('a grouping creeping back in', () => {
+  // Held as a check rather than as a memory, because memory lost it twice.
   const src = read('mobile/src/lib/nutrient-breakdown.ts');
-  assert.match(src, /\/\\b\(milk\|cheese/);
+  assert.match(src, /proteinBySource/);
+});
+
+mustFail('sugar offered as a carbohydrate suggestion', () => {
+  // The shipped bug, as arithmetic: carbohydrate is a band, so the gate must
+  // refuse it however good the candidates look.
+  const ref = S.referenceFor('carbs', HERS);
+  assert.equal(ref.shape.kind, 'floor');
+});
+
+mustFail('a category shown as a food she ate', () => {
+  const names = B.whereItCameFrom(LOG, 'protein').map((r) => r.label);
+  assert.ok(names.includes('Meat, fish, dairy & eggs'));
 });
 
 mustFail('comments mistaken for code', () =>

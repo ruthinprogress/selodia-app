@@ -250,16 +250,28 @@ export function NutrientGrid({
           {/* NESTED, NOT A CELL OF ITS OWN. Saturated fat is a kind of fat. */}
           {cell.child ? (
             <View style={styles.child}>
+              {/* SMALL, AS SHE ASKED. Ruth, 24 October: "I said to leave the
+                  smaller icons in the table, youve enlarged them." The parent
+                  mark is the one carrying the state at a glance; the nested
+                  one is a footnote to it, and at 24 it ate the cell and broke
+                  "sat fat" across four lines. */}
               <NutrientIcon
                 macroKey={cell.child.key}
-                size={24}
+                size={12}
                 color={
                   cell.child.standing
                     ? STANDING_COLOUR[cell.child.standing]
                     : theme.textSecondary
                 }
               />
-              <ThemedText type="detail" themeColor="textSecondary" style={styles.childText}>
+              <ThemedText
+                type="detail"
+                themeColor="textSecondary"
+                style={styles.childText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 {cell.child.figure} {cell.child.label}
               </ThemedText>
             </View>
@@ -289,6 +301,9 @@ const styles = StyleSheet.create({
   // Sized against the log rows beneath the card, which are 14.
   figure: { fontSize: 17, lineHeight: 21, fontFamily: BodyFont.semibold },
   child: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
-  childText: { flexShrink: 1 },
+  // ONE LINE, SHRINKING IF IT MUST. "21 g sat fat" broke into "21 / g s / at /
+  // fat" when the icon beside it doubled - four lines of nonsense where a
+  // footnote should be.
+  childText: { flexShrink: 1, fontSize: 11, lineHeight: 14 },
   pressed: { opacity: 0.6 },
 });

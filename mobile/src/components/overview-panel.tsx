@@ -1060,7 +1060,26 @@ function FigureRow({
         {/* A fixed column, so Food's figures and Body's start at the same x.
             Ragged right is how text sits; a ragged left edge under a label is
             how a table looks broken. */}
-        <ThemedText type="small" themeColor="textSecondary" style={styles.figureLabel}>
+        {/* THE LABEL COLUMN IS A COLUMN OF TITLES, so it takes the heading
+            face (Ruth, 24 October 2026, with the screenshot: "The title column
+            should be Cormorant, not the numbers in the table").
+
+            Food, Body, Movement, Sleep are the names of the four things this
+            screen is about - they are headings standing in a column, not data,
+            and the sans was announcing them in the same voice as the figures
+            beside them.
+
+            AND ONLY THE LABEL. The figures stay in Manrope, which is her point
+            and is also right: a number is data, and a serif set of tabular
+            figures would read as decoration where it needs to read as fact. */}
+        <ThemedText
+          type="smallBold"
+          themeColor="textSecondary"
+          style={styles.figureLabel}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
           {label}
         </ThemedText>
         <View style={styles.inlineStats}>{children}</View>
@@ -1263,13 +1282,21 @@ const styles = StyleSheet.create({
   // The cost is real and taken knowingly: a Body row carrying all three scale
   // figures now wraps onto a second line. A wrapped row is honest; a label
   // broken mid-word is not.
+  // WIDER, BECAUSE THE SERIF NEEDS THE ROOM. 76pt was sized for Manrope at 14;
+  // "Movement" in Cormorant at heading size does not fit it, and the failure
+  // mode is the one Ruth caught on the Week screen - a word broken across two
+  // lines, which reads as a rendering fault rather than as a label.
   figureLabel: {
-    width: 76,
+    width: 92,
+    fontSize: 19,
+    lineHeight: 24,
+    paddingBottom: 0,
   },
   // Indented to the figures' own left edge, so the target reads as belonging to
-  // the Food row above it rather than as a new row of its own.
+  // the Food row above it rather than as a new row of its own. It moves with
+  // the label column: these two numbers are one decision and have to agree.
   targetLine: {
-    paddingLeft: 76,
+    paddingLeft: 92,
     paddingBottom: Spacing.two,
   },
   // The figures themselves, which take the slack so the chevron keeps the
