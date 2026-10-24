@@ -23,6 +23,125 @@ scan did not run rather than that nothing happened.
 
 ---
 
+# Selodía nutrient reference values — 24 October 2026
+
+Not a monthly scan. A task Ruth asked for while building the food log's nutrient
+screens: *"All nutrients should have the correct figure for women in the range
+of the age that is actually recorded for the user. If this needs a research
+task, then let's do it properly and save the research links into the citings
+doc."*
+
+**Four of the ten figures changed. One changed for a reason worth stating on its
+own.**
+
+## The finding
+
+The familiar gram figures are the percentages, with the arithmetic already done
+for somebody who is not the user.
+
+"70 g of fat, 20 g of saturates, 260 g of carbohydrate" are the UK label
+Reference Intakes. The guidance that sets them says in terms that they are
+*"based on an average sized woman doing an average amount of physical activity"*
+eating 2,000 kcal. They are not separate advice from the percentage
+recommendations; they are one step past them.
+
+So a woman eating 1,560 kcal who keeps under 20 g of saturated fat is at **11.5%
+of her energy** — over the 10% ceiling — while an app built on the flat figure
+tells her she is in range. The same error, smaller, ran through total fat,
+carbohydrate and free sugars.
+
+This is the same class of fault as the salt bug found the day before: a
+plausible number, the wrong basis, and no visible symptom.
+
+## What the sources say against what the app does
+
+| Nutrient | Was | Now | Basis |
+|---|---|---|---|
+| Saturated fat | 20 g flat | 10% of her energy | SACN; NHS states 20 g for women, which is that 10% at 2,000 kcal |
+| Total fat | 70 g flat | 35% of her energy | UK DRV; label RI of 70 g is that share at 2,000 kcal |
+| Carbohydrate | no figure | ~50% of her energy, as a wide band | SACN, *Carbohydrates and Health* (2015) |
+| Free sugars | 30 g flat | 5% of her energy | SACN 2015; NHS states 30 g for adults |
+| Fibre | 30 g | **unchanged** | SACN 2015 sets an absolute for adults 17+, not a share of energy |
+| Salt | 6 g | **unchanged** | NHS, an absolute for adults |
+| Calcium | 700 mg | **unchanged** | NHS, adults 19+. The UK does **not** raise this after the menopause, unlike several other countries |
+| Iron | 14.8 mg under 50, 8.7 mg over | see below | NHS |
+
+Fibre, salt and calcium were each checked for the same fault and do not have it.
+A check now holds all three as absolutes so that nobody "improves" them later by
+scaling them.
+
+## Iron: the cliff is softer than a birthday
+
+The NHS gives 14.8 mg for women aged 19 to 49 and 8.7 mg from 50 — and adds that
+**women who continue menstruating after 50 may require the higher amount.**
+
+The app had been dropping everybody to 8.7 mg on their fiftieth birthday, which
+is the app quietly deciding that somebody's periods have stopped. It now reads
+the life stage the user has already recorded, and where that says nothing the
+higher figure stands: under-stating iron for a woman still losing it monthly is
+the costlier of the two mistakes. "Prefer not to say" is treated as *not told*,
+never as *no*.
+
+## Carbohydrate: a band, not a floor
+
+SACN's 50% is a **population average recommendation**. Plenty of women eat
+deliberately below it, for reasons that are theirs. Scoring an individual as
+"Lower" against it would be the app taking a side in an argument it has no
+business in, so the band runs from two thirds of the figure to a third above it,
+and only a day well outside it says anything at all.
+
+## Sources
+
+All read on 24 October 2026. Quotes are from the page, not paraphrased.
+
+- Saturated fat — NHS, *Eat less saturated fat*: "the average woman should eat
+  no more than 20g of saturated fat a day".
+  https://www.nhs.uk/live-well/eat-well/how-to-eat-a-balanced-diet/eat-less-saturated-fat/
+- Total fat and the reference-intake basis — British Nutrition Foundation,
+  *Food labelling*: reference intakes "are based on an average sized woman doing
+  an average amount of physical activity"; Total fat 70 g.
+  https://www.nutrition.org.uk/creating-a-healthy-diet/food-labelling/
+- Carbohydrate — SACN, *Carbohydrates and Health* (2015): "the dietary reference
+  value for carbohydrates be maintained at a population average of approximately
+  50% of total dietary energy intake".
+  https://assets.publishing.service.gov.uk/media/5a7f7cc3ed915d74e622ac2a/SACN_Carbohydrates_and_Health.pdf
+- Free sugars — NHS, *How does sugar in our diet affect our health?*: "Adults
+  should have no more than 30g of free sugars a day".
+  https://www.nhs.uk/live-well/eat-well/food-types/how-does-sugar-in-our-diet-affect-our-health/
+- Fibre — NHS, *How to get more fibre into your diet*: "Government guidelines
+  say our dietary fibre intake should increase to 30g a day ... for adults (aged
+  17 years and over)".
+  https://www.nhs.uk/live-well/eat-well/digestive-health/how-to-get-more-fibre-into-your-diet/
+- Salt — NHS, *Salt in your diet*: "Adults should have no more than 6g of salt a
+  day (around 1 level teaspoon)."
+  https://www.nhs.uk/live-well/eat-well/food-types/salt-in-your-diet/
+- Calcium — NHS, *Calcium*: "Adults aged 19 to 64 and over need 700mg of calcium
+  a day."
+  https://www.nhs.uk/conditions/vitamins-and-minerals/calcium/
+- Iron — NHS, *Iron*: "14.8mg a day for women aged 19 to 49 ... 8.7mg a day for
+  women aged 50 and over", with the note on women still menstruating after 50.
+  https://www.nhs.uk/conditions/vitamins-and-minerals/iron/
+
+## Where this lives in the code
+
+`mobile/src/lib/nutrient-citations.ts` carries every figure with its page, its
+quote, the date it was read, and whether the app scales it. `referenceFor` in
+`mobile/src/lib/nutrient-standing.ts` applies them, and
+`scripts/check-where-the-day-stands.mjs` holds the scaling behaviour — including
+that fibre, salt and calcium must not scale, and that a birthday alone must not
+lower anybody's iron.
+
+## What I could not establish
+
+Whether the UK has any post-menopausal calcium figure distinct from the 700 mg
+adult RNI. The NHS page gives one figure for all adults 19 and over. Several
+other countries raise it after the menopause, and the National Osteoporosis
+Society's own guidance was not checked. **No figure was invented for it** — the
+app shows 700 mg and names the NHS. Worth a proper look before the app ever says
+anything about bone density, which is behind the clinical gate in any case.
+
+---
+
 # Selodía research scan — October 2026
 
 Trial run, done by hand on Sunday 4 October 2026 so Ruth can see the format. The

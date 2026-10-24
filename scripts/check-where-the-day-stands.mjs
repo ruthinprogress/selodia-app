@@ -51,8 +51,24 @@ const root = 'file://' + process.cwd().replace(/\\/g, '/');
 const S = await import(root + '/mobile/src/lib/nutrient-standing.ts');
 const M = await import(root + '/mobile/src/lib/tracked-macros.ts');
 const C = await import(root + '/mobile/src/lib/nutrient-citations.ts');
+const B = await import(root + '/mobile/src/lib/nutrient-breakdown.ts');
 
 const read = (p) => readFileSync(p, 'utf8').replace(/\r/g, '');
+
+/**
+ * The same file with its comments taken out.
+ *
+ * WRITTEN AFTER THIS CHECK FAILED ON ITS OWN PROSE. Three assertions below scan
+ * for words that must never reach a reader - "incomplete" as a label, "try" as
+ * an instruction - and all three fired on comments explaining why those words
+ * are banned. A check that reads the explanation of a rule as a breach of it is
+ * testing the source text, not the behaviour.
+ */
+const withoutComments = (src) =>
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
 const GRID = read('mobile/src/components/nutrient-grid.tsx');
 const CARD = read('mobile/src/components/week-average-card.tsx');
 const SCREEN = read('mobile/src/app/(tabs)/log/nutrient/[key].tsx');
@@ -581,6 +597,168 @@ check('age comes off the date of birth and nothing else', () => {
   assert.equal(S.ageFrom('not a date', now), null);
 });
 
+// -- 9. where yours came from, and what is not in it -----------------------
+//
+// The notes she agreed on 23 October and had to ask for twice: list the foods
+// by default, group only where the group says something the names do not, hide
+// zero rows, and suggest from a real table rather than from imagination.
+
+const LOG = [
+  { name: 'Porridge', fibre_g: 4, protein_g: 5, protein_source: 'plant', sodium_mg: 40 },
+  { name: 'Chicken breast', fibre_g: 0, protein_g: 30, protein_source: 'animal', sodium_mg: 80 },
+  { name: 'Greek yoghurt', fibre_g: null, protein_g: 10, protein_source: 'animal', sodium_mg: 50 },
+  { name: 'Lentils', fibre_g: 6, protein_g: 9, protein_source: 'plant', sodium_mg: 10 },
+  { name: 'Collagen powder', fibre_g: 0, protein_g: 10, protein_source: 'collagen', sodium_mg: 0 },
+  { name: 'Mystery stew', fibre_g: 2, protein_g: 7, protein_source: null, sodium_mg: 400 },
+];
+
+check('a food that carried none of it is not listed', () => {
+  // "A vegan seeing Meat, poultry & fish 0g" was her example; it is noise for
+  // everybody. Chicken and collagen carry no fibre, and nor does a null.
+  const rows = B.whereItCameFrom(LOG, 'fibre');
+  const names = rows.map((r) => r.label);
+  assert.ok(!names.includes('Chicken breast'), 'a zero row is being listed');
+  assert.ok(!names.includes('Greek yoghurt'), 'a null row is being listed');
+  assert.deepEqual(names, ['Lentils', 'Porridge', 'Mystery stew']);
+});
+
+check('the shares add up to the whole', () => {
+  // A breakdown whose parts do not sum is one somebody will try to reconcile
+  // and fail, which is worse than no breakdown.
+  const rows = B.whereItCameFrom(LOG, 'fibre');
+  const total = rows.reduce((n, r) => n + r.share, 0);
+  assert.ok(Math.abs(total - 1) < 0.0001, `shares sum to ${total}`);
+});
+
+check('the tail is folded in, never truncated', () => {
+  const many = Array.from({ length: 10 }, (_, i) => ({
+    name: `Food ${i}`,
+    fibre_g: 10 - i,
+  }));
+  const rows = B.whereItCameFrom(many, 'fibre', 4);
+  assert.equal(rows.length, 4);
+  assert.match(rows[3].label, /^Other \(7\)$/);
+  const total = rows.reduce((n, r) => n + r.share, 0);
+  assert.ok(Math.abs(total - 1) < 0.0001, 'folding the tail lost some of the total');
+});
+
+check('the breakdown is in the same unit as the figure above it', () => {
+  // Salt is stored as sodium in milligrams. A breakdown in milligrams under a
+  // figure in grams of salt is a breakdown of something else - the same unit
+  // fault that let a 6 g salt day read "in range".
+  const rows = B.whereItCameFrom(LOG, 'salt');
+  const stew = rows.find((r) => r.label === 'Mystery stew');
+  assert.ok(stew.amount > 0.9 && stew.amount < 1.1, `400 mg sodium came through as ${stew.amount}`);
+});
+
+check('protein is the one thing grouped, on what the parser already stored', () => {
+  // No food-to-category table exists in this repository and none needs to:
+  // protein_source is recorded at parse time.
+  const rows = B.proteinBySource(LOG);
+  const labels = rows.map((r) => r.label);
+  assert.ok(labels.includes('Animal sources'));
+  assert.ok(labels.includes('Plant sources'));
+  assert.ok(labels.includes('Collagen'));
+  // Unclassified protein gets its own row rather than being folded into a
+  // group it was never put in.
+  assert.ok(labels.includes('Not classified'), 'unclassified protein was absorbed into a group');
+  const total = rows.reduce((n, r) => n + r.share, 0);
+  assert.ok(Math.abs(total - 1) < 0.0001);
+});
+
+check('no food is labelled incomplete, or graded at all', () => {
+  // THE LABELS THEMSELVES, not the file. Labelling a row "incomplete" is a
+  // judgement about a food, which her 21 October rule forbids - and the useful
+  // truth is not "this one is lesser" but "these complete each other", which is
+  // a sentence rather than a label.
+  const labels = [...Object.values(B.PROTEIN_SOURCE_LABEL), 'Not classified'];
+  for (const label of labels) {
+    for (const word of ['incomplete', 'poor', 'bad', 'low quality', 'worse']) {
+      assert.ok(
+        !label.toLowerCase().includes(word),
+        `"${label}" grades a food - that is a verdict, not a group`
+      );
+    }
+  }
+  assert.equal(labels.length, 4);
+});
+
+check('a suggestion is a food she is NOT already eating', () => {
+  const candidates = [
+    { name: 'Lentils', per100g: 8 },
+    { name: 'Chia seeds', per100g: 34 },
+    { name: 'Porridge oats', per100g: 9 },
+  ];
+  const eaten = LOG.map((r) => r.name);
+  const out = B.suggestionsFor(candidates, eaten, 'fibre');
+  const names = out.map((s) => s.food);
+  assert.ok(!names.includes('Lentils'), 'suggesting a food already in her log');
+  assert.ok(names.includes('Chia seeds'));
+});
+
+check('a suggestion says what a food carries, never what to do', () => {
+  // Her rule, 21 October, and in the spec: "A handful of berries carries about
+  // 2g of fibre" rather than "try adding berries".
+  const out = B.suggestionsFor([{ name: 'Chia seeds', per100g: 34 }], [], 'fibre');
+  assert.match(out[0].carries, /carries about/);
+  // Scanned with the comments stripped: the prose explaining why instructions
+  // are banned is not itself an instruction.
+  const src = withoutComments(read('mobile/src/lib/nutrient-breakdown.ts')).toLowerCase();
+  for (const word of ['try ', 'you should', 'make sure', 'aim for', 'add more']) {
+    assert.ok(!src.includes(word), `"${word}" is an instruction`);
+  }
+});
+
+check('a figure with no amount is never invented', () => {
+  assert.deepEqual(B.suggestionsFor([{ name: 'Water', per100g: 0 }], [], 'fibre'), []);
+  assert.deepEqual(B.whereItCameFrom([], 'fibre'), []);
+  assert.deepEqual(B.proteinBySource([]), []);
+});
+
+// -- 10. the child inside the parent's bar --------------------------------
+
+check('saturated fat is drawn inside the fat bar, on the same scale', () => {
+  // Ruth, 24 October: "within it with it's own target along the fat line,
+  // which actualy then shows it as part of the fat, which is truer."
+  assert.match(SCREEN, /const CHILD_OF: Partial<Record<MacroKey, MacroKey>> = \{\s*fat: 'saturated',\s*carbs: 'sugar',\s*\}/);
+  assert.match(SCREEN, /styles\.childFill/);
+  assert.match(SCREEN, /styles\.childMark/);
+  // Inside, sharing the parent's left edge - not a second bar beneath, which
+  // would invite adding the two together.
+  assert.match(SCREEN, /childFill: \{ position: 'absolute', left: 0, bottom: 0/);
+});
+
+check('a child with no guideline gets no marker rather than a guessed one', () => {
+  // Sugar has no reference, so the segment is drawn and the line is not.
+  assert.match(SCREEN, /childRef && childRef\.shape\.kind === 'ceiling' \? childRef\.shape\.value : null/);
+  assert.match(SCREEN, /child && child\.mark != null \?/);
+});
+
+check('the generic food list was replaced, not kept alongside', () => {
+  // Ruth: "Suggestions for you replace where it comes from, since that's in
+  // the food log built above." A generic list of foods carrying a nutrient is
+  // a worse version of the section listing the ones she actually ate.
+  assert.match(SCREEN, /Where yours came from/);
+  assert.match(SCREEN, /Suggestions for you/);
+  assert.ok(
+    !/Where it comes from/.test(withoutComments(SCREEN)),
+    'the generic list is still on the screen beside the real one'
+  );
+  // And the generic prose field is genuinely unused now, not merely unrendered.
+  assert.ok(
+    !/explainer\.where/.test(withoutComments(SCREEN)),
+    'the screen still reads the generic food list'
+  );
+});
+
+check('how to have them comes from a sourced pairing', () => {
+  // "and how to have them (ie, if they need pairing or eaten alongside
+  // something else to be absorbed)". These already existed, each checked
+  // against a named source.
+  assert.match(SCREEN, /nutrientPairFor\(/);
+  assert.match(SCREEN, /\{pair\.why\}/);
+});
+
 // -- every case above must be able to fail -------------------------------
 
 const useless = [];
@@ -687,6 +865,46 @@ mustFail('the explainer rendered at rest', () =>
 
 mustFail('a second stepper on the screen', () =>
   assert.ok(!/<WeekStepper/.test('      <WeekStepper weekStart={weekStart} />'))
+);
+
+mustFail('a zero row listed', () => {
+  const rows = B.whereItCameFrom(LOG, 'fibre');
+  assert.ok(rows.map((r) => r.label).includes('Chicken breast'));
+});
+
+mustFail('shares that do not sum', () => {
+  const rows = B.whereItCameFrom(LOG, 'fibre');
+  const total = rows.reduce((n, r) => n + r.share, 0);
+  assert.ok(Math.abs(total - 1) > 0.0001);
+});
+
+mustFail('salt broken down in milligrams', () => {
+  const stew = B.whereItCameFrom(LOG, 'salt').find((r) => r.label === 'Mystery stew');
+  assert.ok(stew.amount > 100);
+});
+
+mustFail('unclassified protein folded into a group', () => {
+  const labels = B.proteinBySource(LOG).map((r) => r.label);
+  assert.ok(!labels.includes('Not classified'));
+});
+
+mustFail('suggesting a food she already eats', () => {
+  const out = B.suggestionsFor([{ name: 'Lentils', per100g: 8 }], ['Lentils'], 'fibre');
+  assert.equal(out.length, 1);
+});
+
+mustFail('the generic food list kept alongside', () =>
+  assert.ok(!/Where it comes from/.test(withoutComments('<ThemedText>Where it comes from</ThemedText>')))
+);
+
+mustFail('a graded group label', () =>
+  assert.ok(!'Plant sources (incomplete)'.toLowerCase().includes('incomplete'))
+);
+
+mustFail('comments mistaken for code', () =>
+  // The fault this helper exists to stop: the explanation of a banned word read
+  // as a use of it.
+  assert.ok(!withoutComments('// never say try here\nconst a = 1;').includes('const'))
 );
 
 console.log('');

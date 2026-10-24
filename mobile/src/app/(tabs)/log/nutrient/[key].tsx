@@ -11,6 +11,15 @@ import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { explainerFor } from '@/lib/macro-explainers';
+import {
+  proteinBySource,
+  suggestionsFor,
+  whereItCameFrom,
+  type ItemRow,
+  type SourceRow,
+  type Suggestion,
+} from '@/lib/nutrient-breakdown';
+import { nutrientPairFor } from '@/lib/nutrient-pairs';
 import { loadNutrientProfile } from '@/lib/nutrient-profile';
 import {
   referenceFor,
@@ -47,6 +56,12 @@ import { currentWeekStart, daysOfWeek, toLocalDateKey, weekLabel, weekRange } fr
 // screen under it. Those need a query over food_items that does not exist yet.
 // The screen says nothing about them rather than showing an empty frame.
 
+/** Which nutrient is a part of which, mirroring the grid's own nesting. */
+const CHILD_OF: Partial<Record<MacroKey, MacroKey>> = {
+  fat: 'saturated',
+  carbs: 'sugar',
+};
+
 export default function NutrientScreen() {
   const theme = useTheme();
   const { key } = useLocalSearchParams<{ key: string }>();
@@ -55,6 +70,8 @@ export default function NutrientScreen() {
   const [profile, setProfile] = useState<NutrientProfile>(NO_NUTRIENT_PROFILE);
   const [averages, setAverages] = useState<Record<string, number> | null>(null);
   const [daysLogged, setDaysLogged] = useState(0);
+  const [items, setItems] = useState<ItemRow[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   // THIS SCREEN LIVES UNDER A TAB, so it stays mounted and a read on mount runs
   // exactly once. A meal logged by voice while this screen is behind the Log
   // tab would never reach it. check-tabs-refetch caught this before it shipped.
@@ -66,16 +83,29 @@ export default function NutrientScreen() {
     void (async () => {
       const weekStart = currentWeekStart();
       const { startISO, endISO } = weekRange(weekStart);
-      const [{ data }, tracked, p] = await Promise.all([
+      const [{ data }, { data: itemRows }, tracked, p] = await Promise.all([
         supabase
           .from('food_logs')
           .select('happened_at, kcal, protein_g, carbs_g, fat_g, saturated_fat_g, sugar_g, free_sugar_g, fibre_g, sodium_mg, calcium_mg, iron_mg')
           .gte('happened_at', startISO)
           .lt('happened_at', endISO),
+        // THE ITEMS BEHIND THOSE LOGS, for "Where yours came from". Scoped by
+        // the same week, through the log's own timestamp, so the breakdown and
+        // the figure above it can never describe different days.
+        supabase
+          .from('food_items')
+          .select(
+            'name, protein_source, kcal, protein_g, carbs_g, fat_g, saturated_fat_g, '
+              + 'sugar_g, free_sugar_g, fibre_g, sodium_mg, calcium_mg, iron_mg, '
+              + 'food_logs!inner(happened_at)'
+          )
+          .gte('food_logs.happened_at', startISO)
+          .lt('food_logs.happened_at', endISO),
         loadTrackedMacros(),
         loadNutrientProfile(),
       ]);
       if (cancelled) return;
+      setItems((itemRows ?? []) as unknown as ItemRow[]);
 
       const byDay = new Map<string, Record<string, unknown>[]>();
       for (const row of (data ?? []) as Record<string, unknown>[]) {
@@ -89,6 +119,33 @@ export default function NutrientScreen() {
       setAverages(week.averages);
       setDaysLogged(week.daysLogged);
       setProfile(p);
+
+      // GOOD SOURCES SHE IS NOT ALREADY EATING, from the CoFID composition
+      // table the app already carries - 2,886 foods, UK government data.
+      // Nothing is invented here; this only ranks and filters.
+      const spec = MACROS.find((m) => m.key === key);
+      if (spec && spec.column !== 'kcal') {
+        const { data: best } = await supabase
+          .from('food_composition')
+          .select(`name, ${spec.column}`)
+          .not(spec.column, 'is', null)
+          .order(spec.column, { ascending: false })
+          .limit(60);
+        if (cancelled) return;
+        const eaten = ((itemRows ?? []) as unknown as ItemRow[])
+          .map((r) => (r.name ?? '').trim())
+          .filter(Boolean);
+        setSuggestions(
+          suggestionsFor(
+            ((best ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+              name: String(r.name ?? ''),
+              per100g: Number(r[spec.column] ?? 0),
+            })),
+            eaten,
+            spec.key
+          )
+        );
+      }
     })();
     return () => {
       cancelled = true;
@@ -107,11 +164,47 @@ export default function NutrientScreen() {
   }
 
   const explainer = explainerFor(macroKey);
+  // Protein is the one nutrient whose group carries meaning the food names do
+  // not. Everything else lists the foods, which is the truth with no mapping.
+  const sources: SourceRow[] =
+    macroKey === 'protein' ? proteinBySource(items) : whereItCameFrom(items, macroKey);
+  // How to have them: an absorption pairing, where one exists for this
+  // nutrient's foods. Each is sourced - see nutrient-pairs.ts.
+  const pair = nutrientPairFor(suggestions.map((x) => x.food).join(' '), []);
   const reference = referenceFor(macroKey, profile);
   const figure = averages ? macroFigure(macroKey, averages) : null;
   const amount = averages ? macroAmount(macroKey, averages) : null;
   const standing = standingFor(amount, reference);
   const colour = standing ? STANDING_COLOUR[standing] : theme.textSecondary;
+
+  // SATURATED FAT DRAWN INSIDE THE FAT BAR, not under it (Ruth, 24 October
+  // 2026): "Saturated fat needs a bar on the fat page, under the main fat bar,
+  // or within it with it's own target along the fat line, which actualy then
+  // shows it as part of the fat, which is truer."
+  //
+  // She is right that it is truer, and it is the better drawing for the same
+  // reason: saturated fat IS part of the total, so a second bar beneath would
+  // invite somebody to add the two together. Inside, on one scale, the question
+  // "how much of my fat was saturated" is answered without arithmetic - and the
+  // same mechanic serves sugar inside carbohydrate, which was her next note.
+  const childKey = CHILD_OF[macroKey];
+  const childAmount = childKey && averages ? macroAmount(childKey, averages) : null;
+  const childRef = childKey ? referenceFor(childKey, profile) : null;
+  const childPart =
+    childKey && childAmount != null
+      ? {
+          amount: childAmount,
+          // Its own ceiling, on the parent's scale. Sugar has none, and then
+          // the segment is drawn with no marker rather than against a guess.
+          mark: childRef && childRef.shape.kind === 'ceiling' ? childRef.shape.value : null,
+          label: MACROS.find((m) => m.key === childKey)?.short.toLowerCase() ?? '',
+          figure: macroFigure(childKey, averages ?? {}) ?? '',
+          colour: (() => {
+            const st = standingFor(childAmount, childRef);
+            return st ? STANDING_COLOUR[st] : theme.textSecondary;
+          })(),
+        }
+      : null;
 
   return (
     <BodyScreen title={spec.label}>
@@ -141,7 +234,13 @@ export default function NutrientScreen() {
             beside a range still needs reading; a bar is understood before it is
             read. It is drawn only when there is a real range to draw against. */}
         {reference && amount != null ? (
-          <Bar amount={amount} reference={reference} colour={colour} track={theme.background} />
+          <Bar
+            amount={amount}
+            reference={reference}
+            colour={colour}
+            track={theme.background}
+            child={childPart}
+          />
         ) : null}
       </ThemedView>
 
@@ -175,6 +274,17 @@ export default function NutrientScreen() {
         </ThemedView>
       )}
 
+      {/* THE CHILD, NAMED UNDER THE BAR IT SITS IN. The bar shows the share;
+          this says which share it is and how much. */}
+      {childPart ? (
+        <View style={styles.legendRow}>
+          <View style={[styles.swatch, { backgroundColor: childPart.colour }]} />
+          <ThemedText type="detail" themeColor="textSecondary">
+            of which {childPart.figure} {childPart.label}
+          </ThemedText>
+        </View>
+      ) : null}
+
       {explainer ? (
         <>
           <ThemedText type="subtitle" style={styles.head}>
@@ -183,13 +293,75 @@ export default function NutrientScreen() {
           <ThemedText type="small" themeColor="textSecondary" style={styles.para}>
             {explainer.what}
           </ThemedText>
+        </>
+      ) : null}
 
+      {/* WHERE YOURS CAME FROM - her own log, listed by food. Grouped only for
+          protein, where the group says something the food names do not. See
+          nutrient-breakdown.ts for why that is the only exception. */}
+      {sources.length > 0 ? (
+        <>
           <ThemedText type="subtitle" style={styles.head}>
-            Where it comes from
+            Where yours came from
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.para}>
-            {explainer.where}
+          <ThemedText type="detail" themeColor="textSecondary">
+            average per day
           </ThemedText>
+          {sources.map((row) => (
+            <View key={row.label} style={styles.sourceRow}>
+              <ThemedText type="small" style={styles.sourceName} numberOfLines={1}>
+                {row.label}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.sourceFigure}>
+                {perDay(row, daysLogged, macroKey)}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.sourceShare}>
+                {Math.round(row.share * 100)}%
+              </ThemedText>
+            </View>
+          ))}
+        </>
+      ) : null}
+
+      {/* SUGGESTIONS, WHICH REPLACED "Where it comes from" (Ruth, 24 October
+          2026): "Suggestions for you replace where it comes from, since that's
+          in the food log built above."
+
+          She is right - a generic list of foods that carry a nutrient is a
+          worse version of the section directly above it, which lists the ones
+          she actually ate. What is genuinely missing from her log is what is
+          NOT in it.
+
+          EVERY LINE SAYS WHAT A FOOD CARRIES, never what to do. Her rule, and
+          the arithmetic form is the more precise one as well as the honest
+          one. */}
+      {suggestions.length > 0 ? (
+        <>
+          <ThemedText type="subtitle" style={styles.head}>
+            Suggestions for you
+          </ThemedText>
+          <ThemedText type="detail" themeColor="textSecondary">
+            Good sources that are not in your log this week
+          </ThemedText>
+          {suggestions.map((sug) => (
+            <View key={sug.food} style={styles.suggestion}>
+              <ThemedText type="small">{sug.food}</ThemedText>
+              <ThemedText type="detail" themeColor="textSecondary">
+                {sug.carries}
+              </ThemedText>
+            </View>
+          ))}
+
+          {/* HOW TO HAVE THEM, which was the other half of her instruction:
+              "and how to have them (ie, if they need pairing or eaten alongside
+              something else to be absorbed)". These pairings already existed in
+              nutrient-pairs.ts, each one checked against a named source. */}
+          {pair ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.pairNote}>
+              {pair.why}
+              {pair.note ? ` ${pair.note}` : ''}
+            </ThemedText>
+          ) : null}
         </>
       ) : null}
 
@@ -202,6 +374,15 @@ export default function NutrientScreen() {
       ) : null}
     </BodyScreen>
   );
+}
+
+/** A source row's contribution as a per-day average, in the nutrient's unit. */
+function perDay(row: SourceRow, days: number, key: MacroKey): string {
+  const spec = MACROS.find((m) => m.key === key);
+  const n = row.amount / Math.max(1, days);
+  if (key === 'kcal') return Math.round(n).toLocaleString('en-GB');
+  if (spec?.unit === 'mg') return `${Math.round(n)} mg`;
+  return `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10} g`;
 }
 
 /**
@@ -217,25 +398,51 @@ function Bar({
   reference,
   colour,
   track,
+  child,
 }: {
   amount: number;
   reference: { shape: { kind: 'floor' | 'ceiling' | 'band'; value?: number; low?: number; high?: number } };
   colour: string;
   track: string;
+  /** The part of this nutrient that is also something else: sat fat, sugar. */
+  child?: {
+    amount: number;
+    mark: number | null;
+    label: string;
+    figure: string;
+    colour: string;
+  } | null;
 }) {
   const s = reference.shape;
-  const top =
-    s.kind === 'band' ? (s.high ?? 0) * 1.25 : (s.value ?? 0) * 1.25;
+  const top = s.kind === 'band' ? (s.high ?? 0) * 1.25 : (s.value ?? 0) * 1.25;
   const pct = (n: number): `${number}%` =>
     `${Math.max(0, Math.min(100, (n / top) * 100))}%`;
   const markAt = s.kind === 'band' ? (s.low ?? 0) : (s.value ?? 0);
 
   return (
-    <View style={[styles.track, { backgroundColor: track }]}>
-      <View style={[styles.fill, { width: pct(amount), backgroundColor: colour }]} />
-      {/* The line to reach, or the line to stay under. */}
-      <View style={[styles.mark, { left: pct(markAt) }]} />
-      {s.kind === 'band' ? <View style={[styles.mark, { left: pct(s.high ?? 0) }]} /> : null}
+    <View style={styles.barBlock}>
+      <View style={[styles.track, { backgroundColor: track }]}>
+        <View style={[styles.fill, { width: pct(amount), backgroundColor: colour }]} />
+
+        {/* THE CHILD, INSIDE THE PARENT AND ON THE PARENT'S SCALE. Drawn over
+            the fill from the same origin, so its width reads as a share of the
+            whole rather than as a second quantity. */}
+        {child ? (
+          <View
+            style={[styles.childFill, { width: pct(child.amount), backgroundColor: child.colour }]}
+          />
+        ) : null}
+
+        {/* The line to reach, or the line to stay under. */}
+        <View style={[styles.mark, { left: pct(markAt) }]} />
+        {s.kind === 'band' ? <View style={[styles.mark, { left: pct(s.high ?? 0) }]} /> : null}
+
+        {/* And the child's own line, along the same scale - which is what makes
+            it legible as a part rather than as a separate measure. */}
+        {child && child.mark != null ? (
+          <View style={[styles.childMark, { left: pct(child.mark), backgroundColor: child.colour }]} />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -245,9 +452,22 @@ const styles = StyleSheet.create({
   figureRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.three },
   figureBlock: { flexShrink: 1 },
   targetBlock: { alignItems: 'flex-end', flexShrink: 1 },
-  track: { height: 8, borderRadius: 4, overflow: 'hidden', position: 'relative' },
-  fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4 },
+  barBlock: { gap: Spacing.one },
+  track: { height: 14, borderRadius: 7, overflow: 'hidden', position: 'relative' },
+  fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 7 },
+  // The child sits INSIDE the parent's bar, sharing its left edge and half its
+  // height, so it reads as a part of the whole rather than as a second bar.
+  childFill: { position: 'absolute', left: 0, bottom: 0, height: 7, borderBottomLeftRadius: 7 },
   mark: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: '#2D2B28', opacity: 0.45 },
+  childMark: { position: 'absolute', bottom: 0, height: 7, width: 2 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' },
+  swatch: { width: 10, height: 10, borderRadius: 5 },
+  sourceRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.one },
+  sourceName: { flex: 1 },
+  sourceFigure: { minWidth: 62, textAlign: 'right' },
+  sourceShare: { minWidth: 38, textAlign: 'right' },
+  suggestion: { paddingVertical: Spacing.one },
+  pairNote: { marginTop: Spacing.two, lineHeight: 17 },
   stateCard: {
     borderRadius: CardRadius,
     padding: Spacing.three,
