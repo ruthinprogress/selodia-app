@@ -294,7 +294,7 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
           // with nothing she tracks has no tiles at all - see NutrientGrid,
           // which returns null rather than an empty frame.
           openSummary: hasNutrientTiles(totals, tracked) ? (
-            <NutrientGrid values={totals} tracked={tracked} profile={profile} />
+            <NutrientGrid values={totals} tracked={tracked} profile={profile} compact />
           ) : (
             <ThemedText type="small">
               {macroLine(totals, tracked) || summaryOf(list)}

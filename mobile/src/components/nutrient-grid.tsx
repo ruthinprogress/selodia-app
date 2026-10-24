@@ -179,11 +179,30 @@ export function NutrientGrid({
   values,
   tracked,
   profile,
+  compact = false,
 }: {
   /** The figures being judged, keyed by column - a week's average, or a day. */
   values: Record<string, unknown>;
   tracked: MacroKey[];
   profile: NutrientProfile;
+  /**
+   * SMALLER MARKS, FOR THE DAY ROWS (Ruth, 24 October 2026): "Daily food log
+   * still has the large icons, put the snall ones back."
+   *
+   * The same grid draws the week's average at the top of the screen and each
+   * day inside the list, and it was drawing them identically - so when the
+   * card's marks doubled, as she asked, every day row doubled with them.
+   *
+   * THEY ARE NOT DOING THE SAME JOB. The card is the thing somebody arrives at
+   * and reads at a glance, where a 36pt mark is the first thing the eye lands
+   * on. A day row is read in a column of other day rows, where the same mark is
+   * eight large icons competing with the eight above and below them.
+   *
+   * One component, two sizes, because the alternative is two components that
+   * drift - and the colour, the nesting and the arithmetic must never differ
+   * between the two places the same figure appears.
+   */
+  compact?: boolean;
 }) {
   const theme = useTheme();
   const cells = nutrientCells(values, tracked, profile);
@@ -232,7 +251,7 @@ export function NutrientGrid({
                 "icon colour shows how you're doing" requires of it. */}
             <NutrientIcon
               macroKey={cell.key}
-              size={36}
+              size={compact ? 20 : 36}
               color={cell.standing ? STANDING_COLOUR[cell.standing] : theme.textSecondary}
             />
             <ThemedText type="detail" themeColor="textSecondary" style={styles.chevron}>
@@ -240,7 +259,7 @@ export function NutrientGrid({
             </ThemedText>
           </View>
 
-          <ThemedText type="small" style={styles.figure}>
+          <ThemedText type="small" style={compact ? styles.figureCompact : styles.figure}>
             {cell.figure}
           </ThemedText>
           <ThemedText type="detail" themeColor="textSecondary">
@@ -257,7 +276,7 @@ export function NutrientGrid({
                   "sat fat" across four lines. */}
               <NutrientIcon
                 macroKey={cell.child.key}
-                size={12}
+                size={compact ? 10 : 12}
                 color={
                   cell.child.standing
                     ? STANDING_COLOUR[cell.child.standing]
@@ -300,6 +319,9 @@ const styles = StyleSheet.create({
   // the serif is now the heading voice, and a figure is data, not a heading.
   // Sized against the log rows beneath the card, which are 14.
   figure: { fontSize: 17, lineHeight: 21, fontFamily: BodyFont.semibold },
+  // A step down for a day row, which is read in a column of other day rows
+  // rather than arrived at.
+  figureCompact: { fontSize: 15, lineHeight: 19, fontFamily: BodyFont.semibold },
   child: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   // ONE LINE, SHRINKING IF IT MUST. "21 g sat fat" broke into "21 / g s / at /
   // fat" when the icon beside it doubled - four lines of nonsense where a
