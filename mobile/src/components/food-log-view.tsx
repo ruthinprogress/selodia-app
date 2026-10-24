@@ -334,7 +334,15 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
       {/* THE WEEK AS FIGURES, NOT A SENTENCE (her artwork, 22 October 2026).
           Eight numbers in one running line is every number she asked for, in
           the order she asked for them, and unreadable. See week-average-card. */}
-      <WeekAverageCard averages={week.averages} tracked={tracked} daysLogged={week.daysLogged} />
+      <WeekAverageCard
+        averages={week.averages}
+        tracked={tracked}
+        daysLogged={week.daysLogged}
+        profile={profile}
+        weekStart={weekStart}
+        onWeekStart={setWeekStart}
+        isPresent={isCurrentWeek}
+      />
 
       <DayLog
         days={days}
@@ -342,6 +350,9 @@ export function FoodLogView({ initialWeekStart }: { initialWeekStart?: Date }) {
         onWeekStart={setWeekStart}
         isPresent={isCurrentWeek}
         onChanged={() => setReloadKey((k) => k + 1)}
+        // THE CARD ABOVE DRAWS THE WEEK NOW, as her artwork has it. One
+        // stepper, one weekStart, so the list and the card cannot disagree.
+        stepperAbove
         subject={(date) =>
           `About my food from ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}: `
         }

@@ -96,6 +96,15 @@ check('the Health Flower asks again when the tab is focused', () => {
   return 'in the hook, so every consumer gets it';
 });
 
+// A REFETCH IS EITHER OF TWO THINGS, and this check used to know only one of
+// them. `useFocusEffect` is the primitive; `useFocusReload` is this app's own
+// wrapper around it, written because a re-read on focus alone missed a meal
+// still being parsed. Matching only the primitive made this a check on a
+// WORDING rather than on the behaviour - it failed a screen that refetches
+// correctly, and the fix it demanded would have been to import a hook the
+// screen did not need.
+const REFETCHES = /useFocusEffect|useFocusReload/;
+
 check('every database read under a tab either refetches or is named', () => {
   const offenders = [];
   for (const file of files) {
@@ -104,7 +113,7 @@ check('every database read under a tab either refetches or is named', () => {
     const src = strip(readFileSync(file, 'utf8'));
     const reads = /supabase[\s\S]{0,80}?\.from\(/.test(src) || /\.from\('[a-z_]+'\)/.test(src);
     if (!reads) continue;
-    if (/useFocusEffect/.test(src)) continue;
+    if (REFETCHES.test(src)) continue;
     if (name in KNOWN_STALE) continue;
     offenders.push(name);
   }
@@ -133,7 +142,7 @@ check('and this check can fail', () => {
     const hit = files.find((f) => short(f) === name);
     ok(hit, `KNOWN_STALE names ${name}, which does not exist`);
     const src = strip(readFileSync(hit, 'utf8'));
-    ok(!/useFocusEffect/.test(src), `${name} is on the stale list but already refetches - remove it`);
+    ok(!REFETCHES.test(src), `${name} is on the stale list but already refetches - remove it`);
   }
   return `${withReads.length} readers found, and every exemption is real`;
 });

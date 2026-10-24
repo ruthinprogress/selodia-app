@@ -243,6 +243,35 @@ export const STANDING_LABEL: Record<Standing, string> = {
 };
 
 /**
+ * The line under each word, lifted from her artwork unchanged.
+ *
+ * Ruth, 24 October 2026: "that whole section in the artwork is lovely and needs
+ * to just hide behind an 'i' on the daily average card, top right."
+ *
+ * LOVELY AND NOT ON THE MAIN SCREEN ARE BOTH TRUE, which is the whole of the
+ * instruction. Four states with four sentences is four more sentences on a
+ * screen she had already called "not calm", so it lives behind the i - where
+ * somebody meeting the colours for the first time will go looking, and nobody
+ * else has to read it twice a day.
+ */
+export const STANDING_NOTE: Record<Standing, string> = {
+  'in-range': "You're in a good range.",
+  'a-little-low': 'Worth keeping an eye on.',
+  lower: 'Could be higher.',
+  higher: 'Above the suggested range.',
+};
+
+/** The heading and the two paragraphs behind the i, also hers. */
+export const COLOUR_EXPLAINER = {
+  title: "Icon colour shows how you're doing",
+  basis: 'Each nutrient is compared to a range based on your goals, age and sex.',
+  whyTitle: 'Why colour, not dots?',
+  why:
+    'Using the icon colour keeps the screen clean and calm, while still giving you an instant '
+    + "visual sense of what's in range, what to watch and what might need attention.",
+};
+
+/**
  * THE COLOURWAY, CHOSEN BY RUTH ON 23 OCTOBER AND FOR A GOOD REASON.
  *
  * Shown six, she took the one with a SINGLE green: "i associate green with
@@ -258,19 +287,34 @@ export const STANDING_LABEL: Record<Standing, string> = {
  * concern for salt, so neither is universally worse, and the word underneath
  * carries the direction.
  *
- * DEEPENED ON BUILD, AND THE REASON IS MEASURABLE. The tiles are sand, which is
- * what every card in Selodia sits on and what she asked for - "better to not
- * have charcoal tiles, yes". Against sand the four drawn values measure 2.56,
- * 2.02, 2.25 and 2.43 to 1, where the floor for a mark somebody has to SEE is
- * 3.0. "A little low" at 2.02 is a dust colour on a sand card: present in the
- * file and invisible on the phone.
+ * ALMOST EXACTLY AS SHE DREW THEM, and the reason they could be is hers.
  *
- * (THE CHARCOAL SHE REJECTED WAS THE ICON'S, not the tile's - "I rejected a
- * charcoal text for the icon" - and that is a separate fix, in nutrient-grid:
- * the mark now takes the standing colour. Worth keeping the two straight,
- * because they pull in opposite directions. The icon rejection is why colour
- * has to reach the mark at all; the sand ground is why it has to be deep enough
- * to survive there.)
+ * The first build put these marks on the sand the cards are made of, where the
+ * drawn values measure 2.02 to 2.56 against the 3.0 floor for a mark somebody
+ * has to SEE - so I deepened all four, by a lot, and told her the palette had
+ * to change. Her answer, 24 October: "If you copy the artwork and have a
+ * lighter square inside the Daily average this week square, then you don't have
+ * the color problem you invented."
+ *
+ * She was right. Her artwork draws the grid on a lighter panel INSIDE the card,
+ * and on that cream the same four measure 3.26, 2.58, 2.87 and 3.10. The
+ * structure fixed what I had been trying to fix with pigment, and the lesson is
+ * the general one: a contrast failure is a question about the SURFACE at least
+ * as often as about the colour.
+ *
+ * TWO STILL SIT UNDER THE LINE and are nudged by the smallest amount that
+ * clears it - 8% and 3% darker. IN RANGE AND HIGHER ARE UNTOUCHED, exactly as
+ * drawn.
+ *
+ *   in-range      #7C8C6A  unchanged        3.26
+ *   a-little-low  #A89684 -> #9A8979   8%   2.58 -> 3.04
+ *   lower         #B8865F -> #B3825C   3%   2.87 -> 3.03
+ *   higher        #C97458  unchanged        3.10
+ *
+ * THE MARK IS THE ONLY THING CARRYING THE STATE now, which is why the floor
+ * matters more than it did. Her artwork: "Using the icon colour keeps the
+ * screen clean and calm, while still giving you an instant visual sense of
+ * what's in range." A 1.4px line has to be seen to do that.
  *
  * So each is the drawn colour taken down until it clears 3.0 on sand, and no
  * further:
@@ -294,8 +338,11 @@ export const STANDING_LABEL: Record<Standing, string> = {
  * separate these four hues.
  */
 export const STANDING_COLOUR: Record<Standing, string> = {
-  'in-range': '#707E5F',
-  'a-little-low': '#867769',
-  lower: '#9B7150',
-  higher: '#B0654D',
+  'in-range': '#7C8C6A',
+  'a-little-low': '#9A8979',
+  lower: '#B3825C',
+  higher: '#C97458',
 };
+
+/** The ground the marks are drawn on, so the check measures the real pair. */
+export const STANDING_GROUND = '#F7F3EA';

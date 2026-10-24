@@ -1,9 +1,19 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { NutrientGrid } from '@/components/nutrient-grid';
+import { WeekStepper } from '@/components/week-stepper';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import {
+  COLOUR_EXPLAINER,
+  STANDING_COLOUR,
+  STANDING_LABEL,
+  STANDING_NOTE,
+  type NutrientProfile,
+  type Standing,
+} from '@/lib/nutrient-standing';
 import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { MACROS, macroFigure, type MacroKey } from '@/lib/tracked-macros';
@@ -34,13 +44,26 @@ export function WeekAverageCard({
   averages,
   tracked,
   daysLogged,
+  profile,
+  weekStart,
+  onWeekStart,
+  isPresent,
+  onJump,
 }: {
   /** The per-day average for each macro, keyed by column, already divided. */
   averages: Record<string, number>;
   tracked: MacroKey[];
   daysLogged: number;
+  /** Her age and her two self-set targets, for the grid below the figures. */
+  profile: NutrientProfile;
+  /** The week the card is describing, and the control that changes it. */
+  weekStart: Date;
+  onWeekStart: (d: Date) => void;
+  isPresent: boolean;
+  onJump?: () => void;
 }) {
   const theme = useTheme();
+  const [explaining, setExplaining] = useState(false);
 
   const figure = (key: MacroKey) => {
     const spec = MACROS.find((m) => m.key === key);
@@ -68,75 +91,74 @@ export function WeekAverageCard({
             {daysLogged} of 7 days logged
           </ThemedText>
         </View>
-        <Pressable
-          onPress={() => router.push('/log/nutrients')}
-          accessibilityRole="button"
-          accessibilityLabel="What these nutrients mean"
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [styles.link, pressed && styles.pressed]}
-        >
-          <ThemedText type="small" themeColor="link">
-            What these mean
-          </ThemedText>
-          <Ionicons name="chevron-forward" size={14} color={theme.link} />
-        </Pressable>
+        {/* THE WEEK, IN THE CARD, AS DRAWN (Ruth, 24 October 2026: "Do it like
+            the artwork"). It is the same control the day list used to draw
+            below, moved rather than copied - see week-stepper.tsx for why a
+            second one would have been a bug rather than a duplicate. */}
+        <View style={styles.headRight}>
+          <WeekStepper
+            weekStart={weekStart}
+            onWeekStart={onWeekStart}
+            isPresent={isPresent}
+            onJump={onJump}
+          />
+          {/* THE "i", HOLDING THE SECTION SHE LIKED. It replaces the "What
+              these mean" link that used to sit here, and that is a trade worth
+              stating: the link went to the generic list of nutrients, which is
+              the thing she said the follow-through screens had been fobbed off
+              with. Meaning now lives on each nutrient's own screen, one chevron
+              away in the grid below, and the i holds what the colours mean. */}
+          <Pressable
+            onPress={() => setExplaining((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="What the colours mean"
+            accessibilityState={{ expanded: explaining }}
+            hitSlop={Spacing.three}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons
+              name={explaining ? 'close-outline' : 'information-circle-outline'}
+              size={18}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+        </View>
       </View>
 
-      {/* A GRID OF THREE, NOT A WRAPPING ROW (22 October 2026, her screenshot
-          and one word: "This is not good").
+      <NutrientGrid values={averages} tracked={tracked} profile={profile} />
 
-          THREE THINGS WERE WRONG AND TWO WERE THE SAME MISTAKE. The figures
-          were `title`, which is 32px - a size meant for a screen's name, used
-          eight times in one card, so the card ate the page and left one day
-          visible underneath it. And the hairlines were drawn before every
-          column except the very first, which is correct for ONE row and wrong
-          for every row after it: each wrapped line began with a rule hanging
-          off its left edge.
+      {explaining ? <ColourExplainer /> : null}
+    </ThemedView>
+  );
+}
 
-          A fixed three-column grid fixes both. The rule belongs to a cell's
-          LEFT edge and is drawn only when the cell is not first in its row,
-          which is arithmetic on the index rather than on where the text
-          happened to wrap. */}
-      {/* SMALLER AGAIN, AND NO RULES (22 October 2026, second attempt: "Its
-          still huge and overbearing").
+/** Her artwork's legend section, word for word, shown only when asked for. */
+function ColourExplainer() {
+  return (
+    <ThemedView type="background" style={styles.explainer}>
+      <ThemedText type="smallBold">{COLOUR_EXPLAINER.title}</ThemedText>
+      <ThemedText type="detail" themeColor="textSecondary" style={styles.para}>
+        {COLOUR_EXPLAINER.basis}
+      </ThemedText>
 
-          The first fix took the figures from 32px to 22px and kept three to a
-          row, which is still eight large numbers stacked three rows deep - a
-          card taller than the log it sits above. Two rounds of trimming a size
-          was the wrong move: the problem is that EIGHT FIGURES CANNOT BE BIG.
-          Her artwork fits six in one row precisely because they are small.
+      {(['in-range', 'a-little-low', 'lower', 'higher'] as Standing[]).map((s) => (
+        <View key={s} style={styles.state}>
+          <View style={[styles.swatch, { backgroundColor: STANDING_COLOUR[s] }]} />
+          <View style={styles.stateText}>
+            <ThemedText type="detail">{STANDING_LABEL[s]}</ThemedText>
+            <ThemedText type="detail" themeColor="textSecondary">
+              {STANDING_NOTE[s]}
+            </ThemedText>
+          </View>
+        </View>
+      ))}
 
-          So: four to a row, seventeen point, and the hairlines gone. The rules
-          were the artwork's, drawn around six figures in a single line where
-          they separate; around a grid they are a lattice, and a lattice is
-          weight. Whitespace separates these perfectly well and weighs nothing,
-          which is the whole of what "overbearing" was describing.
-
-          It also deletes a bug class rather than fixing one: with no rules
-          there is no index arithmetic, so there is no row that can begin with
-          a dangling one. */}
-      <View style={styles.figures}>
-        {columns.map((m) => {
-          const child = (Object.keys(UNDER) as MacroKey[]).find(
-            (k) => UNDER[k] === m.key && tracked.includes(k) && figure(k)
-          );
-          return (
-            <View key={m.key} style={styles.cell}>
-              <ThemedText type="small" style={styles.figure}>
-                {figure(m.key)}
-              </ThemedText>
-              <ThemedText type="detail" themeColor="textSecondary" style={styles.label}>
-                {m.short.toLowerCase()}
-              </ThemedText>
-              {child && (
-                <ThemedText type="detail" themeColor="textSecondary" style={styles.label}>
-                  {figure(child)} {MACROS.find((x) => x.key === child)?.short.toLowerCase()}
-                </ThemedText>
-              )}
-            </View>
-          );
-        })}
-      </View>
+      <ThemedText type="smallBold" style={styles.whyHead}>
+        {COLOUR_EXPLAINER.whyTitle}
+      </ThemedText>
+      <ThemedText type="detail" themeColor="textSecondary" style={styles.para}>
+        {COLOUR_EXPLAINER.why}
+      </ThemedText>
     </ThemedView>
   );
 }
@@ -149,7 +171,13 @@ const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: CardRadius, gap: Spacing.two },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
   heading: { flex: 1, gap: 1 },
-  link: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44 },
+  headRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  explainer: { borderRadius: CardRadius, padding: Spacing.three, gap: Spacing.two },
+  para: { lineHeight: 17 },
+  state: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  stateText: { flex: 1 },
+  swatch: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
+  whyHead: { marginTop: Spacing.two },
   figures: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Spacing.three },
   cell: { width: `${100 / PER_ROW}%`, paddingRight: Spacing.two },
   // SIXTEEN, AND SIZED AGAINST THE LOG RATHER THAN AGAINST A SCALE (Ruth,

@@ -5,10 +5,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { ThemedText } from '@/components/themed-text';
+import { WeekStepper } from '@/components/week-stepper';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Undo } from '@/lib/remove-entry';
-import { addWeeks, toLocalDateKey, weekLabel } from '@/lib/week';
+import { toLocalDateKey } from '@/lib/week';
 
 // ONE DAY LIST, USED BY FOOD, MOVEMENT AND MEASUREMENTS.
 //
@@ -113,10 +114,13 @@ export function DayLog({
   onChanged,
   subject,
   empty,
+  stepperAbove,
 }: {
   days: LogDay[];
   weekStart: Date;
   onWeekStart: (d: Date) => void;
+  /** The screen has already drawn the week stepper, so this one must not. */
+  stepperAbove?: boolean;
   /** True when the week shown is the current one, so forward is disabled. */
   isPresent: boolean;
   /** The far-jump control on the label, where a screen has one. */
@@ -191,32 +195,22 @@ export function DayLog({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.weekBar}>
-        <Step label="‹" hint="Previous week" onPress={() => onWeekStart(addWeeks(weekStart, -1))} />
-        {onJump ? (
-          <Pressable
-            onPress={onJump}
-            accessibilityRole="button"
-            accessibilityLabel="Jump to another month"
-            hitSlop={Spacing.two}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <ThemedText type="small" themeColor="textSecondary">
-              {weekLabel(weekStart)}
-            </ThemedText>
-          </Pressable>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            {weekLabel(weekStart)}
-          </ThemedText>
-        )}
-        <Step
-          label="›"
-          hint="Next week"
-          disabled={isPresent}
-          onPress={() => onWeekStart(addWeeks(weekStart, 1))}
+      {/* THE STEPPER IS DRAWN HERE UNLESS THE SCREEN DRAWS IT ITSELF (Ruth,
+          24 October 2026). Her artwork puts it inside the Daily average card
+          on Food & Drink; Movement and Measurements keep it where it is.
+
+          `stepperAbove` is the screen saying "I have already drawn one" -
+          never a second copy, because two steppers would each hold their own
+          idea of the week and the list would stop agreeing with the card above
+          it. Both are handed the same weekStart either way. */}
+      {stepperAbove ? null : (
+        <WeekStepper
+          weekStart={weekStart}
+          onWeekStart={onWeekStart}
+          isPresent={isPresent}
+          onJump={onJump}
         />
-      </View>
+      )}
 
       {ordered.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -462,42 +456,8 @@ function DayRow({
   );
 }
 
-function Step({
-  label,
-  hint,
-  onPress,
-  disabled,
-}: {
-  label: string;
-  hint: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={hint}
-      hitSlop={Spacing.three}
-      style={({ pressed }) => pressed && styles.pressed}
-    >
-      <ThemedText type="small" style={{ color: disabled ? theme.backgroundSelected : theme.accentDeep }}>
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
-  weekBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: Spacing.three,
-  },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, paddingVertical: Spacing.two },
   dayOpener: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   dayLabelOnly: { flexDirection: 'row' },

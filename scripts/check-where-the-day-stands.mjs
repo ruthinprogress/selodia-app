@@ -1,51 +1,62 @@
-// IS THE COLOUR ON THAT TILE TELLING HER THE TRUTH?
+// IS THAT COLOURED MARK TELLING HER THE TRUTH?
 //
 //   node --import ./scripts/ts-resolve-hook.mjs scripts/check-where-the-day-stands.mjs
 //
 // Ruth, 23 October 2026, on a food log that showed her averages and nothing
 // else: "I can't tell that from a glance and that's actually not very good body
-// litaracy training... I actually don't think it's a nice to have - it's the
-// missing piece that was making it feel pointless and a chore."
+// litaracy training... it's the missing piece that was making it feel pointless
+// and a chore."
 //
-// The grid is the answer to that, and it is the most dangerous thing on the
-// screen, because a coloured tile is read as a FACT about her body in a way a
-// row of numbers never is. Six ways it can lie, in the order they would happen:
+// REWRITTEN 24 OCTOBER, when the first build came back from her phone wrong in
+// almost every respect: "the main screen is nothing like the artwork, the
+// follow through screens weren't make, just pointed to the generic list of
+// nutrients we already had."
+//
+// Her artwork says three things this file now holds:
+//
+//   "Icon colour shows how you're doing."    the mark is the ONLY cue on the
+//                                            grid - no bar, no word, no
+//                                            sentence. "this is not calm" was
+//                                            her verdict on having all three.
+//   a chevron into the nutrient's own screen not into the glossary
+//   a lighter square inside the card         which is what makes her colourway
+//                                            legible without changing it
+//
+// Seven ways it can lie, in the order they would happen:
 //
 //  1. A UNIT MISMATCH. Salt is stored as sodium in milligrams and shown as
-//     grams of salt. The first version of the reference was a 2,400 ceiling
-//     against a figure already divided by 2.5, so a 6 g salt day arrived as the
-//     number 2.4 and came back "in range" - the one nutrient that could never
+//     grams of salt. The first version compared grams to a milligram ceiling,
+//     so a 6 g salt day read "in range" - the one nutrient that could never
 //     turn, with no symptom at all.
-//  2. A GUIDELINE READ BACK AS HER TARGET. A population figure she never agreed
-//     to, labelled "target", is a goal acquired by accident. Two of these ten
-//     are hers and eight are not.
+//  2. A GUIDELINE READ BACK AS HER TARGET. A population figure she never
+//     agreed to, labelled "target", is a goal acquired by accident.
 //  3. AN INVENTED COMPARISON. Carbohydrate has no published daily gram figure
-//     and total sugar cannot be measured against a free-sugar limit. A tile
-//     that guesses looks exactly like the eight that do not.
-//  4. COLOUR AS THE ONLY CUE. Four hues and no words is a grid that says
-//     nothing to the one reader in twelve who cannot separate them.
-//  5. A MARK NOBODY CAN SEE. The tiles are sand - which is what every card in
-//     this app sits on, and what she asked for. Against sand the drawn values
-//     measure as low as 2.02:1, under the 3.0 floor for a mark. The colour has
-//     to reach the ICON as well as the bar, because a charcoal icon was the one
-//     thing she specifically rejected, so a faint colour fails twice.
-//  6. A FALLBACK THAT CANNOT RUN. `<Grid /> ?? <Line />` is dead code, because
-//     a JSX element is never null, and the day with no figures shows a gap.
+//     and total sugar cannot be measured against a free-sugar limit.
+//  4. A MARK NOBODY CAN SEE. The colour is now the only cue on the grid, so
+//     the 3:1 floor is not a nicety - and it must be measured against the
+//     surface the mark is ACTUALLY drawn on.
+//  5. COLOUR WITH NO WAY TO LEARN IT. The word moved off the cell, so the
+//     legend behind the "i" is the only place the four states are named.
+//  6. A CHEVRON INTO THE GLOSSARY. The thing she called out by name.
+//  7. TWO WEEK STEPPERS. The card and the list below it would each hold their
+//     own idea of the week.
 
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 const root = 'file://' + process.cwd().replace(/\\/g, '/');
-// nutrient-profile.ts is NOT imported here, and that is deliberate: it reaches
-// Supabase and so reaches react-native, which plain node cannot parse. The type
-// it fills and the age sum that feeds it live in nutrient-standing.ts for
-// exactly that reason, so everything below is reachable.
+// nutrient-profile.ts is NOT imported: it reaches Supabase and so reaches
+// react-native, which plain node cannot parse. The type it fills and the age
+// sum live in nutrient-standing.ts for exactly that reason.
 const S = await import(root + '/mobile/src/lib/nutrient-standing.ts');
 const M = await import(root + '/mobile/src/lib/tracked-macros.ts');
 
 const read = (p) => readFileSync(p, 'utf8').replace(/\r/g, '');
 const GRID = read('mobile/src/components/nutrient-grid.tsx');
+const CARD = read('mobile/src/components/week-average-card.tsx');
+const SCREEN = read('mobile/src/app/(tabs)/log/nutrient/[key].tsx');
 const VIEW = read('mobile/src/components/food-log-view.tsx');
+const DAYLOG = read('mobile/src/components/day-log.tsx');
 const THEME = read('mobile/src/constants/theme.ts');
 
 let passed = 0;
@@ -71,20 +82,13 @@ const standing = (key, row, profile = HERS) =>
 
 check('salt is judged in grams of salt, not milligrams of sodium', () => {
   // A gram of salt is 400 mg of sodium, so the 6 g guideline is 2,400 mg.
-  // 2,600 is a salty day and must turn.
   assert.equal(standing('salt', { sodium_mg: 2600 }), 'higher');
-  // 800 mg of sodium is 2 g of salt, which is well under it.
   assert.equal(standing('salt', { sodium_mg: 800 }), 'in-range');
 });
 
 check('a salt day over the guideline can never read in range', () => {
-  // THE SHAPE OF THE OLD BUG, caught by arithmetic rather than by a number.
-  // Anything above the ceiling must turn, whatever the figure happens to be.
   const ref = S.referenceFor('salt', HERS);
   assert.equal(S.standingFor(ref.shape.value * 1.2, ref), 'higher');
-  // And the stored column, converted, must land in the ceiling's own unit. If
-  // these two ever drift apart again, salt becomes the one nutrient on the grid
-  // that cannot turn, with no symptom at all.
   const grams = M.macroAmount('salt', { sodium_mg: 2400 });
   assert.ok(
     Math.abs(grams - ref.shape.value) < 0.5,
@@ -92,10 +96,8 @@ check('a salt day over the guideline can never read in range', () => {
   );
 });
 
-check('the figure on the tile and the value being judged are the same number', () => {
-  // A tile reading "5.2 g" coloured from the raw 13,000 would be the unit bug
-  // again, one layer up. Both must come off macroAmount.
-  assert.match(GRID, /macroAmount\(spec\.key, values\)/);
+check('the figure on the cell and the value being judged are the same number', () => {
+  assert.match(GRID, /macroAmount\(key, values\)/);
   assert.ok(
     !/values\[\s*spec\.column\s*\]/.test(GRID),
     'the grid is reading the raw column, which for salt is sodium in milligrams'
@@ -125,9 +127,13 @@ check('every published figure names whose it is', () => {
   }
 });
 
-check('the tile prints the word guideline or target, never bare', () => {
-  assert.match(GRID, /reference\.kind === 'target' \? 'target' : 'guideline'/);
-  assert.match(GRID, /\$\{reference\.stated\} · \$\{reference\.source\} \$\{kind\}/);
+check('the nutrient screen says target or guideline, never bare', () => {
+  // THIS MOVED OFF THE CELL, which is the point of the redesign: the grid is
+  // four things and a glance. The basis is owed, so it is owed on the screen
+  // the chevron opens.
+  assert.match(SCREEN, /reference\.kind === 'target' \? 'Target' : 'Guideline'/);
+  assert.match(SCREEN, /is your own target/);
+  assert.match(SCREEN, /from \$\{reference\.source\}/);
 });
 
 // -- 3. nothing is invented -------------------------------------------------
@@ -137,6 +143,13 @@ check('carbohydrate and total sugar get no comparison at all', () => {
     assert.equal(S.referenceFor(key, HERS), null, `${key} must have no reference`);
     assert.equal(standing(key, { carbs_g: 400, sugar_g: 300 }), null);
   }
+});
+
+check('and the screen says WHY there is nothing to compare against', () => {
+  // Grey with no explanation reads as a figure that failed to load.
+  assert.match(SCREEN, /No guideline to compare against/);
+  assert.match(SCREEN, /share of your energy rather than a number of grams/);
+  assert.match(SCREEN, /published limit is for free sugars/);
 });
 
 check('iron waits for an age rather than guessing which figure applies', () => {
@@ -149,49 +162,17 @@ check('her two targets disappear when she has not set them', () => {
   const blank = S.NO_NUTRIENT_PROFILE;
   assert.equal(S.referenceFor('kcal', blank), null);
   assert.equal(S.referenceFor('protein', blank), null);
-  // And the published eight are unaffected by her having no profile.
   assert.notEqual(S.referenceFor('fibre', blank), null);
 });
 
-check('a tile with no reference still appears, grey, and says why', () => {
-  assert.match(GRID, /No guideline/);
-  assert.match(GRID, /Nothing published to compare this to/);
+check('a cell with no reference still appears, in grey', () => {
   // It is included on the strength of a FIGURE, not of a reference.
-  assert.match(GRID, /if \(figure == null\) continue;/);
+  assert.match(GRID, /if \(!spec \|\| figure == null\) return null;/);
+  assert.match(GRID, /cell\.standing \? STANDING_COLOUR\[cell\.standing\] : theme\.textSecondary/);
 });
 
-// -- 4. the colour is never the only cue -----------------------------------
+// -- 4. a mark somebody can see --------------------------------------------
 
-check('every tile carries the word as well as the bar', () => {
-  assert.match(GRID, /STANDING_LABEL\[tile\.standing\]/);
-  // And a listener gets the state spoken, since a bar carries no text.
-  assert.match(GRID, /accessibilityLabel=/);
-  assert.match(GRID, /STANDING_LABEL\[tile\.standing\]\.toLowerCase\(\)/);
-});
-
-check('the icon is the standing colour, never charcoal', () => {
-  // Ruth, 23 October 2026: "I rejected a charcoal text for the icon." A mark
-  // that is the same grey on every tile reads as decoration, and leaves a
-  // four-pixel bar as the only thing carrying the state.
-  assert.match(GRID, /color=\{tile\.standing \? STANDING_COLOUR\[tile\.standing\] : undefined\}/);
-});
-
-check('the legend shows only the states actually drawn', () => {
-  assert.match(GRID, /tiles\.some\(\(t\) => t\.standing === s\)/);
-});
-
-check('her four words are the only words for the four states', () => {
-  assert.deepEqual(S.STANDING_LABEL, {
-    'in-range': 'In range',
-    'a-little-low': 'A little low',
-    lower: 'Lower',
-    higher: 'Higher',
-  });
-});
-
-// -- 5. a mark somebody can see -------------------------------------------
-
-/** The relative luminance of a hex colour. */
 function luminance(hex) {
   const n = parseInt(hex.slice(1), 16);
   const lin = (c) => {
@@ -220,41 +201,52 @@ function lab(hex) {
   const Z = f((r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883);
   return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
 }
-
-/** How far apart two colours are to an eye. Under about 10 reads as the same. */
 function difference(a, b) {
   const [l1, a1, b1] = lab(a);
   const [l2, a2, b2] = lab(b);
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }
 
-/** Sand, read out of the palette rather than copied, so a repaint moves this. */
-const SAND = (THEME.match(/backgroundElement: '(#[0-9A-Fa-f]{6})'/) ?? [])[1];
+const CARD_GROUND = (THEME.match(/backgroundElement: '(#[0-9A-Fa-f]{6})'/) ?? [])[1];
+const PAGE = (THEME.match(/background: '(#[0-9A-Fa-f]{6})'/) ?? [])[1];
 
-check('sand was found in the palette, so the floor below means something', () => {
-  assert.ok(SAND, 'backgroundElement is no longer a plain hex in theme.ts');
+check('the palette was read, so the floors below mean something', () => {
+  assert.ok(CARD_GROUND, 'backgroundElement is no longer a plain hex in theme.ts');
+  assert.ok(PAGE, 'background is no longer a plain hex in theme.ts');
+  assert.equal(S.STANDING_GROUND, PAGE, 'the declared ground is not the one the panel uses');
 });
 
-check('every standing colour clears 3 to 1 against the card it sits on', () => {
+check('the grid is drawn on a LIGHTER panel inside the card', () => {
+  // Ruth, 24 October: "If you copy the artwork and have a lighter square inside
+  // the Daily average this week square, then you don't have the color problem
+  // you invented." She was right, and this is the structural half of the fix -
+  // without it the marks go back to 2.02:1 and no colour change rescues them.
+  assert.match(CARD, /<ThemedView type="backgroundElement"/, 'the card is no longer sand');
+  assert.match(GRID, /<ThemedView type="background" style=\{styles\.panel\}/);
+  assert.ok(
+    luminance(PAGE) > luminance(CARD_GROUND),
+    `the panel (${PAGE}) is not lighter than the card (${CARD_GROUND})`
+  );
+});
+
+check('every standing colour clears 3 to 1 on the panel it is drawn on', () => {
   for (const [state, colour] of Object.entries(S.STANDING_COLOUR)) {
-    const ratio = contrast(colour, SAND);
-    assert.ok(ratio >= 3, `${state} ${colour} measures ${ratio.toFixed(2)}:1 on sand`);
+    const ratio = contrast(colour, S.STANDING_GROUND);
+    assert.ok(ratio >= 3, `${state} ${colour} measures ${ratio.toFixed(2)}:1 on the panel`);
   }
+});
+
+check('two of her four drawn colours are untouched', () => {
+  // The structure did the work, so the pigment barely had to move. In range and
+  // Higher are exactly as she chose them; the other two are nudged 8% and 3%,
+  // which is the smallest step that clears the floor.
+  assert.equal(S.STANDING_COLOUR['in-range'], '#7C8C6A');
+  assert.equal(S.STANDING_COLOUR.higher, '#C97458');
 });
 
 check('the four colours are four, not three and a near-duplicate', () => {
   const states = Object.keys(S.STANDING_COLOUR);
   assert.equal(new Set(Object.values(S.STANDING_COLOUR)).size, 4);
-  // MEASURED AS COLOUR DIFFERENCE, NOT AS LIGHTNESS. The first version of this
-  // demanded a 10% luminance step between neighbours, which the four could only
-  // meet by becoming a dark-to-light ladder - and the only set that satisfied it
-  // had three of the four collapsed onto the same muddy brown, distinguishable
-  // by lightness and nothing else. That is a worse palette AND a worse test: it
-  // threw away the hues she chose in order to pass a rule nobody asked for.
-  //
-  // Twelve is the line because her own drawn set's closest pair measures 16.4,
-  // so this holds the spacing she drew with room for a repaint, and rejects two
-  // colours that genuinely read as one.
   for (let i = 0; i < states.length; i += 1) {
     for (let j = i + 1; j < states.length; j += 1) {
       const d = difference(S.STANDING_COLOUR[states[i]], S.STANDING_COLOUR[states[j]]);
@@ -264,9 +256,6 @@ check('the four colours are four, not three and a near-duplicate', () => {
 });
 
 check('one green, which is why she chose this colourway', () => {
-  // Ruth: "i associate green with good, reds with bad, so it's a bit confusing
-  // to have greens as a little low." Green on two states is green doing two
-  // jobs, and neither reads.
   const greens = Object.values(S.STANDING_COLOUR).filter((hex) => {
     const n = parseInt(hex.slice(1), 16);
     const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -275,48 +264,128 @@ check('one green, which is why she chose this colourway', () => {
   assert.equal(greens.length, 1, `${greens.length} colours read as green`);
 });
 
-// -- 6. the fallback can run ----------------------------------------------
+// -- 5. the colour can be learned, and heard -------------------------------
 
-check('the empty day falls back through a predicate, not through JSX', () => {
-  assert.match(VIEW, /hasNutrientTiles\(totals, tracked\) \?/);
+check('the grid carries the mark and nothing else', () => {
+  // "Icon colour shows how you're doing" - her artwork. The first build had a
+  // bar AND a word AND a sentence on every cell, which is what "this is not
+  // calm" was describing.
+  assert.ok(!/styles\.bar\b/.test(GRID), 'the coloured bar is back on the cell');
   assert.ok(
-    !/\/>\s*\)\s*\?\?/.test(VIEW),
-    'a JSX element is never null, so `<Grid /> ?? <Line />` is dead code'
+    !/STANDING_LABEL\[cell\.standing\]/.test(GRID),
+    'the state word is back on the cell - it belongs behind the i and on the nutrient screen'
   );
 });
 
-check('the predicate agrees with what the grid would draw', () => {
-  // Both read the same figures through the same filter, so they cannot disagree
-  // about whether there is anything to show.
-  assert.match(GRID, /export function hasNutrientTiles/);
-  assert.match(GRID, /return tilesFor\(/);
+check('the four states are named behind the "i", in her artwork\'s words', () => {
+  assert.match(CARD, /explaining \? <ColourExplainer \/> : null/);
+  assert.match(CARD, /setExplaining\(\(v\) => !v\)/);
+  assert.deepEqual(S.STANDING_LABEL, {
+    'in-range': 'In range',
+    'a-little-low': 'A little low',
+    lower: 'Lower',
+    higher: 'Higher',
+  });
+  for (const note of Object.values(S.STANDING_NOTE)) {
+    assert.ok(note.length > 8, 'a state has no line under it');
+  }
+  assert.match(S.COLOUR_EXPLAINER.title, /Icon colour shows how you're doing/);
+  assert.match(S.COLOUR_EXPLAINER.basis, /your goals, age and sex/);
+  assert.match(S.COLOUR_EXPLAINER.whyTitle, /Why colour, not dots\?/);
 });
 
-check('the day is summed once and read three times', () => {
-  assert.match(VIEW, /const totals = sumRows\(/);
-  assert.match(VIEW, /values=\{totals\}/);
-  assert.match(VIEW, /macroLine\(totals, tracked\)/);
+check('the explainer is NOT on the screen at rest', () => {
+  // The whole reason it is behind an i. A card that renders it unconditionally
+  // puts four more sentences on the screen she called not calm.
+  assert.match(CARD, /const \[explaining, setExplaining\] = useState\(false\)/);
 });
 
-// -- 7. where the bands fall ----------------------------------------------
+check('a listener is told the state, since colour says nothing aloud', () => {
+  assert.match(GRID, /accessibilityLabel=/);
+  assert.match(GRID, /STANDING_LABEL_SPOKEN\[cell\.standing\]/);
+});
+
+check('the mark is the standing colour, never charcoal', () => {
+  // Ruth, 23 October: "I rejected a charcoal text for the icon."
+  assert.match(GRID, /color=\{cell\.standing \? STANDING_COLOUR\[cell\.standing\] : theme\.textSecondary\}/);
+});
+
+// -- 6. the chevron goes somewhere real ------------------------------------
+
+check('a cell opens that nutrient, not the glossary', () => {
+  // Her words, 24 October: "the follow through screens weren't make, just
+  // pointed to the generic list of nutrients we already had."
+  assert.match(GRID, /pathname: '\/log\/nutrient\/\[key\]'/);
+  assert.ok(
+    !/router\.push\('\/log\/nutrients'\)/.test(GRID),
+    'the grid is back to opening the generic list'
+  );
+});
+
+check('that screen exists and shows the figure against its range', () => {
+  assert.match(SCREEN, /export default function NutrientScreen/);
+  assert.match(SCREEN, /per day on average/);
+  assert.match(SCREEN, /function Bar\(/);
+  assert.match(SCREEN, /Why it matters/);
+});
+
+check('sat fat and sugar are nested, not cells of their own', () => {
+  // Ruth, 24 October: "nest sat fat and sugar like now."
+  assert.match(GRID, /const UNDER: Partial<Record<MacroKey, MacroKey>> = \{\s*saturated: 'fat',\s*sugar: 'carbs',\s*\}/);
+  assert.match(GRID, /if \(!tracked\.includes\(spec\.key\) \|\| UNDER\[spec\.key\]\) continue;/);
+  assert.match(GRID, /cell\.child \?/);
+});
+
+check('four across, as drawn', () => {
+  assert.match(GRID, /const PER_ROW = 4;/);
+  assert.match(GRID, /width: `\$\{100 \/ PER_ROW\}%`/);
+});
+
+// -- 7. one week, one stepper ---------------------------------------------
+
+check('the week moved into the card and did not multiply', () => {
+  // Ruth: "Do it like the artwork... they stay connected though so when the
+  // week gets scrolled back the logs underneath go with it, like it does
+  // already." Two steppers would each hold their own week.
+  assert.match(CARD, /<WeekStepper/);
+  assert.match(VIEW, /stepperAbove/);
+  assert.match(DAYLOG, /stepperAbove \? null : \(/);
+  assert.ok(
+    !/<WeekStepper/.test(VIEW),
+    'the screen draws its own stepper as well as the card - that is two'
+  );
+});
+
+check('both read the same weekStart, so they cannot disagree', () => {
+  assert.match(VIEW, /weekStart=\{weekStart\}[\s\S]{0,200}onWeekStart=\{setWeekStart\}/);
+});
+
+check('holding the forward arrow comes back to this week', () => {
+  const STEP = read('mobile/src/components/week-stepper.tsx');
+  assert.match(STEP, /onLongPress=\{\(\) => onWeekStart\(currentWeekStart\(\)\)\}/);
+  assert.match(STEP, /grow\(1\.6\)/, 'the arrow does not enlarge while held');
+  assert.match(STEP, /longPressHint="Back to this week"/);
+});
+
+// -- 8. where the bands fall ----------------------------------------------
 
 check('four fifths of a floor is a little low, and below it is lower', () => {
-  const fibre = S.referenceFor('fibre', HERS); // 30 g
+  const fibre = S.referenceFor('fibre', HERS);
   assert.equal(S.standingFor(31, fibre), 'in-range');
   assert.equal(S.standingFor(30, fibre), 'in-range');
-  assert.equal(S.standingFor(24, fibre), 'a-little-low'); // exactly 0.8
+  assert.equal(S.standingFor(24, fibre), 'a-little-low');
   assert.equal(S.standingFor(23.9, fibre), 'lower');
 });
 
 check('a ceiling has no a-little-high, because just under it is simply under', () => {
-  const sat = S.referenceFor('saturated', HERS); // 20 g
+  const sat = S.referenceFor('saturated', HERS);
   assert.equal(S.standingFor(19.9, sat), 'in-range');
   assert.equal(S.standingFor(20, sat), 'in-range');
   assert.equal(S.standingFor(20.1, sat), 'higher');
 });
 
 check('her protein band turns at both ends', () => {
-  const protein = S.referenceFor('protein', HERS); // 100-120
+  const protein = S.referenceFor('protein', HERS);
   assert.equal(S.standingFor(110, protein), 'in-range');
   assert.equal(S.standingFor(125, protein), 'higher');
   assert.equal(S.standingFor(85, protein), 'a-little-low');
@@ -324,9 +393,6 @@ check('her protein band turns at both ends', () => {
 });
 
 check('a typed protein figure is a band of one, not a floor', () => {
-  // She can type a single number instead of taking the range. Treating it as a
-  // floor would mark double her protein "in range", which is not what somebody
-  // who typed one number meant.
   const one = S.referenceFor('protein', { ...HERS, proteinLow: 110, proteinHigh: 110 });
   assert.equal(S.standingFor(110, one), 'in-range');
   assert.equal(S.standingFor(140, one), 'higher');
@@ -337,16 +403,12 @@ check('nothing logged is no standing, never a zero in range', () => {
   assert.equal(S.standingFor(null, fibre), null);
   assert.equal(S.standingFor(undefined, fibre), null);
   assert.equal(S.standingFor(NaN, fibre), null);
-  // A real zero is a real answer, though, and it is not "in range" for a floor.
   assert.equal(S.standingFor(0, fibre), 'lower');
 });
-
-// -- 8. her age, which decides the iron figure ----------------------------
 
 check('age comes off the date of birth and nothing else', () => {
   const now = new Date('2026-10-23T12:00:00Z');
   assert.equal(S.ageFrom('1982-03-01', now), 44);
-  // The birthday has not happened yet this year.
   assert.equal(S.ageFrom('1982-12-01', now), 43);
   assert.equal(S.ageFrom(null, now), null);
   assert.equal(S.ageFrom('not a date', now), null);
@@ -365,9 +427,8 @@ function mustFail(name, fn) {
 }
 
 mustFail('salt in the wrong unit', () =>
-  // The bug as it was: a 2,400 ceiling against grams of salt.
   assert.equal(
-    S.standingFor(M.macroAmount('salt', { sodium_mg: 16250 }), {
+    S.standingFor(M.macroAmount('salt', { sodium_mg: 2600 }), {
       shape: { kind: 'ceiling', value: 2400 },
       kind: 'guideline',
       source: 'NHS',
@@ -389,12 +450,16 @@ mustFail('iron guessed without an age', () =>
   assert.notEqual(S.referenceFor('iron', { ...HERS, ageYears: null }), null)
 );
 
-mustFail('a colour too faint to see', () =>
-  assert.ok(contrast('#A89684', SAND) >= 3, 'the drawn a-little-low on sand')
+mustFail('a mark too faint on its panel', () =>
+  // The drawn "a little low" on the panel: 2.58, which is why it was nudged.
+  assert.ok(contrast('#A89684', S.STANDING_GROUND) >= 3)
+);
+
+mustFail('a panel no lighter than the card', () =>
+  assert.ok(luminance(CARD_GROUND) > luminance(PAGE))
 );
 
 mustFail('two colours that read as one', () =>
-  // Brand sage against the drawn in-range: two greens a hair apart.
   assert.ok(difference('#7C8C6A', '#95A987') >= 12)
 );
 
@@ -418,31 +483,27 @@ mustFail('a typed protein figure read as a floor', () =>
   )
 );
 
-mustFail('the dead JSX fallback accepted', () =>
-  // The assertion above, run against the bug as it was actually written. It has
-  // to THROW on this, or it is a check that could never have caught it.
-  assert.ok(
-    !/\/>\s*\)\s*\?\?/.test('openSummary: (\n  <NutrientGrid values={totals} />\n) ?? (\n'),
-    'the dead fallback'
-  )
+mustFail('the word back on the cell', () =>
+  assert.ok(!/STANDING_LABEL\[cell\.standing\]/.test('{STANDING_LABEL[cell.standing]}'))
 );
 
-mustFail('a missing word beside the colour', () =>
-  assert.doesNotMatch(GRID, /STANDING_LABEL\[tile\.standing\]/)
+mustFail('the bar back on the cell', () =>
+  assert.ok(!/styles\.bar\b/.test('<View style={[styles.bar, { backgroundColor }]} />'))
 );
 
-mustFail('a charcoal icon accepted', () =>
-  // The icon as it was first written, taking the theme's secondary grey on
-  // every tile.
-  assert.match(
-    '<NutrientIcon macroKey={tile.key} size={16} />',
-    /color=\{tile\.standing \? STANDING_COLOUR\[tile\.standing\] : undefined\}/
-  )
+mustFail('the chevron back to the glossary', () =>
+  assert.ok(!/router\.push\('\/log\/nutrients'\)/.test("onPress={() => router.push('/log/nutrients')}"))
+);
+
+mustFail('the explainer rendered at rest', () =>
+  assert.match('const [explaining, setExplaining] = useState(true);', /useState\(false\)/)
+);
+
+mustFail('a second stepper on the screen', () =>
+  assert.ok(!/<WeekStepper/.test('      <WeekStepper weekStart={weekStart} />'))
 );
 
 console.log('');
 for (const name of useless) console.log(`  USELESS  ${name} passed on broken input`);
-console.log(
-  `\n  ${passed} passed, ${failed.length} failed, ${useless.length} useless\n`
-);
+console.log(`\n  ${passed} passed, ${failed.length} failed, ${useless.length} useless\n`);
 if (failed.length > 0 || useless.length > 0) process.exit(1);
