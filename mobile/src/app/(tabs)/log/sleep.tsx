@@ -7,7 +7,6 @@ import { BodyScreen } from '@/components/body-screen';
 import { ReportLink } from '@/components/report-link';
 import { SectionIntro } from '@/components/section-intro';
 import { MeasuredNight } from '@/components/sleep-last-night';
-import { SleepFromPhone } from '@/components/sleep-from-phone';
 import { SleepNightsTable } from '@/components/sleep-nights-table';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -117,7 +116,6 @@ export default function SleepScreen() {
 
   return (
     <BodyScreen title="Sleep">
-      <SleepFromPhone onSynced={() => void refresh()} />
 
       <SectionIntro title="Last night">
         {reported
@@ -200,6 +198,34 @@ export default function SleepScreen() {
           </ThemedText>
         ) : null}
       </ThemedView>
+      ) : null}
+
+      {/* THE WAY IN, AND ONLY WHEN THERE IS SOMETHING TO GO IN FOR.
+
+          The connect card used to live at the top of this screen, which meant
+          sleep could be switched on in two different places once More ->
+          Automatic tracking existed - and Ruth has twice now named a duplicated
+          control as the fault. Her sleep artwork has no connect card on it at
+          all; it opens on the night.
+
+          So the card is gone and this is a single row, shown only while nothing
+          is arriving from the phone. Once a night comes in on its own it
+          disappears, because then there is genuinely nothing to set up. */}
+      {!measured ? (
+        <Pressable
+          onPress={() => router.push('/settings/automatic-tracking/sleep' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Let your phone fill these in"
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <ThemedView type="backgroundElement" style={styles.field}>
+            <Ionicons name="moon-outline" size={16} color={theme.textSecondary} />
+            <ThemedText type="small" themeColor="textSecondary" style={styles.fieldText}>
+              Let your phone fill these in
+            </ThemedText>
+            <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+          </ThemedView>
+        </Pressable>
       ) : null}
 
       {/* ANYTHING WORTH MENTIONING, as a control rather than a sentence telling

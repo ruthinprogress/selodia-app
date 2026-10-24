@@ -158,7 +158,7 @@ export function statusLabel(state: TrackingState, detail?: string | null): strin
     case 'waiting':
       return 'Waiting for first data';
     case 'error':
-      return "Something isn't right";
+      return 'Nothing is sharing this yet';
     case 'not-enabled':
     default:
       return 'Not enabled';
@@ -172,8 +172,37 @@ export const STATE_BODY: Record<TrackingState, string> = {
   waiting:
     'Selodía will import this automatically. It can take a few hours for the first data to arrive.',
   receiving: 'This is arriving from your phone on its own.',
-  error: 'Selodía cannot read this at the moment.',
+  // THE ONE CASE "WAITING" MUST NOT SWALLOW. See NOTHING_SHARING below.
+  error:
+    'Selodía is allowed to read this, and nothing has put any in. That switch lives in the app that '
+    + 'tracks it, not here.',
 };
+
+/**
+ * WAITING IS TRUE FOR A FEW HOURS AND A LIE AFTER A MONTH.
+ *
+ * Health Connect can take hours to pass a first night through, so
+ * permissions-on-but-nothing-yet is a real and patient state. Thirty days of
+ * nothing is not that state: it means nothing has ever written this kind of
+ * data into Health Connect at all, which is a different problem with a
+ * different answer.
+ *
+ * Ruth hit exactly this. She granted sleep, the app said "waiting for first
+ * data", and it would have gone on saying it indefinitely while the actual
+ * cause - Samsung Health not sharing sleep into Health Connect - sat
+ * undiagnosed behind a reassuring sentence.
+ *
+ * SELODIA CANNOT FLIP THAT SWITCH, and should stop pretending the question is
+ * open. What it can do is say which app, which screen, and which switch.
+ */
+export const NOTHING_SHARING =
+  'Nothing has written any of this into Health Connect yet. The switch is inside the app that '
+  + 'tracks it - in Samsung Health it is Settings, then Health Connect, then turn the type on. '
+  + "Selodía is not allowed to change another app's settings, so this one is yours to tap, and it "
+  + 'only has to be done once.';
+
+/** How long an empty read stops meaning "any moment now". */
+export const PATIENCE_DAYS = 30;
 
 /** The heading on the type's own screen, with the type's name folded in. */
 export function stateHeading(state: TrackingState, label: string): string {
@@ -184,7 +213,7 @@ export function stateHeading(state: TrackingState, label: string): string {
     case 'waiting':
       return 'Permissions are on';
     case 'error':
-      return "Something isn't right";
+      return 'Nothing is sharing this yet';
     case 'not-enabled':
     default:
       return `Automatic ${name} tracking isn't turned on yet`;

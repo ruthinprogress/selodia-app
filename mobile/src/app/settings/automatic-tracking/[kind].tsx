@@ -10,6 +10,8 @@ import { CardRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   NOT_YET_BODY,
+  NOTHING_SHARING,
+  PATIENCE_DAYS,
   primaryAction,
   READABLE,
   STATE_BODY,
@@ -94,7 +96,7 @@ export default function AutomaticTrackingKindScreen() {
       setDetail(null);
       return;
     }
-    const nights = await readNightsFromPhone(30);
+    const nights = await readNightsFromPhone(PATIENCE_DAYS);
     const latest = nights[nights.length - 1];
     if (latest) {
       setState('receiving');
@@ -102,7 +104,10 @@ export default function AutomaticTrackingKindScreen() {
         `${Math.floor(latest.minutes / 60)}h ${String(latest.minutes % 60).padStart(2, '0')}m`
       );
     } else {
-      setState('waiting');
+      // ALLOWED TO READ AND NOTHING THERE, over a month. That is no longer
+      // "any moment now" - see PATIENCE_DAYS. Waiting would be a reassuring
+      // sentence over an undiagnosed problem.
+      setState('error');
       setDetail(null);
     }
   }, [key]);
@@ -196,7 +201,7 @@ export default function AutomaticTrackingKindScreen() {
         ) : null}
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.body}>
-          {STATE_BODY[state]}
+          {state === 'error' ? NOTHING_SHARING : STATE_BODY[state]}
         </ThemedText>
 
         {action ? (

@@ -136,10 +136,31 @@ check('what she typed is never overwritten', () => {
 });
 
 check('the reader is wired to something, not just written', () => {
+  // THE WIRING MOVED, AND THE RULE DID NOT (24 October 2026). This used to
+  // require the Sleep log screen to carry the connect card. That card is gone:
+  // connection lives in More -> Automatic tracking now, because once that
+  // screen existed there were two places to switch the same thing on, and Ruth
+  // has twice named a duplicated control as the fault. Her sleep artwork has no
+  // connect card on it at all.
+  //
+  // WHAT MUST STILL BE TRUE is the thing the assertion was always about: a
+  // reader nothing calls is a document. So it now asks for the two surfaces
+  // that genuinely run it - the Now screen, which syncs on every open, and the
+  // settings screen, which connects it.
+  const NOW = read('mobile/src/components/overview-panel.tsx');
+  const TRACKING = read('mobile/src/app/settings/automatic-tracking/[kind].tsx');
   assert.match(
-    SCREEN,
-    /SleepFromPhone/,
-    'sleep-sync is imported by nobody - a reader nothing calls is a document'
+    NOW,
+    /syncSleepFromPhone/,
+    'nothing syncs sleep on open, so it only ever arrives when a button is pressed - '
+      + 'which is the bug Ruth found on 24 October: "it\'s not coming through even '
+      + 'though i turned it on last night"'
+  );
+  assert.match(
+    TRACKING,
+    /connectSleep/,
+    'sleep can no longer be connected from anywhere - the card was removed and '
+      + 'nothing replaced it'
   );
   assert.match(
     read('mobile/src/components/sleep-from-phone.tsx'),
@@ -396,6 +417,10 @@ mustFail('edge awakenings ignored', () =>
 );
 mustFail('night keyed on the evening', () => assert.equal(nightOfFor('2026-10-21T00:20:00'), '2026-10-21'));
 mustFail('privacy copy checked', () => assert.match(PRIVACY, /asks for steps alone/i));
+mustFail('sleep syncing only on a button press', () =>
+  // The bug as it was: three callers, every one of them a button.
+  assert.match('const x = 1;', /syncSleepFromPhone/)
+);
 mustFail('hers is protected', () => assert.doesNotMatch(SYNC, /row\.source !== SLEEP_SOURCE/));
 
 // The "Nothing new" bug, as it was actually written: the card calling the bare
