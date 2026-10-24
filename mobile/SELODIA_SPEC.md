@@ -47,6 +47,99 @@ rule and not a compromise.
 
 ---
 
+## SCOPED DECISIONS: THE FOOD LOG'S NUTRIENT SCREENS (23-24 October 2026)
+
+**These were settled in conversation, lost to a context summary, and re-derived
+badly the next morning at the cost of most of a working day.** They are written
+here, and enforced by `scripts/check-where-the-day-stands.mjs`, so that the next
+person to touch this - including me - argues with a failing check rather than
+with Ruth.
+
+A decision that lives only in a chat is not a decision. It is a thing somebody
+will have to say twice.
+
+### Where a figure came from
+
+| | |
+|---|---|
+| **Default** | **List the foods**, straight from her own log. |
+| **Group** | **Only protein**, and only on `protein_source`, which the parser already records at log time. |
+| **Never** | A food-to-category table. Including one disguised as a regex over food names. |
+| **Hide** | Zero rows. |
+
+**Why listing beats grouping.** Her artwork grouped protein and listed foods for
+fibre, and that is the right instinct, not an inconsistency: grouping only helps
+where the group carries meaning. "Meat, poultry & fish" on the fibre screen is
+zero, every time, for everyone. The tell in the drawn version was "Grains &
+other" holding 15% — when a taxonomy needs an *other* bucket that big, it is not
+earning its place.
+
+**Why no mapping table, ever.** It needs a new entry for every food it has not
+heard of, forever, and its failure mode is a silent mislabel. The labels bend to
+the stored data, not the other way round: *Meat, fish, dairy & eggs / Beans, nuts
+& grains / Collagen*. A finer split is worth having one day for the price of a
+finer value from the parser; it is never worth a lookup table.
+
+**No food is graded.** Nothing is labelled incomplete — that is a verdict on a
+food, which Part Two forbids. The useful truth is not "this one is lesser" but
+"these complete each other", which is a sentence and belongs in the status line.
+Unclassified protein gets its own row rather than being folded into a group it
+was never put in.
+
+### Dietary constraints are answered by the log, not by a flag
+
+There is no vegan, vegetarian or flexitarian flag in this app and there must not
+be one. The rule that already exists does the whole job:
+
+> **Suggest their own food. The record lists what they actually eat.**
+
+Draw on her log and a vegan never hears about chicken, because chicken is not in
+it. **The flexitarian is exactly the person a flag fails and a log succeeds:**
+somebody who eats meat twice a month is neither one thing nor the other, and
+their record is true without a label.
+
+Order, and the third clause is the one with a consequence:
+
+1. Her own foods first.
+2. Then foods compatible with what she has stated.
+3. **Never anything the allergy gate catches.** `avoid` is a required argument
+   with no default — a gate that can be forgotten at a call site is one that
+   will be, and that failure is silent and in the wrong direction.
+
+**The one real gap is cold start.** A brand-new user has an empty log and
+nothing personal to draw on. That is the single place a dietary question in
+onboarding would earn its keep — not to filter a taxonomy, but to have something
+to say in week one. *Not built.*
+
+### What a suggestion may say
+
+Say what a food **carries**, never what she should do.
+
+- NOT "Try adding berries or chia seeds."
+- BUT "A handful of berries carries about 2 g of fibre. A tablespoon of chia
+  seeds, about 5 g."
+
+The second is more precise *and* does not instruct, which is why this is a rule
+rather than a compromise. Candidates come from the CoFID composition table
+already in the database — never invented.
+
+### The grid itself
+
+**Icon colour shows how you're doing, and nothing else does.** No bar, no state
+word, no sentence on the cell. The first build had all three and she said "this
+is not calm". The four states are named behind the "i", and on each nutrient's
+own screen.
+
+**A cell opens that nutrient's screen**, never the glossary of all ten.
+
+**Figures scale to her energy where the guidance is a percentage** — saturated
+fat, total fat, carbohydrate, free sugars. Fibre, salt and calcium are
+absolutes and must not be scaled. Iron is by age *and* menstrual status: a
+birthday alone never lowers it. See `mobile/src/lib/nutrient-citations.ts` for
+the page and quote behind every figure.
+
+---
+
 ## What This Is
 Unflump is a body literacy app, not a macro tracker. The user talks to it naturally — describes food, logs a reading, asks a question — and gets contextual, accumulating, educational responses. The goal is not to make the user dependent on tracking forever. It is to help them understand their own body well enough that the knowledge becomes internalised and they no longer need to be TOLD. That arc, confusion to understanding to instinct to independence, is the actual product, and every feature exists to scaffold it.
 

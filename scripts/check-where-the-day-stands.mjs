@@ -75,6 +75,11 @@ const SCREEN = read('mobile/src/app/(tabs)/log/nutrient/[key].tsx');
 const VIEW = read('mobile/src/components/food-log-view.tsx');
 const DAYLOG = read('mobile/src/components/day-log.tsx');
 const THEME = read('mobile/src/constants/theme.ts');
+// THE SPEC IS READ BY THE RUNNER, not only by people. A decision recorded
+// somewhere nothing imports is one whose errors nobody is forced to find - and
+// these particular decisions were lost to a context summary once already,
+// costing most of a working day to re-derive badly.
+const SPEC = read('mobile/SELODIA_SPEC.md');
 
 let passed = 0;
 const failed = [];
@@ -807,6 +812,41 @@ check('how to have them comes from a sourced pairing', () => {
   assert.match(SCREEN, /\{pair\.why\}/);
 });
 
+// -- 11. the scope is written down, not remembered ------------------------
+
+check('the scoped decisions are in the spec, not only in a chat', () => {
+  // Ruth, 24 October: "this was ALL scoped yesterday and now we are doing it
+  // all over again." The cause was mechanical - the conversation was
+  // auto-summarised, the summary kept the open question and dropped the
+  // decision behind it, and nothing in the repository held it.
+  const at = SPEC.indexOf('SCOPED DECISIONS: THE FOOD LOG');
+  assert.ok(at > 0, 'the scope has gone from the spec');
+  const section = SPEC.slice(at, at + 6000);
+  for (const line of [
+    'List the foods',
+    'food-to-category table',
+    'Hide',
+    'no vegan, vegetarian or flexitarian flag',
+    'Never anything the allergy gate catches',
+    'carries',
+    'Icon colour shows how you',
+  ]) {
+    assert.ok(section.includes(line), `the spec no longer records: ${line}`);
+  }
+});
+
+check('the spec and the code agree about the protein groups', () => {
+  // Two copies of one decision is how they drift. The spec names the labels;
+  // this asserts the code still uses those exact words.
+  const at = SPEC.indexOf('SCOPED DECISIONS: THE FOOD LOG');
+  // Whitespace-flattened: the spec is hard-wrapped at 80 columns, so a label
+  // can straddle a line break. The decision is the words, not the wrapping.
+  const section = SPEC.slice(at, at + 6000).replace(/\s+/g, ' ');
+  for (const label of Object.values(B.PROTEIN_SOURCE_LABEL)) {
+    assert.ok(section.includes(label), `the spec does not name the group "${label}"`);
+  }
+});
+
 // -- every case above must be able to fail -------------------------------
 
 const useless = [];
@@ -952,6 +992,10 @@ mustFail('the generic food list kept alongside', () =>
 
 mustFail('a graded group label', () =>
   assert.ok(!'Plant sources (incomplete)'.toLowerCase().includes('incomplete'))
+);
+
+mustFail('the scope quietly dropped from the spec', () =>
+  assert.ok(''.includes('SCOPED DECISIONS: THE FOOD LOG'))
 );
 
 mustFail('a food-to-category table creeping back in', () => {
