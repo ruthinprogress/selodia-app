@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
 import { currentUserId } from '@/lib/current-user';
 import {
@@ -146,10 +146,40 @@ export type SleepConnectOutcome =
 /** The Health Connect app, for sending somebody to install or update it. */
 export const HEALTH_CONNECT_PACKAGE = 'com.google.android.apps.healthdata';
 
-/** Open Health Connect itself, where a refusal can be undone. */
+/**
+ * STRAIGHT TO SELODIA'S OWN PERMISSIONS, not to Health Connect's front door.
+ *
+ * Ruth, 24 October 2026: "too many steps to reach the Selodia permissions, it
+ * should go straight there."
+ *
+ * openHealthConnectSettings lands on Health Connect's home screen, from which
+ * finding this app is App permissions -> scroll -> Selodia: three taps and a
+ * hunt, after tapping a button that said "Manage permissions". A control that
+ * names a destination and then drops somebody near it has handed them the
+ * problem, which is the thing this whole screen exists not to do.
+ *
+ * ANDROID PUBLISHES THE EXACT INTENT FOR THIS. MANAGE_HEALTH_PERMISSIONS with
+ * the package name opens that app's own permission page directly. The library
+ * does not wrap it, so it is fired through Linking.sendIntent.
+ *
+ * AND IT FALLS BACK RATHER THAN FAILING. A phone whose Health Connect is older
+ * than the intent, or which refuses it, gets the front door - which is where it
+ * used to go anyway, so the worst case is exactly today's behaviour rather than
+ * a dead button.
+ */
+const MANAGE_PERMISSIONS = 'androidx.health.connect.action.MANAGE_HEALTH_PERMISSIONS';
+
 export function openHealthConnect(): void {
-  healthConnect()?.openHealthConnectSettings();
+  if (Platform.OS !== 'android') return;
+  Linking.sendIntent(MANAGE_PERMISSIONS, [
+    { key: 'android.intent.extra.PACKAGE_NAME', value: PACKAGE_NAME },
+  ]).catch(() => {
+    healthConnect()?.openHealthConnectSettings();
+  });
 }
+
+/** This app, for the intent above. Health Connect keys permissions by package. */
+const PACKAGE_NAME = 'app.selodia';
 
 /** Open the screen listing what each app may read, for checking a source. */
 export function openHealthConnectSources(): void {

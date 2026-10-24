@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
-import { SettingsGroup, SettingsPage, SettingsRow } from '@/components/settings-page';
+import { SettingsPage, SettingsRow } from '@/components/settings-page';
+import { TrackingGroup } from '@/components/tracking-group';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardRadius, Spacing } from '@/constants/theme';
@@ -100,23 +101,43 @@ export default function AutomaticTrackingScreen() {
       title="Automatic tracking"
       subtitle="Sleep, steps and other information Selodía can import automatically from your phone or wearable."
     >
-      {TRACKING_GROUPS.map((group) => (
-        <SettingsGroup key={group.title} title={group.title}>
-          {group.kinds.map((kind, i) => {
-            const { state, detail } = stateOf(kind);
-            return (
-              <SettingsRow
-                key={kind}
-                first={i === 0}
-                icon={i === 0 ? GROUP_ICON[group.title] : undefined}
-                label={TRACKING_LABEL[kind]}
-                detail={statusLabel(state, detail)}
-                onPress={() => router.push(`/settings/automatic-tracking/${kind}` as never)}
-              />
-            );
-          })}
-        </SettingsGroup>
-      ))}
+      {TRACKING_GROUPS.map((group) => {
+        const live = group.kinds.filter((k) => stateOf(k).state === 'receiving').length;
+        // SHUT, THE GROUP ANSWERS THE QUESTION SOMEBODY CAME WITH: is my phone
+        // sending this? A count, not the word "on" - and "Not enabled" rather
+        // than "0 of 6", because nought of anything reads as a failure where
+        // nothing was ever switched on.
+        const summary =
+          live > 0
+            ? `${live} of ${group.kinds.length} arriving`
+            : group.kinds.length === 1
+              ? 'Not enabled'
+              : `Not enabled · ${group.kinds.length} types`;
+        return (
+          <TrackingGroup
+            key={group.title}
+            title={group.title}
+            icon={GROUP_ICON[group.title]}
+            summary={summary}
+            // The one group with something live opens itself, because that is
+            // the one somebody is most likely to have come to look at.
+            startOpen={live > 0}
+          >
+            {group.kinds.map((kind, i) => {
+              const { state, detail } = stateOf(kind);
+              return (
+                <SettingsRow
+                  key={kind}
+                  first={i === 0}
+                  label={TRACKING_LABEL[kind]}
+                  detail={statusLabel(state, detail)}
+                  onPress={() => router.push(`/settings/automatic-tracking/${kind}` as never)}
+                />
+              );
+            })}
+          </TrackingGroup>
+        );
+      })}
 
       {/* WHERE THE DATA COMES FROM, which is hers and is the one piece of
           explanation that belongs on this screen. It answers the question

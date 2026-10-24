@@ -18,6 +18,9 @@ import {
   type TrackingKind,
   type TrackingState,
 } from '@/lib/automatic-tracking';
+import { requestStepPermission } from '@/lib/step-permission';
+import { formatSteps, syncTodaySteps } from '@/lib/steps';
+import { supabase } from '@/lib/supabase';
 import {
   connectSleep,
   hasSleepPermission,
@@ -58,10 +61,32 @@ export default function AutomaticTrackingKindScreen() {
   const [busy, setBusy] = useState(false);
 
   const look = useCallback(async () => {
-    // Sleep is the only type with a live read behind it today. Steps have one
-    // too, but they are already wired into the Now screen and have their own
-    // settings row; giving them a second switch here would be two controls for
-    // one thing.
+    // STEPS HAD A DEAD BUTTON HERE, shipped (Ruth, 24 October 2026): "It also
+    // says Steps not connected and button dirsnt work". The screen was written
+    // for sleep and every other readable type fell through its one branch -
+    // which is exactly the fault the rest of this screen exists to avoid: a
+    // control that names an action and then does nothing.
+    if (key === 'steps') {
+      const { data } = await supabase
+        .from('user_profile')
+        .select('steps_permission_declined')
+        .maybeSingle();
+      const declined = (data as { steps_permission_declined: boolean | null } | null)
+        ?.steps_permission_declined;
+      const today = declined ? null : await syncTodaySteps();
+      if (declined) {
+        setState('not-enabled');
+        setDetail(null);
+      } else if (today != null) {
+        setState('receiving');
+        setDetail(formatSteps(today));
+      } else {
+        setState('not-enabled');
+        setDetail(null);
+      }
+      return;
+    }
+
     if (key !== 'sleep') return;
     const allowed = await hasSleepPermission();
     if (!allowed) {
@@ -127,11 +152,24 @@ export default function AutomaticTrackingKindScreen() {
 
   async function turnOn() {
     setBusy(true);
-    const outcome = await connectSleep();
-    // THE SHEET IS THE ONLY WAY IN, and after it closes the honest thing is to
-    // look again rather than to trust what the call returned - a grant can land
-    // a moment after the dialog goes.
-    if (outcome.state === 'granted') await syncSleepFromPhone(30);
+    if (key === 'steps') {
+      const result = await requestStepPermission();
+      // ONLY A REAL REFUSAL COUNTS AS ONE. iOS cannot tell an app whether read
+      // access was granted, so 'unknown' leaves the stored answer alone - the
+      // same rule as onboarding, and the reason three silent failures were
+      // fixed in September.
+      if (result === 'granted') {
+        await supabase.from('user_profile').update({ steps_permission_declined: false }).not('id', 'is', null);
+      } else if (result === 'declined' || result === 'unsupported') {
+        await supabase.from('user_profile').update({ steps_permission_declined: true }).not('id', 'is', null);
+      }
+    } else {
+      const outcome = await connectSleep();
+      // THE SHEET IS THE ONLY WAY IN, and after it closes the honest thing is
+      // to look again rather than to trust what the call returned - a grant can
+      // land a moment after the dialog goes.
+      if (outcome.state === 'granted') await syncSleepFromPhone(30);
+    }
     await look();
     setBusy(false);
   }
@@ -142,7 +180,7 @@ export default function AutomaticTrackingKindScreen() {
     <SettingsPage title={label}>
       <ThemedView type="backgroundElement" style={styles.card}>
         <Ionicons
-          name={state === 'receiving' ? 'moon' : 'moon-outline'}
+          name={key === 'steps' ? 'walk-outline' : 'moon-outline'}
           size={22}
           color={state === 'receiving' ? theme.accentDeep : theme.textSecondary}
         />
@@ -199,7 +237,7 @@ export default function AutomaticTrackingKindScreen() {
             icon="calendar-outline"
             label="See this week"
             detail={`Your ${label.toLowerCase()} in the Log`}
-            onPress={() => router.push('/log/sleep')}
+            onPress={() => router.push(key === 'steps' ? '/log/activity-history' : '/log/sleep')}
           />
         ) : null}
         <SettingsRow

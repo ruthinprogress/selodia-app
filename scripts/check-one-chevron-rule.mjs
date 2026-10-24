@@ -49,7 +49,18 @@ function check(name, fn) {
   }
 }
 
-const all = files(SRC).map((f) => ({ f, text: readFileSync(f, 'utf8') }));
+// COMMENTS ARE NOT CODE, and this check failed on its own rule being explained
+// (24 October 2026). A new expander carried a note saying "chevron-up is never
+// an expander in this app" and was reported for using one. A check that reads
+// the statement of a rule as a breach of it is testing source text rather than
+// behaviour - the same fault found in check-tabs-refetch and
+// check-where-the-day-stands on the same day.
+const withoutComments = (src) =>
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ');
+
+const all = files(SRC).map((f) => ({ f, text: withoutComments(readFileSync(f, 'utf8')) }));
 
 console.log('\n  AN ARROW POINTS AT THE HEADER, THEN DOWN WHEN IT IS OPEN\n');
 
