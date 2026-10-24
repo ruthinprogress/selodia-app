@@ -77,6 +77,24 @@ export default function SleepScreen() {
   const existing = nights.find((n) => n.night_of === night) ?? null;
   const measured = existing?.source === PHONE_SOURCE && existing.duration_min != null;
 
+  // A NIGHT THAT IS KNOWN IS REPORTED, WHOEVER KNEW IT (Ruth, 24 October 2026):
+  // "Thos is pills for selecting....not a report of the night. Sane issue as in
+  // the rest if the app."
+  //
+  // She is naming the same fault the food log had: a screen that shows you the
+  // controls for filing something, where it should be telling you the thing.
+  // Her artwork leads with the night - 7h 46m, Bed 23:18, Awake 07:04,
+  // Interrupted 3 times - and asks only for what a watch cannot know.
+  //
+  // THE CARD THAT DOES THAT ALREADY EXISTED and was gated on the night having
+  // come from the PHONE, so a night she had described herself got the form
+  // back instead of a report. The gate is now simply "is there a duration" -
+  // because a figure she gave is no less a fact about her night than one a
+  // watch gave, and the source line underneath says which it was.
+  const reported = existing?.duration_min != null;
+  const askLength = !reported;
+  const askQuality = existing?.quality == null;
+
   const refresh = useCallback(async () => {
     const rows = await loadNights();
     setNights(rows);
@@ -102,16 +120,25 @@ export default function SleepScreen() {
       <SleepFromPhone onSynced={() => void refresh()} />
 
       <SectionIntro title="Last night">
-        {measured
+        {reported
           ? nightLabel(night)
           : `${nightLabel(night)}. Tell me what you know, and leave the rest.`}
       </SectionIntro>
 
-      {measured && existing ? <MeasuredNight night={existing} sourceName="your phone" /> : null}
+      {reported && existing ? (
+        <MeasuredNight night={existing} sourceName={measured ? 'your phone' : 'you'} />
+      ) : null}
 
+      {/* THE ASKING CARD GOES AWAY ENTIRELY once there is nothing left to
+          ask. A form with every answer already in it is the screen showing its
+          own filing cabinet - and "How was it?" above an answered question is
+          an invitation to change a thing nobody asked to change. The night can
+          still be corrected from Recent nights. */}
+      {askLength || askQuality ? (
       <ThemedView type="backgroundElement" style={styles.card}>
-        {/* NO DURATION QUESTION WHEN A PHONE ALREADY MEASURED IT. */}
-        {!measured ? (
+        {/* NO DURATION QUESTION WHEN THE NIGHT ALREADY HAS ONE, from a watch
+            or from her. */}
+        {askLength ? (
           <>
             <ThemedText type="smallBold">How long?</ThemedText>
             <View style={styles.chips}>
@@ -140,7 +167,7 @@ export default function SleepScreen() {
           </>
         ) : null}
 
-        <ThemedText type="smallBold" style={measured ? undefined : styles.second}>
+        <ThemedText type="smallBold" style={askLength ? styles.second : undefined}>
           How was it?
         </ThemedText>
         <View style={styles.chips}>
@@ -167,32 +194,38 @@ export default function SleepScreen() {
           })}
         </View>
 
-        {/* ANYTHING WORTH MENTIONING, as a control rather than a sentence
-            telling her to go elsewhere. It used to read "For anything else -
-            what woke you, how you feel today - tell me in chat", which is an
-            instruction about a door rather than a door. Her artwork draws the
-            field with a chevron, so this is the door. */}
-        <Pressable
-          onPress={() => askAbout(night)}
-          accessibilityRole="button"
-          accessibilityLabel="Say more about last night"
-          style={({ pressed }) => pressed && styles.pressed}
-        >
-          <ThemedView type="background" style={styles.field}>
-            <Ionicons name="chatbubble-outline" size={16} color={theme.textSecondary} />
-            <ThemedText type="small" themeColor="textSecondary" style={styles.fieldText}>
-              Anything worth mentioning?
-            </ThemedText>
-            <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-          </ThemedView>
-        </Pressable>
-
         {failed ? (
           <ThemedText type="small" themeColor="danger" style={styles.note}>
             That didn&apos;t save. Check your connection and try again.
           </ThemedText>
         ) : null}
       </ThemedView>
+      ) : null}
+
+      {/* ANYTHING WORTH MENTIONING, as a control rather than a sentence telling
+          her to go elsewhere. It used to read "For anything else - what woke
+          you, how you feel today - tell me in chat", which is an instruction
+          about a door rather than a door. Her artwork draws the field with a
+          chevron, so this is the door.
+
+          OUTSIDE THE ASKING CARD, because in her drawing it sits under the
+          night itself and is there on every state. It is not one of the two
+          questions; it is the way in to everything the two questions cannot
+          hold. */}
+      <Pressable
+        onPress={() => askAbout(night)}
+        accessibilityRole="button"
+        accessibilityLabel="Say more about last night"
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <ThemedView type="background" style={styles.field}>
+          <Ionicons name="chatbubble-outline" size={16} color={theme.textSecondary} />
+          <ThemedText type="small" themeColor="textSecondary" style={styles.fieldText}>
+            Anything worth mentioning?
+          </ThemedText>
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+        </ThemedView>
+      </Pressable>
 
       {/* THE OBSERVATION, WITH NO HEADING OVER IT (Ruth, 23 October 2026):
           "dont say 'selodia notices', just the insight I think."
