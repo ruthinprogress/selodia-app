@@ -53,6 +53,13 @@ export type NutrientProfile = {
   targetKcal: number | null;
   proteinLow: number | null;
   proteinHigh: number | null;
+  /**
+   * Whether she is still having periods, where the app has been told.
+   *
+   * ONLY THE IRON FIGURE USES THIS, and only after 50. null means "not told",
+   * which is a third answer and not the same as false - see the iron case.
+   */
+  stillBleeding: boolean | null;
 };
 
 /** Nobody has weighed and nobody has a birthday: eight tiles still work. */
@@ -61,6 +68,7 @@ export const NO_NUTRIENT_PROFILE: NutrientProfile = {
   targetKcal: null,
   proteinLow: null,
   proteinHigh: null,
+  stillBleeding: null,
 };
 
 /** Whole years, from a date of birth, or null when there is no usable date. */
@@ -113,15 +121,66 @@ export const NEARLY = 0.8;
  * here is deliberately the short form of the server's wording rather than a
  * second opinion.
  */
+/**
+ * ENERGY SCALES; MASS DOES NOT. THE RESEARCH, AND WHY IT CHANGED THE FIGURES.
+ *
+ * Ruth, 24 October 2026: "All nutrients should have the correct figure for
+ * women in the range of the age that is actually recorded for the user. If
+ * this needs a research task, then let's do it properly."
+ *
+ * It did, and the research moved four of the ten. The finding that matters:
+ *
+ *   THE FAMILIAR GRAM FIGURES ARE THE PERCENTAGES, ALREADY APPLIED TO SOMEBODY
+ *   ELSE. "70g of fat, 20g of saturates, 260g of carbohydrate" are the UK
+ *   label Reference Intakes, and the guidance that sets them says in terms that
+ *   they are "based on an average sized woman doing an average amount of
+ *   physical activity" eating 2,000 kcal. They are not a separate kind of
+ *   advice from the percentage; they are one arithmetic step past it.
+ *
+ * So a woman eating 1,560 kcal who keeps to 20g of saturated fat is at 11.5% of
+ * her energy, which is OVER the 10% ceiling, while a tile built on the flat
+ * figure tells her she is fine. The same error, smaller, runs through fat,
+ * carbohydrate and free sugars. Scaling to her own energy target is not a
+ * refinement here - it is the figure the guidance actually states.
+ *
+ * WHAT DOES NOT SCALE, and these were checked rather than assumed:
+ *
+ *   FIBRE 30g     SACN 2015 sets it as an absolute for adults 17 and over, not
+ *                 as a share of energy. It stays 30g whatever she eats.
+ *   SALT 6g       An absolute for adults.
+ *   CALCIUM 700mg The UK RNI for adults 19 and over, with no sex split and no
+ *                 post-menopausal increase - unlike several other countries.
+ *   IRON          Not energy at all: 14.8mg for women 19-49 and 8.7mg from 50,
+ *                 and see the note on that case, because the cliff is softer
+ *                 than a birthday.
+ *
+ * EVERY FIGURE BELOW IS IN citations.ts WITH THE PAGE IT CAME FROM AND THE DATE
+ * IT WAS READ. Nothing here is recalled.
+ */
+
+/** Energy per gram, for turning a share of energy into a weight of food. */
+const KCAL_PER_G = { fat: 9, carb: 4 } as const;
+
+/** A share of her energy target, as grams, rounded to something sayable. */
+function shareOfEnergy(targetKcal: number, share: number, perGram: number): number {
+  const grams = (targetKcal * share) / perGram;
+  return Math.round(grams * 10) / 10;
+}
+
 export function referenceFor(key: MacroKey, profile: NutrientProfile): Reference | null {
+  const energy = profile.targetKcal;
+
   switch (key) {
     case 'kcal':
-      return profile.targetKcal
+      return energy
         ? {
-            shape: { kind: 'band', low: profile.targetKcal * 0.9, high: profile.targetKcal * 1.1 },
+            shape: { kind: 'band', low: energy * 0.9, high: energy * 1.1 },
             kind: 'target',
-            source: 'your own figure',
-            stated: `around ${Math.round(profile.targetKcal).toLocaleString()} kcal a day`,
+            // "YOUR OWN" COMPLETES THE SENTENCE the label builds, rather than
+            // half of it: with 'your own figure' it read "your own figure
+            // target" on her phone.
+            source: 'your own',
+            stated: `around ${Math.round(energy).toLocaleString()} kcal a day`,
           }
         : null;
 
@@ -130,19 +189,83 @@ export function referenceFor(key: MacroKey, profile: NutrientProfile): Reference
         ? {
             shape: { kind: 'band', low: profile.proteinLow, high: profile.proteinHigh },
             kind: 'target',
-            source: 'your own figure',
+            source: 'your own',
             stated: `${Math.round(profile.proteinLow)}-${Math.round(profile.proteinHigh)}g a day`,
           }
         : null;
 
+    // NO MORE THAN 10% OF FOOD ENERGY (SACN 2019). The NHS states it as 20g for
+    // women, which is that 10% at 2,000 kcal.
+    case 'saturated': {
+      if (!energy) return null;
+      const value = shareOfEnergy(energy, 0.1, KCAL_PER_G.fat);
+      return {
+        shape: { kind: 'ceiling', value },
+        kind: 'guideline',
+        source: 'SACN, scaled to your energy',
+        stated: `no more than ${value}g a day, which is 10% of your energy`,
+      };
+    }
+
+    // NO MORE THAN 35% OF FOOD ENERGY. The label's 70g is that share at
+    // 2,000 kcal.
+    case 'fat': {
+      if (!energy) return null;
+      const value = shareOfEnergy(energy, 0.35, KCAL_PER_G.fat);
+      return {
+        shape: { kind: 'ceiling', value },
+        kind: 'guideline',
+        source: 'UK DRV, scaled to your energy',
+        stated: `no more than ${value}g a day, which is 35% of your energy`,
+      };
+    }
+
+    // AROUND 50% OF TOTAL DIETARY ENERGY (SACN 2015). The label's 260g is that
+    // share at 2,000 kcal.
+    //
+    // A BAND, NOT A FLOOR, AND DELIBERATELY WIDE. SACN sets this as a
+    // population average, and plenty of women eat deliberately below it for
+    // reasons that are theirs. Scoring somebody "Lower" for that would be the
+    // app taking a side in an argument it has no business in - so the band runs
+    // from two thirds of the figure to a third above it, and only a day well
+    // outside that says anything at all.
+    case 'carbs': {
+      if (!energy) return null;
+      const mid = shareOfEnergy(energy, 0.5, KCAL_PER_G.carb);
+      return {
+        shape: { kind: 'band', low: Math.round(mid * 0.66), high: Math.round(mid * 1.33) },
+        kind: 'guideline',
+        source: 'SACN, scaled to your energy',
+        stated: `around ${Math.round(mid)}g a day, which is 50% of your energy`,
+      };
+    }
+
+    // NO MORE THAN 5% OF ENERGY (SACN 2015). The NHS states 30g a day for
+    // adults, which is that 5% at 2,000 kcal.
+    case 'freeSugar': {
+      if (!energy) return null;
+      const value = shareOfEnergy(energy, 0.05, KCAL_PER_G.carb);
+      return {
+        shape: { kind: 'ceiling', value },
+        kind: 'guideline',
+        source: 'SACN, scaled to your energy',
+        stated: `no more than ${value}g a day, which is 5% of your energy`,
+      };
+    }
+
+    // AN ABSOLUTE, and checked to be sure: SACN 2015 sets 30g for adults aged
+    // 17 and over, not a share of energy.
     case 'fibre':
       return {
         shape: { kind: 'floor', value: 30 },
         kind: 'guideline',
-        source: 'NHS',
+        source: 'SACN',
         stated: '30g a day for adults',
       };
 
+    // 700mg for adults 19 and over. The UK does NOT raise this after the
+    // menopause, which several other countries do - so it is one figure, and
+    // inventing an age split here would be inventing guidance.
     case 'calcium':
       return {
         shape: { kind: 'floor', value: 700 },
@@ -151,33 +274,44 @@ export function referenceFor(key: MacroKey, profile: NutrientProfile): Reference
         stated: '700mg a day for adults',
       };
 
-    // THE SPLIT IS THE POINT, and it is why she asked for iron. The figure
-    // nearly halves at the age most of this app's users are near, so one
-    // number would be wrong for half of them. Without an age, no colour -
-    // guessing which applies is exactly the mistake.
+    // THE AGE SPLIT IS REAL AND THE CLIFF IS NOT (checked 24 October 2026).
+    //
+    // The NHS gives 14.8mg for women aged 19 to 49 and 8.7mg from 50 - and adds
+    // that women who are still menstruating after 50 may need the higher
+    // figure. The first version of this dropped everybody over 50 to 8.7 on
+    // their birthday, which is the app quietly deciding somebody's periods have
+    // stopped.
+    //
+    // It no longer decides. `stillBleeding` comes from what she has actually
+    // recorded - her life stage, and whether the app has seen a period - and
+    // where that says nothing, the higher figure stands, because under-stating
+    // iron for a woman who is still losing it monthly is the costlier mistake
+    // of the two.
     case 'iron': {
       const age = profile.ageYears;
       if (age == null) return null;
-      const value = age > 50 ? 8.7 : 14.8;
+      const lower = age >= 50 && profile.stillBleeding === false;
       return {
-        shape: { kind: 'floor', value },
+        shape: { kind: 'floor', value: lower ? 8.7 : 14.8 },
         kind: 'guideline',
         source: 'NHS',
-        stated: age > 50 ? '8.7mg a day for women over 50' : '14.8mg a day for women aged 19 to 50',
+        stated: lower
+          ? '8.7mg a day for women 50 and over'
+          : age >= 50
+            ? '14.8mg a day, the figure for women still having periods'
+            : '14.8mg a day for women aged 19 to 49',
       };
     }
 
     // IN GRAMS OF SALT, WHICH IS NOT WHAT THE COLUMN HOLDS. sodium_mg is the
-    // stored figure and macroAmount divides it by 2.5 before anything shows it,
+    // stored figure and macroAmount divides it by 400 before anything shows it,
     // because "5.2 g salt" is what somebody reads off a packet and "2,080 mg
-    // sodium" is not. So the comparison has to be in the same unit as the
-    // figure beside it.
+    // sodium" is not.
     //
     // THIS WAS WRITTEN AS A 2,400 CEILING FIRST, which took grams of salt and
     // measured them against milligrams of sodium - so a 6 g salt day arrived as
     // the number 2.4 and came back "in range", and salt was the one nutrient on
-    // the grid that could never turn. A unit mismatch has no symptom: the tile
-    // is the right colour for the wrong reason until somebody checks the sum.
+    // the grid that could never turn. A unit mismatch has no symptom.
     case 'salt':
       return {
         shape: { kind: 'ceiling', value: 6 },
@@ -186,25 +320,11 @@ export function referenceFor(key: MacroKey, profile: NutrientProfile): Reference
         stated: 'no more than 6g a day',
       };
 
-    case 'saturated':
-      return {
-        shape: { kind: 'ceiling', value: 20 },
-        kind: 'guideline',
-        source: 'NHS',
-        stated: 'no more than 20g a day for women',
-      };
-
-    case 'fat':
-      return {
-        shape: { kind: 'ceiling', value: 70 },
-        kind: 'guideline',
-        source: 'UK reference intake',
-        stated: '70g a day for an average adult',
-      };
-
-    // See the note at the top. Neither of these has anything honest to compare
-    // against, so neither gets a colour.
-    case 'carbs':
+    // TOTAL SUGAR STILL HAS NOTHING TO COMPARE AGAINST, and that is unchanged
+    // by the research. The published limit is for FREE sugars; this column is
+    // all sugar, including the sugar inside whole fruit and the lactose in
+    // milk. Colouring the total against a free-sugar limit would mark almost
+    // everybody "higher" for eating fruit.
     case 'sugar':
     default:
       return null;

@@ -75,10 +75,21 @@ const styles = StyleSheet.create({
   // THE SIZES GO UP SLIGHTLY WITH THE FACE. Cormorant Infant has a small
   // x-height, so it reads about a point smaller than a sans at the same size;
   // 15 here holds the same presence 14 did.
+  // SIZED UP AGAIN, 24 October 2026, after she saw it on the phone: "Everywhere
+  // where you changed the header font, it's too small, could be almost twice as
+  // big."
+  //
+  // She is right and the reason is the face. Cormorant Infant has a notably
+  // small x-height, so at a given point size it reads a good deal smaller than
+  // the sans it replaced - setting it at 15 where Manrope had been at 14 kept
+  // the number almost the same and lost presence. A serif heading has to be set
+  // LARGER than the sans it replaces to carry the same weight on the page.
   smallBold: {
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: DisplayType.tracking,
     fontFamily: DisplayFont.regular,
+    paddingBottom: 2,
   },
   // MANROPE CARRIES THE TEXT, THE SERIF CARRIES THE HEADINGS (2026-09-18).
   // Comfortaa used to carry both. `small` sat on the system face for exactly
@@ -157,15 +168,15 @@ const styles = StyleSheet.create({
   // the descender room the other display types have, because a heading ending
   // in a g is clipped by Android inside its line box, not outside it.
   title: {
-    fontSize: 34,
-    lineHeight: 44,
+    fontSize: 44,
+    lineHeight: 56,
     letterSpacing: DisplayType.tracking,
     fontFamily: DisplayFont.regular,
     paddingBottom: 4,
   },
   subtitle: {
-    fontSize: 26,
-    lineHeight: 34,
+    fontSize: 34,
+    lineHeight: 44,
     letterSpacing: DisplayType.tracking,
     fontFamily: DisplayFont.regular,
     paddingBottom: 3,

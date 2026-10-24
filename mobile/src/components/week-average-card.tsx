@@ -83,7 +83,19 @@ export function WeekAverageCard({
         {/* FILLS THE ROW, so the link stays pinned right however long the
             heading runs. */}
         <View style={styles.heading}>
-          <ThemedText type="subtitle">Daily average this week</ThemedText>
+          {/* ONE LINE, AS DRAWN (Ruth, 24 October 2026): "Daily average this
+              week needs to be one line, look at the artwork, arrange like
+              that." At subtitle it broke after "this" and the stepper sat
+              beside a two-line heading, which is not what the artwork shows.
+
+              smallBold is the section size now - 22pt serif - which is both
+              large enough to read as a heading and short enough to fit beside
+              the stepper. numberOfLines holds the promise rather than trusting
+              the measurement: a longer week label on a narrow phone would
+              otherwise break it again silently. */}
+          <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            Daily average this week
+          </ThemedText>
           {/* THE COUNT SITS WITH THE HEADING, not with the figures. An average
               of four days is a different claim from an average of seven, and
               that belongs to the title rather than to any one number. */}

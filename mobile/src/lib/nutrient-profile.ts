@@ -40,6 +40,38 @@ const asFocus = (v: unknown): FocusState | null =>
   v === 'reduce' || v === 'maintain' || v === 'increase' ? v : null;
 
 /**
+ * WHETHER SHE IS STILL HAVING PERIODS, read off what she already told the app.
+ *
+ * Only the iron figure uses this, and only after 50. The NHS gives 8.7mg for
+ * women from 50 and adds that women still menstruating may need the higher
+ * 14.8mg - so a birthday is the wrong trigger, and deciding on her behalf that
+ * her periods have stopped is not the app's call to make.
+ *
+ * NULL IS A REAL THIRD ANSWER and must survive: "not told" is not "no". Where
+ * it is null the higher figure stands, because under-stating iron for a woman
+ * who is still losing it monthly is the costlier of the two mistakes.
+ *
+ * `prefer_not_to_say` is deliberately null rather than false. Declining to
+ * answer is not an answer.
+ */
+export function stillBleedingFrom(lifeStage: string | null | undefined): boolean | null {
+  switch (lifeStage) {
+    case 'regular':
+    case 'irregular':
+    case 'perimenopause':
+      return true;
+    case 'menopause':
+    case 'post_menopause':
+    case 'surgical':
+    case 'induced':
+    case 'no_periods_other':
+      return false;
+    default:
+      return null;
+  }
+}
+
+/**
  * Her age and her two self-set targets, or nulls where there is no answer.
  *
  * A MANUAL PROTEIN FIGURE IS A BAND OF ONE. She can type a single number
@@ -59,7 +91,7 @@ export async function loadNutrientProfile(): Promise<NutrientProfile> {
       .from('user_profile')
       .select(
         'height_cm, date_of_birth, biological_sex, activity_level, fat_focus_state, '
-          + 'muscle_focus_state, protein_target_g, training_state'
+          + 'muscle_focus_state, protein_target_g, training_state, life_stage'
       )
       .maybeSingle(),
   ]);
@@ -96,6 +128,7 @@ export async function loadNutrientProfile(): Promise<NutrientProfile> {
   });
 
   return {
+    stillBleeding: stillBleedingFrom((p?.life_stage as string) ?? null),
     ageYears: ageFromDob((p?.date_of_birth as string) ?? null),
     targetKcal: calories?.targetKcal ?? null,
     proteinLow: protein == null ? null : protein.kind === 'manual' ? protein.grams : protein.low,

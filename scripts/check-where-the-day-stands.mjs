@@ -50,6 +50,7 @@ const root = 'file://' + process.cwd().replace(/\\/g, '/');
 // sum live in nutrient-standing.ts for exactly that reason.
 const S = await import(root + '/mobile/src/lib/nutrient-standing.ts');
 const M = await import(root + '/mobile/src/lib/tracked-macros.ts');
+const C = await import(root + '/mobile/src/lib/nutrient-citations.ts');
 
 const read = (p) => readFileSync(p, 'utf8').replace(/\r/g, '');
 const GRID = read('mobile/src/components/nutrient-grid.tsx');
@@ -73,7 +74,13 @@ function check(name, fn) {
 }
 
 /** Her own figures, as a real profile would arrive. */
-const HERS = { ageYears: 44, targetKcal: 1800, proteinLow: 100, proteinHigh: 120 };
+const HERS = {
+  ageYears: 44,
+  targetKcal: 1800,
+  proteinLow: 100,
+  proteinHigh: 120,
+  stillBleeding: true,
+};
 
 const standing = (key, row, profile = HERS) =>
   S.standingFor(M.macroAmount(key, row), S.referenceFor(key, profile));
@@ -138,10 +145,76 @@ check('the nutrient screen says target or guideline, never bare', () => {
 
 // -- 3. nothing is invented -------------------------------------------------
 
-check('carbohydrate and total sugar get no comparison at all', () => {
-  for (const key of ['carbs', 'sugar']) {
-    assert.equal(S.referenceFor(key, HERS), null, `${key} must have no reference`);
-    assert.equal(standing(key, { carbs_g: 400, sugar_g: 300 }), null);
+check('total sugar still gets no comparison at all', () => {
+  // UNCHANGED BY THE RESEARCH, and that is why it is still checked: the
+  // published limit is for FREE sugars, and this column is all sugar including
+  // what is inside whole fruit and the lactose in milk. Colouring the total
+  // against a free-sugar limit would mark almost everybody "higher" for eating
+  // fruit. Carbohydrate DID gain one - see below.
+  assert.equal(S.referenceFor('sugar', HERS), null);
+  assert.equal(standing('sugar', { sugar_g: 300 }), null);
+});
+
+check('carbohydrate is a wide band, never a floor', () => {
+  // Ruth, 24 October: "Surely if there's a % per intake it should be roughly
+  // then that's what it should show as a guideline." SACN sets ~50% of total
+  // dietary energy, so at 1,800 kcal that is 225g.
+  //
+  // IT IS A BAND AND DELIBERATELY WIDE. SACN's figure is a population average,
+  // and plenty of women eat well below it on purpose. Marking that "Lower"
+  // would be the app taking a side in an argument it has no business in.
+  const ref = S.referenceFor('carbs', HERS);
+  assert.equal(ref.shape.kind, 'band');
+  assert.match(ref.stated, /50% of your energy/);
+  assert.equal(S.standingFor(225, ref), 'in-range');
+  assert.equal(S.standingFor(160, ref), 'in-range', 'a lower-carb day is not a verdict');
+  assert.equal(S.standingFor(400, ref), 'higher');
+  assert.equal(S.referenceFor('carbs', S.NO_NUTRIENT_PROFILE), null);
+});
+
+check('the energy-scaled figures scale, and say what share they are', () => {
+  // THE FINDING THE RESEARCH TURNED UP: "70g fat, 20g saturates, 260g carbs"
+  // are those percentages already applied to a 2,000 kcal woman who is not her.
+  const at = (kcal) => ({ ...HERS, targetKcal: kcal });
+  const cases = [
+    ['saturated', 0.1, 9],
+    ['fat', 0.35, 9],
+    ['freeSugar', 0.05, 4],
+  ];
+  for (const [key, share, perGram] of cases) {
+    const ref = S.referenceFor(key, at(1800));
+    const expected = Math.round(((1800 * share) / perGram) * 10) / 10;
+    assert.equal(ref.shape.value, expected, `${key} is not ${share * 100}% of energy`);
+    assert.match(ref.stated, /% of your energy/, `${key} does not say what share it is`);
+    assert.ok(S.referenceFor(key, at(2400)).shape.value > ref.shape.value, `${key} does not scale`);
+  }
+});
+
+check('the flat 20g of saturated fat would have read in range at her energy', () => {
+  // The bug the research fixed, as arithmetic. 20g at 1,560 kcal is 11.5% of
+  // energy - over the 10% ceiling - while a flat-figure tile said "in range".
+  const ref = S.referenceFor('saturated', { ...HERS, targetKcal: 1560 });
+  assert.ok(ref.shape.value < 20, `her ceiling is ${ref.shape.value}g, not the flat 20g`);
+  assert.equal(S.standingFor(20, ref), 'higher');
+});
+
+check('fibre, salt and calcium are absolutes and must not be scaled', () => {
+  // Checked at source rather than assumed: all three are set for adults, not as
+  // a share of energy. This holds them that way so nobody improves them later.
+  assert.equal(S.referenceFor('fibre', { ...HERS, targetKcal: 1200 }).shape.value, 30);
+  assert.equal(S.referenceFor('fibre', { ...HERS, targetKcal: 3000 }).shape.value, 30);
+  assert.equal(S.referenceFor('salt', { ...HERS, targetKcal: 3000 }).shape.value, 6);
+  assert.equal(S.referenceFor('calcium', { ...HERS, targetKcal: 3000 }).shape.value, 700);
+  assert.notEqual(S.referenceFor('fibre', S.NO_NUTRIENT_PROFILE), null);
+});
+
+check('every figure is cited, with the page and the date it was read', () => {
+  assert.ok(C.NUTRIENT_CITATIONS.length >= 8, 'not every figure is cited');
+  for (const c of C.NUTRIENT_CITATIONS) {
+    assert.ok(c.url.startsWith('https://'), `${c.figure} has no source URL`);
+    assert.ok(c.quote.length > 20, `${c.figure} has no quote from the page`);
+    assert.match(c.checked, /^\d{4}-\d{2}-\d{2}$/, `${c.figure} has no date`);
+    assert.ok(c.body.length > 2, `${c.figure} does not name who set it`);
   }
 });
 
@@ -152,10 +225,45 @@ check('and the screen says WHY there is nothing to compare against', () => {
   assert.match(SCREEN, /published limit is for free sugars/);
 });
 
-check('iron waits for an age rather than guessing which figure applies', () => {
+check('iron waits for an age, and a birthday alone does not drop it', () => {
+  // The NHS gives 8.7mg from 50 AND adds that women still menstruating after 50
+  // may need 14.8. The first version dropped everybody on their 50th birthday,
+  // which is the app deciding somebody's periods have stopped.
   assert.equal(S.referenceFor('iron', { ...HERS, ageYears: null }), null);
   assert.equal(S.referenceFor('iron', { ...HERS, ageYears: 44 }).shape.value, 14.8);
-  assert.equal(S.referenceFor('iron', { ...HERS, ageYears: 62 }).shape.value, 8.7);
+  assert.equal(
+    S.referenceFor('iron', { ...HERS, ageYears: 62, stillBleeding: true }).shape.value,
+    14.8
+  );
+  // NOT TOLD IS NOT A NO. Under-stating iron for a woman still losing it
+  // monthly is the costlier of the two mistakes.
+  assert.equal(
+    S.referenceFor('iron', { ...HERS, ageYears: 62, stillBleeding: null }).shape.value,
+    14.8
+  );
+  assert.equal(
+    S.referenceFor('iron', { ...HERS, ageYears: 62, stillBleeding: false }).shape.value,
+    8.7
+  );
+});
+
+check('declining to say is not a no', () => {
+  // prefer_not_to_say must reach the iron case as null, never false. Read as
+  // source: nutrient-profile reaches Supabase and so reaches react-native.
+  const PROFILE = read('mobile/src/lib/nutrient-profile.ts');
+  assert.match(PROFILE, /export function stillBleedingFrom/);
+  const body = PROFILE.slice(PROFILE.indexOf('export function stillBleedingFrom'));
+  for (const stage of ['regular', 'irregular', 'perimenopause']) {
+    assert.ok(body.includes(`case '${stage}':`), `${stage} is not mapped`);
+  }
+  for (const stage of ['menopause', 'post_menopause', 'surgical', 'induced']) {
+    assert.ok(body.includes(`case '${stage}':`), `${stage} is not mapped`);
+  }
+  assert.ok(
+    !body.includes("case 'prefer_not_to_say':"),
+    'declining to answer is being read as an answer'
+  );
+  assert.match(body, /default:\s*\n\s*return null;/);
 });
 
 check('her two targets disappear when she has not set them', () => {
@@ -501,8 +609,27 @@ mustFail('a guideline called a target', () =>
   assert.equal(S.referenceFor('fibre', HERS).kind, 'target')
 );
 
-mustFail('carbohydrate given a number', () =>
-  assert.notEqual(S.referenceFor('carbs', HERS), null)
+mustFail('total sugar given a number', () =>
+  assert.notEqual(S.referenceFor('sugar', HERS), null)
+);
+
+mustFail('an energy figure that does not scale', () => {
+  const a = S.referenceFor('saturated', { ...HERS, targetKcal: 1500 });
+  const b = S.referenceFor('saturated', { ...HERS, targetKcal: 2500 });
+  assert.equal(a.shape.value, b.shape.value);
+});
+
+mustFail('fibre scaled to energy', () => {
+  const a = S.referenceFor('fibre', { ...HERS, targetKcal: 1200 });
+  const b = S.referenceFor('fibre', { ...HERS, targetKcal: 3000 });
+  assert.notEqual(a.shape.value, b.shape.value);
+});
+
+mustFail('a birthday dropping her iron', () =>
+  assert.equal(
+    S.referenceFor('iron', { ...HERS, ageYears: 62, stillBleeding: null }).shape.value,
+    8.7
+  )
 );
 
 mustFail('iron guessed without an age', () =>

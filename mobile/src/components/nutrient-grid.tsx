@@ -10,6 +10,7 @@ import { MACROS, macroAmount, macroFigure, type MacroKey } from '@/lib/tracked-m
 import {
   referenceFor,
   standingFor,
+  NO_NUTRIENT_PROFILE,
   STANDING_COLOUR,
   type NutrientProfile,
   type Reference,
@@ -167,12 +168,7 @@ export function nutrientCells(
  */
 export function hasNutrientTiles(values: Record<string, unknown>, tracked: MacroKey[]): boolean {
   return (
-    nutrientCells(values, tracked, {
-      ageYears: null,
-      targetKcal: null,
-      proteinLow: null,
-      proteinHigh: null,
-    }).length > 0
+    nutrientCells(values, tracked, NO_NUTRIENT_PROFILE).length > 0
   );
 }
 

@@ -717,7 +717,15 @@ export function WeekView({
                       of the pair and did the same job twice. */}
                   <ThemedText type="smallBold">{DAY_LABEL[key]}</ThemedText>
                 </View>
-                <ThemedText type="small" themeColor="textSecondary">
+                {/* THE DATE IS PART OF THE HEADING, SO IT WEARS THE HEADING FACE
+                    (Ruth, 24 October 2026): "you only changes Half of the
+                    timetable day headings, it needs to be the day and date".
+
+                    When the bold types moved to the serif, the day name went
+                    with them and the date underneath did not - so every day
+                    column was announced in two different faces, one line apart.
+                    A day and its date are one label, not a label and a value. */}
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.dayDate}>
                   {shortDate(date)}
                 </ThemedText>
               </View>
@@ -844,8 +852,11 @@ export function WeekView({
             small-caps label in the day column would be a different kind of
             thing wearing a day's position. */}
         <View style={styles.dayLabel}>
+          {/* "Anytime this week" is ONE heading, and it was being set in two
+              faces - her example of the fault: "especially since Anytime this
+              week is now in two diferent fonts". */}
           <ThemedText type="smallBold">Anytime</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.dayDate}>
             this week
           </ThemedText>
         </View>
@@ -1532,6 +1543,9 @@ function AddToDaySheet({
 }
 
 const styles = StyleSheet.create({
+  // The second line of a day heading: the heading face, a step smaller, so the
+  // day and its date read as one label rather than as a label and a figure.
+  dayDate: { fontSize: 16, lineHeight: 20, paddingBottom: 0 },
   // A CHAPTER BREAK, NOT A CARD (ChatGPT, 20 October 2026). Asked whether the
   // flower wants a container: "No. A card would fight the rest of Selodia. The
   // app feels deliberately un-card-like. Instead I'd separate by rhythm."

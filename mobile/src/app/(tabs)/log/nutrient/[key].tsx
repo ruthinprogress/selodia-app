@@ -254,10 +254,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.two,
-    marginTop: Spacing.three,
+    marginTop: Spacing.two,
   },
   stateText: { flex: 1, gap: 2 },
-  head: { marginTop: Spacing.four },
-  para: { lineHeight: 20, marginTop: Spacing.two },
-  source: { marginTop: Spacing.four, lineHeight: 16 },
+  // SPACING, TIGHTENED TWICE OVER (Ruth, 24 October 2026): "Text below headers
+  // needs to be directly below header, too much space atm, see artwork for
+  // spacing ref" and "halve the space between sections".
+  //
+  // Both are the same fault seen from two sides. A heading and the paragraph it
+  // introduces are ONE thing, and 8pt between them read as two; meanwhile 24pt
+  // between sections was not much more than that, so the page had no rhythm -
+  // everything was equally far from everything else and nothing grouped. The
+  // artwork's proportion is roughly four to one, not three to one.
+  head: { marginTop: Spacing.three },
+  para: { lineHeight: 20, marginTop: Spacing.half },
+  source: { marginTop: Spacing.three, lineHeight: 16 },
 });
