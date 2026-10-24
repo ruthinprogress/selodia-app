@@ -651,13 +651,15 @@ check('the breakdown is in the same unit as the figure above it', () => {
   assert.ok(stew.amount > 0.9 && stew.amount < 1.1, `400 mg sodium came through as ${stew.amount}`);
 });
 
-check('protein is the one thing grouped, on what the parser already stored', () => {
-  // No food-to-category table exists in this repository and none needs to:
-  // protein_source is recorded at parse time.
+check('protein is the one thing grouped, in her four groups', () => {
+  // Her labels, settled 24 October: "Meat & fish, Dairy & eggs, Beans nuts &
+  // grains, Collagen". The parser stores three values, so the animal bucket is
+  // split on the food's own name - the one guess in the whole breakdown, and a
+  // guess about a label rather than about a figure.
   const rows = B.proteinBySource(LOG);
   const labels = rows.map((r) => r.label);
-  assert.ok(labels.includes('Animal sources'));
-  assert.ok(labels.includes('Plant sources'));
+  assert.ok(labels.includes('Meat, fish, dairy & eggs'));
+  assert.ok(labels.includes('Beans, nuts & grains'));
   assert.ok(labels.includes('Collagen'));
   // Unclassified protein gets its own row rather than being folded into a
   // group it was never put in.
@@ -672,6 +674,11 @@ check('no food is labelled incomplete, or graded at all', () => {
   // truth is not "this one is lesser" but "these complete each other", which is
   // a sentence rather than a label.
   const labels = [...Object.values(B.PROTEIN_SOURCE_LABEL), 'Not classified'];
+  assert.deepEqual(Object.values(B.PROTEIN_SOURCE_LABEL), [
+    'Meat, fish, dairy & eggs',
+    'Beans, nuts & grains',
+    'Collagen',
+  ]);
   for (const label of labels) {
     for (const word of ['incomplete', 'poor', 'bad', 'low quality', 'worse']) {
       assert.ok(
@@ -683,6 +690,21 @@ check('no food is labelled incomplete, or graded at all', () => {
   assert.equal(labels.length, 4);
 });
 
+check('nothing maps food names to categories', () => {
+  // Ruth, 23 October: group "on something the parser already produces, rather
+  // than a food-to-category table somebody has to maintain forever." A list of
+  // food words in this file is that table arriving by the back door.
+  const src = withoutComments(read('mobile/src/lib/nutrient-breakdown.ts'));
+  for (const food of ['cheese', 'yoghurt', 'chicken', 'salmon', 'lentil', 'oats']) {
+    assert.ok(
+      !new RegExp(food, 'i').test(src),
+      `"${food}" is named in the grouping code - that is a lookup table`
+    );
+  }
+  // Groups come off the stored column and nothing else.
+  assert.match(src, /row\.protein_source/);
+});
+
 check('a suggestion is a food she is NOT already eating', () => {
   const candidates = [
     { name: 'Lentils', per100g: 8 },
@@ -690,7 +712,7 @@ check('a suggestion is a food she is NOT already eating', () => {
     { name: 'Porridge oats', per100g: 9 },
   ];
   const eaten = LOG.map((r) => r.name);
-  const out = B.suggestionsFor(candidates, eaten, 'fibre');
+  const out = B.suggestionsFor(candidates, eaten, 'fibre', []);
   const names = out.map((s) => s.food);
   assert.ok(!names.includes('Lentils'), 'suggesting a food already in her log');
   assert.ok(names.includes('Chia seeds'));
@@ -699,7 +721,7 @@ check('a suggestion is a food she is NOT already eating', () => {
 check('a suggestion says what a food carries, never what to do', () => {
   // Her rule, 21 October, and in the spec: "A handful of berries carries about
   // 2g of fibre" rather than "try adding berries".
-  const out = B.suggestionsFor([{ name: 'Chia seeds', per100g: 34 }], [], 'fibre');
+  const out = B.suggestionsFor([{ name: 'Chia seeds', per100g: 34 }], [], 'fibre', []);
   assert.match(out[0].carries, /carries about/);
   // Scanned with the comments stripped: the prose explaining why instructions
   // are banned is not itself an instruction.
@@ -709,8 +731,34 @@ check('a suggestion says what a food carries, never what to do', () => {
   }
 });
 
+check('nothing she reacts to is ever suggested', () => {
+  // "never anything the allergy gate catches" - the third clause of the rule,
+  // and the only one with a consequence. The match is loose on purpose: "nuts"
+  // has to catch "Walnuts", because over-matching costs a suggestion and
+  // under-matching costs something that matters.
+  const out = B.suggestionsFor(
+    [
+      { name: 'Walnuts', per100g: 7 },
+      { name: 'Chia seeds', per100g: 34 },
+    ],
+    [],
+    'fibre',
+    ['nuts']
+  );
+  assert.deepEqual(out.map((x) => x.food), ['Chia seeds']);
+});
+
+check('the gate cannot be forgotten at a call site', () => {
+  // No default argument: a gate with one is a gate somebody omits, and the
+  // failure is silent and in the wrong direction.
+  const src = read('mobile/src/lib/nutrient-breakdown.ts');
+  assert.ok(!/avoid: string\[\] = \[\]/.test(src), 'avoid has a default again');
+  assert.match(SCREEN, /from\('allergies'\)/);
+  assert.match(SCREEN, /spec\.key,\s*\n\s*avoid\s*\n/);
+});
+
 check('a figure with no amount is never invented', () => {
-  assert.deepEqual(B.suggestionsFor([{ name: 'Water', per100g: 0 }], [], 'fibre'), []);
+  assert.deepEqual(B.suggestionsFor([{ name: 'Water', per100g: 0 }], [], 'fibre', []), []);
   assert.deepEqual(B.whereItCameFrom([], 'fibre'), []);
   assert.deepEqual(B.proteinBySource([]), []);
 });
@@ -889,7 +937,12 @@ mustFail('unclassified protein folded into a group', () => {
 });
 
 mustFail('suggesting a food she already eats', () => {
-  const out = B.suggestionsFor([{ name: 'Lentils', per100g: 8 }], ['Lentils'], 'fibre');
+  const out = B.suggestionsFor([{ name: 'Lentils', per100g: 8 }], ['Lentils'], 'fibre', []);
+  assert.equal(out.length, 1);
+});
+
+mustFail('suggesting something she reacts to', () => {
+  const out = B.suggestionsFor([{ name: 'Walnuts', per100g: 7 }], [], 'fibre', ['nuts']);
   assert.equal(out.length, 1);
 });
 
@@ -900,6 +953,14 @@ mustFail('the generic food list kept alongside', () =>
 mustFail('a graded group label', () =>
   assert.ok(!'Plant sources (incomplete)'.toLowerCase().includes('incomplete'))
 );
+
+mustFail('a food-to-category table creeping back in', () => {
+  // The decision of 23 October, held as a check rather than as a memory:
+  // protein groups on what the parser stores, never on a list of food names
+  // somebody has to maintain. A regex over foods is that list in disguise.
+  const src = read('mobile/src/lib/nutrient-breakdown.ts');
+  assert.match(src, /\/\\b\(milk\|cheese/);
+});
 
 mustFail('comments mistaken for code', () =>
   // The fault this helper exists to stop: the explanation of a banned word read

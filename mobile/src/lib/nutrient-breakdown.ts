@@ -118,11 +118,36 @@ export function whereItCameFrom(items: ItemRow[], key: MacroKey, limit = 6): Sou
  * incomplete, because that is a verdict on a food and her own rule forbids it.
  */
 export const PROTEIN_SOURCE_LABEL: Record<string, string> = {
-  animal: 'Animal sources',
-  plant: 'Plant sources',
+  animal: 'Meat, fish, dairy & eggs',
+  plant: 'Beans, nuts & grains',
   collagen: 'Collagen',
 };
 
+/**
+ * THREE GROUPS, BECAUSE THE PARSER STORES THREE VALUES.
+ *
+ * The decision, 23 October, and it is the whole of the reasoning: "protein
+ * groups on something the parser already produces, RATHER THAN a food-to-
+ * category table somebody has to maintain forever."
+ *
+ * I then proposed four labels - "Meat & fish, Dairy & eggs, Beans nuts &
+ * grains, Collagen" - without noticing that two of them are both `animal`, and
+ * on 24 October started writing a regex over food names to split them. Ruth
+ * stopped it: "we alredy di this thinking. why are we doing this again... we
+ * are going round in circles."
+ *
+ * She was right. That regex IS the food-to-category table, arriving by the back
+ * door and disguised as a display detail - and it would have needed a new entry
+ * every time somebody logged a cheese it had not heard of, forever, with a
+ * silent mislabel as the failure mode.
+ *
+ * SO THE LABELS BEND TO THE DATA, NOT THE OTHER WAY ROUND. They keep the
+ * register she chose - concrete foods, never "Animal sources", which she
+ * rejected on the 23rd - and they group on the stored value with nothing to
+ * maintain. The split between meat and dairy is a real distinction and it can
+ * be had later for the price of a finer value from the parser; it is not worth
+ * a lookup table.
+ */
 export function proteinBySource(items: ItemRow[]): SourceRow[] {
   const byGroup = new Map<string, number>();
   let total = 0;
@@ -130,10 +155,10 @@ export function proteinBySource(items: ItemRow[]): SourceRow[] {
   for (const row of items) {
     const amount = amountOf(row, 'protein');
     if (amount <= 0) continue;
-    const src = typeof row.protein_source === 'string' ? row.protein_source : null;
+    const group = typeof row.protein_source === 'string' ? row.protein_source : null;
     // UNCLASSIFIED PROTEIN IS ITS OWN ROW, never quietly folded into a group it
     // was not put in. The totals have to add up to what the figure above says.
-    const label = (src && PROTEIN_SOURCE_LABEL[src]) || 'Not classified';
+    const label = (group && PROTEIN_SOURCE_LABEL[group]) || 'Not classified';
     byGroup.set(label, (byGroup.get(label) ?? 0) + amount);
     total += amount;
   }
@@ -185,6 +210,20 @@ export function suggestionsFor(
   candidates: CandidateFood[],
   eaten: string[],
   key: MacroKey,
+  /**
+   * NEVER SUGGEST SOMETHING SHE REACTS TO.
+   *
+   * The third clause of the rule agreed on 23 October: "her own foods first ->
+   * then foods compatible with what she's stated -> NEVER anything the allergy
+   * gate catches." The first two are satisfied by drawing from a composition
+   * table and removing what is already in her log; this is the third, and it
+   * is the one with a consequence.
+   *
+   * It is a REQUIRED argument with no default, deliberately. A gate that can be
+   * forgotten at a call site is a gate that will be, and the failure is silent
+   * and in the wrong direction.
+   */
+  avoid: string[],
   limit = 3
 ): Suggestion[] {
   const spec = MACROS.find((m) => m.key === key);
@@ -200,6 +239,10 @@ export function suggestionsFor(
     const food = tidy(c.name);
     if (!food || seen.has(food)) continue;
     if (alreadyEating(food, eaten)) continue;
+    // The same loose match the log filter uses, for the same reason: "tree
+    // nuts" has to catch "walnuts", and over-matching here costs a suggestion
+    // while under-matching costs something that matters.
+    if (avoid.length > 0 && alreadyEating(food, avoid)) continue;
     seen.add(food);
     const figure = unit === 'mg' ? Math.round(c.per100g) : Math.round(c.per100g * 10) / 10;
     out.push({

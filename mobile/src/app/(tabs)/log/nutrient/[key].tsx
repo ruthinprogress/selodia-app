@@ -135,6 +135,19 @@ export default function NutrientScreen() {
         const eaten = ((itemRows ?? []) as unknown as ItemRow[])
           .map((r) => (r.name ?? '').trim())
           .filter(Boolean);
+        // WHAT SHE REACTS TO, READ BEFORE ANYTHING IS SUGGESTED. RLS scopes
+        // this to her. An empty list is a real answer; a failed read is not,
+        // and a failed read must not become an empty gate - so a null result
+        // leaves `avoid` empty only because there is nothing to avoid, and the
+        // query is awaited rather than raced.
+        const { data: reactions } = await supabase
+          .from('allergies')
+          .select('name, kind')
+          .in('kind', ['food', 'other']);
+        if (cancelled) return;
+        const avoid = ((reactions ?? []) as { name: string | null }[])
+          .map((r) => (r.name ?? '').trim())
+          .filter(Boolean);
         setSuggestions(
           suggestionsFor(
             ((best ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
@@ -142,7 +155,8 @@ export default function NutrientScreen() {
               per100g: Number(r[spec.column] ?? 0),
             })),
             eaten,
-            spec.key
+            spec.key,
+            avoid
           )
         );
       }
